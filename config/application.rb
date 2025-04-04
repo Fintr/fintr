@@ -11,6 +11,8 @@ module FintrBe
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.0
 
+
+
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
@@ -28,5 +30,11 @@ module FintrBe
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+
+    # Configure factory file naming pattern
+    config.generators do |g|
+      g.factory_bot suffix: "factory"
+      g.factory_bot dir: "spec/factories"
+    end
   end
 end
