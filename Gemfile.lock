@@ -171,6 +171,8 @@ GEM
       racc (~> 1.4)
     nokogiri (1.18.7-arm-linux-musl)
       racc (~> 1.4)
+    nokogiri (1.18.7-arm64-darwin)
+      racc (~> 1.4)
     nokogiri (1.18.7-x86_64-linux-gnu)
       racc (~> 1.4)
     nokogiri (1.18.7-x86_64-linux-musl)
@@ -321,6 +323,7 @@ GEM
     thor (1.3.2)
     thruster (0.1.12)
     thruster (0.1.12-aarch64-linux)
+    thruster (0.1.12-arm64-darwin)
     thruster (0.1.12-x86_64-linux)
     timeout (0.4.3)
     tzinfo (2.0.6)
@@ -349,6 +352,7 @@ PLATFORMS
   aarch64-linux-musl
   arm-linux-gnu
   arm-linux-musl
+  arm64-darwin-24
   x86_64-linux
   x86_64-linux-gnu
   x86_64-linux-musl
