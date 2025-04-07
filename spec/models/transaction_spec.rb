@@ -83,8 +83,8 @@ RSpec.describe Transaction, type: :model do
 
       it 'provides predicate methods' do
         transaction = described_class.new(expense_category: 'food')
-        expect(transaction.food?).to be true
-        expect(transaction.transportation?).to be false
+        expect(transaction.food_expense?).to be true
+        expect(transaction.transportation_expense?).to be false
       end
     end
 
@@ -100,8 +100,8 @@ RSpec.describe Transaction, type: :model do
 
       it 'provides predicate methods' do
         transaction = described_class.new(income_category: 'salary')
-        expect(transaction.salary?).to be true
-        expect(transaction.freelance?).to be false
+        expect(transaction.salary_income?).to be true
+        expect(transaction.freelance_income?).to be false
       end
     end
 
