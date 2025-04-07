@@ -2,9 +2,11 @@
 inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 
 plugins:
-  - rubocop-rails-omakase
   - rubocop-rspec
   - rubocop-performance
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
 
 Layout/SpaceInsideArrayLiteralBrackets:
   Enabled: True
@@ -18,3 +20,12 @@ Layout/ArrayAlignment:
 
 Layout/HashAlignment:
   Enabled: true
+
+RSpec/NestedGroups:
+  Enabled: false
+
+RSpec/ExampleLength:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Enabled: false

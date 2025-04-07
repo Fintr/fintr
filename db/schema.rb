@@ -16,8 +16,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_05_044308) do
 
   # Custom types defined in this database.
   # Note that some types may not work with other database engines. Be careful if changing database.
-  create_enum "expense_category", ["food", "transportation", "utilities", "entertainment", "shopping", "house"]
+  create_enum "expense_category", ["house", "food", "transportation", "utilities", "insurance", "family", "pet", "socials", "entertainment", "travel", "business"]
   create_enum "income_category", ["salary", "freelance", "business"]
+  create_enum "transaction_essentialness", ["want", "need"]
   create_enum "transaction_type", ["income", "expense"]
 
   create_table "jwt_denylist", force: :cascade do |t|
@@ -35,6 +36,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_05_044308) do
     t.enum "transaction_type", null: false, enum_type: "transaction_type"
     t.enum "expense_category", enum_type: "expense_category"
     t.enum "income_category", enum_type: "income_category"
+    t.enum "essentialness", default: "want", null: false, enum_type: "transaction_essentialness"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["transaction_type", "expense_category"], name: "index_transactions_on_transaction_type_and_expense_category"

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 FactoryBot.define do
   factory :transaction do
     association :user
@@ -5,24 +7,58 @@ FactoryBot.define do
     amount { 100.00 }
     balance { 100.00 }
     sequence(:description) { |n| "Test transaction #{n}" }
+    essentialness { 'want' }
 
-    # Notice that the migration has removed the NOT NULL constraint from expense_category and income_category
-    # This allows our callback to work properly by clearing the inappropriate category
+    # To handle NOT NULL constraints, we need to provide both categories by default
     transaction_type { 'expense' }
     expense_category { 'food' }
-    
-    # For traits representing expense transactions, income_category can be nil
+    income_category { 'salary' } # Default value to satisfy NOT NULL constraint
+
     trait :expense do
       transaction_type { 'expense' }
       expense_category { 'food' }
-      income_category { nil }
+      income_category { 'salary' } # Keep a value to satisfy NOT NULL constraint
+      essentialness { 'need' }
     end
 
-    # For traits representing income transactions, expense_category can be nil
     trait :income do
       transaction_type { 'income' }
       income_category { 'salary' }
-      expense_category { nil }
+      expense_category { 'food' } # Keep a value to satisfy NOT NULL constraint
+    end
+
+    # Need category traits
+    Transaction::NEED_CATEGORIES.each do |category|
+      trait category.to_sym do
+        transaction_type { 'expense' }
+        expense_category { category }
+        essentialness { 'need' }
+      end
+    end
+
+    # Want category traits
+    Transaction::WANT_CATEGORIES.each do |category|
+      trait category.to_sym do
+        transaction_type { 'expense' }
+        expense_category { category }
+        essentialness { 'want' }
+      end
+    end
+
+    # Income category traits
+    trait :salary do
+      transaction_type { 'income' }
+      income_category { 'salary' }
+    end
+
+    trait :freelance do
+      transaction_type { 'income' }
+      income_category { 'freelance' }
+    end
+
+    trait :business_income do
+      transaction_type { 'income' }
+      income_category { 'business' }
     end
   end
 end
