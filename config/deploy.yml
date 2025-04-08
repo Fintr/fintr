@@ -1,8 +1,10 @@
+
+<% require "dotenv"; Dotenv.load(".env.production") %>
 # Name of your application. Used to uniquely configure containers.
 service: fintr-be
 
 # Name of the container image.
-image: fintr/fintr-be
+image: adminfintr/fintr-be
 
 # Deploy to these servers.
 servers:
@@ -40,18 +42,18 @@ builder:
   args:
     RUBY_VERSION: "<%= Pathname.pwd.join('.ruby-version').read.strip.delete_prefix('ruby-') %>"
     BUNDLER_VERSION: 2.6.2
-    RAILS_MASTER_KEY: "<%= ENV['RAILS_MASTER_KEY'] %>"
+    RAILS_MASTER_KEY:
+      - RAILS_MASTER_KEY
+    DEVISE_JWT_SECRET_KEY: "<%= ENV['DEVISE_JWT_SECRET_KEY'] %>"
+
   # Pass in additional build args needed for your Dockerfile.
   # args:
   #   RUBY_VERSION: <%= ENV["RBENV_VERSION"] || ENV["rvm_ruby_string"] || "#{RUBY_ENGINE}-#{RUBY_ENGINE_VERSION}" %>
 
 # Inject ENV variables into containers (secrets come from .kamal/secrets).
-#
-# env:
-#   clear:
-#     DB_HOST: 192.168.0.2
-#   secret:
-#     - RAILS_MASTER_KEY
+env:
+  secret:
+    - RAILS_MASTER_KEY
 
 # Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
 # "bin/kamal app logs -r job" will tail logs from the first server in the job section.
