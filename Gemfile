@@ -12,7 +12,8 @@ gem "solid_cable"
 gem "bootsnap", require: false
 gem "thruster", require: false
 gem "rack-cors"
-gem "dotenv-rails"
+gem "dotenv-rails", "~> 3.1"
+gem "kamal", "~> 2.5"
 
 # User authentication
 gem "devise"
@@ -29,3 +30,4 @@ group :development, :test do
   gem "shoulda-matchers"
   gem "factory_bot_rails"
 end
+
