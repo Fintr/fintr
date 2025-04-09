@@ -31,15 +31,6 @@ module FintrBe
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
 
-    # Setup middleware for API with Devise
-    config.session_store :cookie_store, key: "_interslice_session"
-    config.middleware.use ActionDispatch::Cookies
-    config.middleware.use config.session_store, config.session_options
-
-    # Add middleware for Warden/Devise
-    config.middleware.insert_before Warden::Manager, ActionDispatch::Cookies
-    config.middleware.insert_before Warden::Manager, ActionDispatch::Session::CookieStore
-
     # Configure factory file naming pattern
     config.generators do |g|
       g.factory_bot suffix: "factory"

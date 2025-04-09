@@ -14,11 +14,8 @@ gem "thruster", require: false
 gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
 gem "kamal", "~> 2.5"
-
-# User authentication
-gem "devise"
-gem "devise-jwt"
-gem "omniauth"
+gem "blueprinter", "~> 1.1"
+gem "oj", "~> 3.16"
 
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
