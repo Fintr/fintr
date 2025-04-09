@@ -83,8 +83,6 @@ production:
   primary: &primary_production
     <<: *default
     database: fintr_be_production
-    username: fintr_be
-    password: <%= ENV["FINTR_BE_DATABASE_PASSWORD"] %>
   cache:
     <<: *primary_production
     database: fintr_be_production_cache

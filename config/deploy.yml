@@ -40,11 +40,10 @@ registry:
 builder:
   arch: amd64
   args:
-    RUBY_VERSION: "<%= Pathname.pwd.join('.ruby-version').read.strip.delete_prefix('ruby-') %>"
+    RUBY_VERSION: "<%= Pathname.pwd.join('.ruby-version').read.strip.delete_prefix('ruby-').delete_prefix('ruby ') %>"
     BUNDLER_VERSION: 2.6.2
     RAILS_MASTER_KEY:
       - RAILS_MASTER_KEY
-    DEVISE_JWT_SECRET_KEY: "<%= ENV['DEVISE_JWT_SECRET_KEY'] %>"
 
   # Pass in additional build args needed for your Dockerfile.
   # args:
@@ -54,6 +53,8 @@ builder:
 env:
   secret:
     - RAILS_MASTER_KEY
+    - DATABASE_URL
+    - DEVISE_JWT_SECRET_KEY
 
 # Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
 # "bin/kamal app logs -r job" will tail logs from the first server in the job section.
