@@ -3,7 +3,7 @@
 module Api
   module V1
     module Auth
-      class Auth0Controller < ApplicationController
+      class Auth0Controller < ApiController
         skip_before_action :verify_authenticity_token, raise: false
 
         def callback

@@ -4,14 +4,19 @@ Rails.application.routes.draw do
   # API routes
   namespace :api do
     namespace :v1 do
+      namespace :auth do
       # Auth0 authentication routes
-      get "/auth/auth0/callback", to: "auth/auth0#callback"
-      get "/auth/failure", to: "auth/auth0#failure"
+      get "/auth/auth0/callback", to: "auth0#callback"
+      get "/auth/failure", to: "auth0#failure"
 
       # User profile route
       get "/user/profile", to: "users#profile"
 
-      # Other API resources
+      # Private routes
+      get "/private", to: "private#private"
+      get "/private_scoped", to: "private#private_scoped"
+      end
+
       resources :transactions
     end
   end
