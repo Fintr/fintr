@@ -31,6 +31,9 @@ module FintrBe
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
 
+    # Client URL for redirections (Auth0 callbacks)
+    config.client_url = ENV.fetch("CLIENT_URL", "http://localhost:3000")
+
     # Configure factory file naming pattern
     config.generators do |g|
       g.factory_bot suffix: "factory"

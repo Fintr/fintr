@@ -4,20 +4,17 @@ Rails.application.routes.draw do
   # API routes
   namespace :api do
     namespace :v1 do
-      devise_for :users,
-                 # NOTE: routes are still /api/v1/users/controllers
-                 controllers: {
-                   registrations: "api/v1/auth/registrations",
-                   sessions: "api/v1/auth/sessions",
-                   confirmations: "api/v1/auth/confirmations",
-                   passwords: "api/v1/auth/passwords",
-                   unlocks: "api/v1/auth/unlocks"
-                 },
-                 defaults: { format: :json },
-                 skip: :omniauth_callbacks
+      # Auth0 authentication routes
+      get "/auth/auth0/callback", to: "auth/auth0#callback"
+      get "/auth/failure", to: "auth/auth0#failure"
+
+      # User profile route
+      get "/user/profile", to: "users#profile"
+
+      # Other API resources
+      resources :transactions
     end
   end
-
 
   get "up" => "rails/health#show", as: :rails_health_check
 end

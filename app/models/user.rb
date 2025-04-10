@@ -1,26 +1,23 @@
 # frozen_string_literal: true
 
 class User < ApplicationRecord
-  # Include default devise modules. Others available are:
-  #
-  devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable,
-         :confirmable, :lockable, :timeoutable, :trackable,
-         :jwt_authenticatable, jwt_revocation_strategy: JwtDenylist
-
-  # Remove omniauthable from the User model since we're not using it now
-  # If you need OAuth, add it back and configure properly
+  # Auth0 is now used for authentication
+  # The auth0_id field is used to store the Auth0 user ID
 
   has_many :transactions, dependent: :destroy
 
   validates :email, presence: true, uniqueness: true,
                     format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }
-  validates :password, presence: true
 
+  # Create or update user from Auth0 profile
+  def self.from_auth0(auth0_user_info)
+    user = find_or_initialize_by(auth0_id: auth0_user_info["sub"])
 
-  private
+    user.email = auth0_user_info["email"]
+    user.name = auth0_user_info["name"]
+    user.picture = auth0_user_info["picture"]
+    user.save!
 
-  def jwt_payload
-    super.merge("foo" => "bar")
+    user
   end
 end
