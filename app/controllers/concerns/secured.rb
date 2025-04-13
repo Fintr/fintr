@@ -43,6 +43,7 @@ module Secured
 
     scheme, token = authorization_header_elements
 
+
     render json: BAD_CREDENTIALS, status: :unauthorized and return unless scheme.downcase == "bearer"
 
     token

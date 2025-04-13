@@ -9,7 +9,9 @@
 
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
-    origins "example.com"
+    # Get allowed origins from environment variable or use defaults
+    # Format in .env: CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+    origins ENV.fetch("CORS_ORIGINS", "localhost:5173,localhost:3000").split(",").map(&:strip)
 
     resource "/api/*",
       headers: %w[Authorization],
