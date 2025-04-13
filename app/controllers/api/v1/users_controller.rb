@@ -2,9 +2,7 @@
 
 module Api
   module V1
-    module Auth
-      class UsersController < ApiController
-      end
+    class UsersController < ApiController
     end
   end
 end
