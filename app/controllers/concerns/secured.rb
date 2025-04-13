@@ -23,11 +23,29 @@ module Secured
 
     return if performed?
 
-    validation_response = Auth::Client.validate_token(token)
+    @validation_response = Auth::Client.validate_token(token)
 
-    return unless (error = validation_response.error)
+    current_user
+
+    return unless (error = @validation_response.error)
 
     render json: { message: error.message }, status: error.status
+  end
+
+  def current_user
+    return @current_user if defined?(@current_user)
+
+    # Get the decoded token data from validation response
+    return nil unless @validation_response&.decoded_token
+
+    # Extract the user ID from the token's sub claim
+    #
+    auth_id = @validation_response.decoded_token.token.first["sub"]
+    data = @validation_response.decoded_token.token.first
+    # Find the corresponding user in the database
+    @current_user = User.find_or_initialize_by(auth_id:)
+    @current_user.assign_attributes(data.slice("email", "full_name"))
+    @current_user.save! if @current_user.changed?
   end
 
   private

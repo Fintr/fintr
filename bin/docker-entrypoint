@@ -8,6 +8,7 @@ fi
 
 # If running the rails server then create or migrate existing database
 if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
+  ./bin/rails db:drop # Apply this first as we're not sure of our migrations
   ./bin/rails db:prepare
 fi
 

@@ -7,7 +7,7 @@ module Api
         before_action :authorize
 
         def private
-          render json: { message: "Hello from a private endpoint! You need to be authenticated to see this." }
+          render json: { message: "Hello from a private endpoint! You need to be authenticated to see this.", data: { user: current_user } }
         end
 
         def private_scoped
