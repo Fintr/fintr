@@ -5,7 +5,7 @@ require "jwt"
 module Auth
   class Client
     def self.domain_url
-      ENV["AUTH0_URL"]
+      "#{ENV["AUTH0_URL"]}/"
     end
 
     def self.decode_token(token, jwks_hash)
@@ -22,6 +22,9 @@ module Auth
     def self.get_jwks
       jwks_uri = URI("#{domain_url}.well-known/jwks.json")
       Net::HTTP.get_response jwks_uri
+    rescue StandardError => e
+      ActiveSupport::Logger.new($stdout).error("Error fetching JWKS: on #{jwks_uri} #{e.message}")
+      raise e
     end
 
     # Token Validation

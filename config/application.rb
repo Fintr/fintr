@@ -31,6 +31,8 @@ module FintrBe
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
 
+    config.assume_ssl = true
+
     # Client URL for redirections (Auth0 callbacks)
     config.client_url = ENV.fetch("CLIENT_URL", "http://localhost:3000")
 
