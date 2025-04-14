@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "jwt"
-  require "net/http"
+require "net/http"
 module Auth
   class Client
     def self.domain_url
@@ -23,7 +23,7 @@ module Auth
       jwks_uri = URI("#{domain_url}.well-known/jwks.json")
       Net::HTTP.get_response jwks_uri
     rescue StandardError => e
-      ActiveSupport::Logger.new($stdout).error("Error fetching JWKS: on #{jwks_uri} #{e.message}")
+      puts("Error fetching JWKS: on #{jwks_uri} #{e.message}")
       raise e
     end
 
@@ -42,7 +42,8 @@ module Auth
 
       Response.new(Token.new(decoded_token), nil)
     rescue JWT::VerificationError, JWT::DecodeError => e
-      error = Error.new("Bad credentials", :unauthorized)
+      puts("Error decoding token: #{e.message}. token: #{token}")
+      error = Error.new("Bad credentials: #{e.message}", :unauthorized)
       Response.new(nil, error)
     end
   end

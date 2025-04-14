@@ -21,9 +21,12 @@ module Secured
   def authorize
     token = token_from_request
 
+    puts("token: #{token}")
+
     return if performed?
 
     @validation_response = Auth::Client.validate_token(token)
+    puts("validation_response: #{@validation_response.inspect}")
 
     current_user
 
@@ -53,6 +56,8 @@ module Secured
   def token_from_request
     authorization_header_elements = request.headers["Authorization"]&.split
 
+    puts("authorization_header_elements: #{authorization_header_elements.inspect}")
+
     render json: REQUIRES_AUTHENTICATION, status: :unauthorized and return unless authorization_header_elements
 
     unless authorization_header_elements.length == 2
@@ -61,8 +66,9 @@ module Secured
 
     scheme, token = authorization_header_elements
 
+    puts("scheme: #{scheme}, token: #{token}")
 
-    render json: BAD_CREDENTIALS, status: :unauthorized and return unless scheme.downcase == "bearer"
+    render json: { error: BAD_CREDENTIALS, data: { scheme:, token: } }, status: :unauthorized and return unless scheme.downcase == "bearer"
 
     token
   end
