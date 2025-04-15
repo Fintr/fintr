@@ -14,13 +14,18 @@ gem "thruster", require: false
 gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
 gem "kamal", "~> 2.5"
+
+
+# Serialization
 gem "blueprinter", "~> 1.1"
 gem "oj", "~> 3.16"
+
+# Authentication
 gem "jwt", "~> 2.7"
 gem "auth0", "~> 5.12"
-gem "omniauth", "~> 2.1"
-gem "omniauth-auth0", "~> 3.1"
-gem "omniauth-rails_csrf_protection", "~> 1.0"
+
+# Money
+gem "money-rails", "~> 1.15"
 
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
