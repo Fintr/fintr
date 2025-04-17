@@ -6,6 +6,7 @@ module Spaces
     has_many :space_users, class_name: "Spaces::SpaceUser", dependent: :destroy
     has_many :users, class_name: "Auth::User", through: :space_users
     has_many :categories, class_name: "Transactions::Category", dependent: :destroy
+    has_many :accounts, class_name: "Transactions::Account", dependent: :destroy
 
     validates :name, presence: true
     validates :code, presence: true, uniqueness: true
@@ -13,9 +14,14 @@ module Spaces
     validates :type, presence: true, inclusion: { in: %w[Spaces::PersonalSpace Spaces::OrganizationSpace] }
 
     after_create :create_default_transaction_categories
+    after_create :create_default_accounts
 
     def create_default_transaction_categories
       Transactions::Category.create_default_categories(self)
+    end
+
+    def create_default_accounts
+      Transactions::Account.create_default_accounts(self)
     end
   end
 end

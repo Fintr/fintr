@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_17_121516) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -18,6 +18,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_121516) do
   # Custom types defined in this database.
   # Note that some types may not work with other database engines. Be careful if changing database.
   create_enum "category_type_enum", ["income", "expense"]
+
+  create_table "accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "space_id", null: false
+    t.string "name", null: false
+    t.integer "balance_cents", default: 0, null: false
+    t.string "balance_currency", default: "USD", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id", "name"], name: "index_accounts_on_space_id_and_name", unique: true
+    t.index ["space_id"], name: "index_accounts_on_space_id"
+  end
 
   create_table "roles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "name"
@@ -63,8 +74,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_121516) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.uuid "space_id"
+    t.uuid "transaction_category_id", null: false
+    t.uuid "account_id", null: false
+    t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["amount_currency", "balance_currency"], name: "index_transactions_on_amount_currency_and_balance_currency"
     t.index ["space_id"], name: "index_transactions_on_space_id"
+    t.index ["transaction_category_id"], name: "index_transactions_on_transaction_category_id"
     t.index ["type", "date", "amount_cents"], name: "index_transactions_on_type_and_date_and_amount_cents"
     t.index ["type", "date", "balance_cents"], name: "index_transactions_on_type_and_date_and_balance_cents"
     t.index ["user_id", "date", "type"], name: "index_transactions_on_user_id_and_date_and_type"
@@ -100,8 +115,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_121516) do
     t.index ["user_id"], name: "index_users_roles_on_user_id"
   end
 
+  add_foreign_key "accounts", "spaces"
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
+  add_foreign_key "transactions", "accounts"
+  add_foreign_key "transactions", "transactions_categories", column: "transaction_category_id"
   add_foreign_key "transactions", "users"
   add_foreign_key "transactions_categories", "spaces"
 end

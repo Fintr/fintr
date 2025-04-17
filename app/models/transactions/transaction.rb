@@ -3,6 +3,8 @@
 module Transactions
   class Transaction < ApplicationRecord
     belongs_to :user, class_name: "Auth::User"
+    belongs_to :category, class_name: "Transactions::Category"
+    belongs_to :account, class_name: "Transactions::Account"
 
     monetize :amount_cents, allow_nil: false
     monetize :balance_cents, allow_nil: false
