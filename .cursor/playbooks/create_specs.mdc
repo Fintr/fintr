@@ -1,0 +1,70 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+## Introduction
+We're creating specs using this playbook. We're doing integration specs for this one.
+
+## Input
+I will add this attribute to point out the location of the file that I'm pointing out.
+
+1. LOCATION - this is where the file is located. Its specs are similar to the to the location it has. This file will be the main file and the one that is going to be created the specs for.
+
+
+## Additional Context
+check rules [creating_specs.mdc](mdc:.cursor/rules/creating_specs.mdc)
+
+## Steps
+
+1. Look at the location and check the file.
+2. Look for the spec file corresponding to that file.
+3. If there is already a file, check the difference of that file. To check the difference. Use the terminal and write `git diff <relative_location>`. Use these differences to understand what changes you may need to make to the spec file for that file.
+4. If there is no file, create the specs based on best practices that you know. If there are many spec files around the location or any similar files, check those files too. It's best to read 3 files when you're doing this so that you understand what is the style and format of the specs.
+5. Test the spec. Run `bundle exec rspec <location>`
+6. If it succeeds, end your session.
+7. If it fails, review the errors and make the necessary changes to pass the tests. Then do step 5. Do this until the 3rd attempt. If it still fails, end the session.
+
+## RSpec Conventions (Observed from Existing Specs)
+
+### General Structure
+
+-   **File Header:** Start with `# frozen_string_literal: true` and `require 'rails_helper'`.
+-   **Top-Level Describe:** Use `RSpec.describe ClassName, type: :model` (or `:controller`, `:request`, etc.).
+-   **Organization:** Group related examples using `describe` blocks (e.g., `'associations'`, `'validations'`, `'.class_method'`, `'#instance_method'`). Use nested `describe` or `context` for further granularity.
+
+### Data Setup (using FactoryBot)
+
+-   **Factories:** Use `create(:factory_name)` to persist records and `build(:factory_name)` for unpersisted instances.
+-   **`let` vs `let!`:** Prefer `let` for lazy loading. Use `let!` only when the data *must* be created before *any* example in the block runs (e.g., setting up records for scope tests or complex `before` blocks).
+-   **Context Isolation:** Define necessary `let` variables within the specific `describe` or `context` block where they are needed to avoid state leakage between test groups. This is crucial for tests involving uniqueness or creation.
+    ```ruby
+    # Good: space is defined locally for validation context
+    describe 'validations' do
+      let(:space) { create(:space) }
+      it 'validates uniqueness of name' do
+        create(:account, name: 'unique', space: space)
+        account2 = build(:account, name: 'unique', space: space)
+        expect(account2).not_to be_valid
+      end
+    end
+    ```
+
+### Subject
+
+-   **`shoulda-matchers`:** Define `subject { create(:factory) }` or `subject { build(:factory) }` within the `describe` block where direct matchers (like `validate_presence_of`) are used.
+-   **Avoid Top-Level Creation Subjects:** Be cautious with top-level `subject` blocks that create records, as they can interfere with tests needing a clean state.
+
+### Matchers
+
+-   **Models:**
+    -   Use `shoulda-matchers` extensively for associations (`belong_to`, `have_many`, `have_many.through`), validations (`validate_presence_of`, `validate_uniqueness_of`, `validate_numericality_of`, `validate_inclusion_of`, `allow_value`, `not_to allow_value`).
+    -   Explicitly add `.class_name('Namespace::ClassName')` to association matchers if the class name can't be inferred.
+    -   Use `dependent(:destroy)` or similar options on association matchers.
+-   **Methods/Scopes:** Use standard RSpec matchers like `expect().to eq()`, `expect().to include()`, `expect {}.to change {}.by()`, `expect().to receive()`, etc.
+
+### Descriptions
+
+-   Use clear, descriptive strings for `describe`, `context`, and `it`.
+-   Prefix class method descriptions with `.` (e.g., `describe '.create_defaults'`).
+-   Prefix instance method descriptions with `#` (e.g., `describe '#update_balance'`).

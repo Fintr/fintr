@@ -1,0 +1,72 @@
+---
+description: 
+globs: spec/**/*.rb
+alwaysApply: false
+---
+## RSpec Pattern-Based Conventions
+
+These conventions are derived from observing existing specs in the `spec/models` and `spec/operations` directories.
+
+### General Structure
+
+-   **File Header:** Start with `# frozen_string_literal: true` and `require 'rails_helper'`.
+-   **Top-Level Describe:** Use `RSpec.describe ClassNameOrNamespace::ClassName, type: :model` (or `:operation`, etc.).
+-   **Organization:**
+    -   **Models:** Group examples by functionality using `describe` blocks: `'associations'`, `'validations'`, `'scopes'`, `'.class_method'`, `'#instance_method'`.
+    -   **Operations/Services:** Group examples using `describe '#method_name'` (usually `#call`). Use nested `context` blocks for different scenarios (e.g., `context 'when condition X is true'`, `context 'when condition Y fails'`).
+    -   Use clear, descriptive strings for `context` and `it` blocks.
+
+### Model Spec Patterns
+
+-   **Associations (`describe 'associations'`):**
+    -   **Method:** Use `shoulda-matchers` (`belong_to`, `have_many`, `have_one`, `through`).
+    -   **Details:** Specify `class_name: 'Namespace::ClassName'` if the name isn't standard Rails convention. Include `dependent(:destroy)` or other options being tested.
+    -   **Setup:** Typically requires only `subject { build(:factory_name) }` or `subject { create(:factory_name) }` defined within the `describe 'associations'` block.
+
+-   **Validations (`describe 'validations'`):**
+    -   **Method:** Primarily use `shoulda-matchers` (`validate_presence_of`, `validate_uniqueness_of`, `validate_numericality_of`, `validate_inclusion_of`).
+    -   **Uniqueness:** Remember `validate_uniqueness_of` requires a persisted record. Often achieved by defining `subject { create(:factory_name) }` or creating the initial record within the `it` block. Ensure `scoped_to` is tested if applicable.
+    -   **Format/Custom:** Use `allow_value(...).for(:attribute)` and `not_to allow_value(...).for(:attribute)` for format checks (e.g., email). For complex custom validations, build an invalid instance and check `record.valid?` and `record.errors[:attribute]`.
+    -   **Setup:** Define `let(:space) { create(:space) }` (or other necessary associated objects) locally within the `describe 'validations'` block to isolate context. Use `build(:factory_name, ...)` within `it` blocks for specific invalid states.
+
+-   **Scopes (`describe 'scopes'`, `describe '.scope_name'`):**
+    -   **Method:** Test by comparing the scope's output against expected records.
+    -   **Setup:** Use `let!` to create records that *should* be included and records that *should not* be included by the scope *before* the examples run. Define a local `let(:space) { create(:space) }` (or relevant object) within the scope's `describe` block.
+    -   **Assertions:** Use `expect(described_class.where(space: space).scope_name).to match_array(expected_records)` and `expect(...scope_name).not_to include(excluded_record)`. Check counts if appropriate. Query specifically within the relevant context (e.g., `where(space: space)`).
+
+-   **Class Methods (`describe '.class_method_name'`):**
+    -   **Method:** Call the method via `described_class.class_method_name(...)`.
+    -   **Setup:** Use `let` or `let!` within the `describe` block to set up necessary preconditions (e.g., existing records for `find_or_create_by` scenarios, specific associated data).
+    -   **Assertions:**
+        -   **Return Value:** Check the return value (`expect(...).to eq(...)` or `be_a(...)`).
+        -   **Side Effects (State Changes):** Use `expect { ... }.to change(Model, :count).by(...)` or `change { object.reload.attribute }`.
+        -   **Scenarios:** Test the primary success case. Test edge cases (e.g., record already exists for `create_or_find_by`, invalid input). Test failure cases if the method can fail gracefully (e.g., wrapped in a transaction that might roll back - though spying on transactions proved difficult).
+
+-   **Instance Methods (`describe '#instance_method_name'`):**
+    -   *(Pattern based on standard practice, less prominent in examples read)*
+    -   **Method:** Create an instance (`let(:instance) { create(:factory_name) }`), call the method (`instance.instance_method_name(...)`).
+    -   **Setup:** Use `let` to create the instance and any other required associated data.
+    -   **Assertions:** Check return values and changes to the instance's state (`expect(instance.reload.attribute).to eq(...)`).
+
+### Operation/Service Spec Patterns (`describe '#call'`)
+
+-   **Setup:**
+    -   Define the operation instance: `let(:operation) { described_class.new(...) }`.
+    -   Define input parameters: `let(:params) { { ... } }`.
+    -   Mock/stub dependencies (collaborating objects, external services, utility methods like `Utils::Name`) using `allow(...).to receive(...).and_return(...)` or `and_call_original` within a `before` block specific to the `describe '#call'` or nested `context`.
+    -   Use `subject(:call_operation) { operation.call(params) }` for cleaner invocation in examples.
+-   **Contexts:** Use nested `context` blocks extensively to cover different scenarios:
+    -   Primary success path (e.g., `'when user and space do not exist'`).
+    -   Alternate success paths (e.g., `'when user already exists but needs update'`).
+    -   Failure paths (e.g., `'when user saving fails validation'`, `'when dependent step fails'`).
+-   **Assertions (within each context):**
+    -   **Success/Failure:** Check the return value type/interface (e.g., `is_expected.to be_success`, `is_expected.to be_failure`, check `.value!` or `.failure`). For failures, check the error type/message/details (`expect(call_operation.failure[:errors]).to eq(...)`).
+    -   **Database Changes:** Verify expected creations/updates/deletions using `expect { call_operation }.to change(Model, :count).by(...)` or `.not_to change(...)`.
+    -   **State After Call:** Use a nested `context 'when after operation call'` block. Inside, use `let!` to run the operation *once* (`let!(:result) { call_operation }` or `let!(:user) { call_operation.value! }`) and then make assertions about the state of the created/updated objects (`expect(user.reload.attribute).to eq(...)`, `expect(Model.exists?(...)).to be true`).
+
+### General Principles Observed
+
+-   **Isolation:** Use `let` defined within specific `describe`/`context` blocks to prevent state leakage, especially crucial for validation and creation tests. Avoid overuse of top-level `let` or `subject` definitions that create data.
+-   **Clarity:** Use descriptive `context` and `it` blocks to explain the scenario being tested.
+-   **FactoryBot:** Rely heavily on factories for data setup.
+-   **Shoulda Matchers:** Leverage `shoulda-matchers` for concise model tests where possible.

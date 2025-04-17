@@ -1,0 +1,38 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+ # Ruby Method Argument Conventions
+
+- **Always use keyword arguments:** When defining or calling methods, prefer keyword arguments over positional arguments. This improves clarity by explicitly naming each argument.
+  ```ruby
+  # Good
+def process_data(user:, settings:, timeout: 30)
+  # ...
+end
+
+process_data(user: current_user, settings: app_settings)
+
+# Less clear
+def process_data(user, settings, timeout = 30)
+  # ...
+end
+
+process_data(current_user, app_settings)
+  ```
+
+- **Use shorthand syntax for matching keyword arguments:** When the variable or method you are passing as a keyword argument has the same name as the keyword argument itself, use Ruby's shorthand syntax (available in Ruby 2.7+).
+  ```ruby
+  user = find_user
+  settings = load_settings
+
+  # Good (using shorthand)
+process_data(user:, settings:)
+
+  # Avoid (redundant)
+process_data(user: user, settings: settings)
+  ```
+
+
+
