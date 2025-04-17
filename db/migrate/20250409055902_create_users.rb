@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
-class CreateUsers < ActiveRecord::Migration[8.0]
+# Use Rails 7.0 for UUID support in migrations if needed, or adjust as per your Rails version
+class CreateUsers < ActiveRecord::Migration[8.0] # Or your specific version
   def change
-    create_table :users do |t|
+    # Add id: :uuid to specify UUID primary key
+    create_table :users, id: :uuid do |t|
       t.string :auth_id, null: false
       t.string :full_name
       t.string :email

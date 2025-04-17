@@ -5,6 +5,8 @@ class User < ApplicationRecord
   # The auth0_id field is used to store the Auth0 user ID
 
   has_many :transactions, dependent: :destroy
+  has_many :space_users, dependent: :destroy
+  has_many :spaces, through: :space_users
 
   validates :email, presence: true, uniqueness: true,
                     format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }
