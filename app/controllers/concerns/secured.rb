@@ -36,19 +36,19 @@ module Secured
   end
 
   def current_user
-    return @current_user if defined?(@current_user)
-
-    # Get the decoded token data from validation response
+    return @current_user if @current_user.present?
     return nil unless @validation_response&.decoded_token
 
-    # Extract the user ID from the token's sub claim
-    #
     auth_id = @validation_response.decoded_token.token.first["sub"]
-    data = @validation_response.decoded_token.token.first
-    # Find the corresponding user in the database
-    @current_user = User.find_or_initialize_by(auth_id:)
-    @current_user.assign_attributes(data.slice("email", "full_name"))
-    @current_user.save! if @current_user.changed?
+    data = {
+      auth_id:,
+      email: @validation_response.decoded_token.token.first["email"],
+      full_name: @validation_response.decoded_token.token.first["full_name"]
+    }
+    result = Auth::Operations::CreateUserAndSpace.new.call(data)
+    return nil unless result.success?
+
+    @current_user = result.value!
   end
 
   private
