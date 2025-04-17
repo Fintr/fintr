@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 FactoryBot.define do
-  factory :transaction do
+  factory :transaction, class: "Transactions::Transaction" do
     association :user
     date { Time.zone.now }
     amount { 100.00 }

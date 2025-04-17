@@ -56,7 +56,7 @@ RSpec.describe Transactions::Income, type: :model do
   # Basic check to ensure STI setup is potentially working
   describe 'inheritance' do
     it 'is a type of Transaction' do
-      expect(described_class).to be < Transaction
+      expect(described_class).to be < Transactions::Transaction
     end
 
     it 'can be created with the correct type' do

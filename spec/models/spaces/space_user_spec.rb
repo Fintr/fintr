@@ -2,11 +2,11 @@
 
 require 'rails_helper'
 
-RSpec.describe SpaceUser, type: :model do
+RSpec.describe Spaces::SpaceUser, type: :model do
   let(:user) { create(:user) }
 
   describe 'associations' do
-    it { is_expected.to belong_to(:space) }
+    it { is_expected.to belong_to(:space).class_name('Spaces::Space') }
     it { is_expected.to belong_to(:user) }
   end
 

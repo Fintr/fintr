@@ -15,7 +15,7 @@ module Auth
       private
 
       def create_user(params)
-        user = User.find_or_initialize_by(auth_id: params[:auth_id])
+        user = Auth::User.find_or_initialize_by(auth_id: params[:auth_id])
         user.assign_attributes(params.slice(*User.clean_attributes))
         return Success(user) unless user.changed?
 
@@ -42,7 +42,7 @@ module Auth
       end
 
       def join_own_space(user, space)
-        space_user = SpaceUser.find_or_initialize_by(user:, space:)
+        space_user = Spaces::SpaceUser.find_or_initialize_by(user:, space:)
         return Success(space_user) if space_user.persisted?
 
         space_user.save ? Success(space_user) : Failure(errors: space_user.errors)

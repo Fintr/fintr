@@ -2,6 +2,6 @@
 
 module Spaces
   class OrganizationSpace < Space
-    resourcify
+    resourcify :custom_association_name, :role_cname => "Auth::Role"
   end
 end

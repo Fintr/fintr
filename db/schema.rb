@@ -10,10 +10,14 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_17_060221) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_17_121516) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
+
+  # Custom types defined in this database.
+  # Note that some types may not work with other database engines. Be careful if changing database.
+  create_enum "category_type_enum", ["income", "expense"]
 
   create_table "roles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "name"
@@ -67,6 +71,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_060221) do
     t.index ["user_id"], name: "index_transactions_on_user_id"
   end
 
+  create_table "transactions_categories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "space_id", null: false
+    t.string "name", null: false
+    t.enum "category_type", null: false, enum_type: "category_type_enum"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id", "category_type", "name"], name: "index_tx_categories_on_space_type_name", unique: true
+    t.index ["space_id"], name: "index_transactions_categories_on_space_id"
+  end
+
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "auth_id", null: false
     t.string "full_name"
@@ -89,4 +103,5 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_060221) do
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
   add_foreign_key "transactions", "users"
+  add_foreign_key "transactions_categories", "spaces"
 end

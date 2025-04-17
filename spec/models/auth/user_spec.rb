@@ -2,9 +2,11 @@
 
 require 'rails_helper'
 
-RSpec.describe User, type: :model do
+RSpec.describe Auth::User, type: :model do
   describe 'associations' do
-    it { is_expected.to have_many(:transactions).dependent(:destroy) }
+    it { is_expected.to have_many(:transactions).class_name("Transactions::Transaction").dependent(:destroy) }
+    it { is_expected.to have_many(:space_users).class_name("Spaces::SpaceUser").dependent(:destroy) }
+    it { is_expected.to have_many(:spaces).class_name("Spaces::Space").through(:space_users) }
   end
 
   describe 'validations' do

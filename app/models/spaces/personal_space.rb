@@ -2,6 +2,6 @@
 
 module Spaces
   class PersonalSpace < Space
-    resourcify
+    resourcify :custom_association_name, :role_cname => "Auth::Role"
   end
 end

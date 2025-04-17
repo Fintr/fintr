@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 FactoryBot.define do
-  factory :space do
+  factory :space, class: "Spaces::Space" do
     sequence(:name) { |n| "Space #{n}" }
     sequence(:code) { |n| "space-#{n}" }
     currency { "PHP" }

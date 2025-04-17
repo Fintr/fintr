@@ -38,3 +38,9 @@ RSpec/ChangeByZero:
 
 RSpec/MultipleMemoizedHelpers:
   Enabled: false
+
+RSpec/AnyInstance:
+  Enabled: false
+
+Style/HashSyntax:
+  Enabled: false

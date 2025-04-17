@@ -15,6 +15,7 @@ gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
 gem "kamal", "~> 2.5"
 
+
 # Operations
 gem "dry-operation", "~> 1.0"
 
@@ -42,5 +43,3 @@ group :development, :test do
   gem "shoulda-matchers"
   gem "factory_bot_rails"
 end
-
-

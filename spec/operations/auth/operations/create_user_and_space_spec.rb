@@ -16,7 +16,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
 
   # Mocks setup (assuming these helpers exist and work as mocked)
   before do
-    allow(User).to receive(:clean_attributes).and_return([ :email, :full_name, :auth_id, :photo_url ])
+    allow(Auth::User).to receive(:clean_attributes).and_return([ :email, :full_name, :auth_id, :photo_url ])
     allow(Utils::Name).to receive(:possessive).with(any_args).and_call_original # Allow actual call for flexibility
     allow(Utils::Name).to receive(:possessive).with("Test User").and_return("Test User's")
     allow(Utils::Name).to receive(:possessive).with("Old Name").and_return("Old Name's") # For existing user context
@@ -33,13 +33,13 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
       it { is_expected.to be_success }
 
       it 'returns the created user object' do
-        expect(call_operation.value!).to be_a(User)
+        expect(call_operation.value!).to be_a(Auth::User)
         expect(call_operation.value!.email).to eq(auth_params[:email])
       end
 
       # Test database count changes
       it 'creates one user' do
-        expect { call_operation }.to change(User, :count).by(1)
+        expect { call_operation }.to change(Auth::User, :count).by(1)
       end
 
       it 'creates one personal space' do
@@ -47,7 +47,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
       end
 
       it 'creates one space user association' do
-        expect { call_operation }.to change(SpaceUser, :count).by(1)
+        expect { call_operation }.to change(Spaces::SpaceUser, :count).by(1)
       end
 
       # Test state after creation
@@ -72,7 +72,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
 
         it 'associates the user with the space' do
           expect(user.spaces).to include(space)
-          expect(SpaceUser.exists?(user: user, space: space)).to be true
+          expect(Spaces::SpaceUser.exists?(user: user, space: space)).to be true
         end
       end
     end
@@ -91,7 +91,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
 
       # Test database count changes
       it 'does not create a new user' do
-        expect { call_operation }.not_to change(User, :count)
+        expect { call_operation }.not_to change(Auth::User, :count)
       end
 
       it 'does not create a new space' do
@@ -99,7 +99,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
       end
 
       it 'does not create a new space user association' do
-        expect { call_operation }.not_to change(SpaceUser, :count)
+        expect { call_operation }.not_to change(Spaces::SpaceUser, :count)
       end
 
       # Test state after update
@@ -118,7 +118,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
 
         it 'ensures the user-space association still exists' do
           expect(user.spaces).to include(space)
-          expect(SpaceUser.exists?(user: user, space: space)).to be true
+          expect(Spaces::SpaceUser.exists?(user: user, space: space)).to be true
         end
       end
     end
@@ -129,7 +129,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
 
       before do
         # Simulate user not existing
-        allow(User).to receive(:find_or_initialize_by).with(auth_id: auth_params[:auth_id]).and_return(new_user)
+        allow(Auth::User).to receive(:find_or_initialize_by).with(auth_id: auth_params[:auth_id]).and_return(new_user)
         # Combine stubs for save and errors using receive_messages
         allow(new_user).to receive_messages(save: false, errors: user_errors)
       end
@@ -143,7 +143,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
 
       # Test database count changes
       it 'does not create a user' do
-        expect { call_operation }.not_to change(User, :count)
+        expect { call_operation }.not_to change(Auth::User, :count)
       end
 
       it 'does not create a space' do
@@ -151,7 +151,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
       end
 
       it 'does not create a space user association' do
-        expect { call_operation }.not_to change(SpaceUser, :count)
+        expect { call_operation }.not_to change(Spaces::SpaceUser, :count)
       end
     end
 
@@ -163,8 +163,8 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
 
       before do
         # Simulate user creation/finding succeeds
-        allow(User).to receive(:find_or_initialize_by).with(auth_id: auth_params[:auth_id]).and_return(user)
-        allow(user).to receive(:save).and_return(true) # Assume user save succeeds
+        allow(Auth::User).to receive(:find_or_initialize_by).with(auth_id: auth_params[:auth_id]).and_return(user)
+        allow_any_instance_of(Auth::User).to receive(:save).and_return(true) # Assume user save succeeds
 
         # Simulate space not existing
         allow(Spaces::PersonalSpace).to receive(:find_or_initialize_by).with(code: expected_space_code).and_return(new_space)
@@ -185,7 +185,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
       end
 
       it 'does not create a space user association' do
-        expect { call_operation }.not_to change(SpaceUser, :count)
+        expect { call_operation }.not_to change(Spaces::SpaceUser, :count)
       end
     end
 
@@ -197,13 +197,13 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
 
       before do
         # Simulate user and space steps succeeding
-        allow(User).to receive(:find_or_initialize_by).with(auth_id: auth_params[:auth_id]).and_return(user)
-        allow(user).to receive(:save).and_return(true)
+        allow(Auth::User).to receive(:find_or_initialize_by).with(auth_id: auth_params[:auth_id]).and_return(user)
+        allow_any_instance_of(Auth::User).to receive(:save).and_return(true)
         allow(Spaces::PersonalSpace).to receive(:find_or_initialize_by).and_return(space)
         allow(space).to receive(:save).and_return(true)
 
         # Simulate space_user not existing
-        allow(SpaceUser).to receive(:find_or_initialize_by).with(user: user, space: space).and_return(new_space_user)
+        allow(Spaces::SpaceUser).to receive(:find_or_initialize_by).with(user: user, space: space).and_return(new_space_user)
         # Combine stubs for save and errors using receive_messages
         allow(new_space_user).to receive_messages(save: false, errors: space_user_errors)
       end
@@ -217,7 +217,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
 
       # Test database count changes
       it 'does not create a space user association' do
-        expect { call_operation }.not_to change(SpaceUser, :count)
+        expect { call_operation }.not_to change(Spaces::SpaceUser, :count)
       end
     end
 
