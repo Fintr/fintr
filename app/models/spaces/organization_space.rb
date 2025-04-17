@@ -2,5 +2,6 @@
 
 module Spaces
   class OrganizationSpace < Space
+    resourcify
   end
 end

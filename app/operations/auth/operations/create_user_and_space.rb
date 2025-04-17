@@ -15,10 +15,9 @@ module Auth
       private
 
       def create_user(params)
-        user = User.find_or_initialize_by(email: params[:email])
-        return Success(user) if user.persisted?
-
+        user = User.find_or_initialize_by(auth_id: params[:auth_id])
         user.assign_attributes(params.slice(*User.clean_attributes))
+        return Success(user) unless user.changed?
         user.save!
         Success(user)
       end
@@ -51,6 +50,7 @@ module Auth
       end
 
       def assign_admin_role_to_user(user, space)
+        user.add_role(:admin, space)
         Success()
       end
     end

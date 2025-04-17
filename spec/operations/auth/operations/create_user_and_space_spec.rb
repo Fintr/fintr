@@ -78,7 +78,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
     end
 
     context 'when user and personal space already exist' do
-      let!(:existing_user) { create(:user, email: auth_params[:email], full_name: 'Old Name') }
+      let!(:existing_user) { create(:user, auth_id: auth_params[:auth_id], email: auth_params[:email], full_name: 'Old Name') }
       let!(:existing_space) { create(:personal_space, code: 'test-example-com-personal-space', name: "Old Name's Space") }
       let!(:space_user_assoc) { create(:space_user, user: existing_user, space: existing_space) }
 

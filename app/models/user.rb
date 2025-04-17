@@ -3,7 +3,7 @@
 class User < ApplicationRecord
   rolify
   # Auth0 is now used for authentication
-  # The auth0_id field is used to store the Auth0 user ID
+  # The auth_id field is used to store the Auth0 user ID
 
   has_many :transactions, dependent: :destroy
   has_many :space_users, dependent: :destroy

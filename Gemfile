@@ -29,6 +29,8 @@ gem "auth0", "~> 5.12"
 # Money
 gem "money-rails", "~> 1.15"
 
+# Roles
+gem "rolify", "~> 6.0"
 
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
@@ -40,3 +42,5 @@ group :development, :test do
   gem "shoulda-matchers"
   gem "factory_bot_rails"
 end
+
+

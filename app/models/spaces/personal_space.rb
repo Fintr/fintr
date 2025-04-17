@@ -2,5 +2,6 @@
 
 module Spaces
   class PersonalSpace < Space
+    resourcify
   end
 end

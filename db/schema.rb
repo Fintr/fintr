@@ -10,10 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_17_032847) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_17_060221) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
+
+  create_table "roles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "name"
+    t.string "resource_type"
+    t.uuid "resource_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name", "resource_type", "resource_id"], name: "index_roles_on_name_and_resource_type_and_resource_id"
+    t.index ["resource_type", "resource_id"], name: "index_roles_on_resource"
+  end
 
   create_table "space_users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "space_id", null: false
@@ -66,6 +76,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_032847) do
     t.datetime "updated_at", null: false
     t.index ["auth_id"], name: "index_users_on_auth_id", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
+  end
+
+  create_table "users_roles", id: false, force: :cascade do |t|
+    t.uuid "user_id"
+    t.uuid "role_id"
+    t.index ["role_id"], name: "index_users_roles_on_role_id"
+    t.index ["user_id", "role_id"], name: "index_users_roles_on_user_id_and_role_id"
+    t.index ["user_id"], name: "index_users_roles_on_user_id"
   end
 
   add_foreign_key "space_users", "spaces"
