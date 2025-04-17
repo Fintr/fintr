@@ -7,6 +7,14 @@ FactoryBot.define do
     amount { 100.00 }
     balance { 100.00 }
     sequence(:description) { |n| "Test transaction #{n}" }
-    type { "Income" }
+    type { "Transactions::Income" }
+
+    factory :income_transaction, class: "Transactions::Income" do
+      type { "Transactions::Income" }
+    end
+
+    factory :expense_transaction, class: "Transactions::Expense" do
+      type { "Transactions::Expense" }
+    end
   end
 end

@@ -8,13 +8,13 @@ RSpec.describe User, type: :model do
   end
 
   describe 'validations' do
-    subject { described_class.new(password: 'password123') }
+    subject { build(:user) }
 
     it { is_expected.to validate_presence_of(:email) }
     it { is_expected.to validate_uniqueness_of(:email).case_insensitive }
 
     describe 'email format validation' do
-      subject { described_class.new(password: 'password123') }
+      subject { build(:user) }
 
       it { is_expected.to allow_value('user@example.com').for(:email) }
       it { is_expected.to allow_value('user.name@example.co.uk').for(:email) }

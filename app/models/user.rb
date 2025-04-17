@@ -9,15 +9,11 @@ class User < ApplicationRecord
   validates :email, presence: true, uniqueness: true,
                     format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }
 
-  # Create or update user from Auth0 profile
-  def self.from_auth0(auth0_user_info)
-    user = find_or_initialize_by(auth0_id: auth0_user_info["sub"])
+  before_validation :downcase_email
 
-    user.email = auth0_user_info["email"]
-    user.name = auth0_user_info["name"]
-    user.picture = auth0_user_info["picture"]
-    user.save!
+  private
 
-    user
+  def downcase_email
+    self.email = email.downcase if email.present?
   end
 end

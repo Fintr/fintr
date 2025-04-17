@@ -3,7 +3,7 @@
 module Transactions
   class Expense < Transaction
     def value
-      amount * -1
+      Money.from_amount(amount.amount * -1, amount.currency)
     end
   end
 end

@@ -9,44 +9,47 @@ RSpec.describe Transactions::Income, type: :model do
   # Define let blocks for different income scenarios
   let(:income_with_amount) do
     build(
-      :transaction,
+      :income_transaction,
       user: user,
-      type: 'Transactions::Income',
       date: Time.zone.today,
-      amount: 150_50,
-      balance: 500_00 # Example balance, adjust if calculated differently
+      amount: 150.5,
+      amount_currency: 'PHP',
+      balance: 500_00, # Example balance, adjust if calculated differently
+      balance_currency: 'PHP'
     )
   end
 
   let(:income_with_zero_amount) do
     build(
-      :transaction,
+      :income_transaction,
       user: user,
-      type: 'Transactions::Income',
       date: Time.zone.today,
-      amount: 0_00,
-      balance: 349_50 # Example balance
+      amount: 0,
+      balance: 349.5, # Example balance
+      amount_currency: 'PHP',
+      balance_currency: 'PHP'
     )
   end
 
   let(:basic_income) do
     build(
-      :transaction,
+      :income_transaction,
       user: user,
-      type: 'Transactions::Income',
       date: Time.zone.today,
-      amount: 10_00,
-      balance: 10_00
+      amount: 10,
+      balance: 10,
+      amount_currency: 'PHP',
+      balance_currency: 'PHP'
     )
   end
 
   describe '#value' do
     it 'returns the transaction amount' do
-      expect(income_with_amount.value).to eq(150_50)
+      expect(income_with_amount.value.amount).to eq(150.5)
     end
 
     it 'returns zero when the amount is zero' do
-      expect(income_with_zero_amount.value).to eq(0_00)
+      expect(income_with_zero_amount.value.amount).to eq(0)
     end
   end
 
@@ -61,7 +64,4 @@ RSpec.describe Transactions::Income, type: :model do
       expect(basic_income.type).to eq(described_class.name)
     end
   end
-
-  # Add any validations specific to Income here, if applicable.
-  # Otherwise, rely on Transaction model specs for shared validations.
 end
