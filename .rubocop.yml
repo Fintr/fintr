@@ -29,3 +29,12 @@ RSpec/ExampleLength:
 
 RSpec/MultipleExpectations:
   Enabled: false
+
+RSpec/LetSetup:
+  Enabled: false
+
+RSpec/ChangeByZero:
+  Enabled: false
+
+RSpec/MultipleMemoizedHelpers:
+  Enabled: false

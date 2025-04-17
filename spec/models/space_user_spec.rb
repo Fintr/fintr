@@ -15,7 +15,7 @@ RSpec.describe SpaceUser, type: :model do
     # The DB index `[:space_id, :user_id], unique: true` still prevents exact duplicates.
     # it { should validate_uniqueness_of(:space_id).scoped_to(:user_id) }
 
-    context 'custom validation: user_can_only_have_one_of_each_space_type' do
+    context 'when custom validation: user_can_only_have_one_of_each_space_type' do
       # Use the named factories :personal_space and :organization_space
       let!(:personal_space) { create(:personal_space) }
       let!(:organization_space) { create(:organization_space) }

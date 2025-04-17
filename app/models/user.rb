@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class User < ApplicationRecord
+  rolify
   # Auth0 is now used for authentication
   # The auth0_id field is used to store the Auth0 user ID
 

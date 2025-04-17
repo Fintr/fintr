@@ -15,6 +15,8 @@ gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
 gem "kamal", "~> 2.5"
 
+# Operations
+gem "dry-operation", "~> 1.0"
 
 # Serialization
 gem "blueprinter", "~> 1.1"
@@ -26,6 +28,7 @@ gem "auth0", "~> 5.12"
 
 # Money
 gem "money-rails", "~> 1.15"
+
 
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
