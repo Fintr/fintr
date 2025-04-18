@@ -11,4 +11,10 @@ class BaseQuery
   def self.call(**kwargs)
     new(**kwargs).call
   end
+
+  def paginate(relation, params)
+    return relation if params[:page].blank?
+
+    relation.page(params[:page]).per(25)
+  end
 end

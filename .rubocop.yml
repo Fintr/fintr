@@ -50,3 +50,6 @@ RSpec/ReceiveMessages:
 
 RSpec/RepeatedSubjectCall:
   Enabled: false
+
+RSpec/IndexedLet:
+  Enabled: false

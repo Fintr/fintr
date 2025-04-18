@@ -32,6 +32,10 @@ gem "money-rails", "~> 1.15"
 # Roles
 gem "rolify", "~> 7.0.0", github: "mikodagatan/rolify"
 
+# Pagination
+gem "kaminari", "~> 1.2"
+
+
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
   gem "brakeman", require: false

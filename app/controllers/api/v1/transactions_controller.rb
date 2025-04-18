@@ -7,7 +7,6 @@ module Api
         query = Transactions::Queries::FilteredTransactions.call(params: filter_params)
         render_success(
           data: {
-            transactions_count: query.size,
             transactions: Transactions::Serializers::FilteredTransactions.render_as_hash(query)
           }
         )
@@ -15,11 +14,14 @@ module Api
         render_internal_server_error(details: e.message)
       end
 
+      private
+
       def filter_params
         params.permit(
           :space_code,
           :start_date,
-          :end_date
+          :end_date,
+          :page
         )
       end
     end

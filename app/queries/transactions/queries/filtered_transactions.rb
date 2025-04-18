@@ -2,13 +2,14 @@
 
 module Transactions
   module Queries
-    class FilteredTransactions < Transactions::Queries::BaseQuery
+    class FilteredTransactions < BaseQuery
       def call
         relation = joins(@relation)
         relation = by_space(relation, params)
         relation = by_date(relation, params)
         relation = select(relation)
-        order(relation)
+        relation = order(relation)
+        paginate(relation, params)
       end
 
       def joins(relation)
