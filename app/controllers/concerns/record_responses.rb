@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RecordResponses
   extend ActiveSupport::Concern
   # --- For Single Records ---

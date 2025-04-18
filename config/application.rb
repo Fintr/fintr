@@ -8,6 +8,7 @@ require "rails/all"
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
+require_relative "../app/middlewares/snake_case_parameters"
 module FintrBe
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
@@ -36,6 +37,9 @@ module FintrBe
     # Client URL for redirections (Auth0 callbacks)
     config.client_url = ENV.fetch("CLIENT_URL", "http://localhost:3000")
 
+    # config.middleware.use OliveBranch::Middleware, inflection: "camel"
+
+    config.middleware.use SnakeCaseParameters
 
     # Configure factory file naming pattern
     config.generators do |g|

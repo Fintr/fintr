@@ -35,6 +35,9 @@ gem "rolify", "~> 7.0.0", github: "mikodagatan/rolify"
 # Pagination
 gem "kaminari", "~> 1.2"
 
+# lowercase keys
+gem "olive_branch", "~> 4.0"
+
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
   gem "brakeman", require: false
@@ -45,3 +48,5 @@ group :development, :test do
   gem "shoulda-matchers"
   gem "factory_bot_rails"
 end
+
+gem "dry-validation", "~> 1.11"

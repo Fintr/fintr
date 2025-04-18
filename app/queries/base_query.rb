@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class BaseQuery
+class BaseQuery < Dry::Operation
   attr_reader :relation, :params
 
   def initialize(relation: nil, params: nil)

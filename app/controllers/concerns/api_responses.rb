@@ -10,7 +10,8 @@ module ApiResponses
   def render_success(data: nil, status: :ok, message: "Success")
     response_body = { success: true, message: }
     response_body[:data] = data if data.present?
-    render json: response_body, status: status
+    transformed_data = Transformers::LowerCamelKeys.transform(response_body)
+    render json: transformed_data, status: status
   end
 
   def render_created(data:, message: "Resource created successfully")
@@ -23,7 +24,9 @@ module ApiResponses
   def render_error(message:, status:, details: nil)
     error_payload = { message: }
     error_payload[:details] = details if details.present?
-    render json: { success: false, error: error_payload }, status: status
+    transformed_data = Transformers::LowerCamelKeys.transform(error_payload)
+
+    render json: { success: false, error: transformed_data }, status: status
   end
 
   # Specific error helpers

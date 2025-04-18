@@ -4,14 +4,15 @@ module Api
   module V1
     class TransactionsController < ApiController
       def index
-        paginated_collection = Transactions::Queries::FilteredTransactions.call(params: filter_params)
+        query = Transactions::Queries::FilteredTransactions.call(params: filter_params)
+
+        return render_internal_server_error(details: query.failure) unless query.success?
 
         render_paginated(
           paginated_collection,
-          serializer: Transactions::Serializers::FilteredTransactions
+          serializer: Transactions::Serializers::FilteredTransactions,
+          key: :transactions
         )
-      rescue StandardError => e
-        render_internal_server_error(details: e.message)
       end
 
       private
@@ -22,7 +23,7 @@ module Api
           :start_date,
           :end_date,
           :page
-        )
+        ).to_h
       end
     end
   end

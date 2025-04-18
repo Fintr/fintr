@@ -44,7 +44,7 @@ module Secured
       @validation_response = Rails.cache.fetch("token:#{Digest::MD5.hexdigest(token)}", expires_in: 15.minutes) do
         Auth::Client.validate_token(token)
       end
-      break unless @validation_response.error
+      break unless @validation_response.is_a?(Hash) || (@validation_response.respond_to?(:error) && @validation_response.error)
 
       Rails.cache.write("token:#{Digest::MD5.hexdigest(token)}", expires_in: 15.minutes) do
         Auth::Client.validate_token(token)
@@ -72,8 +72,6 @@ module Secured
 
   def token_from_request
     authorization_header_elements = request.headers["Authorization"]&.split
-
-    puts("authorization_header_elements: #{authorization_header_elements.inspect}")
 
     render json: REQUIRES_AUTHENTICATION, status: :unauthorized and return unless authorization_header_elements
 

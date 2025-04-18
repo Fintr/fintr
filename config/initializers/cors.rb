@@ -14,9 +14,9 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
     origins ENV.fetch("CORS_ORIGINS", "localhost:5173,localhost:3000").split(",").map(&:strip)
 
     resource "/api/*",
-      headers: %w[Authorization],
+      headers: %w[Authorization X-Key-Inflection],
       methods: :any,
-      expose: %w[Authorization],
+      expose: %w[Authorization X-Key-Inflection],
       max_age: 600
   end
 end
