@@ -77,11 +77,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
     t.uuid "transaction_category_id", null: false
     t.uuid "account_id", null: false
     t.index ["account_id"], name: "index_transactions_on_account_id"
-    t.index ["amount_currency", "balance_currency"], name: "index_transactions_on_amount_currency_and_balance_currency"
+    t.index ["date", "type", "amount_currency", "amount_cents"], name: "idx_on_date_type_amount_currency_amount_cents_5ec151a267"
     t.index ["space_id"], name: "index_transactions_on_space_id"
     t.index ["transaction_category_id"], name: "index_transactions_on_transaction_category_id"
-    t.index ["type", "date", "amount_cents"], name: "index_transactions_on_type_and_date_and_amount_cents"
-    t.index ["type", "date", "balance_cents"], name: "index_transactions_on_type_and_date_and_balance_cents"
     t.index ["user_id", "date", "type"], name: "index_transactions_on_user_id_and_date_and_type"
     t.index ["user_id"], name: "index_transactions_on_user_id"
   end

@@ -14,8 +14,6 @@ class CreateTransactions < ActiveRecord::Migration[8.0]
     end
 
     add_index :transactions, [ :user_id, :date, :type ]
-    add_index :transactions, [ :type, :date, :amount_cents ]
-    add_index :transactions, [ :type, :date, :balance_cents ]
-    add_index :transactions, [ :amount_currency, :balance_currency ]
+    add_index :transactions, [ :date, :type, :amount_currency, :amount_cents ]
   end
 end
