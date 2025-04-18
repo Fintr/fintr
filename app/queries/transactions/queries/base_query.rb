@@ -1,12 +1,9 @@
-# frozen_string_literal: true
-
 module Transactions
   module Queries
-    class BaseQuery < ::BaseQuery
-      def initialize(
-        relation: Transactions::Transaction.all,
-        params: {}
-      )
+    class BaseQuery < BaseQuery
+      attr_reader :relation, :params
+
+      def initialize(relation: Transactions::Transaction.all, params: {})
         super(relation:, params:)
       end
     end

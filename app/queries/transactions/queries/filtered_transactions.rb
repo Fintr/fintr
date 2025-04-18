@@ -2,9 +2,9 @@
 
 module Transactions
   module Queries
-    class FilteredTransactions < BaseQuery
-      def call(params: {})
-        relation = joins(relation)
+    class FilteredTransactions < Transactions::Queries::BaseQuery
+      def call
+        relation = joins(@relation)
         relation = by_space(relation, params)
         relation = by_date(relation, params)
         relation = select(relation)
@@ -54,8 +54,8 @@ module Transactions
 
       def order(relation)
         relation.order(
-          type: :desc,
           date: :desc,
+          type: :desc,
           amount_currency: :asc,
           amount_cents: :desc
         )

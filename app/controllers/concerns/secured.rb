@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "digest"
+
 module Secured
   extend ActiveSupport::Concern
 
@@ -25,14 +27,30 @@ module Secured
 
     return if performed?
 
-    @validation_response = Auth::Client.validate_token(token)
-    puts("validation_response: #{@validation_response.inspect}")
+    # NOTE: Cached and invalid? Check again if the token is now valid.
+    2.times do
+      @validation_response = Rails.cache.fetch("token:#{Digest::MD5.hexdigest(token)}", expires_in: 15.minutes) do
+        Auth::Client.validate_token(token)
+      end
+      break unless @validation_response.error
 
-    current_user
+      Rails.cache.write("token:#{Digest::MD5.hexdigest(token)}", expires_in: 15.minutes) do
+        Auth::Client.validate_token(token)
+      end
+    end
+
+    cached_current_user
 
     return unless (error = @validation_response.error)
 
     render json: { message: error.message }, status: error.status
+  end
+
+  def cached_current_user
+    @current_user = Rails.cache
+      .fetch("current_user_#{@validation_response.decoded_token.token.first["sub"]}", expires_in: 1.hour) do
+      current_user
+    end
   end
 
   def current_user
