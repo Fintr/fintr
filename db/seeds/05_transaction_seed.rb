@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 ActiveRecord::Base.transaction do
   Spaces::Space.find_each do |space|
     puts "Seeding transactions for space: #{space.name}"

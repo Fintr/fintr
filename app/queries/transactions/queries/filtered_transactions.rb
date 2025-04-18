@@ -55,7 +55,7 @@ module Transactions
 
       def order(relation)
         relation.order(
-          date: :desc,
+          date: :asc,
           type: :desc,
           amount_currency: :asc,
           amount_cents: :desc

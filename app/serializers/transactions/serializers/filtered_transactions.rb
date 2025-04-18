@@ -11,7 +11,7 @@ module Transactions
              :category_name
 
       field :amount do |transaction|
-        transaction.amount.amount
+        transaction.value.amount
       end
 
       field :balance do |transaction|
