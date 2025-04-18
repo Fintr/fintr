@@ -2,7 +2,7 @@
 
 module Auth
   class Role < ApplicationRecord
-    has_and_belongs_to_many :users, class_name: "Auth::User", join_table: :auth_users_auth_roles
+    has_and_belongs_to_many :users, class_name: "Auth::User", join_table: :users_roles
 
     belongs_to :resource,
                polymorphic: true,

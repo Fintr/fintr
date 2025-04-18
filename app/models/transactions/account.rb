@@ -18,7 +18,7 @@ module Transactions
     def self.create_default_accounts(space)
       transaction do
         DEFAULT_ACCOUNT_NAMES.each do |name|
-          self.find_or_create_by(name:, space:)
+          self.find_or_create_by(name:, space:, balance_currency: "PHP")
         end
       end
     end

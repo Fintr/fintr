@@ -58,6 +58,10 @@ RSpec.describe Transactions::Account, type: :model do
       let(:another_space) { create(:space) }
       let!(:custom_account_in_another_space) { create(:account, name: 'My Custom Account', space: another_space) }
 
+      before do
+        described_class.create_default_accounts(space)
+      end
+
       it 'returns only accounts with default names within the specific space' do
         default_account_names = Transactions::Account::DEFAULT_ACCOUNT_NAMES
         expect(described_class.where(space: space).default.pluck(:name)).to match_array(default_account_names)
@@ -69,10 +73,6 @@ RSpec.describe Transactions::Account, type: :model do
 
   describe '.create_default_accounts' do
     let(:space) { create(:space) }
-
-    before do
-      space.accounts.destroy_all
-    end
 
     it 'creates accounts with default names for the given space' do
       expect do

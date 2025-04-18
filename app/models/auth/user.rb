@@ -2,7 +2,9 @@
 
 module Auth
   class User < ApplicationRecord
-    rolify :role_cname => "Auth::Role"
+    rolify :role_cname => "Auth::Role",
+           :role_join_table_name => "users_roles",
+           :role_table_name => "roles"
 
     has_many :transactions, class_name: "Transactions::Transaction", dependent: :destroy
     has_many :space_users, class_name: "Spaces::SpaceUser", dependent: :destroy

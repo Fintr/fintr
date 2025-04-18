@@ -15,7 +15,6 @@ gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
 gem "kamal", "~> 2.5"
 
-
 # Operations
 gem "dry-operation", "~> 1.0"
 
@@ -31,7 +30,7 @@ gem "auth0", "~> 5.12"
 gem "money-rails", "~> 1.15"
 
 # Roles
-gem "rolify", "~> 6.0"
+gem "rolify", "~> 7.0.0", github: "mikodagatan/rolify"
 
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"

@@ -4,12 +4,14 @@ module Auth
   module Operations
     class CreateUserAndSpace < Dry::Operation
       def call(params)
-        user              = step create_user(params)
-        space_attributes  = step create_space_attributes(user)
-        space             = step create_own_space(space_attributes)
-        _                 = step join_own_space(user, space)
-        _                 = step assign_admin_role_to_user(user, space)
-        user
+        ActiveRecord::Base.transaction do
+          user              = step create_user(params)
+          space_attributes  = step create_space_attributes(user)
+          space             = step create_own_space(space_attributes)
+          _                 = step join_own_space(user, space)
+          _                 = step assign_admin_role_to_user(user, space)
+          user
+        end
       end
 
       private
@@ -19,7 +21,10 @@ module Auth
         user.assign_attributes(params.slice(*User.clean_attributes))
         return Success(user) unless user.changed?
 
-        user.save ? Success(user) : Failure(errors: user.errors)
+        user.save!
+        Success(user)
+      rescue ActiveRecord::RecordInvalid
+        Failure(errors: user.errors)
       end
 
       def create_space_attributes(user)
@@ -37,15 +42,24 @@ module Auth
         return Success(space) if space.persisted?
 
         space.assign_attributes(space_attributes)
+        space.save!
 
-        space.save ? Success(space) : Failure(errors: space.errors)
+        space.create_default_transaction_categories
+        space.create_default_accounts
+
+        Success(space)
+      rescue ActiveRecord::RecordInvalid
+        Failure(errors: space.errors)
       end
 
       def join_own_space(user, space)
         space_user = Spaces::SpaceUser.find_or_initialize_by(user:, space:)
         return Success(space_user) if space_user.persisted?
 
-        space_user.save ? Success(space_user) : Failure(errors: space_user.errors)
+        space_user.save!
+        Success(space_user)
+      rescue ActiveRecord::RecordInvalid
+        Failure(errors: space_user.errors)
       end
 
       def assign_admin_role_to_user(user, space)

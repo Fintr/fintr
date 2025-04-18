@@ -44,3 +44,9 @@ RSpec/AnyInstance:
 
 Style/HashSyntax:
   Enabled: false
+
+RSpec/ReceiveMessages:
+  Enabled: false
+
+RSpec/RepeatedSubjectCall:
+  Enabled: false

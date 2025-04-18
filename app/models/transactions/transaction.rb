@@ -3,6 +3,7 @@
 module Transactions
   class Transaction < ApplicationRecord
     belongs_to :user, class_name: "Auth::User"
+    belongs_to :space, class_name: "Spaces::Space"
     belongs_to :category, class_name: "Transactions::Category"
     belongs_to :account, class_name: "Transactions::Account"
 

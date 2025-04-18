@@ -74,12 +74,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.uuid "space_id"
-    t.uuid "transaction_category_id", null: false
+    t.uuid "category_id", null: false
     t.uuid "account_id", null: false
     t.index ["account_id"], name: "index_transactions_on_account_id"
+    t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["date", "type", "amount_currency", "amount_cents"], name: "idx_on_date_type_amount_currency_amount_cents_5ec151a267"
     t.index ["space_id"], name: "index_transactions_on_space_id"
-    t.index ["transaction_category_id"], name: "index_transactions_on_transaction_category_id"
     t.index ["user_id", "date", "type"], name: "index_transactions_on_user_id_and_date_and_type"
     t.index ["user_id"], name: "index_transactions_on_user_id"
   end
@@ -117,7 +117,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
   add_foreign_key "transactions", "accounts"
-  add_foreign_key "transactions", "transactions_categories", column: "transaction_category_id"
+  add_foreign_key "transactions", "transactions_categories", column: "category_id"
   add_foreign_key "transactions", "users"
   add_foreign_key "transactions_categories", "spaces"
 end
