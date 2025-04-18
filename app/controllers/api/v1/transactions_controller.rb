@@ -4,11 +4,11 @@ module Api
   module V1
     class TransactionsController < ApiController
       def index
-        query = Transactions::Queries::FilteredTransactions.call(params: filter_params)
-        render_success(
-          data: {
-            transactions: Transactions::Serializers::FilteredTransactions.render_as_hash(query)
-          }
+        paginated_collection = Transactions::Queries::FilteredTransactions.call(params: filter_params)
+
+        render_paginated(
+          paginated_collection,
+          serializer: Transactions::Serializers::FilteredTransactions
         )
       rescue StandardError => e
         render_internal_server_error(details: e.message)
