@@ -9,7 +9,7 @@ module Api
         return render_internal_server_error(details: query.failure) unless query.success?
 
         render_paginated(
-          paginated_collection,
+          query.value!,
           serializer: Transactions::Serializers::FilteredTransactions,
           key: :transactions
         )

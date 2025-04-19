@@ -24,11 +24,10 @@ module Secured
     return if performed?
 
     validation_response(token)
+    error = @validation_response.error
+    return render json: { message: error.message }, status: error.status if error
+
     cached_current_user
-
-    return unless (error = @validation_response.error)
-
-    render json: { message: error.message }, status: error.status
   end
 
   def cached_current_user
@@ -46,9 +45,8 @@ module Secured
       end
       break unless @validation_response.is_a?(Hash) || (@validation_response.respond_to?(:error) && @validation_response.error)
 
-      Rails.cache.write("token:#{Digest::MD5.hexdigest(token)}", expires_in: 15.minutes) do
-        Auth::Client.validate_token(token)
-      end
+      @validation_response = Auth::Client.validate_token(token)
+      Rails.cache.write("token:#{Digest::MD5.hexdigest(token)}", @validation_response)
     end
   end
 

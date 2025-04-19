@@ -7,6 +7,9 @@ default: &default
 
 development:
   <<: *default
+  database: cache
+  store_options:
+    max_size: <%= 256.gigabytes %>
 
 test:
   <<: *default

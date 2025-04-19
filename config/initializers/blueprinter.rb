@@ -5,5 +5,5 @@ require "transformers/lower_camel_keys"
 
 Blueprinter.configure do |config|
   config.generator = Oj # default is JSON
-  config.default_transformers = [ Transformers::LowerCamelKeys ]
+  # config.default_transformers = [ Transformers::LowerCamelKeys ]
 end

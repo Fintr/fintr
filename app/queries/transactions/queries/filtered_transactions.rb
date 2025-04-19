@@ -70,7 +70,7 @@ module Transactions
       end
 
       def by_date(relation, params)
-        return relation if params[:start_date].blank? && params[:end_date].blank?
+        return Success(relation) if params[:start_date].blank? && params[:end_date].blank?
 
         relation = if params[:start_date].present? && params[:end_date].blank?
           relation.where(date: params[:start_date]..)
@@ -85,12 +85,12 @@ module Transactions
       end
 
       def order(relation)
-        relation.order(
-          date: :asc,
-          type: :desc,
-          amount_currency: :asc,
-          amount_cents: :desc
-        )
+        relation =  relation.order(
+                      date: :asc,
+                      type: :desc,
+                      amount_currency: :asc,
+                      amount_cents: :desc
+                    )
         Success(relation)
       rescue StandardError
         Failure(:order_error)
