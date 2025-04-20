@@ -1,0 +1,204 @@
+#!/usr/bin/env ruby
+# Terminates all connections to the Rails production database
+# Usage: script/remove_db_connections [environment] [database_key]
+# Examples:
+#   script/remove_db_connections              # Defaults to production, primary database
+#   script/remove_db_connections staging      # Uses staging environment, primary database
+#   script/remove_db_connections production cache  # Uses production environment, cache database
+#
+# This script directly connects to Postgres without loading Rails
+
+require 'pg'
+require 'yaml'
+require 'erb'
+require 'uri'
+
+# Helper to load environment variables from .env file
+def load_dotenv(env_file)
+  # Check if file exists and is readable
+  if File.exist?(env_file)
+    puts "Found #{env_file}"
+
+    begin
+      # Read the file contents
+      env_contents = File.read(env_file)
+      puts "Read #{env_contents.lines.count} lines from #{env_file}"
+
+      # Process each line
+      env_contents.each_line do |line|
+        line = line.strip
+        next if line.empty? || line.start_with?('#')
+
+        puts "Processing line: #{line.gsub(/=.*/, '=*****')}" # Mask sensitive values
+
+        if line =~ /\A([A-Za-z_0-9]+)=(.*)\z/
+          key, value = $1, $2
+          # Remove surrounding quotes if present
+          value = value.gsub(/\A['"]|['"]\z/, '')
+
+          if key == 'DATABASE_URL'
+            puts "Found DATABASE_URL in .env file!"
+          end
+
+          # Don't override existing environment variables
+          if ENV[key]
+            puts "Environment already has #{key}, not overriding"
+          else
+            puts "Setting environment variable: #{key}"
+            ENV[key] = value
+          end
+        else
+          puts "Skipping line, doesn't match expected format: #{line.gsub(/=.*/, '=*****')}"
+        end
+      end
+    rescue => e
+      puts "Error reading #{env_file}: #{e.message}"
+    end
+  else
+    puts "File not found: #{env_file}"
+    # Try to find any .env file
+    possible_env_files = Dir.glob(".env*")
+    if possible_env_files.any?
+      puts "Found these .env files instead: #{possible_env_files.join(', ')}"
+    else
+      puts "No .env files found in current directory"
+      puts "Current directory: #{Dir.pwd}"
+    end
+  end
+end
+
+# Get environment from command line or default to production
+env = ARGV[0] || ENV['RAILS_ENV'] || 'production'
+puts "Target environment: #{env}"
+
+begin
+  # Try to load environment variables from .env.{environment} file
+  env_file = ".env.#{env}"
+  load_dotenv(env_file)
+
+  # Also try loading from .env as fallback
+  load_dotenv(".env")
+
+  # Check if we have a database URL from environment
+  database_url = ENV['DATABASE_URL']
+
+  if database_url
+    puts "Using DATABASE_URL from environment: #{database_url.gsub(/\/\/.*@/, '//****:****@')}" # Mask credentials
+
+    # Parse the database URL
+    uri = URI.parse(database_url)
+    db_name = uri.path.sub(/^\//, '')
+    db_host = uri.host
+    db_port = uri.port || 5432
+    db_user = uri.user
+    db_password = uri.password
+
+    puts "Parsed DATABASE_URL:"
+    puts "  Host: #{db_host}"
+    puts "  Port: #{db_port}"
+    puts "  Database: #{db_name}"
+    puts "  User: #{db_user || '(none)'}"
+    puts "  Password: #{db_password ? '(set)' : '(none)'}"
+
+  else
+    puts "No DATABASE_URL found, falling back to database.yml"
+
+    # Load database.yml
+    yaml_content = ERB.new(File.read('config/database.yml')).result
+    config_hash = YAML.safe_load(yaml_content, aliases: true)
+
+    # Get configuration for the specified environment
+    env_config = config_hash[env]
+    raise "Environment '#{env}' not found in database.yml" unless env_config
+
+    # Handle multiple database configurations (Rails 6+)
+    if env_config.key?('primary') || env_config.values.first.is_a?(Hash) && env_config.values.first.key?('database')
+      # This is a multiple database configuration
+      db_key = ARGV[1] || 'primary' # Allow specifying which DB config to use as 2nd arg
+
+      if env_config.key?(db_key)
+        puts "Using #{db_key} database configuration"
+        env_config = env_config[db_key]
+      else
+        # If specified key not found, try to use primary
+        if env_config.key?('primary')
+          puts "Database key '#{db_key}' not found, falling back to 'primary'"
+          env_config = env_config['primary']
+        else
+          # Or just use the first config that has a database key
+          first_db_config = env_config.values.find { |v| v.is_a?(Hash) && v.key?('database') }
+          if first_db_config
+            first_db_name = env_config.keys.find { |k| env_config[k] == first_db_config }
+            puts "Database key '#{db_key}' not found, falling back to '#{first_db_name}'"
+            env_config = first_db_config
+          else
+            raise "No database configuration found for #{env}"
+          end
+        end
+      end
+    end
+
+    # Extract connection parameters (handling both URL and separate params)
+    if env_config['url']
+      # Parse URL format
+      uri = URI.parse(env_config['url'])
+      db_name = uri.path.sub(/^\//, '')
+      db_host = uri.host || 'localhost'
+      db_port = uri.port || 5432
+      db_user = uri.user
+      db_password = uri.password
+    else
+      # Parse individual parameters
+      db_name = env_config['database']
+      db_host = env_config['host'] || 'localhost'
+      db_port = env_config['port'] || 5432
+      db_user = env_config['username']
+      db_password = env_config['password']
+    end
+  end
+
+  # Validate we have the minimum required params
+  raise "Database name not specified in config" unless db_name
+
+  # Print connection info (excluding password)
+  puts "Connecting to: #{db_host}:#{db_port}/#{db_name} as #{db_user || '(default user)'}"
+
+  # Create connection
+  connection = PG.connect(
+    host: db_host,
+    port: db_port,
+    dbname: db_name,
+    user: db_user,
+    password: db_password
+  )
+
+  # Get current database name from the connection
+  current_db = connection.exec("SELECT current_database();").getvalue(0, 0)
+  puts "Connected to database: #{current_db}"
+
+  # Get connection count before
+  count_before = connection.exec("SELECT count(*) FROM pg_stat_activity WHERE datname = '#{current_db}';").getvalue(0, 0).to_i
+  puts "Active connections before: #{count_before}"
+
+  # Kill all other connections
+  puts "Terminating all other connections to database '#{current_db}'..."
+  result = connection.exec(<<~SQL)
+    SELECT pg_terminate_backend(pid)
+    FROM pg_stat_activity
+    WHERE datname = '#{current_db}'
+      AND pid <> pg_backend_pid();
+  SQL
+
+  # Get connection count after
+  count_after = connection.exec("SELECT count(*) FROM pg_stat_activity WHERE datname = '#{current_db}';").getvalue(0, 0).to_i
+  puts "Active connections after: #{count_after}"
+  puts "Terminated #{count_before - count_after} connections. Done!"
+
+  # Close the connection
+  connection.close
+
+rescue => e
+  puts "ERROR: #{e.message}"
+  puts e.backtrace[0..5].join("\n") if ENV['DEBUG']
+  exit 1
+end

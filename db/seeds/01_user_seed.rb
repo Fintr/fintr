@@ -4,17 +4,21 @@ if ENV["USER_AUTH0_ID"].blank?
   raise StandardError, "Please set up 'USER_AUTH0_ID' in your environment variables"
 end
 
-user = Auth::User.find_or_initialize_by(auth_id: ENV["USER_AUTH0_ID"])
+user_details = [
+    { full_name: 'Miko Dagatan', 'miguel.dagatan@gmail.com' },
+    { full_name: 'Joel Paolo Paraiso', 'joelpaoloparaiso@gmail.com' }
+  ]
 
-user.assign_attributes(
-  full_name: "Miko Dagatan",
-  email: "miko@fintr.be"
-)
+ENV["USER_AUTH0_ID"].split(',').each.with_index do |auth_id, index|
+  user = Auth::User.find_or_initialize_by(auth_id: )
 
-user.save!
+  user.assign_attributes(user_details[index])
+  user.save!
 
-Auth::Operations::CreateUserAndSpace.new.call({
-  auth_id: ENV["USER_AUTH0_ID"],
-  full_name: "Miko Dagatan",
-  email: "miko@fintr.be"
-})
+  Auth::Operations::CreateUserAndSpace.new.call({
+    auth_id:,
+    full_name: user_details[index][:full_name],
+    email: user_details[index][:email]
+  })
+end
+
