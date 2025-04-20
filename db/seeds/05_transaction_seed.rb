@@ -47,7 +47,8 @@ ActiveRecord::Base.transaction do
                       account: expense_account,
                       category: space.expense_categories.sample,
                       date: Date.new(2025, month, day),
-                      balance: expense_account.balance.amount + expense_amount * -1
+                      balance: expense_account.balance.amount + expense_amount * -1,
+                      expense_type: :one_time
                     )
           expense.save ? puts("Saved expense: #{expense.value}") : puts("Failed to save expense: #{expense.errors.full_messages}")
           puts "Updating balance for expense: #{expense.value}"

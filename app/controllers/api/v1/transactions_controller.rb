@@ -15,6 +15,14 @@ module Api
         )
       end
 
+      def create
+        operation = Transactions::Operations::CreateTransaction.new.call(create_params)
+
+        return render_internal_server_error(details: operation.failure) unless operation.success?
+
+        render json: operation.value!, status: :created
+      end
+
       private
 
       def filter_params
@@ -25,6 +33,16 @@ module Api
           :category_name,
           :page
         ).to_h
+      end
+
+      def create_params
+        params.permit(
+          :amount,
+          :date,
+          :description,
+          :category_name,
+          :account_name
+        )
       end
     end
   end

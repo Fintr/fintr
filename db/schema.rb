@@ -18,6 +18,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
   # Custom types defined in this database.
   # Note that some types may not work with other database engines. Be careful if changing database.
   create_enum "category_type_enum", ["income", "expense"]
+  create_enum "expense_type", ["one_time", "repeat", "installment"]
+  create_enum "repeat_interval", ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
 
   create_table "accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "space_id", null: false
@@ -64,6 +66,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
 
   create_table "transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "user_id", null: false
+    t.uuid "parent_id"
     t.date "date", null: false
     t.integer "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "USD", null: false
@@ -71,6 +74,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
     t.string "balance_currency", default: "USD", null: false
     t.string "description"
     t.string "type", null: false
+    t.enum "expense_type", enum_type: "expense_type"
+    t.enum "repeat_interval", enum_type: "repeat_interval"
+    t.integer "repeat_count"
+    t.integer "installment_period"
+    t.integer "installment_count"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.uuid "space_id"
@@ -79,6 +87,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
     t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["date", "type", "amount_currency", "amount_cents"], name: "idx_on_date_type_amount_currency_amount_cents_5ec151a267"
+    t.index ["parent_id"], name: "index_transactions_on_parent_id"
     t.index ["space_id"], name: "index_transactions_on_space_id"
     t.index ["user_id", "date", "type"], name: "index_transactions_on_user_id_and_date_and_type"
     t.index ["user_id"], name: "index_transactions_on_user_id"
@@ -117,6 +126,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
   add_foreign_key "transactions", "accounts"
+  add_foreign_key "transactions", "transactions", column: "parent_id"
   add_foreign_key "transactions", "transactions_categories", column: "category_id"
   add_foreign_key "transactions", "users"
   add_foreign_key "transactions_categories", "spaces"
