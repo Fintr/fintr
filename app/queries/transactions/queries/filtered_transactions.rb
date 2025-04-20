@@ -7,6 +7,7 @@ module Transactions
         params do
           required(:page).value(:integer)
           required(:space_code).value(:string)
+          required(:category_name).value(:string)
           required(:start_date).value(:date)
           required(:end_date).value(:date)
         end
@@ -29,6 +30,7 @@ module Transactions
         relation = step joins(@relation)
         relation = step by_space(relation, params)
         relation = step by_date(relation, params)
+        relation = step by_category(relation, params)
         relation = step select(relation)
         relation = step order(relation)
         step paginate(relation, params)
@@ -82,6 +84,13 @@ module Transactions
         Success(relation)
       rescue StandardError
         Failure(:by_date_error)
+      end
+
+      def by_category(relation, params)
+        return Success(relation) if [ "all", "" ].include?(params[:category_name])
+
+        relation = relation.where(transactions_categories: { name: params[:category_name] })
+        Success(relation)
       end
 
       def order(relation)

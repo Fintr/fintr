@@ -7,7 +7,7 @@ module Auth
         ActiveRecord::Base.transaction do
           user              = step create_user(params)
           space_attributes  = step create_space_attributes(user)
-          space             = step create_own_space(space_attributes)
+          space             = step create_own_space(user, space_attributes)
           _                 = step join_own_space(user, space)
           _                 = step assign_admin_role_to_user(user, space)
           user
@@ -37,7 +37,9 @@ module Auth
         Success(hash)
       end
 
-      def create_own_space(space_attributes)
+      def create_own_space(user, space_attributes)
+        return Success(user.personal_spaces.first) if user.personal_spaces.first.present?
+
         space = Spaces::PersonalSpace.find_or_initialize_by(code: space_attributes[:code])
         return Success(space) if space.persisted?
 

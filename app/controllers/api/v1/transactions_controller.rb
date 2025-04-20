@@ -22,6 +22,7 @@ module Api
           :space_code,
           :start_date,
           :end_date,
+          :category_name,
           :page
         ).to_h
       end

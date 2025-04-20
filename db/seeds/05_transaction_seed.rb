@@ -25,31 +25,34 @@ ActiveRecord::Base.transaction do
         income = Transactions::Income.new(
                   user: Auth::User.first,
                   space:,
-                  amount: 1000,
+                  amount: 5000,
                   amount_currency: 'PHP',
                   account: income_account,
                   category: space.income_categories.sample,
                   date: Date.new(2025, month, day),
+                  description: [ 'Sample Description Income', 'Sample Long Description jknsfsdnfsdanflsakdfnlksadflkasdfmklsdfmksdfksadmflksmdkfl sakmdaksldmaskdm mklasmlkdmaskd klamskdmkalmdmkk mklmaskldmaklsdmklasmdkasmdasd' ].sample,
                   balance: income_account.balance.amount + 1000
                 )
         income.save ? puts("Saved income: #{income.value}") : puts("Failed to save income: #{income.errors.full_messages}")
         puts "Updating balance for income: #{income.value}"
         income.account.update(balance: income.account.balance + income.value)
 
-        expense_amount = [ 500, 1000, 1500, 2000 ].sample
-        expense = Transactions::Expense.new(
-                    user: Auth::User.first,
-                    space:,
-                    amount: expense_amount,
-                    amount_currency: 'PHP',
-                    account: expense_account,
-                    category: space.expense_categories.sample,
-                    date: Date.new(2025, month, day),
-                    balance: expense_account.balance.amount + expense_amount * -1
-                  )
-        expense.save ? puts("Saved expense: #{expense.value}") : puts("Failed to save expense: #{expense.errors.full_messages}")
-        puts "Updating balance for expense: #{expense.value}"
-        expense.account.update(balance: expense.account.balance + expense.value)
+        2.times do
+          expense_amount = [ 500, 1000, 1500, 2000 ].sample
+          expense = Transactions::Expense.new(
+                      user: Auth::User.first,
+                      space:,
+                      amount: expense_amount,
+                      amount_currency: 'PHP',
+                      account: expense_account,
+                      category: space.expense_categories.sample,
+                      date: Date.new(2025, month, day),
+                      balance: expense_account.balance.amount + expense_amount * -1
+                    )
+          expense.save ? puts("Saved expense: #{expense.value}") : puts("Failed to save expense: #{expense.errors.full_messages}")
+          puts "Updating balance for expense: #{expense.value}"
+          expense.account.update(balance: expense.account.balance + expense.value)
+        end
       end
     end
   end

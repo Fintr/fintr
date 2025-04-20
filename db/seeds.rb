@@ -9,6 +9,9 @@
 #   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
+#
+return if Rails.env.production?
+
 seeds_path = Rails.root.join('db', 'seeds')
 
 Dir.glob(File.join(seeds_path, '*.rb')).sort.each do |seed|

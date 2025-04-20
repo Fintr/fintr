@@ -27,12 +27,12 @@ module Secured
     error = @validation_response.error
     return render json: { message: error.message }, status: error.status if error
 
-    cached_current_user
+    render json: { message: "User not found" }, status: :unauthorized unless cached_current_user
   end
 
   def cached_current_user
-    @current_user = Rails.cache
-      .fetch("current_user_#{@validation_response.decoded_token.token.first["sub"]}", expires_in: 1.hour) do
+    key = Digest::MD5.hexdigest(@validation_response.decoded_token.token.first["sub"])
+    @current_user = Rails.cache.fetch("current_user_#{key}", expires_in: 1.hour) do
       current_user
     end
   end
@@ -61,7 +61,7 @@ module Secured
       full_name: @validation_response.decoded_token.token.first["full_name"]
     }
     result = Auth::Operations::CreateUserAndSpace.new.call(data)
-    return nil unless result.success?
+    return render_not_found(details: result.failure) unless result.success?
 
     @current_user = result.value!
   end
@@ -78,8 +78,6 @@ module Secured
     end
 
     scheme, token = authorization_header_elements
-
-    puts("scheme: #{scheme}, token: #{token}")
 
     render json: { error: BAD_CREDENTIALS, data: { scheme:, token: } }, status: :unauthorized and return unless scheme.downcase == "bearer"
 

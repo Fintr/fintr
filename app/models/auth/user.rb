@@ -9,6 +9,16 @@ module Auth
     has_many :transactions, class_name: "Transactions::Transaction", dependent: :destroy
     has_many :space_users, class_name: "Spaces::SpaceUser", dependent: :destroy
     has_many :spaces, class_name: "Spaces::Space", through: :space_users
+    has_many :personal_spaces,
+            -> { where(type: "Spaces::PersonalSpace") },
+            through: :space_users,
+            source: :space,
+            class_name: "Spaces::PersonalSpace"
+    has_many :organization_spaces,
+             -> { where(type: "Spaces::OrganizationSpace") },
+             through: :space_users,
+             source: :space,
+             class_name: "Spaces::OrganizationSpace"
 
     validates :email,
               presence: true,
