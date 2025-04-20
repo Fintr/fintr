@@ -5,12 +5,12 @@ if ENV["USER_AUTH0_ID"].blank?
 end
 
 user_details = [
-    { full_name: 'Miko Dagatan', 'miguel.dagatan@gmail.com' },
-    { full_name: 'Joel Paolo Paraiso', 'joelpaoloparaiso@gmail.com' }
+    { full_name: 'Miko Dagatan', email: 'miguel.dagatan@gmail.com' },
+    { full_name: 'Joel Paolo Paraiso', email: 'joelpaoloparaiso@gmail.com' }
   ]
 
 ENV["USER_AUTH0_ID"].split(',').each.with_index do |auth_id, index|
-  user = Auth::User.find_or_initialize_by(auth_id: )
+  user = Auth::User.find_or_initialize_by(auth_id:)
 
   user.assign_attributes(user_details[index])
   user.save!
@@ -21,4 +21,3 @@ ENV["USER_AUTH0_ID"].split(',').each.with_index do |auth_id, index|
     email: user_details[index][:email]
   })
 end
-
