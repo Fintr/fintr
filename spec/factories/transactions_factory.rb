@@ -12,29 +12,39 @@ FactoryBot.define do
     balance { 100.00 }
     balance_currency { 'PHP' }
     sequence(:description) { |n| "Test transaction #{n}" }
+    schedule_type { "one_time" }
     type { "Transactions::Income" }
 
     factory :income_transaction, class: "Transactions::Income" do
       type { "Transactions::Income" }
+
+      trait :one_time do
+        schedule_type { "one_time" }
+      end
+
+      trait :repeat do
+        schedule_type { "repeat" }
+        repeat_interval { "every_month" }
+        repeat_count { 3 }
+      end
     end
 
     factory :expense_transaction, class: "Transactions::Expense" do
       type { "Transactions::Expense" }
-      expense_type { "one_time" }
 
       trait :one_time do
-        expense_type { "one_time" }
+        schedule_type { "one_time" }
       end
 
       trait :repeat do
-        expense_type { "repeat" }
-        repeat_interval { "monthly" }
+        schedule_type { "repeat" }
+        repeat_interval { "every_month" }
         repeat_count { 3 }
       end
 
       trait :installment do
-        expense_type { "installment" }
-        installment_period { "monthly" }
+        schedule_type { "installment" }
+        installment_period { "every_month" }
         installment_count { 6 }
       end
     end

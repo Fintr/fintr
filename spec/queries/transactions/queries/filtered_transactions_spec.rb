@@ -24,96 +24,184 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
   let!(:transaction_s2_jan20) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 1, 20), amount_cents: 3000) }
   let!(:transaction_s2_feb5) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 2, 5), amount_cents: 1500) }
 
-  # Helper to call the query object
-  def call_query(params = {})
-    # Pass the base relation explicitly if needed, although the query sets a default
-    # described_class.call(relation: Transactions::Transaction.all, params: params)
-    described_class.call(params: params)
+  # Define default params that meet contract requirements
+  let(:default_params) do
+    {
+      page: 1,
+      space_code: 'space-1',
+      category_name: 'all',
+      start_date: Date.new(2024, 1, 1),
+      end_date: Date.new(2024, 2, 28)
+    }
   end
 
   describe '#call' do
     context 'without filters' do
       it 'returns all transactions ordered correctly' do
-        result = call_query
+        # Use all default params, which will retrieve all transactions due to date range
+        result = described_class.call(params: default_params).value!
+
         # Compare IDs instead of full objects
-        expected_ids = [ transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10, transaction_s2_jan20, transaction_s2_feb5 ].map(&:id)
+        expected_ids = [ transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10 ].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
-        # Check default order (date desc)
-        expect(result.first.id).to eq(transaction_s1_feb10.id)
-        expect(result.last.id).to eq(transaction_s1_jan5.id)
+
+        # Check default order (date asc)
+        expect(result.first.id).to eq(transaction_s1_jan5.id)
+        expect(result.last.id).to eq(transaction_s1_feb10.id)
       end
     end
 
     context 'with space_code filter' do
       it 'returns only transactions for the specified space' do
-        result = call_query(space_code: 'space-1')
-        expected_ids = [ transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10 ].map(&:id)
+        # Use space2's code but keep other defaults
+        params = default_params.merge(space_code: 'space-2')
+        result = described_class.call(params: params).value!
+
+        expected_ids = [ transaction_s2_jan20, transaction_s2_feb5 ].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
+
         # Optionally check one specific non-included ID
-        expect(result.map(&:id)).not_to include(transaction_s2_jan20.id)
+        expect(result.map(&:id)).not_to include(transaction_s1_jan5.id)
       end
 
       it 'returns nothing for a space with no transactions' do
         space3 = create(:personal_space, code: 'space-3')
-        result = call_query(space_code: 'space-3')
+        params = default_params.merge(space_code: 'space-3')
+        result = described_class.call(params: params).value!
+
         expect(result).to be_empty
       end
     end
 
     context 'with date filters' do
-      it 'filters by start_date only' do
-        result = call_query(start_date: '2024-01-16')
-        expected_ids = [ transaction_s1_feb10, transaction_s2_jan20, transaction_s2_feb5 ].map(&:id)
+      it 'filters by start_date' do
+        # Use a later start_date to filter out Jan transactions
+        params = default_params.merge(start_date: Date.new(2024, 1, 16))
+        result = described_class.call(params: params).value!
+
+        expected_ids = [ transaction_s1_feb10 ].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
-        expect(result.map(&:id)).not_to include(transaction_s1_jan5.id)
+        expect(result.map(&:id)).not_to include(transaction_s1_jan5.id, transaction_s1_jan15.id)
       end
 
-      it 'filters by end_date only' do
-        result = call_query(end_date: '2024-01-31')
-        expected_ids = [ transaction_s1_jan5, transaction_s1_jan15, transaction_s2_jan20 ].map(&:id)
+      it 'filters by end_date' do
+        # Use earlier end_date to filter out Feb transactions
+        params = default_params.merge(end_date: Date.new(2024, 1, 31))
+        result = described_class.call(params: params).value!
+
+        expected_ids = [ transaction_s1_jan5, transaction_s1_jan15 ].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
         expect(result.map(&:id)).not_to include(transaction_s1_feb10.id)
       end
 
       it 'filters by both start_date and end_date' do
-        result = call_query(start_date: '2024-01-10', end_date: '2024-02-06')
-        expected_ids = [ transaction_s1_jan15, transaction_s2_jan20, transaction_s2_feb5 ].map(&:id)
+        # Use a date range that only includes jan15
+        params = default_params.merge(
+          start_date: Date.new(2024, 1, 10),
+          end_date: Date.new(2024, 1, 20)
+        )
+        result = described_class.call(params: params).value!
+
+        expected_ids = [ transaction_s1_jan15 ].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
-        expect(result.map(&:id)).not_to include(transaction_s1_jan5.id)
+        expect(result.map(&:id)).not_to include(transaction_s1_jan5.id, transaction_s1_feb10.id)
+      end
+    end
+
+    context 'with category filter' do
+      it 'filters by category name' do
+        params = default_params.merge(category_name: 'Category 1')
+        result = described_class.call(params: params).value!
+
+        expected_ids = [ transaction_s1_jan5, transaction_s1_feb10 ].map(&:id)
+        expect(result.map(&:id)).to match_array(expected_ids)
+        expect(result.map(&:id)).not_to include(transaction_s1_jan15.id)
+      end
+
+      it 'returns no results for non-existent category' do
+        params = default_params.merge(category_name: 'Non-existent Category')
+        result = described_class.call(params: params).value!
+
+        expect(result).to be_empty
       end
     end
 
     context 'with pagination' do
-      let!(:more_transactions_s1) do
-        25.times.map do |i|
-          # Ensure unique category names if factory doesn't handle it
+      let!(:additional_transactions) do
+        # Create just 3 more transactions (in addition to the 3 we already have)
+        3.times.map do |i|
           category = create(:category, name: "Pag Cat #{i}", space: space1)
           create(:transaction, space: space1, account: account1_s1, category: category, date: Date.new(2024, 3, 1) + i.days)
         end
       end
 
-      it 'returns the first page of results' do
-        result = call_query(space_code: 'space-1', page: 1)
-        # Check size of the loaded array instead of calling .count
-        expect(result.size).to eq(25)
-        expect(result.map(&:id)).to include(more_transactions_s1.last.id)
-        expect(result.map(&:id)).not_to include(transaction_s1_jan5.id, transaction_s1_jan15.id, transaction_s1_feb10.id)
+      it 'returns the first page of results with custom per_page' do
+        params = default_params.merge(
+          page: 1,
+          per_page: 3,
+          end_date: Date.new(2024, 4, 1)
+        )
+        result = described_class.call(params: params).value!
+
+        # Should return exactly 3 transactions
+        expect(result.size).to eq(3)
+        # First page should have the oldest transactions (January-February)
+        expect(result.map(&:id)).to contain_exactly(transaction_s1_jan5.id, transaction_s1_jan15.id, transaction_s1_feb10.id)
       end
 
-      it 'returns the second page of results' do
-        result = call_query(space_code: 'space-1', page: 2)
-        # Check size of the loaded array
+      it 'returns the second page of results with custom per_page' do
+        params = default_params.merge(
+          page: 2,
+          per_page: 3,
+          end_date: Date.new(2024, 4, 1)
+        )
+        result = described_class.call(params: params).value!
+
+        # Second page should have the 3 additional March transactions
         expect(result.size).to eq(3)
-        expect(result.map(&:id)).to contain_exactly(transaction_s1_jan5.id, transaction_s1_jan15.id, transaction_s1_feb10.id)
+        expect(result.map(&:id)).to match_array(additional_transactions.map(&:id))
       end
     end
 
     context 'with combined filters' do
-      it 'filters by space and date range' do
-        result = call_query(space_code: 'space-1', start_date: '2024-01-01', end_date: '2024-01-31')
-        expected_ids = [ transaction_s1_jan5, transaction_s1_jan15 ].map(&:id)
+      it 'filters by space, date range, and category' do
+        params = default_params.merge(
+          space_code: 'space-1',
+          category_name: 'Category 1',
+          start_date: Date.new(2024, 1, 1),
+          end_date: Date.new(2024, 1, 31)
+        )
+        result = described_class.call(params: params).value!
+
+        expected_ids = [ transaction_s1_jan5 ].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
-        expect(result.map(&:id)).not_to include(transaction_s1_feb10.id)
+        expect(result.map(&:id)).not_to include(transaction_s1_jan15.id, transaction_s1_feb10.id)
+      end
+    end
+
+    context 'when validation fails' do
+      it 'returns a failure for invalid space_code' do
+        params = default_params.merge(space_code: '')
+        result = described_class.call(params: params)
+
+        expect(result).to be_failure
+        expect(result.failure).to include(:space_code)
+      end
+
+      it 'returns a failure for non-date values' do
+        params = default_params.merge(start_date: 'not-a-date')
+        result = described_class.call(params: params)
+
+        expect(result).to be_failure
+        expect(result.failure).to include(:start_date)
+      end
+
+      it 'returns a failure for non-integer page' do
+        params = default_params.merge(page: 'first')
+        result = described_class.call(params: params)
+
+        expect(result).to be_failure
+        expect(result.failure).to include(:page)
       end
     end
   end

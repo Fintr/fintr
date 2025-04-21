@@ -15,6 +15,6 @@ class BaseQuery < Dry::Operation
   def paginate(relation, params)
     return Success(relation) if params[:page].blank?
 
-    Success(relation.page(params[:page]).per(25))
+    Success(relation.page(params[:page]).per(params[:per_page] || 25))
   end
 end

@@ -18,8 +18,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
   # Custom types defined in this database.
   # Note that some types may not work with other database engines. Be careful if changing database.
   create_enum "category_type_enum", ["income", "expense"]
-  create_enum "expense_type", ["one_time", "repeat", "installment"]
   create_enum "repeat_interval", ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
+  create_enum "schedule_type", ["one_time", "repeat", "installment"]
 
   create_table "accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "space_id", null: false
@@ -74,7 +74,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
     t.string "balance_currency", default: "USD", null: false
     t.string "description"
     t.string "type", null: false
-    t.enum "expense_type", enum_type: "expense_type"
+    t.enum "schedule_type", null: false, enum_type: "schedule_type"
     t.enum "repeat_interval", enum_type: "repeat_interval"
     t.integer "repeat_count"
     t.integer "installment_period"

@@ -2,17 +2,15 @@
 
 module Transactions
   class Expense < Transaction
-    enum :expense_type, {
+    enum :schedule_type, {
       one_time: "one_time",
       repeat: "repeat",
       installment: "installment"
     }
 
-    validates :expense_type,
+    validates :schedule_type,
               presence: true,
-              inclusion: { in: expense_types.values }
-    validates :repeat_interval, presence: true, if: -> { repeat? }
-    validates :repeat_count, presence: true, if: -> { repeat? }
+              inclusion: { in: schedule_types.values }
     validates :installment_period, presence: true, if: -> { installment? }
     validates :installment_count, presence: true, if: -> { installment? }
 

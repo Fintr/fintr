@@ -31,7 +31,8 @@ ActiveRecord::Base.transaction do
                   category: space.income_categories.sample,
                   date: Date.new(2025, month, day),
                   description: [ 'Sample Description Income', 'Sample Long Description jknsfsdnfsdanflsakdfnlksadflkasdfmklsdfmksdfksadmflksmdkfl sakmdaksldmaskdm mklasmlkdmaskd klamskdmkalmdmkk mklmaskldmaklsdmklasmdkasmdasd' ].sample,
-                  balance: income_account.balance.amount + 1000
+                  balance: income_account.balance.amount + 1000,
+                  schedule_type: :one_time
                 )
         income.save ? puts("Saved income: #{income.value}") : puts("Failed to save income: #{income.errors.full_messages}")
         puts "Updating balance for income: #{income.value}"
@@ -48,7 +49,7 @@ ActiveRecord::Base.transaction do
                       category: space.expense_categories.sample,
                       date: Date.new(2025, month, day),
                       balance: expense_account.balance.amount + expense_amount * -1,
-                      expense_type: :one_time
+                      schedule_type: :one_time
                     )
           expense.save ? puts("Saved expense: #{expense.value}") : puts("Failed to save expense: #{expense.errors.full_messages}")
           puts "Updating balance for expense: #{expense.value}"

@@ -20,7 +20,7 @@ module Transactions
         return Failure(contract.errors.to_h) unless contract.success?
 
         @space = Spaces::Space.find_by(code: params[:space_code])
-        return Failure({ space_id: "Not found" }) if @space.blank?
+        return Failure({ space_code: "Not found" }) if @space.blank?
 
         Success()
       end

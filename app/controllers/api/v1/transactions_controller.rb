@@ -41,7 +41,12 @@ module Api
           :date,
           :description,
           :category_name,
-          :account_name
+          :account_name,
+          :expense_type,
+          :repeat_interval,
+          :repeat_count,
+          :installment_period,
+          :installment_count
         )
       end
     end

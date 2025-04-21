@@ -21,7 +21,7 @@ RSpec.describe Transactions::Expense, type: :model do
       amount_currency: 'PHP',
       balance: 500.00, # Example balance
       balance_currency: 'PHP',
-      expense_type: 'one_time'
+      schedule_type: 'one_time'
     )
   end
 
@@ -37,7 +37,7 @@ RSpec.describe Transactions::Expense, type: :model do
       amount_currency: 'PHP',
       balance: 349.50, # Example balance
       balance_currency: 'PHP',
-      expense_type: 'one_time'
+      schedule_type: 'one_time'
     )
   end
 
@@ -53,7 +53,7 @@ RSpec.describe Transactions::Expense, type: :model do
       amount_currency: 'PHP',
       balance: 10.00,
       balance_currency: 'PHP',
-      expense_type: 'one_time'
+      schedule_type: 'one_time'
     )
   end
 
@@ -86,28 +86,28 @@ RSpec.describe Transactions::Expense, type: :model do
     end
   end
 
-  # New specs for expense_type enum and validations
-  describe 'expense_type enum' do
+  # New specs for schedule_type enum and validations
+  describe 'schedule_type enum' do
     it 'defines the correct expense types' do
-      expect(described_class.expense_types.keys).to match_array(%w[one_time repeat installment])
-      expect(described_class.expense_types.values).to match_array(%w[one_time repeat installment])
+      expect(described_class.schedule_types.keys).to match_array(%w[one_time repeat installment])
+      expect(described_class.schedule_types.values).to match_array(%w[one_time repeat installment])
     end
 
     it 'allows setting a valid expense type' do
-      expense = build(:expense_transaction, expense_type: 'one_time')
+      expense = build(:expense_transaction, schedule_type: 'one_time')
       expect(expense).to be_valid
-      expect(expense.expense_type).to eq('one_time')
+      expect(expense.schedule_type).to eq('one_time')
       expect(expense).to be_one_time
     end
 
-    it 'validates presence of expense_type' do
-      expense = build(:expense_transaction, expense_type: nil)
+    it 'validates presence of schedule_type' do
+      expense = build(:expense_transaction, schedule_type: nil)
       expect(expense).not_to be_valid
-      expect(expense.errors[:expense_type]).to include("can't be blank")
+      expect(expense.errors[:schedule_type]).to include("can't be blank")
     end
 
-    it 'validates inclusion of expense_type in allowed values' do
-      expect { build(:expense_transaction, expense_type: 'invalid_type') }.to raise_error(ArgumentError)
+    it 'validates inclusion of schedule_type in allowed values' do
+      expect { build(:expense_transaction, schedule_type: 'invalid_type') }.to raise_error(ArgumentError)
     end
   end
 
@@ -119,30 +119,30 @@ RSpec.describe Transactions::Expense, type: :model do
         space: space,
         account: account,
         category: category,
-        expense_type: 'repeat',
+        schedule_type: 'repeat',
         repeat_interval: nil,
         repeat_count: nil
       )
     end
 
-    it 'requires repeat_interval when expense_type is repeat' do
+    it 'requires repeat_interval when schedule_type is repeat' do
       expect(repeat_expense).not_to be_valid
       expect(repeat_expense.errors[:repeat_interval]).to include("can't be blank")
     end
 
-    it 'requires repeat_count when expense_type is repeat' do
+    it 'requires repeat_count when schedule_type is repeat' do
       expect(repeat_expense).not_to be_valid
       expect(repeat_expense.errors[:repeat_count]).to include("can't be blank")
     end
 
-    it 'does not require repeat fields when expense_type is one_time' do
+    it 'does not require repeat fields when schedule_type is one_time' do
       expense = build(
         :expense_transaction,
         user: user,
         space: space,
         account: account,
         category: category,
-        expense_type: 'one_time',
+        schedule_type: 'one_time',
         repeat_interval: nil,
         repeat_count: nil
       )
@@ -153,15 +153,15 @@ RSpec.describe Transactions::Expense, type: :model do
       expect(expense.errors[:repeat_count]).to be_empty
     end
 
-    it 'is valid with repeat fields when expense_type is repeat' do
+    it 'is valid with repeat fields when schedule_type is repeat' do
       expense = build(
         :expense_transaction,
         user: user,
         space: space,
         account: account,
         category: category,
-        expense_type: 'repeat',
-        repeat_interval: 'monthly',
+        schedule_type: 'repeat',
+        repeat_interval: 'every_month',
         repeat_count: 3
       )
 
@@ -180,30 +180,30 @@ RSpec.describe Transactions::Expense, type: :model do
         space: space,
         account: account,
         category: category,
-        expense_type: 'installment',
+        schedule_type: 'installment',
         installment_period: nil,
         installment_count: nil
       )
     end
 
-    it 'requires installment_period when expense_type is installment' do
+    it 'requires installment_period when schedule_type is installment' do
       expect(installment_expense).not_to be_valid
       expect(installment_expense.errors[:installment_period]).to include("can't be blank")
     end
 
-    it 'requires installment_count when expense_type is installment' do
+    it 'requires installment_count when schedule_type is installment' do
       expect(installment_expense).not_to be_valid
       expect(installment_expense.errors[:installment_count]).to include("can't be blank")
     end
 
-    it 'does not require installment fields when expense_type is one_time' do
+    it 'does not require installment fields when schedule_type is one_time' do
       expense = build(
         :expense_transaction,
         user: user,
         space: space,
         account: account,
         category: category,
-        expense_type: 'one_time',
+        schedule_type: 'one_time',
         installment_period: nil,
         installment_count: nil
       )
@@ -214,14 +214,14 @@ RSpec.describe Transactions::Expense, type: :model do
       expect(expense.errors[:installment_count]).to be_empty
     end
 
-    it 'is valid with installment fields when expense_type is installment' do
+    it 'is valid with installment fields when schedule_type is installment' do
       expense = build(
         :expense_transaction,
         user: user,
         space: space,
         account: account,
         category: category,
-        expense_type: 'installment',
+        schedule_type: 'installment',
         installment_period: 'monthly',
         installment_count: 6
       )

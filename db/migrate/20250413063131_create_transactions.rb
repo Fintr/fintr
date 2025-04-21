@@ -2,7 +2,7 @@
 
 class CreateTransactions < ActiveRecord::Migration[8.0]
   def change
-    create_enum :expense_type, [ "one_time", "repeat", "installment" ]
+    create_enum :schedule_type, [ "one_time", "repeat", "installment" ]
     create_enum :repeat_interval, [ "every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year" ]
 
     create_table :transactions, id: :uuid do |t|
@@ -13,7 +13,7 @@ class CreateTransactions < ActiveRecord::Migration[8.0]
       t.monetize :balance, null: true
       t.string :description
       t.string :type, null: false
-      t.enum :expense_type, enum_type: :expense_type
+      t.enum :schedule_type, null: false, enum_type: :schedule_type
       t.enum :repeat_interval, enum_type: :repeat_interval
       t.integer :repeat_count
       t.integer :installment_period
