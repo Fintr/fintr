@@ -1,4 +1,6 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
+
 # Terminates all connections to the Rails production database
 # Usage: script/remove_db_connections [environment] [database_key]
 # Examples:

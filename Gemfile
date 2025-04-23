@@ -15,8 +15,9 @@ gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
 gem "kamal", "~> 2.5"
 
-# Operations
+# DRY Operations, Validation
 gem "dry-operation", "~> 1.0"
+gem "dry-validation", "~> 1.11"
 
 # Serialization
 gem "blueprinter", "~> 1.1"
@@ -35,8 +36,12 @@ gem "rolify", "~> 7.0.0", github: "mikodagatan/rolify"
 # Pagination
 gem "kaminari", "~> 1.2"
 
-# lowercase keys
-gem "olive_branch", "~> 4.0"
+# Bulk Import, Duplication
+gem "amoeba", "~> 3.3"
+gem "activerecord-import", "~> 2.1"
+
+# Recurrence
+gem "ice_cube", "~> 0.17.0"
 
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
@@ -48,5 +53,3 @@ group :development, :test do
   gem "shoulda-matchers"
   gem "factory_bot_rails"
 end
-
-gem "dry-validation", "~> 1.11"

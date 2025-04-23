@@ -79,6 +79,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
     t.integer "repeat_count"
     t.integer "installment_period"
     t.integer "installment_count"
+    t.jsonb "schedule", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.uuid "space_id"

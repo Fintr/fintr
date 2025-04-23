@@ -34,5 +34,9 @@ process_data(user:, settings:)
 process_data(user: user, settings: settings)
   ```
 
+- ** When inside operations ** in `app/operations`, we are usually passing `params` as a value to the keyword argument. Keep it this way. Do not change this to other parameters as much as possible. What you do is get the needed values from the params inside the step methods instead of passing them to the methods.
+
+
+
 
 

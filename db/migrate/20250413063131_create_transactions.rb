@@ -8,7 +8,7 @@ class CreateTransactions < ActiveRecord::Migration[8.0]
     create_table :transactions, id: :uuid do |t|
       t.references :user, null: false, foreign_key: true, type: :uuid, index: true
       t.references :parent, null: true, foreign_key: { to_table: :transactions }, type: :uuid, index: true
-      t.date :date, null: false
+      t.datetime :date, null: false
       t.monetize :amount, null: false
       t.monetize :balance, null: true
       t.string :description
@@ -18,6 +18,7 @@ class CreateTransactions < ActiveRecord::Migration[8.0]
       t.integer :repeat_count
       t.integer :installment_period
       t.integer :installment_count
+      t.jsonb :schedule, default: {}, null: true
 
       t.timestamps
     end

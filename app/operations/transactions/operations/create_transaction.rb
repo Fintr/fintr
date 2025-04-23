@@ -1,49 +1,50 @@
+# frozen_string_literal: true
+
 module Transactions
   module Operations
+    # NOTE: Create a transaction only at the start. This is the parent transaction.
     class CreateTransaction < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
-          required(:user_id).value(:integer)
-          required(:space_code).value(:string)
+          # Current user and space
+          required(:user_id).value(:string)
+          required(:space_id).value(:string)
+
           required(:amount).value(:decimal)
           required(:date).value(:date)
-          optional(:description).value(:string)
           required(:category_name).value(:string)
           required(:account_name).value(:string)
+          optional(:description).value(:string)
 
           # Schedule type and related fields
           required(:schedule_type).value(:string)
           optional(:repeat_interval).value(:string)
           optional(:repeat_count).value(:integer)
-          optional(:installment_period).value(:string)
+          optional(:installment_period).value(:integer)
           optional(:installment_count).value(:integer)
         end
 
         # Validate that schedule_type is valid
         rule(:schedule_type) do
-          key.failure("must be one of: one_time, repeat") unless [ "one_time", "repeat" ].include?(value)
+          valid_types = [ "one_time", "repeat", "installment" ] # Explicitly include all types
+          key.failure("must be one of: #{valid_types.join(", ")}") unless valid_types.include?(value)
         end
 
         # Validate repeat fields are present when schedule_type is 'repeat'
         rule(:repeat_interval, :schedule_type) do
-          key(:repeat_interval).failure("must be provided for repeat transactions") if values[:schedule_type] == "repeat" && value.nil?
+          key(:repeat_interval).failure("must be provided for recurring transactions") if values[:schedule_type] == "repeat" && value.blank?
         end
 
-        rule(:repeat_count, :schedule_type) do
-          key(:repeat_count).failure("must be provided for repeat transactions") if values[:schedule_type] == "repeat" && value.nil?
+        rule(:installment_period) do
         end
 
         rule(:installment_period, :schedule_type) do
-          key(:installment_period).failure("must be provided for installment transactions") if values[:schedule_type] == "installment" && value.nil?
+          key(:installment_period).failure("must be provided for installment transactions") if values[:schedule_type] == "installment" && value.blank?
+          key(:installment_period).failure("must be a positive integer") if values[:schedule_type] == "installment" && value.present? && (!value.is_a?(Integer) || value <= 0)
         end
 
-        rule(:installment_count, :schedule_type) do
-          key(:installment_count).failure("must be provided for installment transactions") if values[:schedule_type] == "installment" && value.nil?
-        end
-
-        # Validate repeat_interval is valid when provided
         rule(:repeat_interval) do
-          valid_intervals = Transaction.repeat_intervals.values
+          valid_intervals = Transactions::Transaction.repeat_intervals.values
 
           key.failure("must be a valid interval") if value && !valid_intervals.include?(value)
         end
@@ -58,14 +59,15 @@ module Transactions
 
       def call(params:)
         ActiveRecord::Base.transaction do
-          _           = step validate(params:)
-          space       = step find_space(params:)
-          category    = step find_category(params:)
-          account     = step find_account(params:)
-          new_balance = step adjust_balance(params:, account:, category:)
-          params      = step transform_params(params:, space:, category:, account:)
-          transaction = step create_transaction(params:, category:, new_balance:)
-
+          _               = step validate(params:)
+          category        = step find_category(params:)
+          account         = step find_account(params:)
+          params          = step transform_params(params:, category:, account:)
+          params          = step adjust_amount(params:)
+          new_balance     = step adjust_balance(params:, account:, category:)
+          transaction     = step create_transaction(params:, category:, new_balance:)
+          transaction     = step create_schedule(transaction:, params:) if params[:schedule_type] != "one_time"
+          _               = step create_repeat_transactions(transaction:) if params[:schedule_type] != "one_time"
           transaction
         end
       end
@@ -73,33 +75,39 @@ module Transactions
       private
 
       def find_category(params:)
-        category = Transactions::Category.find_by(name: params[:category_name])
+        category = Transactions::Category.find_by(name: params[:category_name], space_id: params[:space_id])
         return Failure(category_name: "not found") unless category
 
         Success(category)
       end
 
-      def find_space(params:)
-        space = Spaces::Space.find_by(code: params[:space_code])
-        return Failure(space_code: "not found") unless space
-
-        Success(space)
-      end
-
       def find_account(params:)
-        account = Transactions::Account.find_by(name: params[:account_name])
+        account = Transactions::Account.find_by(name: params[:account_name], space_id: params[:space_id])
         return Failure(account_name: "not found") unless account
 
         Success(account)
       end
 
-      def transform_params(params:, space:, category:, account:)
+      # Note: Add default values for currencies and repeat_count
+      def transform_params(params:, category:, account:)
+        params = params.dup
         params[:category_id] = category.id
         params[:account_id] = account.id
-        params[:space_id] = space.id
+        params[:repeat_count] = 1 if params[:schedule_type] == "repeat"
+        params[:installment_count] = 1 if params[:schedule_type] == "installment"
+        params[:amount_currency] = "PHP"
+        params[:balance_currency] = "PHP"
         params.delete(:category_name)
         params.delete(:account_name)
-        params.delete(:space_code)
+
+        Success(params)
+      end
+
+      def adjust_amount(params:)
+        return Success(params) unless params[:schedule_type] == "installment"
+
+        params[:amount] = (BigDecimal(params[:amount].to_s) / params[:installment_period])
+                          .round(2, BigDecimal::ROUND_HALF_UP)
         Success(params)
       end
 
@@ -116,27 +124,33 @@ module Transactions
       def create_transaction(params:, category:, new_balance:)
         transaction_type = category.income? ? Transactions::Income : Transactions::Expense
 
-        transaction = transaction_type.new(
-          user_id: params[:user_id],
-          space_id: params[:space_id],
-          date: params[:date],
-          amount: params[:amount],
-          balance: params[:amount], # This may need calculation logic based on account balance
-          description: params[:description],
-          category_id: params[:category_id],
-          account_id: params[:account_id],
-          schedule_type: params[:schedule_type],
-          repeat_interval: params[:repeat_interval],
-          repeat_count: params[:repeat_count],
-          installment_period: params[:installment_period],
-          installment_count: params[:installment_count]
-        )
+        transaction = transaction_type.new(**params)
+        transaction.balance = new_balance
 
-        Failure(transaction.errors) if transaction.invalid?
+        return Failure(transaction.errors.to_hash) if transaction.invalid?
 
         transaction.save!
 
         Success(transaction)
+      end
+
+      def create_schedule(transaction:, params:)
+        schedule_type = params[:schedule_type]
+        return Success(transaction) if schedule_type == "one_time"
+
+        repeat_interval = schedule_type == "repeat" ? params[:repeat_interval] : "every_month"
+        schedule = Utils::Recurrence.schedule(
+          repeat_interval:,
+          date: params[:date]
+        )
+
+        transaction.update!(schedule: schedule.to_hash)
+        Success(transaction)
+      end
+
+      # Note: Creates repeat transactions until + 1.month
+      def create_repeat_transactions(transaction:)
+        CreateRepeatTransactions.new.call(transaction_id: transaction.id)
       end
     end
   end

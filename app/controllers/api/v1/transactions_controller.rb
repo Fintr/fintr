@@ -16,11 +16,12 @@ module Api
       end
 
       def create
-        operation = Transactions::Operations::CreateTransaction.new.call(create_params)
+        params = with_current_params(create_params)
+        operation = Transactions::Operations::CreateTransaction.new.call(params)
 
         return render_internal_server_error(details: operation.failure) unless operation.success?
 
-        render json: operation.value!, status: :created
+        render_created(record: operation.value!)
       end
 
       private

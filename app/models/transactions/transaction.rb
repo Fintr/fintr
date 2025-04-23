@@ -11,9 +11,10 @@ module Transactions
     monetize :balance_cents, allow_nil: true
 
     enum :schedule_type, {
-      one_time: "one_time",
-      repeat: "repeat"
-    }
+     one_time: "one_time",
+     repeat: "repeat",
+     installment: "installment"
+   }
 
     enum :repeat_interval, {
       every_day: "every_day",
@@ -34,8 +35,8 @@ module Transactions
     validates :schedule_type,
               presence: true,
               inclusion: { in: schedule_types.values }
-    validates :repeat_interval, presence: true, if: -> { repeat? }
-    validates :repeat_count, presence: true, if: -> { repeat? }
+    validates :repeat_interval, presence: true, if: -> { schedule_type == "repeat" }
+    validates :repeat_count, presence: true, if: -> { schedule_type == "repeat" }
 
     def value
       amount

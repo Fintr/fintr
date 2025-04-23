@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Transactions::Operations::CreateTransaction do
   let(:operation) { described_class.new }
   let(:user) { create(:user) }
-  let(:space) { create(:space) }
+  let(:space) { create(:personal_space) }
   let(:account) { create(:account, space: space, balance: Money.from_amount(1000, 'PHP')) }
   let(:income_category) { create(:category, space: space, category_type: 'income', name: 'Salary') }
   let(:expense_category) { create(:category, space: space, category_type: 'expense', name: 'Groceries') }
@@ -17,7 +17,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
       let(:income_params) do
         {
           user_id: user.id,
-          space_code: space.code,
+          space_id: space.id,
           amount: 150.0,
           date: Date.current,
           description: 'Salary payment',
@@ -26,7 +26,6 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           schedule_type: 'one_time'
         }
       end
-
 
       it { is_expected.to be_success }
 
@@ -57,7 +56,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
       let(:expense_params) do
         {
           user_id: user.id,
-          space_code: space.code,
+          space_id: space.id,
           amount: 75.0,
           date: Date.current,
           description: 'Grocery shopping',
@@ -66,7 +65,6 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           schedule_type: 'one_time'
         }
       end
-
 
       it { is_expected.to be_success }
 
@@ -96,23 +94,23 @@ RSpec.describe Transactions::Operations::CreateTransaction do
 
       let(:repeat_expense_params) do
         {
-          space_code: space.code,
+          user_id: user.id,
+          space_id: space.id,
           amount: 50.0,
           date: Date.current,
           description: 'Netflix subscription',
           category_name: expense_category.name,
           account_name: account.name,
           schedule_type: 'repeat',
-          repeat_interval: 'every_month',
-          repeat_count: 12
+          repeat_interval: 'every_2_weeks',
+          repeat_count: 1
         }
       end
 
-
       it { is_expected.to be_success }
 
-      it 'creates a repeat expense transaction' do
-        expect { call_operation }.to change(Transactions::Expense, :count).by(1)
+      it 'creates a repeat expense transaction and a recurring transaction' do
+        expect { call_operation }.to change(Transactions::Expense, :count).by(3)
       end
 
       it 'sets the repeat transaction attributes correctly' do
@@ -120,8 +118,41 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         expect(result).to be_a(Transactions::Expense)
         expect(result.amount.amount).to eq(50.0)
         expect(result.schedule_type).to eq('repeat')
-        expect(result.repeat_interval).to eq('every_month')
-        expect(result.repeat_count).to eq(12)
+        expect(result.repeat_interval).to eq('every_2_weeks')
+        expect(result.repeat_count).to eq(1)
+      end
+    end
+
+    context 'with installment expense transaction parameters' do
+      subject(:call_operation) { operation.call(params: installment_expense_params) }
+
+      let(:installment_expense_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 150.0,
+          date: Date.current,
+          description: 'Phone payment',
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: 'installment',
+          installment_period: 12
+        }
+      end
+
+      it { is_expected.to be_success }
+
+      it 'creates an installment expense transaction' do
+        expect { call_operation }.to change(Transactions::Expense, :count).by(2)
+      end
+
+      it 'sets the installment transaction attributes correctly' do
+        result = call_operation.value!
+        expect(result).to be_a(Transactions::Expense)
+        expect(result.amount.amount).to eq(150.0 / 12)
+        expect(result.schedule_type).to eq('installment')
+        expect(result.installment_period).to eq(12)
+        expect(result.installment_count).to eq(1)
       end
     end
 
@@ -133,7 +164,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
       let(:large_expense_params) do
         {
           user_id: user.id,
-          space_code: space.code,
+          space_id: space.id,
           amount: 100.0,
           date: Date.current,
           description: 'Too expensive item',
@@ -142,7 +173,6 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           schedule_type: 'one_time'
         }
       end
-
 
       it { is_expected.to be_failure }
 
@@ -169,7 +199,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         let(:invalid_params) do
           {
             user_id: user.id,
-            space_code: space.code,
+            space_id: space.id,
             amount: 100.0,
             date: Date.current,
             description: 'Test',
@@ -178,7 +208,6 @@ RSpec.describe Transactions::Operations::CreateTransaction do
             # Missing category_name
           }
         end
-
 
         it { is_expected.to be_failure }
 
@@ -195,7 +224,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         let(:nonexistent_category_params) do
           {
             user_id: user.id,
-            space_code: space.code,
+            space_id: space.id,
             amount: 100.0,
             date: Date.current,
             description: 'Test',
@@ -204,7 +233,6 @@ RSpec.describe Transactions::Operations::CreateTransaction do
             schedule_type: 'one_time'
           }
         end
-
 
         it { is_expected.to be_failure }
 
@@ -215,30 +243,29 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         end
       end
 
-      # Non-existent space
-      context 'when space does not exist' do
-        subject(:call_operation) { operation.call(params: nonexistent_space_params) }
+      # Non-existent account
+      context 'when account does not exist' do
+        subject(:call_operation) { operation.call(params: nonexistent_account_params) }
 
-        let(:nonexistent_space_params) do
+        let(:nonexistent_account_params) do
           {
             user_id: user.id,
-            space_code: 'non-existent-space',
+            space_id: space.id,
             amount: 100.0,
             date: Date.current,
             description: 'Test',
             category_name: income_category.name,
-            account_name: account.name,
+            account_name: 'NonExistentAccount',
             schedule_type: 'one_time'
           }
         end
 
-
         it { is_expected.to be_failure }
 
-        it 'returns an error about the space' do
+        it 'returns an error about the account' do
           result = call_operation
-          expect(result.failure).to include(:space_code)
-          expect(result.failure[:space_code]).to eq('not found')
+          expect(result.failure).to include(:account_name)
+          expect(result.failure[:account_name]).to eq('not found')
         end
       end
 
@@ -249,7 +276,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         let(:invalid_schedule_params) do
           {
             user_id: user.id,
-            space_code: space.code,
+            space_id: space.id,
             amount: 100.0,
             date: Date.current,
             description: 'Test',
@@ -258,7 +285,6 @@ RSpec.describe Transactions::Operations::CreateTransaction do
             schedule_type: 'invalid_type'
           }
         end
-
 
         it { is_expected.to be_failure }
 
@@ -276,7 +302,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         let(:invalid_repeat_params) do
           {
             user_id: user.id,
-            space_code: space.code,
+            space_id: space.id,
             amount: 100.0,
             date: Date.current,
             description: 'Test recurring payment',
@@ -287,13 +313,11 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           }
         end
 
-
         it { is_expected.to be_failure }
 
         it 'returns validation errors for missing repeat fields' do
           result = call_operation
           expect(result.failure).to include(:repeat_interval)
-          expect(result.failure).to include(:repeat_count)
         end
       end
 
@@ -304,7 +328,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         let(:invalid_interval_params) do
           {
             user_id: user.id,
-            space_code: space.code,
+            space_id: space.id,
             amount: 100.0,
             date: Date.current,
             description: 'Test recurring payment',
@@ -316,13 +340,38 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           }
         end
 
-
         it { is_expected.to be_failure }
 
         it 'returns validation errors for invalid repeat_interval' do
           result = call_operation
           expect(result.failure).to include(:repeat_interval)
           expect(result.failure[:repeat_interval]).to include('must be a valid interval')
+        end
+      end
+
+      # Testing installment transaction validation
+      context 'when installment transaction is missing required fields' do
+        subject(:call_operation) { operation.call(params: invalid_installment_params) }
+
+        let(:invalid_installment_params) do
+          {
+            user_id: user.id,
+            space_id: space.id,
+            amount: 100.0,
+            date: Date.current,
+            description: 'Test installment payment',
+            category_name: expense_category.name,
+            account_name: account.name,
+            schedule_type: 'installment'
+            # Missing installment_period and installment_count
+          }
+        end
+
+        it { is_expected.to be_failure }
+
+        it 'returns validation errors for missing installment fields' do
+          result = call_operation
+          expect(result.failure).to include(:installment_period)
         end
       end
     end
