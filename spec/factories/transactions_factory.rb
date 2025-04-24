@@ -44,7 +44,7 @@ FactoryBot.define do
 
       trait :installment do
         schedule_type { "installment" }
-        installment_period { "every_month" }
+        installment_period { 12 }
         installment_count { 6 }
       end
     end
