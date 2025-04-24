@@ -138,10 +138,11 @@ module Transactions
         schedule_type = params[:schedule_type]
         return Success(transaction) if schedule_type == "one_time"
 
-        repeat_interval = schedule_type == "repeat" ? params[:repeat_interval] : "every_month"
+        repeat_interval = schedule_type == "repeat" ? params[:repeat_interval] : :installment
         schedule = Utils::Recurrence.schedule(
           repeat_interval:,
-          date: params[:date]
+          date: params[:date],
+          installment_period: params[:installment_period]
         )
 
         transaction.update!(schedule: schedule.to_hash)

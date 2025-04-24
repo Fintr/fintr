@@ -37,8 +37,6 @@ module FintrBe
     # Client URL for redirections (Auth0 callbacks)
     config.client_url = ENV.fetch("CLIENT_URL", "http://localhost:3000")
 
-    # config.middleware.use OliveBranch::Middleware, inflection: "camel"
-
     config.middleware.use SnakeCaseParameters
 
     # Configure factory file naming pattern

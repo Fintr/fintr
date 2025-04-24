@@ -2,7 +2,7 @@
 
 module Utils
   class Recurrence
-    def self.schedule(repeat_interval:, date:)
+    def self.schedule(repeat_interval:, date:, installment_period: nil)
       IceCube::Schedule.new(date) do |s|
         obj = case repeat_interval.to_sym
         when :every_day
@@ -21,6 +21,8 @@ module Utils
           IceCube::Rule.monthly(6)
         when :every_year
           IceCube::Rule.yearly
+        when :installment
+          IceCube::Rule.monthly.count(installment_period)
         end
 
         s.add_recurrence_rule(obj)

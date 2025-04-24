@@ -38,7 +38,7 @@ development:
   cable:
     <<: *primary_development
     database: fintr_be_development_cable
-    migrations_paths: db/cable_migrate  
+    migrations_paths: db/cable_migrate
 
   # The specified database role being used to connect to PostgreSQL.
   # To create additional roles in PostgreSQL see `$ createuser --help`.
