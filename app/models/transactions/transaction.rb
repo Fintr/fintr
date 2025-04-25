@@ -6,6 +6,8 @@ module Transactions
     belongs_to :space, class_name: "Spaces::Space"
     belongs_to :category, class_name: "Transactions::Category"
     belongs_to :account, class_name: "Transactions::Account"
+    belongs_to :parent, class_name: "Transactions::Transaction", optional: true
+    has_many :children, class_name: "Transactions::Transaction", foreign_key: :parent_id
 
     monetize :amount_cents, allow_nil: false
     monetize :balance_cents, allow_nil: true

@@ -95,6 +95,7 @@ module Transactions
         params[:account_id] = account.id
         params[:repeat_count] = 1 if params[:schedule_type] == "repeat"
         params[:installment_count] = 1 if params[:schedule_type] == "installment"
+        params[:balance_state] = "calculated"
         params[:amount_currency] = "PHP"
         params[:balance_currency] = "PHP"
         params.delete(:category_name)

@@ -4,7 +4,12 @@ require 'rails_helper'
 
 RSpec.describe Transactions::Transaction, type: :model do
   describe 'associations' do
-    it { is_expected.to belong_to(:user) }
+    it { is_expected.to belong_to(:user).class_name("Auth::User") }
+    it { is_expected.to belong_to(:space).class_name("Spaces::Space") }
+    it { is_expected.to belong_to(:category).class_name("Transactions::Category") }
+    it { is_expected.to belong_to(:account).class_name("Transactions::Account") }
+    it { is_expected.to belong_to(:parent).class_name("Transactions::Transaction").optional }
+    it { is_expected.to have_many(:children).class_name("Transactions::Transaction").with_foreign_key(:parent_id) }
   end
 
   describe 'validations' do

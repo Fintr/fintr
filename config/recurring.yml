@@ -1,11 +1,20 @@
 development:
-  duplicate_transaction_daily:
-    class: DuplicateTransactionDailyJob
+  check_duplicate_today:
+    class: Transactions::CheckDuplicateTodayJob
     queue: default
     schedule: every minute
+  calculate_pending_balances:
+    class: Transactions::Accounts::CalculatePendingBalancesJob
+    queue: default
+    schedule: 'every 2 minutes'
 
 production:
-  duplicate_transaction_daily:
-    class: DuplicateTransactionDailyJob
+  check_duplicate_today:
+    class: Transactions::CheckDuplicateTodayJob
+    queue: default
+    schedule: '@midnight Asia/Manila'
+
+  calculate_pending_balances:
+    class: Transactions::Accounts::CalculatePendingBalancesJob
     queue: default
     schedule: '@midnight Asia/Manila'

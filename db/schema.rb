@@ -17,6 +17,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
 
   # Custom types defined in this database.
   # Note that some types may not work with other database engines. Be careful if changing database.
+  create_enum "balance_state", ["pending", "calculated"]
   create_enum "category_type_enum", ["income", "expense"]
   create_enum "repeat_interval", ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
   create_enum "schedule_type", ["one_time", "repeat", "installment"]
@@ -67,7 +68,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
   create_table "transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "user_id", null: false
     t.uuid "parent_id"
-    t.date "date", null: false
+    t.datetime "date", null: false
     t.integer "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "USD", null: false
     t.integer "balance_cents", default: 0, null: false
@@ -76,6 +77,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_17_150210) do
     t.string "type", null: false
     t.enum "schedule_type", null: false, enum_type: "schedule_type"
     t.enum "repeat_interval", enum_type: "repeat_interval"
+    t.enum "balance_state", null: false, enum_type: "balance_state"
     t.integer "repeat_count"
     t.integer "installment_period"
     t.integer "installment_count"

@@ -88,6 +88,7 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
           expect(new_transaction.user_id).to eq(transaction.user_id)
           expect(new_transaction.schedule_type).to eq('repeat')
           expect(new_transaction.schedule).to eq({})
+          expect(new_transaction.balance_state).to eq('pending')
         end
       end
 

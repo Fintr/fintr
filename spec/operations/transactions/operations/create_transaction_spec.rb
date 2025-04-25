@@ -47,6 +47,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         expect(result.account_id).to eq(account.id)
         expect(result.category_id).to eq(income_category.id)
         expect(result.schedule_type).to eq('one_time')
+        expect(result.balance_state).to eq('calculated')
       end
     end
 

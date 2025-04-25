@@ -13,6 +13,7 @@ FactoryBot.define do
     balance_currency { 'PHP' }
     sequence(:description) { |n| "Test transaction #{n}" }
     schedule_type { "one_time" }
+    balance_state { "calculated" }
     type { "Transactions::Income" }
 
     factory :income_transaction, class: "Transactions::Income" do
