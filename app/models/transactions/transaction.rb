@@ -9,6 +9,8 @@ module Transactions
     belongs_to :parent, class_name: "Transactions::Transaction", optional: true
     has_many :children, class_name: "Transactions::Transaction", foreign_key: :parent_id
 
+    has_many_attached :files
+
     monetize :amount_cents, allow_nil: false
     monetize :balance_cents, allow_nil: true
 

@@ -22,6 +22,8 @@ module Transactions
           optional(:repeat_count).value(:integer)
           optional(:installment_period).value(:integer)
           optional(:installment_count).value(:integer)
+
+          optional(:file)
         end
 
         # Validate that schedule_type is valid
@@ -68,6 +70,7 @@ module Transactions
           params          = step adjust_amount(params:)
           new_balance     = step adjust_balance(params:, account:, category:)
           transaction     = step create_transaction(params:, category:, new_balance:)
+          transaction     = step attach_file(transaction:, params:)
           transaction     = step create_schedule(transaction:, params:) if params[:schedule_type] != "one_time"
           _               = step create_repeat_transactions(transaction:) if params[:schedule_type] != "one_time"
           transaction
@@ -115,19 +118,24 @@ module Transactions
       end
 
       def adjust_balance(params:, account:, category:)
-        add_amount = category.income? ? params[:amount] : -params[:amount]
-        new_balance = account.balance.amount + add_amount
+        add_amount = category.income? ? params[:amount].to_d : (params[:amount].to_d) * -1
+        original_balance = account.balance.amount.to_d
+        new_balance = account.balance.amount.to_d + add_amount
 
         account.update!(balance: new_balance)
         Success(new_balance)
       rescue ActiveRecord::RecordInvalid
-        Failure(account_name: "Balance cannot be negative, new_balance: #{new_balance}")
+        error = "Balance cannot be negative. " \
+                "Original balance: #{Utils::Number.format_money(original_balance)}. " \
+                "New balance: #{Utils::Number.format_money(new_balance)}"
+        Failure(account_name: error)
       end
 
       def create_transaction(params:, category:, new_balance:)
         transaction_type = category.income? ? Transactions::Income : Transactions::Expense
 
-        transaction = transaction_type.new(**params)
+        transaction_params = params.except(:file)
+        transaction = transaction_type.new(**transaction_params)
         transaction.balance = new_balance
 
         transaction.save!
@@ -135,6 +143,13 @@ module Transactions
         Success(transaction)
       rescue StandardError => e
         Failure(**transaction.errors.to_hash, error: e)
+      end
+
+      def attach_file(transaction:, params:)
+        return Success(transaction) if params[:file].blank?
+
+        transaction.files.attach(params[:file])
+        Success(transaction)
       end
 
       def create_schedule(transaction:, params:)

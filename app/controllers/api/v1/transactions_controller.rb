@@ -48,7 +48,8 @@ module Api
           :repeat_interval,
           :repeat_count,
           :installment_period,
-          :installment_count
+          :installment_count,
+          :file
         )
       end
     end

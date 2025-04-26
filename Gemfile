@@ -57,3 +57,5 @@ group :development, :test do
   gem "shoulda-matchers"
   gem "factory_bot_rails"
 end
+
+gem "aws-sdk-s3", "~> 1.183"
