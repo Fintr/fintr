@@ -21,7 +21,7 @@ module Transactions
 
     def self.create_default_categories(space)
       transaction do
-        DEFAULT_INCOME_CATEGORIES.each do |name|
+        (DEFAULT_INCOME_CATEGORIES + [ "Initial Balance" ]).each do |name|
           self.find_or_create_by(name:, category_type: "income", space:)
         end
 

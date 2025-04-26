@@ -15,6 +15,7 @@ Rails.application.routes.draw do
       # Use scope to keep the URL prefix without namespace nesting for controllers
       scope path: "transactions", module: "transactions" do
         resources :categories, only: [ :create ]
+        resources :accounts, only: [ :create ]
       end
 
       resource :dashboard, only: [ :show ]

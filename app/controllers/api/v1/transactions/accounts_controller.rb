@@ -3,8 +3,10 @@
 module Api
   module V1
     module Transactions
-      class CategoriesController < ApiController
+      class AccountsController < ApiController
         def create
+          operation = ::Transactions::Operations::Accounts::CreateAccount.new.call(params: with_current_params(create_params))
+
           return render_unprocessable_entity(details: operation.failure) unless operation.success?
 
           render_created(record: operation.value!)
@@ -13,7 +15,7 @@ module Api
         private
 
         def create_params
-          params.permit(:name, :category_type)
+          params.permit(:name, :balance)
         end
       end
     end

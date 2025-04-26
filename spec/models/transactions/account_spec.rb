@@ -73,14 +73,15 @@ RSpec.describe Transactions::Account, type: :model do
 
   describe '.create_default_accounts' do
     let(:space) { create(:space) }
+    let(:all_default_names) { Transactions::Account::DEFAULT_ACCOUNT_NAMES }
 
     it 'creates accounts with default names for the given space' do
       expect do
         described_class.create_default_accounts(space)
-      end.to change { described_class.where(space: space).count }.by(Transactions::Account::DEFAULT_ACCOUNT_NAMES.count)
+      end.to change { described_class.where(space: space).count }.by(all_default_names.count)
 
       default_names_in_db = described_class.where(space: space).pluck(:name)
-      expect(default_names_in_db).to match_array(Transactions::Account::DEFAULT_ACCOUNT_NAMES)
+      expect(default_names_in_db).to match_array(all_default_names)
     end
 
     it 'does not create duplicate accounts if they already exist' do
@@ -89,7 +90,7 @@ RSpec.describe Transactions::Account, type: :model do
 
       expect do
         described_class.create_default_accounts(space)
-      end.to change { described_class.where(space: space).count }.by(Transactions::Account::DEFAULT_ACCOUNT_NAMES.count - 1)
+      end.to change { described_class.where(space: space).count }.by(all_default_names.count - 1)
     end
 
     it 'does not create accounts for a different space' do
