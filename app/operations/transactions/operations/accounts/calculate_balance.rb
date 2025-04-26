@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Transactions
-  module Accounts
-    module Operations
+  module Operations
+    module Accounts
       class CalculateBalance < Dry::Operation
         class Contract < Dry::Validation::Contract
           params do

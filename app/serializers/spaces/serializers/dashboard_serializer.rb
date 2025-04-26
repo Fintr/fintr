@@ -14,6 +14,24 @@ module Spaces
         end
       end
 
+      field :expense_category_options do |space|
+        space.expense_categories.map do |category|
+          {
+            label: category.name,
+            value: category.name
+          }
+        end
+      end
+
+      field :income_category_options do |space|
+        space.income_categories.map do |category|
+          {
+            label: category.name,
+            value: category.name
+          }
+        end
+      end
+
       field :account_options do |space|
         space.accounts.map do |account|
           {

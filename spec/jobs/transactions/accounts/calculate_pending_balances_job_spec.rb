@@ -6,12 +6,12 @@ RSpec.describe Transactions::Accounts::CalculatePendingBalancesJob, type: :job d
   describe '#perform' do
     subject(:job) { described_class.new }
 
-    let(:operation_instance) { instance_spy(Transactions::Accounts::Operations::CalculateBalance) }
+    let(:operation_instance) { instance_spy(Transactions::Operations::Accounts::CalculateBalance) }
     let(:today) { Date.new(2023, 5, 15) }
 
     before do
       allow(Time.zone).to receive(:today).and_return(today)
-      allow(Transactions::Accounts::Operations::CalculateBalance).to receive(:new).and_return(operation_instance)
+      allow(Transactions::Operations::Accounts::CalculateBalance).to receive(:new).and_return(operation_instance)
       allow(operation_instance).to receive(:call)
     end
 

@@ -17,7 +17,7 @@ module ApiResponses
   def render_created(record:, message: nil)
     klass = record.class.name.demodulize
     message ||= "Resource #{klass} created successfully"
-    render_success(status: :created, message:)
+    render_success(data: { id: record.id }, status: :created, message:)
   end
 
   # ----- Error Responses -----

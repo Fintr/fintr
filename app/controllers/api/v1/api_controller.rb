@@ -6,13 +6,18 @@ module Api
       include Secured
 
       before_action :authorize
+      before_action :current_space
 
       def current_space
-        return nil if request.headers["X-Space-Code"].blank?
+        return render_unauthorized(message: "No space code provided") unless space_code = request.headers["X-Space-Code"]
 
-        Rails.cache.fetch("current_space_#{request.headers["X-Space-Code"]}", expires_in: 15.minutes) do
-          @current_space ||= Spaces::Space.find_by(code: request.headers["X-Space-Code"])
+        space = Rails.cache.fetch("current_space_#{space_code}", expires_in: 15.minutes) do
+          Spaces::Space.find_by(code: space_code)
         end
+        @current_space = space if cached_current_user.spaces.include?(space)
+        return @current_space if @current_space.present?
+
+        render_unauthorized(message: "User cannot access #{space_code}")
       end
 
       def with_current_params(params)
