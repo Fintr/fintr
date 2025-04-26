@@ -4,7 +4,9 @@ require 'rails_helper'
 
 RSpec.describe Transactions::Accounts::CalculatePendingBalancesJob, type: :job do
   describe '#perform' do
-    let(:operation_instance) { instance_double(Transactions::Accounts::Operations::CalculateBalance) }
+    subject(:job) { described_class.new }
+
+    let(:operation_instance) { instance_spy(Transactions::Accounts::Operations::CalculateBalance) }
     let(:today) { Date.new(2023, 5, 15) }
 
     before do
@@ -18,10 +20,10 @@ RSpec.describe Transactions::Accounts::CalculatePendingBalancesJob, type: :job d
       let!(:pending_transaction2) { create(:transaction, balance_state: 'pending', date: today) }
 
       it 'processes each pending transaction with CalculateBalance operation' do
-        expect(operation_instance).to receive(:call).with(params: { transaction_id: pending_transaction1.id })
-        expect(operation_instance).to receive(:call).with(params: { transaction_id: pending_transaction2.id })
+        job.perform
 
-        subject.perform
+        expect(operation_instance).to have_received(:call).with(params: { transaction_id: pending_transaction1.id })
+        expect(operation_instance).to have_received(:call).with(params: { transaction_id: pending_transaction2.id })
       end
     end
 
@@ -33,9 +35,9 @@ RSpec.describe Transactions::Accounts::CalculatePendingBalancesJob, type: :job d
       end
 
       it 'does not call the CalculateBalance operation' do
-        expect(operation_instance).not_to receive(:call)
+        job.perform
 
-        subject.perform
+        expect(operation_instance).not_to have_received(:call)
       end
     end
 
@@ -51,10 +53,10 @@ RSpec.describe Transactions::Accounts::CalculatePendingBalancesJob, type: :job d
       end
 
       it 'continues processing all transactions' do
-        expect(operation_instance).to receive(:call).with(params: { transaction_id: pending_transaction1.id })
-        expect(operation_instance).to receive(:call).with(params: { transaction_id: pending_transaction2.id })
+        job.perform
 
-        subject.perform
+        expect(operation_instance).to have_received(:call).with(params: { transaction_id: pending_transaction1.id })
+        expect(operation_instance).to have_received(:call).with(params: { transaction_id: pending_transaction2.id })
       end
     end
   end

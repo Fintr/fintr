@@ -53,3 +53,9 @@ RSpec/RepeatedSubjectCall:
 
 RSpec/IndexedLet:
   Enabled: false
+
+
+RSpec/MessageSpies:
+  Enabled: True
+  Exclude:
+    - spec/jobs/transactions/check_duplicate_today_job_spec.rb
