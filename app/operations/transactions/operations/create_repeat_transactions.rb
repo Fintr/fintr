@@ -20,7 +20,7 @@ module Transactions
 
       TRANSACTION_ATTRIBUTES = Transaction.clean_attributes.map(&:to_s)
 
-      import Concerns::FailureHandler
+      include FailureHandler
 
       def call(
         transaction_id:,

@@ -17,6 +17,8 @@ module Transactions
           Success(params)
         end
 
+        include FailureHandler
+
         def call(params:)
           _            = step validate(params:)
           transaction  = step find_transaction(params:)

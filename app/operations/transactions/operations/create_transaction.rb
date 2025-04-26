@@ -57,7 +57,7 @@ module Transactions
         Success()
       end
 
-      import Concerns::FailureHandler
+      include FailureHandler
 
       def call(params:)
         ActiveRecord::Base.transaction do
