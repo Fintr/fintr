@@ -43,6 +43,10 @@ gem "activerecord-import", "~> 2.1"
 # Recurrence
 gem "ice_cube", "~> 0.17.0"
 
+# Errors
+gem "sentry-ruby"
+gem "sentry-rails"
+
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
   gem "brakeman", require: false

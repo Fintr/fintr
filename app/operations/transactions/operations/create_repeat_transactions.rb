@@ -20,6 +20,8 @@ module Transactions
 
       TRANSACTION_ATTRIBUTES = Transaction.clean_attributes.map(&:to_s)
 
+      import Concerns::FailureHandler
+
       def call(
         transaction_id:,
         date_start: Time.zone.today,
@@ -94,6 +96,8 @@ module Transactions
           validate_uniqueness: true
         )
         Success()
+      rescue StandardError => e
+        Failure(error: e)
       end
     end
   end

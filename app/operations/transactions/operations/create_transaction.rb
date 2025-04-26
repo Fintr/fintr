@@ -57,6 +57,8 @@ module Transactions
         Success()
       end
 
+      import Concerns::FailureHandler
+
       def call(params:)
         ActiveRecord::Base.transaction do
           _               = step validate(params:)
@@ -128,11 +130,11 @@ module Transactions
         transaction = transaction_type.new(**params)
         transaction.balance = new_balance
 
-        return Failure(transaction.errors.to_hash) if transaction.invalid?
-
         transaction.save!
 
         Success(transaction)
+      rescue StandardError => e
+        Failure(**transaction.errors.to_hash, error: e)
       end
 
       def create_schedule(transaction:, params:)
@@ -148,6 +150,8 @@ module Transactions
 
         transaction.update!(schedule: schedule.to_hash)
         Success(transaction)
+      rescue StandardError => e
+        Failure(error: e)
       end
 
       # Note: Creates repeat transactions until + 1.month
