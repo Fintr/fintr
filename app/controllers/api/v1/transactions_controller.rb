@@ -17,7 +17,7 @@ module Api
 
       def create
         params = with_current_params(create_params)
-        operation = ::Transactions::Operations::CreateTransaction.new.call(params)
+        operation = ::Transactions::Operations::CreateTransaction.new.call(params:)
 
         return render_internal_server_error(details: operation.failure) unless operation.success?
 
@@ -44,6 +44,7 @@ module Api
           :category_name,
           :account_name,
           :expense_type,
+          :schedule_type,
           :repeat_interval,
           :repeat_count,
           :installment_period,
