@@ -10,6 +10,14 @@ module Transactions
           required(:category_name).value(:string)
           required(:start_date).value(:date)
           required(:end_date).value(:date)
+          optional(:min_amount).maybe(:integer, gteq?: 0)
+          optional(:max_amount).maybe(:integer)
+        end
+
+        rule(:min_amount, :max_amount) do
+          if values[:min_amount].is_a?(Integer) && values[:max_amount].is_a?(Integer)
+            key.failure("should be less than max_amount") if values[:min_amount] > values[:max_amount]
+          end
         end
       end
 
@@ -22,15 +30,16 @@ module Transactions
         @space = Spaces::Space.find_by(code: params[:space_code])
         return Failure({ space_code: "Not found" }) if @space.blank?
 
-        Success()
+        Success(contract.to_h)
       end
 
       def call
-        _        = step validate
+        params   = step validate
         relation = step joins(@relation)
         relation = step by_space(relation, params)
         relation = step by_date(relation, params)
         relation = step by_category(relation, params)
+        relation = step by_amount(relation, params)
         relation = step select(relation)
         relation = step order(relation)
         step paginate(relation, params)
@@ -90,6 +99,15 @@ module Transactions
         return Success(relation) if [ "all", "" ].include?(params[:category_name])
 
         relation = relation.where(transactions_categories: { name: params[:category_name] })
+        Success(relation)
+      end
+
+      def by_amount(relation, params)
+        return Success(relation) unless params[:min_amount] || params[:max_amount]
+
+        min_amount = params[:min_amount]&.to_d&.*(100) || 0
+        max_amount = params[:max_amount] ? params[:max_amount]&.to_d&.*(100) : Float::INFINITY
+        relation = relation.where(amount_cents: min_amount...max_amount)
         Success(relation)
       end
 

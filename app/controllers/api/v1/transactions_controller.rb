@@ -32,6 +32,8 @@ module Api
           :start_date,
           :end_date,
           :category_name,
+          :min_amount,
+          :max_amount,
           :page
         ).to_h
       end
