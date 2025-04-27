@@ -33,7 +33,8 @@ module Secured
   def cached_current_user
     key = Digest::MD5.hexdigest(@validation_response.decoded_token.token.first["sub"])
     @current_user = Rails.cache.fetch("current_user_#{key}", expires_in: 1.hour) do
-      current_user
+      c_user = current_user
+      c_user.is_a?(Auth::User) ? c_user : nil
     end
   end
 
