@@ -41,16 +41,20 @@ module Transactions
         def calculate_balance(transaction:, account:)
           return Success(transaction) if transaction.balance_state == "calculated" # NOTE: Need to be idempotent
 
-          balance = account.balance.amount
-          balance += transaction.value.amount
+          old_balance = account.balance.amount
+          balance = old_balance + transaction.value.amount
 
           account.assign_attributes(balance:)
           transaction.assign_attributes(balance:, balance_state: "calculated")
 
           account.save!
           transaction.save!
+          Success(transaction)
         rescue ActiveRecord::ActiveRecordError => e
-          Failure(account: account.errors.to_hash, transaction: transaction.errors.to_hash, error: e)
+          error = "Balance cannot be negative. " \
+                "Original balance: #{Utils::Number.format_money(old_balance)}. " \
+                "New balance: #{Utils::Number.format_money(balance)}"
+        Failure(account_name: error, error:)
         end
       end
     end

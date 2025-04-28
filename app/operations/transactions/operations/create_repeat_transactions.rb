@@ -39,6 +39,8 @@ module Transactions
                                   last_transaction:,
                                   dates:
                                  )
+        today_transaction = step find_transaction_for_today(parent_transaction: transaction)
+        _                 = step calculate_balance_for_today(today_transaction:)
         transactions
       end
 
@@ -104,6 +106,17 @@ module Transactions
         Success()
       rescue StandardError => e
         Failure(error: e)
+      end
+
+      def find_transaction_for_today(parent_transaction:)
+        Success(parent_transaction.children.find_by(date: Time.zone.today))
+      end
+
+      # NOTE: Only calculate balance for today's transaction if it exists.
+      def calculate_balance_for_today(today_transaction:)
+        return Success() if today_transaction.blank?
+
+        Accounts::CalculateBalance.new.call(params: { transaction_id: today_transaction.id })
       end
     end
   end

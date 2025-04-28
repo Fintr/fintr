@@ -68,9 +68,9 @@ module Transactions
           account         = step find_account(params:)
           params          = step transform_params(params:, category:, account:)
           params          = step adjust_amount(params:)
-          new_balance     = step adjust_balance(params:, account:, category:)
-          transaction     = step create_transaction(params:, category:, new_balance:)
+          transaction     = step create_transaction(params:, category:)
           transaction     = step attach_file(transaction:, params:)
+          _               = step calculate_balance(transaction:)
           transaction     = step create_schedule(transaction:, params:) if params[:schedule_type] != "one_time"
           _               = step create_repeat_transactions(transaction:) if params[:schedule_type] != "one_time"
           transaction
@@ -100,9 +100,10 @@ module Transactions
         params[:account_id] = account.id
         params[:repeat_count] = 1 if params[:schedule_type] == "repeat"
         params[:installment_count] = 1 if params[:schedule_type] == "installment"
-        params[:balance_state] = "calculated"
+        params[:balance_state] = "pending"
         params[:amount_currency] = "PHP"
         params[:balance_currency] = "PHP"
+        params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
         params.delete(:category_name)
         params.delete(:account_name)
 
@@ -117,26 +118,11 @@ module Transactions
         Success(params)
       end
 
-      def adjust_balance(params:, account:, category:)
-        add_amount = category.income? ? params[:amount].to_d : (params[:amount].to_d) * -1
-        original_balance = account.balance.amount.to_d
-        new_balance = account.balance.amount.to_d + add_amount
-
-        account.update!(balance: new_balance)
-        Success(new_balance)
-      rescue ActiveRecord::RecordInvalid
-        error = "Balance cannot be negative. " \
-                "Original balance: #{Utils::Number.format_money(original_balance)}. " \
-                "New balance: #{Utils::Number.format_money(new_balance)}"
-        Failure(account_name: error)
-      end
-
-      def create_transaction(params:, category:, new_balance:)
+      def create_transaction(params:, category:)
         transaction_type = category.income? ? Transactions::Income : Transactions::Expense
 
         transaction_params = params.except(:file)
         transaction = transaction_type.new(**transaction_params)
-        transaction.balance = new_balance
 
         transaction.save!
 
@@ -150,6 +136,13 @@ module Transactions
 
         transaction.files.attach(params[:file])
         Success(transaction)
+      end
+
+      # NOTE: Adjust balance only if the transaction is created today.
+      def calculate_balance(transaction:)
+        return Success(transaction) if transaction.date != Time.zone.today
+
+        Accounts::CalculateBalance.new.call(params: { transaction_id: transaction.id })
       end
 
       def create_schedule(transaction:, params:)
