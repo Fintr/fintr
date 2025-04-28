@@ -56,14 +56,14 @@ module Transactions
         contract = Contract.new.call(**params)
         return Failure(contract.errors.to_h) unless contract.success?
 
-        Success()
+        Success(contract.to_h)
       end
 
       include FailureHandler
 
       def call(params:)
         ActiveRecord::Base.transaction do
-          _               = step validate(params:)
+          params          = step validate(params:)
           category        = step find_category(params:)
           account         = step find_account(params:)
           params          = step transform_params(params:, category:, account:)
@@ -171,7 +171,15 @@ module Transactions
 
       # Note: Creates repeat transactions until + 1.month
       def create_repeat_transactions(transaction:)
-        CreateRepeatTransactions.new.call(transaction_id: transaction.id)
+        return Success() if transaction.schedule_type == "one_time"
+
+        CreateRepeatTransactions.new.call(params: {
+          transaction_id: transaction.id,
+          balance_state: "calculated",
+          date_start: transaction.date.to_datetime,
+          date_end: Time.zone.today
+        }) if transaction.date < Time.zone.today
+        CreateRepeatTransactions.new.call(params: { transaction_id: transaction.id })
       end
     end
   end
