@@ -175,20 +175,14 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         }
       end
 
-      it { is_expected.to be_failure }
+      it { is_expected.to be_success }
 
       it 'does not create a transaction' do
-        expect { call_operation }.not_to change(Transactions::Expense, :count)
+        expect { call_operation }.to change(Transactions::Expense, :count)
       end
 
-      it 'does not change the account balance' do
-        expect { call_operation }.not_to change { low_balance_account.reload.balance.amount }
-      end
-
-      it 'returns an error about negative balance' do
-        result = call_operation
-        expect(result.failure).to include(:account_name)
-        expect(result.failure[:account_name]).to include("Balance cannot be negative")
+      it 'does still changes the account balance' do
+        expect { call_operation }.to change { low_balance_account.reload.balance.amount }
       end
     end
 

@@ -10,7 +10,7 @@ module Transactions
     monetize :balance_cents, allow_nil: false
 
     validates :name, presence: true, uniqueness: { scope: :space_id }
-    validates :balance_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
+    validates :balance_cents, presence: true
     validates :balance_currency, presence: true
 
     scope :default, -> { where(name: DEFAULT_ACCOUNT_NAMES) }

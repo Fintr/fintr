@@ -72,8 +72,9 @@ module Transactions
           transaction     = step attach_file(transaction:, params:)
           _               = step calculate_balance(transaction:)
           transaction     = step create_schedule(transaction:, params:) if params[:schedule_type] != "one_time"
-          _               = step create_repeat_transactions(transaction:) if params[:schedule_type] != "one_time"
-          transaction
+          _               = step create_past_transactions(transaction:) if params[:schedule_type] != "one_time"
+          _               = step create_future_transactions(transaction:) if params[:schedule_type] != "one_time"
+          transaction.reload
         end
       end
 
@@ -140,8 +141,6 @@ module Transactions
 
       # NOTE: Adjust balance only if the transaction is created today.
       def calculate_balance(transaction:)
-        return Success(transaction) if transaction.date != Time.zone.today
-
         Accounts::CalculateBalance.new.call(params: { transaction_id: transaction.id })
       end
 
@@ -162,17 +161,29 @@ module Transactions
         Failure(error: e)
       end
 
+      # Note: Creates repeat transactions until today
+      def create_past_transactions(transaction:)
+        return Success() if transaction.schedule_type == "one_time"
+        return Success() if transaction.date >= Time.zone.today
+
+        CreateRepeatTransactions.new.call(params: {
+          transaction_id: transaction.id,
+          balance_state: "calculated",
+          date_start: (transaction.date + 1.day).to_datetime, # NOTE: somehow need .to_datetime to avoid errors
+          date_end: Time.zone.today
+        })
+      end
+
       # Note: Creates repeat transactions until + 1.month
-      def create_repeat_transactions(transaction:)
+      def create_future_transactions(transaction:)
         return Success() if transaction.schedule_type == "one_time"
 
         CreateRepeatTransactions.new.call(params: {
           transaction_id: transaction.id,
           balance_state: "calculated",
-          date_start: transaction.date.to_datetime,
-          date_end: Time.zone.today
-        }) if transaction.date < Time.zone.today
-        CreateRepeatTransactions.new.call(params: { transaction_id: transaction.id })
+          date_start: Time.zone.tomorrow,
+          date_end: Time.zone.today + 1.month
+        })
       end
     end
   end

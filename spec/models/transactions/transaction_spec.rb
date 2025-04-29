@@ -19,7 +19,6 @@ RSpec.describe Transactions::Transaction, type: :model do
     it { is_expected.to validate_presence_of(:type) }
 
     it { is_expected.to validate_numericality_of(:amount_cents).is_greater_than_or_equal_to(0) }
-    it { is_expected.to validate_numericality_of(:balance_cents).is_greater_than_or_equal_to(0) }
 
     context 'when amount is negative' do
       let(:transaction) { build(:transaction, amount: -10) }
@@ -34,8 +33,7 @@ RSpec.describe Transactions::Transaction, type: :model do
       let(:transaction) { build(:transaction, balance: -10) }
 
       it 'is invalid' do
-        expect(transaction).not_to be_valid
-        expect(transaction.errors[:balance_cents]).to include('must be greater than or equal to 0')
+        expect(transaction).to be_valid
       end
     end
   end

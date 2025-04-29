@@ -34,7 +34,7 @@ module Transactions
     # Required field validations
     validates :date, presence: true
     validates :amount_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
-    validates :balance_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
+    validates :balance_cents, presence: true
     validates :type, presence: true
     validates :schedule_type,
               presence: true,

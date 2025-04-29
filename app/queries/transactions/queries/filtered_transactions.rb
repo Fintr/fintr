@@ -12,6 +12,7 @@ module Transactions
           required(:end_date).value(:date)
           optional(:min_amount).maybe(:integer, gteq?: 0)
           optional(:max_amount).maybe(:integer)
+          optional(:per_page).maybe(:integer)
         end
 
         rule(:min_amount, :max_amount) do

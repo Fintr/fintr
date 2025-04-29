@@ -31,13 +31,6 @@ RSpec.describe Transactions::Account, type: :model do
       expect(account).not_to be_valid
     end
 
-    it 'validates numericality of balance_cents >= 0' do
-      account = build(:account, balance_cents: -1, space: space)
-      expect(account).not_to be_valid
-      account.balance_cents = 0
-      expect(account).to be_valid
-    end
-
     it 'validates uniqueness of name scoped to space_id' do
        create(:account, name: 'unique_name', space: space)
        account2 = build(:account, name: 'unique_name', space: space)

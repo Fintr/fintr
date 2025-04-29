@@ -50,7 +50,7 @@ module Transactions
 
       def add_default_params(params:)
         params[:date_start] ||= Time.zone.tomorrow
-        params[:date_end] ||= Time.zone.today + 1.month
+        params[:date_end] ||= (Time.zone.today + 1.month)
         params[:balance_state] ||= "pending"
         Success(params)
       end
@@ -66,15 +66,13 @@ module Transactions
       end
 
       def fetch_dates(params:, schedule:)
-        start_date = params[:date_start].in_time_zone.beginning_of_day
-        end_date = params[:date_end].in_time_zone.end_of_day
+        # NOTE: change timezone to current timezone becase schedule makes use of the server's timezone.
+        # DANGER: having the schedule in the server's timezone might cause issues when the server is changed.
+        start_date = params[:date_start].in_time_zone("Asia/Manila").beginning_of_day
+        end_date = params[:date_end].in_time_zone("Asia/Manila").end_of_day
 
-        # Create a new schedule starting from start_date
-        new_schedule = IceCube::Schedule.new(start_date)
-        new_schedule.add_recurrence_rule(schedule.rrules.first)
-
-        dates = new_schedule.occurrences_between(start_date, end_date)
-                           .map { |date| date.in_time_zone.to_date }
+        dates = schedule.occurrences_between(start_date - 1.minute, end_date)
+                           .map { |date| date.in_time_zone("Asia/Manila").to_date }
                            .sort
 
         Success(dates)
@@ -119,7 +117,7 @@ module Transactions
         )
         Success()
       rescue StandardError => e
-        account.invalid? ? Failure(account: account.errors.to_h, error: e) : Failure(error: e)
+        account.invalid? ? Failure(account: account.errors.to_hash, error: e) : Failure(error: e)
       end
     end
   end

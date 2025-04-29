@@ -252,14 +252,14 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
       subject(:call_operation) do
         operation.call(params: {
           transaction_id: transaction.id,
-          date_start: today + 1.week,
+          date_start: today + 2.weeks,
           date_end: next_month
         })
       end
 
       let(:schedule) do
         schedule = IceCube::Schedule.new(today)
-        schedule.add_recurrence_rule(IceCube::Rule.weekly.day(:tuesday))
+        schedule.add_recurrence_rule(IceCube::Rule.weekly)
         schedule.to_hash
       end
 
@@ -267,6 +267,7 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
         create(
           :expense_transaction,
           :repeat,
+          repeat_interval: :every_week,
           user:,
           space:,
           account:,
@@ -281,8 +282,8 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
       it 'creates transactions starting from the specified date' do
         call_operation
         new_transactions = Transactions::Transaction.where(parent_id: transaction.id)
-                                                  .order(date: :asc)
-        expect(new_transactions.first.date.to_date).to eq(today + 1.week)
+                                                    .order(date: :asc)
+        expect(new_transactions.first.date.to_date).to eq(today + 2.weeks)
       end
     end
 
@@ -304,6 +305,7 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
         create(
           :expense_transaction,
           :repeat,
+          repeat_interval: :every_week,
           user:,
           space:,
           account:,
@@ -317,13 +319,13 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
         create(
           :expense_transaction,
           :repeat,
+          repeat_interval: :every_week,
           user:,
           space:,
           account:,
           category:,
           date: today + 1.week,
-          parent_id: transaction.id,
-          schedule:
+          parent_id: transaction.id
         )
       end
 

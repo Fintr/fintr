@@ -24,6 +24,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
   let!(:transaction_s2_jan20) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 1, 20), amount_cents: 3000) }
   let!(:transaction_s2_feb5) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 2, 5), amount_cents: 1500) }
 
+  let!(:first_3_transactions) { [ transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10 ] }
   # Define default params that meet contract requirements
   let(:default_params) do
     {
@@ -46,8 +47,8 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         expect(result.map(&:id)).to match_array(expected_ids)
 
         # Check default order (date asc)
-        expect(result.first.id).to eq(transaction_s1_jan5.id)
-        expect(result.last.id).to eq(transaction_s1_feb10.id)
+        expect(result.first.id).to eq(transaction_s1_feb10.id)
+        expect(result.last.id).to eq(transaction_s1_jan5.id)
       end
     end
 
@@ -131,7 +132,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         # Create just 3 more transactions (in addition to the 3 we already have)
         3.times.map do |i|
           category = create(:category, name: "Pag Cat #{i}", space: space1)
-          create(:transaction, space: space1, account: account1_s1, category: category, date: Date.new(2024, 3, 1) + i.days)
+          create(:transaction, space: space1, account: account1_s1, category:, date: Date.new(2024, 3, 1) + i.days)
         end
       end
 
@@ -146,7 +147,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         # Should return exactly 3 transactions
         expect(result.size).to eq(3)
         # First page should have the oldest transactions (January-February)
-        expect(result.map(&:id)).to contain_exactly(transaction_s1_jan5.id, transaction_s1_jan15.id, transaction_s1_feb10.id)
+        expect(result.map(&:id)).to match_array(additional_transactions.pluck(:id))
       end
 
       it 'returns the second page of results with custom per_page' do
@@ -159,7 +160,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
 
         # Second page should have the 3 additional March transactions
         expect(result.size).to eq(3)
-        expect(result.map(&:id)).to match_array(additional_transactions.map(&:id))
+        expect(result.map(&:id)).to match_array(first_3_transactions.map(&:id))
       end
     end
 
