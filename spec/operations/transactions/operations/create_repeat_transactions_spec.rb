@@ -8,16 +8,16 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
   let(:space) { create(:personal_space) }
   let(:account) { create(:account, space:, balance: Money.from_amount(1000, 'PHP')) }
   let(:category) { create(:category, space:, category_type: 'expense', name: 'Regular Expense') }
-  let(:today) { Time.zone.today }
+  let(:today) { Time.zone.today.beginning_of_week(:tuesday) }
   let(:next_month) { today + 1.month }
 
   describe '#call' do
     context 'with a one_time transaction' do
       subject(:call_operation) do
-        operation.call(
+        operation.call(params: {
           transaction_id: transaction.id,
           date_end: next_month
-        )
+        })
       end
 
       let!(:transaction) do
@@ -27,10 +27,10 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
           user:,
           space:,
           account:,
-          category:
+          category:,
+          date: today
         )
       end
-
 
       it { is_expected.to be_success }
 
@@ -41,15 +41,15 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with a repeat transaction' do
       subject(:call_operation) do
-        operation.call(
+        operation.call(params: {
           transaction_id: transaction.id,
           date_end: next_month
-        )
+        })
       end
 
       let(:schedule) do
         schedule = IceCube::Schedule.new(today)
-        schedule.add_recurrence_rule(IceCube::Rule.weekly)
+        schedule.add_recurrence_rule(IceCube::Rule.weekly.day(:tuesday))
         schedule.to_hash
       end
 
@@ -65,7 +65,6 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
           schedule:
         )
       end
-
 
       it { is_expected.to be_success }
 
@@ -98,7 +97,6 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
           parent_id: transaction.id
         ).order(date: :asc)
 
-
         expect(new_transactions.first.repeat_count).to eq(transaction.repeat_count + 1)
         expect(new_transactions.second.repeat_count).to eq(transaction.repeat_count + 2)
         expect(new_transactions.third.repeat_count).to eq(transaction.repeat_count + 3)
@@ -108,15 +106,15 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with an installment transaction' do
       subject(:call_operation) do
-        operation.call(
+        operation.call(params: {
           transaction_id: transaction.id,
           date_end: next_month
-        )
+        })
       end
 
       let(:schedule) do
         schedule = IceCube::Schedule.new(today)
-        schedule.add_recurrence_rule(IceCube::Rule.monthly)
+        schedule.add_recurrence_rule(IceCube::Rule.monthly.day_of_month(today.day))
         schedule.to_hash
       end
 
@@ -132,7 +130,6 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
           schedule:
         )
       end
-
 
       it { is_expected.to be_success }
 
@@ -170,10 +167,10 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with non-existent transaction' do
       subject(:call_operation) do
-        operation.call(
+        operation.call(params: {
           transaction_id: 'non-existent-id',
           date_end: next_month
-        )
+        })
       end
 
       it { is_expected.to be_failure }
@@ -186,10 +183,10 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with invalid date_end' do
       subject(:call_operation) do
-        operation.call(
+        operation.call(params: {
           transaction_id: transaction.id,
           date_end: nil
-        )
+        })
       end
 
       let!(:transaction) do
@@ -199,16 +196,210 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
           user:,
           space:,
           account:,
-          category:
+          category:,
+          date: today
         )
       end
-
 
       it { is_expected.to be_failure }
 
       it 'returns an error message' do
         result = call_operation
         expect(result.failure).to include(date_end: [ 'must be a date' ])
+      end
+    end
+
+    context 'with calculated balance state' do
+      subject(:call_operation) do
+        operation.call(params: {
+          transaction_id: transaction.id,
+          date_end: next_month,
+          balance_state: 'calculated'
+        })
+      end
+
+      let(:schedule) do
+        schedule = IceCube::Schedule.new(today)
+        schedule.add_recurrence_rule(IceCube::Rule.weekly.day(:tuesday))
+        schedule.to_hash
+      end
+
+      let!(:transaction) do
+        create(
+          :expense_transaction,
+          :repeat,
+          user:,
+          space:,
+          account:,
+          category:,
+          date: today,
+          schedule:,
+          amount: Money.from_amount(100, 'PHP')
+        )
+      end
+
+      it { is_expected.to be_success }
+
+      it 'updates the account balance for each transaction' do
+        initial_balance = account.balance
+        call_operation
+        account.reload
+        expect(account.balance).to eq(initial_balance - Money.from_amount(400, 'PHP'))
+      end
+    end
+
+    context 'with custom date_start' do
+      subject(:call_operation) do
+        operation.call(params: {
+          transaction_id: transaction.id,
+          date_start: today + 1.week,
+          date_end: next_month
+        })
+      end
+
+      let(:schedule) do
+        schedule = IceCube::Schedule.new(today)
+        schedule.add_recurrence_rule(IceCube::Rule.weekly.day(:tuesday))
+        schedule.to_hash
+      end
+
+      let!(:transaction) do
+        create(
+          :expense_transaction,
+          :repeat,
+          user:,
+          space:,
+          account:,
+          category:,
+          date: today,
+          schedule:
+        )
+      end
+
+      it { is_expected.to be_success }
+
+      it 'creates transactions starting from the specified date' do
+        call_operation
+        new_transactions = Transactions::Transaction.where(parent_id: transaction.id)
+                                                  .order(date: :asc)
+        expect(new_transactions.first.date.to_date).to eq(today + 1.week)
+      end
+    end
+
+    context 'with existing child transactions' do
+      subject(:call_operation) do
+        operation.call(params: {
+          transaction_id: transaction.id,
+          date_end: next_month
+        })
+      end
+
+      let(:schedule) do
+        schedule = IceCube::Schedule.new(today)
+        schedule.add_recurrence_rule(IceCube::Rule.weekly.day(:tuesday))
+        schedule.to_hash
+      end
+
+      let!(:transaction) do
+        create(
+          :expense_transaction,
+          :repeat,
+          user:,
+          space:,
+          account:,
+          category:,
+          date: today,
+          schedule:
+        )
+      end
+
+      let!(:existing_child) do
+        create(
+          :expense_transaction,
+          :repeat,
+          user:,
+          space:,
+          account:,
+          category:,
+          date: today + 1.week,
+          parent_id: transaction.id,
+          schedule:
+        )
+      end
+
+      it { is_expected.to be_success }
+
+      it 'does not create duplicate transactions' do
+        expect { call_operation }.to change(Transactions::Transaction, :count).by(3)
+      end
+
+      it 'creates transactions with correct dates' do
+        call_operation
+        new_transactions = Transactions::Transaction.where(parent_id: transaction.id)
+                                                  .order(date: :asc)
+        expected_dates = [
+          today + 1.week,
+          today + 2.weeks,
+          today + 3.weeks,
+          today + 4.weeks
+        ]
+        actual_dates = new_transactions.map { |t| t.date.to_date }
+        expect(actual_dates).to eq(expected_dates)
+      end
+    end
+
+    context 'with a transaction that has a parent' do
+      subject(:call_operation) do
+        operation.call(params: {
+          transaction_id: child_transaction.id,
+          date_end: next_month
+        })
+      end
+
+      let(:schedule) do
+        schedule = IceCube::Schedule.new(today)
+        schedule.add_recurrence_rule(IceCube::Rule.weekly.day(:tuesday))
+        schedule.to_hash
+      end
+
+      let!(:parent_transaction) do
+        create(
+          :expense_transaction,
+          :repeat,
+          user:,
+          space:,
+          account:,
+          category:,
+          date: today,
+          schedule:
+        )
+      end
+
+      let!(:child_transaction) do
+        create(
+          :expense_transaction,
+          :repeat,
+          user:,
+          space:,
+          account:,
+          category:,
+          date: today + 1.week,
+          parent_id: parent_transaction.id,
+          schedule:
+        )
+      end
+
+      it { is_expected.to be_success }
+
+      it 'creates new transactions with the correct parent_id' do
+        call_operation
+        new_transactions = Transactions::Transaction.where(parent_id: parent_transaction.id)
+                                                  .where('date > ?', child_transaction.date)
+                                                  .order(date: :asc)
+        expect(new_transactions.count).to eq(3)
+        new_transactions.each do |new_transaction|
+          expect(new_transaction.parent_id).to eq(parent_transaction.id)
+        end
       end
     end
   end

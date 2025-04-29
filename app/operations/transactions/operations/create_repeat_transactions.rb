@@ -39,8 +39,6 @@ module Transactions
                                   last_transaction:,
                                   dates:
                                  )
-        today_transaction = step find_transaction_for_today(parent_transaction: transaction)
-        _                 = step calculate_balance_for_today(today_transaction:)
         transactions
       end
 
@@ -68,10 +66,17 @@ module Transactions
       end
 
       def fetch_dates(params:, schedule:)
-        dates = schedule.occurrences_between(
-          params[:date_start].beginning_of_day,
-          params[:date_end].end_of_day
-        ).map { |date| date.utc.to_datetime }
+        start_date = params[:date_start].in_time_zone.beginning_of_day
+        end_date = params[:date_end].in_time_zone.end_of_day
+
+        # Create a new schedule starting from start_date
+        new_schedule = IceCube::Schedule.new(start_date)
+        new_schedule.add_recurrence_rule(schedule.rrules.first)
+
+        dates = new_schedule.occurrences_between(start_date, end_date)
+                           .map { |date| date.in_time_zone.to_date }
+                           .sort
+
         Success(dates)
       end
 
@@ -81,22 +86,31 @@ module Transactions
       end
 
       def bulk_duplicate_transactions(params:, parent_transaction:, last_transaction:, dates:)
-        parent_id = parent_transaction.parent_id ? parent_transaction.parent_id : parent_transaction.id
+        parent_id = parent_transaction.parent_id || parent_transaction.id
+        account_balance = parent_transaction.account.balance.amount
+
+        existing_dates = parent_transaction.children.pluck(:date).map(&:to_date)
+        dates = dates.reject { |date| existing_dates.include?(date) }
 
         records = dates.map.with_index do |date, index|
-          next if parent_transaction.children.where(date:).exists? # NOTE: Need to be idempotent
-
           new_transaction = parent_transaction.amoeba_dup
           new_transaction.schedule = {}
+          account_balance += new_transaction.value.amount if params[:balance_state] == "calculated"
+
           new_transaction.assign_attributes(
             parent_id:,
             date:,
-            balance_state: params[:balance_state] # NOTE: Tells the app whether pending or calculated. We assume that transactions in the past were already reflected in current balances.
+            balance_state: params[:balance_state],  # NOTE: Tells the app whether pending or calculated. We assume that transactions in the past were already reflected in current balances.
+            balance: account_balance # NOTE: Only update balance if balance_state is calculated
           )
           new_transaction.repeat_count = last_transaction.repeat_count + 1 + index if parent_transaction.repeat?
           new_transaction.installment_count = last_transaction.installment_count + 1 + index if parent_transaction.installment?
           new_transaction
         end
+
+        account = parent_transaction.account
+        account.assign_attributes(balance: account_balance)
+        account.save!
 
         Transaction.bulk_import(
           records,
@@ -105,18 +119,7 @@ module Transactions
         )
         Success()
       rescue StandardError => e
-        Failure(error: e)
-      end
-
-      def find_transaction_for_today(parent_transaction:)
-        Success(parent_transaction.children.find_by(date: Time.zone.today))
-      end
-
-      # NOTE: Only calculate balance for today's transaction if it exists.
-      def calculate_balance_for_today(today_transaction:)
-        return Success() if today_transaction.blank?
-
-        Accounts::CalculateBalance.new.call(params: { transaction_id: today_transaction.id })
+        account.invalid? ? Failure(account: account.errors.to_h, error: e) : Failure(error: e)
       end
     end
   end
