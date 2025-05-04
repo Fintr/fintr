@@ -1,0 +1,61 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Operation Pattern Rule
+
+## Primary Pattern: Dry::Operation
+
+1. **When to Use**:
+   - For all business logic operations
+   - When handling complex workflows
+   - When dealing with multiple steps or validations
+   - When database transactions are needed
+   - When error handling needs to be consistent
+
+2. **Structure**:
+   ```ruby
+   module Domain
+     module Operations
+       class OperationName < Dry::Operation
+         class Contract < Dry::Validation::Contract
+           # Parameter validation
+         end
+
+         def validate(params:)
+           # Validation logic
+         end
+
+         def call(params:)
+           # Operation steps
+         end
+       end
+     end
+   end
+   ```
+
+3. **Guidelines**:
+   - Keep operations focused on a single responsibility
+   - Use `step` for sequential operations
+   - Validate input parameters using `Dry::Validation::Contract`
+   - Use `ActiveRecord::Base.transaction` for database operations
+   - Return `Success` or `Failure` monads
+   - Include clear error messages in failures
+
+4. **When Not to Use**:
+   - Simple CRUD operations that don't need validation
+   - Utility methods that don't involve business logic
+   - View helpers or presentation logic
+   - Background jobs (use ActiveJob instead)
+
+5. **Naming Convention**:
+   - Use descriptive names that indicate the operation's purpose
+   - Follow the pattern: `Domain::Operations::OperationName`
+   - Use verbs that describe the action (e.g., `Create`, `Update`, `Delete`)
+
+6. **Testing**:
+   - Test both success and failure cases
+   - Mock external dependencies
+   - Verify error messages
+   - Test transaction rollbacks

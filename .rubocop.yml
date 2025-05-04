@@ -56,6 +56,10 @@ RSpec/IndexedLet:
 
 
 RSpec/MessageSpies:
-  Enabled: True
+  Enabled: true
   Exclude:
     - spec/jobs/transactions/check_duplicate_today_job_spec.rb
+
+Layout/SpaceInsideArrayLiteralBrackets:
+  Enabled: true
+  EnforcedStyle: no_space

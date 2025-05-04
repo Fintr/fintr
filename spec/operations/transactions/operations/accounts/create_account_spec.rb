@@ -100,7 +100,7 @@ RSpec.describe Transactions::Operations::Accounts::CreateAccount do
 
           # Create mock errors for the ActiveRecord validation
           allow(operation).to receive(:create_account).and_return(
-            Dry::Monads::Result::Failure.new(name: [ "has already been taken" ])
+            Dry::Monads::Result::Failure.new(name: ["has already been taken"])
           )
 
           result = operation.call(params: params)
@@ -126,7 +126,7 @@ RSpec.describe Transactions::Operations::Accounts::CreateAccount do
 
           # Create mock errors for the ActiveRecord validation
           allow(operation).to receive(:create_account).and_return(
-            Dry::Monads::Result::Failure.new(name: [ "can't be blank" ])
+            Dry::Monads::Result::Failure.new(name: ["can't be blank"])
           )
 
           result = operation.call(params: params)
@@ -157,7 +157,7 @@ RSpec.describe Transactions::Operations::Accounts::CreateAccount do
         # Create a custom implementation for testing
         def custom_operation.call(params:)
           # Return an error as if the transaction creation failed
-          Dry::Monads::Result::Failure.new(category_name: [ "not found" ])
+          Dry::Monads::Result::Failure.new(category_name: ["not found"])
         end
 
         result = custom_operation.call(params: params)

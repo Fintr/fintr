@@ -61,7 +61,7 @@ module ApiResponses
 
   # Helper specifically for ActiveRecord validation errors
   def render_validation_errors(*records)
-    details = records.map { |record| [ record.class.name.demodulize, record.errors ] }.to_h
+    details = records.map { |record| [record.class.name.demodulize, record.errors] }.to_h
     render_unprocessable_entity(message: "Validation Failed", details:)
   end
 end

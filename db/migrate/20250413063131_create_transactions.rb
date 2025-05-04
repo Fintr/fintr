@@ -2,9 +2,9 @@
 
 class CreateTransactions < ActiveRecord::Migration[8.0]
   def change
-    create_enum :schedule_type, [ "one_time", "repeat", "installment" ]
-    create_enum :repeat_interval, [ "every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year" ]
-    create_enum :balance_state, [ "pending", "calculated" ]
+    create_enum :schedule_type, ["one_time", "repeat", "installment"]
+    create_enum :repeat_interval, ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
+    create_enum :balance_state, ["pending", "calculated"]
 
     create_table :transactions, id: :uuid do |t|
       t.references :user, null: false, foreign_key: true, type: :uuid, index: true
@@ -25,7 +25,8 @@ class CreateTransactions < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :transactions, [ :user_id, :date, :type ]
-    add_index :transactions, [ :date, :type, :amount_currency, :amount_cents ]
+    add_index :transactions, [:user_id, :date, :type]
+    add_index :transactions, [:date, :type, :amount_currency, :amount_cents]
+    add_index :transactions, [:parent_id, :date]
   end
 end

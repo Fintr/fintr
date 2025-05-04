@@ -36,7 +36,7 @@ worker_timeout 3600 if ENV.fetch("RAILS_ENV", "development") == "development"
 
 # Specifies the `port` that Puma will listen on by default
 # In production, use port 80 as specified in the Dockerfile
-port ENV.fetch("PORT") { [ "production", "staging" ].include?(ENV["RAILS_ENV"]) ? 80 : 3000 }
+port ENV.fetch("PORT") { ["production", "staging"].include?(ENV["RAILS_ENV"]) ? 80 : 3000 }
 
 # Specifies the `environment` that Puma will run in.
 environment ENV.fetch("RAILS_ENV") { "development" }
@@ -51,4 +51,4 @@ plugin :tmp_restart
 plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"]
 
 # Bind to all network interfaces
-bind "tcp://0.0.0.0:#{ENV.fetch("PORT") { [ 'production', 'staging' ].include?(ENV["RAILS_ENV"]) ? 80 : 3000 }}"
+bind "tcp://0.0.0.0:#{ENV.fetch("PORT") { ['production', 'staging'].include?(ENV["RAILS_ENV"]) ? 80 : 3000 }}"

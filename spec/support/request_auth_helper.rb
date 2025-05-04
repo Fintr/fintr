@@ -18,7 +18,7 @@ module RequestAuthHelper
     }
 
     # Create token struct instance
-    decoded_token = Auth::Token.new([ token_data ])
+    decoded_token = Auth::Token.new([token_data])
 
     # Create success response
     validation_response = Auth::Response.new(decoded_token, nil)
@@ -38,7 +38,7 @@ module RequestAuthHelper
     allow(operation_double).to receive(:call).with(hash_including(auth_id: auth_id)).and_return(Dry::Monads::Result::Success.new(user))
 
     # Allow the user to access the space
-    allow(user).to receive(:spaces).and_return([ space ])
+    allow(user).to receive(:spaces).and_return([space])
 
     # Mock space caching
     allow(Rails.cache).to receive(:fetch).with("current_space_#{space.code}", expires_in: 15.minutes).and_return(space)

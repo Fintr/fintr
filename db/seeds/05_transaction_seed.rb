@@ -16,9 +16,9 @@ ActiveRecord::Base.transaction do
       )
       account.update(balance: account.balance + income.value)
     end
-    [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ].each do |month|
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].each do |month|
       puts "Seeding transactions for month: #{month}"
-      [ 1, 5, 10, 15, 20, 25 ].each do |day|
+      [1, 5, 10, 15, 20, 25].each do |day|
         puts "Seeding transactions for day: #{day}"
         income_account = space.accounts.sample
         expense_account = space.accounts.sample
@@ -30,7 +30,7 @@ ActiveRecord::Base.transaction do
                   account: income_account,
                   category: space.income_categories.sample,
                   date: Date.new(2025, month, day),
-                  description: [ 'Sample Description Income', 'Sample Long Description jknsfsdnfsdanflsakdfnlksadflkasdfmklsdfmksdfksadmflksmdkfl sakmdaksldmaskdm mklasmlkdmaskd klamskdmkalmdmkk mklmaskldmaklsdmklasmdkasmdasd' ].sample,
+                  description: ['Sample Description Income', 'Sample Long Description jknsfsdnfsdanflsakdfnlksadflkasdfmklsdfmksdfksadmflksmdkfl sakmdaksldmaskdm mklasmlkdmaskd klamskdmkalmdmkk mklmaskldmaklsdmklasmdkasmdasd'].sample,
                   balance: income_account.balance.amount + 1000,
                   balance_currency: 'PHP',
                   balance_state: :calculated,
@@ -41,7 +41,7 @@ ActiveRecord::Base.transaction do
         income.account.update(balance: income.account.balance + income.value)
 
         2.times do
-          expense_amount = [ 500, 1000, 1500, 2000 ].sample
+          expense_amount = [500, 1000, 1500, 2000].sample
           expense = Transactions::Expense.new(
                       user: Auth::User.first,
                       space:,

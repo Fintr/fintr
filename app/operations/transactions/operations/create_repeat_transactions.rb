@@ -30,8 +30,7 @@ module Transactions
         proceed           = step determine_proceed(transaction:)
         return Success(nil) unless proceed
 
-        schedule          = step fetch_schedule(transaction:)
-        dates             = step fetch_dates(params:, schedule:)
+        dates             = step fetch_dates(params:, transaction:)
         last_transaction  = step fetch_last_transaction(params:, transaction:)
         transactions      = step bulk_duplicate_transactions(
                                   params:,
@@ -56,31 +55,24 @@ module Transactions
       end
 
       def determine_proceed(transaction:)
-        return Success(false) if transaction.schedule_type == "one_time"
+        return Success(false) if transaction.one_time?
 
         Success(true)
       end
 
-      def fetch_schedule(transaction:)
-        Success(IceCube::Schedule.from_hash(transaction.schedule))
-      end
-
-      def fetch_dates(params:, schedule:)
-        # NOTE: change timezone to current timezone becase schedule makes use of the server's timezone.
-        # DANGER: having the schedule in the server's timezone might cause issues when the server is changed.
-        start_date = params[:date_start].in_time_zone("Asia/Manila").beginning_of_day
-        end_date = params[:date_end].in_time_zone("Asia/Manila").end_of_day
-
-        dates = schedule.occurrences_between(start_date - 1.minute, end_date)
-                           .map { |date| date.in_time_zone("Asia/Manila").to_date }
-                           .sort
-
-        Success(dates)
+      def fetch_dates(params:, transaction:)
+        Transactions::Operations::Schedules::FetchDates.new.call(
+          params: {
+            record: transaction,
+            date_start: params[:date_start],
+            date_end: params[:date_end]
+          }
+        )
       end
 
       def fetch_last_transaction(params:, transaction:)
-        params = { transaction_id: transaction.id, date_end: params[:date_end] }
-        Queries::LastTransaction.new.call(params:)
+        params = { record: transaction, date_end: params[:date_end] }
+        Queries::LastRecord.call(params:)
       end
 
       def bulk_duplicate_transactions(params:, parent_transaction:, last_transaction:, dates:)
@@ -98,7 +90,7 @@ module Transactions
           new_transaction.assign_attributes(
             parent_id:,
             date:,
-            balance_state: params[:balance_state],  # NOTE: Tells the app whether pending or calculated. We assume that transactions in the past were already reflected in current balances.
+            balance_state: params[:balance_state], # NOTE: Tells the app whether pending or calculated. We assume that transactions in the past were already reflected in current balances.
             balance: account_balance # NOTE: Only update balance if balance_state is calculated
           )
           new_transaction.repeat_count = last_transaction.repeat_count + 1 + index if parent_transaction.repeat?

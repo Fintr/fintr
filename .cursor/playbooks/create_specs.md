@@ -4,16 +4,11 @@ globs:
 alwaysApply: true
 ---
 ## Introduction
-We're creating specs using this playbook. We're doing integration specs for this one.
+We're creating spec files using this playbook. What we're doing is making sure every part of the code is well-tested so that we can ensure that the code is working correctly.
 
 ## Input
-I will add this attribute to point out the location of the file that I'm pointing out.
 
 1. LOCATION - this is where the file is located. Its specs are similar to the to the location it has. This file will be the main file and the one that is going to be created the specs for.
-
-
-## Additional Context
-check rules [creating_specs.mdc](mdc:.cursor/rules/creating_specs.mdc)
 
 ## Steps
 

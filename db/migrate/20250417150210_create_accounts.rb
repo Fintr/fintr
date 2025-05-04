@@ -10,7 +10,7 @@ class CreateAccounts < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :accounts, [ :space_id, :name ], unique: true
+    add_index :accounts, [:space_id, :name], unique: true
 
     add_reference :transactions, :account, null: false, foreign_key: true, type: :uuid
   end

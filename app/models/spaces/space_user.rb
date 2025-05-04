@@ -10,7 +10,7 @@ module Spaces
     private
 
     def user_can_only_have_one_of_each_space_type
-      return unless user && space&.type.in?([ "Spaces::PersonalSpace", "Spaces::OrganizationSpace" ])
+      return unless user && space&.type.in?(["Spaces::PersonalSpace", "Spaces::OrganizationSpace"])
 
       space_type_to_check = space.type
       existing_space_user = SpaceUser

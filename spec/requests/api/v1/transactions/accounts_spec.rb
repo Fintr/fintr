@@ -57,8 +57,8 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
       it "returns validation errors" do
         # Mock operation failure result
         errors = {
-          name: [ "can't be blank" ],
-          balance: [ "must be a positive number" ]
+          name: ["can't be blank"],
+          balance: ["must be a positive number"]
         }
         operation_result = Dry::Monads::Result::Failure.new(errors)
 
@@ -88,7 +88,7 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
 
       it "returns uniqueness validation error" do
         # Mock operation failure result for duplicate name
-        errors = { name: [ "has already been taken" ] }
+        errors = { name: ["has already been taken"] }
         operation_result = Dry::Monads::Result::Failure.new(errors)
 
         # Setup the mock to respond to call

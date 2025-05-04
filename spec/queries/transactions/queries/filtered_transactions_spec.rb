@@ -24,7 +24,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
   let!(:transaction_s2_jan20) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 1, 20), amount_cents: 3000) }
   let!(:transaction_s2_feb5) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 2, 5), amount_cents: 1500) }
 
-  let!(:first_3_transactions) { [ transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10 ] }
+  let!(:first_3_transactions) { [transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10] }
   # Define default params that meet contract requirements
   let(:default_params) do
     {
@@ -43,7 +43,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         result = described_class.call(params: default_params).value!
 
         # Compare IDs instead of full objects
-        expected_ids = [ transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10 ].map(&:id)
+        expected_ids = [transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
 
         # Check default order (date asc)
@@ -58,7 +58,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         params = default_params.merge(space_code: 'space-2')
         result = described_class.call(params: params).value!
 
-        expected_ids = [ transaction_s2_jan20, transaction_s2_feb5 ].map(&:id)
+        expected_ids = [transaction_s2_jan20, transaction_s2_feb5].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
 
         # Optionally check one specific non-included ID
@@ -80,7 +80,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         params = default_params.merge(start_date: Date.new(2024, 1, 16))
         result = described_class.call(params: params).value!
 
-        expected_ids = [ transaction_s1_feb10 ].map(&:id)
+        expected_ids = [transaction_s1_feb10].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
         expect(result.map(&:id)).not_to include(transaction_s1_jan5.id, transaction_s1_jan15.id)
       end
@@ -90,7 +90,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         params = default_params.merge(end_date: Date.new(2024, 1, 31))
         result = described_class.call(params: params).value!
 
-        expected_ids = [ transaction_s1_jan5, transaction_s1_jan15 ].map(&:id)
+        expected_ids = [transaction_s1_jan5, transaction_s1_jan15].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
         expect(result.map(&:id)).not_to include(transaction_s1_feb10.id)
       end
@@ -103,7 +103,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         )
         result = described_class.call(params: params).value!
 
-        expected_ids = [ transaction_s1_jan15 ].map(&:id)
+        expected_ids = [transaction_s1_jan15].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
         expect(result.map(&:id)).not_to include(transaction_s1_jan5.id, transaction_s1_feb10.id)
       end
@@ -114,7 +114,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         params = default_params.merge(category_name: 'Category 1')
         result = described_class.call(params: params).value!
 
-        expected_ids = [ transaction_s1_jan5, transaction_s1_feb10 ].map(&:id)
+        expected_ids = [transaction_s1_jan5, transaction_s1_feb10].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
         expect(result.map(&:id)).not_to include(transaction_s1_jan15.id)
       end
@@ -174,7 +174,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         )
         result = described_class.call(params: params).value!
 
-        expected_ids = [ transaction_s1_jan5 ].map(&:id)
+        expected_ids = [transaction_s1_jan5].map(&:id)
         expect(result.map(&:id)).to match_array(expected_ids)
         expect(result.map(&:id)).not_to include(transaction_s1_jan15.id, transaction_s1_feb10.id)
       end

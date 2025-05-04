@@ -56,7 +56,7 @@ RSpec.describe "API V1 Transaction Categories", type: :request do
 
       it "returns validation errors" do
         # Mock operation failure result
-        errors = { name: [ "can't be blank" ], category_type: [ "is invalid" ] }
+        errors = { name: ["can't be blank"], category_type: ["is invalid"] }
         operation_result = Dry::Monads::Result::Failure.new(errors)
 
         # Setup the mock to respond to call

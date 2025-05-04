@@ -16,7 +16,7 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
 
   # Mocks setup
   before do
-    allow(Auth::User).to receive(:clean_attributes).and_return([ :email, :full_name, :auth_id, :photo_url ])
+    allow(Auth::User).to receive(:clean_attributes).and_return([:email, :full_name, :auth_id, :photo_url])
     allow(Utils::Name).to receive(:possessive).with(any_args).and_call_original
     allow(Utils::Name).to receive(:possessive).with("Test User").and_return("Test User's")
     allow(Utils::Name).to receive(:possessive).with("Old Name").and_return("Old Name's")

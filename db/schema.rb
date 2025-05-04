@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_26_150955) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_01_171115) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -118,6 +118,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_26_150955) do
     t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["date", "type", "amount_currency", "amount_cents"], name: "idx_on_date_type_amount_currency_amount_cents_5ec151a267"
+    t.index ["parent_id", "date"], name: "index_transactions_on_parent_id_and_date"
     t.index ["parent_id"], name: "index_transactions_on_parent_id"
     t.index ["space_id"], name: "index_transactions_on_space_id"
     t.index ["user_id", "date", "type"], name: "index_transactions_on_user_id_and_date_and_type"
@@ -132,6 +133,38 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_26_150955) do
     t.datetime "updated_at", null: false
     t.index ["space_id", "category_type", "name"], name: "index_tx_categories_on_space_type_name", unique: true
     t.index ["space_id"], name: "index_transactions_categories_on_space_id"
+  end
+
+  create_table "transfers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "user_id", null: false
+    t.uuid "space_id", null: false
+    t.uuid "from_account_id", null: false
+    t.uuid "to_account_id", null: false
+    t.uuid "parent_id"
+    t.integer "amount_cents", default: 0, null: false
+    t.string "amount_currency", default: "USD", null: false
+    t.integer "transaction_cost_cents", default: 0, null: false
+    t.string "transaction_cost_currency", default: "USD", null: false
+    t.datetime "date", null: false
+    t.string "description"
+    t.jsonb "schedule", default: {}
+    t.enum "schedule_type", null: false, enum_type: "schedule_type"
+    t.enum "repeat_interval", enum_type: "repeat_interval"
+    t.integer "repeat_count"
+    t.enum "balance_state", default: "pending", null: false, enum_type: "balance_state"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["from_account_id", "date"], name: "index_transfers_on_from_account_id_and_date"
+    t.index ["from_account_id", "to_account_id"], name: "index_transfers_on_from_account_id_and_to_account_id"
+    t.index ["from_account_id"], name: "index_transfers_on_from_account_id"
+    t.index ["parent_id", "date"], name: "index_transfers_on_parent_id_and_date"
+    t.index ["parent_id"], name: "index_transfers_on_parent_id"
+    t.index ["space_id", "date"], name: "index_transfers_on_space_id_and_date"
+    t.index ["space_id"], name: "index_transfers_on_space_id"
+    t.index ["to_account_id", "date"], name: "index_transfers_on_to_account_id_and_date"
+    t.index ["to_account_id"], name: "index_transfers_on_to_account_id"
+    t.index ["user_id", "date"], name: "index_transfers_on_user_id_and_date"
+    t.index ["user_id"], name: "index_transfers_on_user_id"
   end
 
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -163,4 +196,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_26_150955) do
   add_foreign_key "transactions", "transactions_categories", column: "category_id"
   add_foreign_key "transactions", "users"
   add_foreign_key "transactions_categories", "spaces"
+  add_foreign_key "transfers", "accounts", column: "from_account_id"
+  add_foreign_key "transfers", "accounts", column: "to_account_id"
+  add_foreign_key "transfers", "spaces"
+  add_foreign_key "transfers", "transfers", column: "parent_id"
+  add_foreign_key "transfers", "users"
 end

@@ -2,11 +2,22 @@
 
 module Transactions
   module Queries
-    class LastTransaction < BaseQuery
+    class LastRecord < BaseQuery
       class Contract < Dry::Validation::Contract
+        ACCEPTED_RECORDS = [
+          Transactions::Transaction,
+          Transactions::Expense,
+          Transactions::Income,
+          Transactions::Transfer
+        ].freeze
+
         params do
-          required(:transaction_id).value(:string)
+          required(:record)
           required(:date_end).value(:date)
+        end
+
+        rule(:record) do
+          key.failure("must be an instance of #{ACCEPTED_RECORDS.map(&:name).map(&:demodulize).join(", ")}") unless ACCEPTED_RECORDS.include?(value.class)
         end
       end
 
@@ -14,23 +25,24 @@ module Transactions
         contract = Contract.new.call(**params)
         return Failure(contract.errors.to_h) unless contract.success?
 
-        Success()
+        Success(contract.to_h)
       end
 
-      def call(params:)
-        _           = step validate(params:)
-        relation    = step where(relation: @relation, params: params)
+      def call
+        params      = step validate(params: @params)
+        relation    = step where(relation: @relation, params:)
         relation    = step order(relation:)
         relation.first
       end
 
       def where(relation:, params:)
+        parent_id = params[:record].parent_id || params[:record].id
         relation = relation.where(
           '
-            (parent_id = :transaction_id OR id = :transaction_id)
+            (parent_id = :parent_id OR id = :parent_id)
             and date <= :date_end
           ',
-          transaction_id: params[:transaction_id],
+          parent_id:,
           date_end: params[:date_end].end_of_day
         )
         Success(relation)

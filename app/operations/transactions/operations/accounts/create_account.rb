@@ -31,6 +31,8 @@ module Transactions
             _                   = step validate(params:)
             params              = step modify_params(params:)
             account             = step create_account(params:)
+            return account if params[:balance].zero?
+
             transaction_params  = step create_transaction_params(params:, account:)
             _                   = step create_initial_balance_transaction(transaction_params:, account:)
             account

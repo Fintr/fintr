@@ -28,7 +28,7 @@ module Transactions
 
         # Validate that schedule_type is valid
         rule(:schedule_type) do
-          valid_types = [ "one_time", "repeat", "installment" ] # Explicitly include all types
+          valid_types = ["one_time", "repeat", "installment"] # Explicitly include all types
           key.failure("must be one of: #{valid_types.join(", ")}") unless valid_types.include?(value)
         end
 

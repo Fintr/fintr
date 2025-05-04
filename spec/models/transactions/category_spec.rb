@@ -86,7 +86,7 @@ RSpec.describe Transactions::Category, type: :model do
   describe '.create_default_categories' do
     # Build space without running callbacks to isolate the class method
     let(:new_space) { build(:space) }
-    let(:default_income_count) { (Transactions::Category::DEFAULT_INCOME_CATEGORIES + [ "Initial Balance" ]).count }
+    let(:default_income_count) { (Transactions::Category::DEFAULT_INCOME_CATEGORIES + ["Initial Balance"]).count }
     let(:default_expense_count) { Transactions::Category::DEFAULT_EXPENSE_CATEGORIES.count }
 
     before do
@@ -114,7 +114,7 @@ RSpec.describe Transactions::Category, type: :model do
       income_names = new_space.categories.income.pluck(:name)
       expense_names = new_space.categories.expense.pluck(:name)
 
-      expect(income_names).to match_array(Transactions::Category::DEFAULT_INCOME_CATEGORIES + [ "Initial Balance" ])
+      expect(income_names).to match_array(Transactions::Category::DEFAULT_INCOME_CATEGORIES + ["Initial Balance"])
       expect(expense_names).to match_array(Transactions::Category::DEFAULT_EXPENSE_CATEGORIES)
     end
 

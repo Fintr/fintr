@@ -16,7 +16,7 @@ class CreateTransactionsCategories < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :transactions_categories, [ :space_id, :category_type, :name ], unique: true, name: 'index_tx_categories_on_space_type_name'
+    add_index :transactions_categories, [:space_id, :category_type, :name], unique: true, name: 'index_tx_categories_on_space_type_name'
 
     add_reference :transactions, :category, null: false, foreign_key: { to_table: :transactions_categories }, type: :uuid
   end
