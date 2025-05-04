@@ -4,12 +4,6 @@ require 'rails_helper'
 
 RSpec.describe Transactions::Transfer, type: :model do
   describe 'associations' do
-    it { is_expected.to belong_to(:user).class_name("Auth::User") }
-    it { is_expected.to belong_to(:space).class_name("Spaces::Space") }
-    it { is_expected.to belong_to(:from_account).class_name("Transactions::Account") }
-    it { is_expected.to belong_to(:to_account).class_name("Transactions::Account") }
-    it { is_expected.to belong_to(:parent).class_name("Transactions::Transfer").optional }
-
     # For association tests, we'll check the reflections directly instead of using shoulda matchers
     # This avoids issues with validation callbacks
     it 'belongs to user as Auth::User' do

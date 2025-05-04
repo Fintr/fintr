@@ -16,6 +16,7 @@ Rails.application.routes.draw do
       scope path: "transactions", module: "transactions" do
         resources :categories, only: [:create]
         resources :accounts, only: [:create]
+        resources :transfers, only: [:create]
       end
 
       resource :dashboard, only: [:show]

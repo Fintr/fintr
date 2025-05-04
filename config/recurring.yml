@@ -3,6 +3,10 @@ development:
     class: Transactions::CheckDuplicateTodayJob
     queue: default
     schedule: every minute
+  transfers_check_duplicate_today:
+    class: Transactions::Transfers::CheckDuplicateTodayJob
+    queue: default
+    schedule: every minute
   accounts_calculate_pending_balances:
     class: Transactions::Accounts::CalculatePendingBalancesJob
     queue: default
@@ -17,11 +21,15 @@ production:
     class: Transactions::CheckDuplicateTodayJob
     queue: default
     schedule: '@midnight Asia/Manila'
-  calculate_pending_balances:
-    class: Transactions::Accounts::CalculatePendingBalancesJob
+  transfers_check_duplicate_today:
+    class: Transactions::Transfers::CheckDuplicateTodayJob
     queue: default
     schedule: '@midnight Asia/Manila'
+  accounts_calculate_pending_balances:
+    class: Transactions::Accounts::CalculatePendingBalancesJob
+    queue: default
+    schedule: '15 0 * * * Asia/Manila'
   transfers_calculate_pending_balances:
     class: Transactions::Transfers::CalculatePendingBalancesJob
     queue: default
-    schedule: '15 0 * * *  Asia/Manila'
+    schedule: '30 0 * * * Asia/Manila'
