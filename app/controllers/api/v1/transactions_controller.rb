@@ -4,13 +4,13 @@ module Api
   module V1
     class TransactionsController < ApiController
       def index
-        query = ::Transactions::Queries::FilteredTransactions.call(params: filter_params)
+        query = ::Transactions::Queries::FilteredCombined.call(params: filter_params)
 
         return render_internal_server_error(details: query.failure) unless query.success?
 
         render_paginated(
           query.value!,
-          serializer: ::Transactions::Serializers::FilteredTransactions,
+          serializer: ::Transactions::Serializers::FilteredCombinedSerializer,
           key: :transactions
         )
       end

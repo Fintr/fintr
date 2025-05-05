@@ -59,3 +59,5 @@ group :development, :test do
 end
 
 gem "aws-sdk-s3", "~> 1.183"
+
+gem "scenic", "~> 1.8"

@@ -407,6 +407,9 @@ GEM
       lint_roller (~> 1.1)
       rubocop (~> 1.72, >= 1.72.1)
     ruby-progressbar (1.13.0)
+    scenic (1.8.0)
+      activerecord (>= 4.0.0)
+      railties (>= 4.0.0)
     securerandom (0.4.1)
     sentry-rails (5.23.0)
       railties (>= 5.0)
@@ -499,6 +502,7 @@ DEPENDENCIES
   rubocop-performance
   rubocop-rails-omakase
   rubocop-rspec
+  scenic (~> 1.8)
   sentry-rails
   sentry-ruby
   shoulda-matchers

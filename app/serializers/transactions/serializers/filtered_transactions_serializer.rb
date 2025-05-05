@@ -2,7 +2,7 @@
 
 module Transactions
   module Serializers
-    class FilteredTransactions < Blueprinter::Base
+    class FilteredTransactionsSerializer < Blueprinter::Base
       identifier :id
 
       fields :date,
@@ -23,6 +23,8 @@ module Transactions
           "income"
         elsif transaction.type == "Transactions::Expense"
           "expense"
+        elsif transaction.type == "Transactions::Transfer"
+          "transfer"
         end
       end
     end

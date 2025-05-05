@@ -12,6 +12,8 @@ class BaseQuery < Dry::Operation
     new(**kwargs).call
   end
 
+  private
+
   def paginate(relation, params)
     return Success(relation) if params[:page].blank?
 

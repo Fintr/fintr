@@ -43,7 +43,8 @@ module Transactions
         relation = step by_amount(relation, params)
         relation = step select(relation)
         relation = step order(relation)
-        step paginate(relation, params)
+        relation = step paginate(relation, params)
+        relation
       end
 
       def joins(relation)
@@ -66,8 +67,9 @@ module Transactions
           "transactions.balance_cents as balance_cents",
           "transactions.balance_currency as balance_currency",
           "description",
-          "type",
-          "accounts.name as account_name",
+          "transactions.type as transaction_type",
+          "NULL as from_account_name",
+          "accounts.name as to_account_name",
           "transactions_categories.name as category_name",
         )
         Success(relation)
@@ -75,26 +77,6 @@ module Transactions
         Failure(:select_error)
       end
 
-      def by_space(relation, params)
-        Success(relation.where(spaces: { code: params[:space_code] }))
-      rescue StandardError => e
-        Failure(:by_space_error)
-      end
-
-      def by_date(relation, params)
-        return Success(relation) if params[:start_date].blank? && params[:end_date].blank?
-
-        relation = if params[:start_date].present? && params[:end_date].blank?
-          relation.where(date: params[:start_date]..)
-        elsif params[:start_date].blank? && params[:end_date].present?
-          relation.where(date: ..params[:end_date])
-        else
-          relation.where(date: params[:start_date]..params[:end_date])
-        end
-        Success(relation)
-      rescue StandardError
-        Failure(:by_date_error)
-      end
 
       def by_category(relation, params)
         return Success(relation) if ["all", ""].include?(params[:category_name])
@@ -103,19 +85,10 @@ module Transactions
         Success(relation)
       end
 
-      def by_amount(relation, params)
-        return Success(relation) unless params[:min_amount] || params[:max_amount]
-
-        min_amount = params[:min_amount]&.to_d&.*(100) || 0
-        max_amount = params[:max_amount] ? params[:max_amount]&.to_d&.*(100) : Float::INFINITY
-        relation = relation.where(amount_cents: min_amount...max_amount)
-        Success(relation)
-      end
-
       def order(relation)
         relation =  relation.order(
                       date: :desc,
-                      type: :desc,
+                      transaction_type: :desc,
                       amount_currency: :asc,
                       amount_cents: :desc
                     )

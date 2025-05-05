@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_01_171115) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_05_125212) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -201,4 +201,40 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_01_171115) do
   add_foreign_key "transfers", "spaces"
   add_foreign_key "transfers", "transfers", column: "parent_id"
   add_foreign_key "transfers", "users"
+
+  create_view "combined_transactions", sql_definition: <<-SQL
+      SELECT 'Transactions::Transfer'::character varying AS transactable_type,
+      transfers.id AS transactable_id,
+      transfers.space_id,
+      transfers.date,
+      transfers.amount_cents,
+      transfers.amount_currency,
+      transfers.description,
+      to_accounts.name AS to_account_name,
+      from_accounts.name AS from_account_name,
+      NULL::character varying AS balance_cents,
+      NULL::integer AS balance_currency,
+      NULL::character varying AS category_name
+     FROM (((transfers
+       JOIN spaces ON ((spaces.id = transfers.space_id)))
+       JOIN accounts to_accounts ON ((to_accounts.id = transfers.to_account_id)))
+       JOIN accounts from_accounts ON ((from_accounts.id = transfers.from_account_id)))
+  UNION ALL
+   SELECT transactions.type AS transactable_type,
+      transactions.id AS transactable_id,
+      transactions.space_id,
+      transactions.date,
+      transactions.amount_cents,
+      transactions.amount_currency,
+      transactions.description,
+      NULL::character varying AS to_account_name,
+      accounts.name AS from_account_name,
+      transactions_categories.name AS balance_cents,
+      transactions.balance_cents AS balance_currency,
+      transactions.balance_currency AS category_name
+     FROM (((transactions
+       JOIN accounts ON ((accounts.id = transactions.account_id)))
+       JOIN spaces ON ((spaces.id = transactions.space_id)))
+       JOIN transactions_categories ON ((transactions_categories.id = transactions.category_id)));
+  SQL
 end
