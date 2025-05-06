@@ -56,7 +56,7 @@ RSpec.describe Transactions::Account, type: :model do
       end
 
       it 'returns only accounts with default names within the specific space' do
-        default_account_names = Transactions::Account::DEFAULT_ACCOUNT_NAMES
+        default_account_names = Transactions::Account::DEFAULT_ACCOUNT_MAPPING.values
         expect(described_class.where(space: space).default.pluck(:name)).to match_array(default_account_names)
         expect(described_class.where(space: space).default).not_to include(custom_account)
         expect(described_class.where(space: another_space).default).not_to include(custom_account_in_another_space)
@@ -66,7 +66,7 @@ RSpec.describe Transactions::Account, type: :model do
 
   describe '.create_default_accounts' do
     let(:space) { create(:space) }
-    let(:all_default_names) { Transactions::Account::DEFAULT_ACCOUNT_NAMES }
+    let(:all_default_names) { Transactions::Account::DEFAULT_ACCOUNT_MAPPING.values }
 
     it 'creates accounts with default names for the given space' do
       expect do
@@ -79,7 +79,7 @@ RSpec.describe Transactions::Account, type: :model do
 
     it 'does not create duplicate accounts if they already exist' do
       # Create one default account beforehand in the specific space
-      create(:account, name: Transactions::Account::DEFAULT_ACCOUNT_NAMES.first, space: space)
+      create(:account, name: Transactions::Account::DEFAULT_ACCOUNT_MAPPING.values.first, space: space)
 
       expect do
         described_class.create_default_accounts(space)

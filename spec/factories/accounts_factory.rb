@@ -6,5 +6,6 @@ FactoryBot.define do
     association :space
     balance_cents { 10000 }
     balance_currency { "PHP" }
+    account_category { "cash" }
   end
 end

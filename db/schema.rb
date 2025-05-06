@@ -17,6 +17,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_05_125212) do
 
   # Custom types defined in this database.
   # Note that some types may not work with other database engines. Be careful if changing database.
+  create_enum "account_category", ["cash", "savings", "debit", "credit_card", "e_wallet", "loan", "investment"]
   create_enum "balance_state", ["pending", "calculated"]
   create_enum "category_type_enum", ["income", "expense"]
   create_enum "repeat_interval", ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
@@ -27,6 +28,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_05_125212) do
     t.string "name", null: false
     t.integer "balance_cents", default: 0, null: false
     t.string "balance_currency", default: "USD", null: false
+    t.enum "account_category", null: false, enum_type: "account_category"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["space_id", "name"], name: "index_accounts_on_space_id_and_name", unique: true
