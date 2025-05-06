@@ -15,7 +15,7 @@ module Api
         private
 
         def create_params
-          params.permit(:name, :balance)
+          params.permit(:name, :balance, :account_category)
         end
       end
     end

@@ -9,11 +9,16 @@ module Transactions
             required(:space_id).value(:string)
             required(:name).value(:string)
             required(:balance).value(:decimal)
+            required(:account_category).value(:string)
           end
 
           rule(:balance) do
             key.failure("must be a positive number") if value.negative?
             key.failure("must have a maximum of 2 decimal places") if value.to_s.split(".").last.length > 2
+          end
+
+          rule(:account_category) do
+            key.failure("must be a valid account category") unless Transactions::Account.account_categories.values.include?(value)
           end
         end
 
@@ -45,7 +50,14 @@ module Transactions
         end
 
         def create_account(params:)
-          account = Transactions::Account.new(params.slice(:space_id, :name, :balance_currency))
+          account = Transactions::Account.new(
+            params.slice(
+              :space_id,
+              :name,
+              :balance_currency,
+              :account_category
+            )
+          )
           account.save!
           Success(account)
         rescue ActiveRecord::RecordInvalid => e
