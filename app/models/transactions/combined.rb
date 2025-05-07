@@ -6,11 +6,10 @@ module Transactions
 
     belongs_to :space, class_name: "Spaces::Space"
     belongs_to :category, class_name: "Transactions::Category", optional: true
-    belongs_to :from_account, class_name: "Accounts::Account", optional: true
-    belongs_to :to_account, class_name: "Accounts::Account", optional: true
+    belongs_to :from_account, class_name: "Transactions::Account", optional: true
+    belongs_to :to_account, class_name: "Transactions::Account", optional: true
 
     belongs_to :transactable, polymorphic: true
-
 
     monetize :amount_cents, allow_nil: false
     monetize :balance_cents, allow_nil: true

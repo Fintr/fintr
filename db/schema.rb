@@ -214,8 +214,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_05_125212) do
       transfers.description,
       to_accounts.name AS to_account_name,
       from_accounts.name AS from_account_name,
-      NULL::character varying AS balance_cents,
-      NULL::integer AS balance_currency,
+      NULL::integer AS balance_cents,
+      NULL::character varying AS balance_currency,
       NULL::character varying AS category_name
      FROM (((transfers
        JOIN spaces ON ((spaces.id = transfers.space_id)))
@@ -229,11 +229,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_05_125212) do
       transactions.amount_cents,
       transactions.amount_currency,
       transactions.description,
-      NULL::character varying AS to_account_name,
-      accounts.name AS from_account_name,
-      transactions_categories.name AS balance_cents,
-      transactions.balance_cents AS balance_currency,
-      transactions.balance_currency AS category_name
+          CASE
+              WHEN ((transactions.type)::text = 'Transactions::Income'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS to_account_name,
+          CASE
+              WHEN ((transactions.type)::text = 'Transactions::Expense'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS from_account_name,
+      transactions.balance_cents,
+      transactions.balance_currency,
+      transactions_categories.name AS category_name
      FROM (((transactions
        JOIN accounts ON ((accounts.id = transactions.account_id)))
        JOIN spaces ON ((spaces.id = transactions.space_id)))

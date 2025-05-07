@@ -22,11 +22,17 @@ UNION ALL
        transactions.amount_cents,
        transactions.amount_currency, 
        transactions.description, 
-       NULL as to_account_name, 
-       accounts.name as from_account_name, 
-       transactions_categories.name as category_name,
+       CASE 
+         WHEN transactions.type = 'Transactions::Income' THEN accounts.name
+         ELSE NULL 
+       END as to_account_name,
+       CASE 
+         WHEN transactions.type = 'Transactions::Expense' THEN accounts.name
+         ELSE NULL 
+       END as from_account_name,
        transactions.balance_cents,
-       transactions.balance_currency
+       transactions.balance_currency,
+       transactions_categories.name as category_name
   FROM transactions
   JOIN accounts ON accounts.id = transactions.account_id
   JOIN spaces ON spaces.id = transactions.space_id

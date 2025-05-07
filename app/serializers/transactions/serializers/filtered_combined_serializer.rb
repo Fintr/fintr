@@ -20,13 +20,13 @@ module Transactions
       end
 
       field :type do |record|
-        if record.transactable_type == "Transactions::Income"
-          "income"
-        elsif record.transactable_type == "Transactions::Expense"
-          "expense"
-        elsif record.transactable_type == "Transactions::Transfer"
-          "transfer"
-        end
+        type_mapping = {
+          "Transactions::Income" => "income",
+          "Transactions::Expense" => "expense",
+          "Transactions::Transfer" => "transfer"
+        }
+
+        type_mapping[record.transactable_type]
       end
     end
   end
