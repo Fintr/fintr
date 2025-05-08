@@ -11,6 +11,7 @@ module Spaces
     has_many :income_categories, -> { income }, class_name: "Transactions::Category"
     has_many :expense_categories, -> { expense }, class_name: "Transactions::Category"
     has_many :accounts, class_name: "Transactions::Account", dependent: :destroy
+    has_many :budgets, class_name: "Budget", dependent: :destroy
 
     validates :name, presence: true
     validates :code, presence: true, uniqueness: true
@@ -23,6 +24,10 @@ module Spaces
 
     def create_default_accounts
       Transactions::Account.create_default_accounts(self)
+    end
+
+    def create_starting_budgets
+      Budget.create_starting_budgets(self)
     end
   end
 end

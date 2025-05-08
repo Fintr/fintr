@@ -20,7 +20,7 @@ RSpec.describe Transactions::Transfers::CheckDuplicateTodayJob, type: :job do
 
     context 'when transfer has no schedule' do
       it 'does not call DuplicateTransferJob' do
-        expect(DuplicateTransferJob).not_to receive(:perform_later)
+        expect(DuplicateTransferJob).not_to receive(:perform_later) # rubocop:disable RSpec/MessageSpies
 
         job.perform
       end
@@ -34,7 +34,7 @@ RSpec.describe Transactions::Transfers::CheckDuplicateTodayJob, type: :job do
       end
 
       it 'calls DuplicateTransferJob with transfer id' do
-        expect(DuplicateTransferJob).to receive(:perform_later).with(transfer.id)
+        expect(DuplicateTransferJob).to receive(:perform_later).with(transfer.id) # rubocop:disable RSpec/MessageSpies
 
         job.perform
       end
@@ -50,7 +50,7 @@ RSpec.describe Transactions::Transfers::CheckDuplicateTodayJob, type: :job do
       end
 
       it 'does not call DuplicateTransferJob' do
-        expect(DuplicateTransferJob).not_to receive(:perform_later)
+        expect(DuplicateTransferJob).not_to receive(:perform_later) # rubocop:disable RSpec/MessageSpies
 
         job.perform
       end

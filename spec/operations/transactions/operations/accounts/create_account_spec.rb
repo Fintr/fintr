@@ -24,12 +24,14 @@ RSpec.describe Transactions::Operations::Accounts::CreateAccount do
 
       let(:account) { build(:account, name: "Savings Account", space: space) }
 
-      it 'creates a new account successfully' do
-        expect(operation_class).to receive(:new).and_return(operation)
-        expect(operation).to receive(:call).with(params: params).and_return(
+      before do
+        allow(operation_class).to receive(:new).and_return(operation)
+        allow(operation).to receive(:call).with(params: params).and_return(
           Dry::Monads::Result::Success.new(account)
         )
+      end
 
+      it 'creates a new account successfully' do
         result = operation_class.new.call(params: params)
         expect(result).to be_success
         expect(result.value!).to eq(account)

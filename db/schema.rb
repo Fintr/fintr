@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_05_125212) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_08_140559) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -61,6 +61,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_05_125212) do
     t.uuid "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "budgets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "space_id", null: false
+    t.uuid "category_id", null: false
+    t.integer "amount_cents", default: 0, null: false
+    t.string "amount_currency", default: "USD", null: false
+    t.integer "spent_cents", default: 0, null: false
+    t.string "spent_currency", default: "USD", null: false
+    t.date "date", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["amount_cents", "amount_currency"], name: "index_budgets_on_amount_cents_and_amount_currency"
+    t.index ["category_id"], name: "index_budgets_on_category_id"
+    t.index ["space_id", "category_id", "date"], name: "index_budgets_on_space_id_and_category_id_and_date", unique: true
+    t.index ["space_id"], name: "index_budgets_on_space_id"
+    t.index ["spent_cents", "spent_currency"], name: "index_budgets_on_spent_cents_and_spent_currency"
   end
 
   create_table "roles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -191,6 +208,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_05_125212) do
   add_foreign_key "accounts", "spaces"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "budgets", "spaces"
+  add_foreign_key "budgets", "transactions_categories", column: "category_id"
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
   add_foreign_key "transactions", "accounts"

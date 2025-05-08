@@ -15,6 +15,10 @@ development:
     class: Transactions::Transfers::CalculatePendingBalancesJob
     queue: default
     schedule: 'every 2 minutes'
+  budgets_create_space_monthly_budgets:
+    class: Budgets::CreateSpaceMonthlyBudgetsJob
+    queue: default
+    schedule: 'every 1 minute'
 
 production:
   check_duplicate_today:
@@ -33,3 +37,7 @@ production:
     class: Transactions::Transfers::CalculatePendingBalancesJob
     queue: default
     schedule: '30 0 * * * Asia/Manila'
+  budgets_create_space_monthly_budgets:
+    class: Budgets::CreateSpaceMonthlyBudgetsJob
+    queue: default
+    schedule: '45 0 * * * Asia/Manila'
