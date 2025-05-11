@@ -20,7 +20,7 @@ jobs:
           bundler-cache: true
 
       - name: Scan for common Rails security vulnerabilities using static analysis
-        run: bin/brakeman --no-pager
+        run: bin/brakeman --no-pager --no-exit-on-update
 
   lint:
     runs-on: ubuntu-latest
@@ -39,7 +39,9 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432
     services:
       postgres:
         image: postgres
@@ -49,13 +51,7 @@ jobs:
         ports:
           - 5432:5432
         options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
-
-      # redis:
-      #   image: redis
-      #   ports:
-      #     - 6379:6379
-      #   options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-
+    
     steps:
       - name: Install packages
         run: sudo apt-get update && sudo apt-get install --no-install-recommends -y build-essential git libpq-dev libyaml-dev pkg-config
@@ -69,9 +65,8 @@ jobs:
           ruby-version: 3.4.2
           bundler-cache: true
 
+      - name: Set up database
+        run: RAILS_ENV=test bundle exec rails db:create db:migrate
+
       - name: Run specs
-        env:
-          RAILS_ENV: test
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432
-          # REDIS_URL: redis://localhost:6379/0
         run: bundle exec rspec 
