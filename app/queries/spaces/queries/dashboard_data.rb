@@ -19,20 +19,23 @@ module Spaces
 
       def call
         _        = step validate(params)
-        relation = includes(@relation)
-        relation = by_space_code(relation, params)
+        relation = step includes(@relation)
+        relation = step by_space_code(relation, params)
         relation.first
       end
 
       def by_space_code(relation, params)
-        @relation.where(code: params[:space_code])
+        Success(
+          relation.where(code: params[:space_code])
+        )
       end
 
       def includes(relation)
-        relation.includes(
+        relation = relation.includes(
           :categories,
-          :accounts,
+          :accounts
         )
+        Success(relation)
       end
     end
   end

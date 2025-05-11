@@ -80,12 +80,12 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
 
       it 'calls joins with the correct tables' do
         # Verify the join query
-        expect(mock_relation).to receive(:joins).with(
+        expect(mock_relation).to receive(:joins).with( # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
           "INNER JOIN spaces ON spaces.id = combined_transactions.space_id",
           "INNER JOIN transactions_categories ON transactions_categories.id = combined_transactions.category_id",
           "INNER JOIN accounts as to_accounts ON to_accounts.id = combined_transactions.to_account_id",
           "INNER JOIN accounts as from_accounts ON from_accounts.id = combined_transactions.from_account_id"
-        ).and_return(mock_relation) # rubocop:disable RSpec/MessageSpies
+        ).and_return(mock_relation)
 
         described_class.new(relation: mock_relation, params: default_params).call
       end
@@ -95,7 +95,7 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
         allow(Spaces::Space).to receive(:find_by).with(code: 'space-1').and_return(space1)
 
         # Verify the space filtering
-        expect(mock_relation).to receive(:where).with(space: space1).and_return(mock_relation)# rubocop:disable RSpec/MessageSpies
+        expect(mock_relation).to receive(:where).with(space: space1).and_return(mock_relation) # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
 
         described_class.new(relation: mock_relation, params: default_params).call
       end
@@ -104,7 +104,7 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
         allow(Spaces::Space).to receive(:find_by).with(code: 'space-1').and_return(space1)
 
         # Verify date filtering - note that the implementation uses a Range object
-        expect(mock_relation).to receive(:where).with(date: Date.new(2024, 1, 1)..Date.new(2024, 2, 28)) # rubocop:disable RSpec/MessageSpies
+        expect(mock_relation).to receive(:where).with(date: Date.new(2024, 1, 1)..Date.new(2024, 2, 28)) # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
           .and_return(mock_relation)
 
         described_class.new(relation: mock_relation, params: default_params).call
@@ -115,7 +115,7 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
 
         # Test category filtering
         params = default_params.merge(category_name: 'Category 1')
-        expect(mock_relation).to receive(:where).with(transactions_categories: { name: 'Category 1' }) # rubocop:disable RSpec/MessageSpies
+        expect(mock_relation).to receive(:where).with(transactions_categories: { name: 'Category 1' }) # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
           .and_return(mock_relation)
 
         described_class.new(relation: mock_relation, params: params).call
@@ -125,11 +125,11 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
         allow(Spaces::Space).to receive(:find_by).with(code: 'space-1').and_return(space1)
 
         # Verify ordering
-        expect(mock_relation).to receive(:order).with(
+        expect(mock_relation).to receive(:order).with( # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
           date: :desc,
           transactable_type: :desc,
           amount_cents: :desc
-        ).and_return(mock_relation) # rubocop:disable RSpec/MessageSpies
+        ).and_return(mock_relation)
 
         described_class.new(relation: mock_relation, params: default_params).call
       end
@@ -138,8 +138,8 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
         allow(Spaces::Space).to receive(:find_by).with(code: 'space-1').and_return(space1)
 
         # Verify pagination
-        expect(mock_relation).to receive(:page).with(1).and_return(mock_relation) # rubocop:disable RSpec/MessageSpies
-        expect(mock_relation).to receive(:per).with(25).and_return(mock_relation) # rubocop:disable RSpec/MessageSpies
+        expect(mock_relation).to receive(:page).with(1).and_return(mock_relation) # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
+        expect(mock_relation).to receive(:per).with(25).and_return(mock_relation) # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
 
         described_class.new(relation: mock_relation, params: default_params).call
       end
@@ -149,8 +149,8 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
 
         # Verify custom pagination
         params = default_params.merge(per_page: 10)
-        expect(mock_relation).to receive(:page).with(1).and_return(mock_relation) # rubocop:disable RSpec/MessageSpies
-        expect(mock_relation).to receive(:per).with(10).and_return(mock_relation) # rubocop:disable RSpec/MessageSpies
+        expect(mock_relation).to receive(:page).with(1).and_return(mock_relation) # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
+        expect(mock_relation).to receive(:per).with(10).and_return(mock_relation) # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
 
         described_class.new(relation: mock_relation, params: params).call
       end
@@ -160,7 +160,7 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
 
         # Test min_amount filtering - using exclusive range with lower bound
         params = default_params.merge(min_amount: 15)
-        expect(mock_relation).to receive(:where).with(amount_cents: 1500...Float::INFINITY) # rubocop:disable RSpec/MessageSpies
+        expect(mock_relation).to receive(:where).with(amount_cents: 1500...Float::INFINITY) # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
           .and_return(mock_relation)
 
         described_class.new(relation: mock_relation, params: params).call
@@ -171,7 +171,7 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
 
         # Test max_amount filtering - using exclusive range with upper bound
         params = default_params.merge(max_amount: 10)
-        expect(mock_relation).to receive(:where).with(amount_cents: 0...1000) # rubocop:disable RSpec/MessageSpies
+        expect(mock_relation).to receive(:where).with(amount_cents: 0...1000) # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
           .and_return(mock_relation)
 
         described_class.new(relation: mock_relation, params: params).call
@@ -182,7 +182,7 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
 
         # Test both min and max filtering - using exclusive range with both bounds
         params = default_params.merge(min_amount: 5, max_amount: 10)
-        expect(mock_relation).to receive(:where).with(amount_cents: 500...1000) # rubocop:disable RSpec/MessageSpies
+        expect(mock_relation).to receive(:where).with(amount_cents: 500...1000) # rubocop:disable RSpec/MessageSpies, RSpec/StubbedMock
           .and_return(mock_relation)
 
         described_class.new(relation: mock_relation, params: params).call
