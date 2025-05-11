@@ -58,6 +58,6 @@ group :development, :test do
   gem "factory_bot_rails"
 end
 
-gem "aws-sdk-s3", "~> 1.183"
+gem "aws-sdk-s3", "~> 1.185"
 
 gem "scenic", "~> 1.8"
