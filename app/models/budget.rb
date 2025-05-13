@@ -44,7 +44,10 @@ class Budget < ApplicationRecord
   end
 
   def only_one_category_for_month
-    return if Budget.where(space:, category:).for_month(date).empty?
+    return if Budget.where(space:, category:)
+                    .for_month(date)
+                    .where.not(id:)
+                    .empty?
 
     errors.add(:category, "must be the only expense category for the month")
   end

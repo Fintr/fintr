@@ -19,3 +19,7 @@ We're creating spec files using this playbook. What we're doing is making sure e
 5. Test the spec. Run `bundle exec rspec <location>`
 6. If it succeeds, end your session.
 7. If it fails, review the errors and make the necessary changes to pass the tests. Then do step 5. Do this until the 3rd attempt. If it still fails, end the session.
+
+
+## Considerations
+1. Controllers - If it's a controller like `app/controllers/api/v1/budgets_controller.rb`, you should do request specs instead of controller specs. Consider the established in `.cursor/rules/specs/request_specs.mdc`.
