@@ -9,7 +9,7 @@ module Api
       before_action :current_space
 
       def current_space
-        return render_unauthorized(message: "No space code provided") unless space_code = request.headers["X-Space-Code"]
+        render_unauthorized(message: "No space code provided") and return unless space_code = request.headers["X-Space-Code"]
 
         space = Rails.cache.fetch("current_space_#{space_code}", expires_in: 15.minutes) do
           Spaces::Space.find_by(code: space_code)

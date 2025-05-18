@@ -29,7 +29,7 @@ RSpec.describe Budgets::Operations::UpdateBudget do
       let(:valid_params) do
         {
           id: success_case_budget.id.to_s,
-          space_code: space.code,
+          space_id: space.id,
           amount: 1500
         }
       end
@@ -74,7 +74,7 @@ RSpec.describe Budgets::Operations::UpdateBudget do
       context 'when id is missing' do
         subject(:call_operation) { operation.call(params_missing_id) }
 
-        let(:params_missing_id) { { space_code: space.code, amount: 1500 } }
+        let(:params_missing_id) { { space_id: space.id, amount: 1500 } }
 
         it { is_expected.to be_failure }
 
@@ -83,22 +83,22 @@ RSpec.describe Budgets::Operations::UpdateBudget do
         end
       end
 
-      context 'when space_code is missing' do
-        subject(:call_operation) { operation.call(params_missing_space_code) }
+      context 'when space_id is missing' do
+        subject(:call_operation) { operation.call(params_missing_space_id) }
 
-        let(:params_missing_space_code) { { id: general_existing_budget.id.to_s, amount: 1500 } }
+        let(:params_missing_space_id) { { id: general_existing_budget.id.to_s, amount: 1500 } }
 
         it { is_expected.to be_failure }
 
-        it 'returns a failure with space_code missing error' do
-          expect(call_operation.failure).to eq({ space_code: ['is missing'] })
+        it 'returns a failure with space_id missing error' do
+          expect(call_operation.failure).to eq({ space_id: ['is missing'] })
         end
       end
 
       context 'when amount is missing' do
         subject(:call_operation) { operation.call(params_missing_amount) }
 
-        let(:params_missing_amount) { { id: general_existing_budget.id.to_s, space_code: space.code } }
+        let(:params_missing_amount) { { id: general_existing_budget.id.to_s, space_id: space.id } }
 
         it { is_expected.to be_failure }
 
@@ -110,7 +110,7 @@ RSpec.describe Budgets::Operations::UpdateBudget do
       context 'when amount is not an integer' do
         subject(:call_operation) { operation.call(params_invalid_amount) }
 
-        let(:params_invalid_amount) { { id: general_existing_budget.id.to_s, space_code: space.code, amount: 'not-an-integer' } }
+        let(:params_invalid_amount) { { id: general_existing_budget.id.to_s, space_id: space.id, amount: 'not-an-integer' } }
 
         it { is_expected.to be_failure }
 
@@ -126,7 +126,7 @@ RSpec.describe Budgets::Operations::UpdateBudget do
       let(:params_with_non_existent_id) do
         {
           id: 'non-existent-id',
-          space_code: space.code,
+          space_id: space.id,
           amount: 1500
         }
       end
@@ -135,6 +135,32 @@ RSpec.describe Budgets::Operations::UpdateBudget do
 
       it 'returns a failure with id not found error' do
         expect(call_operation.failure).to eq({ id: 'not found' })
+      end
+    end
+
+    context 'when the budget does not belong to the workspace' do
+      subject(:call_operation) { operation.call(params_for_wrong_workspace) }
+
+      let!(:other_space) { create(:space) } # Create a different space
+      let!(:budget_in_other_space) { create(:budget, space: other_space, amount: 500) }
+
+      let(:params_for_wrong_workspace) do
+        {
+          id: budget_in_other_space.id.to_s,
+          space_id: space.id, # Current user's space, but budget is in other_space
+          amount: 1500
+        }
+      end
+
+      before do
+        # Ensure Budget.find returns the budget from the other space
+        allow(Budget).to receive(:find).with(budget_in_other_space.id.to_s).and_return(budget_in_other_space)
+      end
+
+      it { is_expected.to be_failure }
+
+      it 'returns a failure with budget not for workspace error' do
+        expect(call_operation.failure).to eq({ id: 'budget not for workspace' })
       end
     end
 
@@ -147,7 +173,7 @@ RSpec.describe Budgets::Operations::UpdateBudget do
       let(:valid_params_for_save_fail) do
         {
           id: general_existing_budget.id.to_s,
-          space_code: space.code,
+          space_id: space.id,
           amount: amount_for_save_fail
         }
       end

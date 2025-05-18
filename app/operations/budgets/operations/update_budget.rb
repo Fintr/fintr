@@ -6,7 +6,7 @@ module Budgets
       class Contract < Dry::Validation::Contract
         params do
           required(:id).value(:string)
-          required(:space_code).value(:string)
+          required(:space_id).value(:string)
           required(:amount).value(:integer)
         end
       end
@@ -21,6 +21,7 @@ module Budgets
       def call(params)
         params = step validate(params:)
         budget = step find_budget(params:)
+        budget = step validate_budget(budget:, params:)
         params = step update_params(params:)
         budget = step update_budget(budget:, params:)
         budget.reload
@@ -33,6 +34,12 @@ module Budgets
         Failure(id: "not found")
       end
 
+      def validate_budget(budget:, params:)
+        return Failure(id: "budget not for workspace") unless budget.space_id == params[:space_id]
+
+        Success(budget)
+      end
+
       def update_params(params:)
         params[:amount_cents] = params[:amount] * 100
         params[:amount_currency] = "PHP"
@@ -42,7 +49,8 @@ module Budgets
       end
 
       def update_budget(budget:, params:)
-        budget.save!(**params.slice(:amount_cents, :amount_currency))
+        budget.assign_attributes(**params.slice(:amount_cents, :amount_currency))
+        budget.save!
         Success(budget)
       rescue StandardError
         Failure(**budget.errors.to_hash)
