@@ -6,6 +6,8 @@ module Api
       class PrivateController < ApiController
         before_action :authorize
 
+        skip_before_action :current_space
+
         def private
           personal_space = current_user.personal_spaces.first
           organization_spaces = current_user.organization_spaces
