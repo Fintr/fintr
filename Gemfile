@@ -13,7 +13,7 @@ gem "bootsnap", require: false
 gem "thruster", require: false
 gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
-gem "kamal", "~> 2.5"
+gem "kamal", "~> 2.6"
 
 # DRY Operations, Validation
 gem "dry-operation", "~> 1.0"
