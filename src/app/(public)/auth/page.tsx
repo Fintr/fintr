@@ -1,0 +1,32 @@
+"use client";
+import React, { useState } from "react";
+import AuthPage from "@/components/auth/auth-page";
+import AuthToggle from "@/components/auth/auth-toggle";
+
+const Auth = () => {
+  const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
+
+  const handleBack = () => {
+    window.location.href = "/";
+  };
+
+  const handleToggle = (tab: "login" | "signup") => {
+    setActiveTab(tab);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#FAF9F6] py-12">
+      <div className="container mx-auto px-4">
+        <AuthPage
+          onBack={handleBack}
+          isLogin={activeTab === "login"}
+          authToggle={
+            <AuthToggle activeTab={activeTab} onToggle={handleToggle} />
+          }
+        />
+      </div>
+    </div>
+  );
+};
+
+export default Auth;
