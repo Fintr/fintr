@@ -60,4 +60,5 @@ group :development, :test do
   gem "rspec-rails"
   gem "shoulda-matchers"
   gem "factory_bot_rails"
+  gem "simplecov", "~> 0.22.0"
 end
