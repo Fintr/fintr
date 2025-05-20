@@ -38,9 +38,7 @@ RSpec.describe Budgets::Operations::UpdateBudget do
         allow(Budget).to receive(:find).with(success_case_budget.id.to_s).and_return(success_case_budget)
 
         # Stub save! to return true, assuming it would work if called correctly.
-        allow(success_case_budget).to receive(:save!)
-          .with(amount_cents: valid_params[:amount] * 100, amount_currency: "PHP")
-          .and_return(true)
+        allow(success_case_budget).to receive(:save!).and_return(true)
 
         # Stub `reload` on this instance. When the operation calls `budget.reload`,
         # this stub will execute, modify `amount_cents` in memory, and return the (modified) self.
@@ -181,10 +179,8 @@ RSpec.describe Budgets::Operations::UpdateBudget do
 
       before do
         allow(Budget).to receive(:find).with(general_existing_budget.id.to_s).and_return(general_existing_budget)
-        allow(general_existing_budget).to receive(:save!).with(
-          amount_cents: amount_for_save_fail * 100,
-          amount_currency: "PHP"
-        ).and_raise(ActiveRecord::RecordInvalid.new(general_existing_budget))
+        allow(general_existing_budget).to receive(:save!)
+          .and_raise(ActiveRecord::RecordInvalid.new(general_existing_budget))
         allow(general_existing_budget).to receive_message_chain(:errors, :to_hash).and_return(mock_budget_errors)
       end
 

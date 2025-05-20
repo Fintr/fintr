@@ -54,11 +54,32 @@ RSpec/RepeatedSubjectCall:
 RSpec/IndexedLet:
   Enabled: false
 
-
 RSpec/MessageSpies:
   Enabled: true
   Exclude:
     - spec/jobs/transactions/check_duplicate_today_job_spec.rb
+    - spec/operations/insights/operations/create_insights_data_spec.rb
+    - spec/operations/insights/operations/create_summary_structure_spec.rb
+    - spec/operations/insights/operations/create_weekly_spending_spec.rb
+
+RSpec/NamedSubject:
+  Enabled: true
+  Exclude:
+    - spec/operations/insights/operations/create_summary_structure_spec.rb
+    - spec/operations/insights/operations/create_weekly_spending_spec.rb
+    - spec/operations/insights/operations/create_insights_data_spec.rb
+
+RSpec/StubbedMock:
+  Enabled: true
+  Exclude:
+    - spec/operations/insights/operations/create_insights_data_spec.rb
+    - spec/operations/insights/operations/create_summary_structure_spec.rb
+    - spec/operations/insights/operations/create_weekly_spending_spec.rb
+
+RSpec/MessageChain:
+  Enabled: true
+  Exclude:
+    - spec/operations/budgets/operations/update_budget_spec.rb
 
 Layout/SpaceInsideArrayLiteralBrackets:
   Enabled: true

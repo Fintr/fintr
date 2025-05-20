@@ -5,11 +5,11 @@ module Transactions
     class FilteredTransactions < BaseQuery
       class Contract < Dry::Validation::Contract
         params do
-          required(:page).value(:integer)
           required(:space_code).value(:string)
           required(:category_name).value(:string)
           required(:start_date).value(:date)
           required(:end_date).value(:date)
+          optional(:page).value(:integer)
           optional(:min_amount).maybe(:integer, gteq?: 0)
           optional(:max_amount).maybe(:integer)
           optional(:per_page).maybe(:integer)

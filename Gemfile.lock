@@ -478,7 +478,7 @@ DEPENDENCIES
   activerecord-import (~> 2.1)
   amoeba (~> 3.3)
   auth0 (~> 5.12)
-  aws-sdk-s3 (~> 1.186)
+  aws-sdk-s3 (~> 1.183)
   blueprinter (~> 1.1)
   bootsnap
   brakeman

@@ -125,8 +125,9 @@ RSpec.describe 'Api::V1::Budgets', type: :request do
         ActionController::Parameters.new(
           id: budget.id.to_s,
           amount: updated_amount.to_s # Amount will be a string from params
-        ).permit(:id, :amount)
-                                  .merge(user_id: user.id, space_id: space.id) # Use IDs
+        )
+        .permit(:id, :amount)
+        .merge(user_id: user.id, space_id: space.id, space_code: space.code) # Use IDs
       end
 
 
@@ -168,7 +169,7 @@ RSpec.describe 'Api::V1::Budgets', type: :request do
           id: budget.id.to_s,
           amount: updated_amount.to_s # Amount will be a string from params
         ).permit(:id, :amount)
-                                  .merge(user_id: user.id, space_id: space.id) # Use IDs
+        .merge(user_id: user.id, space_id: space.id, space_code: space.code) # Use IDs
       end
 
       before do

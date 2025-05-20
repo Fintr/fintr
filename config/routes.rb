@@ -12,6 +12,7 @@ Rails.application.routes.draw do
 
       resources :transactions
       resources :budgets, only: %i[index create update]
+      resources :insights, only: [:index]
 
       # Use scope to keep the URL prefix without namespace nesting for controllers
       scope path: "transactions", module: "transactions" do

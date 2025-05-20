@@ -14,6 +14,7 @@ gem "thruster", require: false
 gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
 gem "kamal", "~> 2.6"
+gem "aws-sdk-s3", "~> 1.183"
 
 # DRY Operations, Validation
 gem "dry-operation", "~> 1.0"
@@ -40,6 +41,9 @@ gem "kaminari", "~> 1.2"
 gem "amoeba", "~> 3.3"
 gem "activerecord-import", "~> 2.1"
 
+# DB Views
+gem "scenic", "~> 1.8"
+
 # Recurrence
 gem "ice_cube", "~> 0.17.0"
 
@@ -57,7 +61,3 @@ group :development, :test do
   gem "shoulda-matchers"
   gem "factory_bot_rails"
 end
-
-gem "aws-sdk-s3", "~> 1.186"
-
-gem "scenic", "~> 1.8"
