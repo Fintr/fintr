@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Send, X, Search, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
-// import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth0 } from "@auth0/auth0-react";
 
 interface NavbarProps {
   logoSrc?: string;
@@ -11,13 +11,13 @@ interface NavbarProps {
 }
 
 const LogoutButton = () => {
-//   const { logout } = useAuth0();
+  const { logout } = useAuth0();
 
   return (
     <button
-      onClick={() => {}
-        // logout({ logoutParams: { returnTo: window.location.origin } })
-      }
+      onClick={() => {
+        logout({ logoutParams: { returnTo: window.location.origin } })
+      }}
     >
       Log Out
     </button>
@@ -45,7 +45,7 @@ const Navbar = ({
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-//   const { loginWithRedirect } = useAuth0();
+  const { loginWithRedirect } = useAuth0();
 
   const toggleChatbot = () => {
     // Instead of opening the navbar chatbot, trigger the floating chatbot widget
@@ -301,7 +301,7 @@ const Navbar = ({
             </nav>
             <Button
               className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white rounded-md px-6 py-2"
-            //   onClick={() => loginWithRedirect()}
+              onClick={() => loginWithRedirect()}
             >
               Log In / Sign Up
             </Button>

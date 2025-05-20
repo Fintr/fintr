@@ -1,0 +1,42 @@
+export interface IndexTransaction {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  categoryName: string;
+  fromAccountName: string;
+  toAccountName: string;
+  type: TransactionTypeEnum;
+}
+
+export interface TransactionIndexInputType {
+  spaceCode: string;
+  categoryName: string;
+  startDate: string;
+  endDate: string;
+  minAmount: number;
+  maxAmount: number;
+  page: number;
+}; 
+
+
+// Define the expected structure of the API response for infinite query
+export interface TransactionsPage {
+  transactions: IndexTransaction[];
+  nextPage: number | null; // Page number for the next fetch, or null if last page
+  totalPages: number | null;
+  totalCount: number | null;
+  // Add other pagination info if available (e.g., totalPages, totalCount)
+}
+
+export enum TransactionTypeEnum {
+  EXPENSE = "expense",
+  INCOME = "income",
+  TRANSFER = "transfer"
+}
+
+export enum ScheduleTypeEnum {
+  ONE_TIME = "one_time",
+  REPEAT = "repeat",
+  INSTALLMENT = "installment"
+}

@@ -1,0 +1,125 @@
+import React from "react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
+
+interface CategoryItem {
+  id: string;
+  name: string;
+  color?: string;
+  amount?: number;
+  budget?: number;
+  [key: string]: any; // For any additional properties
+}
+
+interface CategoryListCardProps {
+  title: string;
+  description: string;
+  items: CategoryItem[];
+  onAddItem: () => void;
+  onEditItem: (item: CategoryItem) => void;
+  onDeleteItem: (item: CategoryItem) => void;
+  colorField?: string;
+  primaryField?: string;
+  secondaryField?: string;
+  addButtonText?: string;
+}
+
+const CategoryListCard: React.FC<CategoryListCardProps> = ({
+  title,
+  description,
+  items = [],
+  onAddItem,
+  onEditItem,
+  onDeleteItem,
+  colorField = "color",
+  primaryField = "name",
+  secondaryField,
+  addButtonText = "Add New",
+}) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {items.length === 0 ? (
+            <div className="text-center py-4 text-gray-500 col-span-2">
+              No items found
+            </div>
+          ) : (
+            items.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between p-3 bg-[#FAF9F6] rounded-lg"
+              >
+                <div className="flex items-center">
+                  <div>
+                    <span className="font-medium text-[#0A3D62]">
+                      {item[primaryField]}
+                    </span>
+                    {secondaryField && item[secondaryField] && (
+                      <div className="text-sm text-gray-500">
+                        {typeof item[secondaryField] === "number"
+                          ? `₱${item[secondaryField].toLocaleString()}`
+                          : item[secondaryField]}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-[#0A3D62] hover:bg-blue-50"
+                    onClick={() => onEditItem(item)}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                      <path d="m15 5 4 4" />
+                    </svg>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-600 hover:bg-red-50"
+                    onClick={() => onDeleteItem(item)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <Button
+          className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 mt-4 w-full"
+          onClick={onAddItem}
+        >
+          <Plus className="h-4 w-4 mr-2" /> {addButtonText}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default CategoryListCard;
