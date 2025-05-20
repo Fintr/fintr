@@ -10,37 +10,20 @@ interface NavbarProps {
   companyName?: string;
 }
 
-const LogoutButton = () => {
-  const { logout } = useAuth0();
+const navLinks = [
+  { name: "Core Features", href: "/#core-features" },
+  { name: "What's Next", href: "/whats-next" },
+  { name: "Discover", href: "/discover" },
+  { name: "Contact Us", href: "/contact-us" },
+  { name: "Pricing", href: "/pricing" },
+];
 
-  return (
-    <button
-      onClick={() => {
-        logout({ logoutParams: { returnTo: window.location.origin } })
-      }}
-    >
-      Log Out
-    </button>
-  );
-};
-
-const Navbar = ({
-  logoSrc = "/fintr-logo.png",
-  companyName = "Fintr",
-}: NavbarProps) => {
-  const navLinks = [
-    { name: "Core Features", href: "/#core-features" },
-    { name: "What's Next", href: "/whats-next" },
-    { name: "Discover", href: "/discover" },
-    { name: "Contact Us", href: "/contact-us" },
-    { name: "Pricing", href: "/pricing" },
-  ];
-
+const Navbar = ({}: NavbarProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<{ text: string; isUser: boolean }[]>(
-    [],
+    []
   );
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -238,10 +221,16 @@ const Navbar = ({
                   {messages.map((msg, index) => (
                     <div
                       key={index}
-                      className={`mb-3 ${msg.isUser ? "text-right" : "text-left"}`}
+                      className={`mb-3 ${
+                        msg.isUser ? "text-right" : "text-left"
+                      }`}
                     >
                       <div
-                        className={`inline-block rounded-lg px-4 py-2 max-w-[80%] ${msg.isUser ? "bg-primary text-white" : "bg-white border border-gray-200 text-primary"}`}
+                        className={`inline-block rounded-lg px-4 py-2 max-w-[80%] ${
+                          msg.isUser
+                            ? "bg-primary text-white"
+                            : "bg-white border border-gray-200 text-primary"
+                        }`}
                         dangerouslySetInnerHTML={{ __html: msg.text }}
                       ></div>
                     </div>
