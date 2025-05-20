@@ -15,7 +15,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] py-12">
+    <div className="min-h-screen bg-background py-12">
       <div className="container mx-auto px-4">
         <AuthPage
           onBack={handleBack}

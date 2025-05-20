@@ -99,7 +99,7 @@ const InsightsTab = ({
   const [selectedCategory, setSelectedCategory] = useState("all");
 
   return (
-    <Card className="col-span-3 border-0 shadow-none bg-[#FAF9F6]">
+    <Card className="col-span-3 border-0 shadow-none bg-background">
       <CardHeader>
         <CardTitle>Monthly Overview</CardTitle>
         <CardDescription>
@@ -304,7 +304,7 @@ const InsightsTab = ({
 
               <div className="md:self-end">
                 <Button
-                  className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 w-full"
+                  className="bg-primary hover:bg-primary/80 w-full"
                   onClick={applyFilters}
                 >
                   Apply Filters
@@ -314,7 +314,7 @@ const InsightsTab = ({
           </CardContent>
         </Card>
 
-        <Card className="mb-6 border border-[#0A3D62]/10">
+        <Card className="mb-6 border border-primary/10">
           <CardHeader>
             <CardTitle>Insights Summary</CardTitle>
             <CardDescription>
@@ -324,7 +324,7 @@ const InsightsTab = ({
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+                <h4 className="text-sm font-medium text-primary/70 mb-1">
                   Total Income
                 </h4>
                 <div
@@ -338,7 +338,7 @@ const InsightsTab = ({
                 </div>
               </div>
               <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+                <h4 className="text-sm font-medium text-primary/70 mb-1">
                   Total Expenses
                 </h4>
                 <div className="text-2xl font-bold text-[#800020]">
@@ -350,7 +350,7 @@ const InsightsTab = ({
                 </div>
               </div>
               <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+                <h4 className="text-sm font-medium text-primary/70 mb-1">
                   Net Savings
                 </h4>
                 <div
@@ -377,7 +377,7 @@ const InsightsTab = ({
               <div className="flex flex-col items-center justify-center py-6">
                 <div className="relative w-40 h-40 mb-4">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-4xl font-bold text-[#0A3D62]">78</div>
+                    <div className="text-4xl font-bold text-primary">78</div>
                   </div>
                   <svg
                     className="w-full h-full"
@@ -406,8 +406,8 @@ const InsightsTab = ({
                   </svg>
                 </div>
                 <div className="text-center">
-                  <h3 className="text-lg font-medium text-[#0A3D62]">Good</h3>
-                  <p className="text-sm text-[#0A3D62]/70 mt-1">
+                  <h3 className="text-lg font-medium text-primary">Good</h3>
+                  <p className="text-sm text-primary/70 mt-1">
                     You're on track to meet your financial goals
                   </p>
                 </div>
@@ -440,14 +440,14 @@ const InsightsTab = ({
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Budget Adherence</span>
-                  <span className="text-sm font-medium text-[#0A3D62]">
+                  <span className="text-sm font-medium text-primary">
                     85%
                   </span>
                 </div>
                 <Progress
                   value={85}
                   className="h-2 bg-gray-200"
-                  indicatorClassName="bg-[#0A3D62]"
+                  indicatorClassName="bg-primary"
                 />
               </div>
             </CardContent>
@@ -462,16 +462,16 @@ const InsightsTab = ({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="p-4 bg-[#0A3D62]/5 rounded-lg border border-[#0A3D62]/10">
+                <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
                   <div className="flex items-start">
-                    <div className="bg-[#0A3D62] text-white p-2 rounded-full mr-3">
+                    <div className="bg-primary text-white p-2 rounded-full mr-3">
                       <MessageSquare className="h-5 w-5" />
                     </div>
                     <div>
-                      <h4 className="font-medium text-[#0A3D62] mb-1">
+                      <h4 className="font-medium text-primary mb-1">
                         Spending Pattern Detected
                       </h4>
-                      <p className="text-sm text-[#0A3D62]/70">
+                      <p className="text-sm text-primary/70">
                         You've spent 24% more on dining out this month compared
                         to your 3-month average. Consider setting a specific
                         budget for restaurants to keep your spending in check.
@@ -480,7 +480,7 @@ const InsightsTab = ({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-xs h-8 border-[#0A3D62] text-[#0A3D62]"
+                          className="text-xs h-8 border-primary text-primary"
                         >
                           Create Budget
                         </Button>
@@ -567,7 +567,7 @@ const InsightsTab = ({
         <Card className="border-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <LineChart className="h-5 w-5 text-[#0A3D62]" />
+              <LineChart className="h-5 w-5 text-primary" />
               Financial Trends
             </CardTitle>
             <CardDescription>
@@ -627,7 +627,7 @@ const InsightsTab = ({
           <Card className="border-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <PieChart className="h-5 w-5 text-[#0A3D62]" />
+                <PieChart className="h-5 w-5 text-primary" />
                 Expense Breakdown
               </CardTitle>
               <CardDescription>
@@ -669,7 +669,7 @@ const InsightsTab = ({
           <Card className="border-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-[#0A3D62]" />
+                <BarChart3 className="h-5 w-5 text-primary" />
                 Weekly Spending
               </CardTitle>
               <CardDescription>Your daily expenses this week</CardDescription>
@@ -708,13 +708,13 @@ const InsightsTab = ({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="p-4 bg-[#0A3D62]/5 rounded-lg border border-[#0A3D62]/10">
+            <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
               <div className="flex items-start">
-                <div className="bg-[#0A3D62] text-white p-2 rounded-full mr-3">
+                <div className="bg-primary text-white p-2 rounded-full mr-3">
                   <MessageSquare className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-sm text-[#0A3D62]/70">
+                  <p className="text-sm text-primary/70">
                     Hi there! I'm your Fintr Finance Assistant. How can I help
                     you today with your financial goals or questions?
                   </p>
@@ -728,7 +728,7 @@ const InsightsTab = ({
               />
               <Button
                 size="sm"
-                className="absolute right-1 top-1 h-8 w-10 bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+                className="absolute right-1 top-1 h-8 w-10 bg-primary hover:bg-primary/80"
               >
                 <Send className="h-4 w-4" />
               </Button>

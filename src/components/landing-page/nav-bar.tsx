@@ -145,7 +145,7 @@ const Navbar = ({
             setMessages((prev) => [
               ...prev,
               {
-                text: `<button class="bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white rounded-md px-4 py-2 mt-2" onclick="window.location.href='/#${section}';">Go to ${section
+                text: `<button class="bg-primary hover:bg-primary/80 text-white rounded-md px-4 py-2 mt-2" onclick="window.location.href='/#${section}';">Go to ${section
                   .split("-")
                   .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                   .join(" ")}</button>`,
@@ -186,7 +186,7 @@ const Navbar = ({
   }, [isScrolled, isOpen]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-[#FAF9F6] z-50">
+    <header className="fixed top-0 left-0 right-0 bg-background z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center">
@@ -201,7 +201,7 @@ const Navbar = ({
 
           <div className="flex items-center justify-center relative w-full max-w-md mx-4">
             <div className="w-full relative">
-              <div className="bg-white border border-gray-200 hover:border-[#0A3D62] rounded-full py-2 px-4 shadow-sm transition-all flex items-center w-full cursor-pointer">
+              <div className="bg-white border border-gray-200 hover:border-primary rounded-full py-2 px-4 shadow-sm transition-all flex items-center w-full cursor-pointer">
                 <input
                   type="text"
                   placeholder="Ask Fintr anything..."
@@ -212,7 +212,7 @@ const Navbar = ({
                 />
                 <button
                   onClick={handleSendMessage}
-                  className="text-[#0A3D62] hover:text-[#0A3D62]/80 bg-gray-100 rounded-full p-1.5"
+                  className="text-primary hover:text-primary/80 bg-gray-100 rounded-full p-1.5"
                 >
                   <ArrowRight className="h-4 w-4" />
                 </button>
@@ -221,7 +221,7 @@ const Navbar = ({
 
             {isOpen && (
               <div className="absolute top-12 bg-white rounded-lg shadow-xl w-full overflow-hidden border border-gray-200 z-50">
-                <div className="bg-[#0A3D62] text-white p-3 flex justify-between items-center">
+                <div className="bg-primary text-white p-3 flex justify-between items-center">
                   <div className="flex items-center">
                     <MessageSquare className="h-5 w-5 mr-2" />
                     <h3 className="font-medium">Fintr Assistant</h3>
@@ -241,14 +241,14 @@ const Navbar = ({
                       className={`mb-3 ${msg.isUser ? "text-right" : "text-left"}`}
                     >
                       <div
-                        className={`inline-block rounded-lg px-4 py-2 max-w-[80%] ${msg.isUser ? "bg-[#0A3D62] text-white" : "bg-white border border-gray-200 text-[#0A3D62]"}`}
+                        className={`inline-block rounded-lg px-4 py-2 max-w-[80%] ${msg.isUser ? "bg-primary text-white" : "bg-white border border-gray-200 text-primary"}`}
                         dangerouslySetInnerHTML={{ __html: msg.text }}
                       ></div>
                     </div>
                   ))}
                   {isTyping && (
                     <div className="text-left mb-3">
-                      <div className="inline-block rounded-lg px-4 py-2 bg-white border border-gray-200 text-[#0A3D62]">
+                      <div className="inline-block rounded-lg px-4 py-2 bg-white border border-gray-200 text-primary">
                         <div className="flex space-x-1">
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                           <div
@@ -277,7 +277,7 @@ const Navbar = ({
                   />
                   <Button
                     onClick={handleSendMessage}
-                    className="bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+                    className="bg-primary hover:bg-primary/80"
                     size="icon"
                   >
                     <Send className="h-4 w-4" />
@@ -293,14 +293,14 @@ const Navbar = ({
                 <a
                   key={link.name}
                   href={link.href}
-                  className="text-sm text-[#0A3D62] hover:text-[#0A3D62] transition-colors"
+                  className="text-sm text-primary hover:text-primary transition-colors"
                 >
                   {link.name}
                 </a>
               ))}
             </nav>
             <Button
-              className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white rounded-md px-6 py-2"
+              className="bg-primary hover:bg-primary/80 text-white rounded-md px-6 py-2"
               onClick={() => loginWithRedirect()}
             >
               Log In / Sign Up

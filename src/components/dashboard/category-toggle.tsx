@@ -26,38 +26,38 @@ const CategoryToggle: React.FC<CategoryToggleProps> = ({
         onValueChange={(value) => onCategoryChange(value as CategoryType)}
         className="w-full"
       >
-        <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full bg-[#FAF9F6]">
+        <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full bg-background">
           <TabsTrigger
             value="expense"
-            className="flex items-center gap-2 data-[state=active]:bg-[#0A3D62] data-[state=active]:text-white"
+            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
             <Receipt className="h-4 w-4" />
             <span className="hidden sm:inline">Expense</span>
           </TabsTrigger>
           <TabsTrigger
             value="income"
-            className="flex items-center gap-2 data-[state=active]:bg-[#0A3D62] data-[state=active]:text-white"
+            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
             <Wallet className="h-4 w-4" />
             <span className="hidden sm:inline">Income</span>
           </TabsTrigger>
           <TabsTrigger
             value="goal"
-            className="flex items-center gap-2 data-[state=active]:bg-[#0A3D62] data-[state=active]:text-white"
+            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
             <Target className="h-4 w-4" />
             <span className="hidden sm:inline">Goal</span>
           </TabsTrigger>
           <TabsTrigger
             value="investment"
-            className="flex items-center gap-2 data-[state=active]:bg-[#0A3D62] data-[state=active]:text-white"
+            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
             <TrendingUp className="h-4 w-4" />
             <span className="hidden sm:inline">Investment</span>
           </TabsTrigger>
           <TabsTrigger
             value="account"
-            className="flex items-center gap-2 data-[state=active]:bg-[#0A3D62] data-[state=active]:text-white"
+            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
           >
             <CreditCard className="h-4 w-4" />
             <span className="hidden sm:inline">Account</span>

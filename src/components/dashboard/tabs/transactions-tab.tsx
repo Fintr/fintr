@@ -639,7 +639,7 @@ const TransactionsTab = () => {
               variant="outline"
               onClick={() => setViewMode("list")}
               className={`flex items-center gap-1 ${
-                viewMode === "list" ? "bg-[#0A3D62] text-white" : ""
+                viewMode === "list" ? "bg-primary text-white" : ""
               }`}
             >
               <svg
@@ -664,7 +664,7 @@ const TransactionsTab = () => {
               variant="outline"
               onClick={() => setViewMode("sheets")}
               className={`flex items-center gap-1 ${
-                viewMode === "sheets" ? "bg-[#0A3D62] text-white" : ""
+                viewMode === "sheets" ? "bg-primary text-white" : ""
               }`}
             >
               <svg
@@ -690,7 +690,7 @@ const TransactionsTab = () => {
               variant="outline"
               onClick={() => setViewMode("calendar")}
               className={`flex items-center gap-1 ${
-                viewMode === "calendar" ? "bg-[#0A3D62] text-white" : ""
+                viewMode === "calendar" ? "bg-primary text-white" : ""
               }`}
             >
               <svg
@@ -947,8 +947,8 @@ const TransactionsTab = () => {
                 </Button>
                 <Button
                   className={`${
-                    filtersApplied ? "bg-[#0A3D62]/90" : "bg-[#0A3D62]"
-                  } hover:bg-[#0A3D62]/80 w-full flex items-center gap-1`}
+                    filtersApplied ? "bg-primary/90" : "bg-primary"
+                  } hover:bg-primary/80 w-full flex items-center gap-1`}
                   onClick={applyFilters}
                 >
                   {filtersApplied && (
@@ -1049,7 +1049,7 @@ const TransactionsTab = () => {
                                   className="flex items-center my-4"
                                 >
                                   <div className="flex-grow border-t border-gray-300" />
-                                  <span className="px-2 text-sm font-semibold text-[#0A3D62]">
+                                  <span className="px-2 text-sm font-semibold text-primary">
                                     {currentMonthYear}
                                   </span>
                                   <div className="flex-grow border-t border-gray-300" />
@@ -1069,24 +1069,24 @@ const TransactionsTab = () => {
                                     }`}
                                   ></div>
                                   <div className="flex-1">
-                                    <p className="font-medium text-[#0A3D62] flex items-center gap-2">
+                                    <p className="font-medium text-primary flex items-center gap-2">
                                       <FileText className="h-4 w-4 text-gray-500" />
                                       {transaction.description}
                                     </p>
-                                    <p className="text-sm text-[#0A3D62]/70 flex items-center gap-2">
+                                    <p className="text-sm text-primary/70 flex items-center gap-2">
                                       <Calendar className="h-4 w-4 text-gray-500" />
                                       {new Date(
                                         transaction.date
                                       ).toLocaleDateString()}
                                     </p>
-                                    <p className="text-sm text-[#0A3D62]/70 flex items-center gap-2">
+                                    <p className="text-sm text-primary/70 flex items-center gap-2">
                                       <Tag className="h-4 w-4 text-gray-500" />
                                       {transaction.categoryName}
                                     </p>
                                     <div className="flex flex-col sm:flex-row sm:gap-4">
                                       {transaction.fromAccountName && (
                                         <>
-                                          <p className="text-sm text-[#0A3D62]/70 flex items-center gap-2">
+                                          <p className="text-sm text-primary/70 flex items-center gap-2">
                                             <ArrowUpRight className="h-4 w-4 text-gray-500" />
                                             From: {transaction.fromAccountName}
                                           </p>
@@ -1094,7 +1094,7 @@ const TransactionsTab = () => {
                                       )}
                                       {transaction.toAccountName && (
                                         <>
-                                          <p className="text-sm text-[#0A3D62]/70 flex items-center gap-2">
+                                          <p className="text-sm text-primary/70 flex items-center gap-2">
                                             <ArrowDownLeft className="h-4 w-4 text-gray-500" />
                                             To: {transaction.toAccountName}
                                           </p>
@@ -1148,7 +1148,7 @@ const TransactionsTab = () => {
                                     <Button
                                       variant="outline"
                                       size="sm"
-                                      className="h-8 px-2 text-[#0A3D62]"
+                                      className="h-8 px-2 text-primary"
                                       onClick={() => handleEditRow(transaction)}
                                     >
                                       Edit
@@ -1554,7 +1554,7 @@ const TransactionsTab = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-7 px-2 text-[#0A3D62]"
+                                  className="h-7 px-2 text-primary"
                                   onClick={() => handleEditRow(transaction)}
                                 >
                                   Edit
@@ -1582,7 +1582,7 @@ const TransactionsTab = () => {
           <div className="mt-4">
             <div className="grid grid-cols-7 gap-1 mb-2 text-center">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div key={day} className="text-sm font-medium text-[#0A3D62]">
+                <div key={day} className="text-sm font-medium text-primary">
                   {day}
                 </div>
               ))}

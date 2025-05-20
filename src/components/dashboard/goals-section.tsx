@@ -103,8 +103,8 @@ const GoalSection = ({ formatCurrency }: GoalSectionProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 bg-[#FAF9F6]">
-      <Card className="border-0 shadow-none bg-[#FAF9F6]">
+    <div className="grid grid-cols-1 gap-6 bg-background">
+      <Card className="border-0 shadow-none bg-background">
         <CardHeader>
           <div className="flex flex-row items-center justify-between">
             <div>
@@ -115,7 +115,7 @@ const GoalSection = ({ formatCurrency }: GoalSectionProps) => {
             </div>
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-[#0A3D62] hover:bg-[#0A3D62]/80">
+                <Button className="bg-primary hover:bg-primary/80">
                   <Plus className="h-4 w-4 mr-2" /> Add Goal
                 </Button>
               </DialogTrigger>
@@ -258,7 +258,7 @@ const GoalSection = ({ formatCurrency }: GoalSectionProps) => {
                     Cancel
                   </Button>
                   <Button
-                    className="bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+                    className="bg-primary hover:bg-primary/80"
                     onClick={() => {
                       // Create a new goal object
                       const newGoal = {
@@ -323,7 +323,7 @@ const GoalSection = ({ formatCurrency }: GoalSectionProps) => {
           </div>
         </CardHeader>
         <CardContent>
-          <Card className="mb-6 bg-white border-[#0A3D62]/10">
+          <Card className="mb-6 bg-white border-primary/10">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">
                 What's your own version of Financial Freedom?
@@ -339,12 +339,12 @@ const GoalSection = ({ formatCurrency }: GoalSectionProps) => {
                     onChange={(e) =>
                       setFinancialFreedomDefinition(e.target.value)
                     }
-                    className="w-full min-h-[60px] p-3 pr-12 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0A3D62] focus:border-transparent text-[#0A3D62]"
+                    className="w-full min-h-[60px] p-3 pr-12 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-primary"
                     placeholder="Describe what financial freedom means to you personally"
                     rows={2}
                   />
                   <Button
-                    className="absolute right-3 bottom-3 bg-[#0A3D62] hover:bg-[#0A3D62]/80 rounded-full p-2 h-8 w-8"
+                    className="absolute right-3 bottom-3 bg-primary hover:bg-primary/80 rounded-full p-2 h-8 w-8"
                     size="icon"
                     onClick={() => {
                       // This would normally save to a database
@@ -372,24 +372,24 @@ const GoalSection = ({ formatCurrency }: GoalSectionProps) => {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-4 rounded-lg border border-gray-100">
-                  <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+                  <h4 className="text-sm font-medium text-primary/70 mb-1">
                     Total Goal Amount
                   </h4>
-                  <div className="text-2xl font-bold text-[#0A3D62]">
+                  <div className="text-2xl font-bold text-primary">
                     {formatCurrency(
                       goals.reduce((sum, goal) => sum + goal.targetAmount, 0)
                     )}
                   </div>
                 </div>
                 <div className="bg-white p-4 rounded-lg border border-gray-100">
-                  <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+                  <h4 className="text-sm font-medium text-primary/70 mb-1">
                     Current Progress
                   </h4>
-                  <div className="text-2xl font-bold text-[#0A3D62] flex items-center">
+                  <div className="text-2xl font-bold text-primary flex items-center">
                     {formatCurrency(
                       goals.reduce((sum, goal) => sum + goal.currentAmount, 0)
                     )}
-                    <span className="ml-2 text-sm font-medium text-[#0A3D62]/70">
+                    <span className="ml-2 text-sm font-medium text-primary/70">
                       (
                       {Math.round(
                         (goals.reduce(
@@ -407,10 +407,10 @@ const GoalSection = ({ formatCurrency }: GoalSectionProps) => {
                   </div>
                 </div>
                 <div className="bg-white p-4 rounded-lg border border-gray-100">
-                  <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+                  <h4 className="text-sm font-medium text-primary/70 mb-1">
                     Remaining
                   </h4>
-                  <div className="text-2xl font-bold text-[#0A3D62]">
+                  <div className="text-2xl font-bold text-primary">
                     {formatCurrency(
                       goals.reduce(
                         (sum, goal) =>
@@ -429,11 +429,11 @@ const GoalSection = ({ formatCurrency }: GoalSectionProps) => {
               <div key={goal.id} className="border rounded-lg p-4 bg-white">
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h3 className="font-medium text-[#0A3D62] flex items-center">
-                      <Target className="h-4 w-4 mr-2 text-[#0A3D62]" />
+                    <h3 className="font-medium text-primary flex items-center">
+                      <Target className="h-4 w-4 mr-2 text-primary" />
                       {goal.name}
                     </h3>
-                    <p className="text-sm text-[#0A3D62]/70">
+                    <p className="text-sm text-primary/70">
                       Target: {formatCurrency(goal.targetAmount)} by{" "}
                       {new Date(goal.targetDate).toLocaleDateString("en-US", {
                         year: "numeric",
@@ -454,7 +454,7 @@ const GoalSection = ({ formatCurrency }: GoalSectionProps) => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-[#0A3D62] hover:bg-[#0A3D62]/10"
+                        className="h-8 w-8 text-primary hover:bg-primary/10"
                         onClick={() => {
                           // Set editing state
                           setEditingGoalIndex(index);
@@ -520,7 +520,7 @@ const GoalSection = ({ formatCurrency }: GoalSectionProps) => {
 
                 <div className="space-y-1">
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-sm text-[#0A3D62]/70">
+                    <span className="text-sm text-primary/70">
                       Monthly contribution:{" "}
                       {formatCurrency(goal.monthlyContribution)}
                     </span>

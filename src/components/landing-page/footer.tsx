@@ -39,7 +39,7 @@ const Footer = ({
   ];
 
   return (
-    <footer className="bg-[#FAF9F6] py-12 md:py-16">
+    <footer className="bg-background py-12 md:py-16">
       <div className="container mx-auto max-w-7xl">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           <div className="col-span-1">
@@ -50,7 +50,7 @@ const Footer = ({
                 className="w-14 h-14 object-contain"
               />
             </div>
-            <p className="text-[#0A3D62] text-sm max-w-xs mt-4">
+            <p className="text-primary text-sm max-w-xs mt-4">
               An AI-powered finance tracker that helps you easily track your
               money, define goals, and give you personalized insights so you can
               make informed decisions.
@@ -58,7 +58,7 @@ const Footer = ({
           </div>
 
           <div className="flex flex-col items-center">
-            <h3 className="font-medium text-sm text-[#0A3D62] mb-4 uppercase tracking-wider">
+            <h3 className="font-medium text-sm text-primary mb-4 uppercase tracking-wider">
               Navigation
             </h3>
             <div>
@@ -67,7 +67,7 @@ const Footer = ({
                   <li key={link.name}>
                     <a
                       href={link.href}
-                      className="text-[#0A3D62] hover:text-[#0A3D62] transition-colors text-sm"
+                      className="text-primary hover:text-primary transition-colors text-sm"
                     >
                       {link.name}
                     </a>
@@ -78,7 +78,7 @@ const Footer = ({
           </div>
 
           <div>
-            <h3 className="font-medium text-sm text-[#0A3D62] mb-4 uppercase tracking-wider">
+            <h3 className="font-medium text-sm text-primary mb-4 uppercase tracking-wider">
               Connect
             </h3>
             <div className="flex space-x-6 mb-6">
@@ -86,7 +86,7 @@ const Footer = ({
                 href="https://www.facebook.com/people/Fintr/61573370577403/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#0A3D62] hover:text-[#0A3D62]/80 transition-colors flex items-center"
+                className="text-primary hover:text-primary/80 transition-colors flex items-center"
                 aria-label="Meta (Facebook)"
               >
                 <svg
@@ -107,7 +107,7 @@ const Footer = ({
                 href="https://www.instagram.com/fintr.ai/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#0A3D62] hover:text-[#0A3D62]/80 transition-colors flex items-center"
+                className="text-primary hover:text-primary/80 transition-colors flex items-center"
                 aria-label="Instagram"
               >
                 <svg
@@ -130,7 +130,7 @@ const Footer = ({
                 href="https://www.youtube.com/@fintrai"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#0A3D62] hover:text-[#0A3D62]/80 transition-colors flex items-center"
+                className="text-primary hover:text-primary/80 transition-colors flex items-center"
                 aria-label="YouTube"
               >
                 <svg
@@ -152,7 +152,7 @@ const Footer = ({
                 href="https://www.linkedin.com/company/fintrai"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#0A3D62] hover:text-[#0A3D62]/80 transition-colors flex items-center"
+                className="text-primary hover:text-primary/80 transition-colors flex items-center"
                 aria-label="LinkedIn"
               >
                 <svg
@@ -175,7 +175,7 @@ const Footer = ({
             {/* Email in a separate row */}
             <a
               href={`mailto:${email}`}
-              className="text-[#0A3D62] hover:text-[#0A3D62] transition-colors flex items-center"
+              className="text-primary hover:text-primary transition-colors flex items-center"
               aria-label="Email"
             >
               <Mail size={18} className="mr-2" />
@@ -185,19 +185,19 @@ const Footer = ({
         </div>
 
         <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-xs text-[#0A3D62]">
+          <p className="text-xs text-primary">
             &copy; {currentYear} {companyName}. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <a
               href="/privacy"
-              className="text-xs text-[#0A3D62] hover:text-[#0A3D62] transition-colors"
+              className="text-xs text-primary hover:text-primary transition-colors"
             >
               Privacy Policy
             </a>
             <a
               href="/terms"
-              className="text-xs text-[#0A3D62] hover:text-[#0A3D62] transition-colors"
+              className="text-xs text-primary hover:text-primary transition-colors"
             >
               Terms of Service
             </a>

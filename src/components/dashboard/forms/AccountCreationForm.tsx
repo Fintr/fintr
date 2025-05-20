@@ -199,7 +199,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
             type="button" 
             size="sm" 
             disabled={isLoading} 
-            className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 h-10" 
+            className="bg-primary hover:bg-primary/80 h-10" 
             onClick={handleAddAccount}
           >
             {isLoading ? (<>...</>) : ("Add")}
@@ -246,7 +246,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
             type="button" 
             size="sm" 
             disabled={isLoading} 
-            className="bg-[#0A3D62] hover:bg-[#0A3D62]/80" 
+            className="bg-primary hover:bg-primary/80" 
             onClick={handleAddAccount}
           >
             {isLoading ? (<>...</>) : ("Add")}

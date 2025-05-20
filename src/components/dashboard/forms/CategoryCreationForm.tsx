@@ -100,7 +100,7 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
               type="button" 
               size="sm" 
               disabled={isLoading} 
-              className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 h-10" 
+              className="bg-primary hover:bg-primary/80 h-10" 
               onClick={handleAddCategory}
             >
               {isLoading ? (<>...</>) : ("Add")}
@@ -144,7 +144,7 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
             type="button" 
             size="sm" 
             disabled={isLoading} 
-            className="bg-[#0A3D62] hover:bg-[#0A3D62]/80" 
+            className="bg-primary hover:bg-primary/80" 
             onClick={handleAddCategory}
           >
             {isLoading ? (<>...</>) : ("Add")}

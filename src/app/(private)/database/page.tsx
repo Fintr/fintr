@@ -246,8 +246,8 @@ const DatabasePage = () => {
   return (
     <div>
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-[#0A3D62]">Database</h1>
-        <p className="text-[#0A3D62]/70 mt-2">
+        <h1 className="text-3xl font-bold text-primary">Database</h1>
+        <p className="text-primary/70 mt-2">
           Manage your categories and application settings
         </p>
       </div>
@@ -277,7 +277,7 @@ const DatabasePage = () => {
               </div>
               <Button
                 onClick={handleAddNew}
-                className="bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+                className="bg-primary hover:bg-primary/80"
               >
                 <Plus className="h-4 w-4 mr-2" /> Add Category
               </Button>
@@ -369,7 +369,7 @@ const DatabasePage = () => {
                               className="w-6 h-6 rounded-full mr-3"
                               style={{ backgroundColor: category.color }}
                             ></div>
-                            <span className="font-medium text-[#0A3D62]">
+                            <span className="font-medium text-primary">
                               {category.name}
                             </span>
                           </div>
@@ -378,7 +378,7 @@ const DatabasePage = () => {
                               onClick={() => handleEdit(category)}
                               variant="outline"
                               size="sm"
-                              className="text-[#0A3D62]"
+                              className="text-primary"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -397,7 +397,7 @@ const DatabasePage = () => {
                   ))}
 
                   {newItem && (
-                    <div className="p-4 border rounded-lg border-dashed border-[#0A3D62]/50 bg-[#0A3D62]/5">
+                    <div className="p-4 border rounded-lg border-dashed border-primary/50 bg-primary/5">
                       <div className="flex items-center gap-4 w-full">
                         <div className="flex-grow">
                           <Label
@@ -470,7 +470,7 @@ const DatabasePage = () => {
                   )}
 
                   {categories.length === 0 && !newItem && (
-                    <div className="text-center py-8 text-[#0A3D62]/70">
+                    <div className="text-center py-8 text-primary/70">
                       No categories found. Click "Add Category" to create one.
                     </div>
                   )}
@@ -491,7 +491,7 @@ const DatabasePage = () => {
               </div>
               <Button
                 onClick={handleAddNew}
-                className="bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+                className="bg-primary hover:bg-primary/80"
               >
                 <Plus className="h-4 w-4 mr-2" /> Add Setting
               </Button>
@@ -566,10 +566,10 @@ const DatabasePage = () => {
                         <>
                           <div className="flex items-center">
                             <div className="flex flex-col">
-                              <span className="font-medium text-[#0A3D62]">
+                              <span className="font-medium text-primary">
                                 {setting.name}
                               </span>
-                              <span className="text-sm text-[#0A3D62]/70">
+                              <span className="text-sm text-primary/70">
                                 {setting.value}
                               </span>
                             </div>
@@ -579,7 +579,7 @@ const DatabasePage = () => {
                               onClick={() => handleEdit(setting)}
                               variant="outline"
                               size="sm"
-                              className="text-[#0A3D62]"
+                              className="text-primary"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -598,7 +598,7 @@ const DatabasePage = () => {
                   ))}
 
                   {newItem && (
-                    <div className="p-4 border rounded-lg border-dashed border-[#0A3D62]/50 bg-[#0A3D62]/5">
+                    <div className="p-4 border rounded-lg border-dashed border-primary/50 bg-primary/5">
                       <div className="flex items-center gap-4 w-full">
                         <div className="flex-grow">
                           <Label
@@ -658,7 +658,7 @@ const DatabasePage = () => {
                   )}
 
                   {settings.length === 0 && !newItem && (
-                    <div className="text-center py-8 text-[#0A3D62]/70">
+                    <div className="text-center py-8 text-primary/70">
                       No settings found. Click "Add Setting" to create one.
                     </div>
                   )}

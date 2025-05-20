@@ -128,31 +128,31 @@ const WaitlistSurvey = ({
 
   if (showThankYou) {
     return (
-      <div className="w-full min-h-screen overflow-x-hidden bg-[#FAF9F6]">
+      <div className="w-full min-h-screen overflow-x-hidden bg-background">
         <main className="py-10">
           <div className="max-w-2xl mx-auto text-center p-6 flex flex-col items-center">
-            <h2 className="text-2xl font-bold text-[#0A3D62] mb-4">
+            <h2 className="text-2xl font-bold text-primary mb-4">
               Thank You for Your Input!
             </h2>
-            <p className="text-[#0A3D62]/80 mb-4">
+            <p className="text-primary/80 mb-4">
               You're awesome! Your feedback will help us make Fintr better and
               more tailored to your needs.
             </p>
-            <p className="text-[#0A3D62]/80 mb-4">
+            <p className="text-primary/80 mb-4">
               If you're one of the first 50, keep an eye on your inbox—we'll
               email you soon with details on your exclusive early access!
             </p>
-            <p className="text-[#0A3D62]/80 mb-4">
+            <p className="text-primary/80 mb-4">
               Not one of the first 50? No worries! We still have something
               special for you. Stay tuned for updates and surprises as we get
               closer to launch.
             </p>
-            <p className="text-[#0A3D62]/80 font-medium mb-8">
+            <p className="text-primary/80 font-medium mb-8">
               Talk soon! – The Fintr Team
             </p>
             <Button
               onClick={() => (window.location.href = "/")}
-              className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white font-medium transition-colors rounded-md px-6 py-2"
+              className="bg-primary hover:bg-primary/80 text-white font-medium transition-colors rounded-md px-6 py-2"
             >
               Return to Home
             </Button>
@@ -163,29 +163,29 @@ const WaitlistSurvey = ({
   }
 
   return (
-    <div className="w-full min-h-screen overflow-x-hidden bg-[#FAF9F6]">
+    <div className="w-full min-h-screen overflow-x-hidden bg-background">
       <main className="py-10">
         <div className="max-w-2xl mx-auto p-6">
           <div className="mb-6">
             <button
               onClick={onBack}
-              className="flex items-center text-[#0A3D62] hover:underline mb-4"
+              className="flex items-center text-primary hover:underline mb-4"
             >
               <ArrowLeft className="h-4 w-4 mr-1" /> Back
             </button>
-            <h2 className="text-2xl font-bold text-[#0A3D62] mb-2 text-center">
+            <h2 className="text-2xl font-bold text-primary mb-2 text-center">
               Be Among the First to Try Fintr!
             </h2>
-            <p className="text-[#0A3D62]/80 mb-4">
+            <p className="text-primary/80 mb-4">
               Hey there! Thanks for visiting Fintr, an AI-powered finance
               tracker designed to help you take control of your money so you can
               achieve your own financial freedom - whatever it may be.
             </p>
-            <p className="text-[#0A3D62]/80 mb-4">
+            <p className="text-primary/80 mb-4">
               The first 50 people who join our waitlist will get free access to
               Fintr's core features before the official launch!
             </p>
-            <p className="text-[#0A3D62]/80">
+            <p className="text-primary/80">
               We'd love your input to make Fintr even better. This quick
               2-minute survey helps us understand what you need in a finance
               tracker. Ready? Let's go!
@@ -248,7 +248,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="budgeting">
                     Budgeting and expense tracking
@@ -267,7 +267,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="short_term_goals">
                     Saving for short-term goals (e.g., travel, emergency fund)
@@ -284,7 +284,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="debt_payoff">
                     Paying off debt (e.g., credit cards, loans)
@@ -301,7 +301,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="investing">
                     Investing (real estate, stocks, crypto, etc.)
@@ -318,7 +318,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="wealth_growth">
                     Growing wealth long-term (financial independence,
@@ -336,7 +336,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="other_goal">Other</Label>
                 </div>
@@ -403,7 +403,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="budget_sticking">Sticking to a budget</Label>
                 </div>
@@ -420,7 +420,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="understanding_spending">
                     Understanding where my money goes
@@ -437,7 +437,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="future_planning">
                     Planning for future expenses
@@ -454,7 +454,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="debt_management">
                     Managing debt and loan payments
@@ -473,7 +473,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="investment_knowledge">
                     Knowing how to invest wisely
@@ -490,7 +490,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="financial_advice">
                     Finding reliable financial advice
@@ -507,7 +507,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="saving_motivation">
                     Staying motivated to save
@@ -524,7 +524,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="other_challenge">Other</Label>
                 </div>
@@ -558,7 +558,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="ai_budgeting">
                     AI-powered budgeting assistance
@@ -577,7 +577,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="auto_categorization">
                     Automatic expense categorization
@@ -596,7 +596,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="investment_insights">
                     Investment insights (real estate, stocks, crypto, etc.)
@@ -615,7 +615,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="loan_calculators">
                     Loan & mortgage calculators
@@ -632,7 +632,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="ai_chatbot">
                     AI chatbot for financial advice & insights
@@ -649,7 +649,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="bill_reminders">
                     Bill reminders & recurring expense tracking
@@ -666,7 +666,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="goal_tracker">
                     Goal-based savings tracker
@@ -683,7 +683,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="other_feature">Other</Label>
                 </div>
@@ -815,7 +815,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="data_privacy">Data privacy & security</Label>
                 </div>
@@ -830,7 +830,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="ai_accuracy">
                     Accuracy of AI-generated insights
@@ -847,7 +847,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="ease_of_use">
                     Ease of use & learning curve
@@ -864,7 +864,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="app_cost">Cost of the app</Label>
                 </div>
@@ -879,7 +879,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="advice_reliability">
                     Reliability of financial advice
@@ -896,7 +896,7 @@ const WaitlistSurvey = ({
                         checked as boolean,
                       )
                     }
-                    className="h-5 w-5 border-2 border-[#0A3D62] rounded-sm data-[state=checked]:bg-[#0A3D62]"
+                    className="h-5 w-5 border-2 border-primary rounded-sm data-[state=checked]:bg-primary"
                   />
                   <Label htmlFor="other_concern">Other</Label>
                 </div>
@@ -968,7 +968,7 @@ const WaitlistSurvey = ({
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-12 bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white font-medium transition-colors rounded-md"
+              className="w-full h-12 bg-primary hover:bg-primary/80 text-white font-medium transition-colors rounded-md"
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

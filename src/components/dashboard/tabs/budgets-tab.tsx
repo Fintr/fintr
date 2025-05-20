@@ -259,7 +259,7 @@ const BudgetsTab = ({ formatCurrency }: BudgetsTabProps) => {
         </div>
         <div className="flex items-center space-x-2">
           <Button
-            className="bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+            className="bg-primary hover:bg-primary/80"
             onClick={() => setShowBudgetForm(true)}
           >
             <Plus className="h-4 w-4 mr-2" /> Add Budget
@@ -295,7 +295,7 @@ const BudgetsTab = ({ formatCurrency }: BudgetsTabProps) => {
 
               <div className="md:self-end">
                 <Button 
-                  className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 w-full"
+                  className="bg-primary hover:bg-primary/80 w-full"
                   onClick={handleApplyFilters}
                   disabled={isLoading}
                 >
@@ -320,22 +320,22 @@ const BudgetsTab = ({ formatCurrency }: BudgetsTabProps) => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+                  <h4 className="text-sm font-medium text-primary/70 mb-1">
                     Total Budget
                   </h4>
-                  <div className="text-2xl font-bold text-[#0A3D62]">
+                  <div className="text-2xl font-bold text-primary">
                     {formatCurrency(totalBudget)}
                   </div>
                 </div>
                 <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+                  <h4 className="text-sm font-medium text-primary/70 mb-1">
                     Total Spent
                   </h4>
                   <div className="flex items-center">
-                    <div className="text-2xl font-bold text-[#0A3D62]">
+                    <div className="text-2xl font-bold text-primary">
                       {formatCurrency(totalSpent)}
                     </div>
-                    <div className="ml-2 text-sm font-medium text-[#0A3D62]">
+                    <div className="ml-2 text-sm font-medium text-primary">
                       ({formattedBudgetPercentage}%)
                     </div>
                   </div>
@@ -345,15 +345,15 @@ const BudgetsTab = ({ formatCurrency }: BudgetsTabProps) => {
                     }
                     className="h-2 mt-2 bg-gray-200"
                     indicatorClassName={
-                      isOverBudget ? "bg-[#800020]" : "bg-[#0A3D62]"
+                      isOverBudget ? "bg-[#800020]" : "bg-primary"
                     }
                   />
                 </div>
                 <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+                  <h4 className="text-sm font-medium text-primary/70 mb-1">
                     Remaining
                   </h4>
-                  <div className="text-2xl font-bold text-[#0A3D62]">
+                  <div className="text-2xl font-bold text-primary">
                     {formatCurrency(totalRemaining)}
                   </div>
                 </div>
@@ -365,7 +365,7 @@ const BudgetsTab = ({ formatCurrency }: BudgetsTabProps) => {
         {showBudgetForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-              <h3 className="text-xl font-bold text-[#0A3D62] mb-4">
+              <h3 className="text-xl font-bold text-primary mb-4">
                 {editingBudgetIndex !== null ? "Update Budget" : "Create New Budget"}
               </h3>
 
@@ -503,7 +503,7 @@ const BudgetsTab = ({ formatCurrency }: BudgetsTabProps) => {
                   Cancel
                 </Button>
                 <Button
-                  className="bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+                  className="bg-primary hover:bg-primary/80"
                   onClick={handleBudgetSubmit}
                 >
                   {editingBudgetIndex !== null ? "Update" : "Create"}
@@ -543,7 +543,7 @@ const BudgetsTab = ({ formatCurrency }: BudgetsTabProps) => {
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-[#0A3D62]">
+                      <h3 className="font-medium text-primary">
                         {category.name}
                       </h3>
                       <div className="flex items-center space-x-4">
@@ -552,16 +552,16 @@ const BudgetsTab = ({ formatCurrency }: BudgetsTabProps) => {
                             className={
                               isItemOverBudget
                                 ? "text-[#800020]"
-                                : "text-[#0A3D62]"
+                                : "text-primary"
                             }
                           >
                             {formatCurrency(category.spent)}
                           </span>
-                          <span className="text-[#0A3D62]/70">
+                          <span className="text-primary/70">
                             {" "}
                             / {formatCurrency(category.budget)}
                           </span>
-                          <span className="ml-2 text-[#0A3D62]">
+                          <span className="ml-2 text-primary">
                             ({formattedItemPercentage}%)
                           </span>
                         </div>
@@ -569,7 +569,7 @@ const BudgetsTab = ({ formatCurrency }: BudgetsTabProps) => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-[#0A3D62] hover:bg-blue-50"
+                            className="h-8 w-8 text-primary hover:bg-blue-50"
                             onClick={() => {
                               setEditingBudgetIndex(index);
                               setNewBudgetCategory(category.name);
@@ -610,7 +610,7 @@ const BudgetsTab = ({ formatCurrency }: BudgetsTabProps) => {
                       value={budgetPercentage > 100 ? 100 : budgetPercentage}
                       className="h-2 bg-gray-200"
                       indicatorClassName={
-                        isItemOverBudget ? "bg-[#800020]" : "bg-[#0A3D62]"
+                        isItemOverBudget ? "bg-[#800020]" : "bg-primary"
                       }
                     />
                   </div>

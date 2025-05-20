@@ -50,7 +50,7 @@ const DashboardNavigation = () => {
   };
 
   return (
-    <header className="bg-[#FAF9F6] sticky top-0 z-10">
+    <header className="bg-background sticky top-0 z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center">
@@ -65,7 +65,7 @@ const DashboardNavigation = () => {
           <div className="flex-1 flex justify-center">
             <div className="relative w-full max-w-md">
               <div
-                className="bg-white border border-gray-200 hover:border-[#0A3D62] rounded-full py-2 px-4 shadow-sm transition-all flex items-center w-full cursor-pointer"
+                className="bg-white border border-gray-200 hover:border-primary rounded-full py-2 px-4 shadow-sm transition-all flex items-center w-full cursor-pointer"
                 onClick={() => {
                   // Trigger the floating chatbot widget
                   const chatbotWidget = document.getElementById(
@@ -79,11 +79,11 @@ const DashboardNavigation = () => {
                 <input
                   type="text"
                   placeholder="Ask Fintr anything..."
-                  className="bg-transparent border-none outline-none flex-grow text-sm text-[#0A3D62]"
+                  className="bg-transparent border-none outline-none flex-grow text-sm text-primary"
                   onClick={(e) => e.stopPropagation()}
                 />
                 <button
-                  className="text-[#0A3D62] hover:text-[#0A3D62]/80 bg-gray-100 rounded-full p-1.5"
+                  className="text-primary hover:text-primary/80 bg-gray-100 rounded-full p-1.5"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <ArrowRight className="h-4 w-4" />
@@ -100,7 +100,7 @@ const DashboardNavigation = () => {
             {/* Notifications */}
             <div className="relative">
               <button
-                className="text-[#0A3D62] hover:text-[#0A3D62]/80 relative"
+                className="text-primary hover:text-primary/80 relative"
                 onClick={toggleNotifications}
               >
                 <Bell className="h-5 w-5" />
@@ -122,8 +122,8 @@ const DashboardNavigation = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center text-[#0A3D62] hover:text-[#0A3D62]/80">
-                  <div className="bg-[#0A3D62] text-white rounded-full p-1 mr-2">
+                <button className="flex items-center text-primary hover:text-primary/80">
+                  <div className="bg-primary text-white rounded-full p-1 mr-2">
                     <User className="h-5 w-5" />
                   </div>
                   <span className="font-medium">John Doe</span>

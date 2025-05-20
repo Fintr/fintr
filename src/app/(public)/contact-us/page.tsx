@@ -47,14 +47,14 @@ const ContactUs = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#FAF9F6]">
+    <div className="w-full min-h-screen bg-background">
       <Navbar />
       <main className="pt-32 pb-16 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4 text-[#0A3D62] text-center">
+          <h1 className="text-3xl md:text-4xl font-bold mb-4 text-primary text-center">
             Contact Us
           </h1>
-          <p className="text-lg text-[#0A3D62] mb-8 text-center">
+          <p className="text-lg text-primary mb-8 text-center">
             Have questions or feedback? We'd love to hear from you!
           </p>
 
@@ -64,7 +64,7 @@ const ContactUs = () => {
                 <div>
                   <label
                     htmlFor="name"
-                    className="block text-sm font-medium text-[#0A3D62] mb-2"
+                    className="block text-sm font-medium text-primary mb-2"
                   >
                     Your Name
                   </label>
@@ -81,7 +81,7 @@ const ContactUs = () => {
                 <div>
                   <label
                     htmlFor="email"
-                    className="block text-sm font-medium text-[#0A3D62] mb-2"
+                    className="block text-sm font-medium text-primary mb-2"
                   >
                     Email Address
                   </label>
@@ -101,7 +101,7 @@ const ContactUs = () => {
               <div>
                 <label
                   htmlFor="subject"
-                  className="block text-sm font-medium text-[#0A3D62] mb-2"
+                  className="block text-sm font-medium text-primary mb-2"
                 >
                   Subject
                 </label>
@@ -119,7 +119,7 @@ const ContactUs = () => {
               <div>
                 <label
                   htmlFor="message"
-                  className="block text-sm font-medium text-[#0A3D62] mb-2"
+                  className="block text-sm font-medium text-primary mb-2"
                 >
                   Message
                 </label>
@@ -137,7 +137,7 @@ const ContactUs = () => {
               <div className="flex justify-end">
                 <Button
                   type="submit"
-                  className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white flex items-center gap-2"
+                  className="bg-primary hover:bg-primary/80 text-white flex items-center gap-2"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? "Sending..." : "Send Message"}

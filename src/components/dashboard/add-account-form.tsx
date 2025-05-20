@@ -97,7 +97,7 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
 
         <Button
           type="submit"
-          className="w-full bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+          className="w-full bg-primary hover:bg-primary/80"
         >
           <Plus className="h-4 w-4 mr-2" /> Add Account
         </Button>

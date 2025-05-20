@@ -102,18 +102,18 @@ const AuthPage = ({
   };
 
   return (
-    <div className="bg-[#FAF9F6] p-6 rounded-lg shadow-md max-w-md mx-auto">
+    <div className="bg-background p-6 rounded-lg shadow-md max-w-md mx-auto">
       <div className="mb-6">
         <button
           onClick={onBack}
-          className="flex items-center text-[#0A3D62] hover:underline mb-4"
+          className="flex items-center text-primary hover:underline mb-4"
         >
           <ArrowLeft className="h-4 w-4 mr-1" /> Back
         </button>
-        <h2 className="text-2xl font-bold text-[#0A3D62] mb-2">
+        <h2 className="text-2xl font-bold text-primary mb-2">
           Welcome to Fintr
         </h2>
-        <p className="text-[#0A3D62]/80">
+        <p className="text-primary/80">
           Sign in or create an account to get started
         </p>
       </div>
@@ -158,7 +158,7 @@ const AuthPage = ({
           <div className="w-full border-t border-gray-300"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-[#FAF9F6] text-gray-500">
+          <span className="px-2 bg-background text-gray-500">
             Or continue with
           </span>
         </div>
@@ -186,7 +186,7 @@ const AuthPage = ({
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label htmlFor="login-password">Password</Label>
-                <a href="#" className="text-xs text-[#0A3D62] hover:underline">
+                <a href="#" className="text-xs text-primary hover:underline">
                   Forgot password?
                 </a>
               </div>
@@ -203,7 +203,7 @@ const AuthPage = ({
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+              className="w-full bg-primary hover:bg-primary/80"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -212,11 +212,11 @@ const AuthPage = ({
               )}
             </Button>
 
-            <p className="text-center text-sm text-[#0A3D62]/70 mt-4">
+            <p className="text-center text-sm text-primary/70 mt-4">
               Don't have an account?{" "}
               <button
                 onClick={() => setIsLoginState(false)}
-                className="text-[#0A3D62] font-medium hover:underline"
+                className="text-primary font-medium hover:underline"
               >
                 Sign Up
               </button>
@@ -291,7 +291,7 @@ const AuthPage = ({
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+              className="w-full bg-primary hover:bg-primary/80"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -300,11 +300,11 @@ const AuthPage = ({
               )}
             </Button>
 
-            <p className="text-center text-sm text-[#0A3D62]/70 mt-4">
+            <p className="text-center text-sm text-primary/70 mt-4">
               Already have an account?{" "}
               <button
                 onClick={() => setIsLoginState(true)}
-                className="text-[#0A3D62] font-medium hover:underline"
+                className="text-primary font-medium hover:underline"
               >
                 Sign In
               </button>

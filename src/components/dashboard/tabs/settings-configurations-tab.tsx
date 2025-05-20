@@ -412,14 +412,14 @@ const SettingsConfigurationsTab = () => {
         <div className="flex space-x-2 mb-6 overflow-x-auto">
           <Button
             variant={activeMainTab === "categories" ? "default" : "outline"}
-            className={activeMainTab === "categories" ? "bg-[#0A3D62]" : ""}
+            className={activeMainTab === "categories" ? "bg-primary" : ""}
             onClick={() => setActiveMainTab("categories")}
           >
             <Folder className="h-4 w-4 mr-2" /> Categories
           </Button>
           <Button
             variant={activeMainTab === "accounts" ? "default" : "outline"}
-            className={activeMainTab === "accounts" ? "bg-[#0A3D62]" : ""}
+            className={activeMainTab === "accounts" ? "bg-primary" : ""}
             onClick={() => setActiveMainTab("accounts")}
           >
             <Users className="h-4 w-4 mr-2" /> Accounts
@@ -429,7 +429,7 @@ const SettingsConfigurationsTab = () => {
               activeMainTab === "default-settings" ? "default" : "outline"
             }
             className={
-              activeMainTab === "default-settings" ? "bg-[#0A3D62]" : ""
+              activeMainTab === "default-settings" ? "bg-primary" : ""
             }
             onClick={() => setActiveMainTab("default-settings")}
           >
@@ -437,7 +437,7 @@ const SettingsConfigurationsTab = () => {
           </Button>
           <Button
             variant={activeMainTab === "import-export" ? "default" : "outline"}
-            className={activeMainTab === "import-export" ? "bg-[#0A3D62]" : ""}
+            className={activeMainTab === "import-export" ? "bg-primary" : ""}
             onClick={() => setActiveMainTab("import-export")}
           >
             <Upload className="h-4 w-4 mr-2" /> Import & Export
@@ -683,7 +683,7 @@ const SettingsConfigurationsTab = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button className="bg-[#0A3D62] hover:bg-[#0A3D62]/80">
+                    <Button className="bg-primary hover:bg-primary/80">
                       Save Transaction Settings
                     </Button>
                   </div>
@@ -762,7 +762,7 @@ const SettingsConfigurationsTab = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button className="bg-[#0A3D62] hover:bg-[#0A3D62]/80">
+                    <Button className="bg-primary hover:bg-primary/80">
                       Save Budget Settings
                     </Button>
                   </div>
@@ -838,7 +838,7 @@ const SettingsConfigurationsTab = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button className="bg-[#0A3D62] hover:bg-[#0A3D62]/80">
+                    <Button className="bg-primary hover:bg-primary/80">
                       Save Goals Settings
                     </Button>
                   </div>
@@ -924,7 +924,7 @@ const SettingsConfigurationsTab = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button className="bg-[#0A3D62] hover:bg-[#0A3D62]/80">
+                    <Button className="bg-primary hover:bg-primary/80">
                       Save Investment Settings
                     </Button>
                   </div>
@@ -1031,7 +1031,7 @@ const SettingsConfigurationsTab = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button className="bg-[#0A3D62] hover:bg-[#0A3D62]/80">
+                    <Button className="bg-primary hover:bg-primary/80">
                       Save Currency Settings
                     </Button>
                   </div>
@@ -1080,7 +1080,7 @@ const SettingsConfigurationsTab = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="flex items-center justify-between p-4 border rounded-md">
                         <div className="flex items-center">
-                          <div className="mr-3 text-[#0A3D62]">
+                          <div className="mr-3 text-primary">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               width="20"
@@ -1114,7 +1114,7 @@ const SettingsConfigurationsTab = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-md">
                         <div className="flex items-center">
-                          <div className="mr-3 text-[#0A3D62]">
+                          <div className="mr-3 text-primary">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               width="20"
@@ -1150,7 +1150,7 @@ const SettingsConfigurationsTab = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-md">
                         <div className="flex items-center">
-                          <div className="mr-3 text-[#0A3D62]">
+                          <div className="mr-3 text-primary">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               width="20"
@@ -1181,7 +1181,7 @@ const SettingsConfigurationsTab = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-md">
                         <div className="flex items-center">
-                          <div className="mr-3 text-[#0A3D62]">
+                          <div className="mr-3 text-primary">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               width="20"
@@ -1211,7 +1211,7 @@ const SettingsConfigurationsTab = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-md">
                         <div className="flex items-center">
-                          <div className="mr-3 text-[#0A3D62]">
+                          <div className="mr-3 text-primary">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               width="20"
@@ -1240,7 +1240,7 @@ const SettingsConfigurationsTab = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-md">
                         <div className="flex items-center">
-                          <div className="mr-3 text-[#0A3D62]">
+                          <div className="mr-3 text-primary">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               width="20"
@@ -1275,7 +1275,7 @@ const SettingsConfigurationsTab = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-md">
                         <div className="flex items-center">
-                          <div className="mr-3 text-[#0A3D62]">
+                          <div className="mr-3 text-primary">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               width="20"
@@ -1307,7 +1307,7 @@ const SettingsConfigurationsTab = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button className="bg-[#0A3D62] hover:bg-[#0A3D62]/80">
+                    <Button className="bg-primary hover:bg-primary/80">
                       <Download className="h-4 w-4 mr-2" /> Export Data
                     </Button>
                   </div>
@@ -1364,7 +1364,7 @@ const SettingsConfigurationsTab = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button className="bg-[#0A3D62] hover:bg-[#0A3D62]/80">
+                    <Button className="bg-primary hover:bg-primary/80">
                       <Upload className="h-4 w-4 mr-2" /> Start Import
                     </Button>
                   </div>

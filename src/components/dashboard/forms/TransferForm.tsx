@@ -483,7 +483,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
         >
           <div className="flex flex-col items-center">
             <Upload className="h-8 w-8 text-gray-400 mb-1" />
-            <p className="text-sm text-gray-500">Drag & drop your file here or <span className="text-[#0A3D62] font-medium">browse files</span></p>
+            <p className="text-sm text-gray-500">Drag & drop your file here or <span className="text-primary font-medium">browse files</span></p>
             <p className="text-xs text-gray-400 mt-1">Supports: JPG, PNG, PDF (Max 5MB)</p>
             {fileState && (<p className="text-sm text-green-600 mt-2">File selected: {fileState.name}</p>)}
           </div>
@@ -504,7 +504,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
         </Button>
         <Button
           type="submit"
-          className="bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+          className="bg-primary hover:bg-primary/80"
           disabled={isSubmitting}
         >
           {isSubmitting ? (

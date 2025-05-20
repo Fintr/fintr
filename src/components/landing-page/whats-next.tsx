@@ -107,10 +107,10 @@ const WhatsNext = ({
   };
 
   return (
-    <section id="whats-next" className="py-16 md:py-24 bg-[#FAF9F6]">
+    <section id="whats-next" className="py-16 md:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="max-w-3xl mx-auto text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-[#0A3D62]">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-primary">
             {title
               .split(" ")
               .map((word) =>
@@ -122,7 +122,7 @@ const WhatsNext = ({
               )
               .join(" ")}
           </h2>
-          <p className="text-lg text-[#0A3D62] leading-relaxed">{subtitle}</p>
+          <p className="text-lg text-primary leading-relaxed">{subtitle}</p>
         </div>
 
         {/* Feature Navigation Buttons */}
@@ -131,7 +131,7 @@ const WhatsNext = ({
             <button
               key={index}
               onClick={() => handleFeatureClick(index)}
-              className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center whitespace-nowrap ${activeFeature === index ? "bg-[#0A3D62] text-white" : "bg-white text-[#0A3D62] border border-[#0A3D62] hover:bg-[#0A3D62]/10"}`}
+              className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center whitespace-nowrap ${activeFeature === index ? "bg-primary text-white" : "bg-white text-primary border border-primary hover:bg-primary/10"}`}
             >
               <span className="mr-2">{feature.icon}</span>
               {feature.title}
@@ -152,21 +152,21 @@ const WhatsNext = ({
             <div className="flex flex-col md:flex-row gap-8">
               <div className="md:w-1/2">
                 <div className="flex items-center mb-4">
-                  <div className="mr-3 text-[#0A3D62] bg-[#f9f7f5] p-3 rounded-full">
+                  <div className="mr-3 text-primary bg-[#f9f7f5] p-3 rounded-full">
                     {features[activeFeature].icon}
                   </div>
-                  <h3 className="text-2xl font-bold text-[#0A3D62]">
+                  <h3 className="text-2xl font-bold text-primary">
                     {features[activeFeature].title}
                   </h3>
                 </div>
-                <p className="text-[#0A3D62] mb-6">
+                <p className="text-primary mb-6">
                   {features[activeFeature].description}
                 </p>
                 <ul className="space-y-3 mb-6">
                   {features[activeFeature].bulletPoints.map((point, i) => (
                     <li key={i} className="flex items-start">
-                      <Check className="h-5 w-5 text-[#0A3D62] mr-2 mt-0.5 flex-shrink-0" />
-                      <span className="text-[#0A3D62]">{point}</span>
+                      <Check className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                      <span className="text-primary">{point}</span>
                     </li>
                   ))}
                 </ul>
@@ -184,7 +184,7 @@ const WhatsNext = ({
 
         <div className="mt-8 text-center">
           <Button
-            className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white rounded-md px-6 py-2 mt-4"
+            className="bg-primary hover:bg-primary/80 text-white rounded-md px-6 py-2 mt-4"
             onClick={() => (window.location.href = "/auth")}
           >
             Try Fintr <ArrowRight className="ml-2 h-4 w-4" />

@@ -396,7 +396,7 @@ const AddTransactionDialog = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#0A3D62] hover:bg-[#0A3D62]/80">
+        <Button className="bg-primary hover:bg-primary/80">
           <Plus className="h-4 w-4 mr-2" /> Add Transaction
         </Button>
       </DialogTrigger>
@@ -520,7 +520,7 @@ const AddTransactionDialog = ({
                 Cancel
               </Button>
               <Button
-                className="bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+                className="bg-primary hover:bg-primary/80"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
               >

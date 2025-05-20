@@ -18,7 +18,7 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({
   return (
     <div className="absolute top-12 right-0 w-80 bg-white rounded-md shadow-lg border border-gray-200 z-50">
       <div className="p-3 border-b border-gray-100 flex justify-between items-center">
-        <h3 className="font-medium text-[#0A3D62]">
+        <h3 className="font-medium text-primary">
           Notifications
           {unreadCount > 0 && (
             <span className="ml-2 text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
@@ -30,7 +30,7 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({
           variant="ghost"
           size="sm"
           onClick={onMarkAllAsRead}
-          className="text-xs text-[#0A3D62] hover:text-[#0A3D62]/80"
+          className="text-xs text-primary hover:text-primary/80"
         >
           Mark all as read
         </Button>
@@ -52,7 +52,7 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({
         <Button
           variant="link"
           size="sm"
-          className="text-xs text-[#0A3D62] hover:text-[#0A3D62]/80"
+          className="text-xs text-primary hover:text-primary/80"
         >
           View all notifications
         </Button>

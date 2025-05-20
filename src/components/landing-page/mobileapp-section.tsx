@@ -15,25 +15,25 @@ const MobileAppSection = ({
 }: MobileAppSectionProps) => {
   const features = [
     {
-      icon: <Smartphone className="h-10 w-10 text-[#0A3D62]" />,
+      icon: <Smartphone className="h-10 w-10 text-primary" />,
       title: "Native Mobile Experience",
       description:
         "Enjoy a seamless, native mobile experience designed specifically for iOS and Android devices.",
     },
     {
-      icon: <Bell className="h-10 w-10 text-[#0A3D62]" />,
+      icon: <Bell className="h-10 w-10 text-primary" />,
       title: "Real-time Notifications",
       description:
         "Get instant alerts for transactions, budget limits, and financial insights wherever you are.",
     },
     {
-      icon: <Download className="h-10 w-10 text-[#0A3D62]" />,
+      icon: <Download className="h-10 w-10 text-primary" />,
       title: "Offline Access",
       description:
         "Access your financial data even without an internet connection and sync when you're back online.",
     },
     {
-      icon: <Zap className="h-10 w-10 text-[#0A3D62]" />,
+      icon: <Zap className="h-10 w-10 text-primary" />,
       title: "Quick Capture",
       description:
         "Scan receipts and invoices with your camera for instant transaction recording and categorization.",
@@ -44,10 +44,10 @@ const MobileAppSection = ({
     <section className="py-16 md:py-24 bg-[#F7F2E7]">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-[#0A3D62]">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-primary">
             {title}
           </h2>
-          <p className="text-lg text-[#0A3D62] max-w-3xl mx-auto">{subtitle}</p>
+          <p className="text-lg text-primary max-w-3xl mx-auto">{subtitle}</p>
         </div>
 
         <div className="flex flex-col md:flex-row items-center justify-between gap-8">
@@ -63,10 +63,10 @@ const MobileAppSection = ({
                   className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow"
                 >
                   <div className="mb-4">{feature.icon}</div>
-                  <h3 className="text-xl font-bold mb-2 text-[#0A3D62]">
+                  <h3 className="text-xl font-bold mb-2 text-primary">
                     {feature.title}
                   </h3>
-                  <p className="text-[#0A3D62]/80">{feature.description}</p>
+                  <p className="text-primary/80">{feature.description}</p>
                 </motion.div>
               ))}
             </div>
@@ -82,10 +82,10 @@ const MobileAppSection = ({
               viewport={{ once: true }}
               className="relative mx-auto w-72 md:w-[320px]"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-[#0A3D62] to-[#3D8D7F] rounded-[40px] blur-xl opacity-20 transform -rotate-6"></div>
-              <div className="relative bg-[#0A3D62] rounded-[40px] p-4 shadow-xl transform rotate-6">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary to-[#3D8D7F] rounded-[40px] blur-xl opacity-20 transform -rotate-6"></div>
+              <div className="relative bg-primary rounded-[40px] p-4 shadow-xl transform rotate-6">
                 <div className="bg-white rounded-[32px] overflow-hidden h-[540px] flex flex-col">
-                  <div className="h-12 bg-[#0A3D62] flex items-center justify-center">
+                  <div className="h-12 bg-primary flex items-center justify-center">
                     <div className="w-20 h-6 bg-black rounded-b-xl"></div>
                   </div>
                   <div className="p-4 flex-1 flex flex-col">
@@ -97,23 +97,23 @@ const MobileAppSection = ({
                       />
                     </div>
                     <div className="flex-1 flex flex-col">
-                      <h3 className="text-[#0A3D62] font-bold text-sm mb-2">
+                      <h3 className="text-primary font-bold text-sm mb-2">
                         Insights Dashboard
                       </h3>
 
                       {/* Financial Health Score */}
                       <div className="bg-[#f9f7f5] p-2 rounded-lg mb-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-[#0A3D62]">
+                          <span className="text-xs font-medium text-primary">
                             Financial Health
                           </span>
-                          <span className="text-xs font-bold text-[#0A3D62]">
+                          <span className="text-xs font-bold text-primary">
                             78/100
                           </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                           <div
-                            className="bg-[#0A3D62] h-1.5 rounded-full"
+                            className="bg-primary h-1.5 rounded-full"
                             style={{ width: "78%" }}
                           ></div>
                         </div>
@@ -121,7 +121,7 @@ const MobileAppSection = ({
 
                       {/* Spending by Category */}
                       <div className="space-y-2 mb-3">
-                        <h4 className="text-xs font-medium text-[#0A3D62]">
+                        <h4 className="text-xs font-medium text-primary">
                           Top Spending Categories
                         </h4>
                         <div className="flex justify-between items-center">
@@ -148,9 +148,9 @@ const MobileAppSection = ({
                       </div>
 
                       {/* AI Insight */}
-                      <div className="bg-[#0A3D62]/5 p-2 rounded-lg border border-[#0A3D62]/10 mb-3">
+                      <div className="bg-primary/5 p-2 rounded-lg border border-primary/10 mb-3">
                         <div className="flex items-start">
-                          <div className="bg-[#0A3D62] text-white p-1 rounded-full mr-2 flex-shrink-0">
+                          <div className="bg-primary text-white p-1 rounded-full mr-2 flex-shrink-0">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               width="12"
@@ -166,7 +166,7 @@ const MobileAppSection = ({
                             </svg>
                           </div>
                           <div>
-                            <p className="text-[10px] text-[#0A3D62]/70">
+                            <p className="text-[10px] text-primary/70">
                               You've spent 24% more on dining out this month.
                               Consider setting a specific budget for
                               restaurants.
@@ -176,13 +176,13 @@ const MobileAppSection = ({
                       </div>
                     </div>
                     <div className="space-y-2 mt-auto">
-                      <div className="bg-[#0A3D62]/5 p-3 rounded-lg border border-[#0A3D62]/10 mb-3">
-                        <p className="text-[11px] text-[#0A3D62] font-medium italic text-center">
+                      <div className="bg-primary/5 p-3 rounded-lg border border-primary/10 mb-3">
+                        <p className="text-[11px] text-primary font-medium italic text-center">
                           "Take control of your money to achieve your own
                           financial freedom, wherever you may be."
                         </p>
                       </div>
-                      <button className="w-full bg-white text-[#0A3D62] border-2 border-[#0A3D62] rounded-full py-2 font-medium text-sm">
+                      <button className="w-full bg-white text-primary border-2 border-primary rounded-full py-2 font-medium text-sm">
                         Sign In
                       </button>
                     </div>

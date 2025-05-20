@@ -440,7 +440,7 @@ const DatabaseTab = () => {
   };
 
   return (
-    <Card className="border-0 shadow-none bg-[#FAF9F6]">
+    <Card className="border-0 shadow-none bg-background">
       <CardHeader>
         <CardTitle>Settings & Configurations</CardTitle>
         <CardDescription>
@@ -454,14 +454,14 @@ const DatabaseTab = () => {
             <div className="flex space-x-2 mb-6 overflow-x-auto">
               <Button
                 variant={activeMainTab === "categories" ? "default" : "outline"}
-                className={activeMainTab === "categories" ? "bg-[#0A3D62]" : ""}
+                className={activeMainTab === "categories" ? "bg-primary" : ""}
                 onClick={() => setActiveMainTab("categories")}
               >
                 <Folder className="h-4 w-4 mr-2" /> Categories
               </Button>
               <Button
                 variant={activeMainTab === "accounts" ? "default" : "outline"}
-                className={activeMainTab === "accounts" ? "bg-[#0A3D62]" : ""}
+                className={activeMainTab === "accounts" ? "bg-primary" : ""}
                 onClick={() => setActiveMainTab("accounts")}
               >
                 <Users className="h-4 w-4 mr-2" /> Accounts

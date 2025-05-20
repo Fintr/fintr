@@ -23,7 +23,7 @@ const NotificationItem: React.FC<NotificationProps> = ({
         return <AlertCircle className="h-4 w-4 text-amber-500" />;
       case "info":
       default:
-        return <Clock className="h-4 w-4 text-[#0A3D62]" />;
+        return <Clock className="h-4 w-4 text-primary" />;
     }
   };
 
@@ -34,7 +34,7 @@ const NotificationItem: React.FC<NotificationProps> = ({
       <div className="flex items-start gap-3">
         <div className="p-1.5 bg-gray-100 rounded-full">{getIcon()}</div>
         <div className="flex-1">
-          <p className="text-sm text-[#0A3D62] font-medium">{message}</p>
+          <p className="text-sm text-primary font-medium">{message}</p>
           <p className="text-xs text-gray-500 mt-1">{time}</p>
         </div>
         {!isRead && (

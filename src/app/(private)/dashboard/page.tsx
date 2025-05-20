@@ -235,10 +235,10 @@ const TrackerDashboard = () => {
     <div className="mb-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-[#0A3D62]">
+          <h1 className="text-2xl md:text-3xl font-bold text-primary">
             My Goal to Financial Freedom
           </h1>
-          <p className="text-[#0A3D62]/70">
+          <p className="text-primary/70">
             Having enough passive income to cover my expenses and being able to
             travel 3 months a year.
           </p>
@@ -255,7 +255,7 @@ const TrackerDashboard = () => {
           <TabsTrigger
             value="transactions"
             className={cn({
-              "bg-[#0A3D62] text-white": activeTab === "transactions",
+              "bg-primary text-white": activeTab === "transactions",
             })}
           >
             Transactions
@@ -263,7 +263,7 @@ const TrackerDashboard = () => {
           <TabsTrigger
             value="budgets"
             className={cn({
-              "bg-[#0A3D62] text-white": activeTab === "budgets",
+              "bg-primary text-white": activeTab === "budgets",
             })}
           >
             Budget
@@ -271,7 +271,7 @@ const TrackerDashboard = () => {
           <TabsTrigger
             value="goals"
             className={cn({
-              "bg-[#0A3D62] text-white": activeTab === "goals",
+              "bg-primary text-white": activeTab === "goals",
             })}
           >
             Goals
@@ -279,7 +279,7 @@ const TrackerDashboard = () => {
           <TabsTrigger
             value="investments"
             className={cn({
-              "bg-[#0A3D62] text-white": activeTab === "investments",
+              "bg-primary text-white": activeTab === "investments",
             })}
           >
             Investments
@@ -287,7 +287,7 @@ const TrackerDashboard = () => {
           <TabsTrigger
             value="insights"
             className={cn({
-              "bg-[#0A3D62] text-white": activeTab === "insights",
+              "bg-primary text-white": activeTab === "insights",
             })}
           >
             Insights
@@ -295,7 +295,7 @@ const TrackerDashboard = () => {
           <TabsTrigger
             value="database"
             className={cn({
-              "bg-[#0A3D62] text-white": activeTab === "database",
+              "bg-primary text-white": activeTab === "database",
             })}
           >
             Database

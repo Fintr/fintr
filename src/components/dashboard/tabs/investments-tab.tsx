@@ -165,7 +165,7 @@ const InvestmentsTab = ({ formatCurrency }: InvestmentsTabProps) => {
   };
 
   return (
-    <Card className="border-0 bg-[#FAF9F6] shadow-none">
+    <Card className="border-0 bg-background shadow-none">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Investment Portfolio</CardTitle>
@@ -175,7 +175,7 @@ const InvestmentsTab = ({ formatCurrency }: InvestmentsTabProps) => {
         </div>
         <div className="flex items-center space-x-2">
           <Button
-            className="bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+            className="bg-primary hover:bg-primary/80"
             onClick={() => setShowInvestmentForm(true)}
           >
             <Plus className="h-4 w-4 mr-2" /> Add Investment
@@ -185,20 +185,20 @@ const InvestmentsTab = ({ formatCurrency }: InvestmentsTabProps) => {
       <CardContent>
         {/* Investment Summary Section */}
         <div className="mb-8 p-6 border border-[#e5e7eb] rounded-lg bg-white">
-          <h3 className="text-lg font-semibold text-[#0A3D62] mb-4">
+          <h3 className="text-lg font-semibold text-primary mb-4">
             Investment Summary
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
             <div className="bg-[#f9f7f5] p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+              <h4 className="text-sm font-medium text-primary/70 mb-1">
                 Total Investments
               </h4>
-              <div className="text-2xl font-bold text-[#0A3D62]">
+              <div className="text-2xl font-bold text-primary">
                 {formatCurrency(2500000)}
               </div>
             </div>
             <div className="bg-[#f9f7f5] p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+              <h4 className="text-sm font-medium text-primary/70 mb-1">
                 Total Returns
               </h4>
               <div
@@ -209,7 +209,7 @@ const InvestmentsTab = ({ formatCurrency }: InvestmentsTabProps) => {
               </div>
             </div>
             <div className="bg-[#f9f7f5] p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-[#0A3D62]/70 mb-1">
+              <h4 className="text-sm font-medium text-primary/70 mb-1">
                 ROI
               </h4>
               <div className="text-2xl font-bold text-[#008080]">+12.8%</div>
@@ -231,14 +231,14 @@ const InvestmentsTab = ({ formatCurrency }: InvestmentsTabProps) => {
                       className="p-4 border rounded-lg bg-white"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-medium text-[#0A3D62]">
+                        <h3 className="font-medium text-primary">
                           {investment.name}
                         </h3>
                         <div className="flex space-x-2">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0 text-[#0A3D62]"
+                            className="h-8 w-8 p-0 text-primary"
                           >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -282,7 +282,7 @@ const InvestmentsTab = ({ formatCurrency }: InvestmentsTabProps) => {
                           </Button>
                         </div>
                       </div>
-                      <div className="flex justify-between text-sm text-[#0A3D62]/70 mb-2">
+                      <div className="flex justify-between text-sm text-primary/70 mb-2">
                         {investment.purchaseAmount && (
                           <span>
                             Purchase:{" "}
@@ -356,7 +356,7 @@ const InvestmentsTab = ({ formatCurrency }: InvestmentsTabProps) => {
               Cancel
             </Button>
             <Button
-              className="bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+              className="bg-primary hover:bg-primary/80"
               onClick={handleSubmit}
             >
               Submit

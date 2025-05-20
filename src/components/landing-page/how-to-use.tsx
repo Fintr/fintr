@@ -177,10 +177,10 @@ const HowToUse = ({
   };
 
   return (
-    <section id="how-to-use" className="py-16 md:py-24 bg-[#FAF9F6]">
+    <section id="how-to-use" className="py-16 md:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="max-w-3xl mx-auto text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-[#0A3D62]">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-primary">
             {title
               .split(" ")
               .map((word) =>
@@ -192,7 +192,7 @@ const HowToUse = ({
               )
               .join(" ")}
           </h2>
-          <p className="text-lg text-[#0A3D62] leading-relaxed">{subtitle}</p>
+          <p className="text-lg text-primary leading-relaxed">{subtitle}</p>
         </div>
 
         <div className="flex flex-wrap justify-center gap-2 mb-12 overflow-x-auto pb-2">
@@ -200,7 +200,7 @@ const HowToUse = ({
             <button
               key={index}
               onClick={() => setActiveFeature(index)}
-              className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center whitespace-nowrap ${activeFeature === index ? "bg-[#0A3D62] text-white" : "bg-white text-[#0A3D62] border border-[#0A3D62] hover:bg-[#0A3D62]/10"}`}
+              className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center whitespace-nowrap ${activeFeature === index ? "bg-primary text-white" : "bg-white text-primary border border-primary hover:bg-primary/10"}`}
             >
               <span className="mr-2">{feature.icon}</span>
               {feature.title}
@@ -240,17 +240,17 @@ const HowToUse = ({
                     <div className="flex flex-col md:flex-row gap-6">
                       <div className="md:w-1/2">
                         <div className="flex items-center mb-4">
-                          <div className="mr-3 text-[#0A3D62] bg-[#f9f7f5] p-3 rounded-full">
+                          <div className="mr-3 text-primary bg-[#f9f7f5] p-3 rounded-full">
                             <Play className="h-5 w-5" />
                           </div>
-                          <h3 className="text-xl font-bold text-[#0A3D62]">
+                          <h3 className="text-xl font-bold text-primary">
                             {video.title}
                           </h3>
                         </div>
-                        <p className="text-[#0A3D62] mb-6">
+                        <p className="text-primary mb-6">
                           {video.description}
                         </p>
-                        <Button className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white rounded-md px-6 py-2 mt-4">
+                        <Button className="bg-primary hover:bg-primary/80 text-white rounded-md px-6 py-2 mt-4">
                           Watch Video <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </div>
@@ -264,7 +264,7 @@ const HowToUse = ({
                           {video.duration}
                         </div>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="bg-[#0A3D62]/80 rounded-full p-3 cursor-pointer hover:bg-[#0A3D62] transition-colors">
+                          <div className="bg-primary/80 rounded-full p-3 cursor-pointer hover:bg-primary transition-colors">
                             <Play className="h-8 w-8 text-white" />
                           </div>
                         </div>
@@ -283,10 +283,10 @@ const HowToUse = ({
                 <Accordion type="single" collapsible className="w-full">
                   {faqs.map((faq, index) => (
                     <AccordionItem key={index} value={`item-${index}`}>
-                      <AccordionTrigger className="text-[#0A3D62] font-medium text-left hover:bg-[#f9f7f5] px-4 py-2 rounded-lg transition-colors">
+                      <AccordionTrigger className="text-primary font-medium text-left hover:bg-[#f9f7f5] px-4 py-2 rounded-lg transition-colors">
                         {faq.question}
                       </AccordionTrigger>
-                      <AccordionContent className="text-[#0A3D62]/80 bg-[#f9f7f5] p-4 rounded-lg mt-1 mb-2">
+                      <AccordionContent className="text-primary/80 bg-[#f9f7f5] p-4 rounded-lg mt-1 mb-2">
                         {faq.answer}
                       </AccordionContent>
                     </AccordionItem>
@@ -305,7 +305,7 @@ const HowToUse = ({
                     key={qIndex}
                     className="border border-gray-200 rounded-lg p-4"
                   >
-                    <h3 className="font-bold text-lg mb-4 text-[#0A3D62]">
+                    <h3 className="font-bold text-lg mb-4 text-primary">
                       {quiz.question}
                     </h3>
                     <div className="space-y-2">
@@ -313,7 +313,7 @@ const HowToUse = ({
                         <div
                           key={oIndex}
                           onClick={() => handleQuizAnswer(qIndex, oIndex)}
-                          className={`p-3 rounded-lg cursor-pointer transition-colors ${selectedQuizAnswers[qIndex] === oIndex ? "bg-[#0A3D62] text-white" : "bg-gray-100 text-[#0A3D62] hover:bg-gray-200"} ${showQuizResults && oIndex === quiz.correctAnswer ? "ring-2 ring-green-500" : ""}`}
+                          className={`p-3 rounded-lg cursor-pointer transition-colors ${selectedQuizAnswers[qIndex] === oIndex ? "bg-primary text-white" : "bg-gray-100 text-primary hover:bg-gray-200"} ${showQuizResults && oIndex === quiz.correctAnswer ? "ring-2 ring-green-500" : ""}`}
                         >
                           {option}
                         </div>
@@ -335,7 +335,7 @@ const HowToUse = ({
                 {!showQuizResults && (
                   <button
                     onClick={checkQuizResults}
-                    className="mt-6 bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white rounded-md px-6 py-2 w-full"
+                    className="mt-6 bg-primary hover:bg-primary/80 text-white rounded-md px-6 py-2 w-full"
                   >
                     Check Answers
                   </button>
@@ -347,7 +347,7 @@ const HowToUse = ({
                       setSelectedQuizAnswers([-1, -1, -1]);
                       setShowQuizResults(false);
                     }}
-                    className="mt-6 bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white rounded-md px-6 py-2 w-full"
+                    className="mt-6 bg-primary hover:bg-primary/80 text-white rounded-md px-6 py-2 w-full"
                   >
                     Try Again
                   </button>
@@ -399,16 +399,16 @@ const HowToUse = ({
                         />
                       </div>
                       <div className="p-6 md:w-2/3">
-                        <div className="text-sm text-[#0A3D62]/70 mb-2">
+                        <div className="text-sm text-primary/70 mb-2">
                           {news.date}
                         </div>
-                        <h3 className="text-xl font-bold text-[#0A3D62] mb-3">
+                        <h3 className="text-xl font-bold text-primary mb-3">
                           {news.title}
                         </h3>
-                        <p className="text-[#0A3D62]/80 mb-4">
+                        <p className="text-primary/80 mb-4">
                           {news.description}
                         </p>
-                        <button className="text-[#0A3D62] font-medium hover:text-[#0A3D62]/80 flex items-center">
+                        <button className="text-primary font-medium hover:text-primary/80 flex items-center">
                           Read more <ArrowRight className="ml-1 h-4 w-4" />
                         </button>
                       </div>
@@ -449,24 +449,24 @@ const HowToUse = ({
                     key={index}
                     className="bg-[#f9f7f5] rounded-xl p-8 shadow-md hover:shadow-lg transition-shadow"
                   >
-                    <h4 className="text-xl font-bold text-[#0A3D62] mb-4">
+                    <h4 className="text-xl font-bold text-primary mb-4">
                       {job.title}
                     </h4>
-                    <p className="text-[#0A3D62] mb-4">{job.description}</p>
+                    <p className="text-primary mb-4">{job.description}</p>
                     <div className="mb-4">
-                      <h5 className="font-semibold text-[#0A3D62] mb-2">
+                      <h5 className="font-semibold text-primary mb-2">
                         Requirements:
                       </h5>
                       <ul className="space-y-2">
                         {job.requirements.map((req, idx) => (
                           <li key={idx} className="flex items-start">
-                            <span className="text-[#0A3D62] mr-2">•</span>
-                            <span className="text-[#0A3D62]">{req}</span>
+                            <span className="text-primary mr-2">•</span>
+                            <span className="text-primary">{req}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
-                    <button className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white rounded-md px-6 py-2 mt-4">
+                    <button className="bg-primary hover:bg-primary/80 text-white rounded-md px-6 py-2 mt-4">
                       Apply Now
                     </button>
                   </div>

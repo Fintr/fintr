@@ -60,11 +60,11 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
             items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between p-3 bg-[#FAF9F6] rounded-lg"
+                className="flex items-center justify-between p-3 bg-background rounded-lg"
               >
                 <div className="flex items-center">
                   <div>
-                    <span className="font-medium text-[#0A3D62]">
+                    <span className="font-medium text-primary">
                       {item[primaryField]}
                     </span>
                     {secondaryField && item[secondaryField] && (
@@ -80,7 +80,7 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-[#0A3D62] hover:bg-blue-50"
+                    className="h-8 w-8 text-primary hover:bg-blue-50"
                     onClick={() => onEditItem(item)}
                   >
                     <svg
@@ -112,7 +112,7 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
           )}
         </div>
         <Button
-          className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 mt-4 w-full"
+          className="bg-primary hover:bg-primary/80 mt-4 w-full"
           onClick={onAddItem}
         >
           <Plus className="h-4 w-4 mr-2" /> {addButtonText}

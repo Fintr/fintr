@@ -43,7 +43,7 @@ const WaitlistForm = ({
       <Button
         onClick={handleSubmit}
         disabled={isSubmitting}
-        className="bg-[#0A3D62] hover:bg-[#0A3D62]/80 text-white rounded-md px-6 py-2"
+        className="bg-primary hover:bg-primary/80 text-white rounded-md px-6 py-2"
       >
         {isSubmitting ? (
           <Loader2 className="h-4 w-4 animate-spin" />

@@ -231,7 +231,7 @@ const GoalForm = ({
               <Upload className="h-10 w-10 text-gray-400 mb-2" />
               <p className="text-sm text-center text-gray-600">
                 Drag & drop your document here or{" "}
-                <span className="text-[#0A3D62] font-medium">browse files</span>
+                <span className="text-primary font-medium">browse files</span>
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 Supports: JPG, PNG, PDF (Max 5MB)

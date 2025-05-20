@@ -274,7 +274,7 @@ const AccountSetupFlow = () => {
                   {formData.categories.map((category, index) => (
                     <div
                       key={index}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${category.isSelected ? "border-[#0A3D62] bg-[#0A3D62]/5" : "border-gray-200"}`}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${category.isSelected ? "border-primary bg-primary/5" : "border-gray-200"}`}
                     >
                       <div className="flex items-center">
                         <div
@@ -309,7 +309,7 @@ const AccountSetupFlow = () => {
                           onClick={() => toggleCategory(index)}
                         >
                           {category.isSelected && (
-                            <Check className="h-4 w-4 text-[#0A3D62]" />
+                            <Check className="h-4 w-4 text-primary" />
                           )}
                         </div>
                       </div>
@@ -320,7 +320,7 @@ const AccountSetupFlow = () => {
                 <div className="mt-4">
                   <Button
                     variant="outline"
-                    className="w-full border-dashed border-[#0A3D62] text-[#0A3D62] hover:bg-[#0A3D62]/5"
+                    className="w-full border-dashed border-primary text-primary hover:bg-primary/5"
                     onClick={() => {
                       const newCategory = {
                         name: "New Category",
@@ -361,7 +361,7 @@ const AccountSetupFlow = () => {
                   {formData.accounts.map((account, index) => (
                     <div
                       key={index}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${account.isSelected ? "border-[#0A3D62] bg-[#0A3D62]/5" : "border-gray-200"}`}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${account.isSelected ? "border-primary bg-primary/5" : "border-gray-200"}`}
                       onClick={() => toggleAccount(index)}
                     >
                       <div className="flex items-center">
@@ -397,7 +397,7 @@ const AccountSetupFlow = () => {
                         )}
                         <div className="ml-2">
                           {account.isSelected && (
-                            <Check className="h-4 w-4 text-[#0A3D62]" />
+                            <Check className="h-4 w-4 text-primary" />
                           )}
                         </div>
                       </div>
@@ -408,7 +408,7 @@ const AccountSetupFlow = () => {
                 <div className="mt-4">
                   <Button
                     variant="outline"
-                    className="w-full border-dashed border-[#0A3D62] text-[#0A3D62] hover:bg-[#0A3D62]/5"
+                    className="w-full border-dashed border-primary text-primary hover:bg-primary/5"
                     onClick={() => {
                       // Generate a random color for the new account
                       const colors = [
@@ -459,7 +459,7 @@ const AccountSetupFlow = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="budget">Monthly Budget Total</Label>
-                  <div className="text-lg font-semibold text-[#0A3D62]">
+                  <div className="text-lg font-semibold text-primary">
                     {getCurrencySymbol()}
                     {calculateTotalBudget()}
                   </div>
@@ -471,7 +471,7 @@ const AccountSetupFlow = () => {
                     {formData.budgetCategories.map((category, index) => (
                       <div
                         key={index}
-                        className="p-3 rounded-lg border transition-colors border-[#0A3D62] bg-[#0A3D62]/5"
+                        className="p-3 rounded-lg border transition-colors border-primary bg-primary/5"
                       >
                         <div className="flex items-center">
                           <div
@@ -527,7 +527,7 @@ const AccountSetupFlow = () => {
 
                   <Button
                     variant="outline"
-                    className="w-full border-dashed border-[#0A3D62] text-[#0A3D62] hover:bg-[#0A3D62]/5 mt-3"
+                    className="w-full border-dashed border-primary text-primary hover:bg-primary/5 mt-3"
                     onClick={() => {
                       // Generate a random color for the new budget category
                       const colors = [
@@ -735,7 +735,7 @@ const AccountSetupFlow = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-3xl">
         <div className="mb-8">
           <div className="flex justify-center mb-6">
@@ -746,10 +746,10 @@ const AccountSetupFlow = () => {
             />
           </div>
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-[#0A3D62]">
+            <h1 className="text-2xl font-bold text-primary">
               Account Setup ({currentStep + 1}/{STEPS.length})
             </h1>
-            <div className="text-sm text-[#0A3D62]/70">
+            <div className="text-sm text-primary/70">
               {currentStep < STEPS.length - 1
                 ? "You can always change these settings later"
                 : "Almost done!"}
@@ -763,10 +763,10 @@ const AccountSetupFlow = () => {
             {STEPS.map((step, index) => (
               <div
                 key={index}
-                className={`flex flex-col items-center ${index <= currentStep ? "text-[#0A3D62]" : "text-gray-400"}`}
+                className={`flex flex-col items-center ${index <= currentStep ? "text-primary" : "text-gray-400"}`}
               >
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${index <= currentStep ? "bg-[#0A3D62] text-white" : "bg-gray-200"}`}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${index <= currentStep ? "bg-primary text-white" : "bg-gray-200"}`}
                 >
                   {step.icon}
                 </div>
@@ -776,7 +776,7 @@ const AccountSetupFlow = () => {
           </div>
           <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
             <div
-              className="bg-[#0A3D62] h-full transition-all duration-300"
+              className="bg-primary h-full transition-all duration-300"
               style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
             ></div>
           </div>
@@ -788,7 +788,7 @@ const AccountSetupFlow = () => {
             <div>
               {currentStep > 0 && (
                 <Button variant="outline" onClick={handleBack}>
-                  Back
+                  Back  
                 </Button>
               )}
             </div>
@@ -799,7 +799,7 @@ const AccountSetupFlow = () => {
                 </Button>
               )}
               <Button
-                className="bg-[#0A3D62] hover:bg-[#0A3D62]/80"
+                className="bg-primary hover:bg-primary/80"
                 onClick={handleNext}
               >
                 {currentStep === STEPS.length - 1 ? "Finish" : "Next"}
