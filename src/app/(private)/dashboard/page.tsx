@@ -14,6 +14,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getFirstDayOfMonth, getLastDayOfMonth } from "@/utils/dateUtils";
 import { cn, formatCurrency } from "@/lib/utils";
 import dynamic from "next/dynamic";
+
+// @ts-ignore
 const useGetSpaceCode = dynamic(() => import("@/hooks/useGetSpaceCode"), {
   ssr: false,
 });
