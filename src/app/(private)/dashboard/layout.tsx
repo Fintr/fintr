@@ -23,22 +23,22 @@ export default function layout({
       <div>
         <TabsWrapper>
           <TabsList className="w-full bg-white border">
-            <TabsTrigger value="transactions">
+            <TabsTrigger asChild value="transactions">
               <Link prefetch href="/dashboard/">Transactions</Link>
             </TabsTrigger>
-            <TabsTrigger value="budgets">
+            <TabsTrigger asChild value="budgets">
               <Link prefetch href="/dashboard/budgets">Budgets</Link>
             </TabsTrigger>
-            <TabsTrigger value="goals">
+            <TabsTrigger asChild value="goals">
               <Link prefetch href="/dashboard/goals">Goals</Link>
             </TabsTrigger>
-            <TabsTrigger value="investments">
+            <TabsTrigger asChild value="investments">
               <Link prefetch href="/dashboard/investments">Investments</Link>
             </TabsTrigger>
-            <TabsTrigger value="insights">
+            <TabsTrigger asChild value="insights">
               <Link prefetch href="/dashboard/insights">Insights</Link>
             </TabsTrigger>
-            <TabsTrigger value="database">
+            <TabsTrigger asChild value="database">
               <Link prefetch href="/dashboard/database">Database</Link>
             </TabsTrigger>
           </TabsList>

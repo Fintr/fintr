@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import dynamic from "next/dynamic";
 
 const DynamicTransactionsTab = dynamic(
-  () => import("@/components/dashboard/tabs/transactions-tab"),
+  () => import("@/components/dashboard/tabs/transactions/index"),
   {
     ssr: false,
   }
