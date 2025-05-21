@@ -41,12 +41,10 @@ import {
   BarChart as RechartsBarChart,
   Bar,
 } from "recharts";
+import { formatCurrency } from "@/lib/utils";
 
 interface InsightsTabProps {
-  formatCurrency: (amount: number) => string;
-  categories: any[];
-  filteredTransactions: any[];
-  applyFilters: () => void;
+  filteredTransactions?: any[];
 }
 
 // Mock data for charts
@@ -78,10 +76,7 @@ const weeklySpendingData = [
 ];
 
 const InsightsTab = ({
-  formatCurrency,
-  categories,
-  filteredTransactions,
-  applyFilters,
+  filteredTransactions = [],
 }: InsightsTabProps) => {
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
@@ -305,7 +300,6 @@ const InsightsTab = ({
               <div className="md:self-end">
                 <Button
                   className="bg-primary hover:bg-primary/80 w-full"
-                  onClick={applyFilters}
                 >
                   Apply Filters
                 </Button>

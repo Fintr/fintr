@@ -25,9 +25,10 @@ import { updateBudget, UpdateBudgetPayload } from "@/services/budgets/mutations"
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { BudgetCategory } from "@/types/budgetTypes";
 import { z } from "zod";
+import { formatCurrency } from "@/lib/utils";
 
 interface BudgetsTabProps {
-  formatCurrency: (amount: number) => string;
+
 }
 
 const newBudgetSchema = z.object({
@@ -39,7 +40,7 @@ const newBudgetSchema = z.object({
 
 type NewBudgetFormData = z.infer<typeof newBudgetSchema>;
 
-const BudgetsTab = ({ formatCurrency }: BudgetsTabProps) => {
+const BudgetsTab = ({ }: BudgetsTabProps) => {
   // Auth API hook
   const { api, isAuthenticated } = useAuthApi();
   const queryClient = useQueryClient();

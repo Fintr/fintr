@@ -27,14 +27,15 @@ import {
 } from "../ui/dialog";
 import { Progress } from "../ui/progress";
 import { format } from "date-fns";
+import { formatCurrency } from "@/lib/utils";
 import { Plus, Target, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 interface GoalSectionProps {
-  formatCurrency: (amount: number) => string;
+
 }
 
-const GoalSection = ({ formatCurrency }: GoalSectionProps) => {
+const GoalSection = ({  }: GoalSectionProps) => {
   const [open, setOpen] = useState(false);
   const [goalType, setGoalType] = useState("short-term");
   const [editingGoalIndex, setEditingGoalIndex] = useState<number | null>(null);
