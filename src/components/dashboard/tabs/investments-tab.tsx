@@ -16,12 +16,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import InvestmentForm from "../forms/InvestmentForm";
-
+import { formatCurrency } from "@/lib/utils";
 interface InvestmentsTabProps {
-  formatCurrency: (amount: number) => string;
+
 }
 
-const InvestmentsTab = ({ formatCurrency }: InvestmentsTabProps) => {
+const InvestmentsTab = ({  }: InvestmentsTabProps) => {
   const [showInvestmentForm, setShowInvestmentForm] = useState(false);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [investmentForm, setInvestmentForm] = useState({
