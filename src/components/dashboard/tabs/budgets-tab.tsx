@@ -19,13 +19,12 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Plus, Trash2, Calendar } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchBudgetsPage, transformBudgetsToCategories } from "@/services/budgets/queries";
-import { updateBudget, UpdateBudgetPayload } from "@/services/budgets/mutations";
-import { useAuthApi } from "@/hooks/useAuthApi";
+import { transformBudgetsToCategories } from "@/services/budgets/queries";
+import { UpdateBudgetPayload } from "@/services/budgets/mutations";
 import { BudgetCategory } from "@/types/budgetTypes";
 import { z } from "zod";
 import { formatCurrency } from "@/lib/utils";
+import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 
 interface BudgetsTabProps {
 
@@ -41,16 +40,13 @@ const newBudgetSchema = z.object({
 type NewBudgetFormData = z.infer<typeof newBudgetSchema>;
 
 const BudgetsTab = ({ }: BudgetsTabProps) => {
-  // Auth API hook
-  const { api, isAuthenticated } = useAuthApi();
-  const queryClient = useQueryClient();
-
   // Budget state
   const [budgetDate, setBudgetDate] = useState<string>(() => {
     const today = new Date();
     return today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
   });
-  const [formattedDate, setFormattedDate] = useState<string>("");
+  const [appliedDateFilter, setAppliedDateFilter] = useState<string>("");
+  const formattedDate = new Date(budgetDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const [categories, setCategories] = useState<BudgetCategory[]>([]);
 
   // Form state
@@ -64,31 +60,7 @@ const BudgetsTab = ({ }: BudgetsTabProps) => {
   const [customExpenseCategories, setCustomExpenseCategories] = useState<string[]>([]);
   const [errors, setErrors] = useState<Partial<NewBudgetFormData>>({});
 
-  // Update formatted date when budgetDate changes
-  useEffect(() => {
-    if (budgetDate) {
-      try {
-        const date = new Date(budgetDate);
-        setFormattedDate(date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
-      } catch (error) {
-        console.error("Error formatting date:", error);
-        setFormattedDate("");
-      }
-    }
-  }, [budgetDate]);
-
-  // Fetch budgets data with React Query
-  const spaceCode = localStorage.getItem('spaceCode') || '';
-  const { data: budgetsData, isLoading, isError, refetch } = useQuery({
-    queryKey: ['budgets', spaceCode, budgetDate],
-    queryFn: async () => {
-      if (!isAuthenticated) return { budgets: [], summary: null, nextPage: null, totalPages: 0, totalCount: 0 };
-      return await fetchBudgetsPage(api, {
-        queryKey: ['budgets', spaceCode, budgetDate],
-      });
-    },
-    enabled: isAuthenticated && Boolean(spaceCode),
-  });
+  const { data: budgetsData, isLoading, isError, refetch, updateBudgetMutation } = useBudgetsData(appliedDateFilter);
 
   // Calculate budget stats
   const budgetSummary = budgetsData?.summary;
@@ -101,27 +73,11 @@ const BudgetsTab = ({ }: BudgetsTabProps) => {
   const isOverBudget = budgetUsagePercentage > 100;
   // Ensure formattedBudgetPercentage is not NaN if budgetUsagePercentage is NaN (e.g. 0/0)
   const formattedBudgetPercentage = Number(isNaN(budgetUsagePercentage) ? 0 : budgetUsagePercentage).toFixed(1);
-  
-  // Mutation for updating a budget
-  const updateBudgetMutation = useMutation({
-    mutationFn: (variables: { budgetId: string; data: UpdateBudgetPayload }) => 
-      updateBudget(api, variables.budgetId, variables.data),
-    onSuccess: (data, variables) => {
-      console.log('Update Budget Mutation onSuccess: Data received from PUT:', data);
-      console.log('Update Budget Mutation onSuccess: Invalidating queries for:', ['budgets', spaceCode, budgetDate]);
-      queryClient.invalidateQueries({ queryKey: ['budgets', spaceCode, budgetDate] });
-    },
-    onError: (error) => {
-      console.error("Error updating budget:", error);
-      // Optionally, display an error toast/notification here
-    },
-  });
 
   // Transform and update budget categories when data changes
   useEffect(() => {
-    console.log('BudgetsTab useEffect triggered. budgetsData:', budgetsData);
     if (budgetsData?.budgets) {
-      console.log('BudgetsTab useEffect: Transforming budgetsData.budgets:', budgetsData.budgets);
+
       const transformedCategories = transformBudgetsToCategories(budgetsData.budgets);
       console.log('BudgetsTab useEffect: Setting categories:', transformedCategories);
       setCategories(transformedCategories);
@@ -136,8 +92,8 @@ const BudgetsTab = ({ }: BudgetsTabProps) => {
   };
 
   // Handle applying filters
-  const handleApplyFilters = () => {
-    refetch();
+  const handleApplyFilters = (budgetDateFilter: string) => {
+    setAppliedDateFilter(budgetDateFilter);
   };
 
   // Validate form input
@@ -297,7 +253,7 @@ const BudgetsTab = ({ }: BudgetsTabProps) => {
               <div className="md:self-end">
                 <Button 
                   className="bg-primary hover:bg-primary/80 w-full"
-                  onClick={handleApplyFilters}
+                  onClick={() => handleApplyFilters(budgetDate)}
                   disabled={isLoading}
                 >
                   Apply Filters
