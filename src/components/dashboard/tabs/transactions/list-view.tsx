@@ -118,7 +118,7 @@ export function ListView({
                             </div>
                           </div>
                           <div className="flex items-center space-x-2 mt-4 lg:mt-0">
-                            <span
+                            <div
                               className={`font-medium flex items-center gap-1 ${
                                 transaction.type === TransactionTypeEnum.INCOME
                                   ? "text-emerald-600"
@@ -128,10 +128,13 @@ export function ListView({
                                   : "text-blue-600"
                               }`}
                             >
-                              <DollarSign className="h-4 w-4" />
-                              {transaction.amount > 0 ? "+" : ""}
-                              {formatCurrency(transaction.amount)}
-                            </span>
+                              <span>
+                                {transaction.amount > 0 ? "+" : ""}
+                              </span>
+                              <span className="whitespace-nowrap">
+                                {formatCurrency(transaction.amount)}
+                              </span>
+                            </div>
                             <span
                               className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${
                                 transaction.type === TransactionTypeEnum.INCOME
