@@ -43,8 +43,6 @@ export const fetchBudgetsPage = async (
     page: pageParam,
   };
 
-  console.log('Fetching budgets page:', input);
-
   try {
     const response = await api.get('/budgets', {
       params: input,
@@ -65,7 +63,6 @@ export const fetchBudgetsPage = async (
       return { budgets: [], summary: null, nextPage: null, totalPages: null, totalCount: null };
     }
 
-    console.log('Budgets page fetched:', { budgets, summary, nextPage });
     return { budgets, summary, nextPage, totalPages, totalCount };
   } catch (error) {
     console.error("Error fetching budgets page:", error);

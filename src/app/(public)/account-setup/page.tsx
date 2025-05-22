@@ -137,8 +137,6 @@ const AccountSetupFlow = () => {
   };
 
   const handleSubmit = () => {
-    // Here you would typically save the data to your backend
-    console.log("Form submitted:", formData);
 
     // Redirect to dashboard
     router.push("/dashboard");
