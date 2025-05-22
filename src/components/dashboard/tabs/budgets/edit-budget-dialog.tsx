@@ -68,7 +68,7 @@ export function EditBudgetDialog({
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button variant="ghost" size="icon">
           <Pencil />
         </Button>
       </DialogTrigger>

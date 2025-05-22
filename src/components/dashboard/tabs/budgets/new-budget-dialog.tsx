@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Budget, BudgetsPage } from "@/types/budgetTypes";
-import { transformBudgetsToCategories } from "@/services/budgets/queries";
 import {
   Select,
   SelectContent,
@@ -31,9 +30,12 @@ import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
+import { ComboBox } from "@/components/ui/combobox";
+import { OptionType } from "@/types/generalTypes";
+
 const formSchema = z.object({
-  category: z.string(),
-  amount: z.coerce.number(),
+  category: z.string().min(1, { message: "Category cannot be empty." }),
+  amount: z.coerce.number().min(1, { message: "Amount must be greater than 0." }),
 });
 
 export function NewBudgetDialog({
@@ -57,9 +59,26 @@ export function NewBudgetDialog({
     },
   });
 
-  const categories = budgetsData?.budgets
-    ? transformBudgetsToCategories(budgetsData.budgets)
-    : [];
+  const predefinedCategories: OptionType[] = [
+    { value: "myself", label: "Myself" },
+    { value: "family", label: "Family" },
+    { value: "insurance", label: "Insurance" },
+    { value: "home", label: "Home" },
+    { value: "utilities", label: "Utilities" },
+    { value: "food", label: "Food" },
+    { value: "transport", label: "Transport" },
+    { value: "pet", label: "Pet" },
+    { value: "subscriptions", label: "Subscriptions" },
+    { value: "going-out", label: "Going Out" },
+    { value: "travel", label: "Travel" },
+    { value: "shopping", label: "Shopping" },
+  ];
+
+  const allCategoryOptions: OptionType[] = [
+    ...predefinedCategories,
+    ...customExpenseCategories.map((cat) => ({ value: cat, label: cat })),
+  ];
+
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     console.log("VALUES ", values);
@@ -67,6 +86,14 @@ export function NewBudgetDialog({
       budgetCategory: values.category,
       budgetAmount: values.amount,
     });
+    // Add to custom categories if it's not predefined and not already custom
+    if (
+      !predefinedCategories.find((pc) => pc.value === values.category) &&
+      !customExpenseCategories.includes(values.category)
+    ) {
+      setCustomExpenseCategories((prev) => [...prev, values.category]);
+    }
+    form.reset();
     setDialogOpen(false);
   }
 
@@ -90,35 +117,32 @@ export function NewBudgetDialog({
                 <FormItem>
                   <FormLabel>Category</FormLabel>
                   <FormControl>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="myself">Myself</SelectItem>
-                        <SelectItem value="family">Family</SelectItem>
-                        <SelectItem value="insurance">Insurance</SelectItem>
-                        <SelectItem value="home">Home</SelectItem>
-                        <SelectItem value="utilities">Utilities</SelectItem>
-                        <SelectItem value="food">Food</SelectItem>
-                        <SelectItem value="transport">Transport</SelectItem>
-                        <SelectItem value="pet">Pet</SelectItem>
-                        <SelectItem value="subscriptions">
-                          Subscriptions
-                        </SelectItem>
-                        <SelectItem value="going-out">Going Out</SelectItem>
-                        <SelectItem value="travel">Travel</SelectItem>
-                        <SelectItem value="shopping">Shopping</SelectItem>
-                        {customExpenseCategories.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <ComboBox
+                      filterType="frontend"
+                      data={allCategoryOptions}
+                      value={field.value}
+                      onChange={(value) => {
+                        field.onChange(value);
+                      }}
+                      placeholder="Select or create category"
+                      renderNotFound={(searchValue, selectValueAndClose) => (
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start p-2 h-auto"
+                          onClick={() => {
+                            field.onChange(searchValue); // Set the form value
+                            // No need to call selectValueAndClose if it closes the popover automatically
+                            // The combobox will close once an item is selected or focus is lost.
+                            // For this button, we want the user to confirm the action.
+                            // We can consider adding the new category to customExpenseCategories here
+                            // or rely on the onSubmit logic to do so.
+                            // For now, let it be handled by onSubmit to keep consistency.
+                          }}
+                        >
+                          Create "{searchValue}" budget category
+                        </Button>
+                      )}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

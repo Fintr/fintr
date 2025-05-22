@@ -72,6 +72,11 @@ export interface ComboBoxProps {
    * @default true
    */
   showAllOnFocus?: boolean;
+  /**
+   * Custom renderer for the "not found" state.
+   * Receives the current search value and a function to select the value and close the popover.
+   */
+  renderNotFound?: (searchValue: string, selectValueAndClose: () => void) => React.ReactNode;
 }
 
 export const ComboBox = ({
@@ -89,12 +94,23 @@ export const ComboBox = ({
   itemClassName,
   disabled = false,
   showAllOnFocus = true,
+  renderNotFound,
 }: ComboBoxProps) => {
   const [searchValue, setSearchValue] = useState(value || "");
   const [options, setOptions] = useState<ComboBoxItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const [open, setOpen] = useState(false);
+
+  // Sync searchValue with the value prop
+  useEffect(() => {
+    // Update searchValue if the external value prop changes,
+    // but only if it's different from the current searchValue to avoid potential loops
+    // and ensure that typing is not interrupted.
+    if (value !== undefined && value !== searchValue) {
+      setSearchValue(value);
+    }
+  }, [value]);
 
   // For frontend filtering
   const filteredOptions = useMemo(() => {
@@ -158,6 +174,7 @@ export const ComboBox = ({
     if (onChange) {
       onChange(value);
     }
+    // Do not automatically close here, selection of an item or explicit action should close.
   };
 
   // Get the appropriate options based on filtering type
@@ -170,6 +187,8 @@ export const ComboBox = ({
     }
     return { display: item.label, value: String(item.value) };
   };
+
+  const combobox = Ariakit.useComboboxContext();
 
   return (
     <Ariakit.ComboboxProvider
@@ -207,13 +226,13 @@ export const ComboBox = ({
           <div className="p-2 text-center text-gray-300">Loading...</div>
         ) : displayOptions && displayOptions.length > 0 ? (
           displayOptions.map((item) => {
-            const { display, value } = formatItem(item);
+            const { display, value: itemValue } = formatItem(item);
             return (
               <Ariakit.ComboboxItem
-                key={value}
-                value={value}
+                key={itemValue}
+                value={itemValue}
                 className={cn(
-                  "relative flex w-full cursor-default select-none items-center rounded-sm px-1 text-sm outline-none  focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                  "relative flex w-full cursor-default select-none items-center rounded-sm px-1 text-sm outline-none focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
                   itemClassName
                 )}
               >
@@ -223,8 +242,22 @@ export const ComboBox = ({
               </Ariakit.ComboboxItem>
             );
           })
-        ) : searchValue.length >= minSearchLength || (showAllOnFocus && open && searchValue.length === 0) ? (
-          <div className="p-2 text-center text-gray-300 text-sm">No results found</div>
+        ) : ((searchValue.length >= minSearchLength && !(showAllOnFocus && open && searchValue.length === 0 && filterType === 'frontend')) || (showAllOnFocus && open && searchValue.length === 0)) && !loading ? (
+          renderNotFound && searchValue.length > 0 ? (
+            renderNotFound(searchValue, () => {
+              if (onChange) {
+                onChange(searchValue);
+              }
+              // Ensure Ariakit's state is also updated if possible, or rely on external value prop change.
+              // Calling combobox.setValue will trigger the provider's setValue flow.
+              if (combobox) {
+                combobox.setValue(searchValue);
+              }
+              setOpen(false);
+            })
+          ) : (
+            <div className="p-2 text-center text-gray-300 text-sm">No results found</div>
+          )
         ) : null}
       </Ariakit.ComboboxPopover>
     </Ariakit.ComboboxProvider>
