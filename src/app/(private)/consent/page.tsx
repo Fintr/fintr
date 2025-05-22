@@ -15,7 +15,6 @@ const ConsentPage = () => {
           scope: "openid profile email",
         }
       });
-      console.log(accessToken);
       // After successful consent, navigate back to dashboard
       router.push("/dashboard");
     } catch (error) {
