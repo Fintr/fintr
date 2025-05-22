@@ -12,4 +12,6 @@ export function useGetSpaceCode(api: AxiosInstance) {
     },
     enabled: localStorage && !!!localStorage.getItem("spaceCode"),
   });
+
+  return _getSpaceCode.data?.data.spaceCode;
 }
