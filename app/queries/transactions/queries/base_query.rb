@@ -37,7 +37,7 @@ module Transactions
 
         min_amount = params[:min_amount]&.to_d&.*(100) || 0
         max_amount = params[:max_amount] ? params[:max_amount]&.to_d&.*(100) : Float::INFINITY
-        relation = relation.where(amount_cents: min_amount...max_amount)
+        relation = relation.where(amount_cents: min_amount..max_amount)
         Success(relation)
       end
     end
