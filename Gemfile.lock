@@ -291,6 +291,8 @@ GEM
       ostruct (>= 0.2)
     ostruct (0.6.1)
     parallel (1.27.0)
+    parallel_tests (5.2.0)
+      parallel
     parser (3.3.8.0)
       ast (~> 2.4.1)
       racc
@@ -501,6 +503,7 @@ DEPENDENCIES
   kaminari (~> 1.2)
   money-rails (~> 1.15)
   oj (~> 3.16)
+  parallel_tests (~> 5.2)
   pg (~> 1.1)
   puma (>= 5.0)
   rack-cors

@@ -61,4 +61,5 @@ group :development, :test do
   gem "shoulda-matchers"
   gem "factory_bot_rails"
   gem "simplecov", "~> 0.22.0"
+  gem "parallel_tests", "~> 5.2"
 end
