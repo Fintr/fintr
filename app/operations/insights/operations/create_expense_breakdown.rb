@@ -9,7 +9,7 @@ module Insights
         end
 
         rule(:transactions) do
-          key.failure("should be an array of transactions") unless values[:transactions].first.is_a?(Transactions::Transaction)
+          key.failure("should be an array of transactions") unless values[:transactions].first.is_a?(Transactions::Combined)
         end
       end
 
@@ -30,14 +30,24 @@ module Insights
       private
 
       def get_expenses(params:)
-        result = params[:transactions].where(type: "Transactions::Expense")
+        result = params[:transactions].where(transactable_type: %w[Transactions::Expense Transactions::Transfer])
         Success(result)
       end
 
       def create_expense_breakdown(expenses:)
-        total_expenses = expenses.sum(:amount_cents) / 100
-        result = expenses.group_by(&:category_name).map do |category_name, transactions|
-          amount = transactions.sum(&:amount_cents) / 100
+        # Handle the case where there are no expenses or transfers
+        return Success([]) if expenses.empty?
+
+        total_expenses = expenses.sum(&:expense).amount
+
+        # Handle case where total_expenses is zero (e.g., only transfers, which have expense: Money.zero)
+        return Success([]) if total_expenses.zero?
+
+        result = expenses
+                  .group_by { |t| t.category_name ? t.category_name : "Transfers" }
+                  .map do |category_name, transactions|
+          amount = transactions.sum(&:expense).amount
+          # Handle division by zero if amount is > 0 but total_expenses is 0 (shouldn't happen with above guard)
           percentage = Utils::Number.format_percentage((amount.to_d / total_expenses) * 100)
           {
             category_name:,

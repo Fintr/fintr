@@ -19,14 +19,15 @@ module Transactions
     end
 
     def value
-      case transactable_type
-      when "Transactions::Transfer"
-        transactable.amount
-      when "Transactions::Income"
-        transactable.amount
-      when "Transactions::Expense"
-        Money.from_amount(transactable.amount.amount * -1, transactable.amount.currency)
-      end
+      transactable.value
+    end
+
+    def income
+      transactable.income
+    end
+
+    def expense
+      transactable.expense
     end
   end
 end

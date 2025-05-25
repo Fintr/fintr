@@ -66,7 +66,19 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
 
   describe ':type field' do
     context 'when transactable_type is Transactions::Income' do
-      let(:record) { OpenStruct.new(transactable_type: "Transactions::Income") }
+      let(:record) do
+        OpenStruct.new(
+          id: record_id,
+          date: record_date,
+          description: record_description,
+          to_account_name: record_to_account_name,
+          from_account_name: record_from_account_name,
+          category_name: record_category_name,
+          value: new_mock_money.call(record_amount),
+          balance: new_mock_money.call(record_balance),
+          transactable_type: "Transactions::Income"
+        )
+      end
 
       it 'returns "income"' do
         expect(serialized_hash[:type]).to eq("income")
@@ -74,7 +86,19 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
     end
 
     context 'when transactable_type is Transactions::Expense' do
-      let(:record) { OpenStruct.new(transactable_type: "Transactions::Expense") }
+      let(:record) do
+        OpenStruct.new(
+          id: record_id,
+          date: record_date,
+          description: record_description,
+          to_account_name: record_to_account_name,
+          from_account_name: record_from_account_name,
+          category_name: record_category_name,
+          value: new_mock_money.call(record_amount),
+          balance: new_mock_money.call(record_balance),
+          transactable_type: "Transactions::Expense"
+        )
+      end
 
       it 'returns "expense"' do
         expect(serialized_hash[:type]).to eq("expense")
@@ -82,7 +106,19 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
     end
 
     context 'when transactable_type is Transactions::Transfer' do
-      let(:record) { OpenStruct.new(transactable_type: "Transactions::Transfer") }
+      let(:record) do
+        OpenStruct.new(
+          id: record_id,
+          date: record_date,
+          description: record_description,
+          to_account_name: record_to_account_name,
+          from_account_name: record_from_account_name,
+          category_name: nil, # Transfers have no category
+          value: new_mock_money.call(record_amount),
+          balance: new_mock_money.call(record_balance),
+          transactable_type: "Transactions::Transfer"
+        )
+      end
 
       it 'returns "transfer"' do
         expect(serialized_hash[:type]).to eq("transfer")
@@ -90,7 +126,19 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
     end
 
     context 'when transactable_type is unknown' do
-      let(:record) { OpenStruct.new(transactable_type: "Unknown::Type") }
+      let(:record) do
+        OpenStruct.new(
+          id: record_id,
+          date: record_date,
+          description: record_description,
+          to_account_name: record_to_account_name,
+          from_account_name: record_from_account_name,
+          category_name: record_category_name,
+          value: new_mock_money.call(record_amount),
+          balance: new_mock_money.call(record_balance),
+          transactable_type: "Unknown::Type"
+        )
+      end
 
       it 'returns nil' do
         expect(serialized_hash[:type]).to be_nil

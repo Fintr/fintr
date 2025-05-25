@@ -50,4 +50,33 @@ FactoryBot.define do
       end
     end
   end
+
+  factory :combined_transaction, class: "Transactions::Combined" do
+    association :space
+    # Commenting out associations that might cause issues if foreign keys aren't in the view
+    # or if they cause issues with build_stubbed for a read-only model.
+    # association :category, factory: :category
+    # association :from_account, factory: :account
+    # association :to_account, factory: :account
+
+    # You might need to manually set the foreign key attributes if they exist in the view
+    # and are needed for other tests, e.g.:
+    # category_id { create(:category, space: space).id }
+
+    transactable { build_stubbed(:expense_transaction, space: space) } # Example transactable
+
+    date { Time.zone.now }
+    amount_cents { 10000 }
+    amount_currency { "PHP" }
+    balance_cents { 50000 }
+    balance_currency { "PHP" }
+
+    # Add other attributes from the combined_transactions view as needed
+    # For example:
+    # description { transactable.description }
+    # type { transactable.type }
+    # category_name { category&.name }
+    # from_account_name { from_account&.name }
+    # to_account_name { to_account&.name }
+  end
 end

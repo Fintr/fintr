@@ -40,6 +40,13 @@ module Transactions
         relation = relation.where(amount_cents: min_amount..max_amount)
         Success(relation)
       end
+
+      def by_balance_state(relation, params)
+        return Success(relation) unless params[:balance_state]
+
+        relation = relation.where(balance_state: params[:balance_state])
+        Success(relation)
+      end
     end
   end
 end

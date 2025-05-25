@@ -31,6 +31,14 @@ module Transactions
       amount + transaction_cost
     end
 
+    def income
+      Money.from_amount(0, amount.currency)
+    end
+
+    def expense
+      transaction_cost
+    end
+
     private
 
     def accounts_belong_to_same_space

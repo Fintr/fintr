@@ -9,7 +9,7 @@ module Insights
         end
 
         rule(:transactions) do
-          key.failure("should be an array of transactions") unless values[:transactions].first.is_a?(Transactions::Transaction)
+          key.failure("should be an array of transactions") unless values[:transactions].first.is_a?(Transactions::Combined)
         end
       end
 
@@ -23,6 +23,8 @@ module Insights
       def call(params)
         params                = step validate(params:)
         expenses              = step get_expenses(params:)
+        return [] if expenses.blank? || expenses.sum(&:expense).amount.zero?
+
         weekly_spending       = step create_weekly_spending(expenses:)
         weekly_spending
       end
@@ -32,17 +34,18 @@ module Insights
       def get_expenses(params:)
         date = Time.zone.today
         result = params[:transactions]
-                  .where(type: "Transactions::Expense")
+                  .where(transactable_type: %w[Transactions::Expense Transactions::Transfer])
                   .where(date: (1.week.ago.beginning_of_day)..(date.end_of_day))
         Success(result)
       end
 
       def create_weekly_spending(expenses:)
-        total_expenses = expenses.sum(:amount_cents) / 100.0
+        total_expenses = expenses.sum(&:expense).amount
+
         ordered_expenses = expenses.order(:date)
 
         result = ordered_expenses.group_by(&:date).map do |original_date, transactions|
-          amount = transactions.sum { |t| t.amount_cents } / 100.0
+          amount = transactions.sum(&:expense).amount
           percentage = if total_expenses.zero?
                          0.0
           else

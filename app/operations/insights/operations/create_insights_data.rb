@@ -25,14 +25,14 @@ module Insights
       attr_reader :space
 
       def call(params)
-        params            = step validate(params:)
-        transactions      = step find_transactions(params:)
-        budgets           = step find_budgets(params:)
-        summary_structure = step create_summary_structure(transactions:)
-        health_scores     = step create_health_scores(summary_structure:, budgets:)
-        expense_breakdown = step create_expense_breakdown(transactions:)
-        weekly_spending   = step create_weekly_spending(transactions:)
-        insights_data     = step create_insights_data(
+        params                 = step validate(params:)
+        combined_transactions  = step find_combined_transactions(params:)
+        budgets                = step find_budgets(params:)
+        summary_structure      = step create_summary_structure(combined_transactions:)
+        health_scores          = step create_health_scores(summary_structure:, budgets:)
+        expense_breakdown      = step create_expense_breakdown(combined_transactions:)
+        weekly_spending        = step create_weekly_spending(combined_transactions:)
+        insights_data          = step create_insights_data(
                                     summary_structure:,
                                     health_scores:,
                                     expense_breakdown:,
@@ -43,8 +43,9 @@ module Insights
 
       private
 
-      def find_transactions(params:)
-        Transactions::Queries::FilteredTransactions.call(params:)
+      def find_combined_transactions(params:)
+        params_for_calculated_transactions = params.merge(balance_state: "calculated")
+        Transactions::Queries::FilteredCombined.call(params: params_for_calculated_transactions)
       end
 
       def find_budgets(params:)
@@ -55,20 +56,20 @@ module Insights
         )
       end
 
-      def create_summary_structure(transactions:)
-        Insights::Operations::CreateSummaryStructure.new.call(transactions:)
+      def create_summary_structure(combined_transactions:)
+        Insights::Operations::CreateSummaryStructure.new.call(transactions: combined_transactions)
       end
 
       def create_health_scores(summary_structure:, budgets:)
         Insights::Operations::CreateHealthScores.new.call(summary_structure:, budgets:)
       end
 
-      def create_expense_breakdown(transactions:)
-        Insights::Operations::CreateExpenseBreakdown.new.call(transactions:)
+      def create_expense_breakdown(combined_transactions:)
+        Insights::Operations::CreateExpenseBreakdown.new.call(transactions: combined_transactions)
       end
 
-      def create_weekly_spending(transactions:)
-        Insights::Operations::CreateWeeklySpending.new.call(transactions:)
+      def create_weekly_spending(combined_transactions:)
+        Insights::Operations::CreateWeeklySpending.new.call(transactions: combined_transactions)
       end
 
       def create_insights_data(

@@ -11,5 +11,13 @@ module Transactions
     def value
       amount
     end
+
+    def income
+      amount
+    end
+
+    def expense
+      Money.from_amount(0, amount.currency)
+    end
   end
 end

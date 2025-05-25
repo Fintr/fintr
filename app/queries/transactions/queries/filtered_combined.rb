@@ -22,8 +22,9 @@ module Transactions
       def call
         params        = step validate
         relation      = step joins(@relation)
-        relation      = step by_space(@relation, params)
+        relation      = step by_space(relation, params)
         relation      = step by_date(relation, params)
+        relation      = step by_balance_state(relation, params)
         relation      = step by_amount(relation, params)
         relation      = step by_category(relation, params)
         relation      = step order(relation)
@@ -34,10 +35,7 @@ module Transactions
 
       def joins(relation)
         relation = relation.joins(
-          "INNER JOIN spaces ON spaces.id = combined_transactions.space_id",
-          "INNER JOIN transactions_categories ON transactions_categories.id = combined_transactions.category_id",
-          "INNER JOIN accounts as to_accounts ON to_accounts.id = combined_transactions.to_account_id",
-          "INNER JOIN accounts as from_accounts ON from_accounts.id = combined_transactions.from_account_id"
+          "INNER JOIN spaces ON spaces.id = combined_transactions.space_id"
         )
         Success(relation)
       rescue StandardError

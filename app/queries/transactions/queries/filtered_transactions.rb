@@ -13,11 +13,18 @@ module Transactions
           optional(:min_amount).maybe(:integer, gteq?: 0)
           optional(:max_amount).maybe(:integer)
           optional(:per_page).maybe(:integer)
+          optional(:balance_state).value(:string)
         end
 
         rule(:min_amount, :max_amount) do
           if values[:min_amount].is_a?(Integer) && values[:max_amount].is_a?(Integer)
             key.failure("should be less than max_amount") if values[:min_amount] > values[:max_amount]
+          end
+        end
+
+        rule(:balance_state) do
+          if value
+            key.failure("should be one of #{Transactions::Transaction.balance_states.values}") unless Transactions::Transaction.balance_states.values.include?(value)
           end
         end
       end

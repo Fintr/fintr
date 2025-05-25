@@ -86,8 +86,8 @@ RSpec.describe Transactions::Category, type: :model do
   describe '.create_default_categories' do
     # Build space without running callbacks to isolate the class method
     let(:new_space) { build(:space) }
-    let(:default_income_count) { (Transactions::Category::DEFAULT_INCOME_CATEGORIES + ["Initial Balance"]).count }
-    let(:default_expense_count) { Transactions::Category::DEFAULT_EXPENSE_CATEGORIES.count }
+    let(:default_income_count) { Transactions::Category::DEFAULT_INCOME_CATEGORIES.count } # Adjusted: Count only normally selectable income categories
+    let(:default_expense_count) { Transactions::Category::DEFAULT_EXPENSE_CATEGORIES.count } # Adjusted: Count only normally selectable expense categories. "Transfer" is also special.
 
     before do
       # Save the space without triggering the after_create callback
@@ -95,27 +95,38 @@ RSpec.describe Transactions::Category, type: :model do
       new_space.categories.destroy_all
     end
 
-    it 'creates the correct number of default income categories for the space' do
+    it 'creates the correct number of default income categories (excluding special ones) for the space via income scope' do
       expect {
         described_class.create_default_categories(new_space)
       }.to change { new_space.categories.income.count }.by(default_income_count)
     end
 
-    it 'creates the correct number of default expense categories for the space' do
+    it 'creates the correct number of default expense categories (excluding special ones) for the space via expense scope' do
       expect {
         described_class.create_default_categories(new_space)
       }.to change { new_space.categories.expense.count }.by(default_expense_count)
     end
 
-    it 'creates categories with the correct names and types' do
+    it 'creates categories with the correct names and types, including special categories' do
       described_class.create_default_categories(new_space)
       new_space.reload # Reload to see the created categories
 
-      income_names = new_space.categories.income.pluck(:name)
-      expense_names = new_space.categories.expense.pluck(:name)
+      income_names = new_space.categories.where(category_type: :income).pluck(:name) # Query all income, then check subsets
+      expense_names = new_space.categories.where(category_type: :expense).pluck(:name) # Query all expense
 
-      expect(income_names).to match_array(Transactions::Category::DEFAULT_INCOME_CATEGORIES + ["Initial Balance"])
-      expect(expense_names).to match_array(Transactions::Category::DEFAULT_EXPENSE_CATEGORIES)
+      # Check for user-selectable categories
+      expect(income_names).to include(*Transactions::Category::DEFAULT_INCOME_CATEGORIES)
+      expect(expense_names).to include(*Transactions::Category::DEFAULT_EXPENSE_CATEGORIES)
+
+      # Check for special internal categories
+      expect(income_names).to include("Initial Balance")
+      expect(expense_names).to include("Transfer")
+
+      # Ensure the counts match the full set created
+      all_created_income_names = Transactions::Category::DEFAULT_INCOME_CATEGORIES + ["Initial Balance"]
+      all_created_expense_names = Transactions::Category::DEFAULT_EXPENSE_CATEGORIES + ["Transfer"]
+      expect(income_names).to match_array(all_created_income_names)
+      expect(expense_names).to match_array(all_created_expense_names)
     end
 
     it 'is idempotent (does not create duplicates or raise errors on second run)' do

@@ -12,6 +12,7 @@ module Spaces
     has_many :expense_categories, -> { expense }, class_name: "Transactions::Category"
     has_many :accounts, class_name: "Transactions::Account", dependent: :destroy
     has_many :budgets, class_name: "Budget", dependent: :destroy
+    has_many :monthly_totals, class_name: "Transactions::MonthlyTotal", dependent: :destroy
 
     validates :name, presence: true
     validates :code, presence: true, uniqueness: true

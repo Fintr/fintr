@@ -18,7 +18,7 @@ We're creating spec files using this playbook. What we're doing is making sure e
 4. If there is no file, create the specs based on best practices that you know. If there are many spec files around the location or any similar files, check those files too. It's best to read 3 files when you're doing this so that you understand what is the style and format of the specs.
 5. Test the spec. Run `bundle exec rspec <location>`
 6. If it succeeds, end your session.
-7. If it fails, review the errors and make the necessary changes to pass the tests. Do not make changes to the file. Only make changes to the spec file instead. Then do step 5. Do this until the 3rd attempt. If it still fails, end the session.
+7. If it fails, review the errors and make the necessary changes to pass the tests. Do not make changes to the file. Only make changes to the spec file instead. Then do step 5.
 
 
 ## Considerations

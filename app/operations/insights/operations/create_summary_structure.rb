@@ -9,7 +9,7 @@ module Insights
         end
 
         rule(:transactions) do
-          key.failure("should be an array of transactions") unless values[:transactions].first.is_a?(Transactions::Transaction)
+          key.failure("should be an array of transactions") unless values[:transactions].first.is_a?(Transactions::Combined)
         end
       end
 
@@ -32,12 +32,12 @@ module Insights
       private
 
       def get_total_income(params:)
-        result = params[:transactions].sum { |transaction| transaction.transaction_type == "Transactions::Income" ? transaction.amount.amount : 0 }
+        result = params[:transactions].sum(&:income).amount
         Success(result)
       end
 
       def get_total_expenses(params:)
-        result = params[:transactions].sum { |transaction| transaction.transaction_type == "Transactions::Expense" ? transaction.amount.amount : 0 }
+        result = params[:transactions].sum(&:expense).amount
         Success(result)
       end
 

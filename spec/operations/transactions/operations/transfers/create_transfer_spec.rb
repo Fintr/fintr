@@ -77,7 +77,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
 
         future_transfers = Transactions::Transfer.where.not(id: transfer.id)
         expect(future_transfers.count).to be > 0
-        expect(future_transfers.first.balance_state).to eq("calculated")
+        expect(future_transfers.first.balance_state).to eq("pending")
       end
     end
 
@@ -122,6 +122,106 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
           expect(result).to be_failure
           expect(result.failure).to include(account_name: "'NonExistentAccount' not found")
         end
+      end
+    end
+  end
+
+  describe 'Contract Validations' do
+    let(:base_valid_params) do
+      {
+        user_id: user.id,
+        space_id: space.id,
+        amount: 100.00,
+        transaction_cost: 10.00,
+        date: Time.zone.today,
+        from_account_name: from_account.name,
+        to_account_name: to_account.name,
+        description: "Monthly transfer",
+        schedule_type: "one_time"
+      }
+    end
+
+    # Test for required fields
+    %i[user_id space_id amount transaction_cost date from_account_name to_account_name schedule_type].each do |field|
+      it "fails if #{field} is missing" do
+        params = base_valid_params.except(field)
+        result = operation.call(params: params)
+        expect(result).to be_failure
+        expect(result.failure).to include(field => ['is missing'])
+      end
+    end
+
+    it 'fails if amount is not greater than 0' do
+      params = base_valid_params.merge(amount: 0)
+      result = operation.call(params: params)
+      expect(result).to be_failure
+      expect(result.failure).to include(amount: ['must be greater than 0'])
+    end
+
+    it 'fails if transaction_cost is negative' do
+      params = base_valid_params.merge(transaction_cost: -1)
+      result = operation.call(params: params)
+      expect(result).to be_failure
+      expect(result.failure).to include(transaction_cost: ['must be greater than or equal to 0'])
+    end
+
+    it 'succeeds if transaction_cost is 0' do
+      params = base_valid_params.merge(transaction_cost: 0)
+      allow(Transactions::Account).to receive(:find_by!).and_return(from_account, to_account)
+
+      # Replace receive_message_chain with proper stubbing
+      transfer_instance = instance_double(Transactions::Transfer)
+      allow(Transactions::Transfer).to receive(:new).and_return(transfer_instance)
+      allow(transfer_instance).to receive(:save!).and_return(true)
+
+      allow(operation).to receive(:calculate_balances).and_return(Dry::Monads::Success())
+      allow(operation).to receive(:create_past_transfers).and_return(Dry::Monads::Success())
+      allow(operation).to receive(:create_future_transfers).and_return(Dry::Monads::Success())
+      allow(operation).to receive(:attach_file).and_return(Dry::Monads::Success(instance_double(Transactions::Transfer, reload: true)))
+
+      contract_result = described_class::Contract.new.call(**params)
+      expect(contract_result.success?).to be true
+    end
+
+    it 'fails if schedule_type is invalid' do
+      params = base_valid_params.merge(schedule_type: 'invalid_type')
+      result = operation.call(params: params)
+      expect(result).to be_failure
+      expect(result.failure).to include(schedule_type: ['must be one of: one_time, repeat'])
+    end
+
+    context 'when schedule_type is repeat' do
+      it 'fails if repeat_interval is missing' do
+        params = base_valid_params.merge(schedule_type: 'repeat', repeat_interval: nil)
+        result = operation.call(params: params)
+        expect(result).to be_failure
+        expect(result.failure).to include(repeat_interval: ['must be provided for recurring transfers'])
+      end
+
+      it 'fails if repeat_interval is invalid' do
+        params = base_valid_params.merge(schedule_type: 'repeat', repeat_interval: 'invalid_interval')
+        result = operation.call(params: params)
+        expect(result).to be_failure
+        expect(result.failure).to include(repeat_interval: ['must be a valid interval'])
+      end
+
+      it 'succeeds if repeat_interval is valid' do
+        params = base_valid_params.merge(schedule_type: 'repeat', repeat_interval: 'every_week')
+        allow(Transactions::Account).to receive(:find_by!).and_return(from_account, to_account)
+
+        # Replace receive_message_chain with proper stubbing
+        transfer_instance = instance_double(Transactions::Transfer, reload: true, assign_attributes: true, one_time?: false, repeat?: true, date: Time.zone.today)
+        allow(Transactions::Transfer).to receive(:new).and_return(transfer_instance)
+        allow(transfer_instance).to receive(:save!).and_return(transfer_instance)
+
+        allow(operation).to receive(:calculate_balances).and_return(Dry::Monads::Success())
+        allow(operation).to receive(:create_schedule).and_return(Dry::Monads::Success(instance_double(Transactions::Transfer, reload: true)))
+        allow(operation).to receive(:create_past_transfers).and_return(Dry::Monads::Success())
+        allow(operation).to receive(:create_future_transfers).and_return(Dry::Monads::Success())
+        allow(operation).to receive(:attach_file).and_return(Dry::Monads::Success(instance_double(Transactions::Transfer, reload: true)))
+
+        contract_result = described_class::Contract.new.call(**params)
+        expect(contract_result.success?).to be true
       end
     end
   end

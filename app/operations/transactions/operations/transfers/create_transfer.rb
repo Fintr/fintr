@@ -20,7 +20,7 @@ module Transactions
 
             # Schedule type and related fields
             required(:schedule_type).value(:string)
-            optional(:repeat_interval).value(:string)
+            optional(:repeat_interval).maybe(:string)
             optional(:repeat_count).value(:integer)
           end
 
@@ -32,7 +32,7 @@ module Transactions
 
           # Validate repeat fields are present when schedule_type is 'repeat'
           rule(:repeat_interval, :schedule_type) do
-            key(:repeat_interval).failure("must be provided for recurring transfers") if values[:schedule_type] == "repeat" && value.blank?
+            key(:repeat_interval).failure("must be provided for recurring transfers") if values[:schedule_type] == "repeat" && values[:repeat_interval].blank?
           end
 
           rule(:repeat_interval) do
@@ -146,7 +146,7 @@ module Transactions
 
           CreateRepeatTransfers.new.call(params: {
             transfer_id: transfer.id,
-            balance_state: "calculated",
+            balance_state: "pending",
             date_start: Time.zone.tomorrow,
             date_end: Time.zone.today + 1.month
           })
