@@ -11,7 +11,7 @@ Rails.application.routes.draw do
       end
 
       resources :transactions
-      resources :budgets, only: %i[index create update]
+      resources :budgets, only: %i[index create update destroy]
       resources :insights, only: [:index]
 
       # Use scope to keep the URL prefix without namespace nesting for controllers

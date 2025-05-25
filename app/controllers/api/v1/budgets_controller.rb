@@ -5,22 +5,41 @@ module Api
     class BudgetsController < ApiController
       def index
         operation = Budgets::Operations::PrepareMonthlyReport.new.call(index_params)
-        return render_internal_server_error(details: operation.failure) unless operation.success?
+        return render_unprocessable_entity(details: operation.failure) unless operation.success?
 
         render_success(data: operation.value!)
       end
 
-      def update
-        operation = Budgets::Operations::UpdateBudget.new.call(with_current_params(update_params))
-        return render_internal_server_error(details: operation.failure) unless operation.success?
+      def create
+        operation = Budgets::Operations::CreateBudget.new.call(with_current_params(create_params))
+        return render_unprocessable_entity(details: operation.failure) unless operation.success?
 
         render_created(record: operation.value!)
+      end
+
+      def update
+        operation = Budgets::Operations::UpdateBudget.new.call(with_current_params(update_params))
+        return render_unprocessable_entity(details: operation.failure) unless operation.success?
+
+        render_created(record: operation.value!)
+      end
+
+      def destroy
+        budget = Budget.find_by(id: params[:id])
+        return render_not_found(details: "Budget not found") if budget.blank?
+
+        budget.destroy
+        render_success(message: "Budget deleted successfully")
       end
 
       private
 
       def index_params
         params.permit(:space_code, :date)
+      end
+
+      def create_params
+        params.permit(:category_name, :space_id, :amount, :date)
       end
 
       def update_params
