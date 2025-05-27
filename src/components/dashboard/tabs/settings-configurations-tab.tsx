@@ -532,7 +532,7 @@ const SettingsConfigurationsTab = () => {
                         title="Accounts"
                         description="Manage your accounts"
                         items={categories["account"]}
-                        onAddItem={handleAddAccount}
+                        onAddItem={() => setActiveMainTab("accounts")}
                         onEditItem={handleEditCategory}
                         onDeleteItem={handleDeleteCategory}
                         colorField="color"

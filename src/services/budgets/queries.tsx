@@ -56,7 +56,7 @@ export const fetchBudgetsPage = async (
     const currentPage = input.page;
 
     // Determine next page number
-    const nextPage = currentPage < totalPages ? currentPage + 1 : null;
+    const nextPage = currentPage && currentPage < totalPages ? currentPage + 1 : null;
 
     if (!Array.isArray(budgets)) {
       console.error('Invalid budget data structure received:', response?.data);

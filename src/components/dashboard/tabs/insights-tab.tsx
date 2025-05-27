@@ -579,7 +579,7 @@ const InsightsTab = ({
                   <XAxis dataKey="month" stroke="#888888" />
                   <YAxis stroke="#888888" />
                   <RechartsTooltip
-                    formatter={(value) => formatCurrency(value)}
+                    formatter={(value: number) => formatCurrency(value)}
                     labelFormatter={(label) => `Month: ${label}`}
                   />
                   <Legend />
@@ -650,7 +650,7 @@ const InsightsTab = ({
                       ))}
                     </Pie>
                     <RechartsTooltip
-                      formatter={(value) => formatCurrency(value)}
+                      formatter={(value: number) => formatCurrency(value)}
                     />
                     <Legend />
                   </RechartsPieChart>
@@ -679,7 +679,7 @@ const InsightsTab = ({
                     <XAxis dataKey="day" stroke="#888888" />
                     <YAxis stroke="#888888" />
                     <RechartsTooltip
-                      formatter={(value) => formatCurrency(value)}
+                      formatter={(value: number) => formatCurrency(value)}
                     />
                     <Bar
                       dataKey="amount"

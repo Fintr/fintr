@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MessageSquare, Send, X, Search, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAuth0 } from "@auth0/auth0-react";
+import Link from "next/link";
 
 interface NavbarProps {
   logoSrc?: string;
@@ -173,13 +174,13 @@ const Navbar = ({}: NavbarProps) => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center">
-            <a href="/" className="flex items-center">
+            <Link href="/" className="flex items-center">
               <img
                 src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
                 alt="Logo"
                 className="h-10 w-auto"
               />
-            </a>
+            </Link>
           </div>
 
           <div className="flex items-center justify-center relative w-full max-w-md mx-4">

@@ -8,7 +8,7 @@ import {
 } from '@/atoms/dashboardAtoms';
 import { extractFieldErrors } from '@/utils/errorUtils';
 import { TransactionTypeEnum } from '@/constants/transactionConstants';
-import { AxiosInstance } from 'axios';
+import { AxiosError, AxiosInstance } from 'axios';
 
 // Input atom for new category name
 export const newCategoryNameAtom = atom<string>('');
@@ -98,8 +98,12 @@ export const createCategoryAtom = atom(
       
       // Return the name of the new category for selection in the form
       return categoryData.name;
-    } catch (error) {
-      console.error('Error creating category:', error.error);
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        console.error('Error creating category:', error.response?.data);
+      } else {
+        console.error('Error creating category:', error);
+      }
       
       // Extract field validation errors
       const fieldErrors = extractFieldErrors(error);

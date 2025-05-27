@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Pencil, Trash2 } from "lucide-react";
+import { NewAccountData } from "./add-account-form";
 
 interface CategoryItem {
   id: string;
