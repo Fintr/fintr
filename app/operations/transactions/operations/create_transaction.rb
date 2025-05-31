@@ -9,6 +9,7 @@ module Transactions
           # Current user and space
           required(:user_id).value(:string)
           required(:space_id).value(:string)
+          optional(:transfer_id).value(:string)
 
           required(:amount).value(:decimal)
           required(:date).value(:date)
@@ -141,7 +142,7 @@ module Transactions
 
       # NOTE: Adjust balance only if the transaction is created today.
       def calculate_balance(transaction:)
-        Accounts::CalculateBalance.new.call(params: { transaction_id: transaction.id })
+        Accounts::CalculateBalance.new.call(transaction_id: transaction.id)
       end
 
       def create_schedule(transaction:, params:)

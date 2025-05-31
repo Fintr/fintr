@@ -23,31 +23,32 @@ RSpec.describe Transactions::Operations::Transfers::CalculateBalances do
   describe '#call' do
     context 'with valid transfer' do
       it 'calculates balances successfully' do
-        result = operation.call(params: { transfer_id: transfer.id })
+        # NOTE: transaction_cost from transfers are calculated in create_transfer_fee_transaction.
+        result = operation.call(transfer_id: transfer.id)
         expect(result).to be_success
 
         from_account.reload
         to_account.reload
         transfer.reload
 
-        expect(from_account.balance).to eq(Money.from_amount(890.00, "PHP")) # 1000 - 100 - 10
+        expect(from_account.balance).to eq(Money.from_amount(900.00, "PHP")) # 1000 - 100, no transaction cost
         expect(to_account.balance).to eq(Money.from_amount(600.00, "PHP")) # 500 + 100
         expect(transfer.balance_state).to eq("calculated")
       end
 
       it 'is idempotent' do
         # First call
-        result1 = operation.call(params: { transfer_id: transfer.id })
+        result1 = operation.call(transfer_id: transfer.id)
         expect(result1).to be_success
 
         # Second call
-        result2 = operation.call(params: { transfer_id: transfer.id })
+        result2 = operation.call(transfer_id: transfer.id)
         expect(result2).to be_success
 
         # Balances should remain the same
         from_account.reload
         to_account.reload
-        expect(from_account.balance).to eq(Money.from_amount(890.00, "PHP"))
+        expect(from_account.balance).to eq(Money.from_amount(900.00, "PHP"))
         expect(to_account.balance).to eq(Money.from_amount(600.00, "PHP"))
       end
     end

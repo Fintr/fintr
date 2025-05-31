@@ -9,7 +9,9 @@ module Insights
         end
 
         rule(:transactions) do
-          key.failure("should be an array of transactions") unless values[:transactions].first.is_a?(Transactions::Combined)
+          is_relation = values[:transactions].is_a?(ActiveRecord::Relation)
+          is_record_transaction = values[:transactions].first.is_a?(Transactions::Transaction)
+          key.failure("should be a relation of transactions") unless is_relation || is_record_transaction
         end
       end
 
@@ -30,7 +32,7 @@ module Insights
       private
 
       def get_expenses(params:)
-        result = params[:transactions].where(transactable_type: %w[Transactions::Expense Transactions::Transfer])
+        result = params[:transactions].where(type: %w[Transactions::Expense])
         Success(result)
       end
 
@@ -44,7 +46,7 @@ module Insights
         return Success([]) if total_expenses.zero?
 
         result = expenses
-                  .group_by { |t| t.category_name ? t.category_name : "Transfers" }
+                  .group_by { |t| t.category&.name }
                   .map do |category_name, transactions|
           amount = transactions.sum(&:expense).amount
           # Handle division by zero if amount is > 0 but total_expenses is 0 (shouldn't happen with above guard)

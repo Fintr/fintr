@@ -43,7 +43,7 @@ RSpec.describe Insights::Operations::CreateInsightsData do
       allow(Spaces::Space).to receive(:find_by).with(code: space.code).and_return(space)
       allow(Spaces::Space).to receive(:find_by).with(code: 'invalid_code').and_return(nil)
 
-      allow(Transactions::Queries::FilteredCombined).to receive(:call).and_return(mocked_transactions_result)
+      allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_return(mocked_transactions_result)
       allow(Budgets::Queries::MonthlyBudgets).to receive(:call).and_return(mocked_budgets_result)
 
       allow(Insights::Operations::CreateSummaryStructure).to receive(:new).and_return(mock_create_summary_structure_op)
@@ -76,7 +76,7 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
       it 'calls Transactions::Queries::FilteredCombined with correct params' do
         call_operation
-        expect(Transactions::Queries::FilteredCombined).to have_received(:call).with(params: valid_params)
+        expect(Transactions::Queries::FilteredTransactions).to have_received(:call).with(params: valid_params)
       end
 
       it 'calls Budgets::Queries::MonthlyBudgets with correct params' do
@@ -167,7 +167,7 @@ RSpec.describe Insights::Operations::CreateInsightsData do
       let(:mocked_failure_monad) { Failure("Sub-operation failed") } # Renamed from mocked_failure to avoid clash
 
       context 'when find_combined_transactions fails' do
-        before { allow(Transactions::Queries::FilteredCombined).to receive(:call).and_return(mocked_failure_monad) }
+        before { allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_return(mocked_failure_monad) }
 
         it { expect(operation.call(valid_params)).to be_failure }
         it { expect(operation.call(valid_params).failure).to eq("Sub-operation failed") }

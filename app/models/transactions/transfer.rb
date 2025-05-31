@@ -8,6 +8,7 @@ module Transactions
     belongs_to :to_account, class_name: "Transactions::Account"
     belongs_to :parent, class_name: "Transactions::Transfer", optional: true
     has_many :children, class_name: "Transactions::Transfer", foreign_key: :parent_id
+    has_many :fee_transactions, class_name: "Transactions::Transaction", foreign_key: :transfer_id
 
     include Repeatable
 

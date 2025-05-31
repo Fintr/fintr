@@ -9,6 +9,7 @@ module Transactions
     belongs_to :category, class_name: "Transactions::Category"
     belongs_to :account, class_name: "Transactions::Account"
     belongs_to :parent, class_name: "Transactions::Transaction", optional: true
+    belongs_to :transfer, class_name: "Transactions::Transfer", optional: true
     has_many :children, class_name: "Transactions::Transaction", foreign_key: :parent_id
 
     has_many_attached :files
@@ -29,6 +30,14 @@ module Transactions
 
     def value
       amount
+    end
+
+    def income
+      type.constantize.find(self.id).income
+    end
+
+    def expense
+      type.constantize.find(self.id).income
     end
   end
 end

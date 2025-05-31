@@ -9,7 +9,9 @@ module Insights
         end
 
         rule(:transactions) do
-          key.failure("should be an array of transactions") unless values[:transactions].first.is_a?(Transactions::Combined)
+          is_relation = values[:transactions].is_a?(ActiveRecord::Relation)
+          is_record_transaction = values[:transactions].first.is_a?(Transactions::Transaction)
+          key.failure("should be a relation of transactions") unless is_relation || is_record_transaction
         end
       end
 

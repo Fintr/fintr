@@ -56,7 +56,7 @@ module Insights
       end
 
       def get_total_budget(params:)
-        result = params[:budgets].sum { |budget| budget.amount }.amount
+        result = params[:budgets].sum(&:amount).amount
         Success(result)
       end
 

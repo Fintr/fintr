@@ -21,6 +21,8 @@ class CreateTransfers < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
+    add_reference :transactions, :transfer, null: true, foreign_key: { to_table: :transfers }, type: :uuid, index: true
+
     add_index :transfers, [:user_id, :date]
     add_index :transfers, [:space_id, :date]
     add_index :transfers, [:from_account_id, :date]

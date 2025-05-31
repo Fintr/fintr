@@ -58,32 +58,13 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'with valid transactions' do
-      subject(:call_operation) { operation.call(transactions: transactions_combined) }
+      subject(:call_operation) { operation.call(transactions: actual_transactions) }
 
       let(:income_transaction1) { create_transaction(type: :income, amount_value: 1000) }
       let(:income_transaction2) { create_transaction(type: :income, amount_value: 500) }
       let(:expense_transaction1) { create_transaction(type: :expense, amount_value: 200) }
       let(:expense_transaction2) { create_transaction(type: :expense, amount_value: 100) }
       let(:actual_transactions) { [income_transaction1, income_transaction2, expense_transaction1, expense_transaction2] }
-
-      let(:transactions_combined) do
-        actual_transactions.map do |t|
-          # For each actual transaction, create a Combined transaction stub that delegates to it.
-          # The `income` and `expense` methods on Transactions::Income/Expense should return Money objects.
-          combined = build_stubbed(:combined_transaction, transactable: t, space: space)
-          # Ensure the stubbed combined transaction correctly delegates for sum purposes
-          # The `income` and `expense` methods in Combined model delegate to transactable.
-          # So `combined.income` will call `t.income`. If `t.income` returns a Money object, then `combined.income.amount` will work.
-          # Let's verify `t.income` and `t.expense` on original transactions:
-          # For an Income transaction `t`, `t.income` should be its amount (Money), `t.expense` should be Money.zero
-          # For an Expense transaction `t`, `t.expense` should be its amount (Money), `t.income` should be Money.zero
-          # We need to make sure the create_transaction helper and underlying models support this.
-
-          # Assuming Transactions::Income has `def income; amount; end` and `def expense; Money.zero(amount_currency); end`
-          # And Transactions::Expense has `def expense; amount; end` and `def income; Money.zero(amount_currency); end`
-          combined
-        end
-      end
 
       it { is_expected.to be_success }
 
@@ -103,13 +84,10 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'with only income transactions' do
-      subject(:call_operation) { operation.call(transactions: transactions_combined) }
+      subject(:call_operation) { operation.call(transactions: actual_transactions) }
 
       let(:income_transaction1) { create_transaction(type: :income, amount_value: 700) }
       let(:actual_transactions) { [income_transaction1] }
-      let(:transactions_combined) do
-        actual_transactions.map { |t| build_stubbed(:combined_transaction, transactable: t, space: space) }
-      end
 
       it { is_expected.to be_success }
 
@@ -122,13 +100,10 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'with only expense transactions' do
-      subject(:call_operation) { operation.call(transactions: transactions_combined) }
+      subject(:call_operation) { operation.call(transactions: actual_transactions) }
 
       let(:expense_transaction1) { create_transaction(type: :expense, amount_value: 400) }
       let(:actual_transactions) { [expense_transaction1] }
-      let(:transactions_combined) do
-        actual_transactions.map { |t| build_stubbed(:combined_transaction, transactable: t, space: space) }
-      end
 
       it { is_expected.to be_success }
 
@@ -141,14 +116,11 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'with transactions having zero amounts' do
-      subject(:call_operation) { operation.call(transactions: transactions_combined) }
+      subject(:call_operation) { operation.call(transactions: actual_transactions) }
 
       let(:income_zero) { create_transaction(type: :income, amount_value: 0) }
       let(:expense_zero) { create_transaction(type: :expense, amount_value: 0) }
       let(:actual_transactions) { [income_zero, expense_zero] }
-      let(:transactions_combined) do
-        actual_transactions.map { |t| build_stubbed(:combined_transaction, transactable: t, space: space) }
-      end
 
       it { is_expected.to be_success }
 
@@ -162,29 +134,13 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
 
     describe 'Contract Validations' do
       context 'when transactions parameter is missing' do
-        # The operation's call method expects `params` to be a hash (e.g. {transactions: ...}).
-        # If `call` receives an empty hash `{}`, its `validate(params: {})` is called.
-        # Then `Contract.new.call(**{})` inside validate raises an ArgumentError.
         it 'raises ArgumentError when contract is called with no effective arguments' do
           expect { operation.call({}) }.to raise_error(ArgumentError, "wrong number of arguments (given 0, expected 1..2)")
         end
-
-        # To specifically test the contract's :transactions missing error, we would need to call
-        # the operation in a way that params has other keys but not :transactions, e.g.,
-        # operation.call(some_other_key: "value") if the operation could accept that.
-        # However, this operation is simple and only takes :transactions via its params hash.
-        # The most direct test for the contract itself would be:
-        # it 'contract fails if transactions key is missing' do
-        #   contract_result = described_class::Contract.new.call({})
-        #   expect(contract_result.failure?).to be true
-        #   expect(contract_result.errors.to_h).to include(transactions: ['is missing'])
-        # end
-        # But we are testing the operation call.
       end
 
+
       context 'when transactions is an empty array' do
-        # Operation expects an array of Transactions::Combined.
-        # An empty array is valid input for sum but fails the contract's .first.is_a? check.
         subject(:call_operation) { operation.call(transactions: []) }
 
         it { is_expected.to be_failure }
@@ -192,8 +148,7 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
         it 'returns transactions type error due to .first on empty array' do
           failure = call_operation.failure
           expect(failure).to include(:transactions)
-          # The contract rule is `values[:transactions].first.is_a?(Transactions::Combined)`
-          expect(failure[:transactions]).to include('should be an array of transactions')
+          expect(failure[:transactions]).to include('should be a relation of transactions')
         end
       end
 
@@ -203,7 +158,7 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
         it { is_expected.to be_failure }
 
         it 'returns transactions type error' do
-          expect(call_operation.failure).to include(transactions: ['should be an array of transactions'])
+          expect(call_operation.failure).to include(transactions: ['should be a relation of transactions'])
         end
       end
     end

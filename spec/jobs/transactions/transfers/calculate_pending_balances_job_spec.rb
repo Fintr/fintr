@@ -27,10 +27,10 @@ RSpec.describe Transactions::Transfers::CalculatePendingBalancesJob, type: :job 
       it 'processes only pending transfers for today' do
         job.perform
 
-        expect(operation_instance).to have_received(:call).with(params: { transfer_id: pending_transfer1.id })
-        expect(operation_instance).to have_received(:call).with(params: { transfer_id: pending_transfer2.id })
-        expect(operation_instance).not_to have_received(:call).with(params: { transfer_id: calculated_transfer.id })
-        expect(operation_instance).not_to have_received(:call).with(params: { transfer_id: future_transfer.id })
+        expect(operation_instance).to have_received(:call).with({ transfer_id: pending_transfer1.id })
+        expect(operation_instance).to have_received(:call).with({ transfer_id: pending_transfer2.id })
+        expect(operation_instance).not_to have_received(:call).with({ transfer_id: calculated_transfer.id })
+        expect(operation_instance).not_to have_received(:call).with({ transfer_id: future_transfer.id })
       end
     end
 
@@ -39,17 +39,17 @@ RSpec.describe Transactions::Transfers::CalculatePendingBalancesJob, type: :job 
       let!(:pending_transfer2) { create(:transfer, balance_state: 'pending', from_account:, to_account:, date: today) }
 
       before do
-        allow(operation_instance).to receive(:call).with(params: { transfer_id: pending_transfer1.id })
+        allow(operation_instance).to receive(:call).with({ transfer_id: pending_transfer1.id })
           .and_return(Dry::Monads::Success())
-        allow(operation_instance).to receive(:call).with(params: { transfer_id: pending_transfer2.id })
+        allow(operation_instance).to receive(:call).with({ transfer_id: pending_transfer2.id })
           .and_return(Dry::Monads::Failure(account: 'not found'))
       end
 
       it 'continues processing all transfers' do
         job.perform
 
-        expect(operation_instance).to have_received(:call).with(params: { transfer_id: pending_transfer1.id })
-        expect(operation_instance).to have_received(:call).with(params: { transfer_id: pending_transfer2.id })
+        expect(operation_instance).to have_received(:call).with({ transfer_id: pending_transfer1.id })
+        expect(operation_instance).to have_received(:call).with({ transfer_id: pending_transfer2.id })
       end
     end
 

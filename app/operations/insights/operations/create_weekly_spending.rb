@@ -9,7 +9,9 @@ module Insights
         end
 
         rule(:transactions) do
-          key.failure("should be an array of transactions") unless values[:transactions].first.is_a?(Transactions::Combined)
+          is_relation = values[:transactions].is_a?(ActiveRecord::Relation)
+          is_record_transaction = values[:transactions].first.is_a?(Transactions::Transaction)
+          key.failure("should be a relation of transactions") unless is_relation || is_record_transaction
         end
       end
 
@@ -34,7 +36,7 @@ module Insights
       def get_expenses(params:)
         date = Time.zone.today
         result = params[:transactions]
-                  .where(transactable_type: %w[Transactions::Expense Transactions::Transfer])
+                  .where(type: %w[Transactions::Expense])
                   .where(date: (1.week.ago.beginning_of_day)..(date.end_of_day))
         Success(result)
       end

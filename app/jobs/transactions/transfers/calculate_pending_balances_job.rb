@@ -10,7 +10,7 @@ module Transactions
 
         query.find_each(batch_size: 100) do |transfer|
           params = { transfer_id: transfer.id }
-          Operations::Transfers::CalculateBalances.new.call(params:)
+          Operations::Transfers::CalculateBalances.new.call(params)
         end
       end
     end

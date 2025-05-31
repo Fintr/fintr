@@ -12,15 +12,10 @@ RSpec.describe Insights::Operations::CreateWeeklySpending do
       allow(Utils::Number).to receive(:format_percentage) { |num| "#{num.round(2)}%" }
     end
 
-    context 'with valid Combined transactions' do
-      subject(:call_operation) { operation.call(transactions: transactions_combined) }
+    context 'with valid expense transactions' do
+      subject(:call_operation) { operation.call(transactions:) }
 
-      let(:transactions_combined) do
-        [
-          build_stubbed(:combined_transaction, transactable_type: 'Transactions::Expense'),
-          build_stubbed(:combined_transaction, transactable_type: 'Transactions::Transfer')
-        ]
-      end
+      let(:transactions) { build_stubbed_list(:expense_transaction, 2) }
 
       before do
         # Mock the get_expenses method to return a proper ActiveRecord-like relation
@@ -29,7 +24,7 @@ RSpec.describe Insights::Operations::CreateWeeklySpending do
         allow(mock_relation).to receive(:sum).and_return(Money.from_amount(100.0, 'PHP'))
         allow(mock_relation).to receive(:order).with(:date).and_return([
           instance_double(
-            Transactions::Combined,
+            Transactions::Expense,
             date: Date.current,
             expense: Money.from_amount(100.0, 'PHP'),
             amount_currency: 'PHP'
@@ -49,11 +44,9 @@ RSpec.describe Insights::Operations::CreateWeeklySpending do
     end
 
     context 'with empty expenses' do
-      subject(:call_operation) { operation.call(transactions: transactions_combined) }
+      subject(:call_operation) { operation.call(transactions:) }
 
-      let(:transactions_combined) do
-        [build_stubbed(:combined_transaction, transactable_type: 'Transactions::Income')]
-      end
+      let(:transactions) { [build_stubbed(:income_transaction)] }
 
       before do
         # Mock get_expenses to return empty relation
@@ -73,11 +66,9 @@ RSpec.describe Insights::Operations::CreateWeeklySpending do
     end
 
     context 'with zero total expenses' do
-      subject(:call_operation) { operation.call(transactions: transactions_combined) }
+      subject(:call_operation) { operation.call(transactions:) }
 
-      let(:transactions_combined) do
-        [build_stubbed(:combined_transaction, transactable_type: 'Transactions::Transfer')]
-      end
+      let(:transactions) { Transactions::Transaction.where.not(id: nil) } # 0 results
 
       before do
         # Mock get_expenses to return relation with zero sum
@@ -103,34 +94,23 @@ RSpec.describe Insights::Operations::CreateWeeklySpending do
         end
       end
 
-      context 'when transactions parameter is not an array of Combined transactions' do
+      context 'when transactions parameter is not an array of expense transactions' do
         let(:invalid_transactions) { ['not a transaction'] }
 
         it 'returns failure with validation error' do
           result = operation.call(transactions: invalid_transactions)
           expect(result).to be_failure
           expect(result.failure).to include(:transactions)
-          expect(result.failure[:transactions]).to include('should be an array of transactions')
-        end
-      end
-
-      context 'when transactions array is empty' do
-        it 'fails validation due to empty array' do
-          result = operation.call(transactions: [])
-          expect(result).to be_failure
-          expect(result.failure).to include(:transactions)
-          expect(result.failure[:transactions]).to include('should be an array of transactions')
+          expect(result.failure[:transactions]).to include('should be a relation of transactions')
         end
       end
     end
 
     describe 'Edge Cases' do
       context 'with multiple transactions on same date' do
-        subject(:call_operation) { operation.call(transactions: transactions_combined) }
+        subject(:call_operation) { operation.call(transactions:) }
 
-        let(:transactions_combined) do
-          [build_stubbed(:combined_transaction, transactable_type: 'Transactions::Expense')]
-        end
+        let(:transactions) { build_stubbed_list(:expense_transaction, 2) }
 
         before do
           # Mock get_expenses to return relation with multiple transactions on same date
@@ -157,11 +137,9 @@ RSpec.describe Insights::Operations::CreateWeeklySpending do
       end
 
       context 'with different currencies' do
-        subject(:call_operation) { operation.call(transactions: transactions_combined) }
+        subject(:call_operation) { operation.call(transactions:) }
 
-        let(:transactions_combined) do
-          [build_stubbed(:combined_transaction, transactable_type: 'Transactions::Expense')]
-        end
+        let(:transactions) { build_stubbed_list(:expense_transaction, 2) }
 
         before do
           # Mock get_expenses to return transactions with different currencies

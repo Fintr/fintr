@@ -19,7 +19,7 @@ module Transactions
 
         include FailureHandler
 
-        def call(params:)
+        def call(params)
           _            = step validate(params:)
           transfer     = step find_transfer(params:)
           return Success(transfer) if transfer.balance_state == "calculated"
@@ -42,7 +42,9 @@ module Transactions
           return Success() if transfer.balance_state == "calculated"
 
           from_old_balance = transfer.from_account.balance.amount
-          from_new_balance = from_old_balance - transfer.total_cost.amount
+          # Only subtract the transfer amount, not the fee
+          # The fee is handled by a separate expense transaction
+          from_new_balance = from_old_balance - transfer.amount.amount
 
           from_account = transfer.from_account
           from_account.assign_attributes(balance: from_new_balance)

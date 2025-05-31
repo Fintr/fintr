@@ -134,12 +134,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_08_140559) do
     t.uuid "space_id"
     t.uuid "category_id", null: false
     t.uuid "account_id", null: false
+    t.uuid "transfer_id"
     t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["date", "type", "amount_currency", "amount_cents"], name: "idx_on_date_type_amount_currency_amount_cents_5ec151a267"
     t.index ["parent_id", "date"], name: "index_transactions_on_parent_id_and_date"
     t.index ["parent_id"], name: "index_transactions_on_parent_id"
     t.index ["space_id"], name: "index_transactions_on_space_id"
+    t.index ["transfer_id"], name: "index_transactions_on_transfer_id"
     t.index ["user_id", "date", "type"], name: "index_transactions_on_user_id_and_date_and_type"
     t.index ["user_id"], name: "index_transactions_on_user_id"
   end
@@ -215,6 +217,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_08_140559) do
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "transactions", column: "parent_id"
   add_foreign_key "transactions", "transactions_categories", column: "category_id"
+  add_foreign_key "transactions", "transfers"
   add_foreign_key "transactions", "users"
   add_foreign_key "transactions_categories", "spaces"
   add_foreign_key "transfers", "accounts", column: "from_account_id"

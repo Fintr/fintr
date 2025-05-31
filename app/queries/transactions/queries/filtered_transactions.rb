@@ -45,6 +45,7 @@ module Transactions
         params   = step validate
         relation = step joins(@relation)
         relation = step by_space(relation, params)
+        relation = step by_balance_state(relation, params)
         relation = step by_date(relation, params)
         relation = step by_category(relation, params)
         relation = step by_amount(relation, params)
@@ -74,7 +75,7 @@ module Transactions
           "transactions.balance_cents as balance_cents",
           "transactions.balance_currency as balance_currency",
           "description",
-          "transactions.type as transaction_type",
+          "transactions.type as type",
           "NULL as from_account_name",
           "accounts.name as to_account_name",
           "transactions_categories.name as category_name",
@@ -95,7 +96,7 @@ module Transactions
       def order(relation)
         relation =  relation.order(
                       date: :desc,
-                      transaction_type: :desc,
+                      type: :desc,
                       amount_currency: :asc,
                       amount_cents: :desc
                     )

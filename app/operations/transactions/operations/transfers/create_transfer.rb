@@ -62,10 +62,12 @@ module Transactions
             to_account      = step find_account(params:, account_name: params[:to_account_name])
             params          = step transform_params(params:, from_account:, to_account:)
             transfer        = step create_transfer(params:)
+            # Always create fee transaction for the parent transfer
+            _               = step create_transfer_fee_transaction(transfer:, params:)
             _               = step calculate_balances(transfer:)
             transfer        = step create_schedule(transfer:, params:) if params[:schedule_type] != "one_time"
             transfer        = step attach_file(transfer:, params:)
-            _               = step create_past_transfers(transfer:) if transfer.one_time?
+            _               = step create_past_transfers(transfer:) if transfer.repeat?
             _               = step create_future_transfers(transfer:) if transfer.repeat?
             transfer.reload
           end
@@ -102,6 +104,16 @@ module Transactions
           Failure(transfer: transfer.errors.to_hash, error: e)
         end
 
+        def create_transfer_fee_transaction(transfer:, params:)
+          return Success() unless transfer.transaction_cost.amount.positive?
+
+          CreateTransferFeeTransaction.new.call(
+            transfer_id: transfer.id,
+            balance_state: "calculated",
+            **params
+          )
+        end
+
         def attach_file(transfer:, params:)
           return Success(transfer) if params[:file].blank?
 
@@ -111,7 +123,7 @@ module Transactions
 
         def calculate_balances(transfer:)
           params = { transfer_id: transfer.id }
-          CalculateBalances.new.call(params:)
+          CalculateBalances.new.call(params)
         end
 
         def create_schedule(transfer:, params:)
