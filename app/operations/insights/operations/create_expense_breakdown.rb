@@ -46,7 +46,7 @@ module Insights
         return Success([]) if total_expenses.zero?
 
         result = expenses
-                  .group_by { |t| t.category&.name }
+                  .group_by { |t| t.respond_to?(:category_name) ? t.category_name : t.category.name }
                   .map do |category_name, transactions|
           amount = transactions.sum(&:expense).amount
           # Handle division by zero if amount is > 0 but total_expenses is 0 (shouldn't happen with above guard)

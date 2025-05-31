@@ -71,7 +71,7 @@ RSpec.describe Insights::Operations::CreateExpenseBreakdown do
       let(:groceries_transaction2) { create_transaction(type: :expense, amount_value: 50, category: groceries_category) }
       let(:utilities_transaction) { create_transaction(type: :expense, amount_value: 200, category: utilities_category) }
 
-      let(:transactions) { [groceries_transaction1, groceries_transaction2, utilities_transaction] }
+      let(:transactions) { Transactions::Transaction.where(id: [groceries_transaction1, groceries_transaction2, utilities_transaction].pluck(:id)) }
 
       it { is_expected.to be_success }
 
