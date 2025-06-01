@@ -15,6 +15,7 @@ interface ListViewProps {
   hasNextPage: boolean;
   onRowEdit: (transaction: IndexTransaction) => void;
   onRowDelete: (transactionId: string) => void;
+  loadMoreRef: React.RefObject<HTMLDivElement>;
 }
 
 export function ListView({
@@ -27,9 +28,8 @@ export function ListView({
   hasNextPage,
   onRowEdit,
   onRowDelete,
+  loadMoreRef,
 }: ListViewProps) {
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-
   return (
     <div className="space-y-4 bg-white rounded-lg overflow-hidden p-4">
       {isPending && <div>Loading initial transactions...</div>}

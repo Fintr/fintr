@@ -327,6 +327,7 @@ const TransactionsTab = () => {
             hasNextPage={!!hasNextPage}
             onRowEdit={handleEditRow}
             onRowDelete={handleDeleteRow}
+            loadMoreRef={loadMoreRef}
           />
         ) : viewMode === "sheets" ? (
           <SheetsView
@@ -341,6 +342,9 @@ const TransactionsTab = () => {
             onCellDoubleClick={handleCellDoubleClick}
             onKeyDown={handleKeyDown}
             onSaveEdit={handleSaveEdit}
+            loadMoreRef={loadMoreRef}
+            isFetchingNextPage={isFetchingNextPage}
+            hasNextPage={!!hasNextPage}
           />
         ) : viewMode === "calendar" ? (
           <CalendarView

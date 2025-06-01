@@ -18,6 +18,9 @@ interface SheetsViewProps {
     onCellDoubleClick: (id: string, field: string, value: string) => void;
     onKeyDown: (e: React.KeyboardEvent, transaction: IndexTransaction, field: string) => void;
     onSaveEdit: (id: string, field: string) => void;
+    loadMoreRef: React.RefObject<HTMLDivElement>;
+    isFetchingNextPage: boolean;
+    hasNextPage: boolean;
 }
 export function SheetsView({
     isPending,
@@ -31,6 +34,9 @@ export function SheetsView({
     onCellDoubleClick,
     onKeyDown,
     onSaveEdit,
+    loadMoreRef,
+    isFetchingNextPage,
+    hasNextPage,
 }: SheetsViewProps) {
     const tableRef = useRef<HTMLTableElement>(null);
     const editInputRef = useRef<HTMLInputElement>(null);
@@ -426,6 +432,29 @@ export function SheetsView({
             </table>
           </div>
         </div>
+        
+        {/* Infinite scrolling elements */}
+        <div ref={loadMoreRef} style={{ height: "10px" }} />
+        
+        {isFetchingNextPage && (
+          <div className="text-center py-4">Loading more...</div>
+        )}
+        
+        {!hasNextPage &&
+          isSuccess &&
+          data &&
+          !data.pages.every((p) => p.transactions.length === 0) && (
+            <div className="text-center py-4 text-gray-400">
+              No more transactions
+            </div>
+          )}
+          
+        {isSuccess &&
+          (!data || data.pages.every((p) => p.transactions.length === 0)) && (
+            <div className="text-center py-8 text-gray-500">
+              No transactions found
+            </div>
+          )}
       </div>
     
     )
