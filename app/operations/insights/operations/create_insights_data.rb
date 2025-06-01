@@ -5,6 +5,7 @@ module Insights
     class CreateInsightsData < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
+          required(:space_id).value(:string)
           required(:space_code).value(:string)
           required(:category_name).value(:string)
           required(:start_date).value(:date)
@@ -32,12 +33,14 @@ module Insights
         health_scores          = step create_health_scores(summary_structure:, budgets:)
         expense_breakdown      = step create_expense_breakdown(transactions:)
         weekly_spending        = step create_weekly_spending(transactions:)
-        insights_data          = step create_insights_data(
+        monthly_spending       = step create_monthly_spending(params:)
+        insights_data          =  {
                                     summary_structure:,
                                     health_scores:,
                                     expense_breakdown:,
-                                    weekly_spending:
-                                 )
+                                    weekly_spending:,
+                                    monthly_spending:
+                                  }
         insights_data
       end
 
@@ -72,19 +75,12 @@ module Insights
         Insights::Operations::CreateWeeklySpending.new.call(transactions:)
       end
 
-      def create_insights_data(
-        summary_structure:,
-        health_scores:,
-        expense_breakdown:,
-        weekly_spending:
-      )
-        hash = {
-          summary_structure:,
-          health_scores:,
-          expense_breakdown:,
-          weekly_spending:
+      def create_monthly_spending(params:)
+        params = {
+          space_id: params[:space_id],
+          date_from: 6.months.ago.beginning_of_month.to_date
         }
-        Success(hash)
+        Insights::Queries::MonthlySpending.call(params:)
       end
     end
   end

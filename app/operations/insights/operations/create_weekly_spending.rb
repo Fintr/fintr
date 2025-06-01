@@ -58,7 +58,7 @@ module Insights
             date: original_date.strftime("%a"),
             amount: Utils::Number.format_number(amount),
             percentage: Utils::Number.format_percentage(percentage),
-            currency: transactions.first.amount_currency
+            currency: transactions.first.amount_currency # TODO: currency should be specified another way
           }
         end.sort_by { |item| item[:original_date_for_sort] }
            .map { |item| item.except(:original_date_for_sort) }
