@@ -28,6 +28,9 @@ module Transactions
     validates :balance_cents, presence: true
     validates :type, presence: true
 
+    scope :calculated, -> { where(balance_state: :calculated) }
+    scope :pending, -> { where(balance_state: :pending) }
+
     def value
       amount
     end

@@ -8,7 +8,7 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
   let(:operation) { described_class.new }
   let(:user) { create(:user) }
-  let!(:space) { create(:personal_space, users: [user], code: 'test_space') } # ensure space has a code
+  let!(:space) { create(:personal_space, users: [user], code: 'test_space') }
 
   let(:category_name) { 'Groceries' }
   let(:start_date) { Date.new(2023, 1, 1) }
@@ -16,7 +16,7 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
   let(:valid_params) do
     {
-      balance_state: 'calculated',
+      space_id: space.id.to_s,
       space_code: space.code,
       category_name: category_name,
       start_date: start_date,
@@ -25,12 +25,13 @@ RSpec.describe Insights::Operations::CreateInsightsData do
   end
 
   # Mocked successful results for sub-operations/queries
-  let(:mocked_transactions_result) { Success(instance_double(ActiveRecord::Relation, :transactions, to_ary: [])) } # Ensure it can be destructured if needed by `Do`
-  let(:mocked_budgets_result) { Success(instance_double(ActiveRecord::Relation, :budgets, to_ary: [])) } # Ensure it can be destructured
+  let(:mocked_transactions_result) { Success(instance_double(ActiveRecord::Relation, :transactions, to_ary: [])) }
+  let(:mocked_budgets_result) { Success(instance_double(ActiveRecord::Relation, :budgets, to_ary: [])) }
   let(:mocked_summary_structure_result) { Success({ total_income: 5000, total_expenses: 3000 }) }
   let(:mocked_health_scores_result) { Success({ savings_rate: '20%' }) }
   let(:mocked_expense_breakdown_result) { Success([{ category: 'Food', amount: 100 }]) }
   let(:mocked_weekly_spending_result) { Success([{ week: 1, amount: 50 }]) }
+  let(:mocked_monthly_spending_result) { Success([{ month: 'January', amount: 1000 }]) }
 
   # Instance doubles for sub-operations
   let(:mock_create_summary_structure_op) { instance_double(Insights::Operations::CreateSummaryStructure) }
@@ -45,6 +46,7 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
       allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_return(mocked_transactions_result)
       allow(Budgets::Queries::MonthlyBudgets).to receive(:call).and_return(mocked_budgets_result)
+      allow(Insights::Queries::MonthlySpending).to receive(:call).and_return(mocked_monthly_spending_result)
 
       allow(Insights::Operations::CreateSummaryStructure).to receive(:new).and_return(mock_create_summary_structure_op)
       allow(mock_create_summary_structure_op).to receive(:call).and_return(mocked_summary_structure_result)
@@ -62,21 +64,21 @@ RSpec.describe Insights::Operations::CreateInsightsData do
     context 'with valid parameters and successful sub-operations' do
       subject(:call_operation) { operation.call(valid_params) }
 
-      it { is_expected.to be_success }
-
       it 'returns the aggregated insights data' do
-        result = call_operation.value!
-        expect(result).to eq({
+        result = call_operation
+        expect(result.value!).to eq({
           summary_structure: mocked_summary_structure_result.value!,
           health_scores: mocked_health_scores_result.value!,
           expense_breakdown: mocked_expense_breakdown_result.value!,
-          weekly_spending: mocked_weekly_spending_result.value!
+          weekly_spending: mocked_weekly_spending_result.value!,
+          monthly_spending: mocked_monthly_spending_result.value!
         })
       end
 
-      it 'calls Transactions::Queries::FilteredCombined with correct params' do
+      it 'calls Transactions::Queries::FilteredTransactions with correct params including balance_state' do
         call_operation
-        expect(Transactions::Queries::FilteredTransactions).to have_received(:call).with(params: valid_params)
+        expected_params = valid_params.merge(balance_state: "calculated")
+        expect(Transactions::Queries::FilteredTransactions).to have_received(:call).with(params: expected_params)
       end
 
       it 'calls Budgets::Queries::MonthlyBudgets with correct params' do
@@ -87,31 +89,47 @@ RSpec.describe Insights::Operations::CreateInsightsData do
         })
       end
 
+      it 'calls Insights::Queries::MonthlySpending with correct params' do
+        call_operation
+        expected_params = {
+          space_id: valid_params[:space_id],
+          date_from: 6.months.ago.beginning_of_month.to_date
+        }
+        expect(Insights::Queries::MonthlySpending).to have_received(:call).with(params: expected_params)
+      end
+
       it 'calls Insights::Operations::CreateSummaryStructure with transactions' do
-        # We need to allow the .call to be checked for arguments
-        # allow(mock_create_summary_structure_op).to receive(:call).and_call_original if mocked_transactions_result.success? # only if we expect success <- REMOVE THIS LINE
-        # Or, more simply, just expect it to be called with the success value
-        expect(mock_create_summary_structure_op).to receive(:call).with(transactions: mocked_transactions_result.value!).and_return(mocked_summary_structure_result) # Ensure it returns the expected monad
+        expect(mock_create_summary_structure_op).to receive(:call).with(transactions: mocked_transactions_result.value!).and_return(mocked_summary_structure_result)
         call_operation
       end
 
       it 'calls Insights::Operations::CreateHealthScores with summary_structure and budgets' do
-        expect(mock_create_health_scores_op).to receive(:call).with(summary_structure: mocked_summary_structure_result.value!, budgets: mocked_budgets_result.value!).and_return(mocked_health_scores_result) # Ensure it returns the expected monad
+        expect(mock_create_health_scores_op).to receive(:call).with(summary_structure: mocked_summary_structure_result.value!, budgets: mocked_budgets_result.value!).and_return(mocked_health_scores_result)
         call_operation
       end
 
       it 'calls Insights::Operations::CreateExpenseBreakdown with transactions' do
-        expect(mock_create_expense_breakdown_op).to receive(:call).with(transactions: mocked_transactions_result.value!).and_return(mocked_expense_breakdown_result) # Ensure it returns the expected monad
+        expect(mock_create_expense_breakdown_op).to receive(:call).with(transactions: mocked_transactions_result.value!).and_return(mocked_expense_breakdown_result)
         call_operation
       end
 
       it 'calls Insights::Operations::CreateWeeklySpending with transactions' do
-        expect(mock_create_weekly_spending_op).to receive(:call).with(transactions: mocked_transactions_result.value!).and_return(mocked_weekly_spending_result) # Ensure it returns the expected monad
+        expect(mock_create_weekly_spending_op).to receive(:call).with(transactions: mocked_transactions_result.value!).and_return(mocked_weekly_spending_result)
         call_operation
       end
     end
 
     describe 'Validation Failures' do
+      context 'when space_id is missing' do
+        subject { operation.call(valid_params.except(:space_id)) }
+
+        it { is_expected.to be_failure }
+
+        it 'returns space_id missing error' do
+          expect(subject.failure).to include(space_id: ['is missing'])
+        end
+      end
+
       context 'when space_code is missing' do
         subject { operation.call(valid_params.except(:space_code)) }
 
@@ -164,9 +182,9 @@ RSpec.describe Insights::Operations::CreateInsightsData do
     end
 
     describe 'Sub-operation/Query Failures' do
-      let(:mocked_failure_monad) { Failure("Sub-operation failed") } # Renamed from mocked_failure to avoid clash
+      let(:mocked_failure_monad) { Failure("Sub-operation failed") }
 
-      context 'when find_combined_transactions fails' do
+      context 'when find_transactions fails' do
         before { allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_return(mocked_failure_monad) }
 
         it { expect(operation.call(valid_params)).to be_failure }
@@ -203,6 +221,13 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
       context 'when create_weekly_spending fails' do
         before { allow(mock_create_weekly_spending_op).to receive(:call).and_return(mocked_failure_monad) }
+
+        it { expect(operation.call(valid_params)).to be_failure }
+        it { expect(operation.call(valid_params).failure).to eq("Sub-operation failed") }
+      end
+
+      context 'when monthly_spending fails' do
+        before { allow(Insights::Queries::MonthlySpending).to receive(:call).and_return(mocked_failure_monad) }
 
         it { expect(operation.call(valid_params)).to be_failure }
         it { expect(operation.call(valid_params).failure).to eq("Sub-operation failed") }

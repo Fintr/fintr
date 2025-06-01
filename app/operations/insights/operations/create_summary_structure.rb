@@ -9,9 +9,14 @@ module Insights
         end
 
         rule(:transactions) do
+          if values[:transactions].present?
           is_relation = values[:transactions].is_a?(ActiveRecord::Relation)
           is_record_transaction = values[:transactions].first.is_a?(Transactions::Transaction)
           key.failure("should be a relation of transactions") unless is_relation || is_record_transaction
+          else
+            # Allow blank transactions, the operation logic handles the zero calculation
+            # This rule primarily validates the type when transactions IS present.
+          end
         end
       end
 
@@ -34,12 +39,16 @@ module Insights
       private
 
       def get_total_income(params:)
-        result = params[:transactions].sum(&:income).amount
+        return Success(0) if params[:transactions].blank?
+
+        result = params[:transactions]&.sum(&:income)&.amount
         Success(result)
       end
 
       def get_total_expenses(params:)
-        result = params[:transactions].sum(&:expense).amount
+        return Success(0) if params[:transactions].blank?
+
+        result = params[:transactions]&.sum(&:expense)&.amount
         Success(result)
       end
 

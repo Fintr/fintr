@@ -44,11 +44,11 @@ RSpec.describe Insights::Operations::CreateHealthScores do
         end
 
 
-        it { is_expected.to be_failure }
+        it { is_expected.to be_success }
 
-        it 'fails with total_income error' do
-          expect(call_operation.failure).to include(:total_income)
-          expect(call_operation.failure[:total_income]).to include('should be at least 0')
+        it 'returns savings_percentage as 0 when total income is 0' do
+          result = call_operation.value!
+          expect(result[:savings_percentage]).to eq(0)
         end
       end
 
@@ -76,11 +76,11 @@ RSpec.describe Insights::Operations::CreateHealthScores do
         end
 
 
-        it { is_expected.to be_failure }
+        it { is_expected.to be_success }
 
-        it 'fails with total_expenses error' do
-          expect(call_operation.failure).to include(:total_expenses)
-          expect(call_operation.failure[:total_expenses]).to include('should be at least 0')
+        it 'returns budget_usage as formatted 0.00% when total expenses is 0' do
+          result = call_operation.value!
+          expect(result[:budget_usage]).to eq(Utils::Number.format_percentage(BigDecimal('0.0')))
         end
       end
 
@@ -103,16 +103,22 @@ RSpec.describe Insights::Operations::CreateHealthScores do
       context 'when budgets parameter is missing (passed as nil to operation call)' do
         let(:params_with_nil_budgets) { { summary_structure: valid_summary_structure, budgets: nil } }
 
-        it 'raises NoMethodError when contract calls .first on nil' do
-          expect { operation.call(**params_with_nil_budgets) }.to raise_error(NoMethodError, /undefined method 'first' for nil/)
+        it 'fails with budgets error when budgets is nil' do
+          result = operation.call(**params_with_nil_budgets)
+          expect(result).to be_failure
+          expect(result.failure).to include(:budgets)
+          expect(result.failure[:budgets]).to include('is missing')
         end
       end
 
       context 'when budgets key is not present in params hash for operation call' do
         let(:params_without_budgets_key) { { summary_structure: valid_summary_structure } }
 
-        it 'raises NoMethodError when contract calls .first on nil (as params[:budgets] is nil)' do
-           expect { operation.call(params_without_budgets_key) }.to raise_error(NoMethodError, /undefined method 'first' for nil/)
+        it 'fails with budgets error when budgets key is missing' do
+           result = operation.call(params_without_budgets_key)
+           expect(result).to be_failure
+           expect(result.failure).to include(:budgets)
+           expect(result.failure[:budgets]).to include('is missing')
         end
       end
 
@@ -122,11 +128,12 @@ RSpec.describe Insights::Operations::CreateHealthScores do
         let(:params_with_empty_budgets) { { summary_structure: valid_summary_structure, budgets: [] } }
 
 
-        it { is_expected.to be_failure }
+        it { is_expected.to be_success }
 
-        it 'fails with budgets error (due to .first being nil)' do
-          expect(call_operation.failure).to include(:budgets)
-          expect(call_operation.failure[:budgets]).to include('should be an array of budgets')
+        it 'returns health scores with budget_usage as 0 when total budget is 0' do
+          # With an empty budget array, total_budget will be 0, leading to budget_usage 0.
+          result = call_operation.value!
+          expect(result[:budget_usage]).to eq(0)
         end
       end
 

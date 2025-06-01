@@ -37,4 +37,23 @@ RSpec.describe Transactions::Transaction, type: :model do
       end
     end
   end
+
+  describe 'scopes' do
+    let!(:calculated_transaction) { create(:transaction, balance_state: :calculated) }
+    let!(:pending_transaction) { create(:transaction, balance_state: :pending) }
+
+    describe '.calculated' do
+      it 'returns transactions with calculated balance_state' do
+        expect(described_class.calculated).to include(calculated_transaction)
+        expect(described_class.calculated).not_to include(pending_transaction)
+      end
+    end
+
+    describe '.pending' do
+      it 'returns transactions with pending balance_state' do
+        expect(described_class.pending).to include(pending_transaction)
+        expect(described_class.pending).not_to include(calculated_transaction)
+      end
+    end
+  end
 end

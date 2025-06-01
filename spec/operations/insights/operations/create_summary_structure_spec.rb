@@ -45,7 +45,7 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
   describe '#call' do
     before do
       # Mock Utils::Number.format_number to simplify assertions and verify calls
-      allow(Utils::Number).to receive(:format_number) { |num| "formatted_#{num}" } # Corrected syntax
+      allow(Utils::Number).to receive(:format_number) { |num| "formatted_#{"%.1f" % num}" }
 
       # Stub methods on Money object that might be called by sum(&:income).amount
       # This is to ensure that our stubs behave correctly without hitting real Money methods if not intended.
@@ -132,23 +132,68 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
       end
     end
 
+    context 'when transactions is an empty ActiveRecord::Relation' do
+      subject(:call_operation) { operation.call(transactions: Transactions::Transaction.none) }
+
+      it { is_expected.to be_success }
+
+      it 'returns a summary with all zeros' do
+        result = call_operation.value!
+        expect(result[:total_income]).to eq('formatted_0.0')
+        expect(result[:total_expenses]).to eq('formatted_0.0')
+        expect(result[:net_savings]).to eq('formatted_0.0')
+      end
+    end
+
+    context 'when transactions is nil' do
+      subject(:call_operation) { operation.call(transactions: nil) }
+
+      it { is_expected.to be_success }
+
+      it 'returns a summary with all zeros' do
+        result = call_operation.value!
+        expect(result[:total_income]).to eq('formatted_0.0')
+        expect(result[:total_expenses]).to eq('formatted_0.0')
+        expect(result[:net_savings]).to eq('formatted_0.0')
+      end
+    end
+
+    describe '#get_total_income' do
+      context 'when transactions is blank' do
+        it 'returns Success(0) for an empty array' do
+          expect(operation.send(:get_total_income, params: { transactions: [] })).to eq(Success(0))
+        end
+
+        it 'returns Success(0) for nil' do
+          expect(operation.send(:get_total_income, params: { transactions: nil })).to eq(Success(0))
+        end
+
+        it 'returns Success(0) for an empty ActiveRecord::Relation' do
+          expect(operation.send(:get_total_income, params: { transactions: Transactions::Transaction.none })).to eq(Success(0))
+        end
+      end
+    end
+
+    describe '#get_total_expenses' do
+      context 'when transactions is blank' do
+        it 'returns Success(0) for an empty array' do
+          expect(operation.send(:get_total_expenses, params: { transactions: [] })).to eq(Success(0))
+        end
+
+        it 'returns Success(0) for nil' do
+          expect(operation.send(:get_total_expenses, params: { transactions: nil })).to eq(Success(0))
+        end
+
+        it 'returns Success(0) for an empty ActiveRecord::Relation' do
+          expect(operation.send(:get_total_expenses, params: { transactions: Transactions::Transaction.none })).to eq(Success(0))
+        end
+      end
+    end
+
     describe 'Contract Validations' do
       context 'when transactions parameter is missing' do
         it 'raises ArgumentError when contract is called with no effective arguments' do
           expect { operation.call({}) }.to raise_error(ArgumentError, "wrong number of arguments (given 0, expected 1..2)")
-        end
-      end
-
-
-      context 'when transactions is an empty array' do
-        subject(:call_operation) { operation.call(transactions: []) }
-
-        it { is_expected.to be_failure }
-
-        it 'returns transactions type error due to .first on empty array' do
-          failure = call_operation.failure
-          expect(failure).to include(:transactions)
-          expect(failure[:transactions]).to include('should be a relation of transactions')
         end
       end
 

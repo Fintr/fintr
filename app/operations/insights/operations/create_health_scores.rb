@@ -12,15 +12,16 @@ module Insights
         end
 
         rule(:total_income) do
-          key.failure("should be at least 0") if values[:total_income] <= 0
+          key.failure("should be at least 0") if values[:total_income] < 0
         end
 
         rule(:total_expenses) do
-          key.failure("should be at least 0") if values[:total_expenses] <= 0
+          key.failure("should be at least 0") if values[:total_expenses] < 0
         end
 
         rule(:budgets) do
-          key.failure("should be an array of budgets") unless values[:budgets].first.is_a?(Budget)
+          key.failure("is missing") if values[:budgets].nil?
+          key.failure("should be an array of budgets") if values[:budgets].present? && !values[:budgets].first.is_a?(Budget)
         end
       end
 
@@ -56,6 +57,8 @@ module Insights
       end
 
       def get_total_budget(params:)
+        return Success(0) if params[:budgets].blank?
+
         result = params[:budgets].sum(&:amount).amount
         Success(result)
       end

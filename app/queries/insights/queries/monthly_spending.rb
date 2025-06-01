@@ -19,16 +19,30 @@ module Insights
 
       def call
         params    = step validate(params: @params)
-        relation  = step by_date(relation: @relation, params:)
+        relation  = step by_space(relation: @relation, params:)
+        relation  = step by_calculated_state(relation: relation)
+        relation  = step by_date(relation: relation, params:)
         relation  = step group_by_month(relation:)
         relation  = step select_data(relation:)
         relation  = step order(relation:)
         relation
       end
 
+      private
+
+      def by_space(relation:, params:)
+        relation = relation.where(space_id: params[:space_id])
+        Success(relation)
+      end
+
       def by_date(relation:, params:)
         relation = relation
                     .where(date: params[:date_from].beginning_of_month..(Time.zone.now).end_of_month)
+        Success(relation)
+      end
+
+      def by_calculated_state(relation:)
+        relation = relation.calculated
         Success(relation)
       end
 
