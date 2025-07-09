@@ -1,3 +1,5 @@
+import { UpdateScopeEnum } from "@/constants/transactionConstants";
+
 export interface IndexTransaction {
   id: string;
   date: string;
@@ -17,7 +19,22 @@ export interface TransactionIndexInputType {
   minAmount: number;
   maxAmount: number;
   page: number;
-}; 
+};
+
+export interface UpdateTransactionType {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  categoryName: string;
+  accountName: string;
+  type: TransactionTypeEnum;
+  scheduleType: ScheduleTypeEnum;
+  repeatInterval: string;
+  installmentPeriod: number;
+  file: File | null;
+  updateScope?: UpdateScopeEnum;
+}
 
 
 // Define the expected structure of the API response for infinite query
@@ -39,4 +56,15 @@ export enum ScheduleTypeEnum {
   ONE_TIME = "one_time",
   REPEAT = "repeat",
   INSTALLMENT = "installment"
+}
+
+export enum RepeatIntervalEnum {
+  EVERY_DAY = "every_day",
+  EVERY_WEEK = "every_week",
+  EVERY_2_WEEKS = "every_2_weeks",
+  EVERY_MONTH = "every_month",
+  EVERY_2_MONTHS = "every_2_months",
+  EVERY_3_MONTHS = "every_3_months",
+  EVERY_6_MONTHS = "every_6_months",
+  EVERY_YEAR = "every_year"
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -32,6 +32,7 @@ import { FormError } from "@/components/ui/form-error";
 import * as z from "zod";
 import { ScheduleTypeEnum, REPEAT_INTERVALS } from "@/constants/transactionConstants";
 import AccountCreationForm from "./AccountCreationForm";
+import { updateTransfer, UpdateTransferType } from "@/services/transactions/transfers/mutation";
 
 // Transfer form schema using Zod
 const transferFormSchema = z.object({
@@ -66,6 +67,10 @@ interface TransferFormProps {
   setDate?: React.Dispatch<React.SetStateAction<Date | undefined>>;
   onSubmitSuccess?: (data: any) => void;
   onCancel?: () => void;
+  // Edit mode props
+  id?: string;
+  initialData?: UpdateTransferType;
+  isEditMode?: boolean;
 }
 
 const TransferForm: React.FC<TransferFormProps> = ({
@@ -73,11 +78,14 @@ const TransferForm: React.FC<TransferFormProps> = ({
   setDate,
   onSubmitSuccess = () => {},
   onCancel = () => {},
+  id,
+  initialData,
+  isEditMode = false,
 }) => {
   const { api } = useAuthApi();
   const accountOptions = useAtomValue(accountOptionsAtom);
   
-  // Form state using Jotai atoms
+  // Form state using Jotai atoms - initialize with initial data if available
   const [amount, setAmount] = useAtom(transferAmountAtom);
   const [transactionCost, setTransactionCost] = useAtom(transferTransactionCostAtom);
   const [description, setDescription] = useAtom(transferDescriptionAtom);
@@ -94,6 +102,19 @@ const TransferForm: React.FC<TransferFormProps> = ({
   const [showToAccountCreation, setShowToAccountCreation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  
+  // Initialize atoms with initial data on mount (one-time effect)
+  useEffect(() => {
+    if (isEditMode && initialData) {
+      setAmount(initialData.amount?.toString() || "");
+      setTransactionCost(initialData.transactionCost?.toString() || "");
+      setDescription(initialData.description || "");
+      setFromAccountName(initialData.fromAccountName || "");
+      setToAccountName(initialData.toAccountName || "");
+      setScheduleType(initialData.scheduleType || ScheduleTypeEnum.ONE_TIME);
+      setRepeatInterval(initialData.repeatInterval || "");
+    }
+  }, []); // Empty dependency array - only run once on mount
   
   // Validate form using Zod
   const validateForm = () => {
@@ -154,31 +175,44 @@ const TransferForm: React.FC<TransferFormProps> = ({
         file: fileState ?? undefined
       };
       
-      const response = await createTransfer({
-        api,
-        transferData,
-      });
+      let response;
       
-      toast.success(`Transfer of ${transferData.amount} from ${transferData.fromAccountName} to ${transferData.toAccountName} has been recorded.`);
+      if (isEditMode && id) {
+        // Update existing transfer - pass the data to parent for scope handling
+        const submitData = { ...transferData, id, scheduleType };
+        response = await onSubmitSuccess(submitData);
+        return; // Let parent handle the actual update
+      } else {
+        // Create new transfer
+        response = await createTransfer({
+          api,
+          transferData,
+        });
+        toast.success(`Transfer of ${transferData.amount} from ${transferData.fromAccountName} to ${transferData.toAccountName} has been recorded.`);
+      }
       
-      // Reset form
-      setAmount('');
-      setTransactionCost('');
-      setDescription('');
-      setFromAccountName('');
-      setToAccountName('');
-      setScheduleType(ScheduleTypeEnum.ONE_TIME);
-      setRepeatInterval('');
-      setFileState(null);
+      // Reset form only if not in edit mode (edit mode closes dialog)
+      if (!isEditMode) {
+        setAmount('');
+        setTransactionCost('');
+        setDescription('');
+        setFromAccountName('');
+        setToAccountName('');
+        setScheduleType(ScheduleTypeEnum.ONE_TIME);
+        setRepeatInterval('');
+        setFileState(null);
+      }
       
       // Notify parent components of success
-      onSubmitSuccess(response);
+      if (!isEditMode) {
+        onSubmitSuccess(response);
+      }
     } catch (error) {
-      console.error("Error submitting transfer:", error);
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} transfer:`, error);
       
       // If no validation errors were caught by the atom, show a general error
       if (Object.keys(validationErrors).length === 0) {
-        toast.error("Failed to create transfer. Please try again.");
+        toast.error(`Failed to ${isEditMode ? 'update' : 'create'} transfer. Please try again.`);
       }
     } finally {
       setIsSubmitting(false);
@@ -513,10 +547,10 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Adding...
+              {isEditMode ? "Updating..." : "Adding..."}
             </>
           ) : (
-            "Add Transfer"
+            isEditMode ? "Update Transfer" : "Add Transfer"
           )}
         </Button>
       </div>

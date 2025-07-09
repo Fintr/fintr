@@ -23,6 +23,8 @@ import { Filters, FilterTypes } from "./filters";
 import { DownloadButton } from "./buttons/DownloadButton";
 import { DeleteButton } from "./buttons/DeleteButton";
 import { ViewModeButton } from "./buttons/ViewModeButton";
+import { IndexTransaction } from "@/types/transactionTypes";
+import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
 
 const TransactionsTab = () => {
   const { firstDay, lastDay } = getCurrentMonthDates();
@@ -61,6 +63,10 @@ const TransactionsTab = () => {
   const [editValue, setEditValue] = useState<string>("");
   const editInputRef = useRef<HTMLInputElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<IndexTransaction | null>(null);
 
   const {
     data,
@@ -236,9 +242,29 @@ const TransactionsTab = () => {
     }
   };
 
-  const handleEditRow = (transaction: any) => {
-    console.log("Edit row:", transaction);
-    handleCellClick(transaction.id, "description", transaction.description);
+  const handleEditRow = (transaction: IndexTransaction) => {
+    setSelectedTransaction(transaction);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    // Invalidate queries to refresh the transaction list
+    queryClient.invalidateQueries({
+      queryKey: [
+        "transactions",
+        localStorage.getItem("spaceCode"),
+        appliedFilters.appliedCategory,
+        appliedFilters.queryStartDate,
+        appliedFilters.queryEndDate,
+        appliedFilters.appliedMinAmount,
+        appliedFilters.appliedMaxAmount,
+      ],
+    });
+  };
+
+  const handleEditClose = () => {
+    setEditDialogOpen(false);
+    setSelectedTransaction(null);
   };
 
   const handleDeleteRow = async (id: string) => {
@@ -259,103 +285,112 @@ const TransactionsTab = () => {
   };
 
   return (
-    <Card className="border-0 shadow-none bg-transparent">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>All Transactions</CardTitle>
-          <CardDescription>
-            Manage and filter your transaction history
-          </CardDescription>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center gap-2">
-            <ViewModeButton
-              label="List"
-              IconComponent={List}
-              isActive={viewMode === "list"}
-              onClick={() => setViewMode("list")}
-              aria-pressed={viewMode === "list"}
-            />
-            <ViewModeButton
-              label="Sheets"
-              IconComponent={Table2}
-              isActive={viewMode === "sheets"}
-              onClick={() => setViewMode("sheets")}
-              aria-pressed={viewMode === "sheets"}
-            />
-            <ViewModeButton
-              label="Calendar"
-              IconComponent={CalendarDays}
-              isActive={viewMode === "calendar"}
-              onClick={() => setViewMode("calendar")}
-              aria-pressed={viewMode === "calendar"}
-            />
+    <>
+      <Card className="border-0 shadow-none bg-transparent">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>All Transactions</CardTitle>
+            <CardDescription>
+              Manage and filter your transaction history
+            </CardDescription>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Filters
-          transactionFilterType="range"
-          applyFilters={applyFilters}
-        />
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
+              <ViewModeButton
+                label="List"
+                IconComponent={List}
+                isActive={viewMode === "list"}
+                onClick={() => setViewMode("list")}
+                aria-pressed={viewMode === "list"}
+              />
+              <ViewModeButton
+                label="Sheets"
+                IconComponent={Table2}
+                isActive={viewMode === "sheets"}
+                onClick={() => setViewMode("sheets")}
+                aria-pressed={viewMode === "sheets"}
+              />
+              <ViewModeButton
+                label="Calendar"
+                IconComponent={CalendarDays}
+                isActive={viewMode === "calendar"}
+                onClick={() => setViewMode("calendar")}
+                aria-pressed={viewMode === "calendar"}
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Filters
+            transactionFilterType="range"
+            applyFilters={applyFilters}
+          />
 
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search Transactions"
-              className="pl-10 bg-white"
-            />
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search Transactions"
+                className="pl-10 bg-white"
+              />
+            </div>
+            <div className="flex items-center">
+              <h3 className="text-lg font-medium mr-2">Transactions</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <DownloadButton />
+              <DeleteButton />
+            </div>
           </div>
-          <div className="flex items-center">
-            <h3 className="text-lg font-medium mr-2">Transactions</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <DownloadButton />
-            <DeleteButton />
-          </div>
-        </div>
 
-        {viewMode === "list" ? (
-          <ListView
-            isPending={isFetching}
-            isError={isError}
-            error={error as Error | null}
-            isSuccess={isSuccess}
-            data={data}
-            isFetchingNextPage={isFetchingNextPage}
-            hasNextPage={!!hasNextPage}
-            onRowEdit={handleEditRow}
-            onRowDelete={handleDeleteRow}
-            loadMoreRef={loadMoreRef}
-          />
-        ) : viewMode === "sheets" ? (
-          <SheetsView
-            isPending={isFetching}
-            isError={isError}
-            error={error as Error | null}
-            isSuccess={isSuccess}
-            data={data}
-            onRowEdit={handleEditRow}
-            onRowDelete={handleDeleteRow}
-            onCellClick={handleCellClick}
-            onCellDoubleClick={handleCellDoubleClick}
-            onKeyDown={handleKeyDown}
-            onSaveEdit={handleSaveEdit}
-            loadMoreRef={loadMoreRef}
-            isFetchingNextPage={isFetchingNextPage}
-            hasNextPage={!!hasNextPage}
-          />
-        ) : viewMode === "calendar" ? (
-          <CalendarView
-            isPending={isFetching}
-            isError={isError}
-            error={error as Error | null}
-            isSuccess={isSuccess}
-          />
-        ) : null}
-      </CardContent>
-    </Card>
+          {viewMode === "list" ? (
+            <ListView
+              isPending={isFetching}
+              isError={isError}
+              error={error as Error | null}
+              isSuccess={isSuccess}
+              data={data}
+              isFetchingNextPage={isFetchingNextPage}
+              hasNextPage={!!hasNextPage}
+              onRowEdit={handleEditRow}
+              onRowDelete={handleDeleteRow}
+              loadMoreRef={loadMoreRef as React.RefObject<HTMLDivElement>}
+            />
+          ) : viewMode === "sheets" ? (
+            <SheetsView
+              isPending={isFetching}
+              isError={isError}
+              error={error as Error | null}
+              isSuccess={isSuccess}
+              data={data}
+              onRowEdit={handleEditRow}
+              onRowDelete={handleDeleteRow}
+              onCellClick={handleCellClick}
+              onCellDoubleClick={handleCellDoubleClick}
+              onKeyDown={handleKeyDown}
+              onSaveEdit={handleSaveEdit}
+              loadMoreRef={loadMoreRef as React.RefObject<HTMLDivElement>}
+              isFetchingNextPage={isFetchingNextPage}
+              hasNextPage={!!hasNextPage}
+            />
+          ) : viewMode === "calendar" ? (
+            <CalendarView
+              isPending={isFetching}
+              isError={isError}
+              error={error as Error | null}
+              isSuccess={isSuccess}
+            />
+          ) : null}
+        </CardContent>
+      </Card>
+      
+      <EditTransactionDialog
+        transaction={selectedTransaction}
+        isOpen={editDialogOpen}
+        onClose={handleEditClose}
+        onSuccess={handleEditSuccess}
+      />
+    </>
   );
 };
 

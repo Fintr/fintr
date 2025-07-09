@@ -1,5 +1,5 @@
 import { AxiosInstance, AxiosError } from 'axios';
-import { ScheduleTypeEnum } from '@/constants/transactionConstants';
+import { ScheduleTypeEnum, UpdateScopeEnum } from '@/constants/transactionConstants';
 
 // Type for creating a new transfer
 export interface CreateTransferType {
@@ -12,6 +12,12 @@ export interface CreateTransferType {
   scheduleType: ScheduleTypeEnum;
   repeatInterval?: string;
   file?: File;
+}
+
+// Type for updating a transfer
+export interface UpdateTransferType extends CreateTransferType {
+  id: string;
+  updateScope?: UpdateScopeEnum;
 }
 
 /**
@@ -67,5 +73,61 @@ export const createTransfer = async (
     // Log and rethrow generic errors
     console.error('Error creating transfer:', error);
     throw new Error('Failed to create transfer');
+  }
+};
+
+/**
+ * Update a transfer transaction
+ * 
+ * @param api - The authenticated API client
+ * @param transferData - The transfer data to update
+ * @returns The updated transfer transaction
+ */
+export const updateTransfer = async (
+  api: AxiosInstance,
+  transferData: UpdateTransferType
+) => {
+  try {
+    // If there's a file, use FormData to handle the multipart/form-data request
+    if (transferData.file) {
+      const formData = new FormData();
+      
+      // Add all transfer data to FormData
+      Object.entries(transferData).forEach(([key, value]) => {
+        // Skip undefined values
+        if (value === undefined) return;
+        
+        // Handle file separately
+        if (key === 'file') {
+          formData.append(key, value);
+        } else {
+          formData.append(key, typeof value === 'string' ? value : JSON.stringify(value));
+        }
+      });
+      
+      const response = await api.put(`/transactions/transfers/${transferData.id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      return response.data;
+    } else {
+      // Regular JSON request without file
+      const response = await api.put(`/transactions/transfers/${transferData.id}`, transferData);
+      return response.data;
+    }
+  } catch (error) {
+    // Handle different error structures
+    const axiosError = error as AxiosError;
+    
+    if (axiosError.response?.data) {
+      // Pass through the structured error response for field validation handling
+      throw axiosError.response.data;
+    }
+    
+    // Log and rethrow generic errors
+    console.error('Error updating transfer:', error);
+    throw new Error('Failed to update transfer');
   }
 }; 
