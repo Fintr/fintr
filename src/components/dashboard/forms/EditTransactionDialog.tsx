@@ -9,7 +9,7 @@ import {
 import ExpenseForm from "./ExpenseForm";
 import IncomeForm from "./IncomeForm";
 import TransferForm from "./TransferForm";
-import UpdateScopeModal, { UpdateScope } from "./UpdateScopeModal";
+import ScopeModal, { UpdateScope, Scope } from "./ScopeModal";
 import { IndexTransaction, TransactionTypeEnum, UpdateTransactionType } from "@/types/transactionTypes";
 import { UpdateTransferType, updateTransfer } from "@/services/transactions/transfers/mutation";
 import { updateTransaction } from "@/services/transactions/mutation";
@@ -163,15 +163,19 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     handleSuccess(formData);
   };
 
-  const handleUpdateScopeConfirm = (scope: UpdateScope) => {
+  const handleUpdateScopeConfirm = (scope: Scope) => {
     if (pendingFormData) {
-      const finalFormData = { ...pendingFormData, updateScope: scope };
+      const finalFormData = { ...pendingFormData, updateScope: scope as UpdateScope };
       handleSuccess(finalFormData);
     }
     setShowUpdateScopeModal(false);
     setPendingFormData(null);
     setScheduleTypeChange(null);
     setHasScheduleChanges(false);
+  };
+
+  const handleUpdateScopeChange = (scope: Scope) => {
+    setUpdateScope(scope as UpdateScope);
   };
 
   const handleUpdateScopeCancel = () => {
@@ -308,13 +312,14 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       </Dialog>
 
       {/* Update Scope Modal */}
-      <UpdateScopeModal
+      <ScopeModal
         isOpen={showUpdateScopeModal}
+        operationType="update"
         onClose={handleUpdateScopeCancel}
         onConfirm={handleUpdateScopeConfirm}
         scheduleTypeChange={scheduleTypeChange || { from: "", to: "" }}
         selectedScope={updateScope}
-        onScopeChange={setUpdateScope}
+        onScopeChange={handleUpdateScopeChange}
         hasScheduleChanges={hasScheduleChanges}
       />
     </>

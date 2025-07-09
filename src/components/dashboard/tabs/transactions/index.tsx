@@ -12,6 +12,7 @@ import { Search, List, Table2, CalendarDays } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   useQueryClient,
+  useMutation,
 } from "@tanstack/react-query";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import { ListView } from "./list-view";
@@ -25,6 +26,10 @@ import { DeleteButton } from "./buttons/DeleteButton";
 import { ViewModeButton } from "./buttons/ViewModeButton";
 import { IndexTransaction } from "@/types/transactionTypes";
 import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
+import ScopeModal, { DeleteScope, Scope } from "@/components/dashboard/forms/ScopeModal";
+import { deleteTransaction } from "@/services/transactions/mutation";
+import { DeleteScopeEnum } from "@/constants/transactionConstants";
+import { useAuthApi } from "@/hooks/useAuthApi";
 
 const TransactionsTab = () => {
   const { firstDay, lastDay } = getCurrentMonthDates();
@@ -68,6 +73,11 @@ const TransactionsTab = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<IndexTransaction | null>(null);
 
+  // Delete scope modal state
+  const [deleteScopeModalOpen, setDeleteScopeModalOpen] = useState(false);
+  const [selectedDeleteScope, setSelectedDeleteScope] = useState<DeleteScope>(DeleteScopeEnum.THIS_ONLY);
+  const [transactionToDelete, setTransactionToDelete] = useState<IndexTransaction | null>(null);
+
   const {
     data,
     error,
@@ -87,6 +97,35 @@ const TransactionsTab = () => {
   });
 
   const queryClient = useQueryClient();
+  const { api } = useAuthApi();
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (deleteData: { id: string; deleteScope: DeleteScope }) =>
+      deleteTransaction(api, deleteData),
+    onSuccess: () => {
+      // Invalidate queries to refresh the transaction list
+      queryClient.invalidateQueries({
+        queryKey: [
+          "transactions",
+          localStorage.getItem("spaceCode"),
+          appliedFilters.appliedCategory,
+          appliedFilters.queryStartDate,
+          appliedFilters.queryEndDate,
+          appliedFilters.appliedMinAmount,
+          appliedFilters.appliedMaxAmount,
+        ],
+      });
+      setDeleteScopeModalOpen(false);
+      // Reset transaction state after a delay to prevent visual glitch
+      setTimeout(() => {
+        setTransactionToDelete(null);
+      }, 300);
+    },
+    onError: (error) => {
+      console.error('Error deleting transaction:', error);
+    },
+  });
 
   function applyFilters(a: FilterTypes) {
     setAppliedFilters(a)
@@ -267,21 +306,45 @@ const TransactionsTab = () => {
     setSelectedTransaction(null);
   };
 
-  const handleDeleteRow = async (id: string) => {
-    try {
-      const updatedTransactions = allTransactions.filter((t) => t.id !== id);
-      setAllTransactions(updatedTransactions);
-      setFilteredTransactions(filteredTransactions.filter((t) => t.id !== id));
-
-      const { error } = await supabase
-        .from("transactions")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error deleting transaction:", error);
+  const handleDeleteRow = (id: string) => {
+    // Find the transaction to get its inSeries status
+    let transaction: IndexTransaction | null = null;
+    if (data?.pages) {
+      for (const page of data.pages) {
+        const found = page.transactions.find(t => t.id === id);
+        if (found) {
+          transaction = found;
+          break;
+        }
+      }
     }
+
+    setTransactionToDelete(transaction);
+    
+    // Always show modal to prevent accidental deletion
+    // For non-series transactions, modal will only show "this_only" option
+    setDeleteScopeModalOpen(true);
+  };
+
+  const handleDeleteConfirm = (scope: Scope) => {
+    if (transactionToDelete) {
+      deleteMutation.mutate({
+        id: transactionToDelete.id,
+        deleteScope: scope as DeleteScope,
+      });
+    }
+  };
+
+  const handleDeleteScopeChange = (scope: Scope) => {
+    setSelectedDeleteScope(scope as DeleteScope);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteScopeModalOpen(false);
+    // Reset transaction state after a delay to prevent visual glitch
+    setTimeout(() => {
+      setTransactionToDelete(null);
+    }, 300);
   };
 
   return (
@@ -389,6 +452,16 @@ const TransactionsTab = () => {
         isOpen={editDialogOpen}
         onClose={handleEditClose}
         onSuccess={handleEditSuccess}
+      />
+      
+      <ScopeModal
+        isOpen={deleteScopeModalOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        selectedScope={selectedDeleteScope}
+        onScopeChange={handleDeleteScopeChange}
+        operationType="delete"
+        inSeries={transactionToDelete?.inSeries ?? true}
       />
     </>
   );

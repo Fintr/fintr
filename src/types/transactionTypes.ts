@@ -9,6 +9,7 @@ export interface IndexTransaction {
   fromAccountName: string;
   toAccountName: string;
   type: TransactionTypeEnum;
+  inSeries: boolean;
 }
 
 export interface TransactionIndexInputType {

@@ -27,4 +27,10 @@ export enum UpdateScopeEnum {
   THIS_ONLY = "this_only",
   THIS_AND_FUTURE = "this_and_future",
   ALL_IN_SERIES = "all_in_series"
+}
+
+export enum DeleteScopeEnum {
+  THIS_ONLY = "this_only",
+  THIS_AND_FUTURE = "this_and_future",
+  ALL_IN_SERIES = "all_in_series"
 } 

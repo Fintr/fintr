@@ -1,5 +1,5 @@
 import { AxiosInstance, AxiosError } from 'axios';
-import { ScheduleTypeEnum, UpdateScopeEnum } from '@/constants/transactionConstants';
+import { ScheduleTypeEnum, UpdateScopeEnum, DeleteScopeEnum } from '@/constants/transactionConstants';
 import { formDataWithFile } from '@/utils/formUtils';
 
 // Type for creating a new transaction
@@ -21,6 +21,12 @@ export interface CreateTransactionType {
 export interface UpdateTransactionType extends CreateTransactionType {
   id: string;
   updateScope?: UpdateScopeEnum;
+}
+
+// Type for deleting a transaction
+export interface DeleteTransactionType {
+  id: string;
+  deleteScope: DeleteScopeEnum;
 }
 
 /**
@@ -106,3 +112,37 @@ export const updateTransaction = async (
     throw new Error('Failed to create transaction');
   }
 }; 
+
+/**
+ * Delete a transaction
+ * 
+ * @param api - The authenticated API client
+ * @param deleteData - The delete data containing id and delete scope
+ * @returns Success response
+ */
+export const deleteTransaction = async (
+  api: AxiosInstance,
+  deleteData: DeleteTransactionType
+) => {
+  try {
+    const response = await api.delete(`/transactions/${deleteData.id}`, {
+      data: {
+        deleteScope: deleteData.deleteScope
+      }
+    });
+    
+    return response.data;
+  } catch (error) {
+    // Handle different error structures
+    const axiosError = error as AxiosError;
+    
+    if (axiosError.response?.data) {
+      // Pass through the structured error response for field validation handling
+      throw axiosError.response.data;
+    }
+    
+    // Log and rethrow generic errors
+    console.error('Error deleting transaction:', error);
+    throw new Error('Failed to delete transaction');
+  }
+};
