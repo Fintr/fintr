@@ -143,23 +143,23 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
       # Add tests for category filtering
       it 'calls where with the correct category condition when category_name is specified' do
         params = default_params.merge(category_name: 'Category 1')
-        expect(mock_relation).to receive(:where).with(transactions_categories: { name: 'Category 1' })
+        expect(mock_relation).to receive(:where).with(category_name: 'Category 1')
 
         described_class.new(relation: mock_relation, params: params).call
       end
 
       it 'does not call where for category when category_name is "all"' do
         params = default_params.merge(category_name: 'all')
-        # Expectation is that where is *not* called with the category hash
-        expect(mock_relation).not_to receive(:where).with(transactions_categories: any_args)
+        # Expectation is that where is *not* called with the category_name
+        expect(mock_relation).not_to receive(:where).with(category_name: any_args)
 
         described_class.new(relation: mock_relation, params: params).call
       end
 
       it 'does not call where for category when category_name is empty string' do
         params = default_params.merge(category_name: '')
-        # Expectation is that where is *not* called with the category hash
-        expect(mock_relation).not_to receive(:where).with(transactions_categories: any_args)
+        # Expectation is that where is *not* called with the category_name
+        expect(mock_relation).not_to receive(:where).with(category_name: any_args)
 
         described_class.new(relation: mock_relation, params: params).call
       end

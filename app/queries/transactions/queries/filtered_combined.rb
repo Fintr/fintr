@@ -45,7 +45,7 @@ module Transactions
       def by_category(relation, params)
         return Success(relation) if ["all", ""].include?(params[:category_name])
 
-        relation = relation.where(transactions_categories: { name: params[:category_name] })
+        relation = relation.where(category_name: params[:category_name])
         Success(relation)
       end
 

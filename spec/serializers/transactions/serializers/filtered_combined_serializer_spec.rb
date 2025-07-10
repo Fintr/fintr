@@ -20,7 +20,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
 
   let(:record) do
     OpenStruct.new(
-      id: record_id,
+      transactable_id: record_id,
       date: record_date,
       description: record_description,
       to_account_name: record_to_account_name,
@@ -28,7 +28,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       category_name: record_category_name,
       value: new_mock_money.call(record_amount), # Simulates Money object for value
       balance: new_mock_money.call(record_balance), # Simulates Money object for balance
-      transactable_type: "Transactions::Income"
+      transactable_type: "Transactions::Income",
+      in_series?: false
     )
   end
 
@@ -68,7 +69,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
     context 'when transactable_type is Transactions::Income' do
       let(:record) do
         OpenStruct.new(
-          id: record_id,
+          transactable_id: record_id,
           date: record_date,
           description: record_description,
           to_account_name: record_to_account_name,
@@ -76,7 +77,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
           category_name: record_category_name,
           value: new_mock_money.call(record_amount),
           balance: new_mock_money.call(record_balance),
-          transactable_type: "Transactions::Income"
+          transactable_type: "Transactions::Income",
+          in_series?: false
         )
       end
 
@@ -88,7 +90,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
     context 'when transactable_type is Transactions::Expense' do
       let(:record) do
         OpenStruct.new(
-          id: record_id,
+          transactable_id: record_id,
           date: record_date,
           description: record_description,
           to_account_name: record_to_account_name,
@@ -96,7 +98,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
           category_name: record_category_name,
           value: new_mock_money.call(record_amount),
           balance: new_mock_money.call(record_balance),
-          transactable_type: "Transactions::Expense"
+          transactable_type: "Transactions::Expense",
+          in_series?: false
         )
       end
 
@@ -108,7 +111,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
     context 'when transactable_type is Transactions::Transfer' do
       let(:record) do
         OpenStruct.new(
-          id: record_id,
+          transactable_id: record_id,
           date: record_date,
           description: record_description,
           to_account_name: record_to_account_name,
@@ -116,7 +119,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
           category_name: nil, # Transfers have no category
           value: new_mock_money.call(record_amount),
           balance: new_mock_money.call(record_balance),
-          transactable_type: "Transactions::Transfer"
+          transactable_type: "Transactions::Transfer",
+          in_series?: false
         )
       end
 
@@ -128,7 +132,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
     context 'when transactable_type is unknown' do
       let(:record) do
         OpenStruct.new(
-          id: record_id,
+          transactable_id: record_id,
           date: record_date,
           description: record_description,
           to_account_name: record_to_account_name,
@@ -136,7 +140,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
           category_name: record_category_name,
           value: new_mock_money.call(record_amount),
           balance: new_mock_money.call(record_balance),
-          transactable_type: "Unknown::Type"
+          transactable_type: "Unknown::Type",
+          in_series?: false
         )
       end
 
@@ -156,12 +161,13 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       :category_name,
       :amount,
       :balance,
-      :type
+      :type,
+      :in_series
     ]
     # Re-initialize record for this specific test to ensure all fields are present
     # This is because the :type field tests redefine 'record' with only transactable_type
     local_record = OpenStruct.new(
-      id: record_id,
+      transactable_id: record_id,
       date: record_date,
       description: record_description,
       to_account_name: record_to_account_name,
@@ -169,7 +175,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       category_name: record_category_name,
       value: new_mock_money.call(record_amount),
       balance: new_mock_money.call(record_balance),
-      transactable_type: "Transactions::Income"
+      transactable_type: "Transactions::Income",
+      in_series?: false
     )
     expect(described_class.render_as_hash(local_record).keys).to match_array(expected_keys)
   end
@@ -179,7 +186,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
 
     let(:record_with_nils) do
       OpenStruct.new(
-        id: record_id,
+        transactable_id: record_id,
         date: record_date,
         description: nil, # description is nil
         to_account_name: nil,
@@ -187,7 +194,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
         category_name: nil,
         value: nil, # value (and thus amount) can be nil
         balance: nil, # balance can be nil
-        transactable_type: "Transactions::Expense"
+        transactable_type: "Transactions::Expense",
+        in_series?: false
       )
     end
 
