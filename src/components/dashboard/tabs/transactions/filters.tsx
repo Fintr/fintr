@@ -21,6 +21,8 @@ import {
   getCurrentMonthDates,
   getYearOptions,
   monthNames,
+  getMonthNumber,
+  getMonthDateRange,
 } from "@/utils/dateUtils";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 
@@ -78,7 +80,7 @@ export function Filters({
   function resetFilters() {
     const { firstDay, lastDay } = getCurrentMonthDates();
 
-    setFilters({
+    const resetFiltersData = {
       selectedMonth: currentMonth,
       selectedYear: currentYear,
       startMonth: currentMonth,
@@ -91,7 +93,10 @@ export function Filters({
       queryEndDate: lastDay,
       appliedMinAmount: "",
       appliedMaxAmount: "",
-    });
+    };
+
+    setFilters(resetFiltersData);
+    applyFilters(resetFiltersData);
   }
   return (
     <Card className="mb-6">
@@ -346,7 +351,42 @@ export function Filters({
           <div className="md:self-end flex gap-2">
             <Button
               className={` hover:bg-primary/80 flex-1 flex items-center gap-1`}
-              onClick={() => applyFilters(filters)}
+              onClick={() => {
+                // Calculate the proper date range based on selected months and years
+                let queryStartDate: string;
+                let queryEndDate: string;
+
+                if (transactionFilterType === "single") {
+                  // For single month filter, use selectedMonth and selectedYear
+                  const monthNumber = getMonthNumber(filters.selectedMonth);
+                  const year = parseInt(filters.selectedYear);
+                  const dateRange = getMonthDateRange(year, monthNumber);
+                  queryStartDate = dateRange.startDate;
+                  queryEndDate = dateRange.endDate;
+                } else {
+                  // For range filter, use startMonth/Year and endMonth/Year
+                  const startMonthNumber = getMonthNumber(filters.startMonth);
+                  const startYear = parseInt(filters.startYear);
+                  const endMonthNumber = getMonthNumber(filters.endMonth);
+                  const endYear = parseInt(filters.endYear);
+                  
+                  const startDateRange = getMonthDateRange(startYear, startMonthNumber);
+                  const endDateRange = getMonthDateRange(endYear, endMonthNumber);
+                  
+                  queryStartDate = startDateRange.startDate;
+                  queryEndDate = endDateRange.endDate;
+                }
+
+                // Create the updated filters object with calculated dates
+                const updatedFilters = {
+                  ...filters,
+                  queryStartDate,
+                  queryEndDate,
+                  appliedCategory: filters.selectedCategory,
+                };
+
+                applyFilters(updatedFilters);
+              }}
             >
               Apply Filters
             </Button>
