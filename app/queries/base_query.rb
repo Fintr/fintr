@@ -15,8 +15,7 @@ class BaseQuery < Dry::Operation
   private
 
   def paginate(relation, params)
-    return Success(relation) if params[:page].blank?
-
-    Success(relation.page(params[:page]).per(params[:per_page] || 25))
+    # NOTE: Hack-y way to make sure there's no records if there's no page.
+    Success(relation.page(params[:page]|| 99999).per(params[:per_page] || 25))
   end
 end

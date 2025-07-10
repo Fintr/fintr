@@ -9,6 +9,7 @@ gem "tzinfo-data", platforms: %i[ windows jruby ]
 gem "solid_cache"
 gem "solid_queue"
 gem "solid_cable"
+gem "pry-rails", "~> 0.3.11"
 gem "bootsnap", require: false
 gem "thruster", require: false
 gem "rack-cors"

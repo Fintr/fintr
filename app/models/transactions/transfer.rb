@@ -2,15 +2,17 @@
 
 module Transactions
   class Transfer < ApplicationRecord
+    include Repeatable
+
     belongs_to :user, class_name: "Auth::User"
     belongs_to :space, class_name: "Spaces::Space"
     belongs_to :from_account, class_name: "Transactions::Account"
     belongs_to :to_account, class_name: "Transactions::Account"
     belongs_to :parent, class_name: "Transactions::Transfer", optional: true
+    belongs_to :effective_parent, class_name: "Transactions::Transfer", optional: true
     has_many :children, class_name: "Transactions::Transfer", foreign_key: :parent_id
+    has_many :effective_children, class_name: "Transactions::Transfer", foreign_key: :effective_parent_id
     has_many :fee_transactions, class_name: "Transactions::Transaction", foreign_key: :transfer_id
-
-    include Repeatable
 
     monetize :amount_cents, allow_nil: false
     monetize :transaction_cost_cents, allow_nil: false

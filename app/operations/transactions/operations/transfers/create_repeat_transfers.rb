@@ -58,11 +58,11 @@ module Transactions
         end
 
         def fetch_dates(params:, transfer:)
-          Transactions::Operations::Schedules::FetchDates.new.call(params: {
+          Transactions::Operations::Schedules::FetchDates.new.call(
             record: transfer,
             date_start: params[:date_start],
             date_end: params[:date_end]
-          })
+          )
         end
 
         def fetch_last_transfer(params:, transfer:)

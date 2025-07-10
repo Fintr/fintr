@@ -8,6 +8,7 @@ class CreateTransfers < ActiveRecord::Migration[8.0]
       t.references :from_account, null: false, foreign_key: { to_table: :accounts }, type: :uuid, index: true
       t.references :to_account, null: false, foreign_key: { to_table: :accounts }, type: :uuid, index: true
       t.references :parent, null: true, foreign_key: { to_table: :transfers }, type: :uuid, index: true
+      t.references :effective_parent, null: true, foreign_key: { to_table: :transfers }, type: :uuid, index: true
       t.monetize :amount, null: false
       t.monetize :transaction_cost, null: false
       t.datetime :date, null: false
@@ -29,5 +30,6 @@ class CreateTransfers < ActiveRecord::Migration[8.0]
     add_index :transfers, [:from_account_id, :to_account_id]
     add_index :transfers, [:to_account_id, :date]
     add_index :transfers, [:parent_id, :date]
+    add_index :transfers, [:effective_parent_id, :date]
   end
 end

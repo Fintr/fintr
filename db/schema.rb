@@ -115,6 +115,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_08_140559) do
   create_table "transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "user_id", null: false
     t.uuid "parent_id"
+    t.uuid "effective_parent_id"
     t.datetime "date", null: false
     t.integer "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "USD", null: false
@@ -138,6 +139,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_08_140559) do
     t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["date", "type", "amount_currency", "amount_cents"], name: "idx_on_date_type_amount_currency_amount_cents_5ec151a267"
+    t.index ["effective_parent_id", "date"], name: "index_transactions_on_effective_parent_id_and_date"
+    t.index ["effective_parent_id"], name: "index_transactions_on_effective_parent_id"
     t.index ["parent_id", "date"], name: "index_transactions_on_parent_id_and_date"
     t.index ["parent_id"], name: "index_transactions_on_parent_id"
     t.index ["space_id"], name: "index_transactions_on_space_id"
@@ -162,6 +165,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_08_140559) do
     t.uuid "from_account_id", null: false
     t.uuid "to_account_id", null: false
     t.uuid "parent_id"
+    t.uuid "effective_parent_id"
     t.integer "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "USD", null: false
     t.integer "transaction_cost_cents", default: 0, null: false
@@ -175,6 +179,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_08_140559) do
     t.enum "balance_state", default: "pending", null: false, enum_type: "balance_state"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["effective_parent_id", "date"], name: "index_transfers_on_effective_parent_id_and_date"
+    t.index ["effective_parent_id"], name: "index_transfers_on_effective_parent_id"
     t.index ["from_account_id", "date"], name: "index_transfers_on_from_account_id_and_date"
     t.index ["from_account_id", "to_account_id"], name: "index_transfers_on_from_account_id_and_to_account_id"
     t.index ["from_account_id"], name: "index_transfers_on_from_account_id"
@@ -215,6 +221,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_08_140559) do
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
   add_foreign_key "transactions", "accounts"
+  add_foreign_key "transactions", "transactions", column: "effective_parent_id"
   add_foreign_key "transactions", "transactions", column: "parent_id"
   add_foreign_key "transactions", "transactions_categories", column: "category_id"
   add_foreign_key "transactions", "transfers"
@@ -223,6 +230,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_08_140559) do
   add_foreign_key "transfers", "accounts", column: "from_account_id"
   add_foreign_key "transfers", "accounts", column: "to_account_id"
   add_foreign_key "transfers", "spaces"
+  add_foreign_key "transfers", "transfers", column: "effective_parent_id"
   add_foreign_key "transfers", "transfers", column: "parent_id"
   add_foreign_key "transfers", "users"
 

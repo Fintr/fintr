@@ -146,20 +146,11 @@ module Transactions
       end
 
       def create_schedule(transaction:, params:)
-        schedule_type = params[:schedule_type]
-        return Success(transaction) if schedule_type == "one_time"
-
-        repeat_interval = schedule_type == "repeat" ? params[:repeat_interval] : :installment
-        schedule = Utils::Recurrence.schedule(
-          repeat_interval:,
-          date: params[:date],
-          installment_period: params[:installment_period]
-        )
-
-        transaction.update!(schedule: schedule.to_hash)
+        schedule = step Transactions::Operations::Schedules::CreateSchedule.new.call(params)
+        transaction.update!(schedule:)
         Success(transaction)
       rescue StandardError => e
-        Failure(error: e)
+        Failure(error: e, schedule: "Failed to update schedule")
       end
 
       # Note: Creates repeat transactions until today
@@ -167,24 +158,24 @@ module Transactions
         return Success() if transaction.schedule_type == "one_time"
         return Success() if transaction.date >= Time.zone.today
 
-        CreateRepeatTransactions.new.call(params: {
+        CreateRepeatTransactions.new.call(
           transaction_id: transaction.id,
           balance_state: "calculated",
           date_start: (transaction.date + 1.day).to_datetime, # NOTE: somehow need .to_datetime to avoid errors
           date_end: Time.zone.today
-        })
+        )
       end
 
       # Note: Creates repeat transactions until + 1.month
       def create_future_transactions(transaction:)
         return Success() if transaction.schedule_type == "one_time"
 
-        CreateRepeatTransactions.new.call(params: {
+        CreateRepeatTransactions.new.call(
           transaction_id: transaction.id,
           balance_state: "calculated",
           date_start: Time.zone.tomorrow,
           date_end: Time.zone.today + 1.month
-        })
+        )
       end
     end
   end

@@ -29,7 +29,7 @@ module Transactions
           Success(contract.to_h)
         end
 
-        def call(params:)
+        def call(params)
           params      = step validate(params:)
           schedule    = step fetch_schedule(params:)
           dates       = step fetch_dates(params:, schedule:)

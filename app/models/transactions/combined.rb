@@ -29,5 +29,9 @@ module Transactions
     def expense
       transactable.expense
     end
+
+    def in_series?
+      transactable.in_series?
+    end
   end
 end

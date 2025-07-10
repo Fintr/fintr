@@ -3,7 +3,9 @@
 module Transactions
   module Serializers
     class FilteredCombinedSerializer < Blueprinter::Base
-      identifier :id
+      identifier :id do |record|
+        record.transactable_id
+      end
 
       fields :date,
              :description,
@@ -27,6 +29,10 @@ module Transactions
         }
 
         type_mapping[record.transactable_type]
+      end
+
+      field :in_series do |record|
+        record.in_series?
       end
     end
   end
