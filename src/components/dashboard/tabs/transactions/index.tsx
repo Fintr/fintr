@@ -12,6 +12,7 @@ import { Search, List, Table2, CalendarDays } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   useQueryClient,
+  useMutation,
 } from "@tanstack/react-query";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import { ListView } from "./list-view";
@@ -23,6 +24,12 @@ import { Filters, FilterTypes } from "./filters";
 import { DownloadButton } from "./buttons/DownloadButton";
 import { DeleteButton } from "./buttons/DeleteButton";
 import { ViewModeButton } from "./buttons/ViewModeButton";
+import { IndexTransaction } from "@/types/transactionTypes";
+import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
+import ScopeModal, { DeleteScope, Scope } from "@/components/dashboard/forms/ScopeModal";
+import { deleteTransaction } from "@/services/transactions/mutation";
+import { DeleteScopeEnum } from "@/constants/transactionConstants";
+import { useAuthApi } from "@/hooks/useAuthApi";
 
 const TransactionsTab = () => {
   const { firstDay, lastDay } = getCurrentMonthDates();
@@ -62,6 +69,15 @@ const TransactionsTab = () => {
   const editInputRef = useRef<HTMLInputElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<IndexTransaction | null>(null);
+
+  // Delete scope modal state
+  const [deleteScopeModalOpen, setDeleteScopeModalOpen] = useState(false);
+  const [selectedDeleteScope, setSelectedDeleteScope] = useState<DeleteScope>(DeleteScopeEnum.THIS_ONLY);
+  const [transactionToDelete, setTransactionToDelete] = useState<IndexTransaction | null>(null);
+
   const {
     data,
     error,
@@ -81,6 +97,35 @@ const TransactionsTab = () => {
   });
 
   const queryClient = useQueryClient();
+  const { api } = useAuthApi();
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (deleteData: { id: string; deleteScope: DeleteScope }) =>
+      deleteTransaction(api, deleteData),
+    onSuccess: () => {
+      // Invalidate queries to refresh the transaction list
+      queryClient.invalidateQueries({
+        queryKey: [
+          "transactions",
+          localStorage.getItem("spaceCode"),
+          appliedFilters.appliedCategory,
+          appliedFilters.queryStartDate,
+          appliedFilters.queryEndDate,
+          appliedFilters.appliedMinAmount,
+          appliedFilters.appliedMaxAmount,
+        ],
+      });
+      setDeleteScopeModalOpen(false);
+      // Reset transaction state after a delay to prevent visual glitch
+      setTimeout(() => {
+        setTransactionToDelete(null);
+      }, 300);
+    },
+    onError: (error) => {
+      console.error('Error deleting transaction:', error);
+    },
+  });
 
   function applyFilters(a: FilterTypes) {
     setAppliedFilters(a)
@@ -236,126 +281,189 @@ const TransactionsTab = () => {
     }
   };
 
-  const handleEditRow = (transaction: any) => {
-    console.log("Edit row:", transaction);
-    handleCellClick(transaction.id, "description", transaction.description);
+  const handleEditRow = (transaction: IndexTransaction) => {
+    setSelectedTransaction(transaction);
+    setEditDialogOpen(true);
   };
 
-  const handleDeleteRow = async (id: string) => {
-    try {
-      const updatedTransactions = allTransactions.filter((t) => t.id !== id);
-      setAllTransactions(updatedTransactions);
-      setFilteredTransactions(filteredTransactions.filter((t) => t.id !== id));
+  const handleEditSuccess = () => {
+    // Invalidate queries to refresh the transaction list
+    queryClient.invalidateQueries({
+      queryKey: [
+        "transactions",
+        localStorage.getItem("spaceCode"),
+        appliedFilters.appliedCategory,
+        appliedFilters.queryStartDate,
+        appliedFilters.queryEndDate,
+        appliedFilters.appliedMinAmount,
+        appliedFilters.appliedMaxAmount,
+      ],
+    });
+  };
 
-      const { error } = await supabase
-        .from("transactions")
-        .delete()
-        .eq("id", id);
+  const handleEditClose = () => {
+    setEditDialogOpen(false);
+    setSelectedTransaction(null);
+  };
 
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error deleting transaction:", error);
+  const handleDeleteRow = (id: string) => {
+    // Find the transaction to get its inSeries status
+    let transaction: IndexTransaction | null = null;
+    if (data?.pages) {
+      for (const page of data.pages) {
+        const found = page.transactions.find(t => t.id === id);
+        if (found) {
+          transaction = found;
+          break;
+        }
+      }
+    }
+
+    setTransactionToDelete(transaction);
+    
+    // Always show modal to prevent accidental deletion
+    // For non-series transactions, modal will only show "this_only" option
+    setDeleteScopeModalOpen(true);
+  };
+
+  const handleDeleteConfirm = (scope: Scope) => {
+    if (transactionToDelete) {
+      deleteMutation.mutate({
+        id: transactionToDelete.id,
+        deleteScope: scope as DeleteScope,
+      });
     }
   };
 
+  const handleDeleteScopeChange = (scope: Scope) => {
+    setSelectedDeleteScope(scope as DeleteScope);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteScopeModalOpen(false);
+    // Reset transaction state after a delay to prevent visual glitch
+    setTimeout(() => {
+      setTransactionToDelete(null);
+    }, 300);
+  };
+
   return (
-    <Card className="border-0 shadow-none bg-transparent">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>All Transactions</CardTitle>
-          <CardDescription>
-            Manage and filter your transaction history
-          </CardDescription>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center gap-2">
-            <ViewModeButton
-              label="List"
-              IconComponent={List}
-              isActive={viewMode === "list"}
-              onClick={() => setViewMode("list")}
-              aria-pressed={viewMode === "list"}
-            />
-            <ViewModeButton
-              label="Sheets"
-              IconComponent={Table2}
-              isActive={viewMode === "sheets"}
-              onClick={() => setViewMode("sheets")}
-              aria-pressed={viewMode === "sheets"}
-            />
-            <ViewModeButton
-              label="Calendar"
-              IconComponent={CalendarDays}
-              isActive={viewMode === "calendar"}
-              onClick={() => setViewMode("calendar")}
-              aria-pressed={viewMode === "calendar"}
-            />
+    <>
+      <Card className="border-0 shadow-none bg-transparent">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>All Transactions</CardTitle>
+            <CardDescription>
+              Manage and filter your transaction history
+            </CardDescription>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Filters
-          transactionFilterType="range"
-          applyFilters={applyFilters}
-        />
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
+              <ViewModeButton
+                label="List"
+                IconComponent={List}
+                isActive={viewMode === "list"}
+                onClick={() => setViewMode("list")}
+                aria-pressed={viewMode === "list"}
+              />
+              <ViewModeButton
+                label="Sheets"
+                IconComponent={Table2}
+                isActive={viewMode === "sheets"}
+                onClick={() => setViewMode("sheets")}
+                aria-pressed={viewMode === "sheets"}
+              />
+              <ViewModeButton
+                label="Calendar"
+                IconComponent={CalendarDays}
+                isActive={viewMode === "calendar"}
+                onClick={() => setViewMode("calendar")}
+                aria-pressed={viewMode === "calendar"}
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Filters
+            transactionFilterType="range"
+            applyFilters={applyFilters}
+          />
 
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search Transactions"
-              className="pl-10 bg-white"
-            />
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search Transactions"
+                className="pl-10 bg-white"
+              />
+            </div>
+            <div className="flex items-center">
+              <h3 className="text-lg font-medium mr-2">Transactions</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <DownloadButton />
+              <DeleteButton />
+            </div>
           </div>
-          <div className="flex items-center">
-            <h3 className="text-lg font-medium mr-2">Transactions</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <DownloadButton />
-            <DeleteButton />
-          </div>
-        </div>
 
-        {viewMode === "list" ? (
-          <ListView
-            isPending={isFetching}
-            isError={isError}
-            error={error as Error | null}
-            isSuccess={isSuccess}
-            data={data}
-            isFetchingNextPage={isFetchingNextPage}
-            hasNextPage={!!hasNextPage}
-            onRowEdit={handleEditRow}
-            onRowDelete={handleDeleteRow}
-            loadMoreRef={loadMoreRef}
-          />
-        ) : viewMode === "sheets" ? (
-          <SheetsView
-            isPending={isFetching}
-            isError={isError}
-            error={error as Error | null}
-            isSuccess={isSuccess}
-            data={data}
-            onRowEdit={handleEditRow}
-            onRowDelete={handleDeleteRow}
-            onCellClick={handleCellClick}
-            onCellDoubleClick={handleCellDoubleClick}
-            onKeyDown={handleKeyDown}
-            onSaveEdit={handleSaveEdit}
-            loadMoreRef={loadMoreRef}
-            isFetchingNextPage={isFetchingNextPage}
-            hasNextPage={!!hasNextPage}
-          />
-        ) : viewMode === "calendar" ? (
-          <CalendarView
-            isPending={isFetching}
-            isError={isError}
-            error={error as Error | null}
-            isSuccess={isSuccess}
-          />
-        ) : null}
-      </CardContent>
-    </Card>
+          {viewMode === "list" ? (
+            <ListView
+              isPending={isFetching}
+              isError={isError}
+              error={error as Error | null}
+              isSuccess={isSuccess}
+              data={data}
+              isFetchingNextPage={isFetchingNextPage}
+              hasNextPage={!!hasNextPage}
+              onRowEdit={handleEditRow}
+              onRowDelete={handleDeleteRow}
+              loadMoreRef={loadMoreRef as React.RefObject<HTMLDivElement>}
+            />
+          ) : viewMode === "sheets" ? (
+            <SheetsView
+              isPending={isFetching}
+              isError={isError}
+              error={error as Error | null}
+              isSuccess={isSuccess}
+              data={data}
+              onRowEdit={handleEditRow}
+              onRowDelete={handleDeleteRow}
+              onCellClick={handleCellClick}
+              onCellDoubleClick={handleCellDoubleClick}
+              onKeyDown={handleKeyDown}
+              onSaveEdit={handleSaveEdit}
+              loadMoreRef={loadMoreRef as React.RefObject<HTMLDivElement>}
+              isFetchingNextPage={isFetchingNextPage}
+              hasNextPage={!!hasNextPage}
+            />
+          ) : viewMode === "calendar" ? (
+            <CalendarView
+              isPending={isFetching}
+              isError={isError}
+              error={error as Error | null}
+              isSuccess={isSuccess}
+            />
+          ) : null}
+        </CardContent>
+      </Card>
+      
+      <EditTransactionDialog
+        transaction={selectedTransaction}
+        isOpen={editDialogOpen}
+        onClose={handleEditClose}
+        onSuccess={handleEditSuccess}
+      />
+      
+      <ScopeModal
+        isOpen={deleteScopeModalOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        selectedScope={selectedDeleteScope}
+        onScopeChange={handleDeleteScopeChange}
+        operationType="delete"
+        inSeries={transactionToDelete?.inSeries ?? true}
+      />
+    </>
   );
 };
 

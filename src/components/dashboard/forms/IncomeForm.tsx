@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -20,10 +20,11 @@ import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
-import { createTransaction } from "@/services/transactions/mutation";
+import { createTransaction, updateTransaction } from "@/services/transactions/mutation";
 import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum } from "@/constants/transactionConstants";
 import AccountCreationForm from "./AccountCreationForm";
 import CategoryCreationForm from "./CategoryCreationForm";
+import { UpdateTransactionType } from "@/types/transactionTypes";
 
 // Income form schema using Zod
 const incomeFormSchema = z.object({
@@ -61,6 +62,10 @@ interface IncomeFormProps {
   onSubmitSuccess?: (data: any) => void;
   onCancel?: () => void;
   formRef?: React.RefObject<HTMLFormElement>;
+  // Edit mode props
+  id?: string;
+  initialData?: UpdateTransactionType;
+  isEditMode?: boolean;
 }
 
 // Main Income Form
@@ -72,6 +77,9 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   onSubmitSuccess,
   onCancel,
   formRef,
+  id,
+  initialData = {} as UpdateTransactionType,
+  isEditMode = false,
 }) => {
   const categoryOptions = useAtomValue(incomeCategoryOptionsAtom);
   const accountOptions = useAtomValue(accountOptionsAtom);
@@ -81,7 +89,11 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
   const [fileState, setFileState] = useState<File | null>(null);
-  const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(ScheduleTypeEnum.ONE_TIME);
+  const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(
+    (initialData?.scheduleType === ScheduleTypeEnum.REPEAT) 
+      ? ScheduleTypeEnum.REPEAT 
+      : ScheduleTypeEnum.ONE_TIME
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Track whether form has been submitted (for validation display)
@@ -89,13 +101,15 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   
   // Form state management
   const [formState, setFormState] = useState<IncomeFormValues>({
-    amount: "",
-    description: "",
-    categoryName: "",
-    accountName: "",
-    scheduleType: ScheduleTypeEnum.ONE_TIME,
-    repeatInterval: "",
-    file: null,
+    amount: initialData?.amount?.toString() || "",
+    description: initialData?.description || "",
+    categoryName: initialData?.categoryName || "",
+    accountName: initialData?.accountName || "",
+    scheduleType: (initialData?.scheduleType === ScheduleTypeEnum.REPEAT) 
+      ? ScheduleTypeEnum.REPEAT 
+      : ScheduleTypeEnum.ONE_TIME,
+    repeatInterval: initialData?.repeatInterval || "",
+    file: initialData?.file || null,
   });
   
   // Form errors
@@ -172,37 +186,48 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         ...(fileState && { file: fileState })
       };
       
-      const response = await createTransaction(api, transactionData);
+      let response;
       
-      toast.success("Income created successfully");
+      if (isEditMode && id) {
+        // Update existing transaction - pass the data to parent for scope handling
+        const submitData = { ...transactionData, id, scheduleType: formState.scheduleType };
+        response = await onSubmitSuccess?.(submitData);
+        return; // Let parent handle the actual update
+      } else {
+        // Create new transaction
+        response = await createTransaction(api, transactionData);
+        toast.success("Income created successfully");
+      }
       
       // Call onSubmitSuccess callback to notify parent component
-      if (onSubmitSuccess) {
+      if (onSubmitSuccess && !isEditMode) {
         onSubmitSuccess(response);
       }
       
-      // Reset form
-      setFormState({
-        amount: "",
-        description: "",
-        categoryName: "",
-        accountName: "",
-        scheduleType: ScheduleTypeEnum.ONE_TIME,
-        repeatInterval: "",
-        file: null,
-      });
-      setDate(undefined);
-      setFileState(null);
-      setShowCustomCategoryInput(false);
-      setShowCustomAccountInput(false);
-      setScheduleType(ScheduleTypeEnum.ONE_TIME);
-      setFormSubmitted(false); // Reset the form submission flag
+      // Reset form only if not in edit mode (edit mode closes dialog)
+      if (!isEditMode) {
+        setFormState({
+          amount: "",
+          description: "",
+          categoryName: "",
+          accountName: "",
+          scheduleType: ScheduleTypeEnum.ONE_TIME,
+          repeatInterval: "",
+          file: null,
+        });
+        setDate(undefined);
+        setFileState(null);
+        setShowCustomCategoryInput(false);
+        setShowCustomAccountInput(false);
+        setScheduleType(ScheduleTypeEnum.ONE_TIME);
+        setFormSubmitted(false); // Reset the form submission flag
+      }
       
     } catch (error) {
-      console.error("Error creating income:", error);
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} income:`, error);
       const fieldErrors = extractFieldErrors(error);
       
-      toast.error(fieldErrors.detail || "Failed to create income. Please try again.");
+      toast.error(fieldErrors.detail || `Failed to ${isEditMode ? 'update' : 'create'} income. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -454,7 +479,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             className="bg-primary hover:bg-primary/80" 
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Adding Income..." : "Add Income"}
+            {isSubmitting ? (isEditMode ? "Updating Income..." : "Adding Income...") : (isEditMode ? "Update Income" : "Add Income")}
           </Button>
         </div>
       </div>

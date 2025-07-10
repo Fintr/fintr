@@ -66,4 +66,24 @@ export const fetchTransactionsPage = async (
     console.error("Error fetching transactions page:", error);
     throw error; // Re-throw for React Query error handling
   }
+};
+
+/**
+ * Fetches a single transaction by ID
+ * 
+ * @param api - The authenticated Axios instance
+ * @param transactionId - The ID of the transaction to fetch
+ * @returns The transaction data
+ */
+export const fetchTransactionById = async (
+  api: AxiosInstance,
+  transactionId: string
+) => {
+  try {
+    const response = await api.get(`/transactions/${transactionId}`);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching transaction by ID:", error);
+    throw error;
+  }
 }; 

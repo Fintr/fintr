@@ -24,10 +24,11 @@ import { useAuthApi } from "@/hooks/useAuthApi";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import * as z from "zod"; 
-import { createTransaction } from "@/services/transactions/mutation";
+import { createTransaction, updateTransaction } from "@/services/transactions/mutation";
 import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum } from "@/constants/transactionConstants";
 import AccountCreationForm from "./AccountCreationForm";
 import CategoryCreationForm from "./CategoryCreationForm";
+import { UpdateTransactionType } from "@/types/transactionTypes";
 
 // Keep Zod schemas as they are used by the adapter and nested forms
 const categorySchema = z.object({
@@ -86,6 +87,10 @@ interface ExpenseFormProps {
   onSubmitSuccess?: (data: any) => void; // Renamed for clarity
   onCancel?: () => void;
   formRef?: React.RefObject<HTMLFormElement | null>; // Keep if needed for external interaction
+  // Edit mode props
+  id?: string;
+  initialData?: UpdateTransactionType;
+  isEditMode?: boolean;
 }
 
 // Main Expense Form using @tanstack/react-form
@@ -97,6 +102,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   onSubmitSuccess,
   onCancel,
   formRef,
+  id,
+  initialData = {} as UpdateTransactionType,
+  isEditMode = false,
 }) => {
   const categoryOptions = useAtomValue(expenseCategoryOptionsAtom);
   const accountOptions = useAtomValue(accountOptionsAtom);
@@ -106,7 +114,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
   const [fileState, setFileState] = useState<File | null>(null);
-  const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(ScheduleTypeEnum.ONE_TIME);
+  const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(
+    initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Reference to track when a new category or account is created
@@ -117,14 +127,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   
   // Form state management
   const [formState, setFormState] = useState<ExpenseFormValues>({
-    amount: "",
-    description: "",
-    categoryName: "",
-    accountName: "",
-    scheduleType: ScheduleTypeEnum.ONE_TIME,
-    repeatInterval: "",
-    installmentPeriod: "",
-    file: null,
+    amount: initialData?.amount?.toString() || "",
+    description: initialData?.description || "",
+    categoryName: initialData?.categoryName || "",
+    accountName: initialData?.accountName || "",
+    scheduleType: initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME,
+    repeatInterval: initialData?.repeatInterval || "",
+    installmentPeriod: initialData?.installmentPeriod?.toString() || "",
+    file: initialData?.file || null,
   });
   
   // Form errors
@@ -216,38 +226,49 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         ...(fileState && { file: fileState })
       };
       
-      const response = await createTransaction(api, transactionData);
+      let response;
       
-      toast.success("Expense created successfully");
+      if (isEditMode && id) {
+        // Update existing transaction - pass the data to parent for scope handling
+        const submitData = { ...transactionData, id, scheduleType: formState.scheduleType };
+        response = await onSubmitSuccess?.(submitData);
+        return; // Let parent handle the actual update
+      } else {
+        // Create new transaction
+        response = await createTransaction(api, transactionData);
+        toast.success("Expense created successfully");
+      }
       
       // Call onSubmitSuccess callback to notify parent component
-      if (onSubmitSuccess) {
+      if (onSubmitSuccess && !isEditMode) {
         onSubmitSuccess(response);
       }
       
-      // Reset form
-      setFormState({
-        amount: "",
-        description: "",
-        categoryName: "",
-        accountName: "",
-        scheduleType: ScheduleTypeEnum.ONE_TIME,
-        repeatInterval: "",
-        installmentPeriod: "",
-        file: null,
-      });
-      setDate(undefined);
-      setFileState(null);
-      setShowCustomCategoryInput(false);
-      setShowCustomAccountInput(false);
-      setScheduleType(ScheduleTypeEnum.ONE_TIME);
-      setFormSubmitted(false); // Reset the form submission flag
+      // Reset form only if not in edit mode (edit mode closes dialog)
+      if (!isEditMode) {
+        setFormState({
+          amount: "",
+          description: "",
+          categoryName: "",
+          accountName: "",
+          scheduleType: ScheduleTypeEnum.ONE_TIME,
+          repeatInterval: "",
+          installmentPeriod: "",
+          file: null,
+        });
+        setDate(undefined);
+        setFileState(null);
+        setShowCustomCategoryInput(false);
+        setShowCustomAccountInput(false);
+        setScheduleType(ScheduleTypeEnum.ONE_TIME);
+        setFormSubmitted(false); // Reset the form submission flag
+      }
       
     } catch (error) {
-      console.error("Error creating expense:", error);
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} expense:`, error);
       const fieldErrors = extractFieldErrors(error);
       
-      toast.error(fieldErrors.detail || "Failed to create expense. Please try again.");
+      toast.error(fieldErrors.detail || `Failed to ${isEditMode ? 'update' : 'create'} expense. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -538,7 +559,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             className="bg-primary hover:bg-primary/80" 
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Adding Expense..." : "Add Expense"}
+            {isSubmitting ? (isEditMode ? "Updating Expense..." : "Adding Expense...") : (isEditMode ? "Update Expense" : "Add Expense")}
           </Button>
         </div>
       </div>
