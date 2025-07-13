@@ -28,7 +28,9 @@ import { IndexTransaction } from "@/types/transactionTypes";
 import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
 import ScopeModal, { DeleteScope, Scope } from "@/components/dashboard/forms/ScopeModal";
 import { deleteTransaction } from "@/services/transactions/mutation";
+import { deleteTransfer } from "@/services/transactions/transfers/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
+import { TransactionTypeEnum } from "@/types/transactionTypes";
 import { useAuthApi } from "@/hooks/useAuthApi";
 
 const TransactionsTab = () => {
@@ -101,8 +103,14 @@ const TransactionsTab = () => {
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (deleteData: { id: string; deleteScope: DeleteScope }) =>
-      deleteTransaction(api, deleteData),
+    mutationFn: (deleteData: { id: string; deleteScope: DeleteScope; transactionType?: string }) => {
+      // Use the appropriate delete function based on transaction type
+      if (deleteData.transactionType === TransactionTypeEnum.TRANSFER) {
+        return deleteTransfer(api, { id: deleteData.id, deleteScope: deleteData.deleteScope });
+      } else {
+        return deleteTransaction(api, { id: deleteData.id, deleteScope: deleteData.deleteScope });
+      }
+    },
     onSuccess: () => {
       // Invalidate queries to refresh the transaction list
       queryClient.invalidateQueries({
@@ -331,6 +339,7 @@ const TransactionsTab = () => {
       deleteMutation.mutate({
         id: transactionToDelete.id,
         deleteScope: scope as DeleteScope,
+        transactionType: transactionToDelete.type,
       });
     }
   };
@@ -462,6 +471,7 @@ const TransactionsTab = () => {
         onScopeChange={handleDeleteScopeChange}
         operationType="delete"
         inSeries={transactionToDelete?.inSeries ?? true}
+        transactionType={transactionToDelete?.type}
       />
     </>
   );

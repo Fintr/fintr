@@ -1,5 +1,6 @@
 import { AxiosInstance, AxiosError } from 'axios';
-import { ScheduleTypeEnum, UpdateScopeEnum } from '@/constants/transactionConstants';
+import { ScheduleTypeEnum, UpdateScopeEnum, DeleteScopeEnum } from '@/constants/transactionConstants';
+import { formDataWithFile } from '@/utils/formUtils';
 
 // Type for creating a new transfer
 export interface CreateTransferType {
@@ -20,6 +21,12 @@ export interface UpdateTransferType extends CreateTransferType {
   updateScope?: UpdateScopeEnum;
 }
 
+// Type for deleting a transfer
+export interface DeleteTransferType {
+  id: string;
+  deleteScope: DeleteScopeEnum;
+}
+
 /**
  * Create a new transfer transaction
  * 
@@ -34,21 +41,7 @@ export const createTransfer = async (
   try {
     // If there's a file, use FormData to handle the multipart/form-data request
     if (transferData.file) {
-      const formData = new FormData();
-      
-      // Add all transfer data to FormData
-      Object.entries(transferData).forEach(([key, value]) => {
-        // Skip undefined values
-        if (value === undefined) return;
-        
-        // Handle file separately
-        if (key === 'file') {
-          formData.append(key, value);
-        } else {
-          formData.append(key, typeof value === 'string' ? value : JSON.stringify(value));
-        }
-      });
-      
+      const formData = formDataWithFile(transferData);
       const response = await api.post('/transactions/transfers', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -90,21 +83,7 @@ export const updateTransfer = async (
   try {
     // If there's a file, use FormData to handle the multipart/form-data request
     if (transferData.file) {
-      const formData = new FormData();
-      
-      // Add all transfer data to FormData
-      Object.entries(transferData).forEach(([key, value]) => {
-        // Skip undefined values
-        if (value === undefined) return;
-        
-        // Handle file separately
-        if (key === 'file') {
-          formData.append(key, value);
-        } else {
-          formData.append(key, typeof value === 'string' ? value : JSON.stringify(value));
-        }
-      });
-      
+      const formData = formDataWithFile(transferData);
       const response = await api.put(`/transactions/transfers/${transferData.id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -129,5 +108,39 @@ export const updateTransfer = async (
     // Log and rethrow generic errors
     console.error('Error updating transfer:', error);
     throw new Error('Failed to update transfer');
+  }
+};
+
+/**
+ * Delete a transfer transaction
+ * 
+ * @param api - The authenticated API client
+ * @param deleteData - The delete data containing id and delete scope
+ * @returns Success response
+ */
+export const deleteTransfer = async (
+  api: AxiosInstance,
+  deleteData: DeleteTransferType
+) => {
+  try {
+    const response = await api.delete(`/transactions/transfers/${deleteData.id}`, {
+      data: {
+        deleteScope: deleteData.deleteScope
+      }
+    });
+    
+    return response.data;
+  } catch (error) {
+    // Handle different error structures
+    const axiosError = error as AxiosError;
+    
+    if (axiosError.response?.data) {
+      // Pass through the structured error response for field validation handling
+      throw axiosError.response.data;
+    }
+    
+    // Log and rethrow generic errors
+    console.error('Error deleting transfer:', error);
+    throw new Error('Failed to delete transfer');
   }
 }; 

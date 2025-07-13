@@ -10,10 +10,11 @@ import ExpenseForm from "./ExpenseForm";
 import IncomeForm from "./IncomeForm";
 import TransferForm from "./TransferForm";
 import ScopeModal, { UpdateScope, Scope } from "./ScopeModal";
-import { IndexTransaction, TransactionTypeEnum, UpdateTransactionType } from "@/types/transactionTypes";
+import { IndexTransaction, TransactionTypeEnum, TransferUpdateTransactionType, UpdateTransactionType } from "@/types/transactionTypes";
 import { UpdateTransferType, updateTransfer } from "@/services/transactions/transfers/mutation";
 import { updateTransaction } from "@/services/transactions/mutation";
 import { fetchTransactionById } from "@/services/transactions/queries";
+import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { ScheduleTypeEnum, UpdateScopeEnum } from "@/constants/transactionConstants";
 import { toast } from "sonner";
@@ -31,7 +32,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const [fullTransactionData, setFullTransactionData] = useState<UpdateTransactionType | null>(null);
+  const [fullTransactionData, setFullTransactionData] = useState<UpdateTransactionType | TransferUpdateTransactionType | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const { api } = useAuthApi();
   const [isLoading, setIsLoading] = useState(false);
@@ -48,7 +49,15 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       if (transaction?.id && api && isOpen) {
         setIsLoading(true);
         try {
-          const data = await fetchTransactionById(api, transaction.id);
+          let data;
+          
+          // Use the appropriate endpoint based on transaction type
+          if (transaction.type === TransactionTypeEnum.TRANSFER) {
+            data = await fetchTransferById(api, transaction.id);
+          } else {
+            data = await fetchTransactionById(api, transaction.id);
+          }
+          
           setFullTransactionData(data);
           // Set the date from the transaction data
           if (data.date) {
@@ -280,6 +289,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
           file: fullTransactionData.file || undefined,
           updateScope: fullTransactionData.updateScope,
         };
+
+        console.log("transferData", transferData);
         
         return (
           <TransferForm
@@ -321,6 +332,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         selectedScope={updateScope}
         onScopeChange={handleUpdateScopeChange}
         hasScheduleChanges={hasScheduleChanges}
+        transactionType={transaction?.type}
       />
     </>
   );

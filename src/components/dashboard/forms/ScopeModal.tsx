@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Label } from "../../ui/label";
 import { AlertTriangle } from "lucide-react";
 import { UpdateScopeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
+import { TransactionTypeEnum } from "@/types/transactionTypes";
 
 export type UpdateScope = UpdateScopeEnum;
 export type DeleteScope = DeleteScopeEnum;
@@ -32,6 +33,7 @@ interface ScopeModalProps {
   hasScheduleChanges?: boolean;
   operationType: OperationType;
   inSeries?: boolean; // New prop to determine if transaction is part of a series
+  transactionType?: TransactionTypeEnum; // New prop to determine transaction type
 }
 
 const ScopeModal: React.FC<ScopeModalProps> = ({
@@ -44,6 +46,7 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
   hasScheduleChanges = false,
   operationType,
   inSeries = true, // Default to true for backward compatibility
+  transactionType,
 }) => {
   // Determine if only "this_and_future" is allowed (for repeat to one_time)
   const isOnlyThisAndFutureAllowed = 
@@ -54,6 +57,10 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
 
   // For non-series transactions, only show "this_only" option
   const showOnlyThisOnly = !inSeries;
+
+  // Determine entity type strings for use throughout the component
+  const entityType = transactionType === TransactionTypeEnum.TRANSFER ? "Transfer" : "Transaction";
+  const entityTypeLower = transactionType === TransactionTypeEnum.TRANSFER ? "transfer" : "transaction";
 
   const handleConfirm = () => {
     onConfirm(selectedScope);
@@ -66,9 +73,9 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
     
     if (showOnlyThisOnly) {
       return {
-        title: `${actionWord} Transaction`,
-        description: `You are ${actionWordLower}ing a single transaction. This action will ${actionWordLower} only this specific transaction.`,
-        warning: isDelete ? "⚠️ This action cannot be undone. The transaction will be permanently removed." : null,
+        title: `${actionWord} ${entityType}`,
+        description: `You are ${actionWordLower}ing a single ${entityTypeLower}. This action will ${actionWordLower} only this specific ${entityTypeLower}.`,
+        warning: isDelete ? `⚠️ This action cannot be undone. The ${entityTypeLower} will be permanently removed.` : null,
       };
     }
     
@@ -82,23 +89,23 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
 
     if (hasScheduleChanges && !isDelete) {
       return {
-        title: "Update Transaction Scope",
-        description: "You are updating schedule-related fields (schedule type, repeat interval, or installment period). Please choose which transactions to update:",
-        warning: "⚠️ Changes to schedule settings cannot be applied to all transactions in the series.",
+        title: `Update ${entityType} Scope`,
+        description: `You are updating schedule-related fields (schedule type, repeat interval, or installment period). Please choose which ${entityTypeLower}s to update:`,
+        warning: `⚠️ Changes to schedule settings cannot be applied to all ${entityTypeLower}s in the series.`,
       };
     }
 
     if (isDelete) {
       return {
-        title: "Delete Transaction Scope",
-        description: "You are deleting a transaction that is part of a series. Please choose which transactions to delete:",
-        warning: "⚠️ This action cannot be undone. Deleted transactions will be permanently removed.",
+        title: `Delete ${entityType} Scope`,
+        description: `You are deleting a ${entityTypeLower} that is part of a series. Please choose which ${entityTypeLower}s to delete:`,
+        warning: `⚠️ This action cannot be undone. Deleted ${entityTypeLower}s will be permanently removed.`,
       };
     }
 
     return {
-      title: `${actionWord} Transaction Scope`,
-      description: `You are ${actionWordLower}ing a transaction that is part of a series. Please choose which transactions to ${actionWordLower}:`,
+      title: `${actionWord} ${entityType} Scope`,
+      description: `You are ${actionWordLower}ing a ${entityTypeLower} that is part of a series. Please choose which ${entityTypeLower}s to ${actionWordLower}:`,
       warning: null,
     };
   };
@@ -139,9 +146,9 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
               <RadioGroupItem value={UpdateScopeEnum.THIS_ONLY} id="this_only" />
               <Label htmlFor="this_only" className="cursor-pointer">
                 <div>
-                  <div className="font-medium">This transaction only</div>
+                  <div className="font-medium">This {entityTypeLower} only</div>
                   <div className="text-sm text-gray-500">
-                    {actionWord} only this specific transaction
+                    {actionWord} only this specific {entityTypeLower}
                   </div>
                 </div>
               </Label>
@@ -153,9 +160,9 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
                 <RadioGroupItem value={UpdateScopeEnum.THIS_AND_FUTURE} id="this_and_future" />
                 <Label htmlFor="this_and_future" className="cursor-pointer">
                   <div>
-                    <div className="font-medium">This and all future transactions</div>
+                    <div className="font-medium">This and all future {entityTypeLower}s</div>
                     <div className="text-sm text-gray-500">
-                      {actionWord} this transaction and all future transactions in the series
+                      {actionWord} this {entityTypeLower} and all future {entityTypeLower}s in the series
                     </div>
                   </div>
                 </Label>
@@ -168,9 +175,9 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
                 <RadioGroupItem value={UpdateScopeEnum.THIS_AND_FUTURE} id="this_and_future" />
                 <Label htmlFor="this_and_future" className="cursor-pointer">
                   <div>
-                    <div className="font-medium">Update and delete future transactions</div>
+                    <div className="font-medium">Update and delete future {entityTypeLower}s</div>
                     <div className="text-sm text-gray-500">
-                      Update this transaction and delete all future recurring transactions
+                      Update this {entityTypeLower} and delete all future recurring {entityTypeLower}s
                     </div>
                   </div>
                 </Label>
@@ -183,9 +190,9 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
                 <RadioGroupItem value={UpdateScopeEnum.ALL_IN_SERIES} id="all_in_series" />
                 <Label htmlFor="all_in_series" className="cursor-pointer">
                   <div>
-                    <div className="font-medium">All transactions in series</div>
+                    <div className="font-medium">All {entityTypeLower}s in series</div>
                     <div className="text-sm text-gray-500">
-                      {actionWord} all transactions in this recurring series (past, present, and future)
+                      {actionWord} all {entityTypeLower}s in this recurring series (past, present, and future)
                     </div>
                   </div>
                 </Label>
@@ -205,8 +212,8 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
             {isOnlyThisAndFutureAllowed && !isDelete 
               ? "Update & Delete Future" 
               : showOnlyThisOnly 
-                ? `${actionWord} Transaction`
-                : `${actionWord} Transactions`
+                ? `${actionWord} ${entityType}`
+                : `${actionWord} ${entityType}s`
             }
           </Button>
         </DialogFooter>

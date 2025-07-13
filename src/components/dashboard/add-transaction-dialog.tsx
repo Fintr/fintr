@@ -38,10 +38,6 @@ import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSetAtom } from "jotai";
-import {
-  transferAmountAtom,
-  transferDescriptionAtom,
-} from "@/atoms/transferAtoms";
 
 interface AddTransactionDialogProps {
   onAddTransaction?: (transaction: any) => void;
@@ -55,18 +51,10 @@ const AddTransactionDialog = ({
   const [activeTab, setActiveTab] = useState("expense");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get setters for transfer form atoms
-  const setTransferAmount = useSetAtom(transferAmountAtom);
-  const setTransferDescription = useSetAtom(transferDescriptionAtom);
-
   // Reset date to current date when dialog opens
   useEffect(() => {
     if (open) {
       setDate(new Date());
-    } else {
-      // Reset transfer form atoms when dialog closes
-      setTransferAmount("");
-      setTransferDescription("");
     }
   }, [open]);
 
@@ -346,10 +334,6 @@ const AddTransactionDialog = ({
       description: "",
       receipt: null,
     });
-
-    // Reset transfer atoms
-    setTransferAmount("");
-    setTransferDescription("");
 
     setDate(new Date());
   };

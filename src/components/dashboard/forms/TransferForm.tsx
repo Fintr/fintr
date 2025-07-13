@@ -13,19 +13,9 @@ import { Upload, CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Calendar } from "../../ui/calendar";
 import { format } from "date-fns";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
-import {
-  transferAmountAtom,
-  transferTransactionCostAtom,
-  transferDescriptionAtom,
-  transferFromAccountNameAtom,
-  transferToAccountNameAtom,
-  transferScheduleTypeAtom,
-  transferRepeatIntervalAtom,
-  transferValidationErrorsAtom,
-  createTransferAtom
-} from "@/atoms/transferAtoms";
+import { createTransfer } from "@/services/transactions/transfers/mutation";
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { FormError } from "@/components/ui/form-error";
@@ -85,16 +75,19 @@ const TransferForm: React.FC<TransferFormProps> = ({
   const { api } = useAuthApi();
   const accountOptions = useAtomValue(accountOptionsAtom);
   
-  // Form state using Jotai atoms - initialize with initial data if available
-  const [amount, setAmount] = useAtom(transferAmountAtom);
-  const [transactionCost, setTransactionCost] = useAtom(transferTransactionCostAtom);
-  const [description, setDescription] = useAtom(transferDescriptionAtom);
-  const [fromAccountName, setFromAccountName] = useAtom(transferFromAccountNameAtom);
-  const [toAccountName, setToAccountName] = useAtom(transferToAccountNameAtom);
-  const [scheduleType, setScheduleType] = useAtom(transferScheduleTypeAtom);
-  const [repeatInterval, setRepeatInterval] = useAtom(transferRepeatIntervalAtom);
-  const [validationErrors, setValidationErrors] = useAtom(transferValidationErrorsAtom);
-  const createTransfer = useSetAtom(createTransferAtom);
+  // Form state management using local state
+  const [formState, setFormState] = useState({
+    amount: initialData?.amount?.toString() || "",
+    transactionCost: initialData?.transactionCost?.toString() || "",
+    description: initialData?.description || "",
+    fromAccountName: initialData?.fromAccountName || "",
+    toAccountName: initialData?.toAccountName || "",
+    scheduleType: initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME,
+    repeatInterval: initialData?.repeatInterval || "",
+  });
+  
+  // Track form submission state
+  const [formSubmitted, setFormSubmitted] = useState(false);
   
   // Local state
   const [fileState, setFileState] = useState<File | null>(null);
@@ -103,32 +96,32 @@ const TransferForm: React.FC<TransferFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   
-  // Initialize atoms with initial data on mount (one-time effect)
-  useEffect(() => {
-    if (isEditMode && initialData) {
-      setAmount(initialData.amount?.toString() || "");
-      setTransactionCost(initialData.transactionCost?.toString() || "");
-      setDescription(initialData.description || "");
-      setFromAccountName(initialData.fromAccountName || "");
-      setToAccountName(initialData.toAccountName || "");
-      setScheduleType(initialData.scheduleType || ScheduleTypeEnum.ONE_TIME);
-      setRepeatInterval(initialData.repeatInterval || "");
+  // Handle field changes
+  const handleFieldChange = (field: keyof typeof formState, value: any) => {
+    setFormState((prev) => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // If form has been submitted once, validate on change to provide immediate feedback
+    if (formSubmitted) {
+      validateForm();
     }
-  }, []); // Empty dependency array - only run once on mount
+  };
   
   // Validate form using Zod
   const validateForm = () => {
     try {
       // Prepare form data with appropriate handling for transactionCost default
       const formData = {
-        amount,
-        transactionCost,
-        fromAccountName,
-        toAccountName,
-        description,
-        scheduleType,
+        amount: formState.amount,
+        transactionCost: formState.transactionCost,
+        fromAccountName: formState.fromAccountName,
+        toAccountName: formState.toAccountName,
+        description: formState.description,
+        scheduleType: formState.scheduleType,
         // Include repeatInterval only if scheduleType is REPEAT
-        ...(scheduleType === ScheduleTypeEnum.REPEAT && { repeatInterval })
+        ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && { repeatInterval: formState.repeatInterval })
       };
       
       transferFormSchema.parse(formData);
@@ -150,6 +143,9 @@ const TransferForm: React.FC<TransferFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Mark form as submitted to show validation errors
+    setFormSubmitted(true);
+    
     if (!validateForm()) {
       return;
     }
@@ -160,18 +156,17 @@ const TransferForm: React.FC<TransferFormProps> = ({
     }
     
     setIsSubmitting(true);
-    setValidationErrors({});
     
     try {
       const transferData = {
-        amount: parseFloat(amount),
-        transactionCost: transactionCost && transactionCost.trim() !== '' ? parseFloat(transactionCost) : 0,
-        fromAccountName,
-        toAccountName,
-        description: description || '',
+        amount: parseFloat(formState.amount),
+        transactionCost: formState.transactionCost && formState.transactionCost.trim() !== '' ? parseFloat(formState.transactionCost) : 0,
+        fromAccountName: formState.fromAccountName,
+        toAccountName: formState.toAccountName,
+        description: formState.description || '',
         date: format(date, 'yyyy-MM-dd'),
-        scheduleType,
-        ...(scheduleType === ScheduleTypeEnum.REPEAT && { repeatInterval }),
+        scheduleType: formState.scheduleType,
+        ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && { repeatInterval: formState.repeatInterval }),
         file: fileState ?? undefined
       };
       
@@ -179,28 +174,28 @@ const TransferForm: React.FC<TransferFormProps> = ({
       
       if (isEditMode && id) {
         // Update existing transfer - pass the data to parent for scope handling
-        const submitData = { ...transferData, id, scheduleType };
+        const submitData = { ...transferData, id, scheduleType: formState.scheduleType };
         response = await onSubmitSuccess(submitData);
         return; // Let parent handle the actual update
       } else {
         // Create new transfer
-        response = await createTransfer({
-          api,
-          transferData,
-        });
+        response = await createTransfer(api, transferData);
         toast.success(`Transfer of ${transferData.amount} from ${transferData.fromAccountName} to ${transferData.toAccountName} has been recorded.`);
       }
       
       // Reset form only if not in edit mode (edit mode closes dialog)
       if (!isEditMode) {
-        setAmount('');
-        setTransactionCost('');
-        setDescription('');
-        setFromAccountName('');
-        setToAccountName('');
-        setScheduleType(ScheduleTypeEnum.ONE_TIME);
-        setRepeatInterval('');
+        setFormState({
+          amount: "",
+          transactionCost: "",
+          description: "",
+          fromAccountName: "",
+          toAccountName: "",
+          scheduleType: ScheduleTypeEnum.ONE_TIME,
+          repeatInterval: "",
+        });
         setFileState(null);
+        setFormSubmitted(false);
       }
       
       // Notify parent components of success
@@ -209,11 +204,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
       }
     } catch (error) {
       console.error(`Error ${isEditMode ? 'updating' : 'creating'} transfer:`, error);
-      
-      // If no validation errors were caught by the atom, show a general error
-      if (Object.keys(validationErrors).length === 0) {
-        toast.error(`Failed to ${isEditMode ? 'update' : 'create'} transfer. Please try again.`);
-      }
+      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} transfer. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -228,14 +219,14 @@ const TransferForm: React.FC<TransferFormProps> = ({
   
   const handleFromAccountCreated = (accountName: string) => {
     if (accountName) {
-      setFromAccountName(accountName);
+      handleFieldChange("fromAccountName", accountName);
     }
     setShowFromAccountCreation(false);
   };
   
   const handleToAccountCreated = (accountName: string) => {
     if (accountName) {
-      setToAccountName(accountName);
+      handleFieldChange("toAccountName", accountName);
     }
     setShowToAccountCreation(false);
   };
@@ -276,24 +267,17 @@ const TransferForm: React.FC<TransferFormProps> = ({
           <Input
             id="transfer-amount"
             type="text" 
-            value={amount}
+            value={formState.amount}
             placeholder="0.00"
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => handleFieldChange("amount", e.target.value)}
             className={
-              (formErrors.amount || validationErrors.amount)
+              (formSubmitted && formErrors.amount)
                 ? "border-red-500 focus-visible:ring-red-500"
                 : ""
             }
           />
-          {formErrors.amount && (
+          {formSubmitted && formErrors.amount && (
             <FormError>{formErrors.amount}</FormError>
-          )}
-          {!formErrors.amount && validationErrors.amount && (
-            <FormError>
-              {Array.isArray(validationErrors.amount)
-                ? validationErrors.amount[0]
-                : String(validationErrors.amount)}
-            </FormError>
           )}
         </div>
         <div className="space-y-2">
@@ -301,24 +285,17 @@ const TransferForm: React.FC<TransferFormProps> = ({
           <Input
             id="transfer-transaction-cost"
             type="text" 
-            value={transactionCost}
+            value={formState.transactionCost}
             placeholder="0.00"
-            onChange={(e) => setTransactionCost(e.target.value)}
+            onChange={(e) => handleFieldChange("transactionCost", e.target.value)}
             className={
-              (formErrors.transactionCost || validationErrors.transactionCost)
+              (formSubmitted && formErrors.transactionCost)
                 ? "border-red-500 focus-visible:ring-red-500"
                 : ""
             }
           />
-          {formErrors.transactionCost && (
+          {formSubmitted && formErrors.transactionCost && (
             <FormError>{formErrors.transactionCost}</FormError>
-          )}
-          {!formErrors.transactionCost && validationErrors.transactionCost && (
-            <FormError>
-              {Array.isArray(validationErrors.transactionCost)
-                ? validationErrors.transactionCost[0]
-                : String(validationErrors.transactionCost)}
-            </FormError>
           )}
         </div>
       </div>
@@ -328,21 +305,21 @@ const TransferForm: React.FC<TransferFormProps> = ({
         <div className="space-y-2">
           <Label htmlFor="transfer-from">From Account</Label>
           <Select
-            value={fromAccountName}
+            value={formState.fromAccountName}
             onValueChange={(value) => {
               if (value === "add_account") {
                 setShowFromAccountCreation(true);
-                setFromAccountName("");
+                handleFieldChange("fromAccountName", "");
               } else {
                 setShowFromAccountCreation(false);
-                setFromAccountName(value);
+                handleFieldChange("fromAccountName", value);
               }
             }}
           >
             <SelectTrigger 
               id="transfer-from"
               className={
-                (formErrors.fromAccountName || validationErrors.fromAccountName)
+                (formSubmitted && formErrors.fromAccountName)
                   ? "border-red-500 focus-visible:ring-red-500"
                   : ""
               }
@@ -358,15 +335,8 @@ const TransferForm: React.FC<TransferFormProps> = ({
               <SelectItem value="add_account">+ Add Account</SelectItem>
             </SelectContent>
           </Select>
-          {formErrors.fromAccountName && (
+          {formSubmitted && formErrors.fromAccountName && (
             <FormError>{formErrors.fromAccountName}</FormError>
-          )}
-          {!formErrors.fromAccountName && validationErrors.fromAccountName && (
-            <FormError>
-              {Array.isArray(validationErrors.fromAccountName)
-                ? validationErrors.fromAccountName[0]
-                : String(validationErrors.fromAccountName)}
-            </FormError>
           )}
 
           {showFromAccountCreation && (
@@ -376,21 +346,21 @@ const TransferForm: React.FC<TransferFormProps> = ({
         <div className="space-y-2">
           <Label htmlFor="transfer-to">To Account</Label>
           <Select
-            value={toAccountName}
+            value={formState.toAccountName}
             onValueChange={(value) => {
               if (value === "add_account") {
                 setShowToAccountCreation(true);
-                setToAccountName("");
+                handleFieldChange("toAccountName", "");
               } else {
                 setShowToAccountCreation(false);
-                setToAccountName(value);
+                handleFieldChange("toAccountName", value);
               }
             }}
           >
             <SelectTrigger 
               id="transfer-to"
               className={
-                (formErrors.toAccountName || validationErrors.toAccountName)
+                (formSubmitted && formErrors.toAccountName)
                   ? "border-red-500 focus-visible:ring-red-500"
                   : ""
               }
@@ -406,15 +376,8 @@ const TransferForm: React.FC<TransferFormProps> = ({
               <SelectItem value="add_account">+ Add Account</SelectItem>
             </SelectContent>
           </Select>
-          {formErrors.toAccountName && (
+          {formSubmitted && formErrors.toAccountName && (
             <FormError>{formErrors.toAccountName}</FormError>
-          )}
-          {!formErrors.toAccountName && validationErrors.toAccountName && (
-            <FormError>
-              {Array.isArray(validationErrors.toAccountName)
-                ? validationErrors.toAccountName[0]
-                : String(validationErrors.toAccountName)}
-            </FormError>
           )}
 
           {showToAccountCreation && (
@@ -428,13 +391,13 @@ const TransferForm: React.FC<TransferFormProps> = ({
         <div className="space-y-2">
           <Label htmlFor="transfer-schedule-type">Schedule Type</Label>
           <Select
-            value={scheduleType}
-            onValueChange={(value) => setScheduleType(value as ScheduleTypeEnum)}
+            value={formState.scheduleType}
+            onValueChange={(value) => handleFieldChange("scheduleType", value as ScheduleTypeEnum)}
           >
             <SelectTrigger 
               id="transfer-schedule-type"
               className={
-                (formErrors.scheduleType || validationErrors.scheduleType)
+                (formSubmitted && formErrors.scheduleType)
                   ? "border-red-500 focus-visible:ring-red-500"
                   : ""
               }
@@ -446,29 +409,22 @@ const TransferForm: React.FC<TransferFormProps> = ({
               <SelectItem value={ScheduleTypeEnum.REPEAT}>Recurring</SelectItem>
             </SelectContent>
           </Select>
-          {formErrors.scheduleType && (
+          {formSubmitted && formErrors.scheduleType && (
             <FormError>{formErrors.scheduleType}</FormError>
-          )}
-          {!formErrors.scheduleType && validationErrors.scheduleType && (
-            <FormError>
-              {Array.isArray(validationErrors.scheduleType)
-                ? validationErrors.scheduleType[0]
-                : String(validationErrors.scheduleType)}
-            </FormError>
           )}
         </div>
 
-        {scheduleType === ScheduleTypeEnum.REPEAT ? (
+        {formState.scheduleType === ScheduleTypeEnum.REPEAT ? (
           <div className="space-y-2">
             <Label htmlFor="transfer-repeat-interval">Repeat Interval</Label>
             <Select
-              value={repeatInterval}
-              onValueChange={setRepeatInterval}
+              value={formState.repeatInterval}
+              onValueChange={(value) => handleFieldChange("repeatInterval", value)}
             >
               <SelectTrigger 
                 id="transfer-repeat-interval"
                 className={
-                  (formErrors.repeatInterval || validationErrors.repeatInterval)
+                  (formSubmitted && formErrors.repeatInterval)
                     ? "border-red-500 focus-visible:ring-red-500"
                     : ""
                 }
@@ -483,15 +439,8 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 ))}
               </SelectContent>
             </Select>
-            {formErrors.repeatInterval && (
+            {formSubmitted && formErrors.repeatInterval && (
               <FormError>{formErrors.repeatInterval}</FormError>
-            )}
-            {!formErrors.repeatInterval && validationErrors.repeatInterval && (
-              <FormError>
-                {Array.isArray(validationErrors.repeatInterval)
-                  ? validationErrors.repeatInterval[0]
-                  : String(validationErrors.repeatInterval)}
-              </FormError>
             )}
           </div>
         ) : <div></div>}
@@ -503,8 +452,8 @@ const TransferForm: React.FC<TransferFormProps> = ({
         <Input
           id="transfer-description"
           placeholder="Enter description"
-          value={description || ""}
-          onChange={(e) => setDescription(e.target.value)}
+          value={formState.description || ""}
+          onChange={(e) => handleFieldChange("description", e.target.value)}
         />
       </div>
 

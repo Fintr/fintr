@@ -37,6 +37,12 @@ export interface UpdateTransactionType {
   updateScope?: UpdateScopeEnum;
 }
 
+export interface TransferUpdateTransactionType extends UpdateTransactionType {
+  fromAccountName: string;
+  toAccountName: string;
+  transactionCost: number
+}
+
 
 // Define the expected structure of the API response for infinite query
 export interface TransactionsPage {
