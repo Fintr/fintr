@@ -26,6 +26,7 @@ module Transactions
         transaction                   = step find_transaction(params:)
         previous_transactions         = step find_previous_transactions(transaction:)
         _                             = step update_effective_parent(transaction:, previous_transactions:)
+        _                             = step clear_schedules_from_series(transaction:)
         pending_transactions          = step find_pending_transactions(previous_transactions:)
         _                             = step delete_pending_transactions(pending_transactions:)
         calculated_transactions       = step find_calculated_transactions(previous_transactions:)
@@ -43,10 +44,11 @@ module Transactions
       # NOTE: Previous transactions can be in the past, present, or future, but definitely
       # the future of the reference transaction.
       def find_previous_transactions(transaction:)
-        previous_transactions = Transactions::Transaction.where(
-          parent_id: transaction.root_parent.id,
-          date: (transaction.date + 1.day)..Float::INFINITY
-        )
+        # Find all transactions in the series that are from tomorrow onwards
+        # Use series_records to ensure we get all transactions in the series
+        previous_transactions = transaction.series_records.where("date >= ? AND id != ?",
+                                                                transaction.date,
+                                                                transaction.id)
 
         Success(previous_transactions)
       end
@@ -54,6 +56,20 @@ module Transactions
       def update_effective_parent(transaction:, previous_transactions:)
         previous_transactions.update_all(effective_parent_id: transaction.id)
         Success(previous_transactions)
+      end
+
+      def clear_schedules_from_series(transaction:)
+        # Clear schedules from all transactions in the series except the reference transaction
+        # This ensures only one transaction per series has a schedule, preventing duplicate job executions
+        root_parent = transaction.root_parent
+
+        Transactions::Transaction.where(
+          "(parent_id = :root_id OR id = :root_id) AND id != :reference_id",
+          root_id: root_parent.id,
+          reference_id: transaction.id
+        ).update_all(schedule: {})
+
+        Success()
       end
 
       def find_pending_transactions(previous_transactions:)
@@ -70,9 +86,10 @@ module Transactions
       end
 
       def delete_calculated_transactions(calculated_transactions:)
-        calculated_transactions.each do |calculated_transaction|
-          Transactions::Operations::DeleteTransaction.new.call(transaction: calculated_transaction)
+        calculated_transactions.find_each do |calculated_transaction|
+          Transactions::Operations::DeleteThisTransaction.new.call(transaction: calculated_transaction)
         end
+
         Success(calculated_transactions)
       end
 

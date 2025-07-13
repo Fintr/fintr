@@ -172,7 +172,7 @@ module Transactions
 
         CreateRepeatTransactions.new.call(
           transaction_id: transaction.id,
-          balance_state: "calculated",
+          balance_state: "pending",
           date_start: Time.zone.tomorrow,
           date_end: Time.zone.today + 1.month
         )

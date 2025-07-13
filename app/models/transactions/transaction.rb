@@ -11,8 +11,8 @@ module Transactions
     belongs_to :parent, class_name: "Transactions::Transaction", optional: true
     belongs_to :effective_parent, class_name: "Transactions::Transaction", optional: true
     belongs_to :transfer, class_name: "Transactions::Transfer", optional: true
-    has_many :children, class_name: "Transactions::Transaction", foreign_key: :parent_id
-    has_many :effective_children, class_name: "Transactions::Transaction", foreign_key: :effective_parent_id
+    has_many :children, class_name: "Transactions::Transaction", foreign_key: :parent_id, dependent: :nullify
+    has_many :effective_children, class_name: "Transactions::Transaction", foreign_key: :effective_parent_id, dependent: :nullify
 
     has_many_attached :files
 

@@ -26,7 +26,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
       end
 
       it 'updates the transaction successfully' do
-        result = described_class.new.call(params: {
+        result = described_class.new.call(
           id: transaction.id,
           user_id: user.id,
           space_id: space.id,
@@ -36,7 +36,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           account_name: account.name,
           description: 'Updated description',
           schedule_type: 'one_time'
-        })
+        )
 
         expect(result).to be_success
 
@@ -79,7 +79,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
 
       context 'when update_scope is this_only' do
         it 'updates only the specific transaction' do
-          result = described_class.new.call(params: {
+          result = described_class.new.call(
             id: child_transaction.id,
             user_id: user.id,
             space_id: space.id,
@@ -92,7 +92,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
             repeat_interval: 'every_month',
             repeat_count: 1,
             update_scope: 'this_only'
-          })
+          )
 
           expect(result).to be_success
 
@@ -111,7 +111,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
 
       context 'when update_scope is all_in_series' do
         it 'updates all transactions in the series' do
-          result = described_class.new.call(params: {
+          result = described_class.new.call(
             id: child_transaction.id,
             user_id: user.id,
             space_id: space.id,
@@ -124,7 +124,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
             repeat_interval: 'every_month',
             repeat_count: 1,
             update_scope: 'all_in_series'
-          })
+          )
 
           expect(result).to be_success
 
@@ -142,7 +142,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         end
 
         it 'prevents schedule changes when updating all in series' do
-          result = described_class.new.call(params: {
+          result = described_class.new.call(
             id: child_transaction.id,
             user_id: user.id,
             space_id: space.id,
@@ -155,7 +155,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
             repeat_interval: 'every_week', # Changed from every_month
             repeat_count: 1,
             update_scope: 'all_in_series'
-          })
+          )
 
           expect(result).to be_failure
           expect(result.failure).to include(schedule: "Cannot change schedule settings when updating all transactions in series. Use 'this_and_future' instead.")
@@ -164,7 +164,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
 
       context 'when update_scope is this_and_future' do
         it 'allows schedule changes and updates future transactions' do
-          result = described_class.new.call(params: {
+          result = described_class.new.call(
             id: child_transaction.id,
             user_id: user.id,
             space_id: space.id,
@@ -177,7 +177,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
             repeat_interval: 'every_week', # Changed from every_month
             repeat_count: 1,
             update_scope: 'this_and_future'
-          })
+          )
 
           expect(result).to be_success
 
@@ -211,7 +211,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
       end
 
       it 'returns failure for invalid category' do
-        result = described_class.new.call(params: {
+        result = described_class.new.call(
           id: transaction.id,
           user_id: user.id,
           space_id: space.id,
@@ -220,14 +220,14 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           category_name: 'Non-existent Category',
           account_name: account.name,
           schedule_type: 'one_time'
-        })
+        )
 
         expect(result).to be_failure
         expect(result.failure).to include(category_name: 'not found')
       end
 
       it 'returns failure for invalid update_scope' do
-        result = described_class.new.call(params: {
+        result = described_class.new.call(
           id: transaction.id,
           user_id: user.id,
           space_id: space.id,
@@ -237,7 +237,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           account_name: account.name,
           schedule_type: 'one_time',
           update_scope: 'invalid_scope'
-        })
+        )
 
         expect(result).to be_failure
         expect(result.failure).to include(update_scope: ["must be one of: this_only, this_and_future, all_in_series"])

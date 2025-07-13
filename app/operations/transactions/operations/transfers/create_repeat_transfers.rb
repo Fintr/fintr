@@ -6,10 +6,19 @@ module Transactions
       class CreateRepeatTransfers < Dry::Operation
         class Contract < Dry::Validation::Contract
           params do
-            required(:transfer_id).value(:string)
+            optional(:transfer_id).value(:string)
+            optional(:transfer)
             required(:date_start).value(:date)
             required(:date_end).value(:date)
             optional(:balance_state).value(:string)
+          end
+
+          rule(:transfer_id) do
+            key.failure("must be supplied if transfer is not") if value.blank? && values[:transfer].blank?
+          end
+
+          rule(:transfer) do
+            key.failure("must be a transfer") if value.present? && !value.is_a?(Transactions::Transfer)
           end
         end
 
@@ -47,7 +56,13 @@ module Transactions
         private
 
         def find_transfer(params:)
-          Success(Transactions::Transfer.find(params[:transfer_id]))
+          if params[:transfer_id]
+            Success(Transactions::Transfer.find(params[:transfer_id]))
+          elsif params[:transfer]
+            Success(params[:transfer])
+          else
+            Failure(transfer_id: "not found")
+          end
         rescue ActiveRecord::RecordNotFound => e
           Failure(transfer_id: "not found", error: e)
         end
@@ -75,6 +90,9 @@ module Transactions
           existing_dates = parent_transfer.children.pluck(:date).map(&:to_date)
           dates = dates.reject { |date| existing_dates.include?(date) }
 
+          # IMPORTANT: Exclude the parent transfer's date to avoid duplicating the reference transfer
+          dates = dates.reject { |date| date.to_date == parent_transfer.date.to_date }
+
           # Prepare transfer records
           transfer_records = dates.map.with_index do |date, index|
             new_record = parent_transfer.amoeba_dup
@@ -82,6 +100,7 @@ module Transactions
 
             new_record.assign_attributes(
               parent_id:,
+              effective_parent_id: parent_transfer.id,
               date:,
               balance_state: params[:balance_state], # NOTE: Tells the app whether pending or calculated. We assume that transactions in the past were already reflected in current balances.
             )

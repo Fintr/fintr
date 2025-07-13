@@ -10,9 +10,9 @@ module Transactions
     belongs_to :to_account, class_name: "Transactions::Account"
     belongs_to :parent, class_name: "Transactions::Transfer", optional: true
     belongs_to :effective_parent, class_name: "Transactions::Transfer", optional: true
-    has_many :children, class_name: "Transactions::Transfer", foreign_key: :parent_id
-    has_many :effective_children, class_name: "Transactions::Transfer", foreign_key: :effective_parent_id
-    has_many :fee_transactions, class_name: "Transactions::Transaction", foreign_key: :transfer_id
+    has_many :children, class_name: "Transactions::Transfer", foreign_key: :parent_id, dependent: :nullify
+    has_many :effective_children, class_name: "Transactions::Transfer", foreign_key: :effective_parent_id, dependent: :nullify
+    has_many :fee_transactions, class_name: "Transactions::Transaction", foreign_key: :transfer_id, dependent: :nullify
 
     monetize :amount_cents, allow_nil: false
     monetize :transaction_cost_cents, allow_nil: false

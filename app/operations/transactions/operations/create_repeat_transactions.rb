@@ -36,8 +36,7 @@ module Transactions
         params            = step validate(params:)
         params            = step add_default_params(params:)
         transaction       = step find_transaction(params:)
-        proceed           = step determine_proceed(transaction:)
-        return Success(nil) unless proceed
+        return Success(nil) if transaction.one_time?
 
         dates             = step fetch_dates(params:, transaction:)
         last_transaction  = step fetch_last_transaction(params:, transaction:)
@@ -50,13 +49,6 @@ module Transactions
         transactions
       end
 
-      def find_transaction(params:)
-        transaction = params[:transaction] || Transaction.find(params[:transaction_id])
-        Success(transaction)
-      rescue ActiveRecord::RecordNotFound => e
-        Failure(transaction_id: "not found", error: e)
-      end
-
       def add_default_params(params:)
         params[:date_start] ||= Time.zone.tomorrow
         params[:date_end] ||= (Time.zone.today + 1.month)
@@ -64,10 +56,11 @@ module Transactions
         Success(params)
       end
 
-      def determine_proceed(transaction:)
-        return Success(false) if transaction.one_time?
-
-        Success(true)
+      def find_transaction(params:)
+        transaction = params[:transaction] || Transaction.find(params[:transaction_id])
+        Success(transaction)
+      rescue ActiveRecord::RecordNotFound => e
+        Failure(transaction_id: "not found", error: e)
       end
 
       def fetch_dates(params:, transaction:)
@@ -85,13 +78,16 @@ module Transactions
 
       def bulk_duplicate_transactions(params:, parent_transaction:, last_transaction:, dates:)
         # Use the effective parent or the transaction itself as the template
-        template_transaction = parent_transaction.template_for_future_transactions
+        template_transaction = parent_transaction
         parent_id = parent_transaction.parent_id || parent_transaction.id
         account_balance = parent_transaction.account.balance.amount
 
         # NOTE: We don't want to create transactions for dates that already exist
         existing_dates = parent_transaction.children.pluck(:date).map(&:to_date)
         dates = dates.reject { |date| existing_dates.include?(date) }
+
+        # IMPORTANT: Exclude the parent transaction's date to avoid duplicating the reference transaction
+        dates = dates.reject { |date| date.to_date == parent_transaction.date.to_date }
 
         records = dates.map.with_index do |date, index|
           new_transaction = template_transaction.amoeba_dup
@@ -100,7 +96,7 @@ module Transactions
 
           new_transaction.assign_attributes(
             parent_id:,
-            effective_parent_id: template_transaction.id != parent_id ? template_transaction.id : nil,
+            effective_parent_id: template_transaction.id,
             date:,
             balance_state: params[:balance_state], # NOTE: Tells the app whether pending or calculated. We assume that transactions in the past were already reflected in current balances.
             balance: account_balance # NOTE: Only update balance if balance_state is calculated

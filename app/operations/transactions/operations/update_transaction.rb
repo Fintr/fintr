@@ -109,9 +109,13 @@ module Transactions
       end
 
       def update_schedule(transaction:, params:)
-        return Success(transaction) unless transaction.schedule_type_changed? ||
-                                          transaction.repeat_interval_changed? ||
-                                          transaction.installment_period_changed?
+        # Always create schedule for "this_and_future" updates to ensure proper job execution
+        force_schedule_creation = params[:update_scope] == "this_and_future"
+
+        return Success(transaction) unless force_schedule_creation ||
+                                           transaction.schedule_type_changed? ||
+                                           transaction.repeat_interval_changed? ||
+                                           transaction.installment_period_changed?
 
         if transaction.schedule_type == "one_time"
           schedule = {}

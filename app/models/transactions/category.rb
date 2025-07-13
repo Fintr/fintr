@@ -27,7 +27,7 @@ module Transactions
           self.find_or_create_by(name:, category_type: "income", space:)
         end
 
-        (DEFAULT_EXPENSE_CATEGORIES + ["Transfer Fees"]).each do |name| # 'Transfer' should not be selected by user anytime
+        (DEFAULT_EXPENSE_CATEGORIES + ["Transfer Fee"]).each do |name| # 'Transfer' should not be selected by user anytime
           self.find_or_create_by(name:, category_type: "expense", space:)
         end
       end
