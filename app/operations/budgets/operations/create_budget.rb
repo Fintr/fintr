@@ -20,10 +20,10 @@ module Budgets
       end
 
       def call(params)
-        params = step validate(params:)
+        params   = step validate(params:)
         category = step find_category(params:)
-        params = step update_params(params:, category:)
-        budget = step create_budget(params:)
+        params   = step update_params(params:, category:)
+        budget   = step create_budget(params:)
         budget.reload
       end
 

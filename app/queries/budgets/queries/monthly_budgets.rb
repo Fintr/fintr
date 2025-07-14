@@ -24,10 +24,8 @@ module Budgets
         params    = step validate
         relation  = step by_space(@relation, params)
         relation  = step by_date(relation, params)
-        relation  = step joins(relation)
-        relation  = step by_transactions(relation)
+        relation  = step joins(relation, params)
         relation  = step group(relation)
-
         step select(relation)
       end
 
@@ -43,21 +41,17 @@ module Budgets
         Success(relation.where(date: params[:date].to_date.all_month))
       end
 
-      def joins(relation)
+      def joins(relation, params)
+        date_range = params[:date].to_date.all_month
+
         relation = relation.joins(
           :space,
           "INNER JOIN transactions_categories ON transactions_categories.id = budgets.category_id",
-          "LEFT OUTER JOIN transactions ON transactions.category_id = transactions_categories.id"
+          "LEFT OUTER JOIN transactions ON transactions.category_id = transactions_categories.id AND transactions.balance_state = 'calculated' AND transactions.date >= '#{date_range.first}' AND transactions.date <= '#{date_range.last}'"
         )
         Success(relation)
       rescue StandardError
         Failure(:join_error)
-      end
-
-      def by_transactions(relation)
-        Success(relation.where(transactions: { balance_state: "calculated", date: params[:date].to_date.all_month }))
-      rescue StandardError
-        Failure(:by_transactions_error)
       end
 
       def select(relation)

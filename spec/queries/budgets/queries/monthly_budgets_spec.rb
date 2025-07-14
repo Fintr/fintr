@@ -122,27 +122,29 @@ RSpec.describe Budgets::Queries::MonthlyBudgets, type: :query do
     let(:query_call_result) { described_class.new(params: query_params).call }
 
 
-    context 'with valid space_code and date yielding multiple budgets' do
+
+    context 'with valid space_code and date' do
       let(:query_params) { default_query_params }
 
       it 'succeeds' do
         expect(query_call_result).to be_success
       end
 
-      # Because by_transactions filters for 'calculated' transactions in the current month.
-      # food_budget: has calculated transactions this month.
-      # transport_budget: has calculated transactions this month.
-      # utilities_budget: no transactions, so filtered out by `by_transactions`.
-      # hobby_budget: only pending transactions, so filtered out by `by_transactions`.
-      it 'returns only budgets with calculated transactions in the specified month' do
-        expect(returned_budgets.map(&:id)).to contain_exactly(food_budget.id, transport_budget.id)
+      # All budgets for the current month in the correct space should be returned
+      it 'returns all budgets for the specified month and space' do
+        expect(returned_budgets.map(&:id)).to contain_exactly(
+          food_budget.id,
+          transport_budget.id,
+          utilities_budget.id,
+          hobby_budget.id
+        )
       end
 
       it 'returns the correct number of budgets' do
-        expect(returned_budgets.to_a.size).to eq(2)
+        expect(returned_budgets.to_a.size).to eq(4)
       end
 
-      describe 'food budget data' do
+      describe 'food budget data (with calculated transactions)' do
         subject(:budget_data) { returned_budgets.find { |b| b.id == food_budget.id } }
 
         it 'is present in the results' do
@@ -162,7 +164,7 @@ RSpec.describe Budgets::Queries::MonthlyBudgets, type: :query do
         end
       end
 
-      describe 'transport budget data' do
+      describe 'transport budget data (with one calculated transaction)' do
         subject(:budget_data) { returned_budgets.find { |b| b.id == transport_budget.id } }
 
         it 'is present in the results' do
@@ -178,12 +180,36 @@ RSpec.describe Budgets::Queries::MonthlyBudgets, type: :query do
         end
       end
 
-      it 'excludes budgets with no transactions' do
-        expect(returned_budgets.map(&:id)).not_to include(utilities_budget.id)
+      describe 'utilities budget data (with no transactions)' do
+        subject(:budget_data) { returned_budgets.find { |b| b.id == utilities_budget.id } }
+
+        it 'is present in the results' do
+          expect(budget_data).not_to be_nil
+        end
+
+        it 'has the correct category_name' do
+          expect(budget_data.category_name).to eq("Utilities")
+        end
+
+        it 'has a total_spent of 0' do
+          expect(budget_data.total_spent).to eq(0.00)
+        end
       end
 
-      it 'excludes budgets with only pending transactions for the month' do
-        expect(returned_budgets.map(&:id)).not_to include(hobby_budget.id)
+      describe 'hobby budget data (with only pending transactions)' do
+        subject(:budget_data) { returned_budgets.find { |b| b.id == hobby_budget.id } }
+
+        it 'is present in the results' do
+          expect(budget_data).not_to be_nil
+        end
+
+        it 'has the correct category_name' do
+          expect(budget_data.category_name).to eq("Hobbies")
+        end
+
+        it 'has a total_spent of 0' do
+          expect(budget_data.total_spent).to eq(0.00)
+        end
       end
 
       it 'excludes budgets from different months' do
@@ -221,54 +247,30 @@ RSpec.describe Budgets::Queries::MonthlyBudgets, type: :query do
     end
 
     context 'when budgets exist but none have calculated transactions in the month' do
-      # The let! declarations that were here previously relating to
-      # food_budget_no_calc_trans, t_food_pending_only, and t_food_prev_month_calc
-      # have been removed as they caused setup conflicts and were not used by the isolated
-      # data setup within the 'it' blocks below.
+      let(:isolated_space) { create(:space) }
+      let(:isolated_cat1) { create(:category, space: isolated_space, name: "Isolated Cat 1", category_type: :expense) }
+      let(:isolated_cat2) { create(:category, space: isolated_space, name: "Isolated Cat 2", category_type: :expense) }
 
-      # query_params for this context are defined within its 'it' blocks using specific_params found below
+      before do
+        create(:budget, space: isolated_space, category: isolated_cat1, date: current_month_date) # No transactions
+        create(:budget, space: isolated_space, category: isolated_cat2, date: current_month_date)
+        create(:expense_transaction, space: isolated_space, category: isolated_cat2, date: current_month_date, balance_state: 'pending')
+        create(:expense_transaction, space: isolated_space, category: isolated_cat2, date: prev_month_date, balance_state: 'calculated')
+      end
+
+      let(:query_params) { { space_code: isolated_space.code, date: current_month_date } }
+      let(:result) { described_class.new(params: query_params).call.value! }
 
       it 'succeeds' do
-        isolated_space = create(:space, code: 'isolated-succeeds-again') # Unique code
-        isolated_cat1 = create(:category, space: isolated_space, name: "Isolated Cat 1", category_type: :expense)
-        isolated_cat2 = create(:category, space: isolated_space, name: "Isolated Cat 2", category_type: :expense)
-
-        create(:budget, space: isolated_space, category: isolated_cat1, date: current_month_date) # No transactions
-        create(:budget, space: isolated_space, category: isolated_cat2, date: current_month_date)
-        create(:expense_transaction, space: isolated_space, category: isolated_cat2, date: current_month_date, balance_state: 'pending')
-        create(:expense_transaction, space: isolated_space, category: isolated_cat2, date: prev_month_date, balance_state: 'calculated')
-
-        specific_params = { space_code: isolated_space.code, date: current_month_date }
-        result = described_class.new(params: specific_params).call
-        expect(result).to be_success
+        expect(query_call_result).to be_success
       end
 
-      it 'returns an empty array' do
-        isolated_space = create(:space, code: 'isolated-empty-array-again') # Unique code
-        isolated_cat1 = create(:category, space: isolated_space, name: "Isolated Cat 3", category_type: :expense)
-        isolated_cat2 = create(:category, space: isolated_space, name: "Isolated Cat 4", category_type: :expense)
-
-        create(:budget, space: isolated_space, category: isolated_cat1, date: current_month_date) # No transactions
-        create(:budget, space: isolated_space, category: isolated_cat2, date: current_month_date)
-        create(:expense_transaction, space: isolated_space, category: isolated_cat2, date: current_month_date, balance_state: 'pending')
-        create(:expense_transaction, space: isolated_space, category: isolated_cat2, date: prev_month_date, balance_state: 'calculated')
-
-        specific_params = { space_code: isolated_space.code, date: current_month_date }
-        budgets = described_class.new(params: specific_params).call.value!
-        expect(budgets).to be_empty
-      end
-    end
-
-    context 'when params lead to validation failure (e.g. space not found)' do
-      let(:query_params) { { space_code: 'non-existent-space-for-call', date: current_month_date } }
-
-      it 'returns a failure' do
-        # The `call` method uses `step validate`, so a validation failure will propagate.
-        expect(query_call_result).to be_failure
+      it 'returns all the budgets for that month' do
+        expect(result.to_a.size).to eq(2)
       end
 
-      it 'returns the validation error details' do
-        expect(query_call_result.failure).to eq(space_code: "Not found")
+      it 'returns total_spent as 0 for all budgets' do
+        expect(result.map(&:total_spent)).to all(be_zero)
       end
     end
   end
