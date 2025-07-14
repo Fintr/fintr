@@ -1,6 +1,7 @@
 import { fetchDashboardData } from "@/services/spaces/queries";
 import { useQuery } from "@tanstack/react-query";
 import useAuthApi from "../useAuthApi";
+import { useLocalStorage } from "../useLocalStorage";
 import { useSetAtom } from "jotai";
 import { 
   accountOptionsAtom, 
@@ -15,6 +16,9 @@ export const useDashboardData = () => {
     scope: "openid profile email read:current_user read:transactions",
   });
   
+  // Use the SSR-safe useLocalStorage hook
+  const [spaceCode] = useLocalStorage("spaceCode", "");
+  
   // Get atom setters
   const setAccountOptions = useSetAtom(accountOptionsAtom);
   const setExpenseCategoryOptions = useSetAtom(expenseCategoryOptionsAtom);
@@ -22,9 +26,9 @@ export const useDashboardData = () => {
   const setCategoryOptions = useSetAtom(categoryOptionsAtom);
   
   const { data, error, isLoading, isError, isSuccess } = useQuery({
-    queryKey: ["dashboard", localStorage.getItem("spaceCode")],
+    queryKey: ["dashboard", spaceCode],
     queryFn: () => fetchDashboardData(api),
-    enabled: !!localStorage.getItem("spaceCode"),
+    enabled: !!spaceCode,
   });
 
   // Automatically populate atoms when data is successfully fetched

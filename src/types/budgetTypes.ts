@@ -37,6 +37,13 @@ export interface BudgetIndexInputType {
   page?: number;
 }
 
+// Budget creation payload for POST /budgets
+export interface CreateBudgetPayload {
+  categoryName: string;
+  amount: number;
+  date: string;
+}
+
 // Budget category with the format used in the BudgetsTab
 export interface BudgetCategory {
   id: string;

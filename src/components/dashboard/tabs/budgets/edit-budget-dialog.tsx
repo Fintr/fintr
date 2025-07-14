@@ -31,6 +31,9 @@ import { Input } from "@/components/ui/input";
 import { Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
+import { useAtomValue } from "jotai";
+import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
+
 const formSchema = z.object({
   category: z.string(),
   amount: z.coerce.number(),
@@ -49,6 +52,10 @@ export function EditBudgetDialog({
   const [customExpenseCategories, setCustomExpenseCategories] = useState<
     string[]
   >([]);
+  
+  // Get expense categories from dashboard data
+  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -93,20 +100,11 @@ export function EditBudgetDialog({
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Myself">Myself</SelectItem>
-                        <SelectItem value="Family">Family</SelectItem>
-                        <SelectItem value="Insurance">Insurance</SelectItem>
-                        <SelectItem value="Home">Home</SelectItem>
-                        <SelectItem value="Utilities">Utilities</SelectItem>
-                        <SelectItem value="Food">Food</SelectItem>
-                        <SelectItem value="Transport">Transport</SelectItem>
-                        <SelectItem value="Pet">Pet</SelectItem>
-                        <SelectItem value="Subscriptions">
-                          Subscriptions
-                        </SelectItem>
-                        <SelectItem value="Going Out">Going Out</SelectItem>
-                        <SelectItem value="Travel">Travel</SelectItem>
-                        <SelectItem value="Shopping">Shopping</SelectItem>
+                        {expenseCategoryOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
                         {customExpenseCategories.map((category) => (
                           <SelectItem key={category} value={category}>
                             {category}

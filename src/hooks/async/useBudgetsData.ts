@@ -7,9 +7,9 @@ import {
 } from "@tanstack/react-query";
 import useAuthApi from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
-import { updateBudget } from "@/services/budgets/mutations";
+import { updateBudget, createBudget, deleteBudget } from "@/services/budgets/mutations";
 import { UpdateBudgetPayload } from "@/services/budgets/mutations";
-import { BudgetsPage } from "@/types/budgetTypes";
+import { BudgetsPage, CreateBudgetPayload } from "@/types/budgetTypes";
 export const useBudgetsData = (budgetDateFilter: string) => {
   const queryClient = useQueryClient();
   const [spaceCode] = useLocalStorage("spaceCode", "");
@@ -72,14 +72,20 @@ export const useBudgetsData = (budgetDateFilter: string) => {
 
   const createBudgetMutation = useMutation({
     mutationFn: ({
-      budgetCategory,
-      budgetAmount,
+      categoryName,
+      amount,
+      date,
     }: {
-      budgetCategory: string;
-      budgetAmount: number;
+      categoryName: string;
+      amount: number;
+      date: string;
     }) => {
-      console.log("CREATING BUDGET", budgetCategory, budgetAmount);
-      return Promise.resolve();
+      const payload: CreateBudgetPayload = {
+        categoryName,
+        amount,
+        date,
+      };
+      return createBudget(api, payload);
     },
     onMutate: async (variables) => {
       await queryClient.cancelQueries({
@@ -99,9 +105,9 @@ export const useBudgetsData = (budgetDateFilter: string) => {
             budgets: [
               {
                 id: crypto.randomUUID(),
-                date: budgetDateFilter,
-                category_name: variables.budgetCategory,
-                amount: variables.budgetAmount,
+                date: variables.date,
+                category_name: variables.categoryName,
+                amount: variables.amount,
                 amount_currency: "USD",
                 total_spent: 0,
               },
@@ -112,29 +118,26 @@ export const useBudgetsData = (budgetDateFilter: string) => {
       );
       return { previousData };
     },
-    onSettled: (data, variables) => {
-      //   queryClient.invalidateQueries({
-      //     queryKey: ["budgets", spaceCode, budgetDateFilter],
-      //   });
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["budgets", spaceCode, budgetDateFilter],
+      });
     },
     onError: (error, newData, context) => {
-      //   queryClient.setQueryData(
-      //     ["budgets", spaceCode, budgetDateFilter],
-      //     (old: BudgetsPage | undefined) => {
-      //       if (!old) return old;
-      //       return context?.previousData;
-      //     }
-      //   );
+      queryClient.setQueryData(
+        ["budgets", spaceCode, budgetDateFilter],
+        context?.previousData
+      );
     },
-    onSuccess: (data, variables) => {
-      //   queryClient.invalidateQueries({
-      //     queryKey: ["budgets", spaceCode, budgetDateFilter],
-      //   });
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["budgets", spaceCode, budgetDateFilter],
+      });
     },
   });
 
   const deleteBudgetMutation = useMutation({
-    mutationFn: (budgetId: string) => Promise.resolve(),
+    mutationFn: (budgetId: string) => deleteBudget(api, budgetId),
     onMutate: async (budgetId: string) => {
       await queryClient.cancelQueries({
         queryKey: ["budgets", spaceCode, budgetDateFilter],
@@ -156,18 +159,16 @@ export const useBudgetsData = (budgetDateFilter: string) => {
       );
       return { previousData };
     },
-    onSettled: (data, variables) => {
-      //   queryClient.invalidateQueries({
-      //     queryKey: ["budgets", spaceCode, budgetDateFilter],
-      //   });
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["budgets", spaceCode, budgetDateFilter],
+      });
     },
     onError: (error, newData, context) => {
-      //   queryClient.setQueryData(
-      //     ["budgets", spaceCode, budgetDateFilter],
-      //     (old: BudgetsPage | undefined) => {
-      //       return context?.previousData;
-      //     }
-      //   );
+      queryClient.setQueryData(
+        ["budgets", spaceCode, budgetDateFilter],
+        context?.previousData
+      );
     },
   });
 

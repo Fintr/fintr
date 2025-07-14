@@ -1,12 +1,17 @@
+"use client";
 import { TabsWrapper } from "@/components/tabs-wrapper";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
+import { useDashboardData } from "@/hooks/async/useDashboardData";
 
-export default function layout({
+export default function Layout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Load dashboard data (accounts and categories) for all dashboard routes
+  const { data, isLoading, isError } = useDashboardData();
+
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">

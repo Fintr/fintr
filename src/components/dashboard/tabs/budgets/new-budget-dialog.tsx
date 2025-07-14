@@ -32,11 +32,18 @@ import { useState } from "react";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import { ComboBox } from "@/components/ui/combobox";
 import { OptionType } from "@/types/generalTypes";
+import { useAtomValue } from "jotai";
+import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
 
 const formSchema = z.object({
   category: z.string().min(1, { message: "Category cannot be empty." }),
   amount: z.coerce.number().min(1, { message: "Amount must be greater than 0." }),
 });
+
+interface FieldErrors {
+  category?: string[];
+  amount?: string[];
+}
 
 export function NewBudgetDialog({
   budgetsData,
@@ -51,6 +58,12 @@ export function NewBudgetDialog({
   const [customExpenseCategories, setCustomExpenseCategories] = useState<
     string[]
   >([]);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Get expense categories from dashboard data
+  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -59,43 +72,91 @@ export function NewBudgetDialog({
     },
   });
 
-  const predefinedCategories: OptionType[] = [
-    { value: "myself", label: "Myself" },
-    { value: "family", label: "Family" },
-    { value: "insurance", label: "Insurance" },
-    { value: "home", label: "Home" },
-    { value: "utilities", label: "Utilities" },
-    { value: "food", label: "Food" },
-    { value: "transport", label: "Transport" },
-    { value: "pet", label: "Pet" },
-    { value: "subscriptions", label: "Subscriptions" },
-    { value: "going-out", label: "Going Out" },
-    { value: "travel", label: "Travel" },
-    { value: "shopping", label: "Shopping" },
-  ];
-
+  // Use categories from dashboard data instead of hardcoded ones
   const allCategoryOptions: OptionType[] = [
-    ...predefinedCategories,
+    ...expenseCategoryOptions,
     ...customExpenseCategories.map((cat) => ({ value: cat, label: cat })),
   ];
 
+  const extractFieldErrors = (error: any): FieldErrors => {
+    const fieldErrors: FieldErrors = {};
+    
+    try {
+      // Check if error has the expected structure from backend
+      if (error?.response?.data?.error?.details) {
+        const details = error.response.data.error.details;
+        
+        // Map backend field names to our form field names
+        if (details.category) {
+          fieldErrors.category = details.category;
+        }
+        if (details.amount) {
+          fieldErrors.amount = details.amount;
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing field errors:', e);
+    }
+    
+    return fieldErrors;
+  };
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     console.log("VALUES ", values);
-    createBudgetMutation.mutate({
-      budgetCategory: values.category,
-      budgetAmount: values.amount,
-    });
-    // Add to custom categories if it's not predefined and not already custom
-    if (
-      !predefinedCategories.find((pc) => pc.value === values.category) &&
-      !customExpenseCategories.includes(values.category)
-    ) {
-      setCustomExpenseCategories((prev) => [...prev, values.category]);
-    }
-    form.reset();
-    setDialogOpen(false);
+    setIsSubmitting(true);
+    setFieldErrors({}); // Clear previous errors
+    
+    // Auto-supply today's date
+    const today = new Date().toISOString().split("T")[0];
+    
+    createBudgetMutation.mutate(
+      {
+        categoryName: values.category,
+        amount: values.amount,
+        date: today,
+      },
+      {
+        onSuccess: () => {
+          // Add to custom categories if it's not in expense options and not already custom
+          if (
+            !expenseCategoryOptions.find((pc) => pc.value === values.category) &&
+            !customExpenseCategories.includes(values.category)
+          ) {
+            setCustomExpenseCategories((prev) => [...prev, values.category]);
+          }
+          form.reset();
+          setDialogOpen(false); // Only close on success
+          setIsSubmitting(false);
+        },
+        onError: (error) => {
+          console.error('Budget creation error:', error);
+          const errors = extractFieldErrors(error);
+          setFieldErrors(errors);
+          setIsSubmitting(false);
+          // Don't close dialog on error - let user fix and retry
+        },
+      }
+    );
   }
+
+  const getCategoryErrorMessage = () => {
+    if (fieldErrors.category && fieldErrors.category.length > 0) {
+      // Transform backend error message to be more user-friendly
+      const errorMessage = fieldErrors.category[0];
+      if (errorMessage.includes("must be the only expense category for the month")) {
+        return "A budget already exists for this category this month. Please choose a different category.";
+      }
+      return errorMessage;
+    }
+    return undefined;
+  };
+
+  const getAmountErrorMessage = () => {
+    if (fieldErrors.amount && fieldErrors.amount.length > 0) {
+      return fieldErrors.amount[0];
+    }
+    return undefined;
+  };
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -123,6 +184,10 @@ export function NewBudgetDialog({
                       value={field.value}
                       onChange={(value) => {
                         field.onChange(value);
+                        // Clear category error when user changes selection
+                        if (fieldErrors.category) {
+                          setFieldErrors(prev => ({ ...prev, category: undefined }));
+                        }
                       }}
                       placeholder="Select or create category"
                       renderNotFound={(searchValue, selectValueAndClose) => (
@@ -131,12 +196,10 @@ export function NewBudgetDialog({
                           className="w-full justify-start p-2 h-auto"
                           onClick={() => {
                             field.onChange(searchValue); // Set the form value
-                            // No need to call selectValueAndClose if it closes the popover automatically
-                            // The combobox will close once an item is selected or focus is lost.
-                            // For this button, we want the user to confirm the action.
-                            // We can consider adding the new category to customExpenseCategories here
-                            // or rely on the onSubmit logic to do so.
-                            // For now, let it be handled by onSubmit to keep consistency.
+                            // Clear category error when user changes selection
+                            if (fieldErrors.category) {
+                              setFieldErrors(prev => ({ ...prev, category: undefined }));
+                            }
                           }}
                         >
                           Create "{searchValue}" budget category
@@ -144,7 +207,9 @@ export function NewBudgetDialog({
                       )}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage>
+                    {getCategoryErrorMessage() || form.formState.errors.category?.message}
+                  </FormMessage>
                 </FormItem>
               )}
             />
@@ -155,14 +220,28 @@ export function NewBudgetDialog({
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input 
+                      type="number" 
+                      {...field} 
+                      onChange={(e) => {
+                        field.onChange(e);
+                        // Clear amount error when user changes value
+                        if (fieldErrors.amount) {
+                          setFieldErrors(prev => ({ ...prev, amount: undefined }));
+                        }
+                      }}
+                    />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage>
+                    {getAmountErrorMessage() || form.formState.errors.amount?.message}
+                  </FormMessage>
                 </FormItem>
               )}
             />
             <DialogFooter>
-              <Button type="submit">Confirm</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Confirm"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
