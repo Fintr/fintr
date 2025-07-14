@@ -25,7 +25,7 @@ module Api
       end
 
       def destroy
-        budget = Budget.find_by(id: params[:id])
+        budget = Budget.find_by(id: params[:id], space: current_space)
         return render_not_found(details: "Budget not found") if budget.blank?
 
         budget.destroy
