@@ -12,12 +12,15 @@ import {
 import { useEffect } from "react";
 
 export const useDashboardData = () => {
+  console.log('📊 useDashboardData hook called');
+  
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
   
   // Use the SSR-safe useLocalStorage hook
   const [spaceCode] = useLocalStorage("spaceCode", "");
+  console.log('📊 Dashboard spaceCode:', spaceCode);
   
   // Get atom setters
   const setAccountOptions = useSetAtom(accountOptionsAtom);
@@ -27,9 +30,14 @@ export const useDashboardData = () => {
   
   const { data, error, isLoading, isError, isSuccess } = useQuery({
     queryKey: ["dashboard", spaceCode],
-    queryFn: () => fetchDashboardData(api),
+    queryFn: () => {
+      console.log('📊 Executing fetchDashboardData...');
+      return fetchDashboardData(api);
+    },
     enabled: !!spaceCode,
   });
+  
+  console.log('📊 Query state:', { isLoading, isError, isSuccess, enabled: !!spaceCode });
 
   // Automatically populate atoms when data is successfully fetched
   useEffect(() => {

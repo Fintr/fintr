@@ -20,6 +20,7 @@ const handleResponseError = (error: AxiosError) => {
 };
 
 // Base API client configuration
+console.log('🔍 API baseURL:', process.env.NEXT_PUBLIC_BE_URL);
 const apiClient: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BE_URL,
   headers: {
@@ -35,6 +36,7 @@ apiClient.interceptors.response.use(
 
 // Create an authenticated API client factory
 export const createAuthenticatedClient = (getToken: () => Promise<string>): AxiosInstance => {
+  console.log('🔍 Auth client baseURL:', `${process.env.NEXT_PUBLIC_BE_URL}/api/v1`);
   const authClient = axios.create({
     baseURL: `${process.env.NEXT_PUBLIC_BE_URL}/api/v1`,
     headers: {
