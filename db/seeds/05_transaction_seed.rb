@@ -2,9 +2,17 @@
 
 ActiveRecord::Base.transaction do
   Spaces::Space.find_each do |space|
+    # Skip if transactions already exist for this space
+    if space.transactions.exists?
+      puts "Skipping transaction seeding for space #{space.name} - transactions already exist"
+      next
+    end
+
     puts "Seeding transactions for space: #{space.name}"
+
+    # Create initial balance transactions for each account
     Transactions::Account.where(space:).each do |account|
-      puts "Seeding transactions for account: #{account.name}"
+      puts "Seeding initial transaction for account: #{account.name}"
       income = Transactions::Income.create(
         user: Auth::User.first,
         space:,
@@ -16,49 +24,56 @@ ActiveRecord::Base.transaction do
       )
       account.update(balance: account.balance + income.value)
     end
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].each do |month|
-      puts "Seeding transactions for month: #{month}"
-      (1..28).each do |day|
-        puts "Seeding transactions for day: #{day}"
-        income_account = space.accounts.sample
-        expense_account = space.accounts.sample
-        income = Transactions::Income.new(
-                  user: Auth::User.first,
-                  space:,
-                  amount: 4000,
-                  amount_currency: 'PHP',
-                  account: income_account,
-                  category: space.income_categories.sample,
-                  date: Date.new(2025, month, day),
-                  description: ['Sample Description Income', 'Sample Long Description jknsfsdnfsdanflsakdfnlksadflkasdfmklsdfmksdfksadmflksmdkfl sakmdaksldmaskdm mklasmlkdmaskd klamskdmkalmdmkk mklmaskldmaklsdmklasmdkasmdasd'].sample,
-                  balance: income_account.balance.amount + 1000,
-                  balance_currency: 'PHP',
-                  balance_state: Date.new(2025, month, day) <= Date.current ? :calculated : :pending,
-                  schedule_type: :one_time
-                )
-        income.save ? puts("Saved income: #{income.value}") : puts("Failed to save income: #{income.errors.full_messages}")
-        puts "Updating balance for income: #{income.value}"
-        income.account.update(balance: income.account.balance + income.value)
 
-        2.times do
-          expense_amount = [500, 1000, 1500, 2000, 2500].sample
-          expense = Transactions::Expense.new(
-                      user: Auth::User.first,
-                      space:,
-                      amount: expense_amount,
-                      amount_currency: 'PHP',
-                      account: expense_account,
-                      category: space.expense_categories.sample,
-                      date: Date.new(2025, month, day),
-                      balance: expense_account.balance.amount + expense_amount * -1,
-                      balance_currency: 'PHP',
-                      balance_state: Date.new(2025, month, day) <= Date.current ? :calculated : :pending,
-                      schedule_type: :one_time
-                    )
-          expense.save ? puts("Saved expense: #{expense.value}") : puts("Failed to save expense: #{expense.errors.full_messages}")
-          puts "Updating balance for expense: #{expense.value}"
-          expense.account.update(balance: expense.account.balance + expense.value)
-        end
+    # Create sample transactions for current month only (not 12 months)
+    current_month = Date.current.month
+    puts "Seeding transactions for current month: #{current_month}"
+
+    # Only seed 7 days of sample data instead of 28 days
+    (1..7).each do |day|
+      puts "Seeding transactions for day: #{day}"
+      income_account = space.accounts.sample
+      expense_account = space.accounts.sample
+
+      income = Transactions::Income.new(
+        user: Auth::User.first,
+        space:,
+        amount: 4000,
+        amount_currency: 'PHP',
+        account: income_account,
+        category: space.income_categories.sample,
+        date: Date.new(2025, current_month, day > Date.current.day ? Date.current.day : day),
+        description: ['Sample Description Income', 'Sample Income'].sample,
+        balance: income_account.balance.amount + 1000,
+        balance_currency: 'PHP',
+        balance_state: :calculated,
+        schedule_type: :one_time
+      )
+
+      if income.save
+        puts("Saved income: #{income.value}")
+        income.account.update(balance: income.account.balance + income.value)
+      end
+
+      # Create only 1 expense instead of 2
+      expense_amount = [500, 1000, 1500].sample
+      expense = Transactions::Expense.new(
+        user: Auth::User.first,
+        space:,
+        amount: expense_amount,
+        amount_currency: 'PHP',
+        account: expense_account,
+        category: space.expense_categories.sample,
+        date: Date.new(2025, current_month, day > Date.current.day ? Date.current.day : day),
+        balance: expense_account.balance.amount + expense_amount * -1,
+        balance_currency: 'PHP',
+        balance_state: :calculated,
+        schedule_type: :one_time
+      )
+
+      if expense.save
+        puts("Saved expense: #{expense.value}")
+        expense.account.update(balance: expense.account.balance + expense.value)
       end
     end
   end
