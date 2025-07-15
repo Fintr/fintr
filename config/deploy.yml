@@ -9,7 +9,7 @@ image: adminfintr/fintr-be
 servers:
   web:
     hosts:
-      - staging-api.fintr.ai
+      - ec2-3-27-154-204.ap-southeast-2.compute.amazonaws.com
   # job:
   #   hosts:
   #     - 192.168.0.1
@@ -21,7 +21,7 @@ servers:
 # Note: If using Cloudflare, set encryption mode in SSL/TLS setting to "Full" to enable CF-to-app encryption.
 proxy:
   ssl: true
-  host: staging-api.fintr.ai
+  host: ec2-3-27-154-204.ap-southeast-2.compute.amazonaws.com
   app_port: 3000 # The port your application container listens on (default: 80)
   healthcheck:
     path: /up # The path for the health check endpoint in your app (default: /up)
