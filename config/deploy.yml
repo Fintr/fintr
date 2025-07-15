@@ -25,8 +25,8 @@ proxy:
   app_port: 3000 # The port your application container listens on (default: 80)
   healthcheck:
     path: /up # The path for the health check endpoint in your app (default: /up)
-    interval: 3 # How often to check (default: 1s)
-    timeout: 5 # Timeout for the health check request (default: 5s)
+    interval: 10 # How often to check (default: 1s)
+    timeout: 15 # Timeout for the health check request (default: 5s)
   # Other options like buffering, logging, response_timeout, etc.
 
 # Credentials for your image host.
