@@ -28,10 +28,6 @@ export const useAuthApi = (options?: {
 
   // Create a function to get tokens with error handling
   const getToken = useCallback(async (): Promise<string> => {
-    console.log('🔐 Getting access token...');
-    console.log('🔐 Auth audience:', process.env.NEXT_PUBLIC_BE_URL);
-    console.log('🔐 Is authenticated:', isAuthenticated);
-    
     // Use custom scope from options if provided, otherwise use default
     const scope = options?.scope || 'openid profile email';
 
@@ -44,7 +40,6 @@ export const useAuthApi = (options?: {
       const token = await getAccessTokenSilently({
         authorizationParams: params,
       });
-      console.log('🔐 Token obtained successfully');
       return token;
     } catch (e: any) {
       console.error('Error getting access token:', e);

@@ -3,12 +3,22 @@ import { TabsWrapper } from "@/components/tabs-wrapper";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
+import { useGetSpaceCode } from "@/hooks/useGetSpaceCode";
+import { useAuthApi } from "@/hooks/useAuthApi";
 
 export default function Layout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Initialize API client for authentication
+  const { api } = useAuthApi({
+    scope: "openid profile email read:current_user read:transactions",
+  });
+  
+  // Fetch spaceCode first (this will trigger the /auth/private call)
+  const spaceCode = useGetSpaceCode(api);
+  
   // Load dashboard data (accounts and categories) for all dashboard routes
   const { data, isLoading, isError } = useDashboardData();
 
