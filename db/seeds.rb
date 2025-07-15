@@ -10,7 +10,7 @@
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
 #
-return if Rails.env.production? || Rails.env.staging?
+return if Rails.env.production?
 
 seeds_path = Rails.root.join('db', 'seeds')
 
