@@ -22,7 +22,7 @@ servers:
 proxy:
   ssl: true
   host: ec2-3-27-154-204.ap-southeast-2.compute.amazonaws.com
-  app_port: 80 # The port your application container listens on (default: 80)
+  app_port: 3000 # The port your application container listens on (default: 80)
   healthcheck:
     path: /up # The path for the health check endpoint in your app (default: /up)
     interval: 3 # How often to check (default: 1s)
