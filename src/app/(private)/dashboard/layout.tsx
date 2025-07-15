@@ -17,6 +17,7 @@ export default function Layout({
   });
   
   // Fetch spaceCode first (this will trigger the /auth/private call)
+  // Only call this on the client side to avoid SSR issues
   const spaceCode = useGetSpaceCode(api);
   
   // Load dashboard data (accounts and categories) for all dashboard routes

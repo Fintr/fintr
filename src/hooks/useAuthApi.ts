@@ -51,7 +51,7 @@ export const useAuthApi = (options?: {
       }
       throw e;
     }
-  }, [getAccessTokenSilently, options?.scope]);
+  }, [getAccessTokenSilently, loginWithRedirect, router, options?.scope]);
 
   // Create an authenticated API client
   const api = useMemo(() => createAuthenticatedClient(getToken), [getToken]);
