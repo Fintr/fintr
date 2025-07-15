@@ -5,6 +5,13 @@ service: fintr-be
 # Name of the container image.
 image: adminfintr/fintr-be
 
+# Healthcheck configuration for the service
+healthcheck:
+  path: /up
+  port: 3000
+  max_attempts: 12
+  interval: 5s
+
 # Deploy to these servers.
 servers:
   web:
@@ -27,6 +34,7 @@ proxy:
     path: /up # The path for the health check endpoint in your app (default: /up)
     interval: 10 # How often to check (default: 1s)
     timeout: 15 # Timeout for the health check request (default: 5s)
+    max_attempts: 10 # Maximum number of health check attempts
   # Other options like buffering, logging, response_timeout, etc.
 
 # Credentials for your image host.
