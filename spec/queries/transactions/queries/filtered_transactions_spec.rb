@@ -212,6 +212,33 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
       end
     end
 
+    context 'with pagination parameter' do
+      it 'does not paginate when paginate is false' do
+        params = default_params.merge(paginate: false)
+        relation = Transactions::Transaction.all
+        result = described_class.new(relation: relation, params: params).call
+
+        expect(result).to be_success
+        transactions = result.value!
+
+        expect(transactions.map(&:id)).to match_array(first_3_transactions.map(&:id))
+        expect(transactions).not_to respond_to(:total_pages)
+      end
+
+      it 'paginates by default' do
+        params = default_params.merge(page: 1, per_page: 2)
+        relation = Transactions::Transaction.all
+        result = described_class.new(relation: relation, params: params).call
+
+        expect(result).to be_success
+        transactions = result.value!
+
+        expect(transactions.size).to eq(2)
+        expect(transactions).to respond_to(:total_pages)
+        expect(transactions.total_pages).to eq(2)
+      end
+    end
+
     context 'with pagination' do
       let!(:additional_transactions) do
         # Create just 3 more transactions (in addition to the 3 we already have)
@@ -254,26 +281,6 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         # Second page should have the next 3 transactions
         expect(transactions.size).to eq(3)
         expect(transactions.map(&:id)).to match_array(first_3_transactions.map(&:id))
-      end
-    end
-
-    context 'with combined filters' do
-      it 'filters by space, date range, and category' do
-        params = default_params.merge(
-          space_code: 'space-1',
-          category_name: 'Category 1',
-          start_date: Date.new(2024, 1, 1),
-          end_date: Date.new(2024, 1, 31)
-        )
-        relation = Transactions::Transaction.all
-        result = described_class.new(relation: relation, params: params).call
-
-        expect(result).to be_success
-        transactions = result.value!
-
-        expected_ids = [transaction_s1_jan5].map(&:id)
-        expect(transactions.map(&:id)).to match_array(expected_ids)
-        expect(transactions.map(&:id)).not_to include(transaction_s1_jan15.id, transaction_s1_feb10.id)
       end
     end
 

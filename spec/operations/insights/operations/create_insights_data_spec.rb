@@ -28,7 +28,7 @@ RSpec.describe Insights::Operations::CreateInsightsData do
   let(:mocked_transactions_result) { Success(instance_double(ActiveRecord::Relation, :transactions, to_ary: [])) }
   let(:mocked_budgets_result) { Success(instance_double(ActiveRecord::Relation, :budgets, to_ary: [])) }
   let(:mocked_summary_structure_result) { Success({ total_income: 5000, total_expenses: 3000 }) }
-  let(:mocked_health_scores_result) { Success({ savings_rate: '20%' }) }
+  let(:mocked_health_scores_result) { Success({ savings_rate: '20%', financial_health_score: '70.00%' }) }
   let(:mocked_expense_breakdown_result) { Success([{ category: 'Food', amount: 100 }]) }
   let(:mocked_weekly_spending_result) { Success([{ week: 1, amount: 50 }]) }
   let(:mocked_monthly_spending_result) { Success([{ month: 'January', amount: 1000 }]) }
@@ -77,7 +77,7 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
       it 'calls Transactions::Queries::FilteredTransactions with correct params including balance_state' do
         call_operation
-        expected_params = valid_params.merge(balance_state: "calculated")
+        expected_params = valid_params.merge(balance_state: "calculated", paginate: false)
         expect(Transactions::Queries::FilteredTransactions).to have_received(:call).with(params: expected_params)
       end
 

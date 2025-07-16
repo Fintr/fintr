@@ -34,34 +34,60 @@ module Insights
       private
 
       def get_expenses(params:)
-        date = Time.zone.today
+        # Get exactly 7 days: from (1.week - 1.day) ago to today
+        start_date = (1.week - 1.day).ago.beginning_of_day
+        end_date = Time.zone.today.end_of_day
+
         result = params[:transactions]
                   .where(type: %w[Transactions::Expense])
-                  .where(date: (1.week.ago.beginning_of_day)..(date.end_of_day))
+                  .where(date: start_date..end_date)
         Success(result)
       end
 
       def create_weekly_spending(expenses:)
         total_expenses = expenses.sum(&:expense).amount
 
-        ordered_expenses = expenses.order(:date)
+        # Create date range for exactly 7 days: from 6 days ago to today
+        start_date = 6.days.ago.beginning_of_day.to_date
+        end_date = Date.current
+        date_range = start_date..end_date
 
-        result = ordered_expenses.group_by(&:date).map do |original_date, transactions|
-          amount = transactions.sum(&:expense).amount
+        # Order expenses by date and convert to array for grouping
+        ordered_expenses = expenses.order(date: :asc)
+        expenses_array = ordered_expenses.is_a?(Array) ? ordered_expenses : ordered_expenses.to_a
+        # Group by date only, not datetime
+        expenses_by_date = expenses_array.group_by { |transaction| transaction.date.to_date }
+
+        # Create result for all 7 days, including days with no transactions
+        result = date_range.map do |date|
+          transactions_for_date = expenses_by_date[date] || []
+          amount = if transactions_for_date.any?
+                     transactions_for_date.sum(&:expense).amount
+          else
+                     0
+          end
+
           percentage = if total_expenses.zero?
                          0.0
           else
                          (amount.to_d / total_expenses.to_d) * 100
           end
+
+          # Get currency from first expense transaction, or default to 'PHP'
+          currency = if transactions_for_date.any?
+                       transactions_for_date.first.amount_currency
+          else
+                       expenses_array.first&.amount_currency || "PHP"
+          end
+
           {
-            original_date_for_sort: original_date,
-            date: original_date.strftime("%a"),
+            date: date.strftime("%a"),
             amount: Utils::Number.format_number(amount),
             percentage: Utils::Number.format_percentage(percentage),
-            currency: transactions.first.amount_currency # TODO: currency should be specified another way
+            currency: currency
           }
-        end.sort_by { |item| item[:original_date_for_sort] }
-           .map { |item| item.except(:original_date_for_sort) }
+        end
+
         Success(result)
       end
     end

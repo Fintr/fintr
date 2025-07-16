@@ -42,7 +42,7 @@ module Transactions
     end
 
     def expense
-      type.constantize.find(self.id).income
+      type.constantize.find(self.id).expense
     end
   end
 end

@@ -33,19 +33,25 @@ module Insights
       end
 
       def call(params)
-        params                = step validate(params:)
-        savings_percentage    = step get_savings_percentage(params:)
-        debt_to_income_ratio  = step get_debt_to_income_ratio(params:)
-        total_budget          = step get_total_budget(params:)
-        budget_usage          = step get_budget_usage(params:, total_budget:)
-        health_scores         = step create_health_scores(savings_percentage:, debt_to_income_ratio:, budget_usage:)
+        params                 = step validate(params:)
+        savings_percentage     = step get_savings_percentage(params:)
+        debt_to_income_ratio   = step get_debt_to_income_ratio(params:)
+        total_budget           = step get_total_budget(params:)
+        budget_adherence       = step get_budget_adherence(params:, total_budget:)
+        financial_health_score = step calculate_financial_health_score(savings_percentage:, budget_adherence:)
+        health_scores          = step create_health_scores(
+                                        savings_percentage:,
+                                        debt_to_income_ratio:,
+                                        budget_adherence:,
+                                        financial_health_score:
+                                      )
         health_scores
       end
 
       private
 
       def get_savings_percentage(params:)
-        return Success(0) if params[:total_income].zero?
+        return Success(Utils::Number.format_percentage(0)) if params[:total_income].zero?
 
         result = params[:net_savings] / params[:total_income] * 100
         Success(Utils::Number.format_percentage(result))
@@ -63,18 +69,57 @@ module Insights
         Success(result)
       end
 
-      def get_budget_usage(params:, total_budget:)
-        return Success(0) if total_budget.zero?
+      def get_budget_adherence(params:, total_budget:)
+        return Success(Utils::Number.format_percentage(0)) if total_budget.zero?
 
-        result = params[:total_expenses] / total_budget * 100
+        result = (params[:total_expenses] - total_budget) / total_budget * 100
         Success(Utils::Number.format_percentage(result))
       end
 
-      def create_health_scores(savings_percentage:, debt_to_income_ratio:, budget_usage:)
+      def calculate_financial_health_score(savings_percentage:, budget_adherence:)
+        numeric_savings_percentage = savings_percentage.delete("%").to_d
+        numeric_budget_adherence = budget_adherence.delete("%").to_d
+
+        savings_score = get_savings_score(numeric_savings_percentage)
+        adherence_score = get_budget_adherence_score(numeric_budget_adherence)
+
+        weighted_score = (savings_score * 0.6) + (adherence_score * 0.4)
+        Success(Utils::Number.format_percentage(weighted_score))
+      end
+
+      def get_savings_score(percentage)
+        case percentage
+        when 20..Float::INFINITY then 100
+        when 15...20             then 90
+        when 10...15             then 75
+        when 5...10               then 50
+        when 1...5               then 25
+        else 0
+        end
+      end
+
+      def get_budget_adherence_score(percentage)
+        case percentage
+        when -Float::INFINITY..0 then 100
+        when 1...5               then 90
+        when 5...10              then 75
+        when 10...20             then 50
+        when 20...30             then 25
+        else 0
+        end
+      end
+
+      def create_health_scores(
+        savings_percentage:,
+        debt_to_income_ratio:,
+        budget_adherence:,
+        financial_health_score:
+      )
         hash = {
           savings_percentage:,
           debt_to_income_ratio:,
-          budget_usage:
+          budget_adherence:,
+          financial_health_score:
         }
         Success(hash)
       end

@@ -14,6 +14,7 @@ module Transactions
           optional(:max_amount).maybe(:integer)
           optional(:per_page).maybe(:integer)
           optional(:balance_state).value(:string)
+          optional(:paginate).value(:bool)
         end
 
         rule(:min_amount, :max_amount) do
@@ -51,7 +52,7 @@ module Transactions
         relation = step by_amount(relation, params)
         relation = step select(relation)
         relation = step order(relation)
-        relation = step paginate(relation, params)
+        relation = step paginate(relation, params) if params[:paginate] != false
         relation
       end
 
@@ -78,7 +79,7 @@ module Transactions
           "transactions.type as type",
           "NULL as from_account_name",
           "accounts.name as to_account_name",
-          "transactions_categories.name as category_name",
+          "transactions_categories.name as category_name"
         )
         Success(relation)
       rescue StandardError

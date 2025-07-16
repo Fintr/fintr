@@ -248,6 +248,8 @@ RSpec.describe Budgets::Queries::MonthlyBudgets, type: :query do
 
     context 'when budgets exist but none have calculated transactions in the month' do
       let(:isolated_space) { create(:space) }
+      let(:query_params) { { space_code: isolated_space.code, date: current_month_date } }
+      let(:result) { described_class.new(params: query_params).call.value! }
       let(:isolated_cat1) { create(:category, space: isolated_space, name: "Isolated Cat 1", category_type: :expense) }
       let(:isolated_cat2) { create(:category, space: isolated_space, name: "Isolated Cat 2", category_type: :expense) }
 
@@ -258,8 +260,6 @@ RSpec.describe Budgets::Queries::MonthlyBudgets, type: :query do
         create(:expense_transaction, space: isolated_space, category: isolated_cat2, date: prev_month_date, balance_state: 'calculated')
       end
 
-      let(:query_params) { { space_code: isolated_space.code, date: current_month_date } }
-      let(:result) { described_class.new(params: query_params).call.value! }
 
       it 'succeeds' do
         expect(query_call_result).to be_success

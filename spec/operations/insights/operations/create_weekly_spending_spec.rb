@@ -22,7 +22,7 @@ RSpec.describe Insights::Operations::CreateWeeklySpending do
         mock_relation = instance_double(ActiveRecord::Relation)
         allow(mock_relation).to receive(:blank?).and_return(false)
         allow(mock_relation).to receive(:sum).and_return(Money.from_amount(100.0, 'PHP'))
-        allow(mock_relation).to receive(:order).with(:date).and_return([
+        allow(mock_relation).to receive(:order).with(date: :asc).and_return([
           instance_double(
             Transactions::Expense,
             date: Date.current,
@@ -118,7 +118,7 @@ RSpec.describe Insights::Operations::CreateWeeklySpending do
           mock_relation = instance_double(ActiveRecord::Relation)
           allow(mock_relation).to receive(:blank?).and_return(false)
           allow(mock_relation).to receive(:sum).and_return(Money.from_amount(150.0, 'PHP'))
-          allow(mock_relation).to receive(:order).with(:date).and_return([
+          allow(mock_relation).to receive(:order).with(date: :asc).and_return([
             instance_double(Transactions::Combined, date: same_date, expense: Money.from_amount(100.0, 'PHP'), amount_currency: 'PHP'),
             instance_double(Transactions::Combined, date: same_date, expense: Money.from_amount(50.0, 'PHP'), amount_currency: 'PHP')
           ])
@@ -131,8 +131,18 @@ RSpec.describe Insights::Operations::CreateWeeklySpending do
         it 'groups transactions by date correctly' do
           result = call_operation.value!
           expect(result).to be_an(Array)
-          expect(result.length).to eq(1) # Should group by date
-          expect(result.first[:amount]).to eq(150.0) # Sum of both transactions
+          expect(result.length).to eq(7) # Should show all 7 days
+
+          # Find the day that has transactions (current date)
+          day_with_transactions = result.find { |day| day[:amount] != 0.0 }
+          expect(day_with_transactions[:amount]).to eq(150.0) # Sum of both transactions
+
+          # Check that days without transactions show 0
+          days_without_transactions = result.reject { |day| day[:amount] != 0.0 }
+          expect(days_without_transactions.length).to eq(6) # 6 days with no transactions
+          days_without_transactions.each do |day|
+            expect(day[:amount]).to eq(0.0)
+          end
         end
       end
 
@@ -146,9 +156,9 @@ RSpec.describe Insights::Operations::CreateWeeklySpending do
           mock_relation = instance_double(ActiveRecord::Relation)
           allow(mock_relation).to receive(:blank?).and_return(false)
           allow(mock_relation).to receive(:sum).and_return(Money.from_amount(150.0, 'PHP'))
-          allow(mock_relation).to receive(:order).with(:date).and_return([
+          allow(mock_relation).to receive(:order).with(date: :asc).and_return([
             instance_double(Transactions::Combined, date: Date.current, expense: Money.from_amount(100.0, 'PHP'), amount_currency: 'PHP'),
-            instance_double(Transactions::Combined, date: Date.current + 1.day, expense: Money.from_amount(50.0, 'USD'), amount_currency: 'USD')
+            instance_double(Transactions::Combined, date: 1.day.ago.to_date, expense: Money.from_amount(50.0, 'USD'), amount_currency: 'USD')
           ])
 
           allow(operation).to receive(:get_expenses).and_return(Dry::Monads::Success(mock_relation))
@@ -159,10 +169,19 @@ RSpec.describe Insights::Operations::CreateWeeklySpending do
         it 'handles different currencies correctly' do
           result = call_operation.value!
           expect(result).to be_an(Array)
-          expect(result.length).to eq(2)
+          expect(result.length).to eq(7) # Should show all 7 days
 
-          currencies = result.map { |item| item[:currency] }
+          # Find days with transactions
+          days_with_transactions = result.reject { |day| day[:amount] == 0.0 }
+          expect(days_with_transactions.length).to eq(2) # 2 days with transactions
+
+          # Check that both currencies are present
+          currencies = days_with_transactions.map { |item| item[:currency] }
           expect(currencies).to include('PHP', 'USD')
+
+          # Check that days without transactions show 0
+          days_without_transactions = result.select { |day| day[:amount] == 0.0 }
+          expect(days_without_transactions.length).to eq(5) # 5 days with no transactions
         end
       end
     end
