@@ -26,6 +26,7 @@ import {
   PieChart,
   BarChart3,
 } from "lucide-react";
+import { useInsightsData } from "@/hooks/async/useInsightsData";
 import {
   LineChart as RechartsLineChart,
   Line,
@@ -42,12 +43,13 @@ import {
   Bar,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
+import { useMemo } from "react";
 
 interface InsightsTabProps {
   filteredTransactions?: any[];
 }
 
-// Mock data for charts
+// Mock data for charts - will be replaced by API data but kept as fallback
 const monthlyFinancialData = [
   { month: "Jan", income: 45000, expenses: -32000, savings: 13000 },
   { month: "Feb", income: 48000, expenses: -30000, savings: 18000 },
@@ -58,11 +60,11 @@ const monthlyFinancialData = [
 ];
 
 const categoryExpenseData = [
-  { name: "Food", value: 8500, color: "#008080" },
-  { name: "Transportation", value: 3200, color: "#D6A3A1" },
-  { name: "Entertainment", value: 2800, color: "#FF6F61" },
-  { name: "Utilities", value: 4500, color: "#800020" },
-  { name: "Shopping", value: 6200, color: "#CC5500" },
+  { name: "Food", value: 8500, color: "#11A69C", percentage: "19.54%" },
+  { name: "Transportation", value: 3200, color: "#924AF7", percentage: "6.51%" },
+  { name: "Entertainment", value: 2800, color: "#D17711", percentage: "4.34%" },
+  { name: "Utilities", value: 4500, color: "#0081FE", percentage: "13.03%" },
+  { name: "Shopping", value: 6200, color: "#FF5383", percentage: "10.86%" },
 ];
 
 const weeklySpendingData = [
@@ -75,13 +77,23 @@ const weeklySpendingData = [
   { day: "Sun", amount: 1100 },
 ];
 
-const InsightsTab = ({
-  filteredTransactions = [],
-}: InsightsTabProps) => {
+const InsightsTab = () => {
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
     .toLowerCase();
   const currentYear = new Date().getFullYear().toString();
+
+  // Generate dynamic year options for the select dropdowns
+  const generateYearOptions = () => {
+    const year = new Date().getFullYear();
+    const years = [];
+    // Show current year, 1 future year, and 4 past years
+    for (let i = year + 1; i >= year - 4; i--) {
+      years.push({ value: i.toString(), label: i.toString() });
+    }
+    return years;
+  };
+  const yearOptions = generateYearOptions();
 
   // Local state for insights tab
   const [filterType, setFilterType] = useState("single");
@@ -92,6 +104,53 @@ const InsightsTab = ({
   const [endMonth, setEndMonth] = useState(currentMonth);
   const [endYear, setEndYear] = useState(currentYear);
   const [selectedCategory, setSelectedCategory] = useState("all");
+
+  // Fetch insights data from API
+  const { data: insightsData, isLoading, isError, refetch } = useInsightsData({
+    filterType,
+    selectedMonth,
+    selectedYear,
+    startMonth,
+    startYear,
+    endMonth,
+    endYear,
+    selectedCategory,
+  });
+
+  // Process expense breakdown data to show top 5 categories and group others
+  const processedExpenseBreakdown = useMemo(() => {
+    const data = insightsData?.expenseBreakdown || categoryExpenseData;
+
+    if (data.length <= 5) {
+      return data;
+    }
+
+    // Sort data in descending order of value
+    const sortedData = [...data].sort((a, b) => b.value - a.value);
+
+    // Take top 5 categories
+    const top5 = sortedData.slice(0, 5);
+
+    // Sum up the rest for "Other" category
+    const otherValue = sortedData
+      .slice(5)
+      .reduce((sum, item) => sum + item.value, 0);
+    const otherDetails = sortedData.slice(5).map(item => ({
+      name: item.name,
+      value: item.value,
+      percent: item.percentage, // Use percentage as string directly from API
+    }));
+
+    return [
+      ...top5,
+      { name: "Other", value: otherValue, color: "#808080", details: otherDetails }, // Add a neutral color for "Other"
+    ];
+  }, [insightsData?.expenseBreakdown]);
+
+  // Handle filter application
+  const handleApplyFilters = () => {
+    refetch();
+  };
 
   return (
     <Card className="col-span-3 border-0 shadow-none bg-background">
@@ -168,11 +227,11 @@ const InsightsTab = ({
                         <SelectValue placeholder="Select year" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="2025">2025</SelectItem>
-                        <SelectItem value="2024">2024</SelectItem>
-                        <SelectItem value="2023">2023</SelectItem>
-                        <SelectItem value="2022">2022</SelectItem>
-                        <SelectItem value="2021">2021</SelectItem>
+                        {yearOptions.map((year) => (
+                          <SelectItem key={year.value} value={year.value}>
+                            {year.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -214,11 +273,11 @@ const InsightsTab = ({
                           <SelectValue placeholder="Year" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="2025">2025</SelectItem>
-                          <SelectItem value="2024">2024</SelectItem>
-                          <SelectItem value="2023">2023</SelectItem>
-                          <SelectItem value="2022">2022</SelectItem>
-                          <SelectItem value="2021">2021</SelectItem>
+                          {yearOptions.map((year) => (
+                            <SelectItem key={year.value} value={year.value}>
+                              {year.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -259,11 +318,11 @@ const InsightsTab = ({
                           <SelectValue placeholder="Year" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="2025">2025</SelectItem>
-                          <SelectItem value="2024">2024</SelectItem>
-                          <SelectItem value="2023">2023</SelectItem>
-                          <SelectItem value="2022">2022</SelectItem>
-                          <SelectItem value="2021">2021</SelectItem>
+                          {yearOptions.map((year) => (
+                            <SelectItem key={year.value} value={year.value}>
+                              {year.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -300,8 +359,10 @@ const InsightsTab = ({
               <div className="md:self-end">
                 <Button
                   className="bg-primary hover:bg-primary/80 w-full"
+                  onClick={handleApplyFilters}
+                  disabled={isLoading}
                 >
-                  Apply Filters
+                  {isLoading ? "Loading..." : "Apply Filters"}
                 </Button>
               </div>
             </div>
@@ -316,46 +377,44 @@ const InsightsTab = ({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-primary/70 mb-1">
-                  Total Income
-                </h4>
-                <div
-                  className={`text-2xl font-bold ${filteredTransactions.filter((t) => t.amount > 0).reduce((sum, t) => sum + t.amount, 0) >= 0 ? "text-[#008080]" : "text-[#800020]"}`}
-                >
-                  {formatCurrency(
-                    filteredTransactions
-                      .filter((t) => t.amount > 0)
-                      .reduce((sum, t) => sum + t.amount, 0),
-                  )}
+            {isLoading ? (
+              <div className="text-center py-8">Loading insights...</div>
+            ) : isError ? (
+              <div className="text-center py-8 text-red-500">
+                Error loading insights. Please try again.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-[#f9f7f5] p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-primary/70 mb-1">
+                    Total Income
+                  </h4>
+                  <div
+                    className={`text-2xl font-bold ${(insightsData?.summary?.totalIncome || 0) >= 0 ? "text-[#008080]" : "text-[#800020]"}`}
+                  >
+                    {formatCurrency(insightsData?.summary?.totalIncome || 0)}
+                  </div>
+                </div>
+                <div className="bg-[#f9f7f5] p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-primary/70 mb-1">
+                    Total Expenses
+                  </h4>
+                  <div className="text-2xl font-bold text-[#800020]">
+                    {formatCurrency(insightsData?.summary?.totalExpenses || 0)}
+                  </div>
+                </div>
+                <div className="bg-[#f9f7f5] p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-primary/70 mb-1">
+                    Net Savings
+                  </h4>
+                  <div
+                    className={`text-2xl font-bold ${(insightsData?.summary?.netSavings || 0) >= 0 ? "text-[#008080]" : "text-[#800020]"}`}
+                  >
+                    {formatCurrency(insightsData?.summary?.netSavings || 0)}
+                  </div>
                 </div>
               </div>
-              <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-primary/70 mb-1">
-                  Total Expenses
-                </h4>
-                <div className="text-2xl font-bold text-[#800020]">
-                  {formatCurrency(
-                    filteredTransactions
-                      .filter((t) => t.amount < 0)
-                      .reduce((sum, t) => sum + t.amount, 0),
-                  )}
-                </div>
-              </div>
-              <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-primary/70 mb-1">
-                  Net Savings
-                </h4>
-                <div
-                  className={`text-2xl font-bold ${filteredTransactions.reduce((sum, t) => sum + t.amount, 0) >= 0 ? "text-[#008080]" : "text-[#800020]"}`}
-                >
-                  {formatCurrency(
-                    filteredTransactions.reduce((sum, t) => sum + t.amount, 0),
-                  )}
-                </div>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -368,82 +427,92 @@ const InsightsTab = ({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center justify-center py-6">
-                <div className="relative w-40 h-40 mb-4">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-4xl font-bold text-primary">78</div>
+              {isLoading ? (
+                <div className="text-center py-8">Loading health score...</div>
+              ) : (
+                <>
+                  <div className="flex flex-col items-center justify-center py-6">
+                    <div className="relative w-40 h-40 mb-4">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-4xl font-bold text-primary">
+                          {insightsData?.financialHealth?.score || 78}
+                        </div>
+                      </div>
+                      <svg
+                        className="w-full h-full"
+                        viewBox="0 0 100 100"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="45"
+                          fill="none"
+                          stroke="#e2e8f0"
+                          strokeWidth="10"
+                        />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="45"
+                          fill="none"
+                          stroke="#0A3D62"
+                          strokeWidth="10"
+                          strokeDasharray="282.7"
+                          strokeDashoffset={282.7 - (282.7 * (insightsData?.financialHealth?.score || 78) / 100)}
+                          transform="rotate(-90 50 50)"
+                        />
+                      </svg>
+                    </div>
+                    <div className="text-center">
+                      <h3 className="text-lg font-medium text-primary">
+                        {insightsData?.financialHealth?.rating || "Good"}
+                      </h3>
+                      <p className="text-sm text-primary/70 mt-1">
+                        {insightsData?.financialHealth?.description || "You're on track to meet your financial goals"}
+                      </p>
+                    </div>
                   </div>
-                  <svg
-                    className="w-full h-full"
-                    viewBox="0 0 100 100"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="45"
-                      fill="none"
-                      stroke="#e2e8f0"
-                      strokeWidth="10"
+
+                  <div className="mt-6 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Savings Rate</span>
+                      <span className="text-sm font-medium text-green-600">
+                        {(insightsData?.financialHealth?.savingsRate.toFixed(2) || 0)}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={insightsData?.financialHealth?.savingsRate || 0}
+                      className="h-2 bg-gray-200"
+                      indicatorClassName="bg-green-600"
                     />
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="45"
-                      fill="none"
-                      stroke="#0A3D62"
-                      strokeWidth="10"
-                      strokeDasharray="282.7"
-                      strokeDashoffset="62.2"
-                      transform="rotate(-90 50 50)"
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Debt-to-Income</span>
+                      <span className="text-sm font-medium text-yellow-600">
+                        {(insightsData?.financialHealth?.debtToIncomeRatio.toFixed(2) || 0)}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={insightsData?.financialHealth?.debtToIncomeRatio || 0}
+                      className="h-2 bg-gray-200"
+                      indicatorClassName="bg-yellow-600"
                     />
-                  </svg>
-                </div>
-                <div className="text-center">
-                  <h3 className="text-lg font-medium text-primary">Good</h3>
-                  <p className="text-sm text-primary/70 mt-1">
-                    You're on track to meet your financial goals
-                  </p>
-                </div>
-              </div>
 
-              <div className="mt-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Savings Rate</span>
-                  <span className="text-sm font-medium text-green-600">
-                    18%
-                  </span>
-                </div>
-                <Progress
-                  value={18}
-                  className="h-2 bg-gray-200"
-                  indicatorClassName="bg-green-600"
-                />
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Debt-to-Income</span>
-                  <span className="text-sm font-medium text-yellow-600">
-                    32%
-                  </span>
-                </div>
-                <Progress
-                  value={32}
-                  className="h-2 bg-gray-200"
-                  indicatorClassName="bg-yellow-600"
-                />
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Budget Adherence</span>
-                  <span className="text-sm font-medium text-primary">
-                    85%
-                  </span>
-                </div>
-                <Progress
-                  value={85}
-                  className="h-2 bg-gray-200"
-                  indicatorClassName="bg-primary"
-                />
-              </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Budget Adherence</span>
+                      <span className="text-sm font-medium text-primary">
+                        {(insightsData?.financialHealth?.budgetUsage.toFixed(2) || 0)}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={insightsData?.financialHealth?.budgetUsage || 0}
+                      className="h-2 bg-gray-200"
+                      indicatorClassName="bg-primary"
+                    />
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -572,7 +641,7 @@ const InsightsTab = ({
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsLineChart
-                  data={monthlyFinancialData}
+                  data={insightsData?.monthlySpending || monthlyFinancialData}
                   margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -629,33 +698,52 @@ const InsightsTab = ({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie
-                      data={categoryExpenseData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) =>
-                        `${name}: ${(percent * 100).toFixed(0)}%`
-                      }
-                    >
-                      {categoryExpenseData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                    />
-                    <Legend />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-              </div>
+              {isLoading ? (
+                <div className="text-center py-8">Loading expense breakdown...</div>
+              ) : (
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={processedExpenseBreakdown} // Use processed data
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        nameKey="name"
+                        label={({ name, percent }) =>
+                          `${name}: ${(percent * 100).toFixed(0)}%`
+                        }
+                      >
+                        {processedExpenseBreakdown.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip
+                        formatter={(value: number, name: string, props: any) => {
+                          if (name === "Other" && props.payload.details) {
+                            // If "Other" category, show detailed breakdown
+                            return (
+                              <div>
+                                {formatCurrency(value)}<br/>
+                               {props.payload.details.map((detail: { name: string; value: number; percent: string; }) => (
+                                  <div key={detail.name}>
+                                    {detail.name}: {formatCurrency(detail.value)} ({detail.percent.includes('%') ? detail.percent : `${detail.percent}%`})
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                          return formatCurrency(value);
+                        }}
+                      />
+                      <Legend />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -669,27 +757,31 @@ const InsightsTab = ({
               <CardDescription>Your daily expenses this week</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsBarChart
-                    data={weeklySpendingData}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="day" stroke="#888888" />
-                    <YAxis stroke="#888888" />
-                    <RechartsTooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                    />
-                    <Bar
-                      dataKey="amount"
-                      fill="#0A3D62"
-                      name="Spending"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </RechartsBarChart>
-                </ResponsiveContainer>
-              </div>
+              {isLoading ? (
+                <div className="text-center py-8">Loading weekly spending...</div>
+              ) : (
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsBarChart
+                      data={insightsData?.weeklySpending || weeklySpendingData}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="day" stroke="#888888" />
+                      <YAxis stroke="#888888" />
+                      <RechartsTooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                      />
+                      <Bar
+                        dataKey="amount"
+                        fill="#0A3D62"
+                        name="Spending"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
