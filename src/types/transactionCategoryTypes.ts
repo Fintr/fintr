@@ -7,7 +7,7 @@ import { TransactionTypeEnum } from "./transactionTypes";
  */
 export interface CreateTransactionCategoryType {
   name: string;
-  category_type: TransactionTypeEnum;
+  categoryType: TransactionTypeEnum;
 }
 
 /**
@@ -16,5 +16,6 @@ export interface CreateTransactionCategoryType {
 export interface TransactionCategory {
   id: string;
   name: string;
-  category_type: TransactionTypeEnum;
+  categoryType: TransactionTypeEnum;
+  color?: string; // Optional color property for UI
 }

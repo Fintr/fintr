@@ -19,7 +19,7 @@ export const categoryValidationErrorsAtom = atom<Record<string, string[]>>({});
 // Interface for category data
 interface CategoryData {
   name: string;
-  category_type: TransactionTypeEnum;
+  categoryType: TransactionTypeEnum;
 }
 
 // Interface for createCategory parameters
@@ -51,7 +51,7 @@ export const createCategoryAtom = atom(
       const newCategory = await mutation.mutateAsync({ api, categoryData });
       
       // Determine which atom to update based on category type
-      if (categoryData.category_type === TransactionTypeEnum.EXPENSE) {
+      if (categoryData.categoryType === TransactionTypeEnum.EXPENSE) {
         // Update the expense category options atom with the new category
         const currentOptions = get(expenseCategoryOptionsAtom);
         
@@ -71,7 +71,7 @@ export const createCategoryAtom = atom(
           ];
           set(expenseCategoryOptionsAtom, updatedOptions);
         }
-      } else if (categoryData.category_type === TransactionTypeEnum.INCOME) {
+      } else if (categoryData.categoryType === TransactionTypeEnum.INCOME) {
         // Update the income category options atom with the new category
         const currentOptions = get(incomeCategoryOptionsAtom);
         
@@ -122,7 +122,7 @@ export const fetchTransactionCategoriesAtom = atom(
   async (get, set, { api, type }: { api: AxiosInstance; type: TransactionTypeEnum }) => {
     try {
       // Fetch categories by type
-      const response = await api.get(`/transaction-categories/?category_type=${type}`);
+      const response = await api.get(`/transaction-categories/?categoryType=${type}`);
       
       // Format the response for select options directly
       const formattedOptions = response.data.map((item: { id: string | number; name: string }) => ({

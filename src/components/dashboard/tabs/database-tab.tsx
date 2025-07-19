@@ -21,12 +21,38 @@ import CategoryToggle, { CategoryType } from "../category-toggle";
 import CategoryListCard from "../category-list-card";
 import AccountList, { Account } from "../account-list";
 import AddAccountForm, { NewAccountData } from "../add-account-form";
+import EditCategoryDialog from "../edit-category-dialog";
+import DeleteCategoryDialog from "../delete-category-dialog";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
+import { getRandomColor } from "@/lib/utils";
+import { TransactionCategory } from "@/types/transactionCategoryTypes";
+import { toast } from "sonner";
+
+// Define CategoryItem interface to match CategoryListCard expectations
+interface CategoryItem {
+  id: string;
+  name: string;
+  color?: string;
+  amount?: number;
+  budget?: number;
+  [key: string]: any; // For any additional properties
+}
 
 const DatabaseTab = () => {
   const [activeMainTab, setActiveMainTab] = useState("categories");
   const [activeSubTab, setActiveSubTab] = useState("expense");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryType>("expense");
+
+  // Fetch transaction categories from API
+  const { 
+    expenseCategories, 
+    incomeCategories, 
+    isLoading: categoriesLoading, 
+    isError: categoriesError,
+    updateCategoryMutation,
+    deleteCategoryMutation
+  } = useTransactionCategories();
 
   // Accounts state
   const [accounts, setAccounts] = useState<Account[]>([
@@ -109,45 +135,25 @@ const DatabaseTab = () => {
 
   const [importFormat, setImportFormat] = useState("JSON (Recommended)");
 
-  // Category data
+  // Transform API data to match component expectations
+  const transformedExpenseCategories = expenseCategories.map((category: TransactionCategory) => ({
+    id: category.id,
+    name: category.name,
+    color: category.color || getRandomColor(),
+    type: "expense",
+  }));
+
+  const transformedIncomeCategories = incomeCategories.map((category: TransactionCategory) => ({
+    id: category.id,
+    name: category.name,
+    color: category.color || getRandomColor(),
+    type: "income",
+  }));
+
+  // Category data - mix of API data and mock data for other types
   const categories = {
-    expense: [
-      { id: "1", name: "Myself", color: "#008080", type: "expense" },
-      { id: "2", name: "Family", color: "#D6A3A1", type: "expense" },
-      { id: "3", name: "Insurance", color: "#FF6F61", type: "expense" },
-      { id: "4", name: "Home", color: "#4CAF50", type: "expense" },
-      { id: "5", name: "Utilities", color: "#2196F3", type: "expense" },
-      { id: "6", name: "Food", color: "#9C27B0", type: "expense" },
-      { id: "7", name: "Transport", color: "#FF9800", type: "expense" },
-      { id: "8", name: "Pet", color: "#E91E63", type: "expense" },
-      { id: "9", name: "Subscriptions", color: "#673AB7", type: "expense" },
-      { id: "10", name: "Going Out", color: "#3F51B5", type: "expense" },
-      { id: "11", name: "Travel", color: "#009688", type: "expense" },
-      { id: "12", name: "Shopping", color: "#FF5722", type: "expense" },
-    ],
-    income: [
-      {
-        id: "4",
-        name: "Salary",
-        budget: 50000,
-        color: "#4CAF50",
-        type: "income",
-      },
-      {
-        id: "5",
-        name: "Freelance",
-        budget: 10000,
-        color: "#2196F3",
-        type: "income",
-      },
-      {
-        id: "6",
-        name: "Business",
-        budget: 5000,
-        color: "#9C27B0",
-        type: "income",
-      },
-    ],
+    expense: transformedExpenseCategories,
+    income: transformedIncomeCategories,
     goal: [
       {
         id: "7",
@@ -373,14 +379,14 @@ const DatabaseTab = () => {
   // };
 
   // Functions for category management
-  const handleEditCategory = (category: any) => {
-    console.log("Edit category:", category);
-    // Implement edit functionality
+  const handleEditCategory = (item: CategoryItem) => {
+    console.log("Edit category:", item);
+    // This will now be handled by the EditCategoryDialog component
   };
 
-  const handleDeleteCategory = (category: any) => {
-    console.log("Delete category:", category);
-    // Implement delete functionality
+  const handleDeleteCategory = (item: CategoryItem) => {
+    console.log("Delete category:", item);
+    // This will now be handled by the DeleteCategoryDialog component
   };
 
   const handleAddExpenseCategory = () => {
@@ -438,6 +444,102 @@ const DatabaseTab = () => {
     // Remove the account from the accounts array
     setAccounts(accounts.filter((a) => a.id !== account.id));
   };
+
+  const handleUpdateCategory = async (categoryId: string, newName: string) => {
+    try {
+      await updateCategoryMutation.mutateAsync({
+        categoryId,
+        updateData: { name: newName }
+      });
+    } catch (error) {
+      console.error("Failed to update category:", error);
+      throw error; // Re-throw so the dialog can handle the error
+    }
+  };
+
+  const handleDeleteCategoryAction = async (categoryId: string) => {
+    // We wrap this in a promise to ensure the dialog's onDelete always receives a resolved promise
+    // allowing it to check the `success` property directly.
+    return new Promise((resolve, reject) => {
+      deleteCategoryMutation.mutate(categoryId, {
+        onSuccess: (data) => {
+          // Data here is the response from deleteTransactionCategory (e.g., { success: true, ... } or { success: false, error: ... })
+          resolve(data);
+        },
+        onError: (error) => {
+          // This onError is for network errors or unhandled exceptions from the mutationFn.
+          // If the backend returns a 4xx/5xx with a body like {success: false, ...}, 
+          // it should be caught by the mutationFn and returned as data on success.
+          console.error("Mutation execution failed (network/unhandled error):");
+          reject(error);
+        },
+      });
+    });
+  };
+
+  // Create custom edit component for categories
+  const renderCategoryEdit = (item: CategoryItem) => (
+    <EditCategoryDialog
+      category={item}
+      onUpdate={handleUpdateCategory}
+      isLoading={updateCategoryMutation.isLoading}
+    />
+  );
+
+  // Create custom delete component for categories
+  const renderCategoryDelete = (item: CategoryItem) => (
+    <DeleteCategoryDialog
+      category={item}
+      onDelete={handleDeleteCategoryAction}
+      isLoading={deleteCategoryMutation.isLoading}
+    />
+  );
+
+  // Show loading state while fetching categories
+  if (categoriesLoading) {
+    return (
+      <Card className="border-0 shadow-none bg-background">
+        <CardHeader>
+          <CardTitle>Settings & Configurations</CardTitle>
+          <CardDescription>
+            Loading categories...
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading categories...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show error state if categories failed to load
+  if (categoriesError) {
+    return (
+      <Card className="border-0 shadow-none bg-background">
+        <CardHeader>
+          <CardTitle>Settings & Configurations</CardTitle>
+          <CardDescription>
+            Error loading categories
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <p className="text-red-500 mb-4">Failed to load categories. Please try again.</p>
+              <Button onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-0 shadow-none bg-background">
@@ -499,6 +601,8 @@ const DatabaseTab = () => {
                             colorField="color"
                             primaryField="name"
                             addButtonText="Add New Expense Category"
+                            customEditComponent={renderCategoryEdit}
+                            customDeleteComponent={renderCategoryDelete}
                           />
                         </div>
                       )}
@@ -514,8 +618,9 @@ const DatabaseTab = () => {
                             onDeleteItem={handleDeleteCategory}
                             colorField="color"
                             primaryField="name"
-                            secondaryField="budget"
                             addButtonText="Add New Income Category"
+                            customEditComponent={renderCategoryEdit}
+                            customDeleteComponent={renderCategoryDelete}
                           />
                         </div>
                       )}
@@ -532,6 +637,8 @@ const DatabaseTab = () => {
                             colorField="color"
                             primaryField="name"
                             addButtonText="Add New Goal Category"
+                            customEditComponent={renderCategoryEdit}
+                            customDeleteComponent={renderCategoryDelete}
                           />
                         </div>
                       )}
@@ -548,6 +655,8 @@ const DatabaseTab = () => {
                             colorField="color"
                             primaryField="name"
                             addButtonText="Add New Investment Category"
+                            customEditComponent={renderCategoryEdit}
+                            customDeleteComponent={renderCategoryDelete}
                           />
                         </div>
                       )}

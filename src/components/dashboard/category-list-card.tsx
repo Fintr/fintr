@@ -31,6 +31,8 @@ interface CategoryListCardProps {
   primaryField?: string;
   secondaryField?: string;
   addButtonText?: string;
+  customEditComponent?: (item: CategoryItem) => React.ReactNode; // Optional custom edit component
+  customDeleteComponent?: (item: CategoryItem) => React.ReactNode; // Optional custom delete component
 }
 
 const CategoryListCard: React.FC<CategoryListCardProps> = ({
@@ -44,6 +46,8 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
   primaryField = "name",
   secondaryField,
   addButtonText = "Add New",
+  customEditComponent,
+  customDeleteComponent,
 }) => {
   return (
     <Card>
@@ -78,35 +82,43 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
                   </div>
                 </div>
                 <div className="flex space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-primary hover:bg-blue-50"
-                    onClick={() => onEditItem(item)}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                  {customEditComponent ? (
+                    customEditComponent(item)
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-primary hover:bg-blue-50"
+                      onClick={() => onEditItem(item)}
                     >
-                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                      <path d="m15 5 4 4" />
-                    </svg>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-red-600 hover:bg-red-50"
-                    onClick={() => onDeleteItem(item)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                        <path d="m15 5 4 4" />
+                      </svg>
+                    </Button>
+                  )}
+                  {customDeleteComponent ? (
+                    customDeleteComponent(item)
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-600 hover:bg-red-50"
+                      onClick={() => onDeleteItem(item)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))

@@ -40,7 +40,7 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
     try {
       const createdCategoryName = await addCategory({
         api,
-        categoryData: { name: categoryName, category_type: categoryType }
+        categoryData: { name: categoryName, categoryType: categoryType }
       });
       toast.success(`"${categoryName}" has been added.`);
 
