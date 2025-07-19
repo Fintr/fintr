@@ -10,9 +10,10 @@ module Transactions
       Going\ Out Travel Shopping
     ].freeze
     UNINCLUDED_INCOME_CATEGORIES = %w[Initial\ Balance]
-    UNINCLUDED_EXPENSE_CATEGORIES = %w[Transfer\ Fees]
+    UNINCLUDED_EXPENSE_CATEGORIES = %w[Transfer\ Fee]
 
     belongs_to :space, class_name: "Spaces::Space"
+    has_many :transactions, class_name: "Transactions::Transaction", foreign_key: "category_id", dependent: :restrict_with_error
 
     enum :category_type, { income: "income", expense: "expense" }
 

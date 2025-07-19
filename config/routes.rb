@@ -10,16 +10,16 @@ Rails.application.routes.draw do
         get "/private_scoped", to: "private#private_scoped"
       end
 
-      resources :transactions
-      resources :budgets, only: %i[index create update destroy]
-      resources :insights, only: [:index]
-
       # Use scope to keep the URL prefix without namespace nesting for controllers
       scope path: "transactions", module: "transactions" do
-        resources :categories, only: [:create]
+        resources :categories, only: %i[index create update destroy]
         resources :accounts, only: [:create]
         resources :transfers, only: %i[create show update destroy]
       end
+
+      resources :transactions
+      resources :budgets, only: %i[index create update destroy]
+      resources :insights, only: [:index]
 
       resource :dashboard, only: [:show]
     end
