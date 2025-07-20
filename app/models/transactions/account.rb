@@ -9,13 +9,28 @@ module Transactions
       credit_card: "Credit Card",
       e_wallet: "E-Wallet"
     }.freeze
+    ACCOUNT_CATEGORY_LABELS = {
+      cash: "Cash",
+      savings: "Savings",
+      debit: "Debit Card",
+      credit_card: "Credit Card",
+      e_wallet: "E-Wallet",
+      loan: "Loan",
+      investment: "Investment"
+    }.freeze
+
+    include Discard::Model
 
     belongs_to :space, class_name: "Spaces::Space"
-    has_many :transactions, dependent: :destroy
+    has_many :transactions, dependent: nil
 
     monetize :balance_cents, allow_nil: false
 
-    validates :name, presence: true, uniqueness: { scope: :space_id }
+    validates :name, presence: true
+    validates :name, uniqueness: {
+      scope: :space_id,
+      conditions: -> { where(discarded_at: nil) }
+    }
     validates :balance_cents, presence: true
     validates :balance_currency, presence: true
 
@@ -27,7 +42,7 @@ module Transactions
       e_wallet: "e_wallet",
       loan: "loan",
       investment: "investment"
-    }
+    } # Change ACCOUNT_CATEGORY_LABELS to match the enum values
 
     scope :default, -> { where(name: DEFAULT_ACCOUNT_MAPPING.values) }
 
@@ -36,6 +51,15 @@ module Transactions
         DEFAULT_ACCOUNT_MAPPING.each do |category, name|
           self.find_or_create_by(name:, space:, balance_currency: "PHP", account_category: category)
         end
+      end
+    end
+
+    def self.account_category_options
+      ACCOUNT_CATEGORY_LABELS.map do |key, value|
+        {
+          value: key,
+          label: value
+        }
       end
     end
   end

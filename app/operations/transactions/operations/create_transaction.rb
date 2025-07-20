@@ -89,7 +89,7 @@ module Transactions
       end
 
       def find_account(params:)
-        account = Transactions::Account.find_by(name: params[:account_name], space_id: params[:space_id])
+        account = Transactions::Account.kept.find_by(name: params[:account_name], space_id: params[:space_id])
         return Failure(account_name: "not found") unless account
 
         Success(account)

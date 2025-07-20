@@ -107,4 +107,202 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
       end
     end
   end
+
+  describe "PUT /api/v1/transactions/accounts/:id" do
+    let(:operation_double) { instance_double(Transactions::Operations::Accounts::UpdateAccount) }
+    let!(:account_to_update) { create(:account, space: space, name: "Original Account Name") }
+
+    before do
+      allow(::Transactions::Operations::Accounts::UpdateAccount).to receive(:new).and_return(operation_double)
+    end
+
+    context "when parameters are valid" do
+      let(:valid_params) do
+        {
+          id: account_to_update.id,
+          name: "Updated Account Name"
+        }
+      end
+
+      it "updates the account" do
+        updated_account = build(:account, name: "Updated Account Name")
+        operation_result = Dry::Monads::Result::Success.new(updated_account)
+
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        put "/api/v1/transactions/accounts/#{account_to_update.id}", params: valid_params, headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => true)
+        expect(parsed_response).to include("message")
+        expect(parsed_response["data"]["id"]).to eq(updated_account.id)
+        expect(parsed_response["data"]["name"]).to eq(updated_account.name)
+      end
+    end
+
+    context "when parameters are invalid" do
+      let(:invalid_params) do
+        {
+          id: account_to_update.id,
+          name: ""
+        }
+      end
+
+      it "returns validation errors" do
+        errors = { name: ["can't be blank"] }
+        operation_result = Dry::Monads::Result::Failure.new(errors)
+
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        put "/api/v1/transactions/accounts/#{account_to_update.id}", params: invalid_params, headers: headers
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => false)
+        expect(parsed_response).to include("error")
+        expect(parsed_response["error"]).to include("details")
+      end
+    end
+  end
+
+  describe "GET /api/v1/transactions/accounts" do
+    let(:operation_double) { instance_double(Transactions::Operations::Accounts::ShowAccounts) }
+
+    before do
+      allow(::Transactions::Operations::Accounts::ShowAccounts).to receive(:new).and_return(operation_double)
+    end
+
+    context "when successful" do
+      let(:mock_accounts_data) { [{ "id" => "1", "name" => "Cash", "balance" => "1000.00" }] }
+
+      it "returns a list of accounts" do
+        operation_result = Dry::Monads::Result::Success.new(
+          accounts: mock_accounts_data,
+          accountCategoryOptions: [
+            { "label" => "Cash", "value" => "cash" },
+            { "label" => "Savings", "value" => "savings" },
+            { "label" => "Debit Card", "value" => "debit" },
+            { "label" => "Credit Card", "value" => "credit_card" },
+            { "label" => "E-Wallet", "value" => "e_wallet" },
+            { "label" => "Loan", "value" => "loan" },
+            { "label" => "Investment", "value" => "investment" }
+          ]
+        )
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        get "/api/v1/transactions/accounts", headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => true)
+        expect(parsed_response).to include("data")
+        expect(parsed_response["data"]).to include("accounts" => mock_accounts_data)
+        expect(parsed_response["data"]).to include("accountCategoryOptions")
+      end
+    end
+
+    context "when operation fails" do
+      it "returns an unprocessable entity error" do
+        errors = { space_id: ["is invalid"] }
+        operation_result = Dry::Monads::Result::Failure.new(errors)
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        get "/api/v1/transactions/accounts", headers: headers
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => false)
+        expect(parsed_response).to include("error")
+        expect(parsed_response["error"]["details"]).to eq("spaceId" => ["is invalid"])
+      end
+    end
+  end
+
+  describe "DELETE /api/v1/transactions/accounts/:id" do
+    let(:operation_double) { instance_double(Transactions::Operations::Accounts::DeleteAccount) }
+    let!(:account_to_delete) { create(:account, space: space, name: "Account to Delete") }
+
+    before do
+      allow(::Transactions::Operations::Accounts::DeleteAccount).to receive(:new).and_return(operation_double)
+    end
+
+    context "when deletion is successful" do
+      it "discards the account" do
+        operation_result = Dry::Monads::Result::Success.new(account_to_delete)
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        delete "/api/v1/transactions/accounts/#{account_to_delete.id}", headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => true)
+        expect(parsed_response).to include("message")
+      end
+    end
+
+    context "when account has transactions" do
+      let!(:account_with_transactions) { create(:account, space: space, name: "Account With Transactions") }
+      let!(:transaction) { create(:transaction, account: account_with_transactions, space: space) }
+
+      it "returns an unprocessable entity error" do
+        errors = { account: ["has transactions"] }
+        operation_result = Dry::Monads::Result::Failure.new(errors)
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        delete "/api/v1/transactions/accounts/#{account_with_transactions.id}", headers: headers
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => false)
+        expect(parsed_response["error"]["details"]).to include("account" => ["has transactions"])
+      end
+    end
+
+    context "when account is not found" do
+      it "returns a not found error" do
+        errors = { account: ["not found"] }
+        operation_result = Dry::Monads::Result::Failure.new(errors)
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        delete "/api/v1/transactions/accounts/invalid-id", headers: headers
+
+        expect(response).to have_http_status(:unprocessable_entity) # Changed to unprocessable_entity
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => false)
+        expect(parsed_response["error"]["details"]).to include("account" => ["not found"])
+      end
+    end
+
+    context "when space_id is missing or invalid in params" do
+      it "returns an unprocessable entity error" do
+        errors = { space_id: ["is missing"] }
+        operation_result = Dry::Monads::Result::Failure.new(errors)
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        delete "/api/v1/transactions/accounts/#{account_to_delete.id}", headers: headers, params: { id: account_to_delete.id }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => false)
+        expect(parsed_response["error"]["details"]).to include("spaceId" => ["is missing"])
+      end
+    end
+  end
 end

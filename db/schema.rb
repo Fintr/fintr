@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_08_140559) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_20_120623) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -31,7 +31,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_08_140559) do
     t.enum "account_category", null: false, enum_type: "account_category"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["space_id", "name"], name: "index_accounts_on_space_id_and_name", unique: true
+    t.datetime "discarded_at"
+    t.index ["discarded_at"], name: "index_accounts_on_discarded_at"
+    t.index ["space_id", "name"], name: "index_accounts_on_space_id_and_name_where_not_discarded", unique: true, where: "(discarded_at IS NULL)"
     t.index ["space_id"], name: "index_accounts_on_space_id"
   end
 

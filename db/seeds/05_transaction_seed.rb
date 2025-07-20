@@ -11,7 +11,7 @@ ActiveRecord::Base.transaction do
     puts "Seeding transactions for space: #{space.name}"
 
     # Create initial balance transactions for each account
-    Transactions::Account.where(space:).each do |account|
+    Transactions::Account.kept.where(space:).each do |account|
       puts "Seeding initial transaction for account: #{account.name}"
       income = Transactions::Income.create(
         user: Auth::User.first,

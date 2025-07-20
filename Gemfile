@@ -52,6 +52,9 @@ gem "ice_cube", "~> 0.17.0"
 gem "sentry-ruby"
 gem "sentry-rails"
 
+# Soft deletes
+gem "discard", "~> 1.4"
+
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
   gem "brakeman", require: false

@@ -26,7 +26,7 @@ module Transactions
           contract = Contract.new.call(**params)
           return Failure(contract.errors.to_h) unless contract.success?
 
-          Success(params)
+          Success(contract.to_h)
         end
 
         include FailureHandler
@@ -61,7 +61,7 @@ module Transactions
           account.save!
           Success(account)
         rescue ActiveRecord::RecordInvalid => e
-          Failure(e.record.errors.to_hash)
+          Failure(**account.errors.to_hash)
         end
 
         def create_transaction_params(params:, account:)

@@ -13,7 +13,7 @@ Rails.application.routes.draw do
       # Use scope to keep the URL prefix without namespace nesting for controllers
       scope path: "transactions", module: "transactions" do
         resources :categories, only: %i[index create update destroy]
-        resources :accounts, only: [:create]
+        resources :accounts, only: %i[index create update destroy]
         resources :transfers, only: %i[create show update destroy]
       end
 
