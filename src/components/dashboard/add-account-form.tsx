@@ -10,15 +10,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
+import { useAccounts } from "@/hooks/async/useAccounts";
 
 export interface NewAccountData {
   name: string;
-  type: string;
   balance: number;
+  accountCategory: string;
 }
 
 interface AddAccountFormProps {
-  onAddAccount: (accountData: NewAccountData) => void;
+  onAddAccount?: (accountData: NewAccountData) => void;
   currencySymbol?: string;
 }
 
@@ -27,23 +28,36 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
   currencySymbol = "₱",
 }) => {
   const [name, setName] = useState("");
-  const [type, setType] = useState("Bank Account");
   const [balance, setBalance] = useState("");
+  const [accountCategory, setAccountCategory] = useState("");
+  const { createAccount, isCreating, accountCategoryOptions } = useAccounts();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !accountCategory) return;
 
-    onAddAccount({
+    const accountData = {
       name: name.trim(),
-      type,
       balance: parseFloat(balance) || 0,
-    });
+      accountCategory: accountCategory,
+    };
 
-    // Reset form
-    setName("");
-    setType("Bank Account");
-    setBalance("");
+    try {
+      await createAccount(accountData);
+      
+      // Reset form
+      setName("");
+      setBalance("");
+      setAccountCategory("");
+      
+      // Call the optional callback if provided
+      if (onAddAccount) {
+        onAddAccount(accountData);
+      }
+    } catch (error) {
+      console.error('Failed to create account:', error);
+      // Error handling is already done in the hook with toast
+    }
   };
 
   return (
@@ -58,23 +72,22 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            disabled={isCreating}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="account-type">Account Category</Label>
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger id="account-type">
+          <Label htmlFor="account-category">Account Category</Label>
+          <Select value={accountCategory} onValueChange={setAccountCategory}>
+            <SelectTrigger id="account-category">
               <SelectValue placeholder="Select account category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Cash">Cash</SelectItem>
-              <SelectItem value="Savings">Savings</SelectItem>
-              <SelectItem value="Debit">Debit</SelectItem>
-              <SelectItem value="Credit Card">Credit Card</SelectItem>
-              <SelectItem value="E-Wallet">E-Wallet</SelectItem>
-              <SelectItem value="Loan">Loan</SelectItem>
-              <SelectItem value="Investment">Investment</SelectItem>
+              {accountCategoryOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -91,6 +104,7 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
               placeholder="0.00"
               value={balance}
               onChange={(e) => setBalance(e.target.value)}
+              disabled={isCreating}
             />
           </div>
         </div>
@@ -98,8 +112,10 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
         <Button
           type="submit"
           className="w-full bg-primary hover:bg-primary/80"
+          disabled={isCreating || !name.trim() || !accountCategory}
         >
-          <Plus className="h-4 w-4 mr-2" /> Add Account
+          <Plus className="h-4 w-4 mr-2" /> 
+          {isCreating ? "Adding Account..." : "Add Account"}
         </Button>
       </form>
     </div>

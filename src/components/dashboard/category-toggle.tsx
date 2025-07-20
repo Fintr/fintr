@@ -1,13 +1,12 @@
 import React from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Receipt, Wallet, Target, TrendingUp, CreditCard } from "lucide-react";
+import { Receipt, Wallet, Target, TrendingUp } from "lucide-react";
 
 export type CategoryType =
   | "expense"
   | "income"
   | "goal"
-  | "investment"
-  | "account";
+  | "investment";
 
 interface CategoryToggleProps {
   activeCategory: CategoryType;
@@ -26,7 +25,7 @@ const CategoryToggle: React.FC<CategoryToggleProps> = ({
         onValueChange={(value) => onCategoryChange(value as CategoryType)}
         className="w-full"
       >
-        <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full bg-background">
+        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full bg-background">
           <TabsTrigger
             value="expense"
             className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
@@ -54,13 +53,6 @@ const CategoryToggle: React.FC<CategoryToggleProps> = ({
           >
             <TrendingUp className="h-4 w-4" />
             <span className="hidden sm:inline">Investment</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="account"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
-          >
-            <CreditCard className="h-4 w-4" />
-            <span className="hidden sm:inline">Account</span>
           </TabsTrigger>
         </TabsList>
       </Tabs>

@@ -21,8 +21,10 @@ import { Switch } from "@/components/ui/switch";
 import { Folder, Users, Settings, Upload, Download } from "lucide-react";
 import CategoryToggle, { CategoryType } from "../category-toggle";
 import CategoryListCard from "../category-list-card";
-import AccountList, { Account } from "../account-list";
+import AccountList from "../account-list";
 import AddAccountForm, { NewAccountData } from "../add-account-form";
+import { useAccounts } from "@/hooks/async/useAccounts";
+import { Account } from "@/types/accountTypes";
 
 const SettingsConfigurationsTab = () => {
   const [activeMainTab, setActiveMainTab] = useState("categories");
@@ -30,37 +32,12 @@ const SettingsConfigurationsTab = () => {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryType>("expense");
 
-  // Accounts state
-  const [accounts, setAccounts] = useState<Account[]>([
-    {
-      id: "acc1",
-      name: "BPI Savings",
-      type: "Bank Account",
-      balance: 42650,
-      color: "#1E3A8A",
-    },
-    {
-      id: "acc2",
-      name: "BDO Savings",
-      type: "Bank Account",
-      balance: 15300,
-      color: "#166534",
-    },
-    {
-      id: "acc3",
-      name: "BPI Credit Card",
-      type: "Credit Card",
-      balance: -12400,
-      color: "#1E3A8A",
-    },
-    {
-      id: "acc4",
-      name: "GCash",
-      type: "Digital Wallet",
-      balance: 6250,
-      color: "#2563EB",
-    },
-  ]);
+  // Fetch accounts from API
+  const { 
+    accounts, 
+    isLoading: accountsLoading, 
+    isError: accountsError 
+  } = useAccounts();
 
   // Default settings states
   const [defaultAccount, setDefaultAccount] = useState("BPI Savings");
@@ -266,57 +243,6 @@ const SettingsConfigurationsTab = () => {
         type: "investment",
       },
     ],
-    account: [
-      {
-        id: "13",
-        name: "Cash",
-        budget: 5000,
-        color: "#795548",
-        type: "account",
-      },
-      {
-        id: "14",
-        name: "Savings",
-        budget: 100000,
-        color: "#607D8B",
-        type: "account",
-      },
-      {
-        id: "15",
-        name: "Debit",
-        budget: 25000,
-        color: "#4CAF50",
-        type: "account",
-      },
-      {
-        id: "16",
-        name: "Credit Card",
-        budget: -15000,
-        color: "#F44336",
-        type: "account",
-      },
-      {
-        id: "17",
-        name: "E-Wallet",
-        budget: 8000,
-        color: "#2196F3",
-        type: "account",
-      },
-      {
-        id: "18",
-        name: "Loan",
-        budget: -50000,
-        color: "#FF5722",
-        type: "account",
-      },
-      {
-        id: "19",
-        name: "Investment",
-        budget: 75000,
-        color: "#9C27B0",
-        type: "account",
-      },
-    ],
   };
 
   const handleAddCategory = () => {
@@ -364,28 +290,8 @@ const SettingsConfigurationsTab = () => {
   };
 
   const handleAddAccount = (accountData: NewAccountData) => {
-    // Generate a random color for the new account
-    const colors = [
-      "#4CAF50",
-      "#2196F3",
-      "#9C27B0",
-      "#FF9800",
-      "#795548",
-      "#607D8B",
-    ];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-
-    // Create new account with random ID
-    const newAccount = {
-      id: Date.now().toString(),
-      name: accountData.name,
-      type: accountData.type,
-      balance: accountData.balance,
-      color: randomColor,
-    };
-
-    // Add to accounts array
-    setAccounts([...accounts, newAccount]);
+    // Account creation is now handled by the AddAccountForm component with useAccounts hook
+    console.log("Account added:", accountData);
   };
 
   const handleEditAccount = (account: Account) => {
@@ -396,7 +302,8 @@ const SettingsConfigurationsTab = () => {
 
   const handleDeleteAccount = (account: Account) => {
     // Remove the account from the accounts array
-    setAccounts(accounts.filter((a) => a.id !== account.id));
+    // This part of the logic needs to be updated to use the useAccounts hook
+    console.log("Deleting account:", account);
   };
 
   return (
@@ -525,23 +432,6 @@ const SettingsConfigurationsTab = () => {
                       />
                     </div>
                   )}
-
-                  {activeCategory === "account" && (
-                    <div className="mt-4">
-                      <CategoryListCard
-                        title="Accounts"
-                        description="Manage your accounts"
-                        items={categories["account"]}
-                        onAddItem={() => setActiveMainTab("accounts")}
-                        onEditItem={handleEditCategory}
-                        onDeleteItem={handleDeleteCategory}
-                        colorField="color"
-                        primaryField="name"
-                        secondaryField="budget"
-                        addButtonText="Add New Account"
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -565,11 +455,9 @@ const SettingsConfigurationsTab = () => {
                   </div>
 
                   <div className="md:col-span-2">
-                    <AccountList
-                      accounts={accounts}
-                      onEditAccount={handleEditAccount}
-                      onDeleteAccount={handleDeleteAccount}
-                    />
+                                          <AccountList
+                        accounts={accounts || []}
+                      />
                   </div>
                 </div>
               </div>

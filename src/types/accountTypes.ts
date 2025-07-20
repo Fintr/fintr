@@ -21,14 +21,15 @@ export const accountCategoryLabels: Record<AccountCategory, string> = {
 export interface AccountCreateData {
   name: string;
   balance: number;
-  accountCategory: AccountCategory;
+  accountCategory: string; // Changed to string since backend provides { label, value } format
 }
 
 export interface Account {
   id: string;
   name: string;
-  balance: number;
-  accountCategory: AccountCategory;
-  createdAt: string;
-  updatedAt: string;
+  balance: string; // Backend returns balance as string
+  balanceCurrency: string;
+  accountCategory: string; // Added accountCategory field from backend
+  createdAt?: string;
+  updatedAt?: string;
 } 
