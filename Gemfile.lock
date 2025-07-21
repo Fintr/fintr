@@ -184,11 +184,20 @@ GEM
     erubi (1.13.1)
     et-orbi (1.2.11)
       tzinfo
+    event_stream_parser (1.0.0)
     factory_bot (6.5.1)
       activesupport (>= 6.1.0)
     factory_bot_rails (6.4.4)
       factory_bot (~> 6.5)
       railties (>= 5.0.0)
+    faraday (2.13.2)
+      faraday-net_http (>= 2.0, < 3.5)
+      json
+      logger
+    faraday-multipart (1.1.1)
+      multipart-post (~> 2.0)
+    faraday-net_http (3.4.1)
+      net-http (>= 0.5.0)
     fugit (1.11.1)
       et-orbi (~> 1, >= 1.2.11)
       raabro (~> 1.4)
@@ -249,6 +258,7 @@ GEM
       logger
       mime-types-data (~> 3.2015)
     mime-types-data (3.2025.0408)
+    mini_magick (4.13.2)
     mini_mime (1.1.5)
     minitest (5.25.5)
     monetize (1.13.0)
@@ -261,6 +271,9 @@ GEM
       money (~> 6.13)
       railties (>= 3.0)
     msgpack (1.8.0)
+    multipart-post (2.4.1)
+    net-http (0.6.0)
+      uri
     net-imap (0.5.6)
       date
       net-protocol
@@ -390,6 +403,7 @@ GEM
       rspec-mocks (~> 3.13)
       rspec-support (~> 3.13)
     rspec-support (3.13.3)
+    rtesseract (3.1.4)
     rubocop (1.75.5)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
@@ -421,6 +435,10 @@ GEM
     rubocop-rspec (3.6.0)
       lint_roller (~> 1.1)
       rubocop (~> 1.72, >= 1.72.1)
+    ruby-openai (7.4.0)
+      event_stream_parser (>= 0.3.0, < 2.0.0)
+      faraday (>= 1)
+      faraday-multipart (>= 1)
     ruby-progressbar (1.13.0)
     scenic (1.8.0)
       activerecord (>= 4.0.0)
@@ -513,6 +531,7 @@ DEPENDENCIES
   jwt (~> 2.7)
   kamal (~> 2.6)
   kaminari (~> 1.2)
+  mini_magick (~> 4.12)
   money-rails (~> 1.15)
   oj (~> 3.16)
   parallel_tests (~> 5.2)
@@ -523,9 +542,11 @@ DEPENDENCIES
   rails (~> 8.0.2)
   rolify (~> 7.0.0)!
   rspec-rails
+  rtesseract (~> 3.1)
   rubocop-performance
   rubocop-rails-omakase
   rubocop-rspec
+  ruby-openai (~> 7.0)
   scenic (~> 1.8)
   sentry-rails
   sentry-ruby

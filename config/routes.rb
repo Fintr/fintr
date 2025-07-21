@@ -20,6 +20,11 @@ Rails.application.routes.draw do
       resources :transactions
       resources :budgets, only: %i[index create update destroy]
       resources :insights, only: [:index]
+      resources :receipts, only: [:create] do
+        collection do
+          post :process_test
+        end
+      end
 
       resource :dashboard, only: [:show]
     end

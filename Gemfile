@@ -48,6 +48,13 @@ gem "scenic", "~> 1.8"
 # Recurrence
 gem "ice_cube", "~> 0.17.0"
 
+# OCR and Image Processing
+gem "rtesseract", "~> 3.1"
+gem "mini_magick", "~> 4.12"
+
+# AI Processing
+gem "ruby-openai", "~> 7.0"
+
 # Errors
 gem "sentry-ruby"
 gem "sentry-rails"

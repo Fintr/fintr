@@ -33,7 +33,7 @@ module Spaces
       end
 
       field :account_options do |space|
-        space.accounts.map do |account|
+        space.accounts.kept.map do |account|
           {
             label: account.name,
             value: account.name
