@@ -57,10 +57,6 @@ interface TransferFormProps {
   setDate?: React.Dispatch<React.SetStateAction<Date | undefined>>;
   onSubmitSuccess?: (data: any) => void;
   onCancel?: () => void;
-  // Edit mode props
-  id?: string;
-  initialData?: UpdateTransferType;
-  isEditMode?: boolean;
 }
 
 const TransferForm: React.FC<TransferFormProps> = ({
@@ -68,22 +64,19 @@ const TransferForm: React.FC<TransferFormProps> = ({
   setDate,
   onSubmitSuccess = () => {},
   onCancel = () => {},
-  id,
-  initialData,
-  isEditMode = false,
 }) => {
   const { api } = useAuthApi();
   const accountOptions = useAtomValue(accountOptionsAtom);
   
   // Form state management using local state
   const [formState, setFormState] = useState({
-    amount: initialData?.amount?.toString() || "",
-    transactionCost: initialData?.transactionCost?.toString() || "",
-    description: initialData?.description || "",
-    fromAccountName: initialData?.fromAccountName || "",
-    toAccountName: initialData?.toAccountName || "",
-    scheduleType: initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME,
-    repeatInterval: initialData?.repeatInterval || "",
+    amount: "",
+    transactionCost: "",
+    description: "",
+    fromAccountName: "",
+    toAccountName: "",
+    scheduleType: ScheduleTypeEnum.ONE_TIME,
+    repeatInterval: "",
   });
   
   // Track form submission state
@@ -172,39 +165,28 @@ const TransferForm: React.FC<TransferFormProps> = ({
       
       let response;
       
-      if (isEditMode && id) {
-        // Update existing transfer - pass the data to parent for scope handling
-        const submitData = { ...transferData, id, scheduleType: formState.scheduleType };
-        response = await onSubmitSuccess(submitData);
-        return; // Let parent handle the actual update
-      } else {
-        // Create new transfer
-        response = await createTransfer(api, transferData);
-        toast.success(`Transfer of ${transferData.amount} from ${transferData.fromAccountName} to ${transferData.toAccountName} has been recorded.`);
-      }
+      // Create new transfer
+      response = await createTransfer(api, transferData);
+      toast.success(`Transfer of ${transferData.amount} from ${transferData.fromAccountName} to ${transferData.toAccountName} has been recorded.`);
       
       // Reset form only if not in edit mode (edit mode closes dialog)
-      if (!isEditMode) {
-        setFormState({
-          amount: "",
-          transactionCost: "",
-          description: "",
-          fromAccountName: "",
-          toAccountName: "",
-          scheduleType: ScheduleTypeEnum.ONE_TIME,
-          repeatInterval: "",
-        });
-        setFileState(null);
-        setFormSubmitted(false);
-      }
+      setFormState({
+        amount: "",
+        transactionCost: "",
+        description: "",
+        fromAccountName: "",
+        toAccountName: "",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+        repeatInterval: "",
+      });
+      setFileState(null);
+      setFormSubmitted(false);
       
       // Notify parent components of success
-      if (!isEditMode) {
-        onSubmitSuccess(response);
-      }
+      onSubmitSuccess(response);
     } catch (error) {
-      console.error(`Error ${isEditMode ? 'updating' : 'creating'} transfer:`, error);
-      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} transfer. Please try again.`);
+      console.error(`Error creating transfer:`, error);
+      toast.error(`Failed to create transfer. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -236,16 +218,16 @@ const TransferForm: React.FC<TransferFormProps> = ({
       {/* First row: Date (50% width) */}
       <div className="flex">
         <div className="space-y-2 w-1/2">
-          <Label htmlFor="transfer-date">Date</Label>
+          <Label htmlFor="transfer-date" className="text-sm">Date</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 type="button"
                 variant={"outline"}
-                className={`w-full justify-start text-left font-normal`}
+                className={`w-full justify-start text-left font-normal text-sm`}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "MMMM d, yyyy") : <span>Pick a date</span>}
+                {date ? format(date, "MMMM d, yyyy") : <span className="text-sm">Pick a date</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
@@ -263,36 +245,36 @@ const TransferForm: React.FC<TransferFormProps> = ({
       {/* Second row: Amount and Transaction Cost */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="transfer-amount">Amount</Label>
+          <Label htmlFor="transfer-amount" className="text-sm">Amount</Label>
           <Input
             id="transfer-amount"
             type="text" 
             value={formState.amount}
             placeholder="0.00"
             onChange={(e) => handleFieldChange("amount", e.target.value)}
-            className={
+            className={`text-sm ${
               (formSubmitted && formErrors.amount)
                 ? "border-red-500 focus-visible:ring-red-500"
                 : ""
-            }
+            }`}
           />
           {formSubmitted && formErrors.amount && (
             <FormError>{formErrors.amount}</FormError>
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="transfer-transaction-cost">Transaction Cost</Label>
+          <Label htmlFor="transfer-transaction-cost" className="text-sm">Transaction Cost</Label>
           <Input
             id="transfer-transaction-cost"
             type="text" 
             value={formState.transactionCost}
             placeholder="0.00"
             onChange={(e) => handleFieldChange("transactionCost", e.target.value)}
-            className={
+            className={`text-sm ${
               (formSubmitted && formErrors.transactionCost)
                 ? "border-red-500 focus-visible:ring-red-500"
                 : ""
-            }
+            }`}
           />
           {formSubmitted && formErrors.transactionCost && (
             <FormError>{formErrors.transactionCost}</FormError>
@@ -303,7 +285,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
       {/* Third row: From Account and To Account */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="transfer-from">From Account</Label>
+          <Label htmlFor="transfer-from" className="text-sm">From Account</Label>
           <Select
             value={formState.fromAccountName}
             onValueChange={(value) => {
@@ -318,21 +300,21 @@ const TransferForm: React.FC<TransferFormProps> = ({
           >
             <SelectTrigger 
               id="transfer-from"
-              className={
+              className={`text-sm ${
                 (formSubmitted && formErrors.fromAccountName)
                   ? "border-red-500 focus-visible:ring-red-500"
                   : ""
-              }
+              }`}
             >
-              <SelectValue placeholder="Select account" />
+              <SelectValue placeholder="Select account" className="text-sm" />
             </SelectTrigger>
             <SelectContent>
               {accountOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem key={option.value} value={option.value} className="text-sm">
                   {option.label}
                 </SelectItem>
               ))}
-              <SelectItem value="add_account">+ Add Account</SelectItem>
+              <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
             </SelectContent>
           </Select>
           {formSubmitted && formErrors.fromAccountName && (
@@ -344,7 +326,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="transfer-to">To Account</Label>
+          <Label htmlFor="transfer-to" className="text-sm">To Account</Label>
           <Select
             value={formState.toAccountName}
             onValueChange={(value) => {
@@ -359,21 +341,21 @@ const TransferForm: React.FC<TransferFormProps> = ({
           >
             <SelectTrigger 
               id="transfer-to"
-              className={
+              className={`text-sm ${
                 (formSubmitted && formErrors.toAccountName)
                   ? "border-red-500 focus-visible:ring-red-500"
                   : ""
-              }
+              }`}
             >
-              <SelectValue placeholder="Select account" />
+              <SelectValue placeholder="Select account" className="text-sm" />
             </SelectTrigger>
             <SelectContent>
               {accountOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem key={option.value} value={option.value} className="text-sm">
                   {option.label}
                 </SelectItem>
               ))}
-              <SelectItem value="add_account">+ Add Account</SelectItem>
+              <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
             </SelectContent>
           </Select>
           {formSubmitted && formErrors.toAccountName && (
@@ -389,24 +371,24 @@ const TransferForm: React.FC<TransferFormProps> = ({
       {/* Fourth row: Schedule Type and conditional Repeat Interval */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="transfer-schedule-type">Schedule Type</Label>
+          <Label htmlFor="transfer-schedule-type" className="text-sm">Schedule Type</Label>
           <Select
             value={formState.scheduleType}
             onValueChange={(value) => handleFieldChange("scheduleType", value as ScheduleTypeEnum)}
           >
             <SelectTrigger 
               id="transfer-schedule-type"
-              className={
+              className={`text-sm ${
                 (formSubmitted && formErrors.scheduleType)
                   ? "border-red-500 focus-visible:ring-red-500"
                   : ""
-              }
+              }`}
             >
-              <SelectValue placeholder="Select schedule type" />
+              <SelectValue placeholder="Select schedule type" className="text-sm" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ScheduleTypeEnum.ONE_TIME}>One Time</SelectItem>
-              <SelectItem value={ScheduleTypeEnum.REPEAT}>Recurring</SelectItem>
+              <SelectItem value={ScheduleTypeEnum.ONE_TIME} className="text-sm">One Time</SelectItem>
+              <SelectItem value={ScheduleTypeEnum.REPEAT} className="text-sm">Recurring</SelectItem>
             </SelectContent>
           </Select>
           {formSubmitted && formErrors.scheduleType && (
@@ -416,24 +398,24 @@ const TransferForm: React.FC<TransferFormProps> = ({
 
         {formState.scheduleType === ScheduleTypeEnum.REPEAT ? (
           <div className="space-y-2">
-            <Label htmlFor="transfer-repeat-interval">Repeat Interval</Label>
+            <Label htmlFor="transfer-repeat-interval" className="text-sm">Repeat Interval</Label>
             <Select
               value={formState.repeatInterval}
               onValueChange={(value) => handleFieldChange("repeatInterval", value)}
             >
               <SelectTrigger 
                 id="transfer-repeat-interval"
-                className={
+                className={`text-sm ${
                   (formSubmitted && formErrors.repeatInterval)
                     ? "border-red-500 focus-visible:ring-red-500"
                     : ""
-                }
+                }`}
               >
-                <SelectValue placeholder="Select repeat interval" />
+                <SelectValue placeholder="Select repeat interval" className="text-sm" />
               </SelectTrigger>
               <SelectContent>
                 {REPEAT_INTERVALS.map((interval) => (
-                  <SelectItem key={interval.value} value={interval.value}>
+                  <SelectItem key={interval.value} value={interval.value} className="text-sm">
                     {interval.label}
                   </SelectItem>
                 ))}
@@ -443,23 +425,24 @@ const TransferForm: React.FC<TransferFormProps> = ({
               <FormError>{formErrors.repeatInterval}</FormError>
             )}
           </div>
-        ) : <div></div>}
+        ) : <div className="text-sm"></div>}
       </div>
 
       {/* Fifth row: Description */}
       <div className="space-y-2">
-        <Label htmlFor="transfer-description">Description (Optional)</Label>
+        <Label htmlFor="transfer-description" className="text-sm">Description (Optional)</Label>
         <Input
           id="transfer-description"
           placeholder="Enter description"
           value={formState.description || ""}
           onChange={(e) => handleFieldChange("description", e.target.value)}
+          className="text-sm"
         />
       </div>
 
       {/* File Upload Field */}
       <div className="space-y-2">
-        <Label>Attach File (Optional)</Label>
+        <Label className="text-sm">Attach File (Optional)</Label>
         <div
           className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
           onClick={() => document.getElementById("expense-file-upload")?.click()}
@@ -482,12 +465,12 @@ const TransferForm: React.FC<TransferFormProps> = ({
 
       {/* Action buttons */}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} className="text-sm">
           Cancel
         </Button>
         <Button
           type="submit"
-          className="bg-primary hover:bg-primary/80"
+          className="bg-primary hover:bg-primary/80 text-sm"
           disabled={isSubmitting}
         >
           {isSubmitting ? (
@@ -496,10 +479,10 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              {isEditMode ? "Updating..." : "Adding..."}
+              Adding...
             </>
           ) : (
-            isEditMode ? "Update Transfer" : "Add Transfer"
+            "Add Transfer"
           )}
         </Button>
       </div>

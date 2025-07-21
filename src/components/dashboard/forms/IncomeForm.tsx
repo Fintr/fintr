@@ -62,10 +62,6 @@ interface IncomeFormProps {
   onSubmitSuccess?: (data: any) => void;
   onCancel?: () => void;
   formRef?: React.RefObject<HTMLFormElement>;
-  // Edit mode props
-  id?: string;
-  initialData?: UpdateTransactionType;
-  isEditMode?: boolean;
 }
 
 // Main Income Form
@@ -77,9 +73,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   onSubmitSuccess,
   onCancel,
   formRef,
-  id,
-  initialData = {} as UpdateTransactionType,
-  isEditMode = false,
 }) => {
   const categoryOptions = useAtomValue(incomeCategoryOptionsAtom);
   const accountOptions = useAtomValue(accountOptionsAtom);
@@ -90,9 +83,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
   const [fileState, setFileState] = useState<File | null>(null);
   const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(
-    (initialData?.scheduleType === ScheduleTypeEnum.REPEAT) 
-      ? ScheduleTypeEnum.REPEAT 
-      : ScheduleTypeEnum.ONE_TIME
+    ScheduleTypeEnum.ONE_TIME
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -101,15 +92,13 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   
   // Form state management
   const [formState, setFormState] = useState<IncomeFormValues>({
-    amount: initialData?.amount?.toString() || "",
-    description: initialData?.description || "",
-    categoryName: initialData?.categoryName || "",
-    accountName: initialData?.accountName || "",
-    scheduleType: (initialData?.scheduleType === ScheduleTypeEnum.REPEAT) 
-      ? ScheduleTypeEnum.REPEAT 
-      : ScheduleTypeEnum.ONE_TIME,
-    repeatInterval: initialData?.repeatInterval || "",
-    file: initialData?.file || null,
+    amount: "",
+    description: "",
+    categoryName: "",
+    accountName: "",
+    scheduleType: ScheduleTypeEnum.ONE_TIME,
+    repeatInterval: "",
+    file: null,
   });
   
   // Form errors
@@ -188,46 +177,37 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       
       let response;
       
-      if (isEditMode && id) {
-        // Update existing transaction - pass the data to parent for scope handling
-        const submitData = { ...transactionData, id, scheduleType: formState.scheduleType };
-        response = await onSubmitSuccess?.(submitData);
-        return; // Let parent handle the actual update
-      } else {
-        // Create new transaction
-        response = await createTransaction(api, transactionData);
-        toast.success("Income created successfully");
-      }
+      // Create new transaction
+      response = await createTransaction(api, transactionData);
+      toast.success("Income created successfully");
       
       // Call onSubmitSuccess callback to notify parent component
-      if (onSubmitSuccess && !isEditMode) {
+      if (onSubmitSuccess) {
         onSubmitSuccess(response);
       }
       
-      // Reset form only if not in edit mode (edit mode closes dialog)
-      if (!isEditMode) {
-        setFormState({
-          amount: "",
-          description: "",
-          categoryName: "",
-          accountName: "",
-          scheduleType: ScheduleTypeEnum.ONE_TIME,
-          repeatInterval: "",
-          file: null,
-        });
-        setDate(undefined);
-        setFileState(null);
-        setShowCustomCategoryInput(false);
-        setShowCustomAccountInput(false);
-        setScheduleType(ScheduleTypeEnum.ONE_TIME);
-        setFormSubmitted(false); // Reset the form submission flag
-      }
+      // Reset form
+      setFormState({
+        amount: "",
+        description: "",
+        categoryName: "",
+        accountName: "",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+        repeatInterval: "",
+        file: null,
+      });
+      setDate(undefined);
+      setFileState(null);
+      setShowCustomCategoryInput(false);
+      setShowCustomAccountInput(false);
+      setScheduleType(ScheduleTypeEnum.ONE_TIME);
+      setFormSubmitted(false); // Reset the form submission flag
       
     } catch (error) {
-      console.error(`Error ${isEditMode ? 'updating' : 'creating'} income:`, error);
+      console.error(`Error creating income:`, error);
       const fieldErrors = extractFieldErrors(error);
       
-      toast.error(fieldErrors.detail || `Failed to ${isEditMode ? 'update' : 'create'} income. Please try again.`);
+      toast.error(fieldErrors.detail || `Failed to create income. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -270,12 +250,12 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         {/* Date Picker */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
+            <Label htmlFor="date" className="text-sm">Date</Label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant={"outline"} className="w-full justify-start text-left font-normal">
+                <Button variant={"outline"} className="w-full justify-start text-left font-normal text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "MMMM d, yyyy") : <span>Pick a date</span>}
+                  {date ? format(date, "MMMM d, yyyy") : <span className="text-sm">Pick a date</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -286,7 +266,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
           {/* Amount Field */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount</Label>
+            <Label htmlFor="amount" className="text-sm">Amount</Label>
             <Input
               id="amount"
               name="amount"
@@ -294,7 +274,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
               onChange={(e) => handleFieldChange("amount", e.target.value)}
               type="number"
               placeholder="0.00"
-              className={formSubmitted && formErrors.amount ? "border-red-500 focus-visible:ring-red-500" : ""}
+              className={`text-sm ${formSubmitted && formErrors.amount ? "border-red-500 focus-visible:ring-red-500" : ""}`}
             />
             {formSubmitted && formErrors.amount?.map((error) => (
               <FormError key={error}>{error}</FormError>
@@ -305,20 +285,20 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         <div className="grid grid-cols-2 gap-4">
           {/* Schedule Type Field */}
           <div className="space-y-2">
-            <Label htmlFor="scheduleType">Schedule Type</Label>
+            <Label htmlFor="scheduleType" className="text-sm">Schedule Type</Label>
             <Select
               value={formState.scheduleType}
               onValueChange={(value) => handleFieldChange("scheduleType", value)}
             >
               <SelectTrigger 
                 id="scheduleType" 
-                className={formSubmitted && formErrors.scheduleType ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className={`text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-500 focus-visible:ring-red-500" : ""}`}
               >
-                <SelectValue placeholder="Select schedule type" />
+                <SelectValue placeholder="Select schedule type" className="text-sm" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ScheduleTypeEnum.ONE_TIME}>One-Time</SelectItem>
-                <SelectItem value={ScheduleTypeEnum.REPEAT}>Recurring</SelectItem>
+                <SelectItem value={ScheduleTypeEnum.ONE_TIME} className="text-sm">One-Time</SelectItem>
+                <SelectItem value={ScheduleTypeEnum.REPEAT} className="text-sm">Recurring</SelectItem>
               </SelectContent>
             </Select>
             {formSubmitted && formErrors.scheduleType?.map((error) => (
@@ -328,20 +308,20 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             {/* Repeat Interval - only show for recurring income */}
             {scheduleType === ScheduleTypeEnum.REPEAT && (
               <div className="mt-3">
-                <Label htmlFor="repeatInterval">Repeat Interval</Label>
+                <Label htmlFor="repeatInterval" className="text-sm">Repeat Interval</Label>
                 <Select
                   value={formState.repeatInterval || ""}
                   onValueChange={(value) => handleFieldChange("repeatInterval", value)}
                 >
                   <SelectTrigger 
                     id="repeatInterval" 
-                    className={formSubmitted && formErrors.repeatInterval ? "border-red-500 focus-visible:ring-red-500" : ""}
+                    className={`text-sm ${formSubmitted && formErrors.repeatInterval ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                   >
-                    <SelectValue placeholder="Select interval" />
+                    <SelectValue placeholder="Select interval" className="text-sm" />
                   </SelectTrigger>
                   <SelectContent>
                     {REPEAT_INTERVALS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      <SelectItem key={option.value} value={option.value} className="text-sm">{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -354,7 +334,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           
           {/* Category Field */}
           <div className="space-y-2">
-            <Label htmlFor="categoryName">Income Category</Label>
+            <Label htmlFor="categoryName" className="text-sm">Income Category</Label>
             <Select
               value={formState.categoryName}
               onValueChange={(value) => {
@@ -368,17 +348,17 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             >
               <SelectTrigger 
                 id="categoryName" 
-                className={formSubmitted && formErrors.categoryName ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className={`text-sm ${formSubmitted && formErrors.categoryName ? "border-red-500 focus-visible:ring-red-500" : ""}`}
               >
-                <SelectValue placeholder="Select category" />
+                <SelectValue placeholder="Select category" className="text-sm" />
               </SelectTrigger>
               <SelectContent>
                 {categoryOptions.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
+                  <SelectItem key={cat.value} value={cat.value} className="text-sm">
                     {cat.label}
                   </SelectItem>
                 ))}
-                <SelectItem value="add_category">+ Add Income Category</SelectItem>
+                <SelectItem value="add_category" className="text-sm">+ Add Income Category</SelectItem>
               </SelectContent>
             </Select>
             {formSubmitted && formErrors.categoryName?.map((error) => (
@@ -397,7 +377,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         <div className="grid grid-cols-2 gap-4">
           {/* Account Field */}
           <div className="space-y-2">
-            <Label htmlFor="accountName">Account</Label>
+            <Label htmlFor="accountName" className="text-sm">Account</Label>
             <Select
               value={formState.accountName}
               onValueChange={(value) => {
@@ -411,17 +391,17 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             >
               <SelectTrigger 
                 id="accountName" 
-                className={formSubmitted && formErrors.accountName ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className={`text-sm ${formSubmitted && formErrors.accountName ? "border-red-500 focus-visible:ring-red-500" : ""}`}
               >
-                <SelectValue placeholder="Select Account" />
+                <SelectValue placeholder="Select Account" className="text-sm" />
               </SelectTrigger>
               <SelectContent>
                 {accountOptions.map((acc) => (
-                  <SelectItem key={acc.value} value={acc.value}>
+                  <SelectItem key={acc.value} value={acc.value} className="text-sm">
                     {acc.label}
                   </SelectItem>
                 ))}
-                <SelectItem value="add_account">+ Add Account</SelectItem>
+                <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
               </SelectContent>
             </Select>
             {formSubmitted && formErrors.accountName?.map((error) => (
@@ -435,20 +415,21 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
           {/* Description Field */}
           <div className="space-y-2">
-            <Label htmlFor="description">Note (Optional)</Label>
+            <Label htmlFor="description" className="text-sm">Note (Optional)</Label>
             <Input
               id="description"
               name="description"
               value={formState.description || ""}
               onChange={(e) => handleFieldChange("description", e.target.value)}
               placeholder="Add additional details"
+              className="text-sm"
             />
           </div>
         </div>
 
         {/* File Upload Field */}
         <div className="space-y-2">
-          <Label>Attach File (Optional)</Label>
+          <Label className="text-sm">Attach File (Optional)</Label>
           <div
             className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
             onClick={() => document.getElementById("income-file-upload")?.click()}
@@ -468,20 +449,20 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             />
           </div>
         </div>
+      </div>
 
-        {/* Submit/Cancel Buttons */}
-        <div className="flex justify-end gap-2 mt-4">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button 
-            type="submit" 
-            className="bg-primary hover:bg-primary/80" 
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (isEditMode ? "Updating Income..." : "Adding Income...") : (isEditMode ? "Update Income" : "Add Income")}
-          </Button>
-        </div>
+      {/* Submit/Cancel Buttons */}
+      <div className="flex justify-end gap-2 mt-4">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-sm">
+          Cancel
+        </Button>
+        <Button 
+          type="submit" 
+          className="bg-primary hover:bg-primary/80 text-sm" 
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Adding Income..." : "Add Income"}
+        </Button>
       </div>
     </form>
   );

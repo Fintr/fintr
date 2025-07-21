@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -103,17 +103,31 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   onCancel,
   formRef,
   id,
-  initialData = {} as UpdateTransactionType,
+  initialData, // Remove default value here
   isEditMode = false,
 }) => {
+  // Get options from atoms
   const categoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  const accountOptions = useAtomValue(accountOptionsAtom);
+  const accountOptionsRaw = useAtomValue(accountOptionsAtom);
+  
+  // Deduplicate account options to prevent React key warnings
+  const accountOptions = useMemo(() => {
+    const seen = new Set();
+    return accountOptionsRaw.filter(option => {
+      if (seen.has(option.value)) {
+        return false;
+      }
+      seen.add(option.value);
+      return true;
+    });
+  }, [accountOptionsRaw]);
+  
   const { api } = useAuthApi();
 
   // Local state for UI elements not directly part of the form data
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
-  const [fileState, setFileState] = useState<File | null>(null);
+  // Removed fileState, will use formState.file directly
   const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(
     initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME
   );
@@ -140,6 +154,69 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Form errors
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
   
+  // Initialize formState from initialData
+  const prevInitialDataRef = React.useRef<UpdateTransactionType | undefined>(initialData);
+
+  useEffect(() => {
+    console.log('🔍 ExpenseForm - useEffect triggered, initialData:', {
+      hasInitialData: !!initialData,
+      hasFile: !!initialData?.file,
+      fileName: initialData?.file?.name,
+      fileType: initialData?.file?.type,
+      fileSize: initialData?.file?.size,
+      currentFileState: formState.file?.name, // Check formState.file now
+      timestamp: new Date().toISOString()
+    });
+    
+    // Only proceed if initialData is provided and is a different object reference
+    // This prevents re-initializing when initialData is undefined or the same object
+    if (initialData && (initialData !== prevInitialDataRef.current)) {
+      console.log('📝 ExpenseForm - Updating form state with initialData:', initialData);
+      
+      // Update form state with all initialData values
+      setFormState({
+        amount: initialData.amount?.toString() || "",
+        description: initialData.description || "",
+        categoryName: initialData.categoryName || "",
+        accountName: initialData.accountName || "",
+        scheduleType: initialData.scheduleType || ScheduleTypeEnum.ONE_TIME,
+        repeatInterval: initialData.repeatInterval || "",
+        installmentPeriod: initialData.installmentPeriod?.toString() || "",
+        file: initialData.file || null, // Ensure file is set here
+      });
+      
+      // No longer setting fileState separately; it's part of formState
+      console.log('✅ ExpenseForm - formState.file set immediately after initialData.file:', { hasFile: !!initialData.file, fileName: initialData.file?.name, fileType: initialData.file?.type });
+
+      // Update schedule type state
+      setScheduleType(initialData.scheduleType || ScheduleTypeEnum.ONE_TIME);
+
+      // Store the current initialData reference to prevent re-running on same object
+      prevInitialDataRef.current = initialData;
+
+    } else if (!initialData && prevInitialDataRef.current) {
+      // If initialData becomes undefined and it was previously set, clear the form
+      console.log('🗑️ ExpenseForm - initialData is now undefined, clearing form.');
+      setFormState({
+        amount: "",
+        description: "",
+        categoryName: "",
+        accountName: "",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+        repeatInterval: "",
+        installmentPeriod: "",
+        file: null,
+      });
+      // setFileState(null); // Removed
+      setScheduleType(ScheduleTypeEnum.ONE_TIME);
+      setFormSubmitted(false); // Reset the form submission flag
+      prevInitialDataRef.current = undefined; // Clear the ref
+
+    } else if (!initialData) {
+      console.log('⚠️ ExpenseForm - initialData is undefined and has always been, skipping update.');
+    }
+  }, [initialData]);
+
   // Effect to force re-render when new categories or accounts are added
   useEffect(() => {
     // This dependency array includes categoryOptions and accountOptions
@@ -223,7 +300,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             ? parseInt(formState.installmentPeriod, 10) 
             : undefined 
         }),
-        ...(fileState && { file: fileState })
+        ...(formState.file && { file: formState.file }) // Use formState.file
       };
       
       let response;
@@ -254,10 +331,10 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           scheduleType: ScheduleTypeEnum.ONE_TIME,
           repeatInterval: "",
           installmentPeriod: "",
-          file: null,
+          file: null, // Reset file in formState
         });
         setDate(undefined);
-        setFileState(null);
+        // setFileState(null); // Removed
         setShowCustomCategoryInput(false);
         setShowCustomAccountInput(false);
         setScheduleType(ScheduleTypeEnum.ONE_TIME);
@@ -278,9 +355,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setFileState(file);
+      // setFileState(file); // Removed
+      setFormState(prev => ({ ...prev, file })); // Update formState.file directly
     } else {
-      setFileState(null);
+      // setFileState(null); // Removed
+      setFormState(prev => ({ ...prev, file: null })); // Update formState.file directly
     }
   };
 
@@ -331,12 +410,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         {/* Date Picker */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
+            <Label htmlFor="date" className="text-sm">Date</Label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant={"outline"} className="w-full justify-start text-left font-normal">
+                <Button variant={"outline"} className="w-full justify-start text-left font-normal text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "MMMM d, yyyy") : <span>Pick a date</span>}
+                  {date ? format(date, "MMMM d, yyyy") : <span className="text-sm">Pick a date</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -347,7 +426,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
           {/* Amount Field */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount</Label>
+            <Label htmlFor="amount" className="text-sm">Amount</Label>
             <Input
               id="amount"
               name="amount"
@@ -355,7 +434,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
               onChange={(e) => handleFieldChange("amount", e.target.value)}
               type="number"
               placeholder="0.00"
-              className={formSubmitted && formErrors.amount ? "border-red-500 focus-visible:ring-red-500" : ""}
+              className={`text-sm ${formSubmitted && formErrors.amount ? "border-red-500 focus-visible:ring-red-500" : ""}`}
             />
             {formSubmitted && formErrors.amount?.map((error) => (
               <FormError key={error}>{error}</FormError>
@@ -366,21 +445,21 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         <div className="grid grid-cols-2 gap-4">
           {/* Schedule Type Field */}
           <div className="space-y-2">
-            <Label htmlFor="scheduleType">Schedule Type</Label>
+            <Label htmlFor="scheduleType" className="text-sm">Schedule Type</Label>
             <Select
               value={formState.scheduleType}
               onValueChange={(value) => handleFieldChange("scheduleType", value)}
             >
               <SelectTrigger 
                 id="scheduleType" 
-                className={formSubmitted && formErrors.scheduleType ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className={`text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-500 focus-visible:ring-red-500" : ""}`}
               >
-                <SelectValue placeholder="Select schedule type" />
+                <SelectValue placeholder="Select schedule type" className="text-sm" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ScheduleTypeEnum.ONE_TIME}>One-Time</SelectItem>
-                <SelectItem value={ScheduleTypeEnum.REPEAT}>Recurring</SelectItem>
-                <SelectItem value={ScheduleTypeEnum.INSTALLMENT}>Installment</SelectItem>
+                <SelectItem value={ScheduleTypeEnum.ONE_TIME} className="text-sm">One-Time</SelectItem>
+                <SelectItem value={ScheduleTypeEnum.REPEAT} className="text-sm">Recurring</SelectItem>
+                <SelectItem value={ScheduleTypeEnum.INSTALLMENT} className="text-sm">Installment</SelectItem>
               </SelectContent>
             </Select>
             {formSubmitted && formErrors.scheduleType?.map((error) => (
@@ -390,20 +469,20 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             {/* Conditional Fields */}
             {scheduleType === ScheduleTypeEnum.REPEAT && (
               <div className="mt-3">
-                <Label htmlFor="repeatInterval">Repeat Interval</Label>
+                <Label htmlFor="repeatInterval" className="text-sm">Repeat Interval</Label>
                 <Select
                   value={formState.repeatInterval || ""}
                   onValueChange={(value) => handleFieldChange("repeatInterval", value)}
                 >
                   <SelectTrigger 
                     id="repeatInterval" 
-                    className={formSubmitted && formErrors.repeatInterval ? "border-red-500 focus-visible:ring-red-500" : ""}
+                    className={`text-sm ${formSubmitted && formErrors.repeatInterval ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                   >
-                    <SelectValue placeholder="Select interval" />
+                    <SelectValue placeholder="Select interval" className="text-sm" />
                   </SelectTrigger>
                   <SelectContent>
                     {REPEAT_INTERVALS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      <SelectItem key={option.value} value={option.value} className="text-sm">{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -415,7 +494,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             
             {scheduleType === ScheduleTypeEnum.INSTALLMENT && (
               <div className="mt-3">
-                <Label htmlFor="installmentPeriod">Number of Months</Label>
+                <Label htmlFor="installmentPeriod" className="text-sm">Number of Months</Label>
                 <Input
                   id="installmentPeriod"
                   name="installmentPeriod"
@@ -423,7 +502,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                   onChange={(e) => handleFieldChange("installmentPeriod", e.target.value)}
                   type="number"
                   placeholder="Number of months"
-                  className={formSubmitted && formErrors.installmentPeriod ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  className={`text-sm ${formSubmitted && formErrors.installmentPeriod ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                 />
                 {formSubmitted && formErrors.installmentPeriod?.map((error) => (
                   <FormError key={error}>{error}</FormError>
@@ -434,7 +513,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           
           {/* Category Field */}
           <div className="space-y-2">
-            <Label htmlFor="categoryName">Expense Category</Label>
+            <Label htmlFor="categoryName" className="text-sm">Expense Category</Label>
             <Select
               value={formState.categoryName}
               onValueChange={(value) => {
@@ -448,17 +527,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             >
               <SelectTrigger 
                 id="categoryName" 
-                className={formSubmitted && formErrors.categoryName ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className={`text-sm ${formSubmitted && formErrors.categoryName ? "border-red-500 focus-visible:ring-red-500" : ""}`}
               >
-                <SelectValue placeholder="Select category" />
+                <SelectValue placeholder="Select category" className="text-sm" />
               </SelectTrigger>
               <SelectContent>
                 {categoryOptions.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
+                  <SelectItem key={cat.value} value={cat.value} className="text-sm">
                     {cat.label}
                   </SelectItem>
                 ))}
-                <SelectItem value="add_category">+ Add Expense Category</SelectItem>
+                <SelectItem value="add_category" className="text-sm">+ Add Expense Category</SelectItem>
               </SelectContent>
             </Select>
             {formSubmitted && formErrors.categoryName?.map((error) => (
@@ -477,7 +556,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         <div className="grid grid-cols-2 gap-4">
           {/* Account Field */}
           <div className="space-y-2">
-            <Label htmlFor="accountName">Account</Label>
+            <Label htmlFor="accountName" className="text-sm">Account</Label>
             <Select
               value={formState.accountName}
               onValueChange={(value) => {
@@ -491,17 +570,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             >
               <SelectTrigger 
                 id="accountName" 
-                className={formSubmitted && formErrors.accountName ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className={`text-sm ${formSubmitted && formErrors.accountName ? "border-red-500 focus-visible:ring-red-500" : ""}`}
               >
-                <SelectValue placeholder="Select Account" />
+                <SelectValue placeholder="Select Account" className="text-sm" />
               </SelectTrigger>
               <SelectContent>
                 {accountOptions.map((acc) => (
-                  <SelectItem key={acc.value} value={acc.value}>
+                  <SelectItem key={acc.value} value={acc.value} className="text-sm">
                     {acc.label}
                   </SelectItem>
                 ))}
-                <SelectItem value="add_account">+ Add Account</SelectItem>
+                <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
               </SelectContent>
             </Select>
             {formSubmitted && formErrors.accountName?.map((error) => (
@@ -515,53 +594,105 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
           {/* Description Field */}
           <div className="space-y-2">
-            <Label htmlFor="description">Note (Optional)</Label>
+            <Label htmlFor="description" className="text-sm">Note (Optional)</Label>
             <Input
               id="description"
               name="description"
               value={formState.description || ""}
               onChange={(e) => handleFieldChange("description", e.target.value)}
               placeholder="What did you spend on?"
+              className="text-sm"
             />
           </div>
         </div>
 
         {/* File Upload Field */}
         <div className="space-y-2">
-          <Label>Attach File (Optional)</Label>
-          <div
-            className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-            onClick={() => document.getElementById("expense-file-upload")?.click()}
-          >
-            <div className="flex flex-col items-center">
-              <Upload className="h-8 w-8 text-gray-400 mb-1" />
-              <p className="text-sm text-gray-500">Drag & drop your file here or <span className="text-primary font-medium">browse files</span></p>
-              <p className="text-xs text-gray-400 mt-1">Supports: JPG, PNG, PDF (Max 5MB)</p>
-              {fileState && (<p className="text-sm text-green-600 mt-2">File selected: {fileState.name}</p>)}
+          <Label className="text-sm">Attach File (Optional)</Label>
+          {(() => {
+            console.log('🖼️ ExpenseForm Render - formState.file before rendering:', { 
+              hasFile: !!formState.file, 
+              fileName: formState.file?.name, 
+              fileType: formState.file?.type 
+            });
+            return null; // Return null to not render anything
+          })()}
+          {formState.file && formState.file.type.startsWith('image/') ? (
+            /* Image Preview */
+            <div className="space-y-2">
+              <div className="border border-gray-300 rounded-lg p-4">
+                <img 
+                  src={URL.createObjectURL(formState.file)} 
+                  alt="Receipt preview" 
+                  className="w-full h-48 object-contain rounded-lg"
+                />
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="text-sm text-green-600">
+                    Receipt attached: {formState.file.name}
+                    {initialData?.file === formState.file && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        From Receipt Upload
+                      </span>
+                    )}
+                  </p>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setFormState(prev => ({ ...prev, file: null }));
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
             </div>
-            <input
-              id="expense-file-upload"
-              type="file"
-              className="hidden"
-              accept="image/jpeg,image/png,application/pdf"
-              onChange={handleFileChange}
-            />
-          </div>
+          ) : (
+            /* File Upload Area */
+            <div
+              className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => document.getElementById("expense-file-upload")?.click()}
+            >
+              <div className="flex flex-col items-center">
+                <Upload className="h-8 w-8 text-gray-400 mb-1" />
+                <p className="text-sm text-gray-500">Drag & drop your file here or <span className="text-primary font-medium">browse files</span></p>
+                <p className="text-xs text-gray-400 mt-1">Supports: JPG, PNG, PDF (Max 5MB)</p>
+                {formState.file && !formState.file.type.startsWith('image/') && (
+                  <p className="text-sm text-green-600 mt-2">
+                    File selected: {formState.file.name}
+                    {initialData?.file === formState.file && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        From Receipt Upload
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
+              <input
+                id="expense-file-upload"
+                type="file"
+                className="hidden"
+                accept="image/jpeg,image/png,application/pdf"
+                onChange={handleFileChange}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Submit/Cancel Buttons */}
-        <div className="flex justify-end gap-2 mt-4">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button 
-            type="submit" 
-            className="bg-primary hover:bg-primary/80" 
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (isEditMode ? "Updating Expense..." : "Adding Expense...") : (isEditMode ? "Update Expense" : "Add Expense")}
-          </Button>
-        </div>
+      </div>
+      {/* Submit/Cancel Buttons */}
+      <div className="flex justify-end gap-2 mt-4">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-sm">
+          Cancel
+        </Button>
+        <Button 
+          type="submit" 
+          className="bg-primary hover:bg-primary/80 text-sm" 
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (isEditMode ? "Updating Expense..." : "Adding Expense...") : (isEditMode ? "Update Expense" : "Add Expense")}
+        </Button>
       </div>
     </form>
   );

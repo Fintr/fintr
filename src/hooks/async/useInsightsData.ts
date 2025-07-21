@@ -37,3 +37,4 @@ export const useInsightsData = (params: UseInsightsDataParams = {}) => {
 
   return { data, error, isLoading, isError, isSuccess, refetch };
 }; 
+ 

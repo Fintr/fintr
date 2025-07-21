@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -15,62 +15,55 @@ import { Calendar } from "../../ui/calendar";
 import { format } from "date-fns";
 
 interface InvestmentFormProps {
-  investmentForm: {
-    amount: string;
-    name: string;
-    description: string;
-    category: string;
-    receipt: File | null;
-  };
-  setInvestmentForm: React.Dispatch<
-    React.SetStateAction<{
-      amount: string;
-      name: string;
-      description: string;
-      category: string;
-      receipt: File | null;
-    }>
-  >;
-  customInvestmentCategories: string[];
-  setCustomInvestmentCategories: React.Dispatch<React.SetStateAction<string[]>>;
-  handleFileUpload: (
-    e: React.ChangeEvent<HTMLInputElement>,
-    formType: string,
-  ) => void;
-  showCustomCategoryInput: boolean;
-  setShowCustomCategoryInput: React.Dispatch<React.SetStateAction<boolean>>;
-  customCategory: string;
-  setCustomCategory: React.Dispatch<React.SetStateAction<string>>;
   date: Date | undefined;
   setDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
+  onSubmitSuccess?: (data: any) => void;
+  onCancel?: () => void;
 }
 
 const InvestmentForm: React.FC<InvestmentFormProps> = ({
-  investmentForm,
-  setInvestmentForm,
-  customInvestmentCategories,
-  setCustomInvestmentCategories,
-  handleFileUpload,
-  showCustomCategoryInput,
-  setShowCustomCategoryInput,
-  customCategory,
-  setCustomCategory,
   date,
   setDate,
+  onSubmitSuccess = () => {},
+  onCancel = () => {},
 }) => {
+  // Internal state for the form
+  const [investmentForm, setInvestmentForm] = useState({
+    amount: "",
+    name: "",
+    description: "",
+    category: "",
+    receipt: null as File | null,
+  });
+
+  // State for custom category input
+  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
+  const [customCategory, setCustomCategory] = useState("");
+  const [customInvestmentCategories, setCustomInvestmentCategories] = useState<string[]>([]);
+
+  // Handle file upload for this form
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setInvestmentForm((prev) => ({ ...prev, receipt: file }));
+    } else {
+      setInvestmentForm((prev) => ({ ...prev, receipt: null }));
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="date">Date</Label>
+          <Label htmlFor="date" className="text-sm">Date</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant={"outline"}
-                className="w-full justify-start text-left font-normal"
+                className="w-full justify-start text-left font-normal text-sm"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "MMMM d, yyyy") : <span>Pick a date</span>}
+                {date ? format(date, "MMMM d, yyyy") : <span className="text-sm">Pick a date</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
@@ -84,7 +77,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
           </Popover>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="investment-amount">Amount</Label>
+          <Label htmlFor="investment-amount" className="text-sm">Amount</Label>
           <Input
             id="investment-amount"
             type="number"
@@ -96,13 +89,14 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
                 amount: e.target.value,
               })
             }
+            className="text-sm"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="investment-name">Investment Name</Label>
+          <Label htmlFor="investment-name" className="text-sm">Investment Name</Label>
           <Input
             id="investment-name"
             placeholder="Enter investment name"
@@ -113,10 +107,11 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
                 name: e.target.value,
               })
             }
+            className="text-sm"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="investment-category">Investment Category</Label>
+          <Label htmlFor="investment-category" className="text-sm">Investment Category</Label>
           <Select
             value={investmentForm.category}
             onValueChange={(value) => {
@@ -129,22 +124,22 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
               }
             }}
           >
-            <SelectTrigger id="investment-category">
-              <SelectValue placeholder="Select category" />
+            <SelectTrigger id="investment-category" className="text-sm">
+              <SelectValue placeholder="Select category" className="text-sm" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="insurance">Insurance</SelectItem>
-              <SelectItem value="business">Business</SelectItem>
-              <SelectItem value="real-estate">Real Estate</SelectItem>
-              <SelectItem value="stocks">Stocks</SelectItem>
-              <SelectItem value="mutual-funds">Mutual Funds</SelectItem>
+              <SelectItem value="insurance" className="text-sm">Insurance</SelectItem>
+              <SelectItem value="business" className="text-sm">Business</SelectItem>
+              <SelectItem value="real-estate" className="text-sm">Real Estate</SelectItem>
+              <SelectItem value="stocks" className="text-sm">Stocks</SelectItem>
+              <SelectItem value="mutual-funds" className="text-sm">Mutual Funds</SelectItem>
 
               {customInvestmentCategories.map((category) => (
-                <SelectItem key={category} value={category}>
+                <SelectItem key={category} value={category} className="text-sm">
                   {category}
                 </SelectItem>
               ))}
-              <SelectItem value="add_category">
+              <SelectItem value="add_category" className="text-sm">
                 + Add Investment Category
               </SelectItem>
             </SelectContent>
@@ -170,6 +165,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
                     setShowCustomCategoryInput(false);
                   }
                 }}
+                className="text-sm"
               />
               <div className="flex gap-2 mt-2">
                 <Button
@@ -179,6 +175,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
                     setShowCustomCategoryInput(false);
                     setCustomCategory("");
                   }}
+                  className="text-sm"
                 >
                   Cancel
                 </Button>
@@ -198,6 +195,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
                       setShowCustomCategoryInput(false);
                     }
                   }}
+                  className="text-sm"
                 >
                   Add
                 </Button>
@@ -209,7 +207,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="investment-description">Note (Optional)</Label>
+          <Label htmlFor="investment-description" className="text-sm">Note (Optional)</Label>
           <Input
             id="investment-description"
             placeholder="Add details about this investment"
@@ -220,6 +218,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
                 description: e.target.value,
               })
             }
+            className="text-sm"
           />
         </div>
         <div className="space-y-2">
@@ -228,7 +227,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
       </div>
 
       <div className="space-y-2">
-        <Label>Attach Doc (Optional)</Label>
+        <Label className="text-sm">Attach Doc (Optional)</Label>
         <div
           className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
           onClick={() =>
@@ -255,7 +254,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
             type="file"
             className="hidden"
             accept="image/jpeg,image/png,application/pdf"
-            onChange={(e) => handleFileUpload(e, "investment")}
+            onChange={handleFileUpload}
           />
         </div>
       </div>

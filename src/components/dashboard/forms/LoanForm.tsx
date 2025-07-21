@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -15,45 +15,41 @@ import { Calendar } from "../../ui/calendar";
 import { format } from "date-fns";
 
 interface LoanFormProps {
-  loanForm: {
-    amount: string;
-    description: string;
-    type: string;
-    person: string;
-    interestRate: string;
-    dueDate: Date;
-    loanTerm: string;
-    paymentType: string;
-    receipt: File | null;
-  };
-  setLoanForm: React.Dispatch<
-    React.SetStateAction<{
-      amount: string;
-      description: string;
-      type: string;
-      person: string;
-      interestRate: string;
-      dueDate: Date;
-      loanTerm: string;
-      paymentType: string;
-      receipt: File | null;
-    }>
-  >;
-  handleFileUpload: (
-    e: React.ChangeEvent<HTMLInputElement>,
-    formType: string,
-  ) => void;
   date?: Date | undefined;
   setDate?: React.Dispatch<React.SetStateAction<Date | undefined>>;
+  onSubmitSuccess?: (data: any) => void;
+  onCancel?: () => void;
 }
 
 const LoanForm: React.FC<LoanFormProps> = ({
-  loanForm,
-  setLoanForm,
-  handleFileUpload,
   date,
   setDate,
+  onSubmitSuccess = () => {},
+  onCancel = () => {},
 }) => {
+  // Internal state for the form
+  const [loanForm, setLoanForm] = useState({
+    amount: "",
+    description: "",
+    type: "borrowed", // default to borrowed
+    person: "",
+    interestRate: "",
+    dueDate: new Date(),
+    loanTerm: "",
+    paymentType: "one-time", // default to one-time
+    receipt: null as File | null,
+  });
+
+  // Handle file upload for this form
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setLoanForm((prev) => ({ ...prev, receipt: file }));
+    } else {
+      setLoanForm((prev) => ({ ...prev, receipt: null }));
+    }
+  };
+
   // Determine if due date should be shown based on payment type
   const showDueDate = loanForm.paymentType === "one-time";
 
@@ -62,15 +58,15 @@ const LoanForm: React.FC<LoanFormProps> = ({
       {/* First row: Date and Amount */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="loan-date">Date</Label>
+          <Label htmlFor="loan-date" className="text-sm">Date</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant={"outline"}
-                className="w-full justify-start text-left font-normal"
+                className="w-full justify-start text-left font-normal text-sm"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "MMMM d, yyyy") : <span>Pick a date</span>}
+                {date ? format(date, "MMMM d, yyyy") : <span className="text-sm">Pick a date</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
@@ -84,7 +80,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
           </Popover>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="loan-amount">Amount</Label>
+          <Label htmlFor="loan-amount" className="text-sm">Amount</Label>
           <Input
             id="loan-amount"
             type="number"
@@ -93,6 +89,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
             onChange={(e) =>
               setLoanForm({ ...loanForm, amount: e.target.value })
             }
+            className="text-sm"
           />
         </div>
       </div>
@@ -100,7 +97,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
       {/* Second row: Loan Term and Payment Type */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="loan-term">Loan Term</Label>
+          <Label htmlFor="loan-term" className="text-sm">Loan Term</Label>
           <div className="relative">
             <Input
               id="loan-term"
@@ -113,27 +110,27 @@ const LoanForm: React.FC<LoanFormProps> = ({
               onChange={(e) =>
                 setLoanForm({ ...loanForm, loanTerm: e.target.value })
               }
-              className="pr-16"
+              className="pr-16 text-sm"
             />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500 text-sm">
               Month{parseInt(loanForm.loanTerm) !== 1 ? "s" : ""}
             </div>
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="loan-payment-type">Payment Type</Label>
+          <Label htmlFor="loan-payment-type" className="text-sm">Payment Type</Label>
           <Select
             value={loanForm.paymentType}
             onValueChange={(value) =>
               setLoanForm({ ...loanForm, paymentType: value })
             }
           >
-            <SelectTrigger id="loan-payment-type">
-              <SelectValue placeholder="Select payment type" />
+            <SelectTrigger id="loan-payment-type" className="text-sm">
+              <SelectValue placeholder="Select payment type" className="text-sm" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="one-time">One Time</SelectItem>
-              <SelectItem value="installment">Installment</SelectItem>
+              <SelectItem value="one-time" className="text-sm">One Time</SelectItem>
+              <SelectItem value="installment" className="text-sm">Installment</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -142,22 +139,22 @@ const LoanForm: React.FC<LoanFormProps> = ({
       {/* Third row: Loan Type and Person */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="loan-type">Loan Type</Label>
+          <Label htmlFor="loan-type" className="text-sm">Loan Type</Label>
           <Select
             value={loanForm.type}
             onValueChange={(value) => setLoanForm({ ...loanForm, type: value })}
           >
-            <SelectTrigger id="loan-type">
-              <SelectValue placeholder="Select type" />
+            <SelectTrigger id="loan-type" className="text-sm">
+              <SelectValue placeholder="Select type" className="text-sm" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="borrowed">Money Borrowed</SelectItem>
-              <SelectItem value="lent">Money Lent</SelectItem>
+              <SelectItem value="borrowed" className="text-sm">Money Borrowed</SelectItem>
+              <SelectItem value="lent" className="text-sm">Money Lent</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="loan-person">
+          <Label htmlFor="loan-person" className="text-sm">
             {loanForm.type === "borrowed" ? "Lender" : "Borrower"}
           </Label>
           <Input
@@ -171,6 +168,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
             onChange={(e) =>
               setLoanForm({ ...loanForm, person: e.target.value })
             }
+            className="text-sm"
           />
         </div>
       </div>
@@ -178,7 +176,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
       {/* Fourth row: Monthly Interest Rate and Description */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="loan-interest">Monthly Interest Rate</Label>
+          <Label htmlFor="loan-interest" className="text-sm">Monthly Interest Rate</Label>
           <div className="relative">
             <Input
               id="loan-interest"
@@ -188,15 +186,15 @@ const LoanForm: React.FC<LoanFormProps> = ({
               onChange={(e) =>
                 setLoanForm({ ...loanForm, interestRate: e.target.value })
               }
-              className="pr-8"
+              className="pr-8 text-sm"
             />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500 text-sm">
               %
             </div>
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="loan-description">Note (Optional)</Label>
+          <Label htmlFor="loan-description" className="text-sm">Note (Optional)</Label>
           <Input
             id="loan-description"
             placeholder="Purpose of loan"
@@ -204,13 +202,14 @@ const LoanForm: React.FC<LoanFormProps> = ({
             onChange={(e) =>
               setLoanForm({ ...loanForm, description: e.target.value })
             }
+            className="text-sm"
           />
         </div>
       </div>
 
       {/* Fifth row: Attachment field (full width) */}
       <div className="space-y-2">
-        <Label>Attach Doc (Optional)</Label>
+        <Label className="text-sm">Attach Doc (Optional)</Label>
         <div
           className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
           onClick={() =>
@@ -237,7 +236,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
             type="file"
             className="hidden"
             accept="image/jpeg,image/png,application/pdf"
-            onChange={(e) => handleFileUpload(e, "loan")}
+            onChange={handleFileUpload}
           />
         </div>
       </div>
