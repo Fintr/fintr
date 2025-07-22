@@ -119,7 +119,7 @@ module Receipts
                   content: [
                     {
                       type: "text",
-                      text: "Please analyze this receipt image and extract the total amount and appropriate category."
+                      text: "Please analyze this receipt image and extract the total amount, date, and appropriate category."
                     },
                     {
                       type: "image_url",
@@ -153,21 +153,24 @@ module Receipts
         default_category = space_categories.first || "Family"
 
         <<~PROMPT
-          You are an expert receipt analyzer with computer vision capabilities. Analyze receipt images and extract ONLY the total amount and suggest the most appropriate category.
+          You are an expert receipt analyzer with computer vision capabilities. Analyze receipt images and extract the total amount, date, and suggest the most appropriate category.
 
           IMPORTANT RULES:
           1. Look at the receipt image carefully and identify the FINAL TOTAL amount (not subtotals, taxes, or individual line items)
-          2. Return ONLY valid JSON format
-          3. For category, choose ONLY from: #{category_list}
-          4. If unclear, default category to "#{default_category}"
-          5. If no clear total found, return null for total_amount
-          6. Use visual context clues like merchant logos, store names, or item types visible in the image
+          2. Extract the transaction DATE from the receipt (look for date stamps, transaction dates, or receipt dates)
+          3. Return ONLY valid JSON format
+          4. For category, choose ONLY from: #{category_list}
+          5. ALWAYS provide a category suggestion - if unclear, default to "#{default_category}"
+          6. If no clear total found, return null for total_amount
+          7. If no clear date found, return null for date
+          8. Use visual context clues like merchant logos, store names, or item types visible in the image
 
           AVAILABLE CATEGORIES: #{category_list}
 
           VISUAL ANALYSIS GUIDELINES:
           - Look for merchant names/logos at the top of the receipt
           - Identify the final total line (usually at the bottom, may be bold or emphasized)
+          - Look for date information (usually near the top or bottom, may be in various formats)
           - Consider the types of items purchased if visible
           - Use store branding and visual context to determine appropriate category
           - Pay attention to currency symbols and decimal formatting
@@ -175,7 +178,8 @@ module Receipts
           Response format (JSON only):
           {
             "total_amount": "XX.XX",
-            "category": "CategoryName",#{' '}
+            "date": "YYYY-MM-DD",
+            "category": "CategoryName",
             "confidence": "high|medium|low",
             "merchant_detected": "Store Name (if visible)"
           }
@@ -226,28 +230,32 @@ module Receipts
           end
         end
 
-        # Validate and clean category using space's categories
-        category = clean_category(parsed_data["category"], space_categories)
-        if category
-          validated[:category] = {
-            value: category,
-            confidence_score: vision_confidence_to_score(parsed_data["confidence"])
-          }
+        # Validate and clean date
+        if parsed_data["date"].present?
+          date = clean_date(parsed_data["date"])
+          if date
+            validated[:date] = {
+              value: date.strftime("%Y-%m-%d"),
+              confidence_score: vision_confidence_to_score(parsed_data["confidence"])
+            }
+          end
         end
+
+        # Validate and clean category using space's categories - ALWAYS provide a category
+        category = clean_category(parsed_data["category"], space_categories)
+        validated[:category] = {
+          value: category,
+          confidence_score: vision_confidence_to_score(parsed_data["confidence"])
+        }
 
         # Add merchant info if detected
         if parsed_data["merchant_detected"].present?
-          validated[:merchant] = {
-            value: parsed_data["merchant_detected"],
-            confidence_score: vision_confidence_to_score(parsed_data["confidence"])
-          }
-        end
-
-        # If no total amount found, still return category with lower confidence
-        if validated[:total_amount].nil? && validated[:category].present?
-          # Check if validated[:category] is not nil before accessing its keys
-          if validated[:category].is_a?(Hash) && validated[:category][:confidence_score]
-            validated[:category][:confidence_score] = [validated[:category][:confidence_score] - 0.15, 0.1].max
+          merchant = clean_merchant(parsed_data["merchant_detected"])
+          if merchant
+            validated[:merchant] = {
+              value: merchant,
+              confidence_score: vision_confidence_to_score(parsed_data["confidence"])
+            }
           end
         end
 
@@ -263,6 +271,48 @@ module Receipts
 
         amount = cleaned.to_f
         amount > 0 ? amount : nil
+      end
+
+      def clean_date(date_str)
+        return nil if date_str.blank? || date_str == "null"
+
+        # Try to parse various date formats
+        begin
+          date = Date.parse(date_str)
+          return date
+        rescue ArgumentError
+          # If standard parsing fails, try specific formats
+          if date_str.match?(/\d{4}-\d{2}-\d{2}/) # YYYY-MM-DD
+            begin
+              date = Date.strptime(date_str, "%Y-%m-%d")
+              return date
+            rescue ArgumentError
+              return nil
+            end
+          elsif date_str.match?(/\d{2}-\d{2}-\d{4}/) # MM-DD-YYYY
+            begin
+              date = Date.strptime(date_str, "%m-%d-%Y")
+              return date
+            rescue ArgumentError
+              return nil
+            end
+          elsif date_str.match?(/\d{2}-\d{2}-\d{2}/) # MM-DD-YY
+            begin
+              date = Date.strptime(date_str, "%m-%d-%y")
+              return date
+            rescue ArgumentError
+              return nil
+            end
+          end
+        end
+        nil
+      end
+
+      def clean_merchant(merchant_str)
+        return nil if merchant_str.blank? || merchant_str == "null"
+
+        # Clean up and return the merchant name
+        merchant_str.to_s.strip
       end
 
       def clean_category(category_str, space_categories)

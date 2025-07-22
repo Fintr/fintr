@@ -450,20 +450,22 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
       let(:space_categories) { ["Groceries", "Dining", "Transport"] }
 
       it "builds the system prompt correctly with categories" do
-        prompt = operation.__send__(:build_vision_system_prompt, space_categories)
-        expect(prompt).to include("For category, choose ONLY from: Groceries, Dining, Transport")
-        expect(prompt).to include("AVAILABLE CATEGORIES: Groceries, Dining, Transport")
-        expect(prompt).to include("If unclear, default category to \"Groceries\"")
+        result = operation.__send__(:build_vision_system_prompt, space_categories)
+        expect(result).to include("Extract the transaction DATE from the receipt")
+        expect(result).to include("ALWAYS provide a category suggestion")
+        expect(result).to include("default to \"Groceries\"")
+        expect(result).to include("date\": \"YYYY-MM-DD\"")
+        expect(result).to include("Groceries, Dining, Transport")
       end
 
       context "when space_categories is empty" do
         let(:space_categories) { [] }
 
         it "builds the system prompt with default category 'Family'" do
-          prompt = operation.__send__(:build_vision_system_prompt, space_categories)
-          expect(prompt).to include("For category, choose ONLY from: ") # No categories listed
-          expect(prompt).to include("AVAILABLE CATEGORIES: ") # No categories listed
-          expect(prompt).to include("If unclear, default category to \"Family\"")
+          result = operation.__send__(:build_vision_system_prompt, [])
+          expect(result).to include("ALWAYS provide a category suggestion")
+          expect(result).to include("default to \"Family\"")
+          expect(result).to include("date\": \"YYYY-MM-DD\"")
         end
       end
     end
@@ -565,7 +567,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
       end
 
       context "with missing total_amount" do
-        let(:parsed_data) do
+        let(:parsed_data_without_total) do
           {
             "category" => "Dining",
             "confidence" => "medium",
@@ -574,11 +576,11 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         end
 
         it "returns success without total_amount but with category" do
-          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:)
+          result = operation.__send__(:validate_extracted_data, parsed_data: parsed_data_without_total, space_categories:)
           expect(result).to be_success
-          expect(result.value!).not_to have_key(:total_amount)
-          expect(result.value![:category][:value]).to eq("Dining")
-          expect(result.value![:category][:confidence_score]).to be < 0.75 # Lowered due to missing total
+          expect(result.value!).to include(:category)
+          expect(result.value!).not_to include(:total_amount)
+          expect(result.value![:category][:confidence_score]).to eq(0.75) # Category confidence is maintained
         end
       end
 

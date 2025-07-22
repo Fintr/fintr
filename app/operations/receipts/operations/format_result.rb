@@ -111,14 +111,14 @@ module Receipts
         Success(raw_data)
       end
 
-            def build_suggested_transaction_payload(extracted_data:)
+      def build_suggested_transaction_payload(extracted_data:)
         # Handle case where extracted_data might be nil
         return Success(default_transaction_payload) if extracted_data.nil?
 
         # Build the exact payload frontend should send if user doesn't change anything
         payload = {
           amount: extract_amount_value(extracted_data),
-          date: Date.current.to_s, # Default to today
+          date: extract_date_value(extracted_data),
           category_name: extract_category_value(extracted_data),
           account_name: "Credit Card", # Default account suggestion
           description: build_description(extracted_data),
@@ -143,6 +143,21 @@ module Receipts
         return 0.0 if extracted_data.nil?
         amount_str = extracted_data.dig(:total_amount, :value) || "0.00"
         amount_str.to_f
+      end
+
+      def extract_date_value(extracted_data)
+        return Date.current.to_s if extracted_data.nil?
+
+        date_str = extracted_data.dig(:date, :value)
+        if date_str.present?
+          begin
+            Date.parse(date_str).to_s
+          rescue Date::Error
+            Date.current.to_s
+          end
+        else
+          Date.current.to_s
+        end
       end
 
       def extract_category_value(extracted_data)

@@ -99,14 +99,16 @@ module Receipts
         default_category = space_categories.first || "Family"
 
         <<~PROMPT
-          You are a receipt data extraction expert. Extract ONLY the total amount and suggest a category from receipt text.
+          You are a receipt data extraction expert. Extract the total amount, date, and suggest a category from receipt text.
 
           IMPORTANT RULES:
           1. Extract the FINAL TOTAL amount only (not subtotals, taxes, or line items)
-          2. Return ONLY valid JSON format
-          3. For category, choose ONLY from: #{category_list}
-          4. If unclear, default category to "#{default_category}"
-          5. If no clear total found, return null for total_amount
+          2. Extract the transaction DATE from the receipt text (look for date stamps, transaction dates, or receipt dates)
+          3. Return ONLY valid JSON format
+          4. For category, choose ONLY from: #{category_list}
+          5. ALWAYS provide a category suggestion - if unclear, default to "#{default_category}"
+          6. If no clear total found, return null for total_amount
+          7. If no clear date found, return null for date
 
           AVAILABLE CATEGORIES: #{category_list}
 
@@ -118,6 +120,7 @@ module Receipts
           Response format (JSON only):
           {
             "total_amount": "XX.XX",
+            "date": "YYYY-MM-DD",
             "category": "CategoryName",
             "confidence": "high|medium|low"
           }
@@ -170,19 +173,23 @@ module Receipts
           end
         end
 
-        # Validate and clean category using space's categories
-        category = clean_category(parsed_data["category"], space_categories)
-        if category
-          validated[:category] = {
-            value: category,
-            confidence_score: confidence_to_score(parsed_data["confidence"])
-          }
+        # Validate and clean date
+        if parsed_data["date"].present?
+          date = clean_date(parsed_data["date"])
+          if date
+            validated[:date] = {
+              value: date.strftime("%Y-%m-%d"),
+              confidence_score: confidence_to_score(parsed_data["confidence"])
+            }
+          end
         end
 
-        # If no total amount found, still return category with lower confidence
-        if validated[:total_amount].nil? && validated[:category].present?
-          validated[:category][:confidence_score] = [validated[:category][:confidence_score] - 0.2, 0.1].max
-        end
+        # Validate and clean category using space's categories - ALWAYS provide a category
+        category = clean_category(parsed_data["category"], space_categories)
+        validated[:category] = {
+          value: category,
+          confidence_score: confidence_to_score(parsed_data["confidence"])
+        }
 
         Success(validated)
       end
@@ -205,7 +212,42 @@ module Receipts
         amount
       end
 
-            def clean_category(category_str, space_categories)
+      def clean_date(date_str)
+        return nil if date_str.blank? || date_str == "null"
+
+        # Try to parse various date formats
+        begin
+          date = Date.parse(date_str)
+          return date
+        rescue ArgumentError
+          # If standard parsing fails, try specific formats
+          if date_str.match?(/\d{4}-\d{2}-\d{2}/) # YYYY-MM-DD
+            begin
+              date = Date.strptime(date_str, "%Y-%m-%d")
+              return date
+            rescue ArgumentError
+              return nil
+            end
+          elsif date_str.match?(/\d{2}-\d{2}-\d{4}/) # MM-DD-YYYY
+            begin
+              date = Date.strptime(date_str, "%m-%d-%Y")
+              return date
+            rescue ArgumentError
+              return nil
+            end
+          elsif date_str.match?(/\d{2}-\d{2}-\d{2}/) # MM-DD-YY
+            begin
+              date = Date.strptime(date_str, "%m-%d-%y")
+              return date
+            rescue ArgumentError
+              return nil
+            end
+          end
+        end
+        nil
+      end
+
+      def clean_category(category_str, space_categories)
         default_category = space_categories.first || "Family"
         return default_category if category_str.blank? || category_str == "null"
 
