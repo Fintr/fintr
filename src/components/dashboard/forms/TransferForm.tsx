@@ -53,6 +53,7 @@ type TransferFormValues = z.infer<typeof transferFormSchema>;
 
 // Updated props interface
 interface TransferFormProps {
+  id?: string;
   date?: Date | undefined;
   setDate?: React.Dispatch<React.SetStateAction<Date | undefined>>;
   onSubmitSuccess?: (data: any) => void;

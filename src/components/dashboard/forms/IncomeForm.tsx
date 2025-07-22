@@ -55,6 +55,7 @@ type IncomeFormValues = z.infer<typeof incomeFormSchema>;
 
 // Props for IncomeForm
 interface IncomeFormProps {
+  id?: string;
   date: Date | undefined;
   setDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
   onAddCustomCategory?: (categoryName: string) => void;
