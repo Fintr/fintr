@@ -28,7 +28,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   });
 
   // Check if device is mobile
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isMobile = typeof window !== 'undefined' ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) : false;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -63,6 +63,11 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   const startCamera = async () => {
     try {
       setIsCameraActive(true);
+      
+      // Check if navigator.mediaDevices is available
+      if (typeof window === 'undefined' || !navigator.mediaDevices) {
+        throw new Error('Camera access not available');
+      }
       
       // Request camera access
       const constraints = {

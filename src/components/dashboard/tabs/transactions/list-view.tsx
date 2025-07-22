@@ -39,9 +39,14 @@ export function ListView({
 
   const handleCopyId = async (id: string) => {
     try {
-      await navigator.clipboard.writeText(id);
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000); // Reset after 2 seconds
+      // Check if navigator.clipboard is available (browser environment)
+      if (typeof window !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(id);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000); // Reset after 2 seconds
+      } else {
+        console.warn("Clipboard API not available");
+      }
     } catch (err) {
       console.error("Failed to copy ID:", err);
     }
