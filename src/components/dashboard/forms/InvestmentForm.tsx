@@ -19,6 +19,28 @@ interface InvestmentFormProps {
   setDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
   onSubmitSuccess?: (data: any) => void;
   onCancel?: () => void;
+  // Props passed from parent for external state management
+  investmentForm?: {
+    amount: string;
+    name: string;
+    description: string;
+    category: string;
+    receipt: File | null;
+  };
+  setInvestmentForm?: React.Dispatch<React.SetStateAction<{
+    amount: string;
+    name: string;
+    description: string;
+    category: string;
+    receipt: File | null;
+  }>>;
+  customInvestmentCategories?: string[];
+  setCustomInvestmentCategories?: React.Dispatch<React.SetStateAction<string[]>>;
+  handleFileUpload?: (e: React.ChangeEvent<HTMLInputElement>, formType: string) => void;
+  showCustomCategoryInput?: boolean;
+  setShowCustomCategoryInput?: React.Dispatch<React.SetStateAction<boolean>>;
+  customCategory?: string;
+  setCustomCategory?: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const InvestmentForm: React.FC<InvestmentFormProps> = ({
@@ -26,30 +48,52 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
   setDate,
   onSubmitSuccess = () => {},
   onCancel = () => {},
+  investmentForm: externalInvestmentForm,
+  setInvestmentForm: externalSetInvestmentForm,
+  customInvestmentCategories: externalCustomInvestmentCategories,
+  setCustomInvestmentCategories: externalSetCustomInvestmentCategories,
+  handleFileUpload: externalHandleFileUpload,
+  showCustomCategoryInput: externalShowCustomCategoryInput,
+  setShowCustomCategoryInput: externalSetShowCustomCategoryInput,
+  customCategory: externalCustomCategory,
+  setCustomCategory: externalSetCustomCategory,
 }) => {
-  // Internal state for the form
-  const [investmentForm, setInvestmentForm] = useState({
+  // Use external state if provided, otherwise use internal state
+  const [internalInvestmentForm, setInternalInvestmentForm] = useState({
     amount: "",
     name: "",
     description: "",
     category: "",
     receipt: null as File | null,
   });
+  
+  const [internalShowCustomCategoryInput, setInternalShowCustomCategoryInput] = useState(false);
+  const [internalCustomCategory, setInternalCustomCategory] = useState("");
+  const [internalCustomInvestmentCategories, setInternalCustomInvestmentCategories] = useState<string[]>([]);
 
-  // State for custom category input
-  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
-  const [customCategory, setCustomCategory] = useState("");
-  const [customInvestmentCategories, setCustomInvestmentCategories] = useState<string[]>([]);
+  // Determine which state to use
+  const investmentForm = externalInvestmentForm || internalInvestmentForm;
+  const setInvestmentForm = externalSetInvestmentForm || setInternalInvestmentForm;
+  const customInvestmentCategories = externalCustomInvestmentCategories || internalCustomInvestmentCategories;
+  const setCustomInvestmentCategories = externalSetCustomInvestmentCategories || setInternalCustomInvestmentCategories;
+  const showCustomCategoryInput = externalShowCustomCategoryInput !== undefined ? externalShowCustomCategoryInput : internalShowCustomCategoryInput;
+  const setShowCustomCategoryInput = externalSetShowCustomCategoryInput || setInternalShowCustomCategoryInput;
+  const customCategory = externalCustomCategory !== undefined ? externalCustomCategory : internalCustomCategory;
+  const setCustomCategory = externalSetCustomCategory || setInternalCustomCategory;
 
   // Handle file upload for this form
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setInvestmentForm((prev) => ({ ...prev, receipt: file }));
-    } else {
-      setInvestmentForm((prev) => ({ ...prev, receipt: null }));
-    }
-  };
+  const handleFileUpload = externalHandleFileUpload ? 
+    ((e: React.ChangeEvent<HTMLInputElement>) => {
+      externalHandleFileUpload(e, "investment");
+    }) : 
+    ((e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        setInvestmentForm((prev) => ({ ...prev, receipt: file }));
+      } else {
+        setInvestmentForm((prev) => ({ ...prev, receipt: null }));
+      }
+    });
 
   return (
     <div className="space-y-4">
