@@ -58,6 +58,9 @@ interface TransferFormProps {
   setDate?: React.Dispatch<React.SetStateAction<Date | undefined>>;
   onSubmitSuccess?: (data: any) => void;
   onCancel?: () => void;
+  // Edit mode props
+  initialData?: UpdateTransferType;
+  isEditMode?: boolean;
 }
 
 const TransferForm: React.FC<TransferFormProps> = ({
@@ -65,23 +68,66 @@ const TransferForm: React.FC<TransferFormProps> = ({
   setDate,
   onSubmitSuccess = () => {},
   onCancel = () => {},
+  id,
+  initialData,
+  isEditMode = false,
 }) => {
   const { api } = useAuthApi();
   const accountOptions = useAtomValue(accountOptionsAtom);
   
   // Form state management using local state
   const [formState, setFormState] = useState({
-    amount: "",
-    transactionCost: "",
-    description: "",
-    fromAccountName: "",
-    toAccountName: "",
-    scheduleType: ScheduleTypeEnum.ONE_TIME,
-    repeatInterval: "",
+    amount: initialData?.amount?.toString() || "",
+    transactionCost: initialData?.transactionCost?.toString() || "",
+    description: initialData?.description || "",
+    fromAccountName: initialData?.fromAccountName || "",
+    toAccountName: initialData?.toAccountName || "",
+    scheduleType: initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME,
+    repeatInterval: initialData?.repeatInterval || "",
   });
   
   // Track form submission state
   const [formSubmitted, setFormSubmitted] = useState(false);
+  
+  // Initialize formState from initialData
+  const prevInitialDataRef = React.useRef<UpdateTransferType | undefined>(initialData);
+
+  useEffect(() => {
+    // Only proceed if initialData is provided and is a different object reference
+    if (initialData && (initialData !== prevInitialDataRef.current)) {
+      console.log('📝 TransferForm - Updating form state with initialData:', initialData);
+      
+      // Update form state with all initialData values
+      setFormState({
+        amount: initialData.amount?.toString() || "",
+        transactionCost: initialData.transactionCost?.toString() || "",
+        description: initialData.description || "",
+        fromAccountName: initialData.fromAccountName || "",
+        toAccountName: initialData.toAccountName || "",
+        scheduleType: initialData.scheduleType || ScheduleTypeEnum.ONE_TIME,
+        repeatInterval: initialData.repeatInterval || "",
+      });
+
+      // Store the current initialData reference to prevent re-running on same object
+      prevInitialDataRef.current = initialData;
+
+    } else if (!initialData && prevInitialDataRef.current) {
+      // If initialData becomes undefined and it was previously set, clear the form
+      console.log('🗑️ TransferForm - initialData is now undefined, clearing form.');
+      setFormState({
+        amount: "",
+        transactionCost: "",
+        description: "",
+        fromAccountName: "",
+        toAccountName: "",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+        repeatInterval: "",
+      });
+      setFileState(null);
+      setFormSubmitted(false);
+      prevInitialDataRef.current = undefined;
+    }
+  }, [initialData]);
   
   // Local state
   const [fileState, setFileState] = useState<File | null>(null);
@@ -166,25 +212,36 @@ const TransferForm: React.FC<TransferFormProps> = ({
       
       let response;
       
-      // Create new transfer
-      response = await createTransfer(api, transferData);
-      toast.success(`Transfer of ${transferData.amount} from ${transferData.fromAccountName} to ${transferData.toAccountName} has been recorded.`);
+      if (isEditMode && id) {
+        // Update existing transfer - pass the data to parent for scope handling
+        const submitData = { ...transferData, id, scheduleType: formState.scheduleType };
+        response = await onSubmitSuccess(submitData);
+        return; // Let parent handle the actual update
+      } else {
+        // Create new transfer
+        response = await createTransfer(api, transferData);
+        toast.success(`Transfer of ${transferData.amount} from ${transferData.fromAccountName} to ${transferData.toAccountName} has been recorded.`);
+      }
       
       // Reset form only if not in edit mode (edit mode closes dialog)
-      setFormState({
-        amount: "",
-        transactionCost: "",
-        description: "",
-        fromAccountName: "",
-        toAccountName: "",
-        scheduleType: ScheduleTypeEnum.ONE_TIME,
-        repeatInterval: "",
-      });
-      setFileState(null);
-      setFormSubmitted(false);
+      if (!isEditMode) {
+        setFormState({
+          amount: "",
+          transactionCost: "",
+          description: "",
+          fromAccountName: "",
+          toAccountName: "",
+          scheduleType: ScheduleTypeEnum.ONE_TIME,
+          repeatInterval: "",
+        });
+        setFileState(null);
+        setFormSubmitted(false);
+      }
       
       // Notify parent components of success
-      onSubmitSuccess(response);
+      if (!isEditMode) {
+        onSubmitSuccess(response);
+      }
     } catch (error) {
       console.error(`Error creating transfer:`, error);
       toast.error(`Failed to create transfer. Please try again.`);
@@ -480,10 +537,10 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Adding...
+              {isEditMode ? "Updating..." : "Adding..."}
             </>
           ) : (
-            "Add Transfer"
+            isEditMode ? "Update Transfer" : "Add Transfer"
           )}
         </Button>
       </div>

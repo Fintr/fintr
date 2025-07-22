@@ -63,6 +63,9 @@ interface IncomeFormProps {
   onSubmitSuccess?: (data: any) => void;
   onCancel?: () => void;
   formRef?: React.RefObject<HTMLFormElement>;
+  // Edit mode props
+  initialData?: UpdateTransactionType;
+  isEditMode?: boolean;
 }
 
 // Main Income Form
@@ -74,6 +77,9 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   onSubmitSuccess,
   onCancel,
   formRef,
+  id,
+  initialData,
+  isEditMode = false,
 }) => {
   const categoryOptions = useAtomValue(incomeCategoryOptionsAtom);
   const accountOptions = useAtomValue(accountOptionsAtom);
@@ -91,19 +97,71 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   // Track whether form has been submitted (for validation display)
   const [formSubmitted, setFormSubmitted] = useState(false);
   
+  // Helper function to filter schedule types for income
+  const getValidIncomeScheduleType = (scheduleType?: ScheduleTypeEnum): ScheduleTypeEnum.ONE_TIME | ScheduleTypeEnum.REPEAT => {
+    if (scheduleType === ScheduleTypeEnum.REPEAT) {
+      return ScheduleTypeEnum.REPEAT;
+    }
+    return ScheduleTypeEnum.ONE_TIME; // Default for ONE_TIME or INSTALLMENT
+  };
+
   // Form state management
   const [formState, setFormState] = useState<IncomeFormValues>({
-    amount: "",
-    description: "",
-    categoryName: "",
-    accountName: "",
-    scheduleType: ScheduleTypeEnum.ONE_TIME,
-    repeatInterval: "",
-    file: null,
+    amount: initialData?.amount?.toString() || "",
+    description: initialData?.description || "",
+    categoryName: initialData?.categoryName || "",
+    accountName: initialData?.accountName || "",
+    scheduleType: getValidIncomeScheduleType(initialData?.scheduleType),
+    repeatInterval: initialData?.repeatInterval || "",
+    file: initialData?.file || null,
   });
   
   // Form errors
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
+  
+  // Initialize formState from initialData
+  const prevInitialDataRef = React.useRef<UpdateTransactionType | undefined>(initialData);
+
+  useEffect(() => {
+    // Only proceed if initialData is provided and is a different object reference
+    if (initialData && (initialData !== prevInitialDataRef.current)) {
+      console.log('📝 IncomeForm - Updating form state with initialData:', initialData);
+      
+      // Update form state with all initialData values
+      setFormState({
+        amount: initialData.amount?.toString() || "",
+        description: initialData.description || "",
+        categoryName: initialData.categoryName || "",
+        accountName: initialData.accountName || "",
+        scheduleType: getValidIncomeScheduleType(initialData.scheduleType),
+        repeatInterval: initialData.repeatInterval || "",
+        file: initialData.file || null,
+      });
+      
+      // Update schedule type state
+      setScheduleType(getValidIncomeScheduleType(initialData.scheduleType));
+
+      // Store the current initialData reference to prevent re-running on same object
+      prevInitialDataRef.current = initialData;
+
+    } else if (!initialData && prevInitialDataRef.current) {
+      // If initialData becomes undefined and it was previously set, clear the form
+      console.log('🗑️ IncomeForm - initialData is now undefined, clearing form.');
+      setFormState({
+        amount: "",
+        description: "",
+        categoryName: "",
+        accountName: "",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+        repeatInterval: "",
+        file: null,
+      });
+      setFileState(null);
+      setScheduleType(ScheduleTypeEnum.ONE_TIME);
+      setFormSubmitted(false);
+      prevInitialDataRef.current = undefined;
+    }
+  }, [initialData]);
   
   // Form validation
   const validateForm = () => {
@@ -178,31 +236,40 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       
       let response;
       
-      // Create new transaction
-      response = await createTransaction(api, transactionData);
-      toast.success("Income created successfully");
+      if (isEditMode && id) {
+        // Update existing transaction - pass the data to parent for scope handling
+        const submitData = { ...transactionData, id, scheduleType: formState.scheduleType };
+        response = await onSubmitSuccess?.(submitData);
+        return; // Let parent handle the actual update
+      } else {
+        // Create new transaction
+        response = await createTransaction(api, transactionData);
+        toast.success("Income created successfully");
+      }
       
       // Call onSubmitSuccess callback to notify parent component
-      if (onSubmitSuccess) {
+      if (onSubmitSuccess && !isEditMode) {
         onSubmitSuccess(response);
       }
       
-      // Reset form
-      setFormState({
-        amount: "",
-        description: "",
-        categoryName: "",
-        accountName: "",
-        scheduleType: ScheduleTypeEnum.ONE_TIME,
-        repeatInterval: "",
-        file: null,
-      });
-      setDate(undefined);
-      setFileState(null);
-      setShowCustomCategoryInput(false);
-      setShowCustomAccountInput(false);
-      setScheduleType(ScheduleTypeEnum.ONE_TIME);
-      setFormSubmitted(false); // Reset the form submission flag
+      // Reset form only if not in edit mode (edit mode closes dialog)
+      if (!isEditMode) {
+        setFormState({
+          amount: "",
+          description: "",
+          categoryName: "",
+          accountName: "",
+          scheduleType: ScheduleTypeEnum.ONE_TIME,
+          repeatInterval: "",
+          file: null,
+        });
+        setDate(undefined);
+        setFileState(null);
+        setShowCustomCategoryInput(false);
+        setShowCustomAccountInput(false);
+        setScheduleType(ScheduleTypeEnum.ONE_TIME);
+        setFormSubmitted(false); // Reset the form submission flag
+      }
       
     } catch (error) {
       console.error(`Error creating income:`, error);
@@ -462,7 +529,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           className="bg-primary hover:bg-primary/80 text-sm" 
           disabled={isSubmitting}
         >
-          {isSubmitting ? "Adding Income..." : "Add Income"}
+          {isSubmitting ? (isEditMode ? "Updating Income..." : "Adding Income...") : (isEditMode ? "Update Income" : "Add Income")}
         </Button>
       </div>
     </form>
