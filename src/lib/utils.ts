@@ -5,29 +5,104 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number, currencyCode: string = "PHP") {
+// Performance optimization utilities
+export const performanceUtils = {
+  // Debounce function to prevent excessive function calls
+  debounce: <T extends (...args: any[]) => any>(
+    func: T,
+    wait: number
+  ): ((...args: Parameters<T>) => void) => {
+    let timeout: NodeJS.Timeout | null = null;
+    return (...args: Parameters<T>) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  },
+
+  // Throttle function to limit function execution rate
+  throttle: <T extends (...args: any[]) => any>(
+    func: T,
+    limit: number
+  ): ((...args: Parameters<T>) => void) => {
+    let inThrottle: boolean;
+    return (...args: Parameters<T>) => {
+      if (!inThrottle) {
+        func(...args);
+        inThrottle = true;
+        setTimeout(() => (inThrottle = false), limit);
+      }
+    };
+  },
+
+  // Check if device is mobile for performance optimizations
+  isMobileDevice: (): boolean => {
+    if (typeof window === 'undefined') return false;
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  },
+
+  // Memory cleanup utility
+  cleanupMemory: () => {
+    if (typeof window !== 'undefined') {
+      // Force garbage collection if available (Chrome DevTools)
+      if ((window as any).gc) {
+        (window as any).gc();
+      }
+    }
+  },
+
+  // Optimize images for mobile
+  createOptimizedImageUrl: (url: string, width?: number, quality?: number) => {
+    if (!url) return url;
+    const params = new URLSearchParams();
+    if (width) params.append('w', width.toString());
+    if (quality) params.append('q', quality.toString());
+    return `${url}${params.toString() ? '?' + params.toString() : ''}`;
+  },
+
+  // Check if browser supports certain features
+  supports: {
+    webp: (): boolean => {
+      if (typeof window === 'undefined') return false;
+      const canvas = document.createElement('canvas');
+      return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+    },
+    
+    intersectionObserver: (): boolean => {
+      return typeof window !== 'undefined' && 'IntersectionObserver' in window;
+    },
+    
+    passiveEventListeners: (): boolean => {
+      if (typeof window === 'undefined') return false;
+      let passiveSupported = false;
+      try {
+        const options = {
+          get passive() {
+            passiveSupported = true;
+            return false;
+          }
+        } as AddEventListenerOptions;
+        window.addEventListener('test' as keyof WindowEventMap, () => {}, options);
+        window.removeEventListener('test' as keyof WindowEventMap, () => {}, options);
+      } catch (err) {
+        passiveSupported = false;
+      }
+      return passiveSupported;
+    }
+  }
+};
+
+// Existing utility functions
+export function formatCurrency(amount: number, currency: string = "PHP"): string {
   return new Intl.NumberFormat("en-PH", {
     style: "currency",
-    currency: currencyCode,
+    currency: currency,
   }).format(amount);
 }
 
-// Generate random colors for charts
-export const getRandomColor = () => {
+export function getRandomColor(): string {
   const colors = [
-    "#11A69C", // Teal
-    "#924AF7", // Purple
-    "#D17711", // Orange
-    "#0081FE", // Blue
-    "#FF5383", // Pink
-    "#00AB55", // Green
-    "#400387", // Dark Purple
-    "#F2681F", // Dark Orange
-    "#005062", // Dark Teal
-    "#DE2C62", // Dark Pink
-    "#660E00", // Dark Red-Brown
-    "#003C96", // Darker Blue
+    "#008080", "#FF6B6B", "#4ECDC4", "#45B7D1", 
+    "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8"
   ];
-  const randomIndex = Math.floor(Math.random() * colors.length);
-  return colors[randomIndex];
-};
+  return colors[Math.floor(Math.random() * colors.length)];
+}

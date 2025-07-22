@@ -163,31 +163,18 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   const handleSubmit = async () => {
     if (!selectedImage) return;
     
-    console.log('🚀 AddReceiptDialog - handleSubmit called with file:', {
-      fileName: selectedImage.name,
-      fileType: selectedImage.type,
-      fileSize: selectedImage.size,
-      hasOnReceiptSuccess: !!onReceiptSuccess
-    });
-    
     setIsUploading(true);
     try {
       const response = await uploadReceipt(api, { image: selectedImage });
-      console.log('✅ AddReceiptDialog - Upload response:', response);
       
       // Check if the response contains suggestedTransactionPayload
       if (response?.data?.suggestedTransactionPayload && onReceiptSuccess) {
-        console.log('AddReceiptDialog - Receipt success, selectedImage:', selectedImage);
-        console.log('AddReceiptDialog - selectedImage type:', selectedImage.type);
-        console.log('AddReceiptDialog - selectedImage size:', selectedImage.size);
-        
         toast.success('Receipt processed successfully! Opening expense form...');
         
         // Call the callback with the suggested data and receipt image
         onReceiptSuccess(response.data.suggestedTransactionPayload, selectedImage);
         handleCancel();
       } else {
-        console.log('⚠️ AddReceiptDialog - No suggestedTransactionPayload in response, testing mock flow');
         // TEMPORARY: Always test the file transfer even on success
         if (onReceiptSuccess && selectedImage) {
           const mockSuggestedTransactionPayload = {
@@ -198,9 +185,6 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             description: "Test receipt transfer - success path",
             scheduleType: "one_time"
           };
-          
-          console.log('🧪 AddReceiptDialog - Testing file transfer with mock data (success path)');
-          console.log('🧪 AddReceiptDialog - selectedImage for test:', selectedImage);
           
           toast.success('Testing file transfer (success path) - Opening expense form...');
           onReceiptSuccess(mockSuggestedTransactionPayload, selectedImage);
@@ -215,9 +199,6 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
       console.error('❌ AddReceiptDialog - Upload error:', error);
       // TEMPORARY TEST: Even on error, let's test the file transfer with mock data
       if (onReceiptSuccess && selectedImage) {
-        console.log('🧪 AddReceiptDialog - Testing file transfer with mock data (error path)');
-        console.log('🧪 AddReceiptDialog - selectedImage for test:', selectedImage);
-        
         const mockSuggestedTransactionPayload = {
           amount: 1000,
           date: new Date().toISOString().split('T')[0],

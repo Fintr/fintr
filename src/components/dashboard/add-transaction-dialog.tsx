@@ -56,10 +56,6 @@ const AddTransactionDialog = ({
   // Memoize initialData for ExpenseForm to prevent infinite re-renders
   const expenseInitialData = useMemo(() => {
     if (prefilledData?.type === 'expense') {
-      console.log('AddTransactionDialog - Creating expenseInitialData (memoized)');
-      console.log('AddTransactionDialog - prefilledData:', prefilledData);
-      console.log('AddTransactionDialog - prefilledData.receiptImage:', prefilledData.receiptImage);
-      
       return {
         id: '',
         date: prefilledData.date || new Date().toISOString().split('T')[0],

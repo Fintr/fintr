@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { performanceUtils } from '@/lib/utils';
 
 export function useLocalStorage(key: string, initialValue: any) {
   const [storedValue, setStoredValue] = useState(() => {
@@ -14,18 +15,35 @@ export function useLocalStorage(key: string, initialValue: any) {
     }
   });
 
-  const setValue = (value: any) => {
+  // Debounced setValue to prevent excessive localStorage writes
+  const debouncedSetLocalStorage = performanceUtils.debounce((key: string, value: any) => {
     try {
-      const valueToStore =
-        value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        window.localStorage.setItem(key, JSON.stringify(value));
       }
     } catch (error) {
       console.warn('Error setting localStorage key:', key, error);
     }
+  }, 100);
+
+  const setValue = (value: any) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      debouncedSetLocalStorage(key, valueToStore);
+    } catch (error) {
+      console.warn('Error setting localStorage key:', key, error);
+    }
   };
+
+  // Cleanup on unmount for mobile memory management
+  useEffect(() => {
+    return () => {
+      if (performanceUtils.isMobileDevice()) {
+        performanceUtils.cleanupMemory();
+      }
+    };
+  }, []);
 
   return [storedValue, setValue];
 }

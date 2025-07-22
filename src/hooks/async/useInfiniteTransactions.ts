@@ -2,6 +2,7 @@ import { fetchTransactionsPage } from "@/services/transactions/queries";
 import useAuthApi from "../useAuthApi";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useLocalStorage } from "../useLocalStorage";
 
 export const useInfiniteTransactions = ({
   appliedCategory,
@@ -26,6 +27,8 @@ export const useInfiniteTransactions = ({
     scope: "openid profile email read:current_user read:transactions",
   });
 
+  const [spaceCode] = useLocalStorage("spaceCode", "");
+
   const {
     data,
     error,
@@ -40,7 +43,7 @@ export const useInfiniteTransactions = ({
   } = useInfiniteQuery({
     queryKey: [
       "transactions",
-      localStorage.getItem("spaceCode"),
+      spaceCode,
       appliedCategory,
       queryStartDate,
       queryEndDate,
@@ -53,8 +56,8 @@ export const useInfiniteTransactions = ({
     enabled: manualOnly
       ? false
       : !!enabled
-      ? enabled && !!localStorage.getItem("spaceCode")
-      : enabled || !!localStorage.getItem("spaceCode"),
+      ? enabled && !!spaceCode
+      : enabled || !!spaceCode,
     retry: false,
   });
   useEffect(() => {
@@ -83,7 +86,7 @@ export const useInfiniteTransactions = ({
       }
       observer.disconnect();
     };
-  }, [hasNextPage, fetchNextPage, isFetchingNextPage]);
+  }, [hasNextPage, fetchNextPage, isFetchingNextPage, loadMoreRef]);
 
   return {
     data,

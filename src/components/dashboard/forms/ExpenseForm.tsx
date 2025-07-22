@@ -158,21 +158,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const prevInitialDataRef = React.useRef<UpdateTransactionType | undefined>(initialData);
 
   useEffect(() => {
-    console.log('🔍 ExpenseForm - useEffect triggered, initialData:', {
-      hasInitialData: !!initialData,
-      hasFile: !!initialData?.file,
-      fileName: initialData?.file?.name,
-      fileType: initialData?.file?.type,
-      fileSize: initialData?.file?.size,
-      currentFileState: formState.file?.name, // Check formState.file now
-      timestamp: new Date().toISOString()
-    });
-    
     // Only proceed if initialData is provided and is a different object reference
-    // This prevents re-initializing when initialData is undefined or the same object
     if (initialData && (initialData !== prevInitialDataRef.current)) {
-      console.log('📝 ExpenseForm - Updating form state with initialData:', initialData);
-      
       // Update form state with all initialData values
       setFormState({
         amount: initialData.amount?.toString() || "",
@@ -182,12 +169,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         scheduleType: initialData.scheduleType || ScheduleTypeEnum.ONE_TIME,
         repeatInterval: initialData.repeatInterval || "",
         installmentPeriod: initialData.installmentPeriod?.toString() || "",
-        file: initialData.file || null, // Ensure file is set here
+        file: initialData.file || null,
       });
       
-      // No longer setting fileState separately; it's part of formState
-      console.log('✅ ExpenseForm - formState.file set immediately after initialData.file:', { hasFile: !!initialData.file, fileName: initialData.file?.name, fileType: initialData.file?.type });
-
       // Update schedule type state
       setScheduleType(initialData.scheduleType || ScheduleTypeEnum.ONE_TIME);
 
@@ -196,7 +180,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
     } else if (!initialData && prevInitialDataRef.current) {
       // If initialData becomes undefined and it was previously set, clear the form
-      console.log('🗑️ ExpenseForm - initialData is now undefined, clearing form.');
       setFormState({
         amount: "",
         description: "",
@@ -207,13 +190,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         installmentPeriod: "",
         file: null,
       });
-      // setFileState(null); // Removed
       setScheduleType(ScheduleTypeEnum.ONE_TIME);
-      setFormSubmitted(false); // Reset the form submission flag
-      prevInitialDataRef.current = undefined; // Clear the ref
-
-    } else if (!initialData) {
-      console.log('⚠️ ExpenseForm - initialData is undefined and has always been, skipping update.');
+      setFormSubmitted(false);
+      prevInitialDataRef.current = undefined;
     }
   }, [initialData]);
 
@@ -221,10 +200,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   useEffect(() => {
     // This dependency array includes categoryOptions and accountOptions
     // When they change (due to a new item being added), this effect runs
-    console.log("Options refreshed:", {
-      categories: categoryOptions.length,
-      accounts: accountOptions.length
-    });
   }, [categoryOptions, accountOptions, refreshOptionsFlag]);
   
   // Form validation
@@ -610,11 +585,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         <div className="space-y-2">
           <Label className="text-sm">Attach File (Optional)</Label>
           {(() => {
-            console.log('🖼️ ExpenseForm Render - formState.file before rendering:', { 
-              hasFile: !!formState.file, 
-              fileName: formState.file?.name, 
-              fileType: formState.file?.type 
-            });
             return null; // Return null to not render anything
           })()}
           {formState.file && formState.file.type.startsWith('image/') ? (

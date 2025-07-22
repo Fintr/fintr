@@ -59,11 +59,6 @@ const DashboardNavigation = () => {
   };
 
   const handleReceiptSuccess = (suggestedTransactionPayload: any, receiptImage: File) => {
-    console.log('DashboardNavigation - handleReceiptSuccess called');
-    console.log('DashboardNavigation - receiptImage:', receiptImage);
-    console.log('DashboardNavigation - receiptImage type:', receiptImage?.type);
-    console.log('DashboardNavigation - receiptImage size:', receiptImage?.size);
-    
     // Transform the suggested payload to match our expected format
     const prefilledData = {
       type: 'expense' as const,
@@ -75,9 +70,6 @@ const DashboardNavigation = () => {
       scheduleType: suggestedTransactionPayload.scheduleType,
       receiptImage: receiptImage,
     };
-    
-    console.log('DashboardNavigation - prefilledData created:', prefilledData);
-    console.log('DashboardNavigation - prefilledData.receiptImage:', prefilledData.receiptImage);
     
     // Set the prefilled data and open the transaction dialog
     setPrefilledTransactionData(prefilledData);

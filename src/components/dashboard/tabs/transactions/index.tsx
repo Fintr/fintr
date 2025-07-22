@@ -32,8 +32,14 @@ import { deleteTransfer } from "@/services/transactions/transfers/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import { TransactionTypeEnum } from "@/types/transactionTypes";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 
-const TransactionsTab = () => {
+interface TransactionsTabProps {
+  // Define any props if needed, but not used in this component
+}
+
+const TransactionsTab = ({ }: TransactionsTabProps) => {
+  const [spaceCode] = useLocalStorage("spaceCode", "");
   const { firstDay, lastDay } = getCurrentMonthDates();
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
@@ -116,7 +122,7 @@ const TransactionsTab = () => {
       queryClient.invalidateQueries({
         queryKey: [
           "transactions",
-          localStorage.getItem("spaceCode"),
+          spaceCode,
           appliedFilters.appliedCategory,
           appliedFilters.queryStartDate,
           appliedFilters.queryEndDate,

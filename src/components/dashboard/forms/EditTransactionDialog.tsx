@@ -83,7 +83,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       setPendingFormData(null);
       setHasScheduleChanges(false);
     }
-  }, [transaction?.id, isOpen, api, onClose]);
+  }, [transaction?.id, transaction, isOpen, api, onClose]);
 
   const validateScheduleTypeChange = (originalScheduleType: ScheduleTypeEnum, newScheduleType: ScheduleTypeEnum) => {
     // Rule 2: Cannot change from one_time or repeat to installment

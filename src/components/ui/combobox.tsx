@@ -110,7 +110,7 @@ export const ComboBox = ({
     if (value !== undefined && value !== searchValue) {
       setSearchValue(value);
     }
-  }, [value]);
+  }, [value, searchValue]);
 
   // For frontend filtering
   const filteredOptions = useMemo(() => {
@@ -125,7 +125,6 @@ export const ComboBox = ({
 
   // For backend filtering
   useEffect(() => {
-
     if (filterType !== "backend" || !fetchOptions) return;
     if (showAllOnFocus && open && searchValue.length === 0) {
       setLoading(true);
@@ -164,9 +163,9 @@ export const ComboBox = ({
     setTimer(newTimer);
 
     return () => {
-      if (timer) clearTimeout(timer);
+      if (newTimer) clearTimeout(newTimer);
     };
-  }, [searchValue, fetchOptions, filterType, minSearchLength, debounceTime, open, showAllOnFocus]);
+  }, [searchValue, fetchOptions, filterType, minSearchLength, debounceTime, open, showAllOnFocus, timer]);
 
   // Handler for value changes
   const handleChange = (value: string) => {
