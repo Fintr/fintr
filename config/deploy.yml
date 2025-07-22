@@ -70,6 +70,7 @@ env:
     - DATABASE_HOST
     - DB_BASE_URL
     - SENTRY_DSN
+    - OPENAI_API_KEY
 
 # Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
 # "bin/kamal app logs -r job" will tail logs from the first server in the job section.
