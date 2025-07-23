@@ -13,6 +13,7 @@ import { Upload, CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Calendar } from "../../ui/calendar";
 import { format } from "date-fns";
+import ExpandableTextarea from "../../ui/expandable-textarea";
 
 interface InvestmentFormProps {
   date: Date | undefined;
@@ -249,25 +250,16 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="investment-description" className="text-sm">Note (Optional)</Label>
-          <Input
-            id="investment-description"
-            placeholder="Add details about this investment"
-            value={investmentForm.description}
-            onChange={(e) =>
-              setInvestmentForm({
-                ...investmentForm,
-                description: e.target.value,
-              })
-            }
-            className="text-sm"
-          />
-        </div>
-        <div className="space-y-2">
-          {/* This div is intentionally left empty to maintain the grid layout */}
-        </div>
+      {/* Description Field */}
+      <div className="w-full">
+        <Label htmlFor="investment-description" className="text-sm">Note (Optional)</Label>
+        <ExpandableTextarea
+          id="investment-description"
+          value={investmentForm.description}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInvestmentForm({ ...investmentForm, description: e.target.value })}
+          placeholder="Add additional details"
+          className="mt-1"
+        />
       </div>
 
       <div className="space-y-2">

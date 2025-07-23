@@ -13,6 +13,7 @@ import { Upload, CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Calendar } from "../../ui/calendar";
 import { format } from "date-fns";
+import ExpandableTextarea from "../../ui/expandable-textarea";
 
 interface LoanFormProps {
   date?: Date | undefined;
@@ -174,37 +175,15 @@ const LoanForm: React.FC<LoanFormProps> = ({
       </div>
 
       {/* Fourth row: Monthly Interest Rate and Description */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="loan-interest" className="text-sm">Monthly Interest Rate</Label>
-          <div className="relative">
-            <Input
-              id="loan-interest"
-              type="number"
-              placeholder="0.00"
-              value={loanForm.interestRate}
-              onChange={(e) =>
-                setLoanForm({ ...loanForm, interestRate: e.target.value })
-              }
-              className="pr-8 text-sm"
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500 text-sm">
-              %
-            </div>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="loan-description" className="text-sm">Note (Optional)</Label>
-          <Input
-            id="loan-description"
-            placeholder="Purpose of loan"
-            value={loanForm.description}
-            onChange={(e) =>
-              setLoanForm({ ...loanForm, description: e.target.value })
-            }
-            className="text-sm"
-          />
-        </div>
+      <div className="w-full">
+        <Label htmlFor="loan-description" className="text-sm">Note (Optional)</Label>
+        <ExpandableTextarea
+          id="loan-description"
+          value={loanForm.description}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setLoanForm({ ...loanForm, description: e.target.value })}
+          placeholder="Add additional details"
+          className="mt-1"
+        />
       </div>
 
       {/* Fifth row: Attachment field (full width) */}

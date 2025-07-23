@@ -226,11 +226,11 @@ const BudgetsTab = ({ }: BudgetsTabProps) => {
       <CardContent>
         {/* Budget Filters */}
         <Card className="mb-6">
-          <CardHeader>
+          <CardHeader className="px-2">
             <CardTitle>Budget Filters</CardTitle>
             <CardDescription>Customize your budget view</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="space-y-2 md:w-1/2">
                 <Label>Budget Month</Label>
@@ -265,11 +265,11 @@ const BudgetsTab = ({ }: BudgetsTabProps) => {
 
         {/* Budget Summary */}
         <Card className="mb-6">
-          <CardHeader>
+          <CardHeader className="px-2">
             <CardTitle>Budget Summary</CardTitle>
             <CardDescription>Overview of your budget status</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2">
             {isLoading ? (
               <div className="py-4 text-center">Loading budget data...</div>
             ) : isError ? (

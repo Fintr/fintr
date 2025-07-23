@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { ArrowRight, Bell, User, LogOut, Settings, Camera, Plus } from "lucide-react";
+import { ArrowRight, Bell, User, LogOut, Settings, Camera, Plus, Menu, X, Search } from "lucide-react";
 import { useAuth0 } from "@auth0/auth0-react";
 import {
   DropdownMenu,
@@ -13,12 +13,14 @@ import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog"
 import AddReceiptDialog from "@/components/dashboard/add-receipt-dialog";
 import NotificationsPopup from "@/components/dashboard/notifications-popup";
 import { NotificationProps } from "@/components/dashboard/notification-item";
+import MobileNavDrawer from "@/components/dashboard/mobile-nav-drawer";
 
 const DashboardNavigation = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isAddReceiptOpen, setIsAddReceiptOpen] = useState(false);
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
   const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Auth0 hook for logout functionality
   const { logout } = useAuth0();
@@ -92,9 +94,10 @@ const DashboardNavigation = () => {
 
   return (
     <>
-      <header className="bg-background sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
+      <header className="bg-background sticky top-0 z-10 border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+          {/* Mobile: Logo left, Notifications + Hamburger right */}
+          <div className="flex md:hidden flex-row items-center justify-between h-14 w-full gap-2">
             <div className="flex items-center">
               <img
                 src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
@@ -102,60 +105,9 @@ const DashboardNavigation = () => {
                 className="h-8 w-auto"
               />
             </div>
-
-            {/* Chatbot in the center */}
-            <div className="flex-1 flex justify-center">
-              <div className="relative w-full max-w-md">
-                <div
-                  className="bg-white border border-gray-200 hover:border-primary rounded-full py-2 px-4 shadow-sm transition-all flex items-center w-full cursor-pointer"
-                  onClick={() => {
-                    // Trigger the floating chatbot widget
-                    const chatbotWidget = document.getElementById(
-                      "dashboard-chatbot-widget-button",
-                    );
-                    if (chatbotWidget) {
-                      chatbotWidget.click();
-                    }
-                  }}
-                >
-                  <input
-                    type="text"
-                    placeholder="Ask Fintr anything..."
-                    className="bg-transparent border-none outline-none flex-grow text-sm text-primary"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <button
-                    className="text-primary hover:text-primary/80 bg-gray-100 rounded-full p-1.5"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* User profile and notifications */}
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Button
-                  onClick={() => setIsAddReceiptOpen(true)}
-                  variant="outline"
-                  className="border-primary text-primary hover:bg-primary hover:text-white"
-                >
-                  <Camera className="h-4 w-4 mr-2" />
-                  Add Receipt
-                </Button>
-                
-                <Button
-                  onClick={() => setIsAddTransactionOpen(true)}
-                  className="bg-primary hover:bg-primary/80"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Transaction
-                </Button>
-              </div>
-              {/* Notifications */}
-              <div className="relative">
+            <div className="flex flex-row items-center gap-2">
+              {/* Notification bell */}
+              <div className="relative flex items-center">
                 <button
                   className="text-primary hover:text-primary/80 relative"
                   onClick={toggleNotifications}
@@ -167,7 +119,6 @@ const DashboardNavigation = () => {
                     </span>
                   )}
                 </button>
-
                 {showNotifications && (
                   <NotificationsPopup
                     notifications={notifications}
@@ -176,8 +127,59 @@ const DashboardNavigation = () => {
                   />
                 )}
               </div>
-
-              {/* User profile dropdown */}
+              {/* Hamburger menu */}
+              <Button variant="ghost" size="icon" className="p-2" onClick={() => setIsMobileNavOpen(true)}>
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </div>
+          </div>
+          {/* Desktop: Logo left, Add Receipt, Add Transaction, Notifications, Avatar right */}
+          <div className="hidden md:flex flex-row items-center justify-between h-16 w-full gap-2">
+            <div className="flex items-center md:mr-4">
+              <img
+                src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
+                alt="Fintr Logo"
+                className="h-8 w-auto"
+              />
+            </div>
+            <div className="flex flex-1" />
+            <div className="flex flex-row items-center gap-2 md:gap-4">
+              <Button
+                onClick={() => setIsAddReceiptOpen(true)}
+                variant="outline"
+                className="border-primary text-primary hover:bg-primary hover:text-white"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Add Receipt
+              </Button>
+              <Button
+                onClick={() => setIsAddTransactionOpen(true)}
+                className="bg-primary hover:bg-primary/80"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Transaction
+              </Button>
+              <div className="relative flex items-center">
+                <button
+                  className="text-primary hover:text-primary/80 relative"
+                  onClick={toggleNotifications}
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                {showNotifications && (
+                  <NotificationsPopup
+                    notifications={notifications}
+                    onClose={() => setShowNotifications(false)}
+                    onMarkAllAsRead={handleMarkAllAsRead}
+                  />
+                )}
+              </div>
               <DropdownMenu>
                 <DropdownMenuTrigger className="text-primary hover:text-primary/80">
                   <User className="h-5 w-5" />
@@ -197,6 +199,14 @@ const DashboardNavigation = () => {
           </div>
         </div>
       </header>
+      
+      <MobileNavDrawer
+        open={isMobileNavOpen}
+        onClose={() => setIsMobileNavOpen(false)}
+        onAddReceipt={() => setIsAddReceiptOpen(true)}
+        onAddTransaction={() => setIsAddTransactionOpen(true)}
+        onLogout={handleLogout}
+      />
       
       <AddReceiptDialog
         isOpen={isAddReceiptOpen}

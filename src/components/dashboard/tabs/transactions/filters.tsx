@@ -100,7 +100,7 @@ export function Filters({
   }
   return (
     <Card className="mb-6">
-      <CardHeader>
+      <CardHeader className="px-2">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Transaction Filters</CardTitle>
@@ -130,7 +130,7 @@ export function Filters({
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-2">
         <div className="flex flex-col md:flex-row gap-4">
           {transactionFilterType === "single" ? (
             <>

@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ExpandableTextarea from "@/components/ui/expandable-textarea";
 
 interface GoalFormProps {
   date: Date | undefined;
@@ -199,17 +200,15 @@ const GoalForm: React.FC<GoalFormProps> = ({
           </Popover>
         </div>
 
-        {/* Notes (Optional) */}
-        <div>
-          <Label htmlFor="goal-description" className="text-sm">Notes (Optional)</Label>
-          <Input
+        {/* Description Field */}
+        <div className="w-full">
+          <Label htmlFor="goal-description" className="text-sm">Note (Optional)</Label>
+          <ExpandableTextarea
             id="goal-description"
-            placeholder="Additional notes"
             value={goalForm.description}
-            onChange={(e) =>
-              setGoalForm({ ...goalForm, description: e.target.value })
-            }
-            className="text-sm"
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setGoalForm({ ...goalForm, description: e.target.value })}
+            placeholder="Add additional details"
+            className="mt-1"
           />
         </div>
       </div>

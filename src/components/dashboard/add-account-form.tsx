@@ -44,10 +44,10 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
 
     try {
       await createAccount(accountData);
-      
-      // Reset form
-      setName("");
-      setBalance("");
+
+    // Reset form
+    setName("");
+    setBalance("");
       setAccountCategory("");
       
       // Call the optional callback if provided

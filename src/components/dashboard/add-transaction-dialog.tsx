@@ -47,6 +47,7 @@ const AddTransactionDialog = ({
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState("expense");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const tabsListRef = useRef<HTMLDivElement>(null);
 
   // Use controlled or internal open state
   const isDialogOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -91,6 +92,13 @@ const AddTransactionDialog = ({
       setDate(new Date());
     }
   }, [isDialogOpen, prefilledData?.date]);
+
+  // Ensure TabsList scrolls to left-most on dialog open
+  useEffect(() => {
+    if (isDialogOpen && tabsListRef.current) {
+      tabsListRef.current.scrollLeft = 0;
+    }
+  }, [isDialogOpen]);
 
   // Get access to React Query client for cache invalidation
   const queryClient = useQueryClient();
@@ -189,7 +197,7 @@ const AddTransactionDialog = ({
 
   const onTransactionSuccess = (response: any) => {
     toast.success("Transaction added successfully!");
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
     setDialogOpen(false);
   };
 
@@ -241,6 +249,22 @@ const AddTransactionDialog = ({
     return accountName;
   };
 
+  const tabOptions = [
+    { value: "expense", label: "Expense" },
+    { value: "income", label: "Income" },
+    { value: "transfer", label: "Transfer" },
+    { value: "loan", label: "Loan" },
+    { value: "investment", label: "Investment" },
+    { value: "goal", label: "Goal" },
+  ];
+
+  const getMobileTabClass = (tab: string) =>
+    `flex-1 min-w-[120px] text-sm shrink-0 rounded px-3 py-2 font-medium transition-colors border ${
+      activeTab === tab
+        ? "bg-primary text-white border-primary"
+        : "bg-white text-primary border-primary hover:bg-primary/90 hover:text-white"
+    } focus:outline-none`;
+
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
@@ -249,14 +273,23 @@ const AddTransactionDialog = ({
           <DialogTitle className="text-lg">Add Transaction</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="expense" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className="grid w-full grid-cols-6 text-sm">
-            <TabsTrigger value="expense" className="text-sm">Expense</TabsTrigger>
-            <TabsTrigger value="income" className="text-sm">Income</TabsTrigger>
-            <TabsTrigger value="transfer" className="text-sm">Transfer</TabsTrigger>
-            <TabsTrigger value="loan" className="text-sm">Loan</TabsTrigger>
-            <TabsTrigger value="investment" className="text-sm">Investment</TabsTrigger>
-            <TabsTrigger value="goal" className="text-sm">Goal</TabsTrigger>
-          </TabsList>
+          {/* Mobile segmented control (button group, wrapping) */}
+          <div className="min-w-0 overflow-x-auto">
+            <TabsList
+              ref={tabsListRef}
+              className="flex flex-nowrap gap-2 px-2 pr-2 text-xs"
+            >
+              {tabOptions.map((opt) => (
+                <TabsTrigger
+                  key={opt.value}
+                  value={opt.value}
+                  className="px-2 py-1 min-w-[80px] shrink-0"
+                >
+                  {opt.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
           {/* Expense Form */}
           <TabsContent value="expense" className="flex-1 flex flex-col pt-4">

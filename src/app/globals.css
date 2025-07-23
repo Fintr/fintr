@@ -3,6 +3,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html, body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Remove forced max-width from containers to restore desktop centering */
+/* #__next, main, .max-w-7xl, .w-full, .container {
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+} */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

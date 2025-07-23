@@ -373,7 +373,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             </CardDescription>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:gap-2">
               <ViewModeButton
                 label="List"
                 IconComponent={List}
@@ -398,7 +398,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0">
           <Filters
             transactionFilterType="range"
             applyFilters={applyFilters}

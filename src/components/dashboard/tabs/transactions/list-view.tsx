@@ -94,14 +94,14 @@ export function ListView({
                         )}
                         <div className="flex items-center justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors min-h-[60px]">
                           {/* Color indicator */}
-                          <div
+                            <div
                             className={`w-1 h-12 rounded mr-3 flex-shrink-0 ${
-                              transaction.type === TransactionTypeEnum.INCOME
-                                ? "bg-emerald-500"
+                                transaction.type === TransactionTypeEnum.INCOME
+                                  ? "bg-emerald-500"
                                 : transaction.type === TransactionTypeEnum.EXPENSE
-                                ? "bg-red-500"
-                                : "bg-blue-500"
-                            }`}
+                                  ? "bg-red-500"
+                                  : "bg-blue-500"
+                              }`}
                           />
                           
                           {/* Main content */}
@@ -110,7 +110,7 @@ export function ListView({
                                {/* This div contains the description and the ID popover */}
                                 <div className="flex items-center gap-2 flex-auto min-w-0"> {/* Added flex-auto and min-w-0 */} 
                                   <h4 className="font-medium text-sm text-primary truncate pr-2"> {/* Removed flex-1 and min-w-0 */} 
-                                    {transaction.description}
+                                {transaction.description}
                                   </h4>
                                   <Popover>
                                     <PopoverTrigger asChild>
@@ -131,38 +131,38 @@ export function ListView({
                                     <PopoverContent className="w-auto p-2">
                                       <p className="text-xs">
                                         {copiedId === transaction.id ? "Copied!" : `ID: ${transaction.id}`}
-                                      </p>
+                                    </p>
                                     </PopoverContent>
                                   </Popover>
-                                </div>
+                              </div>
                                 {/* This div contains the amount and type badge */}
                                 <div className="flex items-center gap-2 flex-shrink-0">
-                                  <div
+                            <div
                                     className={`font-semibold text-sm ${
-                                      transaction.type === TransactionTypeEnum.INCOME
-                                        ? "text-emerald-600"
+                                transaction.type === TransactionTypeEnum.INCOME
+                                  ? "text-emerald-600"
                                         : transaction.type === TransactionTypeEnum.EXPENSE
-                                        ? "text-red-600"
-                                        : "text-blue-600"
-                                    }`}
-                                  >
-                                    {transaction.amount > 0 ? "+" : ""}
-                                    {formatCurrency(transaction.amount)}
-                                  </div>
-                                  <span
+                                  ? "text-red-600"
+                                  : "text-blue-600"
+                              }`}
+                            >
+                                {transaction.amount > 0 ? "+" : ""}
+                                {formatCurrency(transaction.amount)}
+                            </div>
+                            <span
                                     className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
-                                      transaction.type === TransactionTypeEnum.INCOME
+                                transaction.type === TransactionTypeEnum.INCOME
                                         ? "bg-emerald-100 text-emerald-700"
                                         : transaction.type === TransactionTypeEnum.EXPENSE
                                         ? "bg-red-100 text-red-700"
                                         : "bg-blue-100 text-blue-700"
-                                    }`}
-                                  >
+                              }`}
+                            >
                                     {transaction.type === TransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline mr-1" />}
                                     {transaction.type === TransactionTypeEnum.EXPENSE && <ArrowDownLeft className="h-3 w-3 inline mr-1" />}
                                     {transaction.type === TransactionTypeEnum.TRANSFER && <ArrowLeftRight className="h-3 w-3 inline mr-1" />}
-                                  {transaction.type}
-                                </span>
+                              {transaction.type}
+                            </span>
                               </div>
                             </div>
                             
@@ -183,22 +183,22 @@ export function ListView({
                               </div>
                               
                               <div className="flex gap-1 flex-shrink-0">
-                                <Button
+                              <Button
                                   variant="ghost"
-                                  size="sm"
+                                size="sm"
                                   className="h-6 px-2 text-xs text-primary hover:bg-primary/10"
-                                  onClick={() => onRowEdit(transaction)}
-                                >
-                                  Edit
-                                </Button>
-                                <Button
+                                onClick={() => onRowEdit(transaction)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
                                   variant="ghost"
-                                  size="sm"
+                                size="sm"
                                   className="h-6 px-2 text-xs text-red-600 hover:bg-red-50"
-                                  onClick={() => onRowDelete(transaction.id)}
-                                >
-                                  Delete
-                                </Button>
+                                onClick={() => onRowDelete(transaction.id)}
+                              >
+                                Delete
+                              </Button>
                               </div>
                             </div>
                           </div>

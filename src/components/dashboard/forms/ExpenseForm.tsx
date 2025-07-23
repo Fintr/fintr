@@ -29,6 +29,7 @@ import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum } from "@/const
 import AccountCreationForm from "./AccountCreationForm";
 import CategoryCreationForm from "./CategoryCreationForm";
 import { UpdateTransactionType } from "@/types/transactionTypes";
+import ExpandableTextarea from '@/components/ui/expandable-textarea';
 
 // Keep Zod schemas as they are used by the adapter and nested forms
 const categorySchema = z.object({
@@ -568,15 +569,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           </div>
 
           {/* Description Field */}
-          <div className="space-y-2">
+          <div className="w-full">
             <Label htmlFor="description" className="text-sm">Note (Optional)</Label>
-            <Input
+            <ExpandableTextarea
               id="description"
-              name="description"
               value={formState.description || ""}
-              onChange={(e) => handleFieldChange("description", e.target.value)}
-              placeholder="What did you spend on?"
-              className="text-sm"
+              onChange={e => handleFieldChange("description", e.target.value)}
+              placeholder="Add additional details"
+              className="mt-1"
             />
           </div>
         </div>

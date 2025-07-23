@@ -23,6 +23,7 @@ import * as z from "zod";
 import { ScheduleTypeEnum, REPEAT_INTERVALS } from "@/constants/transactionConstants";
 import AccountCreationForm from "./AccountCreationForm";
 import { updateTransfer, UpdateTransferType } from "@/services/transactions/transfers/mutation";
+import ExpandableTextarea from "@/components/ui/expandable-textarea";
 
 // Transfer form schema using Zod
 const transferFormSchema = z.object({
@@ -487,14 +488,14 @@ const TransferForm: React.FC<TransferFormProps> = ({
       </div>
 
       {/* Fifth row: Description */}
-      <div className="space-y-2">
+      <div className="w-full">
         <Label htmlFor="transfer-description" className="text-sm">Description (Optional)</Label>
-        <Input
+        <ExpandableTextarea
           id="transfer-description"
           placeholder="Enter description"
           value={formState.description || ""}
-          onChange={(e) => handleFieldChange("description", e.target.value)}
-          className="text-sm"
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange("description", e.target.value)}
+          className="mt-1"
         />
       </div>
 
