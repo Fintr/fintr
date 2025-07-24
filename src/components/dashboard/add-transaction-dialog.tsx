@@ -19,6 +19,7 @@ import {
   UpdateTransactionType, 
 } from "@/types/transactionTypes";
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
+import { shouldShowV2Features } from "@/lib/utils";
 
 interface AddTransactionDialogProps {
   onAddTransaction?: (transaction: any) => void;
@@ -265,6 +266,7 @@ const AddTransactionDialog = ({
         : "bg-white text-primary border-primary hover:bg-primary/90 hover:text-white"
     } focus:outline-none`;
 
+  const showV2Features = shouldShowV2Features();
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
@@ -272,23 +274,30 @@ const AddTransactionDialog = ({
         <DialogHeader>
           <DialogTitle className="text-lg">Add Transaction</DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue="expense" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          {/* Mobile segmented control (button group, wrapping) */}
-          <div className="min-w-0 overflow-x-auto">
-            <TabsList
-              ref={tabsListRef}
-              className="flex flex-nowrap gap-2 px-2 pr-2 text-xs"
-            >
-              {tabOptions.map((opt) => (
-                <TabsTrigger
-                  key={opt.value}
-                  value={opt.value}
-                  className="px-2 py-1 min-w-[80px] shrink-0"
-                >
-                  {opt.label}
-                </TabsTrigger>
-              ))}
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
+          <div className="px-6">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="expense">Expense</TabsTrigger>
+              <TabsTrigger value="income">Income</TabsTrigger>
+              <TabsTrigger value="transfer">Transfer</TabsTrigger>
             </TabsList>
+
+            {showV2Features && (
+              <>
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="loan">Loan</TabsTrigger>
+                  <TabsTrigger value="investment">Investment</TabsTrigger>
+                </TabsList>
+
+                <TabsList className="grid w-full grid-cols-1 mb-4">
+                  <TabsTrigger value="goal">Goal</TabsTrigger>
+                </TabsList>
+              </>
+            )}
           </div>
 
           {/* Expense Form */}
@@ -341,34 +350,40 @@ const AddTransactionDialog = ({
           </TabsContent>
 
           {/* Loan Form */}
-          <TabsContent value="loan" className="space-y-4">
-            <LoanForm
-              date={date}
-              setDate={setDate}
-              onSubmitSuccess={onTransactionSuccess}
-              onCancel={() => setDialogOpen(false)}
-            />
-          </TabsContent>
+          {showV2Features && (
+            <TabsContent value="loan" className="space-y-4">
+              <LoanForm
+                date={date}
+                setDate={setDate}
+                onSubmitSuccess={onTransactionSuccess}
+                onCancel={() => setDialogOpen(false)}
+              />
+            </TabsContent>
+          )}
 
           {/* Investment Form */}
-          <TabsContent value="investment" className="space-y-4">
-            <InvestmentForm
-              date={date}
-              setDate={setDate}
-              onSubmitSuccess={onTransactionSuccess}
-              onCancel={() => setDialogOpen(false)}
-            />
-          </TabsContent>
+          {showV2Features && (
+            <TabsContent value="investment" className="space-y-4">
+              <InvestmentForm
+                date={date}
+                setDate={setDate}
+                onSubmitSuccess={onTransactionSuccess}
+                onCancel={() => setDialogOpen(false)}
+              />
+            </TabsContent>
+          )}
 
           {/* Goal Form */}
-          <TabsContent value="goal" className="space-y-4">
-            <GoalForm
-              date={date}
-              setDate={setDate}
-              onSubmitSuccess={onTransactionSuccess}
-              onCancel={() => setDialogOpen(false)}
-            />
-          </TabsContent>
+          {showV2Features && (
+            <TabsContent value="goal" className="space-y-4">
+              <GoalForm
+                date={date}
+                setDate={setDate}
+                onSubmitSuccess={onTransactionSuccess}
+                onCancel={() => setDialogOpen(false)}
+              />
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Removed general Cancel and Save Transaction buttons */}

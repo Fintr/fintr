@@ -25,7 +25,7 @@ import EditCategoryDialog from "../edit-category-dialog";
 import DeleteCategoryDialog from "../delete-category-dialog";
 import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { useAccounts } from "@/hooks/async/useAccounts";
-import { getRandomColor } from "@/lib/utils";
+import { getRandomColor, shouldShowV2Features } from "@/lib/utils";
 import { TransactionCategory } from "@/types/transactionCategoryTypes";
 import { Account } from "@/types/accountTypes";
 import { toast } from "sonner";
@@ -45,6 +45,7 @@ const DatabaseTab = () => {
   const [activeSubTab, setActiveSubTab] = useState("expense");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryType>("expense");
+  const showV2Features = shouldShowV2Features();
 
   // Fetch transaction categories from API
   const { 
@@ -131,7 +132,7 @@ const DatabaseTab = () => {
   const categories = {
     expense: transformedExpenseCategories,
     income: transformedIncomeCategories,
-    goal: [
+    goal: showV2Features ? [
       {
         id: "7",
         name: "Debt Pay-Off",
@@ -209,8 +210,8 @@ const DatabaseTab = () => {
         color: "#607D8B",
         type: "goal",
       },
-    ],
-    investment: [
+    ] : [],
+    investment: showV2Features ? [
       {
         id: "10",
         name: "Insurance",
@@ -246,7 +247,7 @@ const DatabaseTab = () => {
         color: "#E91E63",
         type: "investment",
       },
-    ],
+    ] : [],
   };
 
   // const handleAddCategory = () => {

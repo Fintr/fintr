@@ -1,6 +1,7 @@
 import React from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Receipt, Wallet, Target, TrendingUp } from "lucide-react";
+import { shouldShowV2Features } from "@/lib/utils";
 
 export type CategoryType =
   | "expense"
@@ -17,6 +18,15 @@ const CategoryToggle: React.FC<CategoryToggleProps> = ({
   activeCategory,
   onCategoryChange,
 }) => {
+  const showV2Features = shouldShowV2Features();
+  
+  // Ensure we don't have an invalid active category when V2 features are disabled
+  React.useEffect(() => {
+    if (!showV2Features && (activeCategory === "goal" || activeCategory === "investment")) {
+      onCategoryChange("expense");
+    }
+  }, [showV2Features, activeCategory, onCategoryChange]);
+
   return (
     <div className="mb-6">
       <Tabs
@@ -40,20 +50,24 @@ const CategoryToggle: React.FC<CategoryToggleProps> = ({
             <Wallet className="h-4 w-4" />
             <span className="hidden sm:inline">Income</span>
           </TabsTrigger>
-          <TabsTrigger
-            value="goal"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
-          >
-            <Target className="h-4 w-4" />
-            <span className="hidden sm:inline">Goal</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="investment"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
-          >
-            <TrendingUp className="h-4 w-4" />
-            <span className="hidden sm:inline">Investment</span>
-          </TabsTrigger>
+          {showV2Features && (
+            <>
+              <TabsTrigger
+                value="goal"
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
+              >
+                <Target className="h-4 w-4" />
+                <span className="hidden sm:inline">Goal</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="investment"
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
+              >
+                <TrendingUp className="h-4 w-4" />
+                <span className="hidden sm:inline">Investment</span>
+              </TabsTrigger>
+            </>
+          )}
         </TabsList>
       </Tabs>
     </div>

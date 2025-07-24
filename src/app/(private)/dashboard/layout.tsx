@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useGetSpaceCode } from "@/hooks/useGetSpaceCode";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { shouldShowV2Features } from "@/lib/utils";
 
 export default function Layout({
   children,
@@ -22,6 +23,9 @@ export default function Layout({
   
   // Load dashboard data (accounts and categories) for all dashboard routes
   const { data, isLoading, isError } = useDashboardData();
+  
+  // Check if V2 features should be shown
+  const showV2Features = shouldShowV2Features();
 
   return (
     <div className="px-0 sm:px-4 md:px-8">
@@ -46,12 +50,16 @@ export default function Layout({
               <TabsTrigger asChild value="budgets">
                 <Link prefetch href="/dashboard/budgets">Budgets</Link>
               </TabsTrigger>
-              <TabsTrigger asChild value="goals">
-                <Link prefetch href="/dashboard/goals">Goals</Link>
-              </TabsTrigger>
-              <TabsTrigger asChild value="investments">
-                <Link prefetch href="/dashboard/investments">Investments</Link>
-              </TabsTrigger>
+              {showV2Features && (
+                <>
+                  <TabsTrigger asChild value="goals">
+                    <Link prefetch href="/dashboard/goals">Goals</Link>
+                  </TabsTrigger>
+                  <TabsTrigger asChild value="investments">
+                    <Link prefetch href="/dashboard/investments">Investments</Link>
+                  </TabsTrigger>
+                </>
+              )}
               <TabsTrigger asChild value="insights">
                 <Link prefetch href="/dashboard/insights">Insights</Link>
               </TabsTrigger>

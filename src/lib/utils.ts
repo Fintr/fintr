@@ -91,6 +91,11 @@ export const performanceUtils = {
   }
 };
 
+// Function to check if V2 features should be shown
+export const shouldShowV2Features = (): boolean => {
+  return process.env.NEXT_PUBLIC_SHOW_V2 === 'true';
+};
+
 // Existing utility functions
 export function formatCurrency(amount: number, currency: string = "PHP"): string {
   return new Intl.NumberFormat("en-PH", {
