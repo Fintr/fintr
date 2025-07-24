@@ -22,6 +22,7 @@ module Transactions
           relation  = step by_space(relation, params)
           relation  = step by_date(relation, params)
           relation  = step by_amount(relation, params)
+          relation  = step by_search_query(relation, params)
           relation  = step select(relation)
           relation  = step order(relation)
           relation  = step paginate(relation, params)

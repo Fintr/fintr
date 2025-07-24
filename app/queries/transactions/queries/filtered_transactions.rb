@@ -15,6 +15,7 @@ module Transactions
           optional(:per_page).maybe(:integer)
           optional(:balance_state).value(:string)
           optional(:paginate).value(:bool)
+          optional(:search_query).value(:string)
         end
 
         rule(:min_amount, :max_amount) do
@@ -50,6 +51,7 @@ module Transactions
         relation = step by_date(relation, params)
         relation = step by_category(relation, params)
         relation = step by_amount(relation, params)
+        relation = step by_search_query(relation, params)
         relation = step select(relation)
         relation = step order(relation)
         relation = step paginate(relation, params) if params[:paginate] != false
@@ -86,12 +88,26 @@ module Transactions
         Failure(:select_error)
       end
 
-
       def by_category(relation, params)
         return Success(relation) if ["all", ""].include?(params[:category_name])
 
         relation = relation.where(transactions_categories: { name: params[:category_name] })
         Success(relation)
+      end
+
+      def by_search_query(relation, params)
+        return Success(relation) if params[:search_query].blank?
+
+        search_query = params[:search_query]
+        relation = relation.where(
+          "transactions.description ILIKE :query OR " \
+          "transactions_categories.name ILIKE :query OR " \
+          "accounts.name ILIKE :query",
+          query: "%#{search_query}%"
+        )
+        Success(relation)
+      rescue StandardError
+        Failure(:search_query_error)
       end
 
       def order(relation)

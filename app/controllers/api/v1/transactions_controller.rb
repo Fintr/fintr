@@ -59,7 +59,8 @@ module Api
           :category_name,
           :min_amount,
           :max_amount,
-          :page
+          :search_query,
+          :page,
         ).to_h
       end
 

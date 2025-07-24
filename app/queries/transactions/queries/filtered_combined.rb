@@ -27,6 +27,7 @@ module Transactions
         relation      = step by_balance_state(relation, params)
         relation      = step by_amount(relation, params)
         relation      = step by_category(relation, params)
+        relation      = step by_search_query(relation, params)
         relation      = step order(relation)
         step paginate(relation, params)
       end
@@ -46,6 +47,21 @@ module Transactions
         return Success(relation) if ["all", ""].include?(params[:category_name])
 
         relation = relation.where(category_name: params[:category_name])
+        Success(relation)
+      end
+
+      def by_search_query(relation, params)
+        search_query = params[:search_query]
+
+        return Success(relation) if params[:search_query].blank?
+
+        relation = relation.where(
+          "combined_transactions.description ILIKE :query OR " \
+          "combined_transactions.category_name ILIKE :query OR " \
+          "combined_transactions.to_account_name ILIKE :query OR " \
+          "combined_transactions.from_account_name ILIKE :query",
+          query: "%#{search_query}%"
+        )
         Success(relation)
       end
 

@@ -21,25 +21,25 @@ module Receipts
       include FailureHandler
 
       def call(params:)
-        params          = step validate(params:)
-        extracted_data  = step format_extracted_data(params:)
-        confidence_summary = step format_confidence_summary(params:)
-        validation_flags = step extract_validation_flags(params:)
-                raw_data        = step prepare_raw_data(params:)
-        suggested_payload = step build_suggested_transaction_payload(extracted_data:)
-        formatted_result = step prepare_formatted_result(
-                                 extracted_data:,
-                                 confidence_summary:,
-                                 validation_flags:,
-                                 raw_data:,
-                                 suggested_payload:
-                               )
+        params                = step validate(params:)
+        extracted_data        = step format_extracted_data(params:)
+        confidence_summary    = step format_confidence_summary(params:)
+        validation_flags      = step extract_validation_flags(params:)
+        raw_data              = step prepare_raw_data(params:)
+        suggested_payload     = step build_suggested_transaction_payload(extracted_data:)
+        formatted_result      = step prepare_formatted_result(
+                                    extracted_data:,
+                                    confidence_summary:,
+                                    validation_flags:,
+                                    raw_data:,
+                                    suggested_payload:
+                                  )
         formatted_result
       end
 
       private
 
-            def format_extracted_data(params:)
+      def format_extracted_data(params:)
         receipt_data = params[:receipt_data]
         confidence_analysis = params[:confidence_analysis]
 
@@ -82,7 +82,7 @@ module Receipts
         Success(extracted_data)
       end
 
-            def format_confidence_summary(params:)
+      def format_confidence_summary(params:)
         confidence_analysis = params[:confidence_analysis]
 
         summary = {
@@ -134,7 +134,7 @@ module Receipts
           date: Date.current.to_s,
           category_name: "Family",
           account_name: "Credit Card",
-          description: "Receipt transaction [Auto-processed from receipt]",
+          description: "",
           schedule_type: "one_time"
         }
       end
