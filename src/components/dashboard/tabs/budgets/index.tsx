@@ -216,12 +216,29 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                   className="p-4 border rounded-lg space-y-4 bg-white"
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-primary">
-                        {category.name}
-                      </h3>
-                      <div className="flex items-center space-x-4">
-                        <div className="text-sm font-medium">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
+                      <div className="flex items-center justify-between w-full md:w-auto">
+                        <h3 className="font-medium text-primary">
+                          {category.name}
+                        </h3>
+                        <div className="flex space-x-2 md:hidden">
+                          <EditBudgetDialog
+                            budget={category}
+                            updateBudgetMutation={updateBudgetMutation}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-600"
+                            onClick={() => handleDeleteBudget(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-2 md:mt-0 flex items-center justify-between md:justify-end w-full">
+                        <div className="text-sm font-medium md:mr-4">
                           <span
                             className={
                               isItemOverBudget
@@ -239,7 +256,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                             ({formattedItemPercentage}%)
                           </span>
                         </div>
-                        <div className="flex space-x-2">
+                        <div className="hidden md:flex space-x-2">
                           <EditBudgetDialog
                             budget={category}
                             updateBudgetMutation={updateBudgetMutation}

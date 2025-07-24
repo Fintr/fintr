@@ -28,10 +28,10 @@ export const useAccounts = () => {
   const createAccountMutation = useMutation({
     mutationFn: (accountData: CreateAccountType) => 
       createAccount(api, accountData),
-    onSuccess: (newAccount) => {
+    onSuccess: (newAccount, variables) => {
       // Invalidate and refetch accounts
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      toast.success(`Account "${newAccount.name || newAccount.data?.name}" created successfully`);
+      toast.success(`Account "${variables.name}" created successfully`);
     },
     onError: (error: any) => {
       console.error('Error creating account:', error);

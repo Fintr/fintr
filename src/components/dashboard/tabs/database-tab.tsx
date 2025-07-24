@@ -456,154 +456,132 @@ const DatabaseTab = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Card className="border border-gray-200 shadow-sm bg-white">
-          <CardContent className="pt-6">
-            {/* Main Navigation Buttons */}
-            <div className="flex space-x-2 mb-6 overflow-x-auto">
-              <Button
-                variant={activeMainTab === "categories" ? "default" : "outline"}
-                className={activeMainTab === "categories" ? "bg-primary" : ""}
-                onClick={() => setActiveMainTab("categories")}
-              >
-                <Folder className="h-4 w-4 mr-2" /> Categories
-              </Button>
-              <Button
-                variant={activeMainTab === "accounts" ? "default" : "outline"}
-                className={activeMainTab === "accounts" ? "bg-primary" : ""}
-                onClick={() => setActiveMainTab("accounts")}
-              >
-                <Users className="h-4 w-4 mr-2" /> Accounts
-              </Button>
+        {/* Main Navigation Buttons */}
+        <div className="flex space-x-2 mb-6 overflow-x-auto">
+          <Button
+            variant={activeMainTab === "categories" ? "default" : "outline"}
+            className={activeMainTab === "categories" ? "bg-primary" : "bg-white"}
+            onClick={() => setActiveMainTab("categories")}
+          >
+            <Folder className="h-4 w-4 mr-2" /> Categories
+          </Button>
+          <Button
+            variant={activeMainTab === "accounts" ? "default" : "outline"}
+            className={activeMainTab === "accounts" ? "bg-primary" : "bg-white"}
+            onClick={() => setActiveMainTab("accounts")}
+          >
+            <Users className="h-4 w-4 mr-2" /> Accounts
+          </Button>
+        </div>
+
+        {/* Categories Tab Content */}
+        {activeMainTab === "categories" && (
+          <>
+            <h3 className="text-xl font-medium mb-4">
+              Category Management
+            </h3>
+            <p className="text-gray-500 mb-4">
+              Manage your categories for expenses, income, goals,
+              investments, and accounts
+            </p>
+
+            <div className="mb-6">
+              <CategoryToggle
+                activeCategory={activeCategory}
+                onCategoryChange={setActiveCategory}
+              />
             </div>
 
-            {/* Categories Tab Content */}
-            {activeMainTab === "categories" && (
-              <div>
-                <div className="mb-6">
-                  <h3 className="text-xl font-medium mb-4">
-                    Category Management
-                  </h3>
-                  <p className="text-gray-500 mb-4">
-                    Manage your categories for expenses, income, goals,
-                    investments, and accounts
-                  </p>
-
-                  <div className="border border-gray-200 rounded-lg p-4 bg-white">
-                    <CategoryToggle
-                      activeCategory={activeCategory}
-                      onCategoryChange={setActiveCategory}
-                    />
-
-                    <div className="grid grid-cols-1 gap-6">
-                      {activeCategory === "expense" && (
-                        <div className="mt-4">
-                          <CategoryListCard
-                            title="Expense Categories"
-                            description="Manage your expense categories"
-                            items={categories["expense"]}
-                            onAddItem={handleAddExpenseCategory}
-                            onEditItem={handleEditCategory}
-                            onDeleteItem={handleDeleteCategory}
-                            colorField="color"
-                            primaryField="name"
-                            addButtonText="Add New Expense Category"
-                            customEditComponent={renderCategoryEdit}
-                            customDeleteComponent={renderCategoryDelete}
-                          />
-                        </div>
-                      )}
-
-                      {activeCategory === "income" && (
-                        <div className="mt-4">
-                          <CategoryListCard
-                            title="Income Categories"
-                            description="Manage your income categories"
-                            items={categories["income"]}
-                            onAddItem={handleAddIncomeCategory}
-                            onEditItem={handleEditCategory}
-                            onDeleteItem={handleDeleteCategory}
-                            colorField="color"
-                            primaryField="name"
-                            addButtonText="Add New Income Category"
-                            customEditComponent={renderCategoryEdit}
-                            customDeleteComponent={renderCategoryDelete}
-                          />
-                        </div>
-                      )}
-
-                      {activeCategory === "goal" && (
-                        <div className="mt-4">
-                          <CategoryListCard
-                            title="Goal Categories"
-                            description="Manage your goal categories"
-                            items={categories["goal"]}
-                            onAddItem={handleAddGoalCategory}
-                            onEditItem={handleEditCategory}
-                            onDeleteItem={handleDeleteCategory}
-                            colorField="color"
-                            primaryField="name"
-                            addButtonText="Add New Goal Category"
-                            customEditComponent={renderCategoryEdit}
-                            customDeleteComponent={renderCategoryDelete}
-                          />
-                        </div>
-                      )}
-
-                      {activeCategory === "investment" && (
-                        <div className="mt-4">
-                          <CategoryListCard
-                            title="Investment Categories"
-                            description="Manage your investment categories"
-                            items={categories["investment"]}
-                            onAddItem={handleAddInvestmentCategory}
-                            onEditItem={handleEditCategory}
-                            onDeleteItem={handleDeleteCategory}
-                            colorField="color"
-                            primaryField="name"
-                            addButtonText="Add New Investment Category"
-                            customEditComponent={renderCategoryEdit}
-                            customDeleteComponent={renderCategoryDelete}
-                          />
-                        </div>
-                      )}
-
-
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {activeCategory === "expense" && (
+              <CategoryListCard
+                title="Expense Categories"
+                description="Manage your expense categories"
+                items={categories["expense"]}
+                onAddItem={handleAddExpenseCategory}
+                onEditItem={handleEditCategory}
+                onDeleteItem={handleDeleteCategory}
+                colorField="color"
+                primaryField="name"
+                addButtonText="Add New Expense Category"
+                customEditComponent={renderCategoryEdit}
+                customDeleteComponent={renderCategoryDelete}
+              />
             )}
 
-            {/* Accounts Tab Content */}
-            {activeMainTab === "accounts" && (
-              <div>
-                <div className="mb-6">
-                  <h3 className="text-xl font-medium mb-4">
-                    Account Management
-                  </h3>
-                  <p className="text-gray-500 mb-4">
-                    Manage your financial accounts, track balances, and organize
-                    your money
-                  </p>
-
-                  <div className="border border-gray-200 rounded-lg p-6 bg-white">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                      <div className="md:col-span-1">
-                        <AddAccountForm onAddAccount={handleAddAccount} />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <AccountList
-                          accounts={accounts}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {activeCategory === "income" && (
+              <CategoryListCard
+                title="Income Categories"
+                description="Manage your income categories"
+                items={categories["income"]}
+                onAddItem={handleAddIncomeCategory}
+                onEditItem={handleEditCategory}
+                onDeleteItem={handleDeleteCategory}
+                colorField="color"
+                primaryField="name"
+                addButtonText="Add New Income Category"
+                customEditComponent={renderCategoryEdit}
+                customDeleteComponent={renderCategoryDelete}
+              />
             )}
-          </CardContent>
-        </Card>
+
+            {activeCategory === "goal" && (
+              <CategoryListCard
+                title="Goal Categories"
+                description="Manage your goal categories"
+                items={categories["goal"]}
+                onAddItem={handleAddGoalCategory}
+                onEditItem={handleEditCategory}
+                onDeleteItem={handleDeleteCategory}
+                colorField="color"
+                primaryField="name"
+                addButtonText="Add New Goal Category"
+                customEditComponent={renderCategoryEdit}
+                customDeleteComponent={renderCategoryDelete}
+              />
+            )}
+
+            {activeCategory === "investment" && (
+              <CategoryListCard
+                title="Investment Categories"
+                description="Manage your investment categories"
+                items={categories["investment"]}
+                onAddItem={handleAddInvestmentCategory}
+                onEditItem={handleEditCategory}
+                onDeleteItem={handleDeleteCategory}
+                colorField="color"
+                primaryField="name"
+                addButtonText="Add New Investment Category"
+                customEditComponent={renderCategoryEdit}
+                customDeleteComponent={renderCategoryDelete}
+              />
+            )}
+          </>
+        )}
+
+        {/* Accounts Tab Content */}
+        {activeMainTab === "accounts" && (
+          <>
+            <h3 className="text-xl font-medium mb-4">
+              Account Management
+            </h3>
+            <p className="text-gray-500 mb-4">
+              Manage your financial accounts, track balances, and organize
+              your money
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-1 bg-white p-3 rounded-md border border-gray-200 h-fit">
+                <AddAccountForm onAddAccount={handleAddAccount} />
+              </div>
+
+              <div className="md:col-span-2">
+                <AccountList
+                  accounts={accounts}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
