@@ -166,18 +166,16 @@ module Receipts
       end
 
       def build_description(extracted_data)
-        return "Receipt transaction [Auto-processed from receipt]" if extracted_data.nil?
+        return "" if extracted_data.nil?
 
         merchant = extracted_data.dig(:merchant, :value)
 
         if merchant.present?
-          "Receipt from #{merchant} [Auto-processed from receipt]"
+          "#{merchant}"
         else
-          "Receipt transaction [Auto-processed from receipt]"
+          ""
         end
       end
-
-
 
       def prepare_formatted_result(extracted_data:, confidence_summary:, validation_flags:, raw_data:, suggested_payload:)
         result = {
