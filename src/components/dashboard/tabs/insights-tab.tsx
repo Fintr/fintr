@@ -42,12 +42,15 @@ import {
   BarChart as RechartsBarChart,
   Bar,
 } from "recharts";
-import { formatCurrency } from "@/lib/utils";
-import { useMemo } from "react";
+import { formatCurrency, getUniqueChartColor, resetChartColors } from "@/lib/utils";
+import { useMemo, useEffect } from "react";
 
 interface InsightsTabProps {
   filteredTransactions?: any[];
 }
+
+// Reset chart colors to ensure consistent colors for mock data
+resetChartColors();
 
 // Mock data for charts - will be replaced by API data but kept as fallback
 const monthlyFinancialData = [
@@ -60,11 +63,11 @@ const monthlyFinancialData = [
 ];
 
 const categoryExpenseData = [
-  { name: "Food", value: 8500, color: "#11A69C", percentage: "19.54%" },
-  { name: "Transportation", value: 3200, color: "#924AF7", percentage: "6.51%" },
-  { name: "Entertainment", value: 2800, color: "#D17711", percentage: "4.34%" },
-  { name: "Utilities", value: 4500, color: "#0081FE", percentage: "13.03%" },
-  { name: "Shopping", value: 6200, color: "#FF5383", percentage: "10.86%" },
+  { name: "Food", value: 8500, color: getUniqueChartColor("Food"), percentage: "19.54%" },
+  { name: "Transportation", value: 3200, color: getUniqueChartColor("Transportation"), percentage: "6.51%" },
+  { name: "Entertainment", value: 2800, color: getUniqueChartColor("Entertainment"), percentage: "4.34%" },
+  { name: "Utilities", value: 4500, color: getUniqueChartColor("Utilities"), percentage: "13.03%" },
+  { name: "Shopping", value: 6200, color: getUniqueChartColor("Shopping"), percentage: "10.86%" },
 ];
 
 const weeklySpendingData = [
@@ -143,7 +146,12 @@ const InsightsTab = () => {
 
     return [
       ...top5,
-      { name: "Other", value: otherValue, color: "#808080", details: otherDetails }, // Add a neutral color for "Other"
+      { 
+        name: "Other", 
+        value: otherValue, 
+        color: getUniqueChartColor("Other"), // Use our color function for "Other" category
+        details: otherDetails 
+      },
     ];
   }, [insightsData?.expenseBreakdown]);
 
