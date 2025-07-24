@@ -20,14 +20,15 @@ export const fetchTransactionsPage = async (
   }
 ): Promise<TransactionsPage> => {
   // Extract other parameters from the queryKey
-  const [_key, spaceCode, categoryName, startDate, endDate, minAmount, maxAmount] = queryKey as [
+  const [_key, spaceCode, categoryName, startDate, endDate, minAmount, maxAmount, searchQuery] = queryKey as [
     string,
     string,
     string,
     string,
     string,
     number,
-    number
+    number,
+    string
   ];
 
   const input: Omit<TransactionIndexInputType, 'page'> & { page: number } = {
@@ -38,6 +39,7 @@ export const fetchTransactionsPage = async (
     minAmount,
     maxAmount,
     page: pageParam,
+    searchQuery,
   };
   console.log('Fetching transactions page:', input);
 

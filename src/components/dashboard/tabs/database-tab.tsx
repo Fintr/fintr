@@ -571,7 +571,7 @@ const DatabaseTab = () => {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-1 bg-white p-3 rounded-md border border-gray-200 h-fit">
+              <div className="md:col-span-1 bg-white p-4 rounded-md border border-gray-200 h-fit">
                 <AddAccountForm onAddAccount={handleAddAccount} />
               </div>
 

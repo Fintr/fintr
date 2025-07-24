@@ -39,6 +39,7 @@ export interface FilterTypes {
   queryEndDate: string;
   appliedMinAmount: string;
   appliedMaxAmount: string;
+  searchQuery: string;
 }
 
 interface FiltersProps {
@@ -70,6 +71,7 @@ export function Filters({
     queryEndDate: lastDay,
     appliedMinAmount: "",
     appliedMaxAmount: "",
+    searchQuery: "",
   };
   const [filters, setFilters] = useState(initialFilters);
   function handleFilterChange(key: keyof typeof filters, value: string) {
@@ -93,6 +95,7 @@ export function Filters({
       queryEndDate: lastDay,
       appliedMinAmount: "",
       appliedMaxAmount: "",
+      searchQuery: "",
     };
 
     setFilters(resetFiltersData);
@@ -100,7 +103,7 @@ export function Filters({
   }
   return (
     <Card className="mb-6">
-      <CardHeader className="px-2">
+      <CardHeader className="px-4">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Transaction Filters</CardTitle>
@@ -130,7 +133,7 @@ export function Filters({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="px-2">
+      <CardContent className="px-4">
         <div className="flex flex-col md:flex-row gap-4">
           {transactionFilterType === "single" ? (
             <>

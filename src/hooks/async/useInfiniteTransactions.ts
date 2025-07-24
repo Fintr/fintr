@@ -10,6 +10,7 @@ export const useInfiniteTransactions = ({
   queryEndDate,
   appliedMinAmount,
   appliedMaxAmount,
+  searchQuery = "",
   enabled = null,
   manualOnly = false,
   loadMoreRef,
@@ -19,6 +20,7 @@ export const useInfiniteTransactions = ({
   queryEndDate: string;
   appliedMinAmount: string;
   appliedMaxAmount: string;
+  searchQuery?: string;
   enabled?: boolean | null;
   manualOnly?: boolean;
   loadMoreRef: React.RefObject<HTMLDivElement | null>;
@@ -49,6 +51,7 @@ export const useInfiniteTransactions = ({
       queryEndDate,
       appliedMinAmount,
       appliedMaxAmount,
+      searchQuery,
     ],
     queryFn: ({ pageParam = 1, queryKey }) =>
       fetchTransactionsPage(api, { pageParam, queryKey }),

@@ -42,7 +42,7 @@ import {
   BarChart as RechartsBarChart,
   Bar,
 } from "recharts";
-import { formatCurrency, getUniqueChartColor, resetChartColors } from "@/lib/utils";
+import { formatCurrency, getUniqueChartColor, resetChartColors, shouldShowV2Features } from "@/lib/utils";
 import { useMemo, useEffect } from "react";
 
 interface InsightsTabProps {
@@ -173,11 +173,11 @@ const InsightsTab = () => {
       <CardContent className="space-y-6">
         {/* Insights Filters */}
         <Card className="mb-6">
-          <CardHeader>
+          <CardHeader className="px-4">
             <CardTitle>Insights Filters</CardTitle>
             <CardDescription>Customize your insights view</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="space-y-2 md:w-1/4">
                 <Label>View Type</Label>
@@ -378,13 +378,13 @@ const InsightsTab = () => {
         </Card>
 
         <Card className="mb-6 border border-primary/10">
-          <CardHeader>
+          <CardHeader className="px-4">
             <CardTitle>Insights Summary</CardTitle>
             <CardDescription>
               Overview of your financial performance
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4">
             {isLoading ? (
               <div className="text-center py-8">Loading insights...</div>
             ) : isError ? (
@@ -428,13 +428,13 @@ const InsightsTab = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="border-0">
-            <CardHeader>
+            <CardHeader className="px-4">
               <CardTitle>Financial Health Score</CardTitle>
               <CardDescription>
                 Based on your spending habits and savings
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4">
               {isLoading ? (
                 <div className="text-center py-8">Loading health score...</div>
               ) : (
@@ -524,114 +524,119 @@ const InsightsTab = () => {
             </CardContent>
           </Card>
 
-          <Card className="col-span-2 border-0">
-            <CardHeader>
-              <CardTitle>AI-Powered Insights</CardTitle>
-              <CardDescription>
-                Personalized financial recommendations
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
-                  <div className="flex items-start">
-                    <div className="bg-primary text-white p-2 rounded-full mr-3">
-                      <MessageSquare className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-primary mb-1">
-                        Spending Pattern Detected
-                      </h4>
-                      <p className="text-sm text-primary/70">
-                        You've spent 24% more on dining out this month compared
-                        to your 3-month average. Consider setting a specific
-                        budget for restaurants to keep your spending in check.
-                      </p>
-                      <div className="mt-3 flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-8 border-primary text-primary"
-                        >
-                          Create Budget
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-8 border-gray-200 text-gray-500"
-                        >
-                          Dismiss
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-green-50 rounded-lg border border-green-100">
-                  <div className="flex items-start">
-                    <div className="bg-green-600 text-white p-2 rounded-full mr-3">
-                      <Target className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-green-800 mb-1">
-                        Savings Goal Progress
-                      </h4>
-                      <p className="text-sm text-green-700">
-                        You're 65% of the way to your emergency fund goal. At
-                        your current savings rate, you'll reach your target in
-                        approximately 4 months.
-                      </p>
-                      <div className="mt-2">
-                        <div className="flex justify-between items-center text-xs text-green-700 mb-1">
-                          <span>₱65,000 saved</span>
-                          <span>₱100,000 goal</span>
+          {
+            shouldShowV2Features() && (
+              <Card className="col-span-2 border-0">
+                <CardHeader>
+                  <CardTitle>AI-Powered Insights</CardTitle>
+                  <CardDescription>
+                    Personalized financial recommendations
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
+                      <div className="flex items-start">
+                        <div className="bg-primary text-white p-2 rounded-full mr-3">
+                          <MessageSquare className="h-5 w-5" />
                         </div>
-                        <Progress
-                          value={65}
-                          className="h-2 bg-green-100"
-                          indicatorClassName="bg-green-600"
-                        />
+                        <div>
+                          <h4 className="font-medium text-primary mb-1">
+                            Spending Pattern Detected
+                          </h4>
+                          <p className="text-sm text-primary/70">
+                            You've spent 24% more on dining out this month compared
+                            to your 3-month average. Consider setting a specific
+                            budget for restaurants to keep your spending in check.
+                          </p>
+                          <div className="mt-3 flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-8 border-primary text-primary"
+                            >
+                              Create Budget
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-8 border-gray-200 text-gray-500"
+                            >
+                              Dismiss
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                  <div className="flex items-start">
-                    <div className="bg-blue-600 text-white p-2 rounded-full mr-3">
-                      <Calendar className="h-5 w-5" />
+                    <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+                      <div className="flex items-start">
+                        <div className="bg-green-600 text-white p-2 rounded-full mr-3">
+                          <Target className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-green-800 mb-1">
+                            Savings Goal Progress
+                          </h4>
+                          <p className="text-sm text-green-700">
+                            You're 65% of the way to your emergency fund goal. At
+                            your current savings rate, you'll reach your target in
+                            approximately 4 months.
+                          </p>
+                          <div className="mt-2">
+                            <div className="flex justify-between items-center text-xs text-green-700 mb-1">
+                              <span>₱65,000 saved</span>
+                              <span>₱100,000 goal</span>
+                            </div>
+                            <Progress
+                              value={65}
+                              className="h-2 bg-green-100"
+                              indicatorClassName="bg-green-600"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-blue-800 mb-1">
-                        Upcoming Bill Reminder
-                      </h4>
-                      <p className="text-sm text-blue-700">
-                        Your electricity bill (approximately ₱4,500 based on
-                        previous months) is due in 5 days. Make sure you have
-                        sufficient funds in your account.
-                      </p>
-                      <div className="mt-3 flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-8 border-blue-300 text-blue-700"
-                        >
-                          Schedule Payment
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-8 border-gray-200 text-gray-500"
-                        >
-                          Remind Me Later
-                        </Button>
+
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                      <div className="flex items-start">
+                        <div className="bg-blue-600 text-white p-2 rounded-full mr-3">
+                          <Calendar className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-blue-800 mb-1">
+                            Upcoming Bill Reminder
+                          </h4>
+                          <p className="text-sm text-blue-700">
+                            Your electricity bill (approximately ₱4,500 based on
+                            previous months) is due in 5 days. Make sure you have
+                            sufficient funds in your account.
+                          </p>
+                          <div className="mt-3 flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-8 border-blue-300 text-blue-700"
+                            >
+                              Schedule Payment
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-8 border-gray-200 text-gray-500"
+                            >
+                              Remind Me Later
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            )
+          }
+          
         </div>
 
         {/* Financial Charts Section */}
@@ -794,41 +799,45 @@ const InsightsTab = () => {
           </Card>
         </div>
 
-        <Card className="mt-6 border-0">
-          <CardHeader>
-            <CardTitle>Fintr Finance Assistant</CardTitle>
-            <CardDescription>
-              Get personalized help with your financial questions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
-              <div className="flex items-start">
-                <div className="bg-primary text-white p-2 rounded-full mr-3">
-                  <MessageSquare className="h-5 w-5" />
+        {
+          shouldShowV2Features() && (
+            <Card className="mt-6 border-0">
+              <CardHeader>
+                <CardTitle>Fintr Finance Assistant</CardTitle>
+                <CardDescription>
+                  Get personalized help with your financial questions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
+                  <div className="flex items-start">
+                    <div className="bg-primary text-white p-2 rounded-full mr-3">
+                      <MessageSquare className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-primary/70">
+                        Hi there! I'm your Fintr Finance Assistant. How can I help
+                        you today with your financial goals or questions?
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-primary/70">
-                    Hi there! I'm your Fintr Finance Assistant. How can I help
-                    you today with your financial goals or questions?
-                  </p>
+                <div className="mt-4 relative">
+                  <Input
+                    placeholder="Ask Fintr about your finances..."
+                    className="pr-12"
+                  />
+                  <Button
+                    size="sm"
+                    className="absolute right-1 top-1 h-8 w-10 bg-primary hover:bg-primary/80"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
                 </div>
-              </div>
-            </div>
-            <div className="mt-4 relative">
-              <Input
-                placeholder="Ask Fintr about your finances..."
-                className="pr-12"
-              />
-              <Button
-                size="sm"
-                className="absolute right-1 top-1 h-8 w-10 bg-primary hover:bg-primary/80"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card> 
+          )
+        }
       </CardContent>
     </Card>
   );

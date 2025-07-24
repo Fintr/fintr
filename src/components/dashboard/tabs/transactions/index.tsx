@@ -33,12 +33,14 @@ import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import { TransactionTypeEnum } from "@/types/transactionTypes";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { shouldShowV2Features } from "@/lib/utils";
 
 interface TransactionsTabProps {
   // Define any props if needed, but not used in this component
 }
 
 const TransactionsTab = ({ }: TransactionsTabProps) => {
+  const showV2Features = shouldShowV2Features();
   const [spaceCode] = useLocalStorage("spaceCode", "");
   const { firstDay, lastDay } = getCurrentMonthDates();
   const currentMonth = new Date()
@@ -46,6 +48,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     .toLowerCase();
   const currentYear = new Date().getFullYear().toString();
 
+  // Default to list view
   const [viewMode, setViewMode] = useState("list");
   const initialFilters = {
     selectedMonth: currentMonth,
@@ -60,8 +63,10 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     queryEndDate: lastDay,
     appliedMinAmount: "",
     appliedMaxAmount: "",
+    searchQuery: "",
   }
   const [appliedFilters, setAppliedFilters] = useState(initialFilters)
+  const [searchInput, setSearchInput] = useState("");
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
 
@@ -100,6 +105,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     queryEndDate: appliedFilters.queryEndDate,
     appliedMinAmount: appliedFilters.appliedMinAmount,
     appliedMaxAmount: appliedFilters.appliedMaxAmount,
+    searchQuery: appliedFilters.searchQuery,
     manualOnly: false,
     loadMoreRef,
   });
@@ -128,6 +134,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           appliedFilters.queryEndDate,
           appliedFilters.appliedMinAmount,
           appliedFilters.appliedMaxAmount,
+          appliedFilters.searchQuery,
         ],
       });
       setDeleteScopeModalOpen(false);
@@ -144,6 +151,33 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   function applyFilters(a: FilterTypes) {
     setAppliedFilters(a)
   }
+
+  // Handle search input changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchInput(e.target.value);
+  };
+
+  // Apply search filter
+  const handleSearch = () => {
+    setAppliedFilters(prev => ({
+      ...prev,
+      searchQuery: searchInput
+    }));
+  };
+
+  // Clear search
+  const handleClearSearch = () => {
+    setSearchInput("");
+    setAppliedFilters(prev => ({
+      ...prev,
+      searchQuery: ""
+    }));
+  };
+
+  // Handle search input blur
+  const handleSearchBlur = () => {
+    handleSearch();
+  };
 
   const handleCellClick = (id: string, field: string, value: string) => {
     if (selectedCell?.id === id && selectedCell?.field === field) {
@@ -372,31 +406,33 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
               Manage and filter your transaction history
             </CardDescription>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:gap-2">
-              <ViewModeButton
-                label="List"
-                IconComponent={List}
-                isActive={viewMode === "list"}
-                onClick={() => setViewMode("list")}
-                aria-pressed={viewMode === "list"}
-              />
-              <ViewModeButton
-                label="Sheets"
-                IconComponent={Table2}
-                isActive={viewMode === "sheets"}
-                onClick={() => setViewMode("sheets")}
-                aria-pressed={viewMode === "sheets"}
-              />
-              <ViewModeButton
-                label="Calendar"
-                IconComponent={CalendarDays}
-                isActive={viewMode === "calendar"}
-                onClick={() => setViewMode("calendar")}
-                aria-pressed={viewMode === "calendar"}
-              />
+          {shouldShowV2Features() && (
+            <div className="flex items-center space-x-2">
+              <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:gap-2">
+                <ViewModeButton
+                  label="List"
+                  IconComponent={List}
+                  isActive={viewMode === "list"}
+                  onClick={() => setViewMode("list")}
+                  aria-pressed={viewMode === "list"}
+                />
+                <ViewModeButton
+                  label="Sheets"
+                  IconComponent={Table2}
+                  isActive={viewMode === "sheets"}
+                  onClick={() => setViewMode("sheets")}
+                  aria-pressed={viewMode === "sheets"}
+                />
+                <ViewModeButton
+                  label="Calendar"
+                  IconComponent={CalendarDays}
+                  isActive={viewMode === "calendar"}
+                  onClick={() => setViewMode("calendar")}
+                  aria-pressed={viewMode === "calendar"}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </CardHeader>
         <CardContent className="px-0">
           <Filters
@@ -410,14 +446,19 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
               <Input
                 placeholder="Search Transactions"
                 className="pl-10 bg-white"
+                value={searchInput}
+                onChange={handleSearchChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
+                onBlur={handleSearchBlur}
               />
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center justify-between md:justify-start">
               <h3 className="text-lg font-medium mr-2">Transactions</h3>
-            </div>
-            <div className="flex items-center gap-2">
               <DownloadButton />
-              <DeleteButton />
             </div>
           </div>
 

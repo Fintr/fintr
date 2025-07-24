@@ -20,6 +20,7 @@ export interface TransactionIndexInputType {
   minAmount: number;
   maxAmount: number;
   page: number;
+  searchQuery?: string;
 };
 
 export interface UpdateTransactionType {
