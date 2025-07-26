@@ -24,6 +24,7 @@ import { ScheduleTypeEnum, REPEAT_INTERVALS } from "@/constants/transactionConst
 import AccountCreationForm from "./AccountCreationForm";
 import { updateTransfer, UpdateTransferType } from "@/services/transactions/transfers/mutation";
 import ExpandableTextarea from "@/components/ui/expandable-textarea";
+import FileUploadField from "./FileUploadField";
 
 // Transfer form schema using Zod
 const transferFormSchema = z.object({
@@ -62,6 +63,7 @@ interface TransferFormProps {
   // Edit mode props
   initialData?: UpdateTransferType;
   isEditMode?: boolean;
+  onFileUpdate?: (file: File | null) => void; // New prop for file updates
 }
 
 const TransferForm: React.FC<TransferFormProps> = ({
@@ -72,6 +74,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
   id,
   initialData,
   isEditMode = false,
+  onFileUpdate,
 }) => {
   const { api } = useAuthApi();
   const accountOptions = useAtomValue(accountOptionsAtom);
@@ -85,6 +88,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
     toAccountName: initialData?.toAccountName || "",
     scheduleType: initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME,
     repeatInterval: initialData?.repeatInterval || "",
+    file: initialData?.file || null, // Add file state to formState
   });
   
   // Track form submission state
@@ -96,8 +100,6 @@ const TransferForm: React.FC<TransferFormProps> = ({
   useEffect(() => {
     // Only proceed if initialData is provided and is a different object reference
     if (initialData && (initialData !== prevInitialDataRef.current)) {
-      console.log('📝 TransferForm - Updating form state with initialData:', initialData);
-      
       // Update form state with all initialData values
       setFormState({
         amount: initialData.amount?.toString() || "",
@@ -107,14 +109,13 @@ const TransferForm: React.FC<TransferFormProps> = ({
         toAccountName: initialData.toAccountName || "",
         scheduleType: initialData.scheduleType || ScheduleTypeEnum.ONE_TIME,
         repeatInterval: initialData.repeatInterval || "",
+        file: initialData.file || null, // Update file state
       });
 
       // Store the current initialData reference to prevent re-running on same object
       prevInitialDataRef.current = initialData;
-
     } else if (!initialData && prevInitialDataRef.current) {
       // If initialData becomes undefined and it was previously set, clear the form
-      console.log('🗑️ TransferForm - initialData is now undefined, clearing form.');
       setFormState({
         amount: "",
         transactionCost: "",
@@ -123,12 +124,15 @@ const TransferForm: React.FC<TransferFormProps> = ({
         toAccountName: "",
         scheduleType: ScheduleTypeEnum.ONE_TIME,
         repeatInterval: "",
+        file: null, // Clear file state
       });
-      setFileState(null);
+      if (setDate) setDate(undefined); // Conditionally call setDate
+      setShowFromAccountCreation(false);
+      setShowToAccountCreation(false);
       setFormSubmitted(false);
       prevInitialDataRef.current = undefined;
     }
-  }, [initialData]);
+  }, [initialData, initialData?.file]); // Add initialData?.file to dependencies
   
   // Local state
   const [fileState, setFileState] = useState<File | null>(null);
@@ -162,7 +166,8 @@ const TransferForm: React.FC<TransferFormProps> = ({
         description: formState.description,
         scheduleType: formState.scheduleType,
         // Include repeatInterval only if scheduleType is REPEAT
-        ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && { repeatInterval: formState.repeatInterval })
+        ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && { repeatInterval: formState.repeatInterval }),
+        file: fileState ?? undefined // Use fileState for validation
       };
       
       transferFormSchema.parse(formData);
@@ -208,7 +213,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
         date: format(date, 'yyyy-MM-dd'),
         scheduleType: formState.scheduleType,
         ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && { repeatInterval: formState.repeatInterval }),
-        file: fileState ?? undefined
+        file: formState.file ?? undefined // Use formState.file for submission
       };
       
       let response;
@@ -234,8 +239,9 @@ const TransferForm: React.FC<TransferFormProps> = ({
           toAccountName: "",
           scheduleType: ScheduleTypeEnum.ONE_TIME,
           repeatInterval: "",
+          file: null, // Clear file state on success
         });
-        setFileState(null);
+        // setFileState(null);
         setFormSubmitted(false);
       }
       
@@ -244,20 +250,31 @@ const TransferForm: React.FC<TransferFormProps> = ({
         onSubmitSuccess(response);
       }
     } catch (error) {
-      console.error(`Error creating transfer:`, error);
       toast.error(`Failed to create transfer. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
   };
   
+  // Handle file change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      setFileState(selectedFile);
+      const file = e.target.files[0];
+      setFormState(prev => ({ ...prev, file }));
+      if (onFileUpdate) onFileUpdate(file); // Notify parent of file change
+    } else {
+      setFormState(prev => ({ ...prev, file: null }));
+      if (onFileUpdate) onFileUpdate(null); // Notify parent of file removal
     }
   };
-  
+
+  // Handle file removal
+  const handleRemoveFile = () => {
+    setFormState(prev => ({ ...prev, file: null }));
+    if (onFileUpdate) onFileUpdate(null); // Notify parent of file removal
+  };
+
+  // Handle account creation
   const handleFromAccountCreated = (accountName: string) => {
     if (accountName) {
       handleFieldChange("fromAccountName", accountName);
@@ -500,27 +517,11 @@ const TransferForm: React.FC<TransferFormProps> = ({
       </div>
 
       {/* File Upload Field */}
-      <div className="space-y-2">
-        <Label className="text-sm">Attach File (Optional)</Label>
-        <div
-          className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-          onClick={() => document.getElementById("expense-file-upload")?.click()}
-        >
-          <div className="flex flex-col items-center">
-            <Upload className="h-8 w-8 text-gray-400 mb-1" />
-            <p className="text-sm text-gray-500">Drag & drop your file here or <span className="text-primary font-medium">browse files</span></p>
-            <p className="text-xs text-gray-400 mt-1">Supports: JPG, PNG, PDF (Max 5MB)</p>
-            {fileState && (<p className="text-sm text-green-600 mt-2">File selected: {fileState.name}</p>)}
-          </div>
-          <input
-            id="expense-file-upload"
-            type="file"
-            className="hidden"
-            accept="image/jpeg,image/png,application/pdf"
-            onChange={handleFileChange}
-          />
-        </div>
-      </div>
+      <FileUploadField
+        file={formState.file}
+        onFileChange={handleFileChange}
+        onRemoveFile={handleRemoveFile}
+      />
 
       {/* Action buttons */}
       <div className="flex justify-end gap-2">

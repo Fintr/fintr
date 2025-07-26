@@ -25,6 +25,8 @@ import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum } from "@/const
 import AccountCreationForm from "./AccountCreationForm";
 import CategoryCreationForm from "./CategoryCreationForm";
 import { UpdateTransactionType } from "@/types/transactionTypes";
+import ExpandableTextarea from '@/components/ui/expandable-textarea';
+import FileUploadField from "./FileUploadField";
 
 // Income form schema using Zod
 const incomeFormSchema = z.object({
@@ -66,6 +68,7 @@ interface IncomeFormProps {
   // Edit mode props
   initialData?: UpdateTransactionType;
   isEditMode?: boolean;
+  onFileUpdate?: (file: File | null) => void; // New prop for file updates
 }
 
 // Main Income Form
@@ -80,6 +83,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   id,
   initialData,
   isEditMode = false,
+  onFileUpdate,
 }) => {
   const categoryOptions = useAtomValue(incomeCategoryOptionsAtom);
   const accountOptions = useAtomValue(accountOptionsAtom);
@@ -123,30 +127,34 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const prevInitialDataRef = React.useRef<UpdateTransactionType | undefined>(initialData);
 
   useEffect(() => {
+    // Helper to get a valid income schedule type (only ONE_TIME or REPEAT)
+    const getValidIncomeScheduleType = (scheduleType?: ScheduleTypeEnum): ScheduleTypeEnum.ONE_TIME | ScheduleTypeEnum.REPEAT => {
+      if (scheduleType === ScheduleTypeEnum.INSTALLMENT) {
+        return ScheduleTypeEnum.ONE_TIME; // Default to ONE_TIME if installment (not supported for income)
+      }
+      return scheduleType === ScheduleTypeEnum.REPEAT ? ScheduleTypeEnum.REPEAT : ScheduleTypeEnum.ONE_TIME;
+    };
+
     // Only proceed if initialData is provided and is a different object reference
     if (initialData && (initialData !== prevInitialDataRef.current)) {
-      console.log('📝 IncomeForm - Updating form state with initialData:', initialData);
-      
       // Update form state with all initialData values
       setFormState({
         amount: initialData.amount?.toString() || "",
         description: initialData.description || "",
         categoryName: initialData.categoryName || "",
         accountName: initialData.accountName || "",
-        scheduleType: getValidIncomeScheduleType(initialData.scheduleType),
+        scheduleType: getValidIncomeScheduleType(initialData.scheduleType), // Use helper here
         repeatInterval: initialData.repeatInterval || "",
         file: initialData.file || null,
       });
       
       // Update schedule type state
-      setScheduleType(getValidIncomeScheduleType(initialData.scheduleType));
+      setScheduleType(getValidIncomeScheduleType(initialData.scheduleType)); // Use helper here
 
       // Store the current initialData reference to prevent re-running on same object
       prevInitialDataRef.current = initialData;
-
     } else if (!initialData && prevInitialDataRef.current) {
       // If initialData becomes undefined and it was previously set, clear the form
-      console.log('🗑️ IncomeForm - initialData is now undefined, clearing form.');
       setFormState({
         amount: "",
         description: "",
@@ -156,12 +164,14 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         repeatInterval: "",
         file: null,
       });
-      setFileState(null);
+      setDate(undefined);
+      setShowCustomCategoryInput(false);
+      setShowCustomAccountInput(false);
       setScheduleType(ScheduleTypeEnum.ONE_TIME);
       setFormSubmitted(false);
       prevInitialDataRef.current = undefined;
     }
-  }, [initialData]);
+  }, [initialData, initialData?.file]); // Add initialData?.file to dependencies
   
   // Form validation
   const validateForm = () => {
@@ -272,7 +282,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       }
       
     } catch (error) {
-      console.error(`Error creating income:`, error);
       const fieldErrors = extractFieldErrors(error);
       
       toast.error(fieldErrors.detail || `Failed to create income. Please try again.`);
@@ -285,10 +294,18 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setFileState(file);
+      setFormState(prev => ({ ...prev, file }));
+      if (onFileUpdate) onFileUpdate(file); // Notify parent of file change
     } else {
-      setFileState(null);
+      setFormState(prev => ({ ...prev, file: null }));
+      if (onFileUpdate) onFileUpdate(null); // Notify parent of file removal
     }
+  };
+
+  // Handle file removal
+  const handleRemoveFile = () => {
+    setFormState(prev => ({ ...prev, file: null }));
+    if (onFileUpdate) onFileUpdate(null); // Notify parent of file removal
   };
 
   // Handle category creation
@@ -496,29 +513,13 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         </div>
 
         {/* File Upload Field */}
-        <div className="space-y-2">
-          <Label className="text-sm">Attach File (Optional)</Label>
-          <div
-            className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-            onClick={() => document.getElementById("income-file-upload")?.click()}
-          >
-            <div className="flex flex-col items-center">
-              <Upload className="h-8 w-8 text-gray-400 mb-1" />
-              <p className="text-sm text-gray-500">Drag & drop your file here or <span className="text-primary font-medium">browse files</span></p>
-              <p className="text-xs text-gray-400 mt-1">Supports: JPG, PNG, PDF (Max 5MB)</p>
-              {fileState && (<p className="text-sm text-green-600 mt-2">File selected: {fileState.name}</p>)}
-            </div>
-            <input
-              id="income-file-upload"
-              type="file"
-              className="hidden"
-              accept="image/jpeg,image/png,application/pdf"
-              onChange={handleFileChange}
-            />
-          </div>
-        </div>
-      </div>
+        <FileUploadField
+          file={formState.file}
+          onFileChange={handleFileChange}
+          onRemoveFile={handleRemoveFile}
+        />
 
+      </div>
       {/* Submit/Cancel Buttons */}
       <div className="flex justify-end gap-2 mt-4">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-sm">

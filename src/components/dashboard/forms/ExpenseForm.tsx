@@ -30,6 +30,7 @@ import AccountCreationForm from "./AccountCreationForm";
 import CategoryCreationForm from "./CategoryCreationForm";
 import { UpdateTransactionType } from "@/types/transactionTypes";
 import ExpandableTextarea from '@/components/ui/expandable-textarea';
+import FileUploadField from "./FileUploadField";
 
 // Keep Zod schemas as they are used by the adapter and nested forms
 const categorySchema = z.object({
@@ -92,6 +93,7 @@ interface ExpenseFormProps {
   id?: string;
   initialData?: UpdateTransactionType;
   isEditMode?: boolean;
+  onFileUpdate?: (file: File | null) => void; // New prop for file updates
 }
 
 // Main Expense Form using @tanstack/react-form
@@ -104,8 +106,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   onCancel,
   formRef,
   id,
-  initialData, // Remove default value here
+  initialData,
   isEditMode = false,
+  onFileUpdate,
 }) => {
   // Get options from atoms
   const categoryOptions = useAtomValue(expenseCategoryOptionsAtom);
@@ -161,6 +164,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   useEffect(() => {
     // Only proceed if initialData is provided and is a different object reference
     if (initialData && (initialData !== prevInitialDataRef.current)) {
+      
       // Update form state with all initialData values
       setFormState({
         amount: initialData.amount?.toString() || "",
@@ -173,12 +177,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         file: initialData.file || null,
       });
       
+      
       // Update schedule type state
       setScheduleType(initialData.scheduleType || ScheduleTypeEnum.ONE_TIME);
 
       // Store the current initialData reference to prevent re-running on same object
       prevInitialDataRef.current = initialData;
-
     } else if (!initialData && prevInitialDataRef.current) {
       // If initialData becomes undefined and it was previously set, clear the form
       setFormState({
@@ -191,16 +195,19 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         installmentPeriod: "",
         file: null,
       });
+      setDate(undefined);
+      setShowCustomCategoryInput(false);
+      setShowCustomAccountInput(false);
       setScheduleType(ScheduleTypeEnum.ONE_TIME);
       setFormSubmitted(false);
       prevInitialDataRef.current = undefined;
     }
-  }, [initialData]);
+  }, [initialData, initialData?.file]); // Add initialData?.file to dependencies
 
   // Effect to force re-render when new categories or accounts are added
   useEffect(() => {
     // This dependency array includes categoryOptions and accountOptions
-    // When they change (due to a new item being added), this effect runs
+    // When they change (due to a new item being added), this comes in here
   }, [categoryOptions, accountOptions, refreshOptionsFlag]);
   
   // Form validation
@@ -331,12 +338,18 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // setFileState(file); // Removed
-      setFormState(prev => ({ ...prev, file })); // Update formState.file directly
+      setFormState(prev => ({ ...prev, file }));
+      if (onFileUpdate) onFileUpdate(file); // Notify parent of file change
     } else {
-      // setFileState(null); // Removed
-      setFormState(prev => ({ ...prev, file: null })); // Update formState.file directly
+      setFormState(prev => ({ ...prev, file: null }));
+      if (onFileUpdate) onFileUpdate(null); // Notify parent of file removal
     }
+  };
+
+  // Handle file removal
+  const handleRemoveFile = () => {
+    setFormState(prev => ({ ...prev, file: null }));
+    if (onFileUpdate) onFileUpdate(null); // Notify parent of file removal
   };
 
   // Handle category creation
@@ -351,8 +364,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       // Trigger a refresh of options
       setRefreshOptionsFlag(prev => prev + 1);
       
-      // Log for debugging
-      console.log("Category created and selected:", categoryName);
+      
     }
     // Close the category creation form
     setShowCustomCategoryInput(false);
@@ -370,8 +382,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       // Trigger a refresh of options
       setRefreshOptionsFlag(prev => prev + 1);
       
-      // Log for debugging
-      console.log("Account created and selected:", accountName);
+      
     }
     // Close the account creation form
     setShowCustomAccountInput(false);
@@ -582,73 +593,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         </div>
 
         {/* File Upload Field */}
-        <div className="space-y-2">
-          <Label className="text-sm">Attach File (Optional)</Label>
-          {(() => {
-            return null; // Return null to not render anything
-          })()}
-          {formState.file && formState.file.type.startsWith('image/') ? (
-            /* Image Preview */
-            <div className="space-y-2">
-              <div className="border border-gray-300 rounded-lg p-4">
-                <img 
-                  src={URL.createObjectURL(formState.file)} 
-                  alt="Receipt preview" 
-                  className="w-full h-48 object-contain rounded-lg"
-                />
-                <div className="mt-2 flex items-center justify-between">
-                  <p className="text-sm text-green-600">
-                    Receipt attached: {formState.file.name}
-                    {initialData?.file === formState.file && (
-                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                        From Receipt Upload
-                      </span>
-                    )}
-                  </p>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setFormState(prev => ({ ...prev, file: null }));
-                    }}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* File Upload Area */
-            <div
-              className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-              onClick={() => document.getElementById("expense-file-upload")?.click()}
-            >
-              <div className="flex flex-col items-center">
-                <Upload className="h-8 w-8 text-gray-400 mb-1" />
-                <p className="text-sm text-gray-500">Drag & drop your file here or <span className="text-primary font-medium">browse files</span></p>
-                <p className="text-xs text-gray-400 mt-1">Supports: JPG, PNG, PDF (Max 5MB)</p>
-                {formState.file && !formState.file.type.startsWith('image/') && (
-                  <p className="text-sm text-green-600 mt-2">
-                    File selected: {formState.file.name}
-                    {initialData?.file === formState.file && (
-                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                        From Receipt Upload
-                      </span>
-                    )}
-                  </p>
-                )}
-              </div>
-              <input
-                id="expense-file-upload"
-                type="file"
-                className="hidden"
-                accept="image/jpeg,image/png,application/pdf"
-                onChange={handleFileChange}
-              />
-            </div>
-          )}
-        </div>
+        <FileUploadField
+          file={formState.file}
+          onFileChange={handleFileChange}
+          onRemoveFile={handleRemoveFile}
+        />
 
       </div>
       {/* Submit/Cancel Buttons */}

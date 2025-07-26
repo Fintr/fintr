@@ -19,6 +19,14 @@ import { useAuthApi } from "@/hooks/useAuthApi";
 import { ScheduleTypeEnum, UpdateScopeEnum } from "@/constants/transactionConstants";
 import { toast } from "sonner";
 
+interface FileAttachment {
+  id: string;
+  filename: string;
+  contentType: string;
+  url: string;
+  createdAt: string;
+}
+
 interface EditTransactionDialogProps {
   transaction: IndexTransaction | null;
   isOpen: boolean;
@@ -36,6 +44,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   const [date, setDate] = useState<Date | undefined>(new Date());
   const { api } = useAuthApi();
   const [isLoading, setIsLoading] = useState(false);
+  const [fileAttachments, setFileAttachments] = useState<FileAttachment[]>([]);
   
   // Update scope modal state
   const [showUpdateScopeModal, setShowUpdateScopeModal] = useState(false);
@@ -43,47 +52,81 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   const [scheduleTypeChange, setScheduleTypeChange] = useState<{from: string; to: string} | null>(null);
   const [pendingFormData, setPendingFormData] = useState<any>(null);
   const [hasScheduleChanges, setHasScheduleChanges] = useState(false);
+  const [dataKey, setDataKey] = useState<number>(0); // Add a key to force re-render
 
   useEffect(() => {
     const fetchTransactionDetails = async () => {
-      if (transaction?.id && api && isOpen) {
-        setIsLoading(true);
-        try {
-          let data;
-          
-          // Use the appropriate endpoint based on transaction type
-          if (transaction.type === TransactionTypeEnum.TRANSFER) {
-            data = await fetchTransferById(api, transaction.id);
-          } else {
-            data = await fetchTransactionById(api, transaction.id);
-          }
-          
-          setFullTransactionData(data);
-          // Set the date from the transaction data
-          if (data.date) {
-            setDate(new Date(data.date));
-          }
-        } catch (error) {
-          toast.error("Failed to fetch transaction details.");
-          console.error(error);
-          onClose();
-        } finally {
-          setIsLoading(false);
+      if (!transaction?.id || !api || !isOpen) return; // Only fetch if dialog is open, transaction exists, and api is ready
+
+      setIsLoading(true);
+      try {
+        let data;
+        
+        // Use the appropriate endpoint based on transaction type
+        if (transaction.type === TransactionTypeEnum.TRANSFER) {
+          data = await fetchTransferById(api, transaction.id);
+        } else {
+          data = await fetchTransactionById(api, transaction.id);
         }
+        
+        let processedData = { ...data }; // Create a mutable copy
+
+        // Process file attachments if they exist AND no file is already set (e.g., from a new selection)
+        if (processedData.files && Array.isArray(processedData.files) && processedData.files.length > 0 && !processedData.file) {
+          setFileAttachments(processedData.files);
+          
+          // Create a special file object that works with the form components
+          const fileAttachment = processedData.files[0];
+          if (fileAttachment && fileAttachment.url) {
+            // Create a custom file object that has the properties needed by the form
+            const customFile = {
+              name: fileAttachment.filename,
+              type: fileAttachment.contentType,
+              size: 0, // We don't have the size, but the form doesn't use it for display
+              
+              // Add the URL for preview generation
+              url: fileAttachment.url,
+              
+              // Add a flag to indicate this is a remote file (not a local File object)
+              isRemoteFile: true
+            };
+            
+            // Add the custom file to the transaction data
+            processedData.file = customFile;
+            
+          }
+        }
+        
+        setFullTransactionData(processedData);
+        setDataKey(prev => prev + 1); // Increment key to force re-render
+        
+        // Set the date from the transaction data
+        if (processedData.date) {
+          setDate(new Date(processedData.date));
+        }
+      } catch (error) {
+        toast.error("Failed to fetch transaction details.");
+        console.error(error);
+        onClose();
+      } finally {
+        setIsLoading(false);
       }
     };
 
     if (isOpen && transaction) {
       fetchTransactionDetails();
     } else {
+      // Reset data when dialog is closed or transaction is null
       setFullTransactionData(null);
       setDate(new Date());
       setShowUpdateScopeModal(false);
       setScheduleTypeChange(null);
       setPendingFormData(null);
       setHasScheduleChanges(false);
+      setFileAttachments([]);
+      setDataKey(0); // Reset dataKey when closing
     }
-  }, [transaction?.id, transaction, isOpen, api, onClose]);
+  }, [transaction?.id, isOpen, api]); // Simplified dependencies for better control
 
   const validateScheduleTypeChange = (originalScheduleType: ScheduleTypeEnum, newScheduleType: ScheduleTypeEnum) => {
     // Rule 2: Cannot change from one_time or repeat to installment
@@ -111,17 +154,6 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         (originalData.installmentPeriod !== newData.installmentPeriod) && 
         (![null, undefined].includes(newData.installmentPeriod))
       );
-    console.log("scheduleFieldsChanged",scheduleFieldsChanged, {
-      originalData: {
-        scheduleType: originalData.scheduleType,
-        repeatInterval: originalData.repeatInterval,
-        installmentPeriod: originalData.installmentPeriod,
-      },
-      newData: {
-        scheduleType: newData.scheduleType,
-        repeatInterval: newData.repeatInterval,
-      }
-    });
     return scheduleFieldsChanged;
   };
 
@@ -194,15 +226,34 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     setHasScheduleChanges(false);
   };
 
+  // Handle file updates from child forms
+  const handleFileUpdate = (updatedFile: File | null) => {
+    setFullTransactionData(prev => {
+      if (!prev) return null;
+      const newState = { ...prev, file: updatedFile };
+      return newState;
+    });
+  };
+
   const handleSuccess = async (data: any) => {
     try {
       let response;
       
+      // Ensure the file is included in the data object if it exists or is explicitly null (for removal)
+      const dataWithFile = { ...data };
+      
+      // If the incoming data has a file (either new or existing), use it.
+      // If it's null, it means the user removed the file.
+      // If it's undefined, it means no change to the file was made in the form
+      if (data.hasOwnProperty('file')) {
+        dataWithFile.file = data.file;
+      }
+
       if (transaction?.type === TransactionTypeEnum.TRANSFER) {
-        response = await updateTransfer(api, data);
+        response = await updateTransfer(api, dataWithFile);
         toast.success("Transfer updated successfully");
       } else {
-        response = await updateTransaction(api, data);
+        response = await updateTransaction(api, dataWithFile);
         toast.success("Transaction updated successfully");
       }
       
@@ -249,10 +300,12 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       return <div className="py-8 text-center">No transaction data available</div>;
     }
 
+    // Use the key to force re-render when data changes
     switch (transaction.type) {
       case TransactionTypeEnum.EXPENSE:
         return (
           <ExpenseForm
+            key={`expense-form-${dataKey}`}
             id={transaction.id}
             initialData={fullTransactionData}
             date={date}
@@ -260,11 +313,13 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             onSubmitSuccess={handleFormSubmit}
             onCancel={onClose}
             isEditMode={true}
+            onFileUpdate={handleFileUpdate} // Pass the new handler
           />
         );
       case TransactionTypeEnum.INCOME:
         return (
           <IncomeForm
+            key={`income-form-${dataKey}`}
             id={transaction.id}
             initialData={fullTransactionData}
             date={date}
@@ -272,6 +327,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             onSubmitSuccess={handleFormSubmit}
             onCancel={onClose}
             isEditMode={true}
+            onFileUpdate={handleFileUpdate} // Pass the new handler
           />
         );
       case TransactionTypeEnum.TRANSFER:
@@ -286,14 +342,13 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
           date: fullTransactionData.date,
           scheduleType: fullTransactionData.scheduleType,
           repeatInterval: fullTransactionData.repeatInterval,
-          file: fullTransactionData.file || undefined,
+          file: fullTransactionData.file || undefined, // Ensure file is explicitly included here
           updateScope: fullTransactionData.updateScope,
         };
-
-        console.log("transferData", transferData);
         
         return (
           <TransferForm
+            key={`transfer-form-${dataKey}`}
             id={transaction.id}
             initialData={transferData}
             date={date}
@@ -301,6 +356,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             onSubmitSuccess={handleFormSubmit}
             onCancel={onClose}
             isEditMode={true}
+            onFileUpdate={handleFileUpdate} // Pass the new handler
           />
         );
       default:
@@ -311,7 +367,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl overflow-y-auto max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>{getDialogTitle()}</DialogTitle>
             <DialogDescription>
