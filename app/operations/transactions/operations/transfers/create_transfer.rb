@@ -17,6 +17,7 @@ module Transactions
             required(:from_account_name).value(:string)
             required(:to_account_name).value(:string)
             optional(:description).value(:string)
+            optional(:file)
 
             # Schedule type and related fields
             required(:schedule_type).value(:string)
@@ -56,7 +57,7 @@ module Transactions
         include FailureHandler
 
         def call(params:)
-          ActiveRecord::Base.transaction do
+          transfer = ActiveRecord::Base.transaction do
             params          = step validate(params:)
             from_account    = step find_account(params:, account_name: params[:from_account_name])
             to_account      = step find_account(params:, account_name: params[:to_account_name])
@@ -66,11 +67,13 @@ module Transactions
             _               = step create_transfer_fee_transaction(transfer:, params:)
             _               = step calculate_balances(transfer:)
             transfer        = step create_schedule(transfer:, params:) if params[:schedule_type] != "one_time"
-            transfer        = step attach_file(transfer:, params:)
+
             _               = step create_past_transfers(transfer:) if transfer.repeat?
             _               = step create_future_transfers(transfer:) if transfer.repeat?
             transfer.reload
           end
+          _   = step attach_file(transfer:, params:)
+          transfer.reload
         end
 
         private

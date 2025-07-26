@@ -64,7 +64,7 @@ module Transactions
         include FailureHandler
 
         def call(params)
-          ActiveRecord::Base.transaction do
+          transfer = ActiveRecord::Base.transaction do
             params              = step validate(params:)
             transfer            = step find_transfer(params:)
             from_account        = step find_account(params:, account_name: params[:from_account_name])
@@ -78,6 +78,8 @@ module Transactions
             saved_transfer      = step save_transfer(transfer: changed_transfer)
             saved_transfer
           end
+          _ = step attach_file(transfer:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
+          transfer.reload
         end
 
         private
@@ -189,6 +191,14 @@ module Transactions
           Success(transfer)
         rescue StandardError => e
           Failure(**transfer.errors.to_hash, error: e)
+        end
+
+        def attach_file(transfer:, params:)
+          transfer.files.destroy_all
+          return Success(transfer) if params[:file].blank?
+
+          transfer.files.attach(params[:file])
+          Success(transfer)
         end
       end
     end

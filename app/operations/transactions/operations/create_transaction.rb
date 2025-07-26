@@ -63,20 +63,22 @@ module Transactions
       include FailureHandler
 
       def call(params:)
-        ActiveRecord::Base.transaction do
+        transaction = ActiveRecord::Base.transaction do
           params          = step validate(params:)
           category        = step find_category(params:)
           account         = step find_account(params:)
           params          = step transform_params(params:, category:, account:)
           params          = step adjust_amount(params:)
           transaction     = step create_transaction(params:, category:)
-          transaction     = step attach_file(transaction:, params:)
           _               = step calculate_balance(transaction:)
           transaction     = step create_schedule(transaction:, params:) if params[:schedule_type] != "one_time"
           _               = step create_past_transactions(transaction:) if params[:schedule_type] != "one_time"
           _               = step create_future_transactions(transaction:) if params[:schedule_type] != "one_time"
-          transaction.reload
+          transaction
         end
+
+        transaction     = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
+        transaction.reload
       end
 
       private
@@ -133,13 +135,6 @@ module Transactions
         Failure(**transaction.errors.to_hash, error: e)
       end
 
-      def attach_file(transaction:, params:)
-        return Success(transaction) if params[:file].blank?
-
-        transaction.files.attach(params[:file])
-        Success(transaction)
-      end
-
       # NOTE: Adjust balance only if the transaction is created today.
       def calculate_balance(transaction:)
         Accounts::CalculateBalance.new.call(transaction_id: transaction.id)
@@ -176,6 +171,13 @@ module Transactions
           date_start: Time.zone.tomorrow,
           date_end: Time.zone.today + 1.month
         )
+      end
+
+      def attach_file(transaction:, params:)
+        return Success(transaction) if params[:file].blank?
+
+        transaction.files.attach(params[:file])
+        Success(transaction)
       end
     end
   end

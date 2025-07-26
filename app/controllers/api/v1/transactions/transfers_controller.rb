@@ -49,7 +49,8 @@ module Api
             :to_account_name,
             :schedule_type,
             :repeat_interval,
-            :repeat_count
+            :repeat_count,
+            :file
           )
         end
 
@@ -65,7 +66,8 @@ module Api
             :to_account_name,
             :schedule_type,
             :repeat_interval,
-            :repeat_count
+            :repeat_count,
+            :file
           )
         end
 

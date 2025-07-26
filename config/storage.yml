@@ -13,6 +13,9 @@ amazon:
   secret_access_key: <%= ENV["AWS_SECRET_ACCESS_KEY"] %>
   region: ap-southeast-1
   bucket: fintr-<%= Rails.env %>
+  public: true
+  force_path_style: true
+  endpoint: https://s3.ap-southeast-1.amazonaws.com
 
 # Remember not to checkin your GCS keyfile to a repository
 # google:

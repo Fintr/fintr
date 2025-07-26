@@ -14,6 +14,8 @@ module Transactions
     has_many :effective_children, class_name: "Transactions::Transfer", foreign_key: :effective_parent_id, dependent: :nullify
     has_many :fee_transactions, class_name: "Transactions::Transaction", foreign_key: :transfer_id, dependent: :nullify
 
+    has_many_attached :files
+
     monetize :amount_cents, allow_nil: false
     monetize :transaction_cost_cents, allow_nil: false
 

@@ -7,6 +7,7 @@ module Transactions
         params do
           required(:id).value(:string)
           optional(:update_scope).value(:string)
+          optional(:file)
         end
 
         rule(:update_scope) do
@@ -30,7 +31,7 @@ module Transactions
       include FailureHandler
 
       def call(params)
-        ActiveRecord::Base.transaction do
+        transaction = ActiveRecord::Base.transaction do
           params              = step validate(params:)
           transaction         = step find_transaction(params:)
           category            = step find_category(params:)
@@ -41,10 +42,11 @@ module Transactions
           _                   = step adjust_balance(transaction: changed_transaction)
           changed_transaction = step update_schedule(transaction: changed_transaction, params:)
           _                   = step update_repeat_transactions(transaction: changed_transaction, params:)
-
           saved_transaction   = step save_transaction(transaction: changed_transaction)
           saved_transaction
         end
+        _ = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
+        transaction.reload
       end
 
       private
@@ -150,6 +152,15 @@ module Transactions
         Success(transaction)
       rescue ActiveRecord::ActiveRecordError => e
         Failure(error: e)
+      end
+
+      def attach_file(transaction:, params:)
+        transaction.files.destroy_all
+
+        return Success(transaction) if params[:file].blank?
+
+        transaction.files.attach(params[:file])
+        Success(transaction)
       end
     end
   end
