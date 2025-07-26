@@ -46,7 +46,7 @@ export default function Layout({
   }
 
   return (
-    <div className="px-0 sm:px-4 md:px-8">
+    <div className="px-0 sm:px-4 md:px-8 min-h-screen flex flex-col">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6 gap-2 md:gap-0">
         <div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary leading-tight">
@@ -86,7 +86,7 @@ export default function Layout({
               </TabsTrigger>
             </TabsList>
           </div>
-          <div className="pt-2">{children}</div>
+          <div className="pt-2 flex-1 overflow-y-auto pb-20 lg:pb-0">{children}</div>
         </TabsWrapper>
       </div>
     </div>
