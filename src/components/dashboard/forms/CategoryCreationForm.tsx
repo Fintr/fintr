@@ -9,6 +9,7 @@ import { createCategoryAtom, categoryValidationErrorsAtom } from "@/atoms/transa
 import { toast } from "sonner";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { TransactionTypeEnum } from "@/constants/transactionConstants";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface CategoryCreationFormProps {
   onSuccess: (name: string) => void;
@@ -103,7 +104,7 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
               className="bg-primary hover:bg-primary/80 h-10" 
               onClick={handleAddCategory}
             >
-              {isLoading ? (<>...</>) : ("Add")}
+              {isLoading ? <LoadingSpinner size="small" className="mr-2" /> : "Add"}
             </Button>
             <Button 
               type="button" 
@@ -147,7 +148,7 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
             className="bg-primary hover:bg-primary/80" 
             onClick={handleAddCategory}
           >
-            {isLoading ? (<>...</>) : ("Add")}
+            {isLoading ? <LoadingSpinner size="small" className="mr-2" /> : "Add"}
           </Button>
         </div>
       )}

@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../ui/select";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface AccountCreationFormProps {
   onSuccess: (name: string) => void;
@@ -202,7 +203,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
             className="bg-primary hover:bg-primary/80 h-10" 
             onClick={handleAddAccount}
           >
-            {isLoading ? (<>...</>) : ("Add")}
+            {isLoading ? <LoadingSpinner size="small" className="mr-2" /> : "Add"}
           </Button>
           <Button 
             type="button" 
@@ -249,7 +250,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
             className="bg-primary hover:bg-primary/80" 
             onClick={handleAddAccount}
           >
-            {isLoading ? (<>...</>) : ("Add")}
+            {isLoading ? <LoadingSpinner size="small" className="mr-2" /> : "Add"}
           </Button>
         </div>
       )}

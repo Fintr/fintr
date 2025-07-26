@@ -28,6 +28,7 @@ import {
   Settings,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 const DatabasePage = () => {
   const [activeTab, setActiveTab] = useState("categories");
@@ -286,7 +287,9 @@ const DatabasePage = () => {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="text-center py-8">Loading categories...</div>
+                <div className="text-center py-8">
+                  <LoadingSpinner size="medium" />
+                </div>
               ) : (
                 <div className="space-y-4">
                   {categories.map((category) => (
@@ -500,7 +503,9 @@ const DatabasePage = () => {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="text-center py-8">Loading settings...</div>
+                <div className="text-center py-8">
+                  <LoadingSpinner size="medium" />
+                </div>
               ) : (
                 <div className="space-y-4">
                   {settings.map((setting) => (

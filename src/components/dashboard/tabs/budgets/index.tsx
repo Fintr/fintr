@@ -17,6 +17,8 @@ import { formatCurrency } from "@/lib/utils";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import { NewBudgetDialog } from "./new-budget-dialog";
 import { EditBudgetDialog } from "./edit-budget-dialog";
+import LoadingSpinner from "@/components/ui/loading-spinner";
+
 interface BudgetsTabProps {}
 
 const BudgetsTab = ({}: BudgetsTabProps) => {
@@ -135,9 +137,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
             <CardDescription>Overview of your budget status</CardDescription>
           </CardHeader>
           <CardContent className="px-4">
-            {isLoading ? (
-              <div className="py-4 text-center">Loading budget data...</div>
-            ) : isError ? (
+            {isError ? (
               <div className="py-4 text-center text-red-500">
                 Error loading budget data. Please try again.
               </div>
@@ -188,7 +188,9 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
 
         <div className="space-y-6">
           {isLoading ? (
-            <div className="py-4 text-center">Loading categories...</div>
+            <div className="py-4 text-center">
+              <LoadingSpinner size="medium" />
+            </div>
           ) : (
             categories.map((category, index) => {
               // Calculate percentage for each budget item

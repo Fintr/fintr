@@ -5,6 +5,7 @@ import { Camera, FileImage, Loader2, Upload, X } from 'lucide-react';
 import { uploadReceipt } from '@/services/receipts/mutation';
 import { toast } from 'sonner';
 import useAuthApi from '@/hooks/useAuthApi';
+import LoadingSpinner from '@/components/ui/loading-spinner';
 
 interface AddReceiptDialogProps {
   isOpen: boolean;
@@ -345,10 +346,10 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                     className="bg-primary hover:bg-primary/80"
                   >
                     {isUploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Uploading...
-                      </>
+                      <div className="flex items-center gap-2">
+                        <LoadingSpinner size="small" />
+                        <span>Uploading...</span>
+                      </div>
                     ) : (
                       <>
                         <Upload className="h-4 w-4 mr-2" />

@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 // import { useAuth0 } from "@auth0/auth0-react";
 
 interface AuthPageProps {
@@ -125,7 +126,7 @@ const AuthPage = ({
           className="w-full flex items-center justify-center space-x-2 bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 rounded-md py-2 px-4"
         >
           {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <LoadingSpinner size="small" className="mr-2" />
           ) : (
             <>
               <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -206,7 +207,7 @@ const AuthPage = ({
               className="w-full bg-primary hover:bg-primary/80"
             >
               {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <LoadingSpinner size="small" className="mr-2" />
               ) : (
                 "Sign In"
               )}
@@ -294,7 +295,7 @@ const AuthPage = ({
               className="w-full bg-primary hover:bg-primary/80"
             >
               {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <LoadingSpinner size="small" className="mr-2" />
               ) : (
                 "Create Account"
               )}

@@ -1,23 +1,27 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { AxiosInstance } from "axios";
+import { useLocalStorage } from "./useLocalStorage";
 
 export function useGetSpaceCode(api: AxiosInstance) {
-  // SSR-safe check for localStorage
   const isClient = typeof window !== 'undefined';
-  const hasSpaceCode = isClient ? !!localStorage.getItem("spaceCode") : false;
-  
+  const [spaceCode, setSpaceCode] = useLocalStorage("spaceCode", "");
+
   const _getSpaceCode = useQuery({
     queryKey: ["currentUser"],
     queryFn: async () => {
       const response = await api.get("/auth/private");
-      if (isClient) {
-        localStorage.setItem("spaceCode", response.data.data.spaceCode);
+      const fetchedSpaceCode = response.data?.data?.spaceCode;
+      if (isClient && fetchedSpaceCode) {
+        setSpaceCode(fetchedSpaceCode);
       }
       return response.data;
     },
-    enabled: isClient && !hasSpaceCode,
+    enabled: isClient && !spaceCode, // Only run if on client and spaceCode is not already set in local storage state
+    staleTime: 5 * 60 * 1000, // Data considered fresh for 5 minutes
+    cacheTime: 10 * 60 * 1000, // Data stays in cache for 10 minutes
   });
 
-  return _getSpaceCode.data?.data.spaceCode;
+  // Return the spaceCode from localStorage, which is reactive
+  return spaceCode;
 }

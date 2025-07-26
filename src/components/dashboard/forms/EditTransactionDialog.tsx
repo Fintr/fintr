@@ -18,6 +18,7 @@ import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { ScheduleTypeEnum, UpdateScopeEnum } from "@/constants/transactionConstants";
 import { toast } from "sonner";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface FileAttachment {
   id: string;
@@ -293,7 +294,11 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
 
   const renderForm = () => {
     if (isLoading) {
-      return <div className="py-8 text-center">Loading transaction details...</div>;
+      return (
+        <div className="py-8 text-center">
+          <LoadingSpinner size="large" />
+        </div>
+      );
     }
 
     if (!fullTransactionData || !transaction) {

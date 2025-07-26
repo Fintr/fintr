@@ -1,4 +1,5 @@
 import { TransactionsPage } from "@/types/transactionTypes";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface CalendarViewProps {
   isPending: boolean;
@@ -22,7 +23,11 @@ export function CalendarView({
           </div>
         ))}
       </div>
-      {isPending && <div className="text-center p-4">Loading...</div>}
+      {isPending && (
+        <div className="text-center p-4">
+          <LoadingSpinner size="medium" />
+        </div>
+      )}
       {isError && (
         <div className="text-center p-4 text-red-500">
           Error: {error?.message}

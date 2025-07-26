@@ -29,6 +29,7 @@ import { getRandomColor, shouldShowV2Features } from "@/lib/utils";
 import { TransactionCategory } from "@/types/transactionCategoryTypes";
 import { Account } from "@/types/accountTypes";
 import { toast } from "sonner";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 // Define CategoryItem interface to match CategoryListCard expectations
 interface CategoryItem {
@@ -405,22 +406,9 @@ const DatabaseTab = () => {
   // Show loading state while fetching categories
   if (categoriesLoading) {
     return (
-      <Card className="border-0 shadow-none bg-background">
-        <CardHeader>
-          <CardTitle>Settings & Configurations</CardTitle>
-          <CardDescription>
-            Loading categories...
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-gray-500">Loading categories...</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="py-4 text-center w-full">
+        <LoadingSpinner size="medium" />
+      </div>
     );
   }
 
@@ -576,9 +564,21 @@ const DatabaseTab = () => {
               </div>
 
               <div className="md:col-span-2">
-                <AccountList
-                  accounts={accounts}
-                />
+                {accountsLoading ? (
+                  <div className="text-center py-8 w-full">
+                    <LoadingSpinner size="medium" />
+                  </div>
+                ) : accountsError ? (
+                  <p className="text-red-500 text-center py-4">
+                    Error loading accounts. Please try again.
+                  </p>
+                ) : accounts.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">
+                    No accounts found. Add your first account to get started.
+                  </p>
+                ) : (
+                  <AccountList accounts={accounts} />
+                )}
               </div>
             </div>
           </>

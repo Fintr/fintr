@@ -9,6 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface ListViewProps {
   isPending: boolean;
@@ -54,7 +55,11 @@ export function ListView({
 
   return (
     <div className="space-y-2 bg-white rounded-lg overflow-hidden p-2">
-      {isPending && <div className="text-center py-4">Loading initial transactions...</div>}
+      {isPending && (
+        <div className="text-center py-4">
+          <LoadingSpinner size="medium" />
+        </div>
+      )}
       {isError && error && (
         <div className="text-red-500 text-center py-4">Error: {error.message}</div>
       )}
@@ -220,7 +225,9 @@ export function ListView({
           </div>
         )}
       {isFetchingNextPage && (
-        <div className="text-center py-2 text-sm">Loading more...</div>
+        <div className="text-center py-2 text-sm">
+          <LoadingSpinner size="small" />
+        </div>
       )}
       {!hasNextPage &&
         isSuccess &&

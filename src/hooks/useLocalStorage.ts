@@ -6,8 +6,19 @@ export function useLocalStorage(key: string, initialValue: any) {
     if (typeof window === 'undefined') return initialValue;
     try {
       const item = window.localStorage.getItem(key);
-      const shouldParse = typeof initialValue !== 'string';
-      const value = item ? (shouldParse ? JSON.parse(item) : item) : initialValue;
+      // Determine if the stored item should be parsed as JSON
+      // This is crucial: only parse if it was originally stored as a JSON object/array/boolean/number
+      // For simple strings, we store and retrieve as-is to avoid "" quotes.
+      const isJsonString = (str: string) => {
+        try {
+          JSON.parse(str);
+        } catch (e) {
+          return false;
+        }
+        return true;
+      };
+
+      const value = item ? (isJsonString(item) ? JSON.parse(item) : item) : initialValue;
       return value;
     } catch (error) {
       console.warn('Error reading localStorage key:', key, error);
@@ -19,7 +30,9 @@ export function useLocalStorage(key: string, initialValue: any) {
   const debouncedSetLocalStorage = performanceUtils.debounce((key: string, value: any) => {
     try {
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, JSON.stringify(value));
+        // Only stringify if the value is not already a string. This avoids double-stringifying.
+        const valueToStore = typeof value === 'string' ? value : JSON.stringify(value);
+        window.localStorage.setItem(key, valueToStore);
       }
     } catch (error) {
       console.warn('Error setting localStorage key:', key, error);

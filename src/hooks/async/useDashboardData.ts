@@ -3,11 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import useAuthApi from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
 import { useSetAtom } from "jotai";
-import { 
-  accountOptionsAtom, 
-  expenseCategoryOptionsAtom, 
+import {
+  accountOptionsAtom,
+  expenseCategoryOptionsAtom,
   incomeCategoryOptionsAtom,
-  categoryOptionsAtom 
+  categoryOptionsAtom
 } from "@/atoms/dashboardAtoms";
 import { useEffect } from "react";
 
@@ -25,16 +25,18 @@ export const useDashboardData = () => {
   const setIncomeCategoryOptions = useSetAtom(incomeCategoryOptionsAtom);
   const setCategoryOptions = useSetAtom(categoryOptionsAtom);
   
-  const { data, error, isLoading, isError, isSuccess } = useQuery({
+  const { data, error, isLoading, isError, isSuccess, refetch } = useQuery({
     queryKey: ["dashboard", spaceCode],
-    queryFn: () => fetchDashboardData(api),
-    enabled: !!spaceCode,
+    queryFn: async () => {
+      const response = await fetchDashboardData(api);
+      return response;
+    },
+    enabled: !!spaceCode, // Only run this query if spaceCode is available
   });
 
   // Automatically populate atoms when data is successfully fetched
   useEffect(() => {
     if (isSuccess && data) {
-      // Update atoms with the fetched data
       setAccountOptions(data.accountOptions || []);
       setExpenseCategoryOptions(data.expenseCategoryOptions || []);
       setIncomeCategoryOptions(data.incomeCategoryOptions || []);
@@ -42,5 +44,5 @@ export const useDashboardData = () => {
     }
   }, [isSuccess, data, setAccountOptions, setExpenseCategoryOptions, setIncomeCategoryOptions, setCategoryOptions]);
 
-  return { data, error, isLoading, isError, isSuccess };
+  return { data, error, isLoading, isError, isSuccess, refetch };
 };

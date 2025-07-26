@@ -6,26 +6,44 @@ import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useGetSpaceCode } from "@/hooks/useGetSpaceCode";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { shouldShowV2Features } from "@/lib/utils";
+import LoadingSpinner from "@/components/ui/loading-spinner";
+import Image from "next/image";
+import { useEffect } from "react";
 
 export default function Layout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Initialize API client for authentication
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
   
-  // Fetch spaceCode first (this will trigger the /auth/private call)
-  // Only call this on the client side to avoid SSR issues
   const spaceCode = useGetSpaceCode(api);
+  const { data, isLoading, isError, refetch } = useDashboardData();
   
-  // Load dashboard data (accounts and categories) for all dashboard routes
-  const { data, isLoading, isError } = useDashboardData();
-  
-  // Check if V2 features should be shown
   const showV2Features = shouldShowV2Features();
+
+  useEffect(() => {
+    if (spaceCode) {
+      refetch();
+    }
+  }, [spaceCode, refetch]);
+
+  // Only show loading spinner if spaceCode is not available OR dashboard data is loading
+  if (!spaceCode || isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen space-y-4">
+        <Image 
+          src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png" 
+          alt="Fintr Logo" 
+          width={100} 
+          height={100} 
+          className="animate-pulse"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="px-0 sm:px-4 md:px-8">

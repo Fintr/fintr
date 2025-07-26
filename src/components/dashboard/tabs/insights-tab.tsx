@@ -44,6 +44,7 @@ import {
 } from "recharts";
 import { formatCurrency, getUniqueChartColor, resetChartColors, shouldShowV2Features } from "@/lib/utils";
 import { useMemo, useEffect } from "react";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface InsightsTabProps {
   filteredTransactions?: any[];
@@ -370,7 +371,7 @@ const InsightsTab = () => {
                   onClick={handleApplyFilters}
                   disabled={isLoading}
                 >
-                  {isLoading ? "Loading..." : "Apply Filters"}
+                  {isLoading ? <LoadingSpinner size="small" className="mr-2" /> : "Apply Filters"}
                 </Button>
               </div>
             </div>
@@ -386,7 +387,9 @@ const InsightsTab = () => {
           </CardHeader>
           <CardContent className="px-4">
             {isLoading ? (
-              <div className="text-center py-8">Loading insights...</div>
+              <div className="text-center py-8">
+                <LoadingSpinner size="medium" />
+              </div>
             ) : isError ? (
               <div className="text-center py-8 text-red-500">
                 Error loading insights. Please try again.
@@ -436,7 +439,9 @@ const InsightsTab = () => {
             </CardHeader>
             <CardContent className="px-4">
               {isLoading ? (
-                <div className="text-center py-8">Loading health score...</div>
+                <div className="text-center py-8">
+                  <LoadingSpinner size="medium" />
+                </div>
               ) : (
                 <>
                   <div className="flex flex-col items-center justify-center py-6">
@@ -712,7 +717,9 @@ const InsightsTab = () => {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="text-center py-8">Loading expense breakdown...</div>
+                <div className="text-center py-8">
+                  <LoadingSpinner size="medium" />
+                </div>
               ) : (
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -771,7 +778,9 @@ const InsightsTab = () => {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="text-center py-8">Loading weekly spending...</div>
+                <div className="text-center py-8">
+                  <LoadingSpinner size="medium" />
+                </div>
               ) : (
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">

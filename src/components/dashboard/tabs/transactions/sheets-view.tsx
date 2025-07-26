@@ -6,6 +6,7 @@ import { Check, X } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { InfiniteData } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 interface SheetsViewProps {
     isPending: boolean;
     isError: boolean;
@@ -78,7 +79,7 @@ export function SheetsView({
                 {isPending && (
                   <tr>
                     <td colSpan={5} className="text-center p-4">
-                      Loading...
+                      <LoadingSpinner size="medium" />
                     </td>
                   </tr>
                 )}
@@ -437,7 +438,9 @@ export function SheetsView({
         <div ref={loadMoreRef} style={{ height: "10px" }} />
         
         {isFetchingNextPage && (
-          <div className="text-center py-4">Loading more...</div>
+          <div className="text-center py-4">
+            <LoadingSpinner size="small" />
+          </div>
         )}
         
         {!hasNextPage &&
