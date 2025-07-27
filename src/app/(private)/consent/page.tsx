@@ -13,7 +13,7 @@ const ConsentPage = () => {
       const accessToken = await getAccessTokenWithPopup({
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_BE_URL,
-          scope: "openid profile email",
+          scope: "openid profile email read:users read:current_user",
         }
       });
       // After successful consent, navigate back to dashboard

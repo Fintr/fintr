@@ -25,7 +25,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const { api } = useAuthApi({
-    scope: "openid profile email read:current_user read:transactions",
+    scope: "openid profile email read:users read:current_user",
   });
 
   // Check if device is mobile

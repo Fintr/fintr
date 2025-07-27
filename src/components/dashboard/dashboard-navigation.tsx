@@ -14,6 +14,7 @@ import AddReceiptDialog from "@/components/dashboard/add-receipt-dialog";
 import NotificationsPopup from "@/components/dashboard/notifications-popup";
 import { NotificationProps } from "@/components/dashboard/notification-item";
 import MobileNavDrawer from "@/components/dashboard/mobile-nav-drawer";
+import Link from "next/link";
 
 const DashboardNavigation = () => {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -21,9 +22,10 @@ const DashboardNavigation = () => {
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
   const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Auth0 hook for logout functionality
-  const { logout } = useAuth0();
+  const { logout, user } = useAuth0();
 
   // Mock notification data
   const [notifications, setNotifications] = useState<NotificationProps[]>([
@@ -99,11 +101,13 @@ const DashboardNavigation = () => {
           {/* Mobile: Logo left, Notifications + Hamburger right */}
           <div className="flex md:hidden flex-row items-center justify-between h-14 w-full gap-2">
             <div className="flex items-center">
-              <img
-                src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
-                alt="Fintr Logo"
-                className="h-8 w-auto"
-              />
+              <Link href="/dashboard" aria-label="Go to Dashboard">
+                <img
+                  src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
+                  alt="Fintr Logo"
+                  className="h-8 w-auto"
+                />
+              </Link>
             </div>
             <div className="flex flex-row items-center gap-2">
               {/* Notification bell */}
@@ -137,11 +141,13 @@ const DashboardNavigation = () => {
           {/* Desktop: Logo left, Add Receipt, Add Transaction, Notifications, Avatar right */}
           <div className="hidden md:flex flex-row items-center justify-between h-16 w-full gap-2">
             <div className="flex items-center md:mr-4">
-              <img
-                src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
-                alt="Fintr Logo"
-                className="h-8 w-auto"
-              />
+              <Link href="/dashboard" aria-label="Go to Dashboard">
+                <img
+                  src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
+                  alt="Fintr Logo"
+                  className="h-8 w-auto"
+                />
+              </Link>
             </div>
             <div className="flex flex-1" />
             <div className="flex flex-row items-center gap-2 md:gap-4">
@@ -180,14 +186,17 @@ const DashboardNavigation = () => {
                   />
                 )}
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="text-primary hover:text-primary/80">
+              <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+                <DropdownMenuTrigger className="text-primary hover:text-primary/80 flex items-center gap-2">
                   <User className="h-5 w-5" />
+                  <span>{user?.name || "User"}</span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
+                  <DropdownMenuItem onSelect={() => {}} onClick={() => setIsDropdownOpen(false)}>
+                    <Link href="/dashboard/settings" className="flex items-center w-full">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />

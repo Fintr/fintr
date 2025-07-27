@@ -16,7 +16,7 @@ export default function Layout({
   children: React.ReactNode;
 }) {
   const { api } = useAuthApi({
-    scope: "openid profile email read:current_user read:transactions",
+    scope: "openid profile email read:current_user read:transactions read:users",
   });
   
   const spaceCode = useGetSpaceCode(api);
