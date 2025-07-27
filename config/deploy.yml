@@ -71,6 +71,9 @@ env:
     - DB_BASE_URL
     - SENTRY_DSN
     - OPENAI_API_KEY
+    - M2M_AUTH0_CLIENT_ID
+    - M2M_AUTH0_CLIENT_SECRET
+    - M2M_AUTH0_DOMAIN
 
 # Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
 # "bin/kamal app logs -r job" will tail logs from the first server in the job section.

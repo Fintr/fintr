@@ -8,6 +8,10 @@ Rails.application.routes.draw do
         # Private routes
         get "/private", to: "private#private"
         get "/private_scoped", to: "private#private_scoped"
+
+        get "/user", to: "user#index"
+        patch "/user", to: "user#update"
+        post "/user/reset_password", to: "user#reset_password"
       end
 
       # Use scope to keep the URL prefix without namespace nesting for controllers
