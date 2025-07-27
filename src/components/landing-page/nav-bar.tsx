@@ -5,6 +5,7 @@ import { MessageSquare, Send, X, Search, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAuth0 } from "@auth0/auth0-react";
 import Link from "next/link";
+import { shouldShowV2Features } from "@/lib/utils";
 
 interface NavbarProps {
   logoSrc?: string;
@@ -30,6 +31,7 @@ const Navbar = ({}: NavbarProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { loginWithRedirect } = useAuth0();
+  const showV2Features = shouldShowV2Features();
 
   const toggleChatbot = () => {
     // Instead of opening the navbar chatbot, trigger the floating chatbot widget
@@ -178,30 +180,32 @@ const Navbar = ({}: NavbarProps) => {
               <img
                 src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
                 alt="Logo"
-                className="h-10 w-auto"
+                className="h-8 md:h-10 w-48 md:w-auto"
               />
             </Link>
           </div>
 
           <div className="flex items-center justify-center relative w-full max-w-md mx-4">
-            <div className="w-full relative">
-              <div className="bg-white border border-gray-200 hover:border-primary rounded-full py-2 px-4 shadow-sm transition-all flex items-center w-full cursor-pointer">
-                <input
-                  type="text"
-                  placeholder="Ask Fintr anything..."
-                  className="bg-transparent border-none outline-none flex-grow text-sm text-gray-700"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                />
-                <button
-                  onClick={handleSendMessage}
-                  className="text-primary hover:text-primary/80 bg-gray-100 rounded-full p-1.5"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                </button>
+            {showV2Features && (
+              <div className="hidden sm:flex w-full relative">
+                <div className="bg-white border border-gray-200 hover:border-primary rounded-full py-2 px-4 shadow-sm transition-all flex items-center w-full cursor-pointer">
+                  <input
+                    type="text"
+                    placeholder="Ask Fintr anything..."
+                    className="bg-transparent border-none outline-none flex-grow text-sm text-gray-700"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    className="text-primary hover:text-primary/80 bg-gray-100 rounded-full p-1.5"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {isOpen && (
               <div className="absolute top-12 bg-white rounded-lg shadow-xl w-full overflow-hidden border border-gray-200 z-50">

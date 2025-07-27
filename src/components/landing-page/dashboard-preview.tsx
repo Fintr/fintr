@@ -82,12 +82,12 @@ const DashboardPreview = ({
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-2 px-4">
                   <CardTitle className="text-sm font-medium text-primary/70">
                     Total Balance
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-4">
                   <div className="text-2xl font-bold text-primary">
                     {formatCurrency(40000)}
                   </div>
@@ -97,12 +97,12 @@ const DashboardPreview = ({
                 </CardContent>
               </Card>
               <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-2 px-4">
                   <CardTitle className="text-sm font-medium text-primary/70">
                     Monthly Income
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-4">
                   <div className="text-2xl font-bold text-primary">
                     {formatCurrency(80000)}
                   </div>
@@ -112,12 +112,12 @@ const DashboardPreview = ({
                 </CardContent>
               </Card>
               <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-2 px-4">
                   <CardTitle className="text-sm font-medium text-primary/70">
                     Monthly Expenses
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-4">
                   <div className="text-2xl font-bold text-primary">
                     {formatCurrency(40000)}
                   </div>
@@ -131,13 +131,13 @@ const DashboardPreview = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Expense Breakdown Chart */}
               <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader>
+                <CardHeader className="px-4">
                   <CardTitle>Expense Breakdown</CardTitle>
                   <CardDescription>
                     Your spending by category this month
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-4">
                   <div className="h-80 flex flex-col items-center justify-center">
                     {/* Mock Pie Chart */}
                     <div className="relative w-48 h-48 mb-6">
@@ -202,13 +202,13 @@ const DashboardPreview = ({
 
               {/* Financial Goals */}
               <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader>
+                <CardHeader className="px-4">
                   <CardTitle>Financial Goals</CardTitle>
                   <CardDescription>
                     Track progress towards your financial targets
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-4">
                   <div className="space-y-4">
                     <div className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
