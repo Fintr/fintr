@@ -14,10 +14,10 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
   describe '#call' do
     context 'with a one_time transaction' do
       subject(:call_operation) do
-        operation.call(params: {
+        operation.call(
           transaction_id: transaction.id,
           date_end: next_month
-        })
+        )
       end
 
       let!(:transaction) do
@@ -41,10 +41,10 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with a repeat transaction' do
       subject(:call_operation) do
-        operation.call(params: {
+        operation.call(
           transaction_id: transaction.id,
           date_end: next_month
-        })
+        )
       end
 
       let(:schedule) do
@@ -106,10 +106,10 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with an installment transaction' do
       subject(:call_operation) do
-        operation.call(params: {
+        operation.call(
           transaction_id: transaction.id,
           date_end: next_month
-        })
+        )
       end
 
       let(:schedule) do
@@ -167,10 +167,10 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with non-existent transaction' do
       subject(:call_operation) do
-        operation.call(params: {
+        operation.call(
           transaction_id: 'non-existent-id',
           date_end: next_month
-        })
+        )
       end
 
       it { is_expected.to be_failure }
@@ -183,10 +183,10 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with invalid date_end' do
       subject(:call_operation) do
-        operation.call(params: {
+        operation.call(
           transaction_id: transaction.id,
           date_end: nil
-        })
+        )
       end
 
       let!(:transaction) do
@@ -211,11 +211,11 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with calculated balance state' do
       subject(:call_operation) do
-        operation.call(params: {
+        operation.call(
           transaction_id: transaction.id,
           date_end: next_month,
           balance_state: 'calculated'
-        })
+        )
       end
 
       let(:schedule) do
@@ -250,11 +250,11 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with custom date_start' do
       subject(:call_operation) do
-        operation.call(params: {
+        operation.call(
           transaction_id: transaction.id,
           date_start: today + 2.weeks,
           date_end: next_month
-        })
+        )
       end
 
       let(:schedule) do
@@ -296,10 +296,10 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with existing child transactions' do
       subject(:call_operation) do
-        operation.call(params: {
+        operation.call(
           transaction_id: transaction.id,
           date_end: next_month
-        })
+        )
       end
 
       let(:schedule) do
@@ -361,10 +361,10 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
 
     context 'with a transaction that has a parent' do
       subject(:call_operation) do
-        operation.call(params: {
+        operation.call(
           transaction_id: child_transaction.id,
           date_end: next_month
-        })
+        )
       end
 
       let(:schedule) do

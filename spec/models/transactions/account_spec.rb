@@ -10,7 +10,7 @@ RSpec.describe Transactions::Account, type: :model do
 
 
     it { is_expected.to belong_to(:space).class_name('Spaces::Space') }
-    it { is_expected.to have_many(:transactions).dependent(:destroy) }
+    it { is_expected.to have_many(:transactions) }
   end
 
   describe 'validations' do

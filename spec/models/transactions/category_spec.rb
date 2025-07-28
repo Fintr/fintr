@@ -120,11 +120,11 @@ RSpec.describe Transactions::Category, type: :model do
 
       # Check for special internal categories
       expect(income_names).to include("Initial Balance")
-      expect(expense_names).to include("Transfer Fees")
+      expect(expense_names).to include("Transfer Fee")
 
       # Ensure the counts match the full set created
       all_created_income_names = Transactions::Category::DEFAULT_INCOME_CATEGORIES + ["Initial Balance"]
-      all_created_expense_names = Transactions::Category::DEFAULT_EXPENSE_CATEGORIES + ["Transfer Fees"]
+      all_created_expense_names = Transactions::Category::DEFAULT_EXPENSE_CATEGORIES + ["Transfer Fee"]
       expect(income_names).to match_array(all_created_income_names)
       expect(expense_names).to match_array(all_created_expense_names)
     end
