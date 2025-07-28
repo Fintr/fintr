@@ -15,6 +15,7 @@ import NotificationsPopup from "@/components/dashboard/notifications-popup";
 import { NotificationProps } from "@/components/dashboard/notification-item";
 import MobileNavDrawer from "@/components/dashboard/mobile-nav-drawer";
 import Link from "next/link";
+import { shouldShowV2Features } from "@/lib/utils";
 
 const DashboardNavigation = () => {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -23,6 +24,8 @@ const DashboardNavigation = () => {
   const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const showV2Features = shouldShowV2Features();
 
   // Auth0 hook for logout functionality
   const { logout, user } = useAuth0();
@@ -109,34 +112,6 @@ const DashboardNavigation = () => {
                 />
               </Link>
             </div>
-            <div className="flex flex-row items-center gap-2">
-              {/* Notification bell */}
-              <div className="relative flex items-center">
-                <button
-                  className="text-primary hover:text-primary/80 relative"
-                  onClick={toggleNotifications}
-                >
-                  <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-                {showNotifications && (
-                  <NotificationsPopup
-                    notifications={notifications}
-                    onClose={() => setShowNotifications(false)}
-                    onMarkAllAsRead={handleMarkAllAsRead}
-                  />
-                )}
-              </div>
-              {/* Hamburger menu */}
-              <Button variant="ghost" size="icon" className="p-2" onClick={() => setIsMobileNavOpen(true)}>
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Open menu</span>
-              </Button>
-            </div>
           </div>
           {/* Desktop: Logo left, Add Receipt, Add Transaction, Notifications, Avatar right */}
           <div className="hidden md:flex flex-row items-center justify-between h-16 w-full gap-2">
@@ -166,26 +141,30 @@ const DashboardNavigation = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add Transaction
               </Button>
-              <div className="relative flex items-center">
-                <button
-                  className="text-primary hover:text-primary/80 relative"
-                  onClick={toggleNotifications}
-                >
-                  <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-                {showNotifications && (
-                  <NotificationsPopup
-                    notifications={notifications}
-                    onClose={() => setShowNotifications(false)}
-                    onMarkAllAsRead={handleMarkAllAsRead}
-                  />
-                )}
-              </div>
+              {
+                showV2Features && (
+                  <div className="relative flex items-center">
+                    <button
+                      className="text-primary hover:text-primary/80 relative"
+                      onClick={toggleNotifications}
+                    >
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </button>
+                    {showNotifications && (
+                      <NotificationsPopup
+                        notifications={notifications}
+                        onClose={() => setShowNotifications(false)}
+                        onMarkAllAsRead={handleMarkAllAsRead}
+                      />
+                    )}
+                  </div>
+                )
+              }
               <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                 <DropdownMenuTrigger className="text-primary hover:text-primary/80 flex items-center gap-2">
                   <User className="h-5 w-5" />
