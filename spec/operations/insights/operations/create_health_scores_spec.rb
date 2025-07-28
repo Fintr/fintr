@@ -29,19 +29,19 @@ RSpec.describe Insights::Operations::CreateHealthScores do
       it 'returns the correct health scores hash' do
         result = call_operation.value!
         expect(result).to be_a(Hash)
-        expect(result[:savings_percentage]).to eq(Utils::Number.format_percentage(BigDecimal('40.0')))
+        expect(result[:savings_percentage]).to eq({ percentage: Utils::Number.format_percentage(BigDecimal('40.0')), score: 100 })
         expect(result[:debt_to_income_ratio]).to eq(Utils::Number.format_decimal(0))
-        expect(result[:budget_usage]).to eq(Utils::Number.format_percentage(BigDecimal('20.0')))
-        expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('70.00')))
+        expect(result[:budget_usage]).to eq({ percentage: Utils::Number.format_percentage(BigDecimal('120.0')), score: 70 })
+        expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('88.00')))
       end
     end
 
     context 'when calculating financial health score' do
       subject(:call_operation) { operation.call(**valid_operation_params) }
 
-      it 'returns the correct financial_health_score for savings_percentage 40 and budget_usage 20' do
+      it 'returns the correct financial_health_score for savings_percentage 40 and budget_usage 120' do
         result = call_operation.value!
-        expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('70.00')))
+        expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('88.00')))
       end
 
       context 'with different savings_percentage and budget_usage' do
@@ -59,14 +59,14 @@ RSpec.describe Insights::Operations::CreateHealthScores do
         end
 
 
-        it 'calculates financial_health_score correctly for savings 10%, budget adherence 25%' do
+        it 'calculates financial_health_score correctly for savings 10%, budget usage 125%' do
           # savings_percentage: (100 / 1000) * 100 = 10%
-          # budget_usage: (500 - 400) / 400 * 100 = 25%
+          # budget_usage: (500 / 400) * 100 = 125%
           # Savings score: 10% -> 75
-          # Adherence score: 25% -> 25
-          # Financial health score: (75 * 0.6) + (25 * 0.4) = 45 + 10 = 55
+          # Budget usage score: 125% -> 70
+          # Financial health score: (75 * 0.6) + (70 * 0.4) = 45 + 28 = 73
           result = call_operation.value!
-          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('55.00')))
+          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('73.00')))
         end
       end
 
@@ -89,10 +89,10 @@ RSpec.describe Insights::Operations::CreateHealthScores do
           # savings_percentage: (100 / 1000) * 100 = 10%
           # budget_usage: 0 (due to zero total budget)
           # Savings score: 10% -> 75
-          # Adherence score: 0% -> 100
-          # Financial health score: (75 * 0.6) + (100 * 0.4) = 45 + 40 = 85
+          # Budget usage score: 0% -> 0
+          # Financial health score: (75 * 0.6) + (0 * 0.4) = 45 + 0 = 45
           result = call_operation.value!
-          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('85.00')))
+          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('45.00')))
         end
       end
 
@@ -113,10 +113,10 @@ RSpec.describe Insights::Operations::CreateHealthScores do
 
         it 'calculates financial_health_score correctly when net savings is negative (savings_percentage 0)' do
           # savings_percentage: (-500 / 1000) * 100 = -50% -> 0 score
-          # budget_usage: (1500 - 1000) / 1000 * 100 = 50% -> 0 score
-          # Financial health score: (0 * 0.6) + (0 * 0.4) = 0
+          # budget_usage: (1500 / 1000) * 100 = 150% -> 40 score
+          # Financial health score: (0 * 0.6) + (40 * 0.4) = 0 + 16 = 16
           result = call_operation.value!
-          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('0.00')))
+          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('16.00')))
         end
       end
     end
@@ -132,9 +132,9 @@ RSpec.describe Insights::Operations::CreateHealthScores do
 
         it { is_expected.to be_success }
 
-        it 'returns savings_percentage as formatted 0.00% when total income is 0' do
+        it 'returns savings_percentage as formatted hash when total income is 0' do
           result = call_operation.value!
-          expect(result[:savings_percentage]).to eq(Utils::Number.format_percentage(0))
+          expect(result[:savings_percentage]).to eq({ percentage: Utils::Number.format_percentage(0), score: 0 })
         end
       end
 
@@ -164,9 +164,9 @@ RSpec.describe Insights::Operations::CreateHealthScores do
 
         it { is_expected.to be_success }
 
-        it 'returns budget_usage as formatted -100.00% when total expenses is 0' do
+        it 'returns budget_usage as formatted hash when total expenses is 0' do
           result = call_operation.value!
-          expect(result[:budget_usage]).to eq(Utils::Number.format_percentage(BigDecimal('-100.0')))
+          expect(result[:budget_usage]).to eq({ percentage: Utils::Number.format_percentage(BigDecimal('0.0')), score: 100 })
         end
       end
 
@@ -216,10 +216,10 @@ RSpec.describe Insights::Operations::CreateHealthScores do
 
         it { is_expected.to be_success }
 
-        it 'returns health scores with budget_usage as formatted 0.00% when total budget is 0' do
+        it 'returns health scores with budget_usage as formatted hash when total budget is 0' do
           # With an empty budget array, total_budget will be 0, leading to budget_usage 0.
           result = call_operation.value!
-          expect(result[:budget_usage]).to eq(Utils::Number.format_percentage(0))
+          expect(result[:budget_usage]).to eq({ percentage: Utils::Number.format_percentage(0), score: 0 })
         end
       end
 
@@ -259,8 +259,8 @@ RSpec.describe Insights::Operations::CreateHealthScores do
 
         it { is_expected.to be_success }
 
-        it 'returns savings_percentage as formatted 0.0' do
-          expect(call_operation.value![:savings_percentage]).to eq(Utils::Number.format_percentage(BigDecimal('0.0')))
+        it 'returns savings_percentage as formatted hash with 0.0 percentage' do
+          expect(call_operation.value![:savings_percentage]).to eq({ percentage: Utils::Number.format_percentage(BigDecimal('0.0')), score: 0 })
         end
       end
 
@@ -273,8 +273,8 @@ RSpec.describe Insights::Operations::CreateHealthScores do
 
         it { is_expected.to be_success }
 
-        it 'returns budget_usage as formatted 0.00%' do
-          expect(call_operation.value![:budget_usage]).to eq(Utils::Number.format_percentage(0))
+        it 'returns budget_usage as formatted hash with 0.00% percentage' do
+          expect(call_operation.value![:budget_usage]).to eq({ percentage: Utils::Number.format_percentage(0), score: 0 })
         end
       end
     end

@@ -37,7 +37,7 @@ module Insights
         savings_percentage     = step get_savings_percentage(params:)
         debt_to_income_ratio   = step get_debt_to_income_ratio(params:)
         total_budget           = step get_total_budget(params:)
-        budget_usage       = step get_budget_usage(params:, total_budget:)
+        budget_usage           = step get_budget_usage(params:, total_budget:)
         financial_health_score = step calculate_financial_health_score(savings_percentage:, budget_usage:)
         health_scores          = step create_health_scores(
                                         savings_percentage:,
@@ -51,7 +51,7 @@ module Insights
       private
 
       def get_savings_percentage(params:)
-        return Success(Utils::Number.format_percentage(0)) if params[:total_income].zero?
+        return Success(percentage: Utils::Number.format_percentage(0), score: 0) if params[:total_income].zero?
 
         result = params[:net_savings] / params[:total_income] * 100
         score = step get_savings_score(result)
@@ -74,7 +74,7 @@ module Insights
       end
 
       def get_budget_usage(params:, total_budget:)
-        return Success(Utils::Number.format_percentage(0)) if total_budget.zero?
+        return Success(percentage: Utils::Number.format_percentage(0), score: 0) if total_budget.zero?
 
         result = params[:total_expenses] / total_budget * 100
         score = step get_budget_usage_score(result)
