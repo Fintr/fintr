@@ -16,11 +16,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         clientId={process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID!}
         useRefreshTokens={true}
         useRefreshTokensFallback={true}
-        cacheLocation="memory"
+        cacheLocation="localstorage"
         authorizationParams={{
           redirect_uri: process.env.NEXT_PUBLIC_APP_BASE_URL + "/dashboard",
           audience: process.env.NEXT_PUBLIC_BE_URL,
-          scope: "openid profile email read:transactions offline_access",
+          scope: "openid profile email read:current_user read:users read:transactions offline_access",
         }}
       >
         <Toaster />

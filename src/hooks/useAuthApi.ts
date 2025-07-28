@@ -28,12 +28,10 @@ export const useAuthApi = (options?: {
 
   // Create a function to get tokens with error handling
   const getToken = useCallback(async (): Promise<string> => {
-    // Use custom scope from options if provided, otherwise use default
-    const scope = options?.scope || 'openid profile email';
-
     const params = {
       audience: process.env.NEXT_PUBLIC_BE_URL,
-      scope,
+      scope: 'openid profile email read:current_user read:users read:transactions offline_access',
+      // Important NOTE: for the Safari / Mobile apps to work and not infinitely reload, the scope has to be the same as the one set in the Auth0Provider. 
     }
     
     try {
