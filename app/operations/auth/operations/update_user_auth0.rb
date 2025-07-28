@@ -43,13 +43,16 @@ module Auth
       end
 
       def find_user(params:)
-        Success(Auth::User.find(auth_id: params[:auth_id]))
+        Success(Auth::User.find_by!(auth_id: params[:auth_id]))
       rescue ActiveRecord::RecordNotFound
         Failure(auth_id: "User not found")
       end
 
       def update_user(user:, params:)
-        user&.update(params.slice(:name, :email))
+        user.update(
+          full_name: params[:name],
+          email: params[:email]
+        )
         Success(user)
       rescue ActiveRecord::RecordInvalid
         Failure(**user.errors)

@@ -37,12 +37,12 @@ module Insights
         savings_percentage     = step get_savings_percentage(params:)
         debt_to_income_ratio   = step get_debt_to_income_ratio(params:)
         total_budget           = step get_total_budget(params:)
-        budget_adherence       = step get_budget_adherence(params:, total_budget:)
-        financial_health_score = step calculate_financial_health_score(savings_percentage:, budget_adherence:)
+        budget_usage       = step get_budget_usage(params:, total_budget:)
+        financial_health_score = step calculate_financial_health_score(savings_percentage:, budget_usage:)
         health_scores          = step create_health_scores(
                                         savings_percentage:,
                                         debt_to_income_ratio:,
-                                        budget_adherence:,
+                                        budget_usage:,
                                         financial_health_score:
                                       )
         health_scores
@@ -54,7 +54,11 @@ module Insights
         return Success(Utils::Number.format_percentage(0)) if params[:total_income].zero?
 
         result = params[:net_savings] / params[:total_income] * 100
-        Success(Utils::Number.format_percentage(result))
+        score = step get_savings_score(result)
+        Success(
+          percentage: Utils::Number.format_percentage(result),
+          score:
+        )
       end
 
       def get_debt_to_income_ratio(params:)
@@ -69,56 +73,64 @@ module Insights
         Success(result)
       end
 
-      def get_budget_adherence(params:, total_budget:)
+      def get_budget_usage(params:, total_budget:)
         return Success(Utils::Number.format_percentage(0)) if total_budget.zero?
 
-        result = (params[:total_expenses] - total_budget) / total_budget * 100
-        Success(Utils::Number.format_percentage(result))
+        result = params[:total_expenses] / total_budget * 100
+        score = step get_budget_usage_score(result)
+        Success(
+          percentage: Utils::Number.format_percentage(result),
+          score:
+        )
       end
 
-      def calculate_financial_health_score(savings_percentage:, budget_adherence:)
-        numeric_savings_percentage = savings_percentage.delete("%").to_d
-        numeric_budget_adherence = budget_adherence.delete("%").to_d
+      def calculate_financial_health_score(savings_percentage:, budget_usage:)
+        savings_score = savings_percentage[:score]
+        budget_usage_score = budget_usage[:score]
 
-        savings_score = get_savings_score(numeric_savings_percentage)
-        adherence_score = get_budget_adherence_score(numeric_budget_adherence)
-
-        weighted_score = (savings_score * 0.6) + (adherence_score * 0.4)
+        weighted_score = (savings_score * 0.6) + (budget_usage_score * 0.4)
         Success(Utils::Number.format_percentage(weighted_score))
       end
 
       def get_savings_score(percentage)
-        case percentage
+        result = case percentage
         when 20..Float::INFINITY then 100
         when 15...20             then 90
         when 10...15             then 75
-        when 5...10               then 50
+        when 5...10              then 50
         when 1...5               then 25
         else 0
         end
+        Success(result)
       end
 
-      def get_budget_adherence_score(percentage)
-        case percentage
-        when -Float::INFINITY..0 then 100
-        when 1...5               then 90
-        when 5...10              then 75
-        when 10...20             then 50
-        when 20...30             then 25
+      def get_budget_usage_score(percentage)
+        result = case percentage
+        when 0..100 then 100
+        when 100...110 then 90
+        when 110...120 then 80
+        when 120...130 then 70
+        when 130...140 then 60
+        when 140...150 then 50
+        when 150...160 then 40
+        when 160...170 then 30
+        when 170...180 then 20
+        when 180...190 then 10
         else 0
         end
+        Success(result)
       end
 
       def create_health_scores(
         savings_percentage:,
         debt_to_income_ratio:,
-        budget_adherence:,
+        budget_usage:,
         financial_health_score:
       )
         hash = {
           savings_percentage:,
           debt_to_income_ratio:,
-          budget_adherence:,
+          budget_usage:,
           financial_health_score:
         }
         Success(hash)
