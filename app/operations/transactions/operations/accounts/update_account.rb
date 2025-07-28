@@ -39,7 +39,7 @@ module Transactions
         end
 
         def update_account(account:, params:)
-          account.update!(params)
+          account.update!(name: params[:name])
           Success(account)
         rescue ActiveRecord::RecordInvalid
           Failure(**account.errors.to_hash)

@@ -22,17 +22,14 @@ RSpec.describe Transactions::Operations::Accounts::UpdateAccount do
 
       before do
         allow(Transactions::Account).to receive(:find).with(account.id).and_return(account)
-        allow(account).to receive(:update!) do |attributes|
-          account.assign_attributes(attributes)
-          true
-        end
+        allow(account).to receive(:update!).with(name: "New Account Name").and_return(true)
       end
 
       it { is_expected.to be_success }
 
-      it 'updates the account name' do
+      it 'calls update! on the account with the new name' do
+        expect(account).to receive(:update!).with(name: "New Account Name")
         call_operation
-        expect(account.name).to eq("New Account Name")
       end
 
       it 'returns the updated account object' do
@@ -102,6 +99,10 @@ RSpec.describe Transactions::Operations::Accounts::UpdateAccount do
         }
       end
 
+      # NOTE: This test doesn't need a before block for `allow(Transactions::Account).to receive(:find).and_return(nil)`
+      # because `Transactions::Account.find` will raise `ActiveRecord::RecordNotFound` by default if the record is not found.
+      # The operation's `find_account` method rescues this and returns a Failure.
+
       it { is_expected.to be_failure }
 
       it 'returns a failure with account not found error' do
@@ -124,7 +125,7 @@ RSpec.describe Transactions::Operations::Accounts::UpdateAccount do
       before do
         allow(Transactions::Account).to receive(:find).with(account.id).and_return(account)
         allow(account).to receive(:update!).and_raise(ActiveRecord::RecordInvalid.new(account))
-        allow(account).to receive_message_chain(:errors, :to_hash).and_return(mock_account_errors)
+        allow(account).to receive(:errors).and_return(instance_double(ActiveModel::Errors, to_hash: mock_account_errors))
       end
 
       it { is_expected.to be_failure }

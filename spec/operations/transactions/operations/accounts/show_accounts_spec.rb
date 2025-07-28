@@ -21,9 +21,11 @@ RSpec.describe Transactions::Operations::Accounts::ShowAccounts do
   end
 
   describe '#call' do
-    context 'with valid parameters' do
-      subject(:call_operation) { operation.call(valid_params) }
+    subject(:call_operation) { operation.call(params) }
 
+    let(:params) { valid_params }
+
+    context 'with valid parameters' do
       it { is_expected.to be_success }
 
       it 'returns the aggregated accounts data' do
@@ -44,19 +46,19 @@ RSpec.describe Transactions::Operations::Accounts::ShowAccounts do
 
     describe 'Validation Failures' do
       context 'when space_id is missing' do
-        subject { operation.call({ some_other_param: "some_value" }) }
+        let(:params) { { some_other_param: "some_value" } }
 
         it { is_expected.to be_failure }
 
         it 'returns space_id missing error' do
-          expect(subject.failure).to eq(space_id: ['is missing'])
+          expect(call_operation.failure).to eq(space_id: ["is missing"])
         end
       end
     end
 
     describe 'Dependency Failures' do
       context 'when DashboardAccounts query fails' do
-        subject { operation.call(valid_params) }
+        let(:params) { valid_params }
 
         before do
           allow(Transactions::Queries::Accounts::DashboardAccounts).to receive(:call).and_return(Dry::Monads::Failure({ query: "Query failed" }))
@@ -66,12 +68,12 @@ RSpec.describe Transactions::Operations::Accounts::ShowAccounts do
         it { is_expected.to be_failure }
 
         it 'returns the failure from DashboardAccounts' do
-          expect(subject.failure[:query]).to include("Query failed")
+          expect(call_operation.failure[:query]).to include("Query failed")
         end
       end
 
       context 'when serialization fails (e.g., serializer receives unexpected data)' do
-        subject { operation.call(valid_params) }
+        let(:params) { valid_params }
 
         before do
           # Simulate an error within the serializer that might cause a failure or unexpected output
@@ -83,7 +85,7 @@ RSpec.describe Transactions::Operations::Accounts::ShowAccounts do
         it { is_expected.to be_success } # The overall operation still succeeds, but contains a nested failure
 
         it 'contains a nested serialization failure' do
-          result = subject.value!
+          result = call_operation.value!
           expect(result[:accounts]).to be_a(Dry::Monads::Failure)
           expect(result[:accounts].failure).to be_a(Hash)
           expect(result[:accounts].failure[:error]).to be_a(StandardError)

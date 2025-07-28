@@ -22,17 +22,14 @@ RSpec.describe Transactions::Operations::Categories::UpdateCategory do
 
       before do
         allow(Transactions::Category).to receive(:find_by).with(id: category.id, space_id: space.id).and_return(category)
-        allow(category).to receive(:update) do |attributes|
-          category.assign_attributes(attributes)
-          true
-        end
+        allow(category).to receive(:update).with(name: "New Category Name").and_return(true)
       end
 
       it { is_expected.to be_success }
 
-      it 'updates the category name' do
+      it 'calls update on the category with the new name' do
+        expect(category).to receive(:update).with(name: "New Category Name")
         call_operation
-        expect(category.name).to eq("New Category Name")
       end
 
       it 'returns the updated category object' do
@@ -153,7 +150,7 @@ RSpec.describe Transactions::Operations::Categories::UpdateCategory do
       before do
         allow(Transactions::Category).to receive(:find_by).with(id: category.id, space_id: space.id).and_return(category)
         allow(category).to receive(:update).and_raise(ActiveRecord::RecordInvalid.new(category))
-        allow(category).to receive_message_chain(:errors, :to_hash).and_return(mock_category_errors)
+        allow(category).to receive(:errors).and_return(instance_double(ActiveModel::Errors, to_hash: mock_category_errors))
       end
 
       it { is_expected.to be_failure }

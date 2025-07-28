@@ -90,11 +90,14 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
     end
     let(:transaction) { instance_double(Transactions::Transaction) }
 
+    let(:mock_create_transaction_contract) { instance_double(Transactions::Operations::CreateTransaction::Contract) }
+    let(:mock_create_transaction_operation) { instance_double(Transactions::Operations::CreateTransaction) }
+
     before do
-      allow(operation).to receive(:validate).and_return(Dry::Monads::Success({ user_id:, space_id:, receipt_data: base_receipt_data }))
-      allow(operation).to receive(:build_transaction_params).and_return(Dry::Monads::Success(transaction_params))
-      allow(operation).to receive(:validate_transaction_params).and_return(Dry::Monads::Success(transaction_params))
-      allow(operation).to receive(:create_transaction).and_return(Dry::Monads::Success(transaction))
+      allow(Transactions::Operations::CreateTransaction::Contract).to receive(:new).and_return(mock_create_transaction_contract)
+      allow(Transactions::Operations::CreateTransaction).to receive(:new).and_return(mock_create_transaction_operation)
+      allow(mock_create_transaction_contract).to receive(:call).and_return(instance_double(Dry::Validation::Result, success?: true, to_h: transaction_params))
+      allow(mock_create_transaction_operation).to receive(:call).and_return(Dry::Monads::Success(transaction))
     end
 
     context "when all steps are successful" do
@@ -106,25 +109,36 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
     end
 
     context "when a step fails" do
-      it "returns a failure if build_transaction_params fails" do
-        allow(operation).to receive(:build_transaction_params).and_return(Dry::Monads::Failure(error: 'Build params failed'))
-        result = operation.call(params: { user_id:, space_id:, receipt_data: base_receipt_data })
-        expect(result).to be_failure
-        expect(result.failure).to include(error: 'Build params failed')
+      context "when validate_transaction_params fails" do
+        let(:validation_errors) { { amount: ['must be greater than 0'] } }
+
+        before do
+          allow(mock_create_transaction_contract).to receive(:call).and_return(instance_double(Dry::Validation::Result, success?: false, errors: validation_errors))
+        end
+
+        it "returns a failure" do
+          result = operation.call(params: { user_id:, space_id:, receipt_data: base_receipt_data })
+          expect(result).to be_failure
+          expect(result.failure).to include(validation_errors)
+        end
       end
 
-      it "returns a failure if validate_transaction_params fails" do
-        allow(operation).to receive(:validate_transaction_params).and_return(Dry::Monads::Failure(error: 'Validation failed'))
-        result = operation.call(params: { user_id:, space_id:, receipt_data: base_receipt_data })
-        expect(result).to be_failure
-        expect(result.failure).to include(error: 'Validation failed')
-      end
+      context "when create_transaction fails" do
+        let(:create_transaction_errors) { { name: ['cannot be blank'] } }
 
-      it "returns a failure if create_transaction fails" do
-        allow(operation).to receive(:create_transaction).and_return(Dry::Monads::Failure(error: 'Create transaction failed'))
-        result = operation.call(params: { user_id:, space_id:, receipt_data: base_receipt_data })
-        expect(result).to be_failure
-        expect(result.failure).to include(error: 'Create transaction failed')
+        before do
+          allow(mock_create_transaction_operation).to receive(:call).and_return(Dry::Monads::Failure(create_transaction_errors))
+        end
+
+        it "returns a failure" do
+          result = operation.call(params: { user_id:, space_id:, receipt_data: base_receipt_data })
+          expect(result).to be_failure
+          expect(result.failure).to include(
+            create_transaction_errors.merge(
+              context: "receipt_transaction_creation"
+            )
+          )
+        end
       end
     end
   end
@@ -135,8 +149,8 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
         result = operation.__send__(:build_transaction_params, params: { user_id:, space_id:, receipt_data: base_receipt_data })
         expect(result).to be_success
         expect(result.value!).to include(
-          user_id: user_id,
-          space_id: space_id,
+          user_id:,
+          space_id:,
           amount: 100.00,
           date: Date.current,
           category_name: "Groceries",
@@ -158,8 +172,8 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
           result = operation.__send__(:build_transaction_params, params: { user_id:, space_id:, receipt_data: partial_receipt_data })
           expect(result).to be_success
           expect(result.value!).to include(
-            user_id: user_id,
-            space_id: space_id,
+            user_id:,
+            space_id:,
             amount: 50.00,
             date: Date.current, # Defaults to current date
             category_name: "Family", # Defaults to Family
@@ -319,8 +333,8 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
     describe "#validate_transaction_params" do
       let(:valid_transaction_params) do
         {
-          user_id: user_id,
-          space_id: space_id,
+          user_id:,
+          space_id:,
           amount: 100.00,
           date: Date.current,
           category_name: "Groceries",
@@ -330,15 +344,16 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
         }
       end
 
+      let(:mock_contract) { instance_double(Transactions::Operations::CreateTransaction::Contract) }
+
       before do
         # Stub the contract call to control validation outcome
-        @mock_contract = instance_double(Transactions::Operations::CreateTransaction::Contract)
-        allow(Transactions::Operations::CreateTransaction::Contract).to receive(:new).and_return(@mock_contract)
+        allow(Transactions::Operations::CreateTransaction::Contract).to receive(:new).and_return(mock_contract)
       end
 
       context "when transaction params are valid" do
         before do
-          allow(@mock_contract).to receive(:call).with(**valid_transaction_params).and_return(double(success?: true, to_h: valid_transaction_params))
+          allow(mock_contract).to receive(:call).with(**valid_transaction_params).and_return(instance_double(Dry::Validation::Result, success?: true, to_h: valid_transaction_params))
         end
 
         it "returns success with validated params" do
@@ -352,7 +367,7 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
         let(:errors) { { amount: ['must be greater than 0'] } }
 
         before do
-          allow(@mock_contract).to receive(:call).with(**valid_transaction_params).and_return(double(success?: false, errors: errors))
+          allow(mock_contract).to receive(:call).with(**valid_transaction_params).and_return(instance_double(Dry::Validation::Result, success?: false, errors: errors))
         end
 
         it "returns failure with errors" do
@@ -366,8 +381,8 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
     describe "#create_transaction" do
       let(:valid_transaction_params) do
         {
-          user_id: user_id,
-          space_id: space_id,
+          user_id:,
+          space_id:,
           amount: 100.00,
           date: Date.current,
           category_name: "Groceries",
@@ -377,17 +392,18 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
         }
       end
 
+      let(:mock_create_transaction_op) { instance_double(Transactions::Operations::CreateTransaction) }
+
       before do
         # Stub the operation call to control outcome
-        @mock_create_transaction_op = instance_double(Transactions::Operations::CreateTransaction)
-        allow(Transactions::Operations::CreateTransaction).to receive(:new).and_return(@mock_create_transaction_op)
+        allow(Transactions::Operations::CreateTransaction).to receive(:new).and_return(mock_create_transaction_op)
       end
 
       context "when transaction creation is successful" do
         let(:created_transaction) { instance_double(Transactions::Transaction, id: "some-uuid") }
 
         before do
-          allow(@mock_create_transaction_op).to receive(:call).with(params: valid_transaction_params).and_return(Dry::Monads::Success(created_transaction))
+          allow(mock_create_transaction_op).to receive(:call).with(params: valid_transaction_params).and_return(Dry::Monads::Success(created_transaction))
         end
 
         it "returns success with the created transaction" do
@@ -401,7 +417,7 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
         let(:original_failure) { { name: ['cannot be blank'] } }
 
         before do
-          allow(@mock_create_transaction_op).to receive(:call).with(params: valid_transaction_params).and_return(Dry::Monads::Failure(original_failure))
+          allow(mock_create_transaction_op).to receive(:call).with(params: valid_transaction_params).and_return(Dry::Monads::Failure(original_failure))
         end
 
         it "returns failure with enhanced context" do

@@ -11,6 +11,7 @@ module Receipts
 
         rule(:receipt_data) do
           key.failure("must contain extracted_fields") unless value.key?(:extracted_fields)
+          key.failure("must contain extracted_fields") if value.key?(:extracted_fields) && value[:extracted_fields].nil?
         end
       end
 
@@ -47,10 +48,6 @@ module Receipts
       private
 
       def calculate_field_confidence(params:)
-        # Add proper nil checks
-        return Failure("Receipt data is missing") if params[:receipt_data].nil?
-        return Failure("Extracted fields are missing") if params[:receipt_data][:extracted_fields].nil?
-
         extracted_fields = params[:receipt_data][:extracted_fields]
         ocr_text = params[:ocr_text]
 

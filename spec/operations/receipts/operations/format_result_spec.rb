@@ -171,17 +171,6 @@ RSpec.describe Receipts::Operations::FormatResult, type: :operation do
   end
 
   describe "#call" do
-    before do
-      allow(operation).to receive(:validate).and_return(Dry::Monads::Success(params_fixture))
-      # Removed mocks for internal step methods to allow full integration testing
-      # allow(operation).to receive(:format_extracted_data).and_return(Dry::Monads::Success(formatted_extracted_data_mock))
-      # allow(operation).to receive(:format_confidence_summary).and_return(Dry::Monads::Success(confidence_summary_mock))
-      # allow(operation).to receive(:extract_validation_flags).and_return(Dry::Monads::Success(validation_flags_mock))
-      # allow(operation).to receive(:prepare_raw_data).and_return(Dry::Monads::Success(raw_data_mock))
-      # allow(operation).to receive(:build_suggested_transaction_payload).and_return(Dry::Monads::Success(suggested_payload_mock))
-      # allow(operation).to receive(:prepare_formatted_result).and_return(Dry::Monads::Success(final_formatted_result_mock))
-    end
-
     context "when all steps are successful" do
       it "returns a successful result with formatted data" do
         # Re-calculating the expected final result based on actual execution of private methods
@@ -235,53 +224,44 @@ RSpec.describe Receipts::Operations::FormatResult, type: :operation do
     end
 
     context "when a step fails" do
-      it "returns a failure if validate fails" do
-        allow(operation).to receive(:validate).and_return(Dry::Monads::Failure(error: 'Validation failed'))
-        result = operation.call(params: params_fixture)
-        expect(result).to be_failure
-        expect(result.failure).to include(error: 'Validation failed')
+      context "when validation fails" do
+        let(:invalid_params) { params_fixture.except(:receipt_data) }
+
+        it "returns a failure with validation errors" do
+          result = operation.call(params: invalid_params)
+          expect(result).to be_failure
+          expect(result.failure).to include(receipt_data: ['is missing'])
+        end
       end
 
-      it "returns a failure if format_extracted_data fails" do
-        allow(operation).to receive(:format_extracted_data).and_return(Dry::Monads::Failure(error: 'Extraction formatting failed'))
-        result = operation.call(params: params_fixture)
-        expect(result).to be_failure
-        expect(result.failure).to include(error: 'Extraction formatting failed')
+      context "when format_extracted_data fails" do
+        let(:params_for_extracted_data_failure) { params_fixture.merge(receipt_data: "invalid") }
+
+        it "returns a failure with extraction formatting error" do
+          result = operation.call(params: params_for_extracted_data_failure)
+          expect(result).to be_failure
+          expect(result.failure).to include(receipt_data: ['must be a hash'])
+        end
       end
 
-      it "returns a failure if format_confidence_summary fails" do
-        allow(operation).to receive(:format_confidence_summary).and_return(Dry::Monads::Failure(error: 'Confidence summary failed'))
-        result = operation.call(params: params_fixture)
-        expect(result).to be_failure
-        expect(result.failure).to include(error: 'Confidence summary failed')
+      context "when format_confidence_summary fails" do
+        let(:params_for_confidence_summary_failure) { params_fixture.merge(confidence_analysis: "invalid") }
+
+        it "returns a failure with confidence summary error" do
+          result = operation.call(params: params_for_confidence_summary_failure)
+          expect(result).to be_failure
+          expect(result.failure).to include(confidence_analysis: ['must be a hash'])
+        end
       end
 
-      it "returns a failure if extract_validation_flags fails" do
-        allow(operation).to receive(:extract_validation_flags).and_return(Dry::Monads::Failure(error: 'Validation flags extraction failed'))
-        result = operation.call(params: params_fixture)
-        expect(result).to be_failure
-        expect(result.failure).to include(error: 'Validation flags extraction failed')
-      end
+      context "when extract_validation_flags fails" do
+        let(:params_for_validation_flags_failure) { params_fixture.merge(confidence_analysis: "invalid") }
 
-      it "returns a failure if prepare_raw_data fails" do
-        allow(operation).to receive(:prepare_raw_data).and_return(Dry::Monads::Failure(error: 'Raw data preparation failed'))
-        result = operation.call(params: params_fixture)
-        expect(result).to be_failure
-        expect(result.failure).to include(error: 'Raw data preparation failed')
-      end
-
-      it "returns a failure if build_suggested_transaction_payload fails" do
-        allow(operation).to receive(:build_suggested_transaction_payload).and_return(Dry::Monads::Failure(error: 'Payload building failed'))
-        result = operation.call(params: params_fixture)
-        expect(result).to be_failure
-        expect(result.failure).to include(error: 'Payload building failed')
-      end
-
-      it "returns a failure if prepare_formatted_result fails" do
-        allow(operation).to receive(:prepare_formatted_result).and_return(Dry::Monads::Failure(error: 'Final result preparation failed'))
-        result = operation.call(params: params_fixture)
-        expect(result).to be_failure
-        expect(result.failure).to include(error: 'Final result preparation failed')
+        it "returns a failure with validation flags extraction error" do
+          result = operation.call(params: params_for_validation_flags_failure)
+          expect(result).to be_failure
+          expect(result.failure).to include(confidence_analysis: ['must be a hash'])
+        end
       end
     end
   end
