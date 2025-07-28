@@ -12,9 +12,15 @@ interface ApiSummaryStructure {
 }
 
 interface ApiHealthScores {
-  savingsPercentage: string;
+  savingsPercentage: {
+    percentage: string;
+    score: number;
+  };
   debtToIncomeRatio: string;
-  budgetAdherence: string;
+  budgetUsage: {
+    percentage: string;
+    score: number;
+  };
   financialHealthScore: string;
 }
 
@@ -65,9 +71,15 @@ export interface FinancialHealthScore {
   score: number;
   rating: string;
   description: string;
-  savingsRate: number;
+  savingsPercentage: {
+    percentage: string;
+    score: number;
+  };
   debtToIncomeRatio: number;
-  budgetUsage: number;
+  budgetUsage: {
+    percentage: string;
+    score: number;
+  };
 }
 
 export interface ExpenseBreakdown {
@@ -91,7 +103,7 @@ export interface MonthlySpending {
 
 export interface InsightsData {
   summary: InsightsSummary;
-  financialHealth: FinancialHealthScore;
+  healthScores: FinancialHealthScore;
   expenseBreakdown: ExpenseBreakdown[];
   weeklySpending: WeeklySpending[];
   monthlySpending: MonthlySpending[];
@@ -267,11 +279,17 @@ export const fetchInsights = async (
         totalExpenses: parseFloat(apiData.summaryStructure?.totalExpenses || '0'),
         netSavings: parseFloat(apiData.summaryStructure?.netSavings || '0'),
       },
-      financialHealth: {
-        savingsRate: parsePercentage(apiData.healthScores?.savingsPercentage),
+      healthScores: {
+        savingsPercentage: {
+          percentage: apiData.healthScores?.savingsPercentage?.percentage || "0%",
+          score: apiData.healthScores?.savingsPercentage?.score || 0,
+        },
         debtToIncomeRatio: parseFloat(apiData.healthScores?.debtToIncomeRatio || '0'),
-        budgetUsage: parsePercentage(apiData.healthScores?.budgetAdherence),
-        score: parsePercentage(apiData.healthScores?.financialHealthScore), // Use score directly from API
+        budgetUsage: {
+          percentage: apiData.healthScores?.budgetUsage?.percentage || "0%",
+          score: apiData.healthScores?.budgetUsage?.score || 0,
+        },
+        score: parsePercentage(apiData.healthScores?.financialHealthScore),
         rating: "", // Will be set below
         description: "", // Will be set below
       },
@@ -292,20 +310,20 @@ export const fetchInsights = async (
 
     // Calculate overall financial health score and rating
     // The score is now directly from the API, so we just set rating/description
-    const financialHealthScore = transformedData.financialHealth.score;
+    const financialHealthScore = transformedData.healthScores.score;
 
     if (financialHealthScore >= 80) {
-      transformedData.financialHealth.rating = "Excellent";
-      transformedData.financialHealth.description = "Outstanding financial health! Keep up the great work.";
+      transformedData.healthScores.rating = "Excellent";
+      transformedData.healthScores.description = "Outstanding financial health! Keep up the great work.";
     } else if (financialHealthScore >= 60) {
-      transformedData.financialHealth.rating = "Good";
-      transformedData.financialHealth.description = "You're on track to meet your financial goals.";
+      transformedData.healthScores.rating = "Good";
+      transformedData.healthScores.description = "You're on track to meet your financial goals.";
     } else if (financialHealthScore >= 40) {
-      transformedData.financialHealth.rating = "Fair";
-      transformedData.financialHealth.description = "There's room for improvement, but you're making progress.";
+      transformedData.healthScores.rating = "Fair";
+      transformedData.healthScores.description = "There's room for improvement, but you're making progress.";
     } else {
-      transformedData.financialHealth.rating = "Poor";
-      transformedData.financialHealth.description = "Consider reviewing your spending and savings habits.";
+      transformedData.healthScores.rating = "Poor";
+      transformedData.healthScores.description = "Consider reviewing your spending and savings habits.";
     }
 
     console.log('Transformed insights data:', transformedData);
