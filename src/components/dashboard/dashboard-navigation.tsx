@@ -112,6 +112,38 @@ const DashboardNavigation = () => {
                 />
               </Link>
             </div>
+            <div className="flex flex-row items-center gap-2">
+              {/* Notification bell */}
+              {
+                showV2Features && (
+                  <div className="relative flex items-center">
+                    <button
+                      className="text-primary hover:text-primary/80 relative"
+                      onClick={toggleNotifications}
+                    >
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </button>
+                    {showNotifications && (
+                      <NotificationsPopup
+                        notifications={notifications}
+                        onClose={() => setShowNotifications(false)}
+                        onMarkAllAsRead={handleMarkAllAsRead}
+                      />
+                    )}
+                  </div>
+                )
+              }
+              {/* Hamburger menu */}
+              <Button variant="ghost" size="icon" className="p-2" onClick={() => setIsMobileNavOpen(true)}>
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </div>
           </div>
           {/* Desktop: Logo left, Add Receipt, Add Transaction, Notifications, Avatar right */}
           <div className="hidden md:flex flex-row items-center justify-between h-16 w-full gap-2">
