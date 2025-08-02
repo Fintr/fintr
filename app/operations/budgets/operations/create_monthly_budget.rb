@@ -5,7 +5,7 @@ module Budgets
     class CreateMonthlyBudget < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
-          required(:space_id).value(:integer)
+          required(:space_id).value(:string)
           required(:date).value(:date)
         end
       end
@@ -20,7 +20,8 @@ module Budgets
       def call(params)
         params   = step validate(params:)
         space    = step find_space(params:)
-        budgets  = step create_monthly_budgets(space:, date:)
+        _        = step skip_if_already_created(space:, date: params[:date])
+        budgets  = step create_monthly_budgets(space:, date: params[:date])
         budgets
       end
 
@@ -31,8 +32,14 @@ module Budgets
         Failure(space_id: "not found")
       end
 
-      def create_monthly_budget(space:, date:)
-        records = space.budgets.for_month(date).map do |budget|
+      def skip_if_already_created(space:, date:)
+        return Failure(budgets: "Already created for the month of #{date.strftime("%B %Y")}") if space.budgets.for_month(date).exists?
+
+        Success(space:, date:)
+      end
+
+      def create_monthly_budgets(space:, date:)
+        records = space.budgets.for_month(date - 1.month).map do |budget|
           Budget.new(
             space:,
             category: budget.category,
