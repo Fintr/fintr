@@ -12,7 +12,7 @@ function getDefaultValue(path: string) {
 
   if (path.includes("/dashboard/budgets")) {
     defaultValue = "budgets";
-  } else if (showV2Features && path.includes("/dashboard/goals")) {
+  } else if (path.includes("/dashboard/goals")) {
     defaultValue = "goals";
   } else if (showV2Features && path.includes("/dashboard/investments")) {
     defaultValue = "investments";

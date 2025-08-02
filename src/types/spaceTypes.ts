@@ -6,4 +6,5 @@ export interface DashboardData {
   accountOptions: OptionType[];
   expenseCategoryOptions: OptionType[];
   incomeCategoryOptions: OptionType[];
+  goalDescription: string;
 }

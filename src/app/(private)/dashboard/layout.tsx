@@ -53,8 +53,7 @@ export default function Layout({
             My Goal to Financial Freedom
           </h1>
           <p className="text-primary/70 text-sm md:text-base">
-            Having enough passive income to cover my expenses and being able to
-            travel 3 months a year.
+            {data?.goalDescription || "Having enough passive income to cover my expenses and being able to travel 3 months a year."}
           </p>
         </div>
       </div>
@@ -68,11 +67,12 @@ export default function Layout({
               <TabsTrigger asChild value="budgets">
                 <Link prefetch href="/dashboard/budgets">Budgets</Link>
               </TabsTrigger>
+              <TabsTrigger asChild value="goals">
+                <Link prefetch href="/dashboard/goals">Goals</Link>
+              </TabsTrigger>
               {showV2Features && (
                 <>
-                  <TabsTrigger asChild value="goals">
-                    <Link prefetch href="/dashboard/goals">Goals</Link>
-                  </TabsTrigger>
+                  
                   <TabsTrigger asChild value="investments">
                     <Link prefetch href="/dashboard/investments">Investments</Link>
                   </TabsTrigger>
