@@ -1,7 +1,8 @@
-import { fetchTransactionCategories, updateTransactionCategory, deleteTransactionCategory } from "@/services/transactions/categories/mutation";
+import { fetchTransactionCategories, updateTransactionCategory, deleteTransactionCategory, createTransactionCategory } from "@/services/transactions/categories/mutation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import useAuthApi from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
+import { CategoryTypeEnum } from "@/types/categoryTypes";
 
 export const useTransactionCategories = () => {
   const queryClient = useQueryClient();
@@ -18,6 +19,18 @@ export const useTransactionCategories = () => {
     enabled: !!spaceCode,
     retry: 2, // Retry failed requests twice
     staleTime: 30000, // Consider data fresh for 30 seconds
+  });
+
+  // Mutation for creating categories
+  const createCategoryMutation = useMutation({
+    mutationFn: ({ name, categoryType }: { name: string; categoryType: CategoryTypeEnum }) =>
+      createTransactionCategory(api, { name, categoryType }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
+    },
+    onError: (error) => {
+      console.error("Error creating category:", error);
+    },
   });
 
   // Mutation for updating categories
@@ -96,5 +109,6 @@ export const useTransactionCategories = () => {
     incomeCategories: data?.data?.incomeCategories || [],
     updateCategoryMutation,
     deleteCategoryMutation,
+    createCategoryMutation,
   };
 }; 

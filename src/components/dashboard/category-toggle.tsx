@@ -3,15 +3,15 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Receipt, Wallet, Target, TrendingUp } from "lucide-react";
 import { shouldShowV2Features } from "@/lib/utils";
 
-export type CategoryType =
+export type CategoryToggleType =
   | "expense"
   | "income"
   | "goal"
   | "investment";
 
 interface CategoryToggleProps {
-  activeCategory: CategoryType;
-  onCategoryChange: (category: CategoryType) => void;
+  activeCategory: CategoryToggleType;
+  onCategoryChange: (category: CategoryToggleType) => void;
 }
 
 const CategoryToggle: React.FC<CategoryToggleProps> = ({
@@ -32,7 +32,7 @@ const CategoryToggle: React.FC<CategoryToggleProps> = ({
       <Tabs
         defaultValue={activeCategory}
         value={activeCategory}
-        onValueChange={(value) => onCategoryChange(value as CategoryType)}
+        onValueChange={(value) => onCategoryChange(value as CategoryToggleType)}
         className="w-full"
       >
         <TabsList className="grid grid-cols-2 md:grid-cols-4 h-full w-full bg-background bg-white rounded-md border border-gray-200">

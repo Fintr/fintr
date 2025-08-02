@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Pencil, Trash2 } from "lucide-react";
 import { NewAccountData } from "./add-account-form";
+import { CategoryToggleType } from "./category-toggle";
 
 interface CategoryItem {
   id: string;
@@ -33,6 +34,7 @@ interface CategoryListCardProps {
   addButtonText?: string;
   customEditComponent?: (item: CategoryItem) => React.ReactNode; // Optional custom edit component
   customDeleteComponent?: (item: CategoryItem) => React.ReactNode; // Optional custom delete component
+  customAddComponent?: React.ReactNode; // Optional custom add component, now accepts React.ReactNode
 }
 
 const CategoryListCard: React.FC<CategoryListCardProps> = ({
@@ -48,6 +50,7 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
   addButtonText = "Add New",
   customEditComponent,
   customDeleteComponent,
+  customAddComponent,
 }) => {
   return (
     <Card>
@@ -56,7 +59,7 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {items.length === 0 ? (
             <div className="text-center py-4 text-gray-500 col-span-2">
               No items found
@@ -124,12 +127,16 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
             ))
           )}
         </div>
-        <Button
-          className="bg-primary hover:bg-primary/80 mt-4 w-full"
-          onClick={onAddItem}
-        >
-          <Plus className="h-4 w-4 mr-2" /> {addButtonText}
-        </Button>
+        {customAddComponent ? (
+          customAddComponent
+        ) : (
+          <Button
+            className="bg-primary hover:bg-primary/80 mt-4 w-full rounded-md"
+            onClick={onAddItem}
+          >
+            <Plus className="h-4 w-4 mr-2" /> {addButtonText}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,13 +1,13 @@
 /**
  * Enum representing transaction category types
  */
-import { TransactionTypeEnum } from "./transactionTypes";
+import { CategoryTypeEnum } from "../types/categoryTypes";
 /**
  * Interface for creating a new transaction category
  */
 export interface CreateTransactionCategoryType {
   name: string;
-  categoryType: TransactionTypeEnum;
+  categoryType: CategoryTypeEnum;
 }
 
 /**
@@ -16,6 +16,6 @@ export interface CreateTransactionCategoryType {
 export interface TransactionCategory {
   id: string;
   name: string;
-  categoryType: TransactionTypeEnum;
+  categoryType: CategoryTypeEnum;
   color?: string; // Optional color property for UI
 }

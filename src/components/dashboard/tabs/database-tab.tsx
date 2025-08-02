@@ -16,12 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Folder, Users, Settings, Upload, Download } from "lucide-react";
-import CategoryToggle, { CategoryType } from "../category-toggle";
+import { Folder, Users, Settings, Upload, Download, Pencil, Plus } from "lucide-react";
+import CategoryToggle, { CategoryToggleType } from "../category-toggle";
 import CategoryListCard from "../category-list-card";
 import AccountList from "../account-list";
 import AddAccountForm, { NewAccountData } from "../add-account-form";
-import EditCategoryDialog from "../edit-category-dialog";
+import CategoryFormDialog from "../category-form-dialog";
 import DeleteCategoryDialog from "../delete-category-dialog";
 import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { useAccounts } from "@/hooks/async/useAccounts";
@@ -30,6 +30,7 @@ import { TransactionCategory } from "@/types/transactionCategoryTypes";
 import { Account } from "@/types/accountTypes";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { CategoryTypeEnum } from "@/types/categoryTypes";
 
 // Define CategoryItem interface to match CategoryListCard expectations
 interface CategoryItem {
@@ -45,24 +46,25 @@ const DatabaseTab = () => {
   const [activeMainTab, setActiveMainTab] = useState("categories");
   const [activeSubTab, setActiveSubTab] = useState("expense");
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [activeCategory, setActiveCategory] = useState<CategoryType>("expense");
+  const [activeCategory, setActiveCategory] = useState<CategoryToggleType>("expense");
   const showV2Features = shouldShowV2Features();
 
   // Fetch transaction categories from API
-  const { 
-    expenseCategories, 
-    incomeCategories, 
-    isLoading: categoriesLoading, 
+  const {
+    expenseCategories,
+    incomeCategories,
+    isLoading: categoriesLoading,
     isError: categoriesError,
     updateCategoryMutation,
-    deleteCategoryMutation
+    deleteCategoryMutation,
+    createCategoryMutation,
   } = useTransactionCategories();
 
   // Fetch accounts from API
-  const { 
-    accounts, 
-    isLoading: accountsLoading, 
-    isError: accountsError 
+  const {
+    accounts,
+    isLoading: accountsLoading,
+    isError: accountsError
   } = useAccounts();
 
   // Default settings states
@@ -309,7 +311,7 @@ const DatabaseTab = () => {
   // Functions for category management
   const handleEditCategory = (item: CategoryItem) => {
     console.log("Edit category:", item);
-    // This will now be handled by the EditCategoryDialog component
+    // This will now be handled by the CategoryFormDialog component
   };
 
   const handleDeleteCategory = (item: CategoryItem) => {
@@ -317,14 +319,24 @@ const DatabaseTab = () => {
     // This will now be handled by the DeleteCategoryDialog component
   };
 
-  const handleAddExpenseCategory = () => {
-    console.log("Add expense category");
-    // Implement add expense category functionality
-  };
+  // const handleAddExpenseCategory = () => {
+  //   console.log("Add expense category");
+  //   // Implement add expense category functionality
+  // };
 
-  const handleAddIncomeCategory = () => {
-    console.log("Add income category");
-    // Implement add income category functionality
+  // const handleAddIncomeCategory = () => {
+  //   console.log("Add income category");
+  //   // Implement add income category functionality
+  // };
+
+  const handleCreateCategory = async (name: string, categoryType: CategoryTypeEnum) => {
+    try {
+      await createCategoryMutation.mutateAsync({ name, categoryType });
+      // No toast here, it's handled in the dialog
+    } catch (error) {
+      console.error("Failed to create category:", error);
+      throw error; // Re-throw so the dialog can handle the error
+    }
   };
 
   const handleAddGoalCategory = () => {
@@ -376,7 +388,7 @@ const DatabaseTab = () => {
         },
         onError: (error) => {
           // This onError is for network errors or unhandled exceptions from the mutationFn.
-          // If the backend returns a 4xx/5xx with a body like {success: false, ...}, 
+          // If the backend returns a 4xx/5xx with a body like {success: false, ...},
           // it should be caught by the mutationFn and returned as data on success.
           console.error("Mutation execution failed (network/unhandled error):");
           reject(error);
@@ -387,10 +399,35 @@ const DatabaseTab = () => {
 
   // Create custom edit component for categories
   const renderCategoryEdit = (item: CategoryItem) => (
-    <EditCategoryDialog
+    <CategoryFormDialog
       category={item}
       onUpdate={handleUpdateCategory}
       isLoading={updateCategoryMutation.isLoading}
+      trigger={
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-primary hover:bg-blue-50"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+      }
+    />
+  );
+
+  // Create custom add component for categories
+  const renderCategoryAdd = (categoryType: CategoryTypeEnum) => (
+    <CategoryFormDialog
+      categoryType={categoryType}
+      onAdd={handleCreateCategory}
+      isLoading={createCategoryMutation.isLoading}
+      trigger={
+        <Button
+          className="bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-4 rounded-md transition-all duration-300 ease-in-out transform hover:scale-[1.01] w-full"
+        >
+          <Plus className="mr-2 h-5 w-5" /> Add New {categoryType === CategoryTypeEnum.EXPENSE ? 'Expense' : 'Income'} Category
+        </Button>
+      }
     />
   );
 
@@ -486,13 +523,14 @@ const DatabaseTab = () => {
                 title="Expense Categories"
                 description="Manage your expense categories"
                 items={categories["expense"]}
-                onAddItem={handleAddExpenseCategory}
+                onAddItem={() => {}} // Dummy function, actual dialog is rendered via customAddComponent
                 onEditItem={handleEditCategory}
                 onDeleteItem={handleDeleteCategory}
                 colorField="color"
                 primaryField="name"
                 addButtonText="Add New Expense Category"
                 customEditComponent={renderCategoryEdit}
+                customAddComponent={renderCategoryAdd(CategoryTypeEnum.EXPENSE)}
                 customDeleteComponent={renderCategoryDelete}
               />
             )}
@@ -502,13 +540,14 @@ const DatabaseTab = () => {
                 title="Income Categories"
                 description="Manage your income categories"
                 items={categories["income"]}
-                onAddItem={handleAddIncomeCategory}
+                onAddItem={() => {}} // Dummy function, actual dialog is rendered via customAddComponent
                 onEditItem={handleEditCategory}
                 onDeleteItem={handleDeleteCategory}
                 colorField="color"
                 primaryField="name"
                 addButtonText="Add New Income Category"
                 customEditComponent={renderCategoryEdit}
+                customAddComponent={renderCategoryAdd(CategoryTypeEnum.INCOME)}
                 customDeleteComponent={renderCategoryDelete}
               />
             )}
