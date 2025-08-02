@@ -527,58 +527,6 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         inSeries={transactionToDelete?.inSeries ?? true}
         transactionType={transactionToDelete?.type}
       />
-
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold">Transactions</h2>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button 
-              className="flex items-center gap-2 px-4 py-2 rounded-md transition-colors w-full md:w-auto"
-              onClick={() => setAddTransactionType(CombinedTransactionTypeEnum.EXPENSE)}
-            >
-              <Plus className="h-5 w-5" />
-              Add New Transaction
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add New Transaction</DialogTitle>
-            </DialogHeader>
-            <Tabs 
-              defaultValue={CombinedTransactionTypeEnum.EXPENSE}
-              onValueChange={(value) => setAddTransactionType(value as CombinedTransactionTypeEnum)}
-              className="w-full"
-            >
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value={CombinedTransactionTypeEnum.EXPENSE}>Expense</TabsTrigger>
-                <TabsTrigger value={CombinedTransactionTypeEnum.INCOME}>Income</TabsTrigger>
-                <TabsTrigger value={CombinedTransactionTypeEnum.TRANSFER}>Transfer</TabsTrigger>
-              </TabsList>
-              <TabsContent value={CombinedTransactionTypeEnum.EXPENSE}>
-                <AddTransactionDialog
-                  isOpen={true} // Dialog is already open via DialogTrigger
-                  onClose={() => setIsAddTransactionDialogOpen(false)}
-                  initialTransactionType={CombinedTransactionTypeEnum.EXPENSE}
-                />
-              </TabsContent>
-              <TabsContent value={CombinedTransactionTypeEnum.INCOME}>
-                <AddTransactionDialog
-                  isOpen={true} // Dialog is already open via DialogTrigger
-                  onClose={() => setIsAddTransactionDialogOpen(false)}
-                  initialTransactionType={CombinedTransactionTypeEnum.INCOME}
-                />
-              </TabsContent>
-              <TabsContent value={CombinedTransactionTypeEnum.TRANSFER}>
-                <AddTransactionDialog
-                  isOpen={true} // Dialog is already open via DialogTrigger
-                  onClose={() => setIsAddTransactionDialogOpen(false)}
-                  initialTransactionType={CombinedTransactionTypeEnum.TRANSFER}
-                />
-              </TabsContent>
-            </Tabs>
-          </DialogContent>
-        </Dialog>
-      </div>
     </>
   );
 };
