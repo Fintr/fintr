@@ -14,6 +14,8 @@ module Spaces
     has_many :budgets, class_name: "Budget", dependent: :destroy
     has_many :monthly_totals, class_name: "Transactions::MonthlyTotal", dependent: :destroy
 
+    has_one  :goal_description, class_name: "GoalDescription", dependent: :destroy
+
     validates :name, presence: true
     validates :code, presence: true, uniqueness: true
     validates :currency, presence: true

@@ -5,6 +5,11 @@ module Spaces
     class DashboardSerializer < Blueprinter::Base
       identifier :id
 
+      field :goal_description do |space|
+        space.goal_description&.description ||
+          "Having enough passive income to cover my expenses and being able to travel 3 months a year."
+      end
+
       field :category_options do |space|
         space.categories.map do |category|
           {

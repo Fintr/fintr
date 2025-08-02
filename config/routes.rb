@@ -21,6 +21,10 @@ Rails.application.routes.draw do
         resources :transfers, only: %i[create show update destroy]
       end
 
+      scope path: "goals", module: "goals" do
+        resource :description, only: [:update]
+      end
+
       resources :transactions
       resources :budgets, only: %i[index create update destroy]
       resources :insights, only: [:index]

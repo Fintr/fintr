@@ -7,3 +7,6 @@ db-setup:
 
 test:
 	bundle exec rails parallel:spec
+
+rubocop:
+	bundle exec rubocop -A

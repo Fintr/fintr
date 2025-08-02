@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_20_120623) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_02_091122) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -80,6 +80,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_20_120623) do
     t.index ["space_id", "category_id", "date"], name: "index_budgets_on_space_id_and_category_id_and_date", unique: true
     t.index ["space_id"], name: "index_budgets_on_space_id"
     t.index ["spent_cents", "spent_currency"], name: "index_budgets_on_spent_cents_and_spent_currency"
+  end
+
+  create_table "goal_descriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.text "description"
+    t.uuid "space_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id"], name: "index_goal_descriptions_on_space_id"
   end
 
   create_table "roles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -220,6 +228,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_20_120623) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "budgets", "spaces"
   add_foreign_key "budgets", "transactions_categories", column: "category_id"
+  add_foreign_key "goal_descriptions", "spaces"
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
   add_foreign_key "transactions", "accounts"
