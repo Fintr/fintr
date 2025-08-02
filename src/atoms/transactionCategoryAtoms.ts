@@ -2,12 +2,12 @@ import { atom } from 'jotai';
 import { atomWithMutation } from 'jotai-tanstack-query';
 import { CreateTransactionCategoryType, TransactionCategory } from '@/types/transactionCategoryTypes';
 import { createTransactionCategory } from '@/services/transactions/categories/mutation';
-import { 
+import {
   expenseCategoryOptionsAtom,
-  incomeCategoryOptionsAtom 
+  incomeCategoryOptionsAtom
 } from '@/atoms/dashboardAtoms';
 import { extractFieldErrors } from '@/utils/errorUtils';
-import { TransactionTypeEnum } from '@/constants/transactionConstants';
+import { CategoryTypeEnum } from '@/types/categoryTypes'; // Changed to CategoryTypeEnum
 import { AxiosError, AxiosInstance } from 'axios';
 
 // Input atom for new category name
@@ -19,7 +19,7 @@ export const categoryValidationErrorsAtom = atom<Record<string, string[]>>({});
 // Interface for category data
 interface CategoryData {
   name: string;
-  categoryType: TransactionTypeEnum;
+  categoryType: CategoryTypeEnum;
 }
 
 // Interface for createCategory parameters
@@ -51,7 +51,7 @@ export const createCategoryAtom = atom(
       const newCategory = await mutation.mutateAsync({ api, categoryData });
       
       // Determine which atom to update based on category type
-      if (categoryData.categoryType === TransactionTypeEnum.EXPENSE) {
+      if (categoryData.categoryType === CategoryTypeEnum.EXPENSE) {
         // Update the expense category options atom with the new category
         const currentOptions = get(expenseCategoryOptionsAtom);
         
@@ -71,7 +71,7 @@ export const createCategoryAtom = atom(
           ];
           set(expenseCategoryOptionsAtom, updatedOptions);
         }
-      } else if (categoryData.categoryType === TransactionTypeEnum.INCOME) {
+      } else if (categoryData.categoryType === CategoryTypeEnum.INCOME) {
         // Update the income category options atom with the new category
         const currentOptions = get(incomeCategoryOptionsAtom);
         
@@ -119,7 +119,7 @@ export const createCategoryAtom = atom(
 // Atom for fetching transaction categories
 export const fetchTransactionCategoriesAtom = atom(
   null,
-  async (get, set, { api, type }: { api: AxiosInstance; type: TransactionTypeEnum }) => {
+  async (get, set, { api, type }: { api: AxiosInstance; type: CategoryTypeEnum }) => {
     try {
       // Fetch categories by type
       const response = await api.get(`/transaction-categories/?categoryType=${type}`);
@@ -131,9 +131,9 @@ export const fetchTransactionCategoriesAtom = atom(
       }));
       
       // Update the appropriate category options atom
-      if (type === TransactionTypeEnum.EXPENSE) {
+      if (type === CategoryTypeEnum.EXPENSE) {
         set(expenseCategoryOptionsAtom, formattedOptions);
-      } else if (type === TransactionTypeEnum.INCOME) {
+      } else if (type === CategoryTypeEnum.INCOME) {
         set(incomeCategoryOptionsAtom, formattedOptions);
       }
       

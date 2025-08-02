@@ -27,6 +27,7 @@ import CategoryCreationForm from "./CategoryCreationForm";
 import { UpdateTransactionType } from "@/types/transactionTypes";
 import ExpandableTextarea from '@/components/ui/expandable-textarea';
 import FileUploadField from "./FileUploadField";
+import { CategoryTypeEnum } from "@/types/categoryTypes";
 
 // Income form schema using Zod
 const incomeFormSchema = z.object({
@@ -453,7 +454,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             {showCustomCategoryInput && (
               <CategoryCreationForm 
                 onSuccess={handleCategoryCreated}
-                categoryType={TransactionTypeEnum.INCOME}
+                categoryType={CategoryTypeEnum.INCOME}
               />
             )}
           </div>

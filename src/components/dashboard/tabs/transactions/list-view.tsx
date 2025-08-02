@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { IndexTransaction, TransactionTypeEnum, TransactionsPage } from "@/types/transactionTypes";
+import { IndexTransaction, CombinedTransactionTypeEnum, TransactionsPage } from "@/types/transactionTypes";
 import { formatCurrency } from "@/lib/utils";
 import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -101,9 +101,9 @@ export function ListView({
                           {/* Color indicator */}
                             <div
                             className={`w-1 h-12 rounded mr-3 flex-shrink-0 ${
-                                transaction.type === TransactionTypeEnum.INCOME
+                                transaction.type === CombinedTransactionTypeEnum.INCOME
                                   ? "bg-emerald-500"
-                                : transaction.type === TransactionTypeEnum.EXPENSE
+                                : transaction.type === CombinedTransactionTypeEnum.EXPENSE
                                   ? "bg-red-500"
                                   : "bg-blue-500"
                               }`}
@@ -144,9 +144,9 @@ export function ListView({
                                 <div className="flex items-center gap-2 flex-shrink-0">
                             <div
                                     className={`font-semibold text-sm ${
-                                transaction.type === TransactionTypeEnum.INCOME
+                                transaction.type === CombinedTransactionTypeEnum.INCOME
                                   ? "text-emerald-600"
-                                        : transaction.type === TransactionTypeEnum.EXPENSE
+                                        : transaction.type === CombinedTransactionTypeEnum.EXPENSE
                                   ? "text-red-600"
                                   : "text-blue-600"
                               }`}
@@ -156,16 +156,16 @@ export function ListView({
                             </div>
                             <span
                                     className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
-                                transaction.type === TransactionTypeEnum.INCOME
+                                transaction.type === CombinedTransactionTypeEnum.INCOME
                                         ? "bg-emerald-100 text-emerald-700"
-                                        : transaction.type === TransactionTypeEnum.EXPENSE
+                                        : transaction.type === CombinedTransactionTypeEnum.EXPENSE
                                         ? "bg-red-100 text-red-700"
                                         : "bg-blue-100 text-blue-700"
                               }`}
                             >
-                                    {transaction.type === TransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline mr-1" />}
-                                    {transaction.type === TransactionTypeEnum.EXPENSE && <ArrowDownLeft className="h-3 w-3 inline mr-1" />}
-                                    {transaction.type === TransactionTypeEnum.TRANSFER && <ArrowLeftRight className="h-3 w-3 inline mr-1" />}
+                                    {transaction.type === CombinedTransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline mr-1" />}
+                                    {transaction.type === CombinedTransactionTypeEnum.EXPENSE && <ArrowDownLeft className="h-3 w-3 inline mr-1" />}
+                                    {transaction.type === CombinedTransactionTypeEnum.TRANSFER && <ArrowLeftRight className="h-3 w-3 inline mr-1" />}
                               {transaction.type}
                             </span>
                               </div>

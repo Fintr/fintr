@@ -26,6 +26,7 @@ interface AddTransactionDialogProps {
   // New props for controlled mode
   isOpen?: boolean;
   onClose?: () => void;
+  initialTransactionType?: 'expense' | 'income' | 'transfer' | 'loan' | 'investment' | 'goal';
   prefilledData?: {
     type?: 'expense' | 'income' | 'transfer' | 'loan' | 'investment' | 'goal';
     amount?: number;
@@ -42,11 +43,12 @@ const AddTransactionDialog = ({
   onAddTransaction = () => {},
   isOpen: controlledOpen,
   onClose: controlledOnClose,
+  initialTransactionType,
   prefilledData,
 }: AddTransactionDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [activeTab, setActiveTab] = useState("expense");
+  const [activeTab, setActiveTab] = useState(initialTransactionType || "expense");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const tabsListRef = useRef<HTMLDivElement>(null);
 
@@ -276,7 +278,7 @@ const AddTransactionDialog = ({
         </DialogHeader>
         <Tabs
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={(value) => setActiveTab(value as typeof activeTab)}
           className="w-full"
         >
           <div className="px-6">

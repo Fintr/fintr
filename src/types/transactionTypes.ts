@@ -8,7 +8,7 @@ export interface IndexTransaction {
   categoryName: string;
   fromAccountName: string;
   toAccountName: string;
-  type: TransactionTypeEnum;
+  type: CombinedTransactionTypeEnum;
   inSeries: boolean;
 }
 
@@ -30,7 +30,7 @@ export interface UpdateTransactionType {
   amount: number;
   categoryName: string;
   accountName: string;
-  type: TransactionTypeEnum;
+  type: CombinedTransactionTypeEnum;
   scheduleType: ScheduleTypeEnum;
   repeatInterval: string;
   installmentPeriod: number;
@@ -54,7 +54,7 @@ export interface TransactionsPage {
   // Add other pagination info if available (e.g., totalPages, totalCount)
 }
 
-export enum TransactionTypeEnum {
+export enum CombinedTransactionTypeEnum {
   EXPENSE = "expense",
   INCOME = "income",
   TRANSFER = "transfer"

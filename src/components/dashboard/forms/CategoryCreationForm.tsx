@@ -8,16 +8,16 @@ import { useAtom, useSetAtom } from "jotai";
 import { createCategoryAtom, categoryValidationErrorsAtom } from "@/atoms/transactionCategoryAtoms";
 import { toast } from "sonner";
 import { extractFieldErrors } from "@/utils/errorUtils";
-import { TransactionTypeEnum } from "@/constants/transactionConstants";
+import { CategoryTypeEnum } from "@/types/categoryTypes";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface CategoryCreationFormProps {
   onSuccess: (name: string) => void;
-  categoryType: TransactionTypeEnum;
+  categoryType: CategoryTypeEnum;
   horizontal?: boolean; // Whether to display in horizontal layout (similar to AccountCreationForm)
 }
 
-const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({ 
+const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
   onSuccess,
   categoryType,
   horizontal = false
@@ -65,7 +65,7 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
     }
   };
   
-  const placeholderText = categoryType === TransactionTypeEnum.INCOME 
+  const placeholderText = categoryType === CategoryTypeEnum.INCOME 
     ? "Enter new income category" 
     : "Enter new expense category";
   

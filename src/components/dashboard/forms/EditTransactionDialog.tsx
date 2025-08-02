@@ -10,7 +10,7 @@ import ExpenseForm from "./ExpenseForm";
 import IncomeForm from "./IncomeForm";
 import TransferForm from "./TransferForm";
 import ScopeModal, { UpdateScope, Scope } from "./ScopeModal";
-import { IndexTransaction, TransactionTypeEnum, TransferUpdateTransactionType, UpdateTransactionType } from "@/types/transactionTypes";
+import { IndexTransaction, CombinedTransactionTypeEnum, TransferUpdateTransactionType, UpdateTransactionType } from "@/types/transactionTypes";
 import { UpdateTransferType, updateTransfer } from "@/services/transactions/transfers/mutation";
 import { updateTransaction } from "@/services/transactions/mutation";
 import { fetchTransactionById } from "@/services/transactions/queries";
@@ -64,7 +64,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         let data;
         
         // Use the appropriate endpoint based on transaction type
-        if (transaction.type === TransactionTypeEnum.TRANSFER) {
+        if (transaction.type === CombinedTransactionTypeEnum.TRANSFER) {
           data = await fetchTransferById(api, transaction.id);
         } else {
           data = await fetchTransactionById(api, transaction.id);
@@ -250,7 +250,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         dataWithFile.file = data.file;
       }
 
-      if (transaction?.type === TransactionTypeEnum.TRANSFER) {
+      if (transaction?.type === CombinedTransactionTypeEnum.TRANSFER) {
         response = await updateTransfer(api, dataWithFile);
         toast.success("Transfer updated successfully");
       } else {
@@ -268,11 +268,11 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
 
   const getDialogTitle = () => {
     switch (transaction?.type) {
-      case TransactionTypeEnum.EXPENSE:
+      case CombinedTransactionTypeEnum.EXPENSE:
         return "Edit Expense";
-      case TransactionTypeEnum.INCOME:
+      case CombinedTransactionTypeEnum.INCOME:
         return "Edit Income";
-      case TransactionTypeEnum.TRANSFER:
+      case CombinedTransactionTypeEnum.TRANSFER:
         return "Edit Transfer";
       default:
         return "Edit Transaction";
@@ -281,11 +281,11 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
 
   const getDialogDescription = () => {
     switch (transaction?.type) {
-      case TransactionTypeEnum.EXPENSE:
+      case CombinedTransactionTypeEnum.EXPENSE:
         return "Update the details of your expense transaction.";
-      case TransactionTypeEnum.INCOME:
+      case CombinedTransactionTypeEnum.INCOME:
         return "Update the details of your income transaction.";
-      case TransactionTypeEnum.TRANSFER:
+      case CombinedTransactionTypeEnum.TRANSFER:
         return "Update the details of your transfer transaction.";
       default:
         return "Update the details of your transaction.";
@@ -307,7 +307,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
 
     // Use the key to force re-render when data changes
     switch (transaction.type) {
-      case TransactionTypeEnum.EXPENSE:
+      case CombinedTransactionTypeEnum.EXPENSE:
         return (
           <ExpenseForm
             key={`expense-form-${dataKey}`}
@@ -321,7 +321,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             onFileUpdate={handleFileUpdate} // Pass the new handler
           />
         );
-      case TransactionTypeEnum.INCOME:
+      case CombinedTransactionTypeEnum.INCOME:
         return (
           <IncomeForm
             key={`income-form-${dataKey}`}
@@ -335,7 +335,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             onFileUpdate={handleFileUpdate} // Pass the new handler
           />
         );
-      case TransactionTypeEnum.TRANSFER:
+      case CombinedTransactionTypeEnum.TRANSFER:
         // For transfers, we need to map the transaction data to the expected format
         const transferData: UpdateTransferType = {
           id: fullTransactionData.id,

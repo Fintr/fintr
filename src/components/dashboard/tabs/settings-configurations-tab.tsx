@@ -19,7 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Folder, Users, Settings, Upload, Download } from "lucide-react";
-import CategoryToggle, { CategoryType } from "../category-toggle";
+import CategoryToggle, { CategoryToggleType } from "../category-toggle";
 import CategoryListCard from "../category-list-card";
 import AccountList from "../account-list";
 import AddAccountForm, { NewAccountData } from "../add-account-form";
@@ -30,7 +30,7 @@ const SettingsConfigurationsTab = () => {
   const [activeMainTab, setActiveMainTab] = useState("categories");
   const [activeSubTab, setActiveSubTab] = useState("expense");
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [activeCategory, setActiveCategory] = useState<CategoryType>("expense");
+  const [activeCategory, setActiveCategory] = useState<CategoryToggleType>("expense");
 
   // Fetch accounts from API
   const { 

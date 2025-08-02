@@ -31,6 +31,7 @@ import CategoryCreationForm from "./CategoryCreationForm";
 import { UpdateTransactionType } from "@/types/transactionTypes";
 import ExpandableTextarea from '@/components/ui/expandable-textarea';
 import FileUploadField from "./FileUploadField";
+import { CategoryTypeEnum } from "@/types/categoryTypes";
 
 // Keep Zod schemas as they are used by the adapter and nested forms
 const categorySchema = z.object({
@@ -534,7 +535,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             {showCustomCategoryInput && (
               <CategoryCreationForm 
                 onSuccess={handleCategoryCreated}
-                categoryType={TransactionTypeEnum.EXPENSE}
+                categoryType={CategoryTypeEnum.EXPENSE}
               />
             )}
           </div>

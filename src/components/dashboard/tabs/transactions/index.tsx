@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, List, Table2, CalendarDays } from "lucide-react";
+import { Search, List, Table2, CalendarDays, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   useQueryClient,
@@ -30,10 +30,13 @@ import ScopeModal, { DeleteScope, Scope } from "@/components/dashboard/forms/Sco
 import { deleteTransaction } from "@/services/transactions/mutation";
 import { deleteTransfer } from "@/services/transactions/transfers/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
-import { TransactionTypeEnum } from "@/types/transactionTypes";
+import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { shouldShowV2Features } from "@/lib/utils";
+import AddTransactionDialog from "../../add-transaction-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface TransactionsTabProps {
   // Define any props if needed, but not used in this component
@@ -91,6 +94,10 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const [selectedDeleteScope, setSelectedDeleteScope] = useState<DeleteScope>(DeleteScopeEnum.THIS_ONLY);
   const [transactionToDelete, setTransactionToDelete] = useState<IndexTransaction | null>(null);
 
+  // Add transaction dialog state
+  const [addTransactionType, setAddTransactionType] = useState<CombinedTransactionTypeEnum>(CombinedTransactionTypeEnum.EXPENSE);
+  const [isAddTransactionDialogOpen, setIsAddTransactionDialogOpen] = useState(false);
+
   const {
     data,
     error,
@@ -117,7 +124,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const deleteMutation = useMutation({
     mutationFn: (deleteData: { id: string; deleteScope: DeleteScope; transactionType?: string }) => {
       // Use the appropriate delete function based on transaction type
-      if (deleteData.transactionType === TransactionTypeEnum.TRANSFER) {
+      if (deleteData.transactionType === CombinedTransactionTypeEnum.TRANSFER) {
         return deleteTransfer(api, { id: deleteData.id, deleteScope: deleteData.deleteScope });
       } else {
         return deleteTransaction(api, { id: deleteData.id, deleteScope: deleteData.deleteScope });
@@ -440,7 +447,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             applyFilters={applyFilters}
           />
 
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -520,6 +527,58 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         inSeries={transactionToDelete?.inSeries ?? true}
         transactionType={transactionToDelete?.type}
       />
+
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+        <h2 className="text-2xl font-bold">Transactions</h2>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button 
+              className="flex items-center gap-2 px-4 py-2 rounded-md transition-colors w-full md:w-auto"
+              onClick={() => setAddTransactionType(CombinedTransactionTypeEnum.EXPENSE)}
+            >
+              <Plus className="h-5 w-5" />
+              Add New Transaction
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add New Transaction</DialogTitle>
+            </DialogHeader>
+            <Tabs 
+              defaultValue={CombinedTransactionTypeEnum.EXPENSE}
+              onValueChange={(value) => setAddTransactionType(value as CombinedTransactionTypeEnum)}
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value={CombinedTransactionTypeEnum.EXPENSE}>Expense</TabsTrigger>
+                <TabsTrigger value={CombinedTransactionTypeEnum.INCOME}>Income</TabsTrigger>
+                <TabsTrigger value={CombinedTransactionTypeEnum.TRANSFER}>Transfer</TabsTrigger>
+              </TabsList>
+              <TabsContent value={CombinedTransactionTypeEnum.EXPENSE}>
+                <AddTransactionDialog
+                  isOpen={true} // Dialog is already open via DialogTrigger
+                  onClose={() => setIsAddTransactionDialogOpen(false)}
+                  initialTransactionType={CombinedTransactionTypeEnum.EXPENSE}
+                />
+              </TabsContent>
+              <TabsContent value={CombinedTransactionTypeEnum.INCOME}>
+                <AddTransactionDialog
+                  isOpen={true} // Dialog is already open via DialogTrigger
+                  onClose={() => setIsAddTransactionDialogOpen(false)}
+                  initialTransactionType={CombinedTransactionTypeEnum.INCOME}
+                />
+              </TabsContent>
+              <TabsContent value={CombinedTransactionTypeEnum.TRANSFER}>
+                <AddTransactionDialog
+                  isOpen={true} // Dialog is already open via DialogTrigger
+                  onClose={() => setIsAddTransactionDialogOpen(false)}
+                  initialTransactionType={CombinedTransactionTypeEnum.TRANSFER}
+                />
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
+      </div>
     </>
   );
 };
