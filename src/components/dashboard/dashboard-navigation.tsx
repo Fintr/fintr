@@ -113,6 +113,28 @@ const DashboardNavigation = () => {
               </Link>
             </div>
             <div className="flex flex-row items-center gap-2">
+              {/* New Receipt Button for Mobile */}
+              <Button
+                onClick={() => setIsAddReceiptOpen(true)}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-primary hover:bg-gray-100 p-0 border border-primary rounded-full"
+                aria-label="Add Receipt"
+              >
+                <Camera className="h-5 w-5" />
+                <span className="sr-only">Receipt</span>
+              </Button>
+              {/* New Transaction Button for Mobile */}
+              <Button
+                onClick={() => setIsAddTransactionOpen(true)}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-primary hover:bg-gray-100 p-0 border border-primary rounded-full"
+                aria-label="Add Transaction"
+              >
+                <Plus className="h-5 w-5" />
+                <span className="sr-only">Transaction</span>
+              </Button>
               {/* Notification bell */}
               {
                 showV2Features && (

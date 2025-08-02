@@ -52,7 +52,7 @@ const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ open, onClose, onAddR
             />
           </div> */}
           {/* Add Receipt and Add Transaction buttons */}
-          <button
+          {/* <button
             onClick={() => {
               onAddReceipt();
               onClose();
@@ -71,23 +71,23 @@ const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ open, onClose, onAddR
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Transaction
-          </button>
+          </button> */}
           {/* Account section: only clickable John Doe with animated expandable menu */}
           <div className="flex flex-col gap-2 mt-2">
             <button
               className="flex items-center gap-2 w-full text-left font-semibold text-primary py-2 px-2 rounded hover:bg-gray-100 focus:outline-none"
-              onClick={() => setAccountOpen((v) => !v)}
-              aria-expanded={accountOpen}
+              onClick={() => {}}
+              aria-expanded={true}
               aria-controls="mobile-account-menu"
             >
               <User className="h-5 w-5 mr-2" />
               {user?.name || "John Doe"}
-              <span className={`ml-auto transition-transform ${accountOpen ? 'rotate-90' : ''}`}>▶</span>
+              {/* Removed the expand/collapse arrow as it's always open */}
             </button>
             <div
               id="mobile-account-menu"
-              className={`overflow-hidden transition-all duration-300 ease-in-out ${accountOpen ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'}`}
-              style={{ pointerEvents: accountOpen ? 'auto' : 'none' }}
+              className={`overflow-visible transition-none max-h-full opacity-100`}
+              style={{ pointerEvents: 'auto' }}
             >
               <Link href="/dashboard/settings" className="flex items-center gap-2 py-2 px-2 rounded hover:bg-gray-100 text-primary w-full"
                 onClick={onClose}
