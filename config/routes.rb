@@ -25,6 +25,10 @@ Rails.application.routes.draw do
         resource :description, only: [:update]
       end
 
+      namespace :beta do
+        resource :whitelist, only: %i[show create update destroy]
+      end
+
       resources :transactions
       resources :budgets, only: %i[index create update destroy]
       resources :insights, only: [:index]
