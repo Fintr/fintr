@@ -35,8 +35,8 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     const file = event.target.files?.[0];
     if (file) {
       // Validate file type
-      if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        toast.error('Please select an image or PDF file');
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
         return;
       }
       
@@ -316,7 +316,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,application/pdf"
+            accept="image/*"
             onChange={handleFileSelect}
             className="hidden"
           />
