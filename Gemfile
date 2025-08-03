@@ -40,7 +40,7 @@ gem "kaminari", "~> 1.2"
 
 # Bulk Import, Duplication
 gem "amoeba", "~> 3.3"
-gem "activerecord-import", "~> 2.1"
+gem "activerecord-import", "~> 2.2"
 
 # DB Views
 gem "scenic", "~> 1.8"
