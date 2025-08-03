@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { ArrowRight, Bell, User, LogOut, Settings, Camera, Plus, Menu, X, Search } from "lucide-react";
+import { ArrowRight, Bell, LogOut, Settings, Camera, Plus, Menu, X, Search, User as UserIcon } from "lucide-react";
 import { useAuth0 } from "@auth0/auth0-react";
 import {
   DropdownMenu,
@@ -17,7 +17,18 @@ import MobileNavDrawer from "@/components/dashboard/mobile-nav-drawer";
 import Link from "next/link";
 import { shouldShowV2Features } from "@/lib/utils";
 
-const DashboardNavigation = () => {
+interface NavItem {
+  title: string;
+  href: string;
+  icon: React.ElementType;
+}
+
+interface DashboardNavigationProps {
+  hideActionButtons?: boolean;
+  isAdmin?: boolean | null;
+}
+
+const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNavigationProps) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isAddReceiptOpen, setIsAddReceiptOpen] = useState(false);
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
@@ -27,33 +38,33 @@ const DashboardNavigation = () => {
 
   const showV2Features = shouldShowV2Features();
 
-  // Auth0 hook for logout functionality
   const { logout, user } = useAuth0();
 
-  // Mock notification data
-  const [notifications, setNotifications] = useState<NotificationProps[]>([
-    {
-      id: "1",
-      type: "info",
-      message: "Your monthly budget report is ready",
-      time: "Just now",
-      isRead: false,
-    },
-    {
-      id: "2",
-      type: "warning",
-      message: "You're close to your spending limit for dining",
-      time: "2 hours ago",
-      isRead: false,
-    },
-    {
-      id: "3",
-      type: "success",
-      message: "Successfully saved $200 this month",
-      time: "Yesterday",
-      isRead: true,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<NotificationProps[]>(
+    [
+      {
+        id: "1",
+        type: "info",
+        message: "Your monthly budget report is ready",
+        time: "Just now",
+        isRead: false,
+      },
+      {
+        id: "2",
+        type: "warning",
+        message: "You're close to your spending limit for dining",
+        time: "2 hours ago",
+        isRead: false,
+      },
+      {
+        id: "3",
+        type: "success",
+        message: "Successfully saved $200 this month",
+        time: "Yesterday",
+        isRead: true,
+      },
+    ]
+  );
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -66,7 +77,6 @@ const DashboardNavigation = () => {
   };
 
   const handleReceiptSuccess = (suggestedTransactionPayload: any, receiptImage: File) => {
-    // Transform the suggested payload to match our expected format
     const prefilledData = {
       type: 'expense' as const,
       amount: suggestedTransactionPayload.amount,
@@ -78,24 +88,29 @@ const DashboardNavigation = () => {
       receiptImage: receiptImage,
     };
     
-    // Set the prefilled data and open the transaction dialog
     setPrefilledTransactionData(prefilledData);
     setIsAddTransactionOpen(true);
   };
 
   const handleLogout = () => {
-    // Clear localStorage
     if (typeof window !== 'undefined') {
       localStorage.removeItem('spaceCode');
     }
     
-    // Auth0 logout with redirect to home page
     logout({
       logoutParams: {
         returnTo: process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin
       }
     });
   };
+
+  const mobileNavItems: NavItem[] = [
+    { title: "Settings", href: "/dashboard/settings", icon: Settings },
+  ];
+
+  if (isAdmin) {
+    mobileNavItems.push({ title: "Admin", href: "/admin", icon: UserIcon });
+  }
 
   return (
     <>
@@ -113,29 +128,30 @@ const DashboardNavigation = () => {
               </Link>
             </div>
             <div className="flex flex-row items-center gap-2">
-              {/* New Receipt Button for Mobile */}
-              <Button
-                onClick={() => setIsAddReceiptOpen(true)}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-primary hover:bg-gray-100 p-0 border border-primary rounded-full"
-                aria-label="Add Receipt"
-              >
-                <Camera className="h-5 w-5" />
-                <span className="sr-only">Receipt</span>
-              </Button>
-              {/* New Transaction Button for Mobile */}
-              <Button
-                onClick={() => setIsAddTransactionOpen(true)}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-primary hover:bg-gray-100 p-0 border border-primary rounded-full"
-                aria-label="Add Transaction"
-              >
-                <Plus className="h-5 w-5" />
-                <span className="sr-only">Transaction</span>
-              </Button>
-              {/* Notification bell */}
+              {!hideActionButtons && (
+                <>
+                  <Button
+                    onClick={() => setIsAddReceiptOpen(true)}
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-primary hover:bg-gray-100 p-0 border border-primary rounded-full"
+                    aria-label="Add Receipt"
+                  >
+                    <Camera className="h-5 w-5" />
+                    <span className="sr-only">Receipt</span>
+                  </Button>
+                  <Button
+                    onClick={() => setIsAddTransactionOpen(true)}
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-primary hover:bg-gray-100 p-0 border border-primary rounded-full"
+                    aria-label="Add Transaction"
+                  >
+                    <Plus className="h-5 w-5" />
+                    <span className="sr-only">Transaction</span>
+                  </Button>
+                </>
+              )}
               {
                 showV2Features && (
                   <div className="relative flex items-center">
@@ -160,7 +176,6 @@ const DashboardNavigation = () => {
                   </div>
                 )
               }
-              {/* Hamburger menu */}
               <Button variant="ghost" size="icon" className="p-2" onClick={() => setIsMobileNavOpen(true)}>
                 <Menu className="h-6 w-6" />
                 <span className="sr-only">Open menu</span>
@@ -180,21 +195,25 @@ const DashboardNavigation = () => {
             </div>
             <div className="flex flex-1" />
             <div className="flex flex-row items-center gap-2 md:gap-4">
-              <Button
-                onClick={() => setIsAddReceiptOpen(true)}
-                variant="outline"
-                className="border-primary text-primary hover:bg-primary hover:text-white"
-              >
-                <Camera className="h-4 w-4 mr-2" />
-                Add Receipt
-              </Button>
-              <Button
-                onClick={() => setIsAddTransactionOpen(true)}
-                className="bg-primary hover:bg-primary/80"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Transaction
-              </Button>
+              {!hideActionButtons && (
+                <>
+                  <Button
+                    onClick={() => setIsAddReceiptOpen(true)}
+                    variant="outline"
+                    className="border-primary text-primary hover:bg-primary hover:text-white"
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Add Receipt
+                  </Button>
+                  <Button
+                    onClick={() => setIsAddTransactionOpen(true)}
+                    className="bg-primary hover:bg-primary/80"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Transaction
+                  </Button>
+                </>
+              )}
               {
                 showV2Features && (
                   <div className="relative flex items-center">
@@ -221,7 +240,7 @@ const DashboardNavigation = () => {
               }
               <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                 <DropdownMenuTrigger className="text-primary hover:text-primary/80 flex items-center gap-2">
-                  <User className="h-5 w-5" />
+                  <UserIcon className="h-5 w-5" />
                   <span>{user?.name || "User"}</span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -231,6 +250,14 @@ const DashboardNavigation = () => {
                       <span>Settings</span>
                     </Link>
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onSelect={() => {}} onClick={() => setIsDropdownOpen(false)}>
+                      <Link href="/admin" className="flex items-center w-full">
+                        <UserIcon className="mr-2 h-4 w-4" />
+                        <span>Admin</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Logout</span>
@@ -245,9 +272,8 @@ const DashboardNavigation = () => {
       <MobileNavDrawer
         open={isMobileNavOpen}
         onClose={() => setIsMobileNavOpen(false)}
-        onAddReceipt={() => setIsAddReceiptOpen(true)}
-        onAddTransaction={() => setIsAddTransactionOpen(true)}
         onLogout={handleLogout}
+        navItems={mobileNavItems}
       />
       
       <AddReceiptDialog

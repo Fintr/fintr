@@ -15,3 +15,5 @@ export const categoryOptionsAtom = atom<OptionType[]>([]);
 export const accountOptionsAtom = atom<OptionType[]>([]);
 export const expenseCategoryOptionsAtom = atom<OptionType[]>([]);
 export const incomeCategoryOptionsAtom = atom<OptionType[]>([]); 
+export const isWhitelistedAtom = atom<boolean | null>(null);
+export const isAdminAtom = atom<boolean | null>(null); 

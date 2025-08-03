@@ -1,19 +1,24 @@
-import React, { useState } from 'react';
-import { X, User, Settings, LogOut, Camera, Plus } from 'lucide-react';
+import React from 'react';
+import { X, User, Settings, LogOut } from 'lucide-react'; // Removed Camera, Plus
 import Link from "next/link";
 import { useAuth0 } from "@auth0/auth0-react";
+
+interface NavItem {
+  title: string;
+  href: string;
+  icon: React.ElementType; // To allow passing different icons
+}
 
 interface MobileNavDrawerProps {
   open: boolean;
   onClose: () => void;
-  onAddReceipt: () => void;
-  onAddTransaction: () => void;
   onLogout: () => void;
+  navItems: NavItem[]; // New prop for dynamic navigation items
 }
 
-const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ open, onClose, onAddReceipt, onAddTransaction, onLogout }) => {
-  const [accountOpen, setAccountOpen] = useState(false);
+const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ open, onClose, onLogout, navItems }) => {
   const { user } = useAuth0();
+
   return (
     <>
       {/* Overlay */}
@@ -42,37 +47,7 @@ const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ open, onClose, onAddR
         <div className="pt-12 px-6 pb-6 flex flex-col gap-4 h-full overflow-y-auto">
           {/* Menu header */}
           <h3 className="text-lg font-semibold mb-2">Menu</h3>
-          {/* Ask Fintr anything search bar */}
-          {/* <div className="flex items-center bg-gray-100 p-2 rounded-lg mb-2">
-            <svg className="h-4 w-4 text-gray-500 mr-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-            <input
-              type="text"
-              placeholder="Ask Fintr anything"
-              className="bg-transparent outline-none flex-1"
-            />
-          </div> */}
-          {/* Add Receipt and Add Transaction buttons */}
-          {/* <button
-            onClick={() => {
-              onAddReceipt();
-              onClose();
-            }}
-            className="flex items-center gap-2 py-2 px-2 rounded hover:bg-gray-100 text-primary w-full font-medium"
-          >
-            <Camera className="h-4 w-4 mr-2" />
-            Add Receipt
-          </button>
-          <button
-            onClick={() => {
-              onAddTransaction();
-              onClose();
-            }}
-            className="flex items-center gap-2 py-2 px-2 rounded hover:bg-gray-100 text-primary w-full font-medium"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Transaction
-          </button> */}
-          {/* Account section: only clickable John Doe with animated expandable menu */}
+          
           <div className="flex flex-col gap-2 mt-2">
             <button
               className="flex items-center gap-2 w-full text-left font-semibold text-primary py-2 px-2 rounded hover:bg-gray-100 focus:outline-none"
@@ -82,19 +57,23 @@ const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ open, onClose, onAddR
             >
               <User className="h-5 w-5 mr-2" />
               {user?.name || "John Doe"}
-              {/* Removed the expand/collapse arrow as it's always open */}
             </button>
             <div
               id="mobile-account-menu"
               className={`overflow-visible transition-none max-h-full opacity-100`}
               style={{ pointerEvents: 'auto' }}
             >
-              <Link href="/dashboard/settings" className="flex items-center gap-2 py-2 px-2 rounded hover:bg-gray-100 text-primary w-full"
-                onClick={onClose}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Link>
+              {navItems.map((item, index) => (
+                <Link
+                  key={index}
+                  href={item.href}
+                  className="flex items-center gap-2 py-2 px-2 rounded hover:bg-gray-100 text-primary w-full"
+                  onClick={onClose}
+                >
+                  <item.icon className="h-4 w-4 mr-2" />
+                  {item.title}
+                </Link>
+              ))}
               <button className="flex items-center gap-2 py-2 px-2 rounded hover:bg-gray-100 text-primary w-full" onClick={onLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Log Out
