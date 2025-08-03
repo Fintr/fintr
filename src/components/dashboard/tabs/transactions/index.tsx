@@ -321,13 +321,20 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         throw updateError;
       }
       console.log("Update successful:", updateData);
+      
+      // Use consistent invalidation pattern with all filter parameters
       queryClient.invalidateQueries({
         queryKey: [
           "transactions",
-          localStorage.getItem("spaceCode"),
+          spaceCode,
+          appliedFilters.appliedCategory,
           appliedFilters.queryStartDate,
           appliedFilters.queryEndDate,
+          appliedFilters.appliedMinAmount,
+          appliedFilters.appliedMaxAmount,
+          appliedFilters.searchQuery,
         ],
+        refetchType: 'active'
       });
       setEditingCell(null);
       setEditValue("");
@@ -342,17 +349,19 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   };
 
   const handleEditSuccess = () => {
-    // Invalidate queries to refresh the transaction list
+    // Use consistent invalidation pattern with all filter parameters
     queryClient.invalidateQueries({
       queryKey: [
         "transactions",
-        localStorage.getItem("spaceCode"),
+        spaceCode,
         appliedFilters.appliedCategory,
         appliedFilters.queryStartDate,
         appliedFilters.queryEndDate,
         appliedFilters.appliedMinAmount,
         appliedFilters.appliedMaxAmount,
+        appliedFilters.searchQuery,
       ],
+      refetchType: 'active'
     });
   };
 

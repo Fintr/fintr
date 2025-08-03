@@ -62,7 +62,12 @@ export const useInfiniteTransactions = ({
       ? enabled && !!spaceCode
       : enabled || !!spaceCode,
     retry: false,
+    // Add configuration to prevent duplicate data issues
+    refetchOnWindowFocus: false,
+    staleTime: 30000, // 30 seconds - keeps data fresh but prevents excessive refetching
+    cacheTime: 300000, // 5 minutes - cache time for older versions
   });
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {

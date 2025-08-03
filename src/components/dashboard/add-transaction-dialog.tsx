@@ -200,7 +200,15 @@ const AddTransactionDialog = ({
 
   const onTransactionSuccess = (response: any) => {
     toast.success("Transaction added successfully!");
-    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    
+    // Use specific invalidation targeting the exact query being used
+    // This prevents duplicate data issues by being more precise
+    queryClient.invalidateQueries({ 
+      queryKey: ["transactions"],
+      refetchType: 'active', // Only refetch currently active/mounted queries
+      exact: false // Allow partial matches for any transactions query
+    });
+    
     setDialogOpen(false);
   };
 

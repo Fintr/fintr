@@ -67,153 +67,154 @@ export function ListView({
         <>
           {(() => {
             let lastDisplayedMonthYear: string | null = null;
-            return data.pages.map((page, pageIndex) => (
-              <React.Fragment key={`page-${pageIndex}`}>
-                {page.transactions.map(
-                  (transaction: IndexTransaction, idx: number) => {
-                    const transactionDate = new Date(transaction.date);
-                    const currentMonthYear = `${transactionDate.toLocaleString(
-                      "default",
-                      { month: "long" }
-                    )} ${transactionDate.getFullYear()}`;
-                    let showDivider = false;
+            
+            // Flatten all transactions and deduplicate by ID as a safety measure
+            const allTransactions = data.pages.flatMap(page => page.transactions);
+            const uniqueTransactions = allTransactions.filter((transaction, index, array) => 
+              array.findIndex(t => t.id === transaction.id) === index
+            );
+            
+            return uniqueTransactions.map((transaction: IndexTransaction, idx: number) => {
+              const transactionDate = new Date(transaction.date);
+              const currentMonthYear = `${transactionDate.toLocaleString(
+                "default",
+                { month: "long" }
+              )} ${transactionDate.getFullYear()}`;
+              let showDivider = false;
 
-                    if (currentMonthYear !== lastDisplayedMonthYear) {
-                      showDivider = true;
-                      lastDisplayedMonthYear = currentMonthYear;
-                    }
+              if (currentMonthYear !== lastDisplayedMonthYear) {
+                showDivider = true;
+                lastDisplayedMonthYear = currentMonthYear;
+              }
 
-                    return (
-                      <React.Fragment key={`${transaction.id}-${idx}`}>
-                        {showDivider && (
-                          <div
-                            key={`divider-${currentMonthYear}`}
-                            className="flex items-center my-3"
-                          >
-                            <div className="flex-grow border-t border-gray-300" />
-                            <span className="px-3 text-xs font-semibold text-primary bg-white">
-                              {currentMonthYear}
-                            </span>
-                            <div className="flex-grow border-t border-gray-300" />
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors min-h-[60px]">
-                          {/* Color indicator */}
-                            <div
-                            className={`w-1 h-12 rounded mr-3 flex-shrink-0 ${
-                                transaction.type === CombinedTransactionTypeEnum.INCOME
-                                  ? "bg-emerald-500"
-                                : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                                  ? "bg-red-500"
-                                  : "bg-blue-500"
-                              }`}
-                          />
-                          
-                          {/* Main content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                               {/* This div contains the description and the ID popover */}
-                                <div className="flex items-center gap-2 flex-auto min-w-0"> {/* Added flex-auto and min-w-0 */} 
-                                  <h4 className="font-medium text-sm text-primary truncate pr-2"> {/* Removed flex-1 and min-w-0 */} 
-                                {transaction.description}
-                                  </h4>
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600"
-                                        onClick={() => handleCopyId(transaction.id)}
-                                        title={copiedId === transaction.id ? "Copied!" : `Click to copy ID: ${transaction.id}`}
-                                      >
-                                        {copiedId === transaction.id ? (
-                                          <Check className="h-3 w-3" />
-                                        ) : (
-                                          <Copy className="h-3 w-3" />
-                                        )}
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-2">
-                                      <p className="text-xs">
-                                        {copiedId === transaction.id ? "Copied!" : `ID: ${transaction.id}`}
-                                    </p>
-                                    </PopoverContent>
-                                  </Popover>
-                              </div>
-                                {/* This div contains the amount and type badge */}
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                            <div
-                                    className={`font-semibold text-sm ${
-                                transaction.type === CombinedTransactionTypeEnum.INCOME
-                                  ? "text-emerald-600"
-                                        : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                                  ? "text-red-600"
-                                  : "text-blue-600"
-                              }`}
-                            >
-                                {transaction.amount > 0 ? "+" : ""}
-                                {formatCurrency(transaction.amount)}
-                            </div>
-                            <span
-                                    className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
-                                transaction.type === CombinedTransactionTypeEnum.INCOME
-                                        ? "bg-emerald-100 text-emerald-700"
-                                        : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                                        ? "bg-red-100 text-red-700"
-                                        : "bg-blue-100 text-blue-700"
-                              }`}
-                            >
-                                    {transaction.type === CombinedTransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline mr-1" />}
-                                    {transaction.type === CombinedTransactionTypeEnum.EXPENSE && <ArrowDownLeft className="h-3 w-3 inline mr-1" />}
-                                    {transaction.type === CombinedTransactionTypeEnum.TRANSFER && <ArrowLeftRight className="h-3 w-3 inline mr-1" />}
-                              {transaction.type}
-                            </span>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center justify-between mt-1">
-                              <div className="flex items-center gap-4 text-xs text-gray-600">
-                                <span>{new Date(transaction.date).toLocaleDateString()}</span>
-                                <span className="truncate">{transaction.categoryName}</span>
-                                {(transaction.fromAccountName || transaction.toAccountName) && (
-                                  <span className="truncate">
-                                    {transaction.fromAccountName && transaction.toAccountName 
-                                      ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
-                                      : transaction.fromAccountName 
-                                      ? `From: ${transaction.fromAccountName}`
-                                      : `To: ${transaction.toAccountName}`
-                                    }
-                                  </span>
-                                )}
-                              </div>
-                              
-                              <div className="flex gap-1 flex-shrink-0">
-                              <Button
+              return (
+                <React.Fragment key={transaction.id}>
+                  {showDivider && (
+                    <div
+                      key={`divider-${currentMonthYear}-${idx}`}
+                      className="flex items-center my-3"
+                    >
+                      <div className="flex-grow border-t border-gray-300" />
+                      <span className="px-3 text-xs font-semibold text-primary bg-white">
+                        {currentMonthYear}
+                      </span>
+                      <div className="flex-grow border-t border-gray-300" />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors min-h-[60px]">
+                    {/* Color indicator */}
+                      <div
+                      className={`w-1 h-12 rounded mr-3 flex-shrink-0 ${
+                          transaction.type === CombinedTransactionTypeEnum.INCOME
+                            ? "bg-emerald-500"
+                          : transaction.type === CombinedTransactionTypeEnum.EXPENSE
+                            ? "bg-red-500"
+                            : "bg-blue-500"
+                        }`}
+                    />
+                    
+                    {/* Main content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                         {/* This div contains the description and the ID popover */}
+                          <div className="flex items-center gap-2 flex-auto min-w-0"> {/* Added flex-auto and min-w-0 */} 
+                            <h4 className="font-medium text-sm text-primary truncate pr-2"> {/* Removed flex-1 and min-w-0 */} 
+                          {transaction.description}
+                            </h4>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
                                   variant="ghost"
-                                size="sm"
-                                  className="h-6 px-2 text-xs text-primary hover:bg-primary/10"
-                                onClick={() => onRowEdit(transaction)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                  variant="ghost"
-                                size="sm"
-                                  className="h-6 px-2 text-xs text-red-600 hover:bg-red-50"
-                                onClick={() => onRowDelete(transaction.id)}
-                              >
-                                Delete
-                              </Button>
-                              </div>
-                            </div>
-                          </div>
+                                  size="sm"
+                                  className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600"
+                                  onClick={() => handleCopyId(transaction.id)}
+                                  title={copiedId === transaction.id ? "Copied!" : `Click to copy ID: ${transaction.id}`}
+                                >
+                                  {copiedId === transaction.id ? (
+                                    <Check className="h-3 w-3" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-2">
+                                <p className="text-xs">
+                                  {copiedId === transaction.id ? "Copied!" : `ID: ${transaction.id}`}
+                              </p>
+                              </PopoverContent>
+                            </Popover>
                         </div>
-                      </React.Fragment>
-                    );
-                  }
-                )}
-              </React.Fragment>
-            ));
+                          {/* This div contains the amount and type badge */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                      <div
+                              className={`font-semibold text-sm ${
+                          transaction.type === CombinedTransactionTypeEnum.INCOME
+                            ? "text-emerald-600"
+                                  : transaction.type === CombinedTransactionTypeEnum.EXPENSE
+                            ? "text-red-600"
+                            : "text-blue-600"
+                        }`}
+                      >
+                          {transaction.amount > 0 ? "+" : ""}
+                          {formatCurrency(transaction.amount)}
+                      </div>
+                      <span
+                              className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                          transaction.type === CombinedTransactionTypeEnum.INCOME
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : transaction.type === CombinedTransactionTypeEnum.EXPENSE
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
+                              {transaction.type === CombinedTransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline mr-1" />}
+                              {transaction.type === CombinedTransactionTypeEnum.EXPENSE && <ArrowDownLeft className="h-3 w-3 inline mr-1" />}
+                              {transaction.type === CombinedTransactionTypeEnum.TRANSFER && <ArrowLeftRight className="h-3 w-3 inline mr-1" />}
+                        {transaction.type}
+                      </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-1">
+                        <div className="flex items-center gap-4 text-xs text-gray-600">
+                          <span>{new Date(transaction.date).toLocaleDateString()}</span>
+                          <span className="truncate">{transaction.categoryName}</span>
+                          {(transaction.fromAccountName || transaction.toAccountName) && (
+                            <span className="truncate">
+                              {transaction.fromAccountName && transaction.toAccountName 
+                                ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
+                                : transaction.fromAccountName 
+                                ? `From: ${transaction.fromAccountName}`
+                                : `To: ${transaction.toAccountName}`
+                              }
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex gap-1 flex-shrink-0">
+                        <Button
+                            variant="ghost"
+                          size="sm"
+                            className="h-6 px-2 text-xs text-primary hover:bg-primary/10"
+                          onClick={() => onRowEdit(transaction)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                            variant="ghost"
+                          size="sm"
+                            className="h-6 px-2 text-xs text-red-600 hover:bg-red-50"
+                          onClick={() => onRowDelete(transaction.id)}
+                        >
+                          Delete
+                        </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </React.Fragment>
+              );
+            });
           })()}
           <div ref={loadMoreRef} style={{ height: "10px" }} />
         </>

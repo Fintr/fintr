@@ -94,9 +94,14 @@ export function SheetsView({
                   </tr>
                 )}
                 {isSuccess &&
-                  data?.pages
-                    .flatMap((page) => page.transactions)
-                    .map((transaction: IndexTransaction, index) => (
+                  data?.pages && (() => {
+                    // Flatten all transactions and deduplicate by ID as a safety measure
+                    const allTransactions = data.pages.flatMap(page => page.transactions);
+                    const uniqueTransactions = allTransactions.filter((transaction, index, array) => 
+                      array.findIndex(t => t.id === transaction.id) === index
+                    );
+                    
+                    return uniqueTransactions.map((transaction: IndexTransaction, index) => (
                       <tr
                         key={transaction.id}
                         className={
@@ -428,7 +433,8 @@ export function SheetsView({
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    ));
+                  })()}
               </tbody>
             </table>
           </div>
