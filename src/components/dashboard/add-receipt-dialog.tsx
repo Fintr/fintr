@@ -231,11 +231,11 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   return (
     <Dialog open={isOpen} onOpenChange={handleCancel}>
       <DialogContent className="max-w-md">
-        <DialogHeader>
+        <DialogHeader className="-mx-4">
           <DialogTitle>Add Receipt</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-4 -mx-4">
           {isCameraActive ? (
             /* Camera View */
             <div className="space-y-4">
