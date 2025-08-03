@@ -25,150 +25,44 @@ export const useBudgetsData = (budgetDateFilter: string) => {
     enabled: !!spaceCode,
   });
 
-  const updateBudgetMutation = useMutation({
-    mutationFn: (variables: { budgetId: string; data: UpdateBudgetPayload }) =>
-      updateBudget(api, variables.budgetId, variables.data),
-    onMutate: async (variables) => {
-      await queryClient.cancelQueries({
-        queryKey: ["budgets", spaceCode, budgetDateFilter],
-      });
-      const previousData = queryClient.getQueryData<BudgetsPage>([
-        "budgets",
-        spaceCode,
-        budgetDateFilter,
-      ]);
-      queryClient.setQueryData(
-        ["budgets", spaceCode, budgetDateFilter],
-        (old: BudgetsPage | undefined) => {
-          if (!old) return old;
-          return {
-            ...old,
-            budgets: old?.budgets.map((budget) =>
-              budget.id === variables.budgetId
-                ? { ...budget, amount: variables.data.amount }
-                : budget
-            ),
-          };
-        }
-      );
-
-      return { previousData };
-    },
-    onSettled: (data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["budgets", spaceCode, budgetDateFilter],
-      });
-    },
-    onError: (error, newData, context) => {
-      queryClient.setQueryData(
-        ["budgets", spaceCode, budgetDateFilter],
-        (old: BudgetsPage | undefined) => {
-          if (!old) return old;
-          return context?.previousData;
-        }
-      );
-    },
-  });
+  const updateBudgetMutation = useMutation(
+    {
+      mutationFn: ({ budgetId, data }: { budgetId: string; data: UpdateBudgetPayload }) => updateBudget(api, budgetId, data),
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: ["budgets", spaceCode, budgetDateFilter],
+          refetchType: "active",
+        });
+      },
+      onError: (error) => {
+        console.error("Error updating budget:", error);
+      },
+    }
+  );
 
   const createBudgetMutation = useMutation({
-    mutationFn: ({
-      categoryName,
-      amount,
-      date,
-    }: {
-      categoryName: string;
-      amount: number;
-      date: string;
-    }) => {
-      const payload: CreateBudgetPayload = {
-        categoryName,
-        amount,
-        date,
-      };
-      return createBudget(api, payload);
-    },
-    onMutate: async (variables) => {
-      await queryClient.cancelQueries({
-        queryKey: ["budgets", spaceCode, budgetDateFilter],
-      });
-      const previousData = queryClient.getQueryData<BudgetsPage>([
-        "budgets",
-        spaceCode,
-        budgetDateFilter,
-      ]);
-      queryClient.setQueryData(
-        ["budgets", spaceCode, budgetDateFilter],
-        (old: BudgetsPage | undefined) => {
-          if (!old) return old;
-          return {
-            ...old,
-            budgets: [
-              {
-                id: crypto.randomUUID(),
-                date: variables.date,
-                category_name: variables.categoryName,
-                amount: variables.amount,
-                amount_currency: "USD",
-                total_spent: 0,
-              },
-              ...old.budgets,
-            ],
-          };
-        }
-      );
-      return { previousData };
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["budgets", spaceCode, budgetDateFilter],
-      });
-    },
-    onError: (error, newData, context) => {
-      queryClient.setQueryData(
-        ["budgets", spaceCode, budgetDateFilter],
-        context?.previousData
-      );
-    },
+    mutationFn: (payload: CreateBudgetPayload) => createBudget(api, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["budgets", spaceCode, budgetDateFilter],
+        refetchType: "active",
       });
+    },
+    onError: (error) => {
+      console.error("Error creating budget:", error);
     },
   });
 
   const deleteBudgetMutation = useMutation({
     mutationFn: (budgetId: string) => deleteBudget(api, budgetId),
-    onMutate: async (budgetId: string) => {
-      await queryClient.cancelQueries({
-        queryKey: ["budgets", spaceCode, budgetDateFilter],
-      });
-      const previousData = queryClient.getQueryData<BudgetsPage>([
-        "budgets",
-        spaceCode,
-        budgetDateFilter,
-      ]);
-      queryClient.setQueryData(
-        ["budgets", spaceCode, budgetDateFilter],
-        (old: BudgetsPage | undefined) => {
-          if (!old) return old;
-          return {
-            ...old,
-            budgets: old.budgets.filter((budget) => budget.id !== budgetId),
-          };
-        }
-      );
-      return { previousData };
-    },
-    onSettled: () => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["budgets", spaceCode, budgetDateFilter],
+        refetchType: "active",
       });
     },
-    onError: (error, newData, context) => {
-      queryClient.setQueryData(
-        ["budgets", spaceCode, budgetDateFilter],
-        context?.previousData
-      );
+    onError: (error) => {
+      console.error("Error deleting budget:", error);
     },
   });
 

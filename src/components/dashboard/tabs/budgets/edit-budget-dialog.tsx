@@ -95,6 +95,7 @@ export function EditBudgetDialog({
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
+                      disabled={true} // Disable category selection when editing
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />

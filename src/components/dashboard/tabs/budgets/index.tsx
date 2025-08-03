@@ -8,9 +8,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { Trash2, Calendar } from "lucide-react";
+import { Trash2, CalendarIcon } from "lucide-react";
 import { transformBudgetsToCategories } from "@/services/budgets/queries";
 import { z } from "zod";
 import { formatCurrency } from "@/lib/utils";
@@ -18,23 +17,23 @@ import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import { NewBudgetDialog } from "./new-budget-dialog";
 import { EditBudgetDialog } from "./edit-budget-dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 interface BudgetsTabProps {}
 
 const BudgetsTab = ({}: BudgetsTabProps) => {
   // Budget state
-  const [budgetDate, setBudgetDate] = useState<string>(() => {
+  const [budgetDate, setBudgetDate] = useState<Date | undefined>(() => {
     const today = new Date();
-    return today.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+    return today; 
   });
   const [appliedDateFilter, setAppliedDateFilter] = useState<string>(() => {
     const today = new Date();
-    return today.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+    return format(today, "yyyy-MM-dd"); 
   });
-  const formattedDate = new Date(budgetDate).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  const formattedDate = budgetDate ? format(budgetDate, "MMMM yyyy") : "Pick a date";
 
   const {
     data: budgetsData,
@@ -63,14 +62,16 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     ? transformBudgetsToCategories(budgetsData.budgets)
     : [];
 
-  // Handle date change
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setBudgetDate(e.target.value);
+  // Handle date change (for the date picker)
+  const handleDateSelect = (date: Date | undefined) => {
+    setBudgetDate(date);
   };
 
   // Handle applying filters
-  const handleApplyFilters = (budgetDateFilter: string) => {
-    setAppliedDateFilter(budgetDateFilter);
+  const handleApplyFilters = () => {
+    if (budgetDate) {
+      setAppliedDateFilter(format(budgetDate, "yyyy-MM-dd"));
+    }
   };
 
   // Handle budget deletion
@@ -100,31 +101,46 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
             <CardDescription>Customize your budget view</CardDescription>
           </CardHeader>
           <CardContent className="px-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="space-y-2 md:w-1/2">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+              <div className="space-y-2 flex-1">
                 <Label>Budget Month</Label>
-                <div className="flex items-center space-x-2">
-                  <div className="relative flex-1">
-                    <Input
-                      type="date"
-                      value={budgetDate}
-                      onChange={handleDateChange}
-                      className="pl-10"
-                    />
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <div className="flex items-center gap-6 flex-col md:flex-row items-start md:items-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className="w-[250px] justify-start text-left font-normal text-sm"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {budgetDate ? (
+                          format(budgetDate, "MMMM d, yyyy")
+                        ) : (
+                          <span className="text-sm">Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={budgetDate}
+                        onSelect={handleDateSelect}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <div className="text-sm font-medium">
+                    {formattedDate}
                   </div>
-                  <div className="text-sm font-medium">{formattedDate}</div>
+                  <div className="md:self-end">
+                    <Button
+                      className="bg-primary hover:bg-primary/80 w-full"
+                      onClick={handleApplyFilters}
+                      disabled={isLoading}
+                    >
+                      Apply Filters
+                    </Button>
+                  </div>
                 </div>
-              </div>
-
-              <div className="md:self-end">
-                <Button
-                  className="bg-primary hover:bg-primary/80 w-full"
-                  onClick={() => handleApplyFilters(budgetDate)}
-                  disabled={isLoading}
-                >
-                  Apply Filters
-                </Button>
               </div>
             </div>
           </CardContent>
