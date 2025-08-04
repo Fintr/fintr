@@ -25,7 +25,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   useGetSpaceCode(api);
 
   useEffect(() => {
-    if (isWhitelisted == null && !isWhitelisted) {
+    if (isWhitelisted != null && !isWhitelisted) {
       router.push("/");
       toast.error("Sorry. We're keeping this app invite only for now.");
     }
