@@ -9,7 +9,7 @@ namespace :admins do
       stanleyhugo06@gmail.com
     ].each do |email|
       next unless user = Auth::User.find_by(email:)
-      next unless user.has_role?(:admin)
+      next if user.has_role?(:admin)
 
       user.add_role(:admin)
     end
