@@ -28,7 +28,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Pencil, Plus } from "lucide-react";
+import { Edit } from "lucide-react";
 import { useState } from "react";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import { useAtomValue } from "jotai";
@@ -75,8 +75,8 @@ export function EditBudgetDialog({
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <Pencil />
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
+          <Edit className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent>

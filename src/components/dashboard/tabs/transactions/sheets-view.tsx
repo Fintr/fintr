@@ -7,6 +7,9 @@ import { formatCurrency } from "@/lib/utils";
 import { InfiniteData } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { Edit } from "lucide-react";
+import { DeleteButton } from "@/components/dashboard/tabs/transactions/buttons/DeleteButton";
+
 interface SheetsViewProps {
     isPending: boolean;
     isError: boolean;
@@ -413,23 +416,18 @@ export function SheetsView({
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                           <div className="flex space-x-2">
                             <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 px-2 text-primary"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary hover:bg-primary/10"
                               onClick={() => onRowEdit(transaction)}
                             >
-                              Edit
+                              <Edit className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 px-2 text-red-600 border-red-200 hover:bg-red-50"
+                            <DeleteButton
                               onClick={() =>
                                 onRowDelete(transaction.id)
                               }
-                            >
-                              Delete
-                            </Button>
+                            />
                           </div>
                         </td>
                       </tr>
