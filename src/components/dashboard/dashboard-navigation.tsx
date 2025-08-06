@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { ArrowRight, Bell, LogOut, Settings, Camera, Plus, Menu, X, Search, User as UserIcon } from "lucide-react";
+import { ArrowRight, Bell, LogOut, Settings, Camera, Plus, Menu, X, Search, User as UserIcon, Target } from "lucide-react";
 import { useAuth0 } from "@auth0/auth0-react";
 import {
   DropdownMenu,
@@ -107,6 +107,10 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
   const mobileNavItems: NavItem[] = [
     { title: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
+
+  if (showV2Features) {
+    mobileNavItems.push({ title: "Goals", href: "/dashboard/goals", icon: Target });
+  }
 
   if (isAdmin) {
     mobileNavItems.push({ title: "Admin", href: "/admin", icon: UserIcon });
