@@ -168,7 +168,6 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     try {
       const response = await uploadReceipt(api, { image: selectedImage });
       
-      console.log('suggestedTransactionPayload DATA', response?.data?.suggestedTransactionPayload);
       // Check if the response contains suggestedTransactionPayload
       if (response?.data?.suggestedTransactionPayload && onReceiptSuccess) {
         toast.success('Receipt processed successfully! Opening expense form...');
