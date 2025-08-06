@@ -40,6 +40,8 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
 
   const { logout, user } = useAuth0();
 
+  console.log('prefilledTransactionData', prefilledTransactionData);
+
   const [notifications, setNotifications] = useState<NotificationProps[]>(
     [
       {
@@ -77,6 +79,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
   };
 
   const handleReceiptSuccess = (suggestedTransactionPayload: any, receiptImage: File) => {
+    console.log('suggestedTransactionPayload', suggestedTransactionPayload);
     const prefilledData = {
       type: 'expense' as const,
       amount: suggestedTransactionPayload.amount,

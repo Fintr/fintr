@@ -168,6 +168,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     try {
       const response = await uploadReceipt(api, { image: selectedImage });
       
+      console.log('suggestedTransactionPayload DATA', response?.data?.suggestedTransactionPayload);
       // Check if the response contains suggestedTransactionPayload
       if (response?.data?.suggestedTransactionPayload && onReceiptSuccess) {
         toast.success('Receipt processed successfully! Opening expense form...');
@@ -176,45 +177,11 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         onReceiptSuccess(response.data.suggestedTransactionPayload, selectedImage);
         handleCancel();
       } else {
-        // TEMPORARY: Always test the file transfer even on success
-        if (onReceiptSuccess && selectedImage) {
-          const mockSuggestedTransactionPayload = {
-            amount: 1000,
-            date: new Date().toISOString().split('T')[0],
-            categoryName: "Test Category",
-            accountName: "Test Account", 
-            description: "Test receipt transfer - success path",
-            scheduleType: "one_time"
-          };
-          
-          toast.success('Testing file transfer (success path) - Opening expense form...');
-          onReceiptSuccess(mockSuggestedTransactionPayload, selectedImage);
-          handleCancel();
-          return;
-        }
-        
         toast.success('Receipt uploaded successfully!');
         handleCancel();
       }
     } catch (error) {
       console.error('❌ AddReceiptDialog - Upload error:', error);
-      // TEMPORARY TEST: Even on error, let's test the file transfer with mock data
-      if (onReceiptSuccess && selectedImage) {
-        const mockSuggestedTransactionPayload = {
-          amount: 1000,
-          date: new Date().toISOString().split('T')[0],
-          categoryName: "Test Category",
-          accountName: "Test Account", 
-          description: "Test receipt transfer - error path",
-          scheduleType: "one_time"
-        };
-        
-        toast.success('Testing file transfer (error path) - Opening expense form...');
-        onReceiptSuccess(mockSuggestedTransactionPayload, selectedImage);
-        handleCancel();
-        return;
-      }
-      
       toast.error('Failed to upload receipt. Please try again.');
     } finally {
       setIsUploading(false);
