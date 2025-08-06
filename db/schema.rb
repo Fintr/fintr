@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_03_114923) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_06_063831) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -27,7 +27,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_03_114923) do
     t.uuid "space_id", null: false
     t.string "name", null: false
     t.integer "balance_cents", default: 0, null: false
-    t.string "balance_currency", default: "USD", null: false
+    t.string "balance_currency", default: "PHP", null: false
     t.enum "account_category", null: false, enum_type: "account_category"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -76,9 +76,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_03_114923) do
     t.uuid "space_id", null: false
     t.uuid "category_id", null: false
     t.integer "amount_cents", default: 0, null: false
-    t.string "amount_currency", default: "USD", null: false
+    t.string "amount_currency", default: "PHP", null: false
     t.integer "spent_cents", default: 0, null: false
-    t.string "spent_currency", default: "USD", null: false
+    t.string "spent_currency", default: "PHP", null: false
     t.date "date", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -135,9 +135,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_03_114923) do
     t.uuid "effective_parent_id"
     t.datetime "date", null: false
     t.integer "amount_cents", default: 0, null: false
-    t.string "amount_currency", default: "USD", null: false
+    t.string "amount_currency", default: "PHP", null: false
     t.integer "balance_cents", default: 0, null: false
-    t.string "balance_currency", default: "USD", null: false
+    t.string "balance_currency", default: "PHP", null: false
     t.string "description"
     t.string "type", null: false
     t.enum "schedule_type", null: false, enum_type: "schedule_type"
@@ -184,9 +184,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_03_114923) do
     t.uuid "parent_id"
     t.uuid "effective_parent_id"
     t.integer "amount_cents", default: 0, null: false
-    t.string "amount_currency", default: "USD", null: false
+    t.string "amount_currency", default: "PHP", null: false
     t.integer "transaction_cost_cents", default: 0, null: false
-    t.string "transaction_cost_currency", default: "USD", null: false
+    t.string "transaction_cost_currency", default: "PHP", null: false
     t.datetime "date", null: false
     t.string "description"
     t.jsonb "schedule", default: {}
