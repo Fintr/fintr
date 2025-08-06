@@ -37,10 +37,11 @@ module Receipts
         params              = step validate(params:)
         space               = step find_space(params:)
         space_categories    = step fetch_space_categories(space:)
+        space_accounts      = step fetch_space_accounts(space:)
         base64_image        = step encode_image_to_base64(params:)
-        ai_response         = step call_openai_vision_api(base64_image:, space_categories:)
+        ai_response         = step call_openai_vision_api(base64_image:, space_categories:, space_accounts:)
         parsed_data         = step parse_ai_response(ai_response:)
-        validated_data      = step validate_extracted_data(parsed_data:, space_categories:)
+        validated_data      = step validate_extracted_data(parsed_data:, space_categories:, space_accounts:)
         final_result        = step prepare_extraction_result(validated_data:)
         final_result
       end
@@ -64,6 +65,17 @@ module Receipts
         Success(categories)
       rescue StandardError => e
         Failure(categories_error: "Failed to fetch categories", error: e)
+      end
+
+      def fetch_space_accounts(space:)
+        accounts = space.accounts.pluck(:name)
+
+        # Fallback to default categories if space has no categories
+        accounts = Transactions::Account::ACCOUNT_CATEGORY_LABELS.values if accounts.empty?
+
+        Success(accounts)
+      rescue StandardError => e
+        Failure(accounts_error: "Failed to fetch accounts", error: e)
       end
 
       def encode_image_to_base64(params:)
@@ -98,8 +110,8 @@ module Receipts
         end
       end
 
-      def call_openai_vision_api(base64_image:, space_categories:)
-        system_prompt = build_vision_system_prompt(space_categories)
+      def call_openai_vision_api(base64_image:, space_categories:, space_accounts:)
+        system_prompt = build_vision_system_prompt(space_categories, space_accounts)
 
         begin
           client = OpenAI::Client.new(
@@ -148,9 +160,11 @@ module Receipts
         end
       end
 
-      def build_vision_system_prompt(space_categories)
+      def build_vision_system_prompt(space_categories, space_accounts)
         category_list = space_categories.join(", ")
         default_category = space_categories.first || "Family"
+        account_list = space_accounts.join(", ")
+        default_account = space_accounts.first || "Cash"
 
         <<~PROMPT
           You are an expert receipt analyzer with computer vision capabilities. Analyze receipt images and extract the total amount, date, and suggest the most appropriate category.
@@ -161,11 +175,14 @@ module Receipts
           3. Return ONLY valid JSON format
           4. For category, choose ONLY from: #{category_list}
           5. ALWAYS provide a category suggestion - if unclear, default to "#{default_category}"
+          6. For account, choose ONLY from: #{account_list}
+          7. If no clear account found, default to "#{default_account}"
           6. If no clear total found, return null for total_amount
           7. If no clear date found, return null for date
           8. Use visual context clues like merchant logos, store names, or item types visible in the image
 
           AVAILABLE CATEGORIES: #{category_list}
+          AVAILABLE ACCOUNTS: #{account_list}
 
           VISUAL ANALYSIS GUIDELINES:
           - Look for merchant names/logos at the top of the receipt
@@ -180,6 +197,7 @@ module Receipts
             "total_amount": "XX.XX",
             "date": "YYYY-MM-DD",
             "category": "CategoryName",
+            "account": "AccountName",
             "confidence": "high|medium|low",
             "merchant_detected": "Store Name (if visible)"
           }
@@ -213,7 +231,7 @@ module Receipts
         end
       end
 
-      def validate_extracted_data(parsed_data:, space_categories:)
+      def validate_extracted_data(parsed_data:, space_categories:, space_accounts:)
         # Add nil check for parsed_data
         return Failure("Parsed data is missing") if parsed_data.nil?
 
@@ -242,9 +260,15 @@ module Receipts
         end
 
         # Validate and clean category using space's categories - ALWAYS provide a category
-        category = clean_category(parsed_data["category"], space_categories)
+        category = clean_item(parsed_data["category"], space_categories)
+        # We use snake-cased values for accounts in frontend
+        account = clean_item(parsed_data["account"], space_accounts)
         validated[:category] = {
           value: category,
+          confidence_score: vision_confidence_to_score(parsed_data["confidence"])
+        }
+        validated[:account] = {
+          value: account,
           confidence_score: vision_confidence_to_score(parsed_data["confidence"])
         }
 
@@ -315,22 +339,22 @@ module Receipts
         merchant_str.to_s.strip
       end
 
-      def clean_category(category_str, space_categories)
-        default_category = space_categories.first || "Family"
-        return default_category if category_str.blank? || category_str == "null"
+      def clean_item(item_str, item_list)
+        default_item = item_list.first
+        return default_item if item_str.blank? || item_str == "null"
 
-        # Validate against space's allowed categories
-        category = category_str.to_s.strip
+        # Validate against item's allowed list
+        item = item_str.to_s.strip
 
         # Check for exact match first
-        return category if space_categories.include?(category)
+        return item if item_list.include?(item)
 
         # Try case-insensitive match
-        matched_category = space_categories.find { |cat| cat.downcase == category.downcase }
-        return matched_category if matched_category
+        matched_item = item_list.find { |cat| cat.downcase == item.downcase }
+        return matched_item if matched_item
 
         # If no match found, return default
-        default_category
+        default_item
       end
 
       def vision_confidence_to_score(confidence_str)

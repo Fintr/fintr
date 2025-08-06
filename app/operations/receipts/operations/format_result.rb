@@ -120,7 +120,7 @@ module Receipts
           amount: extract_amount_value(extracted_data),
           date: extract_date_value(extracted_data),
           category_name: extract_category_value(extracted_data),
-          account_name: "Credit Card", # Default account suggestion
+          account_name: extract_account_value(extracted_data),
           description: build_description(extracted_data),
           schedule_type: "one_time"
         }
@@ -163,6 +163,11 @@ module Receipts
       def extract_category_value(extracted_data)
         return "Family" if extracted_data.nil?
         extracted_data.dig(:category, :value) || "Family"
+      end
+
+      def extract_account_value(extracted_data)
+        return "Credit Card" if extracted_data.nil?
+        extracted_data.dig(:account, :value) || "Credit Card"
       end
 
       def build_description(extracted_data)
