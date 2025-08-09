@@ -29,7 +29,8 @@ module Transactions
         relation      = step by_category(relation, params)
         relation      = step by_search_query(relation, params)
         relation      = step order(relation)
-        step paginate(relation, params)
+        relation      = step paginate(relation, params) if params[:paginate] != false
+        relation
       end
 
       private

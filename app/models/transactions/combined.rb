@@ -2,6 +2,13 @@
 
 module Transactions
   class Combined < ApplicationRecord
+    TYPE_MAPPING = {
+      "Transactions::Transaction" => "transaction",
+      "Transactions::Transfer" => "transfer",
+      "Transactions::Expense" => "expense",
+      "Transactions::Income" => "income"
+    }.freeze
+
     self.table_name = "combined_transactions"
 
     belongs_to :space, class_name: "Spaces::Space"
@@ -13,6 +20,7 @@ module Transactions
 
     monetize :amount_cents, allow_nil: false
     monetize :balance_cents, allow_nil: true
+    monetize :transaction_cost_cents, allow_nil: true
 
     def readonly?
       true

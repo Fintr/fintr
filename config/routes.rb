@@ -29,7 +29,11 @@ Rails.application.routes.draw do
         resource :whitelist, only: %i[show create update destroy]
       end
 
-      resources :transactions
+      resources :transactions do
+        collection do
+          get :generate_csv
+        end
+      end
       resources :budgets, only: %i[index create update destroy]
       resources :insights, only: [:index]
       resources :receipts, only: [:create] do

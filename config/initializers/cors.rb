@@ -16,7 +16,7 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
     resource "/api/*",
       headers: %w[Authorization X-Space-Code],
       methods: :any,
-      expose: %w[Authorization X-Space-Code],
+      expose: %w[Authorization X-Space-Code Content-Disposition],
       max_age: 600
   end
 end

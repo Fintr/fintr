@@ -48,6 +48,16 @@ module Api
         render_success(data: operation.value!)
       end
 
+      def generate_csv
+        query = ::Transactions::Queries::FilteredCombined.call(params: filter_params.merge(paginate: false))
+        operation = ::Transactions::Operations::Reports::DownloadCsv.new.call(combined_transactions: query.value!)
+
+        return render_internal_server_error(details: operation.failure) unless operation.success?
+
+        filename = "transactions_#{Time.zone.now.strftime("%Y-%m-%d")}.csv"
+        send_data operation.value!, filename:, type: "text/csv"
+      end
+
 
       private
 

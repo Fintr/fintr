@@ -16,6 +16,7 @@ gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
 gem "kamal", "~> 2.6"
 gem "aws-sdk-s3", "~> 1.183"
+gem "csv", "~> 3.3"
 
 # DRY Operations, Validation
 gem "dry-operation", "~> 1.0"
@@ -75,3 +76,4 @@ group :development, :test do
   gem "simplecov", "~> 0.22.0"
   gem "parallel_tests", "~> 5.2"
 end
+
