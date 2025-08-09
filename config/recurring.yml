@@ -21,6 +21,10 @@ development:
     schedule: 'every 1 minute'
 
 staging:
+  test_background_job:
+    class: TestBackgroundJob
+    queue: default
+    schedule: every minute
   check_duplicate_today:
     class: Transactions::CheckDuplicateTodayJob
     queue: default
