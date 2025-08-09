@@ -475,7 +475,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           />
 
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-            <div className="relative flex-grow">
+            <div className="relative flex-grow w-full md:w-auto">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search Transactions"
@@ -490,7 +490,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
                 onBlur={handleSearchBlur}
               />
             </div>
-            <div className="flex items-center justify-between md:justify-start">
+            <div className="flex items-center justify-between w-full md:w-automd:justify-start">
               <h3 className="text-lg font-medium mr-2">Transactions</h3>
               <DownloadButton onClick={handleDownloadTransactions} />
             </div>
