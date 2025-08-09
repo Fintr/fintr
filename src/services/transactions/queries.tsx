@@ -88,4 +88,44 @@ export const fetchTransactionById = async (
     console.error("Error fetching transaction by ID:", error);
     throw error;
   }
-}; 
+};
+
+/**
+ * Generates and downloads a CSV file of transactions based on provided filters.
+ *
+ * @param api - The authenticated Axios instance.
+ * @param filterData - An object containing filter parameters for the transactions.
+ */
+export const generateTransactionsCsv = async (
+  api: AxiosInstance,
+  filterData: Omit<TransactionIndexInputType, 'page'>
+) => {
+  try {
+    const response = await api.get('/transactions/generate_csv', {
+      params: filterData,
+      responseType: 'blob', // Important for downloading files
+    });
+    console.log('Response:', response);
+
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = 'transactions.csv'; // Default filename
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename); // Use the extracted filename
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode?.removeChild(link);
+  } catch (error) {
+    console.error("Error generating CSV:", error);
+    throw error;
+  }
+};

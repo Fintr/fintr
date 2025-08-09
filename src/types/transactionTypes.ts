@@ -17,8 +17,8 @@ export interface TransactionIndexInputType {
   categoryName: string;
   startDate: string;
   endDate: string;
-  minAmount: number;
-  maxAmount: number;
+  minAmount: number | string;
+  maxAmount: number | string;
   page: number;
   searchQuery?: string;
 };

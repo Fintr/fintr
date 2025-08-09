@@ -24,7 +24,7 @@ import { Filters, FilterTypes } from "./filters";
 import { DownloadButton } from "./buttons/DownloadButton";
 import { DeleteButton } from "./buttons/DeleteButton";
 import { ViewModeButton } from "./buttons/ViewModeButton";
-import { IndexTransaction } from "@/types/transactionTypes";
+import { IndexTransaction, TransactionIndexInputType } from "@/types/transactionTypes";
 import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
 import ScopeModal, { DeleteScope, Scope } from "@/components/dashboard/forms/ScopeModal";
 import { deleteTransaction } from "@/services/transactions/mutation";
@@ -37,6 +37,7 @@ import { shouldShowV2Features } from "@/lib/utils";
 import AddTransactionDialog from "../../add-transaction-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { generateTransactionsCsv } from "@/services/transactions/queries";
 
 interface TransactionsTabProps {
   // Define any props if needed, but not used in this component
@@ -412,6 +413,23 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     }, 300);
   };
 
+  const handleDownloadTransactions = async () => {
+    try {
+      const filterData: Omit<TransactionIndexInputType, 'page'> = {
+        spaceCode,
+        categoryName: appliedFilters.appliedCategory,
+        startDate: appliedFilters.queryStartDate,
+        endDate: appliedFilters.queryEndDate,
+        minAmount: appliedFilters.appliedMinAmount,
+        maxAmount: appliedFilters.appliedMaxAmount,
+        searchQuery: appliedFilters.searchQuery,
+      };
+      await generateTransactionsCsv(api, filterData);
+    } catch (error) {
+      console.error("Failed to download transactions CSV:", error);
+    }
+  };
+
   return (
     <>
       <Card className="border-0 shadow-none bg-transparent">
@@ -474,7 +492,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             </div>
             <div className="flex items-center justify-between md:justify-start">
               <h3 className="text-lg font-medium mr-2">Transactions</h3>
-              <DownloadButton />
+              <DownloadButton onClick={handleDownloadTransactions} />
             </div>
           </div>
 

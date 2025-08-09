@@ -1,21 +1,35 @@
 import * as React from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { VariantProps } from "class-variance-authority";
+import { generateTransactionsCsv } from "@/services/transactions/queries";
+import { useAuthApi } from "@/hooks/useAuthApi";
+import { TransactionIndexInputType } from "@/types/transactionTypes";
 
 interface DownloadButtonProps
   extends React.ComponentProps<"button">,
-    VariantProps<typeof buttonVariants> {}
+    VariantProps<typeof buttonVariants> {
+      onClick: () => void;
+    }
 
 export const DownloadButton = ({
   className,
   variant,
   size,
+  onClick,
   ...props
 }: DownloadButtonProps) => {
   return (
     <Button
       variant="outline"
       className={`flex items-center gap-1 ${className || ''}`}
+      onClick={onClick}
+      tabIndex={0} // Make button focusable
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onClick();
+        }
+      }}
+      aria-label="Download data as CSV"
       {...props}
     >
       <svg
