@@ -107,7 +107,7 @@ export default function Layout({
                   onClick={() => {
                     updateDefinition({ description: goalDescription });
                   }}
-                  disabled={updateStatus === 'pending'}
+                  disabled={updateStatus === 'loading'}
                 >
                   <ArrowRight className="h-4 w-4" />
                 </Button>
