@@ -1,6 +1,6 @@
 <% require "dotenv"; Dotenv.load(".env.staging") %>
 # Name of your application. Used to uniquely configure containers.
-service: fintr-be
+service: fintr-be-staging
 
 # Name of the container image.
 image: adminfintr/fintr-be
@@ -10,10 +10,10 @@ servers:
   web:
     hosts:
       - staging-api.fintr.ai
-  # job:
-  #   hosts:
-  #     - 192.168.0.1
-  #   cmd: bin/jobs
+  job:
+    hosts:
+      - staging-api.fintr.ai
+    cmd: bin/jobs
 
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
 # Remove this section when using multiple web servers and ensure you terminate SSL at your load balancer.
