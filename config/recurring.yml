@@ -21,49 +21,45 @@ development:
     schedule: 'every 1 minute'
 
 staging:
-  test_background_job:
-    class: TestBackgroundJob
-    queue: default
-    schedule: every minute
   check_duplicate_today:
     class: Transactions::CheckDuplicateTodayJob
     queue: default
-    schedule: '@midnight Asia/Manila'
+    schedule: "0 0 * * * Asia/Manila"
   transfers_check_duplicate_today:
     class: Transactions::Transfers::CheckDuplicateTodayJob
     queue: default
-    schedule: '@midnight Asia/Manila'
+    schedule: "0 0 * * * Asia/Manila"
   accounts_calculate_pending_balances:
     class: Transactions::Accounts::CalculatePendingBalancesJob
     queue: default
-    schedule: '15 0 * * * Asia/Manila'
+    schedule: "15 0 * * * Asia/Manila"
   transfers_calculate_pending_balances:
     class: Transactions::Transfers::CalculatePendingBalancesJob
     queue: default
-    schedule: '30 0 * * * Asia/Manila'
+    schedule: "30 0 * * * Asia/Manila"
   budgets_create_space_monthly_budgets:
     class: Budgets::CreateSpaceMonthlyBudgetsJob
     queue: default
-    schedule: '45 0 1 * * Asia/Manila'
+    schedule: "45 0 1 * * Asia/Manila"
 
 production:
   check_duplicate_today:
     class: Transactions::CheckDuplicateTodayJob
     queue: default
-    schedule: '@midnight Asia/Manila'
+    schedule: "0 0 * * * Asia/Manila"
   transfers_check_duplicate_today:
     class: Transactions::Transfers::CheckDuplicateTodayJob
     queue: default
-    schedule: '@midnight Asia/Manila'
+    schedule: "0 0 * * * Asia/Manila"
   accounts_calculate_pending_balances:
     class: Transactions::Accounts::CalculatePendingBalancesJob
     queue: default
-    schedule: '15 0 * * * Asia/Manila'
+    schedule: "15 0 * * * Asia/Manila"
   transfers_calculate_pending_balances:
     class: Transactions::Transfers::CalculatePendingBalancesJob
     queue: default
-    schedule: '30 0 * * * Asia/Manila'
+    schedule: "30 0 * * * Asia/Manila"
   budgets_create_space_monthly_budgets:
     class: Budgets::CreateSpaceMonthlyBudgetsJob
     queue: default
-    schedule: '45 0 1 * * Asia/Manila'
+    schedule: "45 0 1 * * Asia/Manila"
