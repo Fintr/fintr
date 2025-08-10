@@ -37,11 +37,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   ];
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (isAdmin != null && !isAdmin) {
       router.push("/dashboard");
       toast.error("You are not authorized to access this page");
     }
-  }, [pathname, isAdmin]);
+  }, [pathname, isAdmin, router]);
   
 
   return (
