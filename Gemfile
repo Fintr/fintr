@@ -76,4 +76,3 @@ group :development, :test do
   gem "simplecov", "~> 0.22.0"
   gem "parallel_tests", "~> 5.2"
 end
-

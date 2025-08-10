@@ -14,6 +14,10 @@ Rails.application.routes.draw do
         post "/user/reset_password", to: "user#reset_password"
       end
 
+      namespace :admin do
+        resources :users, only: %i[index]
+      end
+
       # Use scope to keep the URL prefix without namespace nesting for controllers
       scope path: "transactions", module: "transactions" do
         resources :categories, only: %i[index create update destroy]
