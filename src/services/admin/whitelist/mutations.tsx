@@ -7,7 +7,7 @@ export const createWhitelist = async (
 ): Promise<WhitelistEntry> => {
   try {
     const response = await api.post('/beta/whitelist', payload);
-    return response.data.data.whitelist; // Assuming API returns { data: { whitelist: {...} } }
+    return response.data.data; // Correctly extract the whitelist entry
   } catch (error) {
     console.error('Error creating whitelist:', error);
     throw error;

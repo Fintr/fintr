@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { buttonVariants, Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
@@ -30,6 +30,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: "/admin/whitelists",
     },
     // Add more admin tabs here if needed in the future
+    {
+      title: "Users",
+      href: "/admin/users",
+    },
   ];
 
   useEffect(() => {
@@ -52,7 +56,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-80">
-            <h2 className="text-xl font-semibold mb-4">Admin Dashboard</h2>
+            <SheetHeader>
+              <SheetTitle>Admin Dashboard</SheetTitle>
+            </SheetHeader>
             <Separator className="my-4" />
             <nav className="flex flex-col space-y-1">
               {sidebarNavItems.map((item) => (
