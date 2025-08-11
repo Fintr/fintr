@@ -25,7 +25,7 @@ module Admin
       def call
         params    = step validate
         relation  = step by_query(@relation, params)
-        relation  = step paginate(relation, params.merge(per_page: 2))
+        relation  = step paginate(relation, params)
         relation
       end
 
