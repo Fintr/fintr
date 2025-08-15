@@ -36,6 +36,14 @@ process_data(user: user, settings: settings)
 
 - ** When inside operations ** in `app/operations`, we are usually passing `params` as a value to the keyword argument. Keep it this way. Do not change this to other parameters as much as possible. What you do is get the needed values from the params inside the step methods instead of passing them to the methods.
 
+- ** In `Dry::Operation`'s `call` method, always use positional arguments for `params`. ** This allows for easy deconstruction of `params` using the `**` double splat operator inside the method. It also makes us avoid having to put so many arguments into the call method.
+  ```ruby
+  # Good
+  def call(params)
+
+  # Bad
+  def call(params:)
+  ```
 
 
 

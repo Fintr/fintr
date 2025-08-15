@@ -15,7 +15,7 @@ module Api
         end
 
         def create
-          operation = ::Transactions::Operations::Accounts::CreateAccount.new.call(params: with_current_params(create_params))
+          operation = ::Transactions::Operations::Accounts::CreateAccount.new.call(with_current_params(create_params))
 
           return render_unprocessable_entity(details: operation.failure) unless operation.success?
 

@@ -21,6 +21,7 @@ module Api
       end
 
       def with_current_params(params = {})
+        params ||= {}
         params.merge(user_id: current_user.id, space_id: current_space.id, space_code: current_space.code)
       end
     end

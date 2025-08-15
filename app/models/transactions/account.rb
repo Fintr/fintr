@@ -44,16 +44,6 @@ module Transactions
       investment: "investment"
     } # Change ACCOUNT_CATEGORY_LABELS to match the enum values
 
-    scope :default, -> { where(name: DEFAULT_ACCOUNT_MAPPING.values) }
-
-    def self.create_default_accounts(space)
-      transaction do
-        DEFAULT_ACCOUNT_MAPPING.each do |category, name|
-          self.find_or_create_by(name:, space:, balance_currency: "PHP", account_category: category)
-        end
-      end
-    end
-
     def self.account_category_options
       ACCOUNT_CATEGORY_LABELS.map do |key, value|
         {

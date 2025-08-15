@@ -17,7 +17,8 @@ module Api
             is_whitelisted: ::Beta::Whitelist.exists?(email: current_user.email),
             space_code: personal_space.code,
             personal_space: personal_space,
-            organization_spaces: organization_spaces
+            organization_spaces: organization_spaces,
+            onboarding_step: current_user.onboarding.reload.step
           })
         end
 

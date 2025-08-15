@@ -31,7 +31,7 @@ module Transactions
 
         include FailureHandler
 
-        def call(params:)
+        def call(params)
           ActiveRecord::Base.transaction do
             _                   = step validate(params:)
             params              = step modify_params(params:)
@@ -78,7 +78,7 @@ module Transactions
         end
 
         def create_initial_balance_transaction(transaction_params:, account:)
-          Transactions::Operations::CreateTransaction.new.call(params: transaction_params)
+          Transactions::Operations::CreateTransaction.new.call(transaction_params)
         end
       end
     end

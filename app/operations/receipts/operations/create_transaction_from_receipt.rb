@@ -153,7 +153,7 @@ module Receipts
 
       def create_transaction(validated_params:)
         # Use the existing transaction creation operation
-        result = Transactions::Operations::CreateTransaction.new.call(params: validated_params)
+        result = Transactions::Operations::CreateTransaction.new.call(validated_params)
 
         if result.success?
           transaction = result.value!

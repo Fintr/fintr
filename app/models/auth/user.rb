@@ -6,6 +6,7 @@ module Auth
            :role_join_table_name => "users_roles",
            :role_table_name => "roles"
 
+    has_one :onboarding, class_name: "Onboarding", dependent: :destroy
     has_many :transactions, class_name: "Transactions::Transaction", dependent: :destroy
     has_many :space_users, class_name: "Spaces::SpaceUser", dependent: :destroy
     has_many :spaces, class_name: "Spaces::Space", through: :space_users
@@ -27,6 +28,8 @@ module Auth
 
     before_validation :downcase_email
 
+    after_create :create_onboarding
+
     def whitelist
       Beta::Whitelist.find_by(email: email)
     end
@@ -35,6 +38,10 @@ module Auth
 
     def downcase_email
       self.email = email.downcase if email.present?
+    end
+
+    def create_onboarding
+      Onboarding.create!(user: self, step: "income")
     end
   end
 end

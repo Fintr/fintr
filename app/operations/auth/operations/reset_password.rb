@@ -21,7 +21,6 @@ module Auth
       end
 
       def call(params)
-        binding.pry
         params    = step validate(params:)
         user      = step find_user(params:)
         _         = step reset_password(user:, params:)

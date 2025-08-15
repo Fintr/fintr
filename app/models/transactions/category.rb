@@ -6,8 +6,8 @@ module Transactions
 
     DEFAULT_INCOME_CATEGORIES = %w[Salary Freelance Business].freeze
     DEFAULT_EXPENSE_CATEGORIES = %w[
-      Myself Family Insurance Home Utilities Food Transport Pet Subscriptions
-      Going\ Out Travel Shopping
+      Family Insurance Home Utilities Food\ &\ Groceries Transport Pet Subscriptions\ &\ Hobbies
+      Dine\ Out\ &\ Entertainment Travel\ &\ Vacations Shopping
     ].freeze
     UNINCLUDED_INCOME_CATEGORIES = %w[Initial\ Balance]
     UNINCLUDED_EXPENSE_CATEGORIES = %w[Transfer\ Fee]
@@ -28,7 +28,7 @@ module Transactions
           self.find_or_create_by(name:, category_type: "income", space:)
         end
 
-        (DEFAULT_EXPENSE_CATEGORIES + ["Transfer Fee"]).each do |name| # 'Transfer' should not be selected by user anytime
+        (["Transfer Fee"]).each do |name| # 'Transfer' should not be selected by user anytime
           self.find_or_create_by(name:, category_type: "expense", space:)
         end
       end

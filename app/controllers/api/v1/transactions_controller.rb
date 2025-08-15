@@ -23,7 +23,7 @@ module Api
 
       def create
         params = with_current_params(create_params)
-        operation = ::Transactions::Operations::CreateTransaction.new.call(params:)
+        operation = ::Transactions::Operations::CreateTransaction.new.call(params)
 
         return render_internal_server_error(details: operation.failure) unless operation.success?
 

@@ -9,7 +9,7 @@ RSpec.describe Transactions::Operations::Categories::CreateCategory do
 
   describe '#call' do
     context 'with valid parameters' do
-      subject(:call_operation) { operation.call(params:) }
+      subject(:call_operation) { operation.call(params) }
 
       let(:params) do
         {
@@ -49,7 +49,7 @@ RSpec.describe Transactions::Operations::Categories::CreateCategory do
 
     context 'with invalid parameters' do
       context 'when name is blank' do
-        subject(:call_operation) { operation.call(params:) }
+        subject(:call_operation) { operation.call(params) }
 
         let(:params) do
           {
@@ -72,7 +72,7 @@ RSpec.describe Transactions::Operations::Categories::CreateCategory do
       end
 
       context 'when category_type is invalid' do
-        subject(:call_operation) { operation.call(params:) }
+        subject(:call_operation) { operation.call(params) }
 
         let(:params) do
           {
@@ -96,7 +96,7 @@ RSpec.describe Transactions::Operations::Categories::CreateCategory do
       end
 
       context 'when category with the same name and type already exists' do
-        subject(:call_operation) { operation.call(params:) }
+        subject(:call_operation) { operation.call(params) }
 
         let(:params) do
           {

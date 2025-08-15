@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_06_063831) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_14_040759) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -20,6 +20,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_06_063831) do
   create_enum "account_category", ["cash", "savings", "debit", "credit_card", "e_wallet", "loan", "investment"]
   create_enum "balance_state", ["pending", "calculated"]
   create_enum "category_type_enum", ["income", "expense"]
+  create_enum "onboarding_step_enum", ["income", "budgets", "accounts", "completed"]
   create_enum "repeat_interval", ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
   create_enum "schedule_type", ["one_time", "repeat", "installment"]
 
@@ -95,6 +96,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_06_063831) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["space_id"], name: "index_goal_descriptions_on_space_id"
+  end
+
+  create_table "onboardings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "user_id", null: false
+    t.enum "step", default: "income", null: false, enum_type: "onboarding_step_enum"
+    t.jsonb "data", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_onboardings_on_user_id"
   end
 
   create_table "roles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -236,6 +246,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_06_063831) do
   add_foreign_key "budgets", "spaces"
   add_foreign_key "budgets", "transactions_categories", column: "category_id"
   add_foreign_key "goal_descriptions", "spaces"
+  add_foreign_key "onboardings", "users"
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
   add_foreign_key "transactions", "accounts"

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "dry/types"
+
 module Transactions
   module Operations
     # NOTE: Create a transaction only at the start. This is the parent transaction.
@@ -10,6 +12,7 @@ module Transactions
           required(:user_id).value(:string)
           required(:space_id).value(:string)
           optional(:transfer_id).value(:string)
+          optional(:remove_calculation).maybe(Dry::Types["params.bool"])
 
           required(:amount).value(:decimal)
           required(:date).value(:date)
@@ -62,18 +65,19 @@ module Transactions
 
       include FailureHandler
 
-      def call(params:)
+      def call(params)
         transaction = ActiveRecord::Base.transaction do
-          params          = step validate(params:)
-          category        = step find_category(params:)
-          account         = step find_account(params:)
-          params          = step transform_params(params:, category:, account:)
-          params          = step adjust_amount(params:)
-          transaction     = step create_transaction(params:, category:)
-          _               = step calculate_balance(transaction:)
-          transaction     = step create_schedule(transaction:, params:) if params[:schedule_type] != "one_time"
-          _               = step create_past_transactions(transaction:) if params[:schedule_type] != "one_time"
-          _               = step create_future_transactions(transaction:) if params[:schedule_type] != "one_time"
+          params             = step validate(params:)
+          category           = step find_category(params:)
+          account            = step find_account(params:)
+          remove_calculation = step find_remove_calculation(params:)
+          params             = step transform_params(params:, category:, account:)
+          params             = step adjust_amount(params:)
+          transaction        = step create_transaction(params:, category:)
+          _                  = step calculate_balance(transaction:, remove_calculation:)
+          transaction        = step create_schedule(transaction:, params:) if params[:schedule_type] != "one_time"
+          _                  = step create_past_transactions(transaction:) if params[:schedule_type] != "one_time"
+          _                  = step create_future_transactions(transaction:) if params[:schedule_type] != "one_time"
           transaction
         end
 
@@ -97,6 +101,10 @@ module Transactions
         Success(account)
       end
 
+      def find_remove_calculation(params:)
+        Success(params[:remove_calculation] ? true : false)
+      end
+
       # Note: Add default values for currencies and repeat_count
       def transform_params(params:, category:, account:)
         params = params.dup
@@ -110,6 +118,7 @@ module Transactions
         params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
         params.delete(:category_name)
         params.delete(:account_name)
+        params.delete(:remove_calculation)
 
         Success(params)
       end
@@ -135,8 +144,9 @@ module Transactions
         Failure(**transaction.errors.to_hash, error: e)
       end
 
-      # NOTE: Adjust balance only if the transaction is created today.
-      def calculate_balance(transaction:)
+      def calculate_balance(transaction:, remove_calculation:)
+        return Success() if remove_calculation
+
         Accounts::CalculateBalance.new.call(transaction_id: transaction.id)
       end
 

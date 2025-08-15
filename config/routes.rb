@@ -38,6 +38,7 @@ Rails.application.routes.draw do
           get :generate_csv
         end
       end
+      resource :onboardings, only: %i[create show]
       resources :budgets, only: %i[index create update destroy]
       resources :insights, only: [:index]
       resources :receipts, only: [:create] do

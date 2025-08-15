@@ -403,7 +403,7 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
         let(:created_transaction) { instance_double(Transactions::Transaction, id: "some-uuid") }
 
         before do
-          allow(mock_create_transaction_op).to receive(:call).with(params: valid_transaction_params).and_return(Dry::Monads::Success(created_transaction))
+          allow(mock_create_transaction_op).to receive(:call).with(valid_transaction_params).and_return(Dry::Monads::Success(created_transaction))
         end
 
         it "returns success with the created transaction" do
@@ -417,7 +417,7 @@ RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operat
         let(:original_failure) { { name: ['cannot be blank'] } }
 
         before do
-          allow(mock_create_transaction_op).to receive(:call).with(params: valid_transaction_params).and_return(Dry::Monads::Failure(original_failure))
+          allow(mock_create_transaction_op).to receive(:call).with(valid_transaction_params).and_return(Dry::Monads::Failure(original_failure))
         end
 
         it "returns failure with enhanced context" do

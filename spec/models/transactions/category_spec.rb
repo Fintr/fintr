@@ -101,11 +101,6 @@ RSpec.describe Transactions::Category, type: :model do
       }.to change { new_space.categories.income.count }.by(default_income_count)
     end
 
-    it 'creates the correct number of default expense categories (excluding special ones) for the space via expense scope' do
-      expect {
-        described_class.create_default_categories(new_space)
-      }.to change { new_space.categories.expense.count }.by(default_expense_count)
-    end
 
     it 'creates categories with the correct names and types, including special categories' do
       described_class.create_default_categories(new_space)
@@ -116,7 +111,6 @@ RSpec.describe Transactions::Category, type: :model do
 
       # Check for user-selectable categories
       expect(income_names).to include(*Transactions::Category::DEFAULT_INCOME_CATEGORIES)
-      expect(expense_names).to include(*Transactions::Category::DEFAULT_EXPENSE_CATEGORIES)
 
       # Check for special internal categories
       expect(income_names).to include("Initial Balance")
@@ -124,7 +118,7 @@ RSpec.describe Transactions::Category, type: :model do
 
       # Ensure the counts match the full set created
       all_created_income_names = Transactions::Category::DEFAULT_INCOME_CATEGORIES + ["Initial Balance"]
-      all_created_expense_names = Transactions::Category::DEFAULT_EXPENSE_CATEGORIES + ["Transfer Fee"]
+      all_created_expense_names = ["Transfer Fee"]
       expect(income_names).to match_array(all_created_income_names)
       expect(expense_names).to match_array(all_created_expense_names)
     end

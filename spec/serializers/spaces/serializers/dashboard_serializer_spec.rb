@@ -78,7 +78,8 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
       :category_options,
       :expense_category_options,
       :income_category_options,
-      :account_options
+      :account_options,
+      :goal_description
     ]
     expect(serialized_hash.keys).to match_array(expected_keys)
   end

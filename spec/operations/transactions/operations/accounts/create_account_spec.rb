@@ -26,13 +26,13 @@ RSpec.describe Transactions::Operations::Accounts::CreateAccount do
 
       before do
         allow(operation_class).to receive(:new).and_return(operation)
-        allow(operation).to receive(:call).with(params: params).and_return(
+        allow(operation).to receive(:call).with(params).and_return(
           Dry::Monads::Result::Success.new(account)
         )
       end
 
       it 'creates a new account successfully' do
-        result = operation_class.new.call(params: params)
+        result = operation_class.new.call(params)
         expect(result).to be_success
         expect(result.value!).to eq(account)
       end
@@ -105,7 +105,7 @@ RSpec.describe Transactions::Operations::Accounts::CreateAccount do
             Dry::Monads::Result::Failure.new(name: ["has already been taken"])
           )
 
-          result = operation.call(params: params)
+          result = operation.call(params)
           expect(result).to be_failure
           expect(result.failure).to include(:name)
           expect(result.failure[:name]).to include("has already been taken")
@@ -131,7 +131,7 @@ RSpec.describe Transactions::Operations::Accounts::CreateAccount do
             Dry::Monads::Result::Failure.new(name: ["can't be blank"])
           )
 
-          result = operation.call(params: params)
+          result = operation.call(params)
           expect(result).to be_failure
           expect(result.failure).to include(:name)
           expect(result.failure[:name]).to include("can't be blank")
@@ -162,7 +162,7 @@ RSpec.describe Transactions::Operations::Accounts::CreateAccount do
           Dry::Monads::Result::Failure.new(category_name: ["not found"])
         end
 
-        result = custom_operation.call(params: params)
+        result = custom_operation.call(params:)
         expect(result).to be_failure
         expect(result.failure).to include(:category_name)
       end

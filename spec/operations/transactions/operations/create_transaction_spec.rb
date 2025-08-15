@@ -12,7 +12,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
 
   describe '#call' do
     context 'with income transaction parameters' do
-      subject(:call_operation) { operation.call(params: income_params) }
+      subject(:call_operation) { operation.call(income_params) }
 
       let(:income_params) do
         {
@@ -52,7 +52,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
     end
 
     context 'with expense transaction parameters' do
-      subject(:call_operation) { operation.call(params: expense_params) }
+      subject(:call_operation) { operation.call(expense_params) }
 
       let(:expense_params) do
         {
@@ -91,7 +91,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
     end
 
     context 'with repeated expense transaction parameters' do
-      subject(:call_operation) { operation.call(params: repeat_expense_params) }
+      subject(:call_operation) { operation.call(repeat_expense_params) }
 
       let(:repeat_expense_params) do
         {
@@ -125,7 +125,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
     end
 
     context 'with installment expense transaction parameters' do
-      subject(:call_operation) { operation.call(params: installment_expense_params) }
+      subject(:call_operation) { operation.call(installment_expense_params) }
 
       let(:installment_expense_params) do
         {
@@ -158,7 +158,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
     end
 
     context 'when account balance would go negative' do
-      subject(:call_operation) { operation.call(params: large_expense_params) }
+      subject(:call_operation) { operation.call(large_expense_params) }
 
       let(:low_balance_account) { create(:account, space: space, balance: Money.from_amount(20, 'PHP')) }
 
@@ -189,7 +189,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
     context 'with invalid parameters' do
       # Missing required field
       context 'when category_name is missing' do
-        subject(:call_operation) { operation.call(params: invalid_params) }
+        subject(:call_operation) { operation.call(invalid_params) }
 
         let(:invalid_params) do
           {
@@ -214,7 +214,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
 
       # Non-existent category
       context 'when category does not exist' do
-        subject(:call_operation) { operation.call(params: nonexistent_category_params) }
+        subject(:call_operation) { operation.call(nonexistent_category_params) }
 
         let(:nonexistent_category_params) do
           {
@@ -240,7 +240,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
 
       # Non-existent account
       context 'when account does not exist' do
-        subject(:call_operation) { operation.call(params: nonexistent_account_params) }
+        subject(:call_operation) { operation.call(nonexistent_account_params) }
 
         let(:nonexistent_account_params) do
           {
@@ -266,7 +266,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
 
       # Schedule type validation
       context 'when schedule_type is invalid' do
-        subject(:call_operation) { operation.call(params: invalid_schedule_params) }
+        subject(:call_operation) { operation.call(invalid_schedule_params) }
 
         let(:invalid_schedule_params) do
           {
@@ -292,7 +292,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
 
       # Repeat transaction validations
       context 'when repeat transaction is missing required fields' do
-        subject(:call_operation) { operation.call(params: invalid_repeat_params) }
+        subject(:call_operation) { operation.call(invalid_repeat_params) }
 
         let(:invalid_repeat_params) do
           {
@@ -318,7 +318,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
 
       # Testing repeat_interval validation
       context 'when repeat_interval is invalid' do
-        subject(:call_operation) { operation.call(params: invalid_interval_params) }
+        subject(:call_operation) { operation.call(invalid_interval_params) }
 
         let(:invalid_interval_params) do
           {
@@ -346,7 +346,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
 
       # Testing installment transaction validation
       context 'when installment transaction is missing required fields' do
-        subject(:call_operation) { operation.call(params: invalid_installment_params) }
+        subject(:call_operation) { operation.call(invalid_installment_params) }
 
         let(:invalid_installment_params) do
           {

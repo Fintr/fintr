@@ -26,7 +26,7 @@ module Transactions
           Success(contract.to_h)
         end
 
-        def call(params:)
+        def call(params)
           _            = step validate(params:)
           category     = step create_category(params:)
 

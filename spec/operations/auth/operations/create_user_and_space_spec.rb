@@ -202,7 +202,6 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
         allow(space).to receive(:assign_attributes)
         allow(space).to receive(:save!).and_return(true)
         allow(space).to receive(:create_default_transaction_categories).and_return(true)
-        allow(space).to receive(:create_default_accounts).and_return(true)
 
         allow(new_space_user).to receive(:user).and_return(user)
         allow(new_space_user).to receive(:space).and_return(space)
