@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import DashboardNavigation from "@/components/dashboard/dashboard-navigation";
 import { useAtomValue } from 'jotai';
 import { isAdminAtom, isWhitelistedAtom } from '@/atoms/dashboardAtoms';
+import { onboardingStepAtom, isOnboardingCompletedAtom } from '@/atoms/onboardingAtoms';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
 import { usePathname } from 'next/navigation';
@@ -16,13 +17,41 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   });
   const isAdmin = useAtomValue(isAdminAtom);
   const isWhitelisted = useAtomValue(isWhitelistedAtom);
+  const onboardingStep = useAtomValue(onboardingStepAtom);
+  const isOnboardingCompleted = useAtomValue(isOnboardingCompletedAtom);
   const pathname = usePathname();
   const router = useRouter();
 
   // Determine if action buttons should be hidden (e.g., on admin page)
   const hideActionButtons = pathname.startsWith("/admin");
+  
+  // Hide navigation completely during onboarding
+  const isOnOnboardingPage = pathname.startsWith('/onboarding');
 
-  useGetSpaceCode(api);
+  const { spaceCode } = useGetSpaceCode(api);
+
+  // Check onboarding status and redirect if necessary
+  useEffect(() => {
+    // Skip onboarding redirect if user is on onboarding pages or admin pages
+    if (pathname.startsWith('/onboarding') || pathname.startsWith('/admin')) {
+      return;
+    }
+
+    // Check if user needs onboarding based on the step from API
+    if (pathname === '/dashboard' && onboardingStep && onboardingStep !== 'completed') {
+      // Determine which step to redirect to based on current onboarding step
+      const stepRoutes = {
+        income: '/onboarding/step1',
+        budgets: '/onboarding/step2',
+        accounts: '/onboarding/step3',
+      };
+      
+      const redirectRoute = stepRoutes[onboardingStep as keyof typeof stepRoutes];
+      if (redirectRoute) {
+        router.push(redirectRoute);
+      }
+    }
+  }, [pathname, onboardingStep, router]);
 
   useEffect(() => {
     if (isWhitelisted != null && !isWhitelisted) {
@@ -32,8 +61,12 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   }, [isWhitelisted]);
   return (
     <div className="min-h-screen bg-background text-primary">
-      <DashboardNavigation hideActionButtons={hideActionButtons} isAdmin={isAdmin} />
-      <div className="p-0 md:p-8 max-w-7xl mx-auto">{children}</div>
+      {!isOnOnboardingPage && (
+        <DashboardNavigation hideActionButtons={hideActionButtons} isAdmin={isAdmin} />
+      )}
+      <div className={isOnOnboardingPage ? "min-h-screen" : "p-0 md:p-8 max-w-7xl mx-auto"}>
+        {children}
+      </div>
     </div>
   );
 };

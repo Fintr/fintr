@@ -236,7 +236,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                   <div>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
                       <div className="flex items-center justify-between w-full md:w-auto">
-                        <h3 className="font-medium text-primary">
+                        <h3 className="font-medium text-primary truncate max-w-[200px] md:max-w-[300px]">
                           {category.name}
                         </h3>
                         <div className="flex space-x-2 md:hidden">

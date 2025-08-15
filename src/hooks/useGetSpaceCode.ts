@@ -4,6 +4,7 @@ import { AxiosInstance } from "axios";
 import { useLocalStorage } from "./useLocalStorage";
 import { useAtomValue, useSetAtom } from "jotai";
 import { isWhitelistedAtom, isAdminAtom } from "@/atoms/dashboardAtoms";
+import { onboardingStepAtom } from "@/atoms/onboardingAtoms";
 
 export function useGetSpaceCode(api: AxiosInstance) {
   const isClient = typeof window !== 'undefined';
@@ -12,6 +13,8 @@ export function useGetSpaceCode(api: AxiosInstance) {
   const isAdmin = useAtomValue(isAdminAtom);
   const setIsWhitelisted = useSetAtom(isWhitelistedAtom);
   const isWhitelisted = useAtomValue(isWhitelistedAtom);
+  const setOnboardingStep = useSetAtom(onboardingStepAtom);
+  const onboardingStep = useAtomValue(onboardingStepAtom);
 
   const _getSpaceCode = useQuery({
     queryKey: ["currentUser"],
@@ -20,6 +23,7 @@ export function useGetSpaceCode(api: AxiosInstance) {
       const fetchedSpaceCode = response.data?.data?.spaceCode;
       const fetchedIsAdmin = response.data?.data?.isAdmin;
       const fetchedIsWhitelisted = response.data?.data?.isWhitelisted;
+      const fetchedOnboardingStep = response.data?.data?.onboardingStep;
       if (isClient) {
         if (fetchedSpaceCode) {
           setSpaceCode(fetchedSpaceCode);
@@ -30,18 +34,17 @@ export function useGetSpaceCode(api: AxiosInstance) {
         if (fetchedIsWhitelisted !== undefined) {
           setIsWhitelisted(fetchedIsWhitelisted);
         }
+        if (fetchedOnboardingStep) {
+          setOnboardingStep(fetchedOnboardingStep);
+        }
       }
       return response.data;
     },
-    enabled: isClient && (
-      !spaceCode || 
-      isAdmin === null || 
-      isWhitelisted === null
-    ), // Only run if on client and spaceCode is not already set in local storage state
+    enabled: isClient, // Only run if on client and required data is not already set
     staleTime: 5 * 60 * 1000, // Data considered fresh for 5 minutes
     cacheTime: 10 * 60 * 1000, // Data stays in cache for 10 minutes
   });
 
-  // Return the spaceCode and isAdmin from localStorage, which are reactive
-  return { spaceCode };
+  // Return the spaceCode, isAdmin, and onboardingStep from atoms, which are reactive
+  return { spaceCode, onboardingStep };
 }

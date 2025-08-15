@@ -3,7 +3,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { Auth0Provider } from "@auth0/auth0-react";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
