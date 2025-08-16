@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "dry/types"
+
 module Transactions
   module Operations
     module Accounts
@@ -7,6 +9,7 @@ module Transactions
         class Contract < Dry::Validation::Contract
           params do
             required(:transaction_id).value(:string)
+            optional(:remove_calculation).maybe(Dry::Types["params.bool"])
           end
         end
 
@@ -23,7 +26,11 @@ module Transactions
           _            = step validate(params:)
           transaction  = step find_transaction(params:)
           account      = step find_account(transaction:)
-          _            = step calculate_balance(transaction:, account:)
+          _            = step calculate_balance(
+            transaction:,
+            account:,
+            remove_calculation: params[:remove_calculation]
+          )
         end
 
         def find_transaction(params:)
@@ -38,8 +45,13 @@ module Transactions
           Failure(account: "not found", error: e)
         end
 
-        def calculate_balance(transaction:, account:)
+        def calculate_balance(transaction:, account:, remove_calculation:)
           return Success(transaction) if transaction.balance_state == "calculated" # NOTE: Need to be idempotent
+
+          if remove_calculation
+            transaction.update(balance_state: "calculated")
+            return Success(transaction)
+          end
 
           old_balance = account.balance.amount
           balance = old_balance + transaction.value.amount

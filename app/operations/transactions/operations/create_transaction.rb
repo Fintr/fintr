@@ -145,9 +145,7 @@ module Transactions
       end
 
       def calculate_balance(transaction:, remove_calculation:)
-        return Success() if remove_calculation
-
-        Accounts::CalculateBalance.new.call(transaction_id: transaction.id)
+        Accounts::CalculateBalance.new.call(transaction_id: transaction.id, remove_calculation:)
       end
 
       def create_schedule(transaction:, params:)
