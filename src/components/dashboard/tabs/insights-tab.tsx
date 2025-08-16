@@ -432,7 +432,7 @@ const InsightsTab = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 md:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 md:gap-6">
           <Card className="border-0">
             <CardHeader className="px-4">
               <CardTitle>Financial Health Score</CardTitle>
@@ -451,7 +451,7 @@ const InsightsTab = () => {
                     <div className="relative w-40 h-40 mb-4">
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-4xl font-bold text-primary">
-                          {insightsData?.healthScores?.score || 78}
+                          {insightsData?.healthScores?.score || 0}
                         </div>
                       </div>
                       <svg
