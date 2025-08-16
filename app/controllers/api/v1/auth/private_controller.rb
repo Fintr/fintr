@@ -18,7 +18,7 @@ module Api
             space_code: personal_space.code,
             personal_space: personal_space,
             organization_spaces: organization_spaces,
-            onboarding_step: current_user.onboarding.reload.step
+            onboarding_step: current_user.onboarding&.reload&.step || ""
           })
         end
 
