@@ -23,14 +23,16 @@ module Transactions
         include FailureHandler
 
         def call(params)
-          _            = step validate(params:)
-          transaction  = step find_transaction(params:)
-          account      = step find_account(transaction:)
-          _            = step calculate_balance(
-            transaction:,
-            account:,
-            remove_calculation: params[:remove_calculation]
-          )
+          ActiveRecord::Base.transaction do
+            _            = step validate(params:)
+            transaction  = step find_transaction(params:)
+            account      = step find_account(transaction:)
+            _            = step calculate_balance(
+              transaction:,
+              account:,
+              remove_calculation: params[:remove_calculation]
+            )
+          end
         end
 
         def find_transaction(params:)

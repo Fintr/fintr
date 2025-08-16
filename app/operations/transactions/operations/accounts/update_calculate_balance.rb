@@ -27,13 +27,15 @@ module Transactions
         include FailureHandler
 
         def call(params)
-          params              = step validate(params:)
-          transaction         = step dig_transaction(params:)
-          previous_account    = step find_account(id: transaction.account_id_was)
-          current_account     = step find_account(id: transaction.account_id)
-          _                   = step update_balance(from: :previous, transaction:, account: previous_account)
-          _                   = step update_balance(from: :current, transaction:, account: current_account)
-          Success(transaction)
+          ActiveRecord::Base.transaction do
+            params              = step validate(params:)
+            transaction         = step dig_transaction(params:)
+            previous_account    = step find_account(id: transaction.account_id_was)
+            current_account     = step find_account(id: transaction.account_id)
+            _                   = step update_balance(from: :previous, transaction:, account: previous_account)
+            _                   = step update_balance(from: :current, transaction:, account: current_account)
+            transaction
+          end
         end
 
         def dig_transaction(params:)
