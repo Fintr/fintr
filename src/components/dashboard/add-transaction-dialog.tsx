@@ -199,7 +199,7 @@ const AddTransactionDialog = ({
   };
 
   const onTransactionSuccess = (response: any) => {
-    toast.success("Transaction added successfully!");
+    // toast.success("Transaction added successfully!");
     
     // Use specific invalidation targeting the exact query being used
     // This prevents duplicate data issues by being more precise
