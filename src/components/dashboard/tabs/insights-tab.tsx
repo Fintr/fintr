@@ -475,7 +475,7 @@ const InsightsTab = () => {
                           stroke="#0A3D62"
                           strokeWidth="10"
                           strokeDasharray="282.7"
-                          strokeDashoffset={282.7 - (282.7 * (insightsData?.healthScores?.score || 78) / 100)}
+                          strokeDashoffset={282.7 - (282.7 * (insightsData?.healthScores?.score || 0) / 100)}
                           transform="rotate(-90 50 50)"
                         />
                       </svg>
