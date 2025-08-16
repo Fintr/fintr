@@ -1,6 +1,6 @@
 import { atom } from 'jotai';
 import { BudgetCategory } from '@/types/budgetTypes';
-import { BudgetCategory as OnboardingBudgetCategory } from '@/services/onboarding/onboardingService';
+import { BudgetCategory as OnboardingBudgetCategory } from '@/services/onboarding/mutations';
 
 // Base atom for budget date filter (defaults to current date)
 export const budgetDateAtom = atom<string>(() => {

@@ -17,7 +17,8 @@ const FloatingSelect = React.forwardRef<
   React.ElementRef<typeof SelectTrigger>,
   FloatingSelectProps
 >(({ className, label, value, onValueChange, placeholder, children, options, id, ...props }, ref) => {
-  const selectId = id || React.useId();
+  const generatedId = React.useId();
+  const selectId = id || generatedId;
   const hasValue = value && value.length > 0;
   
   return (
