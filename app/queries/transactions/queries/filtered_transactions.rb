@@ -16,6 +16,7 @@ module Transactions
           optional(:balance_state).value(:string)
           optional(:paginate).value(:bool)
           optional(:search_query).value(:string)
+          optional(:without_initial_balance).value(:bool)
         end
 
         rule(:min_amount, :max_amount) do
@@ -50,6 +51,7 @@ module Transactions
         relation = step by_balance_state(relation, params)
         relation = step by_date(relation, params)
         relation = step by_category(relation, params)
+        relation = step without_initial_balance(relation, params)
         relation = step by_amount(relation, params)
         relation = step by_search_query(relation, params)
         relation = step select(relation)
@@ -108,6 +110,13 @@ module Transactions
         Success(relation)
       rescue StandardError
         Failure(:search_query_error)
+      end
+
+      def without_initial_balance(relation, params)
+        return Success(relation) unless params[:without_initial_balance]
+
+        relation = relation.where.not(transactions_categories: { name: "Initial Balance" })
+        Success(relation)
       end
 
       def order(relation)

@@ -47,7 +47,7 @@ module Insights
       private
 
       def find_transactions(params:)
-        params_for_calculated_transactions = params.merge(balance_state: "calculated", paginate: false)
+        params_for_calculated_transactions = params.merge(balance_state: "calculated", paginate: false, without_initial_balance: true)
         Transactions::Queries::FilteredTransactions.call(params: params_for_calculated_transactions)
       end
 

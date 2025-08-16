@@ -77,7 +77,7 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
       it 'calls Transactions::Queries::FilteredTransactions with correct params including balance_state' do
         call_operation
-        expected_params = valid_params.merge(balance_state: "calculated", paginate: false)
+        expected_params = valid_params.merge(balance_state: "calculated", paginate: false, without_initial_balance: true)
         expect(Transactions::Queries::FilteredTransactions).to have_received(:call).with(params: expected_params)
       end
 

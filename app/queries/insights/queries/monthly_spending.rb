@@ -20,8 +20,9 @@ module Insights
       def call
         params    = step validate(params: @params)
         relation  = step by_space(relation: @relation, params:)
-        relation  = step by_calculated_state(relation: relation)
-        relation  = step by_date(relation: relation, params:)
+        relation  = step by_calculated_state(relation:)
+        relation  = step without_initial_balance(relation:)
+        relation  = step by_date(relation:, params:)
         relation  = step group_by_month(relation:)
         relation  = step select_data(relation:)
         relation  = step order(relation:)
@@ -43,6 +44,13 @@ module Insights
 
       def by_calculated_state(relation:)
         relation = relation.calculated
+        Success(relation)
+      end
+
+      def without_initial_balance(relation:)
+        relation = relation
+                    .joins(:category)
+                    .where.not(transactions_categories: { name: "Initial Balance" })
         Success(relation)
       end
 

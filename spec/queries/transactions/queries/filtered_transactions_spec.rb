@@ -16,13 +16,13 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
   let!(:category1_s2) { create(:category, name: 'Category 1', space: space2) }
 
   # Transactions in Space 1
-  let!(:transaction_s1_jan5) { create(:transaction, space: space1, account: account1_s1, category: category1_s1, date: Date.new(2024, 1, 5), amount_cents: 1000) }
-  let!(:transaction_s1_jan15) { create(:transaction, space: space1, account: account2_s1, category: category2_s1, date: Date.new(2024, 1, 15), amount_cents: 2000) }
-  let!(:transaction_s1_feb10) { create(:transaction, space: space1, account: account1_s1, category: category1_s1, date: Date.new(2024, 2, 10), amount_cents: 500) }
+  let!(:transaction_s1_jan5) { create(:transaction, space: space1, account: account1_s1, category: category1_s1, date: Date.new(2024, 1, 5), amount_cents: 1000, description: 'Lunch') }
+  let!(:transaction_s1_jan15) { create(:transaction, space: space1, account: account2_s1, category: category2_s1, date: Date.new(2024, 1, 15), amount_cents: 2000, description: 'Groceries') }
+  let!(:transaction_s1_feb10) { create(:transaction, space: space1, account: account1_s1, category: category1_s1, date: Date.new(2024, 2, 10), amount_cents: 500, description: 'Coffee') }
 
   # Transactions in Space 2
-  let!(:transaction_s2_jan20) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 1, 20), amount_cents: 3000) }
-  let!(:transaction_s2_feb5) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 2, 5), amount_cents: 1500) }
+  let!(:transaction_s2_jan20) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 1, 20), amount_cents: 3000, description: 'Rent') }
+  let!(:transaction_s2_feb5) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 2, 5), amount_cents: 1500, description: 'Utilities') }
 
   let!(:first_3_transactions) { [transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10] }
 
@@ -209,6 +209,65 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
 
         # Should only include transactions with amount_cents < 600
         expect(transactions.map(&:id)).to contain_exactly(transaction_s1_feb10.id)
+      end
+    end
+
+    context 'with search_query filter' do
+      it 'filters by description' do
+        params = default_params.merge(search_query: 'Lunch')
+        relation = Transactions::Transaction.all
+        result = described_class.new(relation: relation, params: params).call
+
+        expect(result).to be_success
+        transactions = result.value!
+
+        expect(transactions.map(&:id)).to contain_exactly(transaction_s1_jan5.id)
+      end
+
+      it 'filters by category name' do
+        params = default_params.merge(search_query: 'Category 2')
+        relation = Transactions::Transaction.all
+        result = described_class.new(relation: relation, params: params).call
+
+        expect(result).to be_success
+        transactions = result.value!
+
+        expect(transactions.map(&:id)).to contain_exactly(transaction_s1_jan15.id)
+      end
+
+      it 'filters by account name' do
+        # Assuming account1_s1 has a name that can be searched
+        account1_s1.update(name: 'Primary Checking')
+        params = default_params.merge(search_query: 'Primary Checking')
+        relation = Transactions::Transaction.all
+        result = described_class.new(relation: relation, params: params).call
+
+        expect(result).to be_success
+        transactions = result.value!
+
+        expect(transactions.map(&:id)).to contain_exactly(transaction_s1_jan5.id, transaction_s1_feb10.id)
+      end
+
+      it 'returns no results for a non-matching query' do
+        params = default_params.merge(search_query: 'NonExistent')
+        relation = Transactions::Transaction.all
+        result = described_class.new(relation: relation, params: params).call
+
+        expect(result).to be_success
+        transactions = result.value!
+
+        expect(transactions).to be_empty
+      end
+
+      it 'is case insensitive' do
+        params = default_params.merge(search_query: 'lunch')
+        relation = Transactions::Transaction.all
+        result = described_class.new(relation: relation, params: params).call
+
+        expect(result).to be_success
+        transactions = result.value!
+
+        expect(transactions.map(&:id)).to contain_exactly(transaction_s1_jan5.id)
       end
     end
 
