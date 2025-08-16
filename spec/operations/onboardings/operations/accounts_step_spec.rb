@@ -8,7 +8,6 @@ RSpec.describe Onboardings::Operations::AccountsStep do
   let(:user) { create(:user) }
   let(:space) { create(:space) }
   let!(:space_user) { create(:space_user, user: user, space: space) }
-  let(:onboarding) { create(:onboarding, user: user) }
 
   let(:valid_params) do
     {
@@ -66,34 +65,48 @@ RSpec.describe Onboardings::Operations::AccountsStep do
   end
 
   describe "#call" do
+    let(:onboarding_with_all_data_attributes) do
+      {
+        id: SecureRandom.uuid,
+        user: user,
+        step: "income",
+        data: ActiveSupport::HashWithIndifferentAccess.new({
+          "budgets" => [{ "name" => "Home", "amount" => "1000.0" }],
+          "income" => { "salary_income" => "1000.0", "business_income" => "500.0" }
+        })
+      }
+    end
+
+    let(:onboarding_with_all_data) do
+      instance_double(Onboarding, **onboarding_with_all_data_attributes)
+    end
+
+    before do
+      # Stub Onboarding.find_by to return our controlled double
+      allow(Onboarding).to receive(:find_by).with(user_id: user.id).and_return(onboarding_with_all_data)
+
+      # Stub update! on the double
+      allow(onboarding_with_all_data).to receive(:update!).and_return(true)
+
+      # Stub nested operations that are not part of the current operation's direct responsibility
+      allow(Transactions::Operations::Accounts::CreateAccount)
+        .to receive(:new)
+        .and_return(instance_double(Transactions::Operations::Accounts::CreateAccount, call: Dry::Monads::Success(true)))
+
+      allow(Transactions::Operations::Categories::CreateCategory)
+        .to receive(:new)
+        .and_return(instance_double(Transactions::Operations::Categories::CreateCategory, call: Dry::Monads::Success(true)))
+
+      allow(Budgets::Operations::CreateBudget)
+        .to receive(:new)
+        .and_return(instance_double(Budgets::Operations::CreateBudget, call: Dry::Monads::Success(true)))
+
+      allow(Transactions::Operations::CreateTransaction)
+        .to receive(:new)
+        .and_return(instance_double(Transactions::Operations::CreateTransaction, call: Dry::Monads::Success(true)))
+    end
+
     context "when valid params and existing onboarding" do
-      before do
-        allow(Onboarding)
-          .to receive(:find_by)
-          .with(user_id: user.id)
-          .and_return(onboarding)
-
-        allow(onboarding)
-          .to receive(:update!)
-          .and_return(true)
-
-        allow(Transactions::Operations::Accounts::CreateAccount)
-          .to receive(:new)
-          .and_return(instance_double(Transactions::Operations::Accounts::CreateAccount, call: Dry::Monads::Success(true)))
-
-        allow(Transactions::Operations::Categories::CreateCategory)
-          .to receive(:new)
-          .and_return(instance_double(Transactions::Operations::Categories::CreateCategory, call: Dry::Monads::Success(true)))
-
-        allow(Budgets::Operations::CreateBudget)
-          .to receive(:new)
-          .and_return(instance_double(Budgets::Operations::CreateBudget, call: Dry::Monads::Success(true)))
-
-        allow(Transactions::Operations::CreateTransaction)
-          .to receive(:new)
-          .and_return(instance_double(Transactions::Operations::CreateTransaction, call: Dry::Monads::Success(true)))
-      end
-
       it "returns a successful result" do
         result = accounts_step_operation.call(valid_params)
         expect(result).to be_success
@@ -101,12 +114,12 @@ RSpec.describe Onboardings::Operations::AccountsStep do
 
       it "updates the onboarding with account data" do
         accounts_step_operation.call(valid_params)
-        expected_data = onboarding.data.merge(
+        expected_data = onboarding_with_all_data.data.merge(
           accounts: valid_params[:accounts].map do |account|
             account.except(:for_salary, :for_business).merge(balance: account[:balance].to_s).deep_stringify_keys
           end
         )
-        expect(onboarding).to have_received(:update!).with(
+        expect(onboarding_with_all_data).to have_received(:update!).with(
           step: "completed",
           data: expected_data
         )
@@ -131,12 +144,6 @@ RSpec.describe Onboardings::Operations::AccountsStep do
       end
 
       it "calls CreateCategory for each budget category" do
-        onboarding_with_budgets = create(:onboarding, user: user, data: onboarding.data.merge({ "budgets" => [{ "name" => "Home", "amount" => "1000.0" }] }))
-        allow(Onboarding)
-          .to receive(:find_by)
-          .with(user_id: user.id)
-          .and_return(onboarding_with_budgets)
-
         accounts_step_operation.call(valid_params)
         expect(Transactions::Operations::Categories::CreateCategory)
           .to have_received(:new)
@@ -145,19 +152,13 @@ RSpec.describe Onboardings::Operations::AccountsStep do
           .with(
             user_id: user.id,
             space_id: space.id,
-            accounts: valid_params[:accounts],
             name: "Home",
-            category_type: "expense"
+            category_type: "expense",
+            accounts: valid_params[:accounts]
           )
       end
 
       it "calls CreateBudget for each budget" do
-        onboarding_with_budgets = create(:onboarding, user: user, data: onboarding.data.merge({ "budgets" => [{ "name" => "Home", "amount" => "1000.0" }] }))
-        allow(Onboarding)
-          .to receive(:find_by)
-          .with(user_id: user.id)
-          .and_return(onboarding_with_budgets)
-
         accounts_step_operation.call(valid_params)
         expect(Budgets::Operations::CreateBudget)
           .to have_received(:new)
@@ -166,20 +167,14 @@ RSpec.describe Onboardings::Operations::AccountsStep do
           .with(
             user_id: user.id,
             space_id: space.id,
-            accounts: valid_params[:accounts],
             category_name: "Home",
             date: Date.current,
-            amount: 1000.0.to_d
+            amount: 1000.0.to_d,
+            accounts: valid_params[:accounts]
           )
       end
 
       it "calls CreateTransaction for salary income" do
-        onboarding_with_income = create(:onboarding, user: user, data: onboarding.data.merge({ "income" => { "salary_income" => "1000.0", "business_income" => "0.0" } }))
-        allow(Onboarding)
-          .to receive(:find_by)
-          .with(user_id: user.id)
-          .and_return(onboarding_with_income)
-
         accounts_step_operation.call(valid_params)
         expect(Transactions::Operations::CreateTransaction)
           .to have_received(:new).at_least(:once)
@@ -188,24 +183,18 @@ RSpec.describe Onboardings::Operations::AccountsStep do
           .with(
             user_id: user.id,
             space_id: space.id,
-            accounts: valid_params[:accounts],
             category_name: "Salary",
             account_name: "Cash", # Assuming 'Cash' is for salary
             date: Date.current.beginning_of_month,
             amount: 1000.0.to_d,
             remove_calculation: true,
             schedule_type: "repeat",
-            repeat_interval: "every_month"
+            repeat_interval: "every_month",
+            accounts: valid_params[:accounts]
           )
       end
 
       it "calls CreateTransaction for business income" do
-        onboarding_with_income = create(:onboarding, user: user, data: onboarding.data.merge({ "income" => { "salary_income" => "0.0", "business_income" => "500.0" } }))
-        allow(Onboarding)
-          .to receive(:find_by)
-          .with(user_id: user.id)
-          .and_return(onboarding_with_income)
-
         accounts_step_operation.call(valid_params)
         expect(Transactions::Operations::CreateTransaction)
           .to have_received(:new).at_least(:once)
@@ -214,30 +203,27 @@ RSpec.describe Onboardings::Operations::AccountsStep do
           .with(
             user_id: user.id,
             space_id: space.id,
-            accounts: valid_params[:accounts],
             category_name: "Business",
             account_name: "Savings", # Assuming 'Savings' is for business
             date: Date.current.beginning_of_month,
             amount: 500.0.to_d,
             remove_calculation: true,
             schedule_type: "repeat",
-            repeat_interval: "every_month"
+            repeat_interval: "every_month",
+            accounts: valid_params[:accounts]
           )
       end
     end
 
     context "when user not found" do
       before do
-        allow(Onboarding)
-          .to receive(:find_by)
-          .with(user_id: user.id)
-          .and_return(nil)
+        allow(Onboarding).to receive(:find_by).with(user_id: valid_params[:user_id]).and_return(nil)
       end
 
       it "returns a failure result" do
         result = accounts_step_operation.call(valid_params)
         expect(result).to be_failure
-        expect(result.failure).to eq("Onboarding not found")
+        expect(result.failure).to eq(error: "Onboarding not found")
       end
     end
 
