@@ -475,13 +475,13 @@ const DatabaseTab = () => {
 
   return (
     <Card className="border-0 shadow-none bg-background">
-      <CardHeader>
+      <CardHeader className="px-0">
         <CardTitle>Settings & Configurations</CardTitle>
         <CardDescription>
           Manage your financial data settings and preferences
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0">
         {/* Main Navigation Buttons */}
         <div className="flex space-x-2 mb-6 overflow-x-auto">
           <Button

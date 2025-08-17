@@ -64,7 +64,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
       {!isOnOnboardingPage && (
         <DashboardNavigation hideActionButtons={hideActionButtons} isAdmin={isAdmin} />
       )}
-      <div className={isOnOnboardingPage ? "min-h-screen" : "p-0 md:p-8 max-w-7xl mx-auto"}>
+      <div className={isOnOnboardingPage ? "min-h-screen" : "p-0 md:p-8 max-w-7xl mx-auto pt-14"}>
         {children}
       </div>
     </div>

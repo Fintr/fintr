@@ -54,11 +54,11 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
 }) => {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-4">
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {items.length === 0 ? (
             <div className="text-center py-4 text-gray-500 col-span-2">

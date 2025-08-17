@@ -1,0 +1,467 @@
+"use client";
+
+import { useState } from 'react';
+import { useParams } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import ExpandableTextarea from '@/components/ui/expandable-textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  ArrowLeft, 
+  Calendar, 
+  User, 
+  MessageCircle, 
+  Send,
+  Mail,
+  Clock
+} from 'lucide-react';
+import { useTicket, useCreateTicketResponse, useUpdateAdminTicket } from '@/hooks/async/useTickets';
+import ImageUploadInput from '@/components/crm/ImageUploadInput';
+import ImageGallery from '@/components/crm/ImageGallery';
+import Link from 'next/link';
+import { useAtomValue } from 'jotai';
+import { isAdminAtom } from '@/atoms/dashboardAtoms';
+import { useImagePaste } from '@/hooks/useImagePaste';
+import { LoadingSpinner, ButtonLoader } from '@/components/ui/loading';
+import { formatDateTime } from '@/utils/dateUtils';
+
+const responseSchema = z.object({
+  message: z.string().min(1, 'Response message is required'),
+});
+
+type ResponseForm = z.infer<typeof responseSchema>;
+
+export default function TicketDetailPage() {
+  const params = useParams();
+  const ticketId = params.id as string;
+  const [showResponseForm, setShowResponseForm] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+
+  const isAdmin = useAtomValue(isAdminAtom);
+
+  const {
+    data: ticket,
+    isLoading,
+    isError,
+    refetch
+  } = useTicket(ticketId);
+
+  const createResponseMutation = useCreateTicketResponse(ticketId);
+  const updateTicketMutation = useUpdateAdminTicket(ticketId);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors }
+  } = useForm<ResponseForm>({
+    resolver: zodResolver(responseSchema),
+  });
+
+  const { handleImagePaste } = useImagePaste({
+    maxImages: 5,
+    maxSizeInMB: 10,
+    currentImageCount: selectedImages.length,
+    onImagesAdded: (newFiles) => {
+      setSelectedImages(prev => [...prev, ...newFiles]);
+    }
+  });
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return 'bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors';
+      case 'in_progress': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors';
+      case 'resolved': return 'bg-green-100 text-green-800 hover:bg-green-200 transition-colors';
+      case 'dismissed': return 'bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors';
+      default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-100 text-red-800 hover:bg-red-200 transition-colors';
+      case 'high': return 'bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors';
+      case 'medium': return 'bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors';
+      case 'low': return 'bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors';
+      default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors';
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const onSubmitResponse = async (data: ResponseForm) => {
+    try {
+      await createResponseMutation.mutateAsync({
+        message: data.message,
+        images: selectedImages.length > 0 ? selectedImages : undefined
+      });
+      reset();
+      setSelectedImages([]);
+      setShowResponseForm(false);
+      refetch();
+    } catch (error) {
+      console.error('Error creating response:', error);
+    }
+  };
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    if (!isAdmin) return;
+    try {
+      await updateTicketMutation.mutateAsync({
+        status: newStatus as 'open' | 'in_progress' | 'resolved' | 'dismissed'
+      });
+      refetch();
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+  };
+
+  const handlePriorityUpdate = async (newPriority: string) => {
+    if (!isAdmin) return;
+    try {
+      await updateTicketMutation.mutateAsync({
+        priority: newPriority as 'low' | 'medium' | 'high' | 'urgent'
+      });
+      refetch();
+    } catch (error) {
+      console.error('Error updating priority:', error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="flex justify-center items-center py-12">
+          <LoadingSpinner size="medium" />
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !ticket) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-red-500 mb-4">
+              Failed to load ticket details. Please try again.
+            </p>
+            <div className="space-x-2">
+              <Button onClick={() => refetch()} variant="outline">
+                Retry
+              </Button>
+              <Link href="/crm/requests">
+                <Button variant="outline">Back to Tickets</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      {/* Header */}
+      <div className="mb-6">
+        <Link href="/crm/requests">
+          <Button variant="outline" className="mb-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Tickets
+          </Button>
+        </Link>
+        {isAdmin && (
+          <div className="bg-blue-100 border border-blue-300 rounded-lg px-3 py-2 text-sm text-blue-800">
+            <strong>Admin View:</strong> You have access to detailed customer information for support purposes.
+          </div>
+        )}
+      </div>
+
+      {/* Ticket Details */}
+      <Card className="mb-6">
+        <CardHeader  className="px-4">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="flex-1">
+              <CardTitle className="text-2xl mb-2">{ticket.title || 'Untitled'}</CardTitle>
+              <div className="flex items-center gap-2 mb-4">
+                <Badge className={getStatusColor(ticket.status || 'open')}>
+                  {ticket.status?.replace('_', ' ') || 'Unknown'}
+                </Badge>
+                <Badge className={getPriorityColor(ticket.priority || 'medium')}>
+                  {ticket.priority || 'medium'}
+                </Badge>
+                <Badge variant="outline">
+                  {ticket.ticketType?.replace('_', ' ') || 'Unknown'}
+                </Badge>
+              </div>
+              
+              {/* Admin Controls */}
+              {isAdmin && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                  <h4 className="font-semibold text-orange-900 mb-3">Admin Actions</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Update Status
+                      </label>
+                      <Select 
+                        value={ticket.status || 'open'} 
+                        onValueChange={handleStatusUpdate}
+                        disabled={updateTicketMutation.isLoading}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="open">Open</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="resolved">Resolved</SelectItem>
+                          <SelectItem value="dismissed">Dismissed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Update Priority
+                      </label>
+                      <Select 
+                        value={ticket.priority || 'medium'} 
+                        onValueChange={handlePriorityUpdate}
+                        disabled={updateTicketMutation.isLoading}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {updateTicketMutation.isLoading && (
+                    <div className="mt-2 flex items-center text-sm text-orange-600">
+                      <ButtonLoader size="small" className="mr-2" />
+                      Updating ticket...
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap md:items-center flex-col md:flex-row gap-2 md:gap-6 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span>{isAdmin && ticket.userInfo ? ticket.userInfo.fullName : (ticket.userName || 'Unknown user')}</span>
+            </div>
+            {isAdmin && ticket.userInfo && (
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                <span>{ticket.userInfo.email}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              <span>Created {formatDateTime(ticket.createdAt)}</span>
+            </div>
+            {isAdmin && ticket.userInfo && (
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span>User since {formatDateTime(ticket.userInfo.createdAt)}</span>
+              </div>
+            )}
+            {ticket.responses && ticket.responses.length > 0 && (
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" />
+                <span>{ticket.responses.length} response{ticket.responses.length !== 1 ? 's' : ''}</span>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        
+        <CardContent  className="px-4">
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold mb-2">Description</h3>
+              <p className="text-gray-700 whitespace-pre-wrap">{ticket.description || 'No description available'}</p>
+            </div>
+
+            {/* Admin User Information */}
+            {isAdmin && ticket.userInfo && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold mb-3 text-blue-900 flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Customer Information (Admin View)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">User ID:</span>
+                    <span className="ml-2 text-gray-900">{ticket.userInfo.id}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Space ID:</span>
+                    <span className="ml-2 text-gray-900">{ticket.userInfo.spaceId}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Images */}
+            <ImageGallery 
+              images={ticket.images || []} 
+              title="Attachments"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Responses */}
+      {ticket.responses && ticket.responses.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="px-4">
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Conversation
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4">
+            <div className="space-y-6">
+              {ticket.responses.map((response: any, index: number) => (
+                <div key={response.id}>
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                      {getInitials(response.responderName || 'User')}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm">{response.responderName || 'User'}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {response.responseType}
+                        </Badge>
+                      </div>
+                      <div className="mb-2">
+                        <span className="text-xs text-gray-500">
+                          {formatDateTime(response.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-gray-700 whitespace-pre-wrap">{response.message}</p>
+                      
+                      {/* Response Images */}
+                      <ImageGallery 
+                        images={response.images || []} 
+                        variant="compact"
+                        className="mt-3"
+                      />
+                    </div>
+                  </div>
+                  {index < (ticket.responses?.length || 0) - 1 && (
+                    <Separator className="mt-6" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Add Response */}
+      {ticket.status !== 'dismissed' && ticket.status !== 'resolved' && (
+        <Card>
+          <CardHeader className="px-4">
+            <CardTitle>Add Response</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4">
+            {!showResponseForm ? (
+              <Button onClick={() => setShowResponseForm(true)}>
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Add Response
+              </Button>
+            ) : (
+              <form onSubmit={handleSubmit(onSubmitResponse)} className="space-y-4">
+                {createResponseMutation.isError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                    Failed to add response. Please try again.
+                  </div>
+                )}
+                
+                <div>
+                  <div className="relative">
+                    <ExpandableTextarea
+                      value={watch('message') || ''}
+                      onChange={(e) => setValue('message', e.target.value)}
+                      onImagePaste={handleImagePaste}
+                      placeholder="Type your response... (You can also paste images here)"
+                      className={`${errors.message ? 'border-red-500' : ''} min-h-[100px] max-h-[300px]`}
+                      rows={4}
+                    />
+                    <div className="absolute bottom-2 right-2 text-xs text-gray-400 pointer-events-none">
+                      Ctrl+V to paste images
+                    </div>
+                  </div>
+                  {errors.message && (
+                    <p className="text-sm text-red-500 mt-1">{errors.message.message}</p>
+                  )}
+                </div>
+
+                
+                {/* Image Upload Section */}
+                <ImageUploadInput
+                  images={selectedImages}
+                  onImagesChange={setSelectedImages}
+                  variant="compact"
+                  maxImages={5}
+                  maxSizeInMB={10}
+                  disabled={createResponseMutation.isLoading}
+                />                <div className="flex justify-end space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowResponseForm(false);
+                      setSelectedImages([]);
+                      reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createResponseMutation.isLoading}
+                  >
+                    {createResponseMutation.isLoading ? (
+                      <ButtonLoader text="Sending..." />
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Send Response
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

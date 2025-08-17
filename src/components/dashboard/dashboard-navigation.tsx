@@ -1,7 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import { ArrowRight, Bell, LogOut, Settings, Camera, Plus, Menu, X, Search, User as UserIcon, Target } from "lucide-react";
+import { ArrowRight, Bell, LogOut, Settings, Camera, Plus, Menu, X, Search, User as UserIcon, Target, Headphones } from "lucide-react";
 import { useAuth0 } from "@auth0/auth0-react";
+import { usePathname } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +37,12 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  const pathname = usePathname();
   const showV2Features = shouldShowV2Features();
+  
+  // Show add buttons only on dashboard pages
+  const isOnDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+  const showAddButtons = !hideActionButtons && isOnDashboard;
 
   const { logout, user } = useAuth0();
 
@@ -107,6 +113,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
 
   const mobileNavItems: NavItem[] = [
     { title: "Settings", href: "/dashboard/settings", icon: Settings },
+    { title: "Support", href: "/crm/requests", icon: Headphones },
   ];
 
   if (showV2Features) {
@@ -119,7 +126,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
 
   return (
     <>
-      <header className="bg-background sticky top-0 z-10 border-b border-gray-200">
+      <header className="bg-background z-20 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           {/* Mobile: Logo left, Notifications + Hamburger right */}
           <div className="flex md:hidden flex-row items-center justify-between h-14 w-full gap-2">
@@ -133,7 +140,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
               </Link>
             </div>
             <div className="flex flex-row items-center gap-2">
-              {!hideActionButtons && (
+              {showAddButtons && (
                 <>
                   <Button
                     onClick={() => setIsAddReceiptOpen(true)}
@@ -200,7 +207,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
             </div>
             <div className="flex flex-1" />
             <div className="flex flex-row items-center gap-2 md:gap-4">
-              {!hideActionButtons && (
+              {showAddButtons && (
                 <>
                   <Button
                     onClick={() => setIsAddReceiptOpen(true)}
@@ -253,6 +260,12 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
                     <Link href="/dashboard/settings" className="flex items-center w-full">
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => {}} onClick={() => setIsDropdownOpen(false)}>
+                    <Link href="/crm/requests" className="flex items-center w-full">
+                      <Headphones className="mr-2 h-4 w-4" />
+                      <span>Support</span>
                     </Link>
                   </DropdownMenuItem>
                   {isAdmin && (

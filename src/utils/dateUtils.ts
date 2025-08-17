@@ -89,3 +89,91 @@ export const getMonthNumber = (monthName: string) => {
   };
   return monthMap[monthName.toLowerCase()];
 };
+
+/**
+ * Formats a date string to a human-readable format with full date, time, and meridian
+ * 
+ * @param dateString - ISO date string to format
+ * @returns Formatted date string (e.g., "Dec 15, 2023 at 2:30 PM") or "Unknown date" if invalid
+ * 
+ * @example
+ * ```tsx
+ * formatDateTime("2023-12-15T14:30:00Z") // "Dec 15, 2023 at 2:30 PM"
+ * formatDateTime(undefined) // "Unknown date"
+ * ```
+ */
+export const formatDateTime = (dateString?: string): string => {
+  if (!dateString) return 'Unknown date';
+  
+  try {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (error) {
+    console.warn('Invalid date string provided to formatDateTime:', dateString);
+    return 'Invalid date';
+  }
+};
+
+/**
+ * Formats a date string to a simple date format without time
+ * 
+ * @param dateString - ISO date string to format
+ * @returns Formatted date string (e.g., "Dec 15, 2023") or "Unknown date" if invalid
+ * 
+ * @example
+ * ```tsx
+ * formatDate("2023-12-15T14:30:00Z") // "Dec 15, 2023"
+ * ```
+ */
+export const formatDate = (dateString?: string): string => {
+  if (!dateString) return 'Unknown date';
+  
+  try {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  } catch (error) {
+    console.warn('Invalid date string provided to formatDate:', dateString);
+    return 'Invalid date';
+  }
+};
+
+/**
+ * Formats a date string to show relative time (e.g., "2 hours ago", "3 days ago")
+ * 
+ * @param dateString - ISO date string to format
+ * @returns Relative time string or formatted date if too old
+ * 
+ * @example
+ * ```tsx
+ * formatRelativeTime("2023-12-15T14:30:00Z") // "2 hours ago" or "Dec 15, 2023"
+ * ```
+ */
+export const formatRelativeTime = (dateString?: string): string => {
+  if (!dateString) return 'Unknown date';
+  
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    
+    // If more than a week old, show formatted date
+    return formatDate(dateString);
+  } catch (error) {
+    console.warn('Invalid date string provided to formatRelativeTime:', dateString);
+    return 'Invalid date';
+  }
+};
