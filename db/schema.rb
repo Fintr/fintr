@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_14_040759) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_16_144206) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -20,6 +20,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_14_040759) do
   create_enum "account_category", ["cash", "savings", "debit", "credit_card", "e_wallet", "loan", "investment"]
   create_enum "balance_state", ["pending", "calculated"]
   create_enum "category_type_enum", ["income", "expense"]
+  create_enum "crm_priority", ["low", "medium", "high", "urgent"]
+  create_enum "crm_ticket_response_type", ["user_reply", "admin_response", "system_update"]
+  create_enum "crm_ticket_status", ["open", "in_progress", "resolved", "dismissed"]
+  create_enum "crm_ticket_type", ["bug_report", "feature_request", "general_feedback", "help_request", "billing_issue", "account_issue", "other"]
   create_enum "onboarding_step_enum", ["income", "budgets", "accounts", "completed"]
   create_enum "repeat_interval", ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
   create_enum "schedule_type", ["one_time", "repeat", "installment"]
@@ -88,6 +92,37 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_14_040759) do
     t.index ["space_id", "category_id", "date"], name: "index_budgets_on_space_id_and_category_id_and_date", unique: true
     t.index ["space_id"], name: "index_budgets_on_space_id"
     t.index ["spent_cents", "spent_currency"], name: "index_budgets_on_spent_cents_and_spent_currency"
+  end
+
+  create_table "crm_ticket_responses", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "ticket_id", null: false
+    t.uuid "responder_id"
+    t.text "message", null: false
+    t.enum "response_type", default: "user_reply", null: false, enum_type: "crm_ticket_response_type"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_crm_ticket_responses_on_created_at"
+    t.index ["responder_id"], name: "index_crm_ticket_responses_on_responder_id"
+    t.index ["response_type"], name: "index_crm_ticket_responses_on_response_type"
+    t.index ["ticket_id"], name: "index_crm_ticket_responses_on_ticket_id"
+  end
+
+  create_table "crm_tickets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "title", null: false
+    t.text "description", default: "", null: false
+    t.enum "ticket_type", default: "bug_report", null: false, enum_type: "crm_ticket_type"
+    t.enum "priority", default: "low", null: false, enum_type: "crm_priority"
+    t.enum "status", default: "open", null: false, enum_type: "crm_ticket_status"
+    t.uuid "user_id", null: false
+    t.uuid "space_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_crm_tickets_on_created_at"
+    t.index ["priority"], name: "index_crm_tickets_on_priority"
+    t.index ["space_id"], name: "index_crm_tickets_on_space_id"
+    t.index ["status"], name: "index_crm_tickets_on_status"
+    t.index ["ticket_type"], name: "index_crm_tickets_on_ticket_type"
+    t.index ["user_id"], name: "index_crm_tickets_on_user_id"
   end
 
   create_table "goal_descriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -245,6 +280,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_14_040759) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "budgets", "spaces"
   add_foreign_key "budgets", "transactions_categories", column: "category_id"
+  add_foreign_key "crm_ticket_responses", "crm_tickets", column: "ticket_id"
+  add_foreign_key "crm_ticket_responses", "users", column: "responder_id"
+  add_foreign_key "crm_tickets", "spaces"
+  add_foreign_key "crm_tickets", "users"
   add_foreign_key "goal_descriptions", "spaces"
   add_foreign_key "onboardings", "users"
   add_foreign_key "space_users", "spaces"

@@ -27,8 +27,22 @@ alwaysApply: true
            # Validation logic
          end
 
-         def call(params:)
-           # Operation steps
+         def call(params)
+           params       = step validate(params)
+           step1_result = step step1(params:)
+           step2_result = step step2(params:)
+         end
+
+         private
+
+         def step1(params:)
+          # sample code
+          Suceess(result)
+         end
+
+         def step2(params:)
+          # sample code
+          Success(result)
          end
        end
      end

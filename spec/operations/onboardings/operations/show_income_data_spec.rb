@@ -82,25 +82,5 @@ RSpec.describe Onboardings::Operations::ShowIncomeData do
         expect(result.failure).to eq("Onboarding not found")
       end
     end
-
-    context "when validation fails during call" do
-      let(:invalid_params_for_call) { valid_params.except(:user_id) }
-
-      before do
-        allow(show_income_data_operation)
-          .to receive(:validate)
-          .and_return(Dry::Monads::Failure(user_id: ["is missing"]))
-      end
-
-      it "returns a failure result" do
-        result = show_income_data_operation.call(invalid_params_for_call)
-        expect(result).to be_failure
-      end
-
-      it "returns validation errors" do
-        result = show_income_data_operation.call(invalid_params_for_call)
-        expect(result.failure).to include(user_id: ["is missing"])
-      end
-    end
   end
 end

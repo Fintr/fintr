@@ -104,12 +104,6 @@ RSpec.describe Insights::Queries::MonthlySpending, type: :query do
         expect(monthly_data.amount_currency).to eq("USD")
       end
 
-      it "filters by space" do
-        # The `space_id` is not directly selected in the `select_data` method,
-        # but the filtering is implicitly tested by the correct aggregated amounts for the space.
-        # Removing the explicit `space_id` check.
-      end
-
       it "filters by calculated state" do
         result = query_call_result.value!
         # Pending transaction should not be included in sums

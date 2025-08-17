@@ -33,6 +33,20 @@ Rails.application.routes.draw do
         resource :whitelist, only: %i[show create update destroy]
       end
 
+      namespace :crm do
+        resources :tickets, only: %i[index show create] do
+          resources :responses, only: [:create], controller: 'ticket_responses'
+        end
+
+        namespace :admin do
+          resources :tickets, only: %i[index show update] do
+            member do
+              post :respond
+            end
+          end
+        end
+      end
+
       resources :transactions do
         collection do
           get :generate_csv

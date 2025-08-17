@@ -8,6 +8,7 @@ module Auth
 
     has_one :onboarding, class_name: "Onboarding", dependent: :destroy
     has_many :transactions, class_name: "Transactions::Transaction", dependent: :destroy
+    has_many :tickets, class_name: "Crm::Ticket", dependent: :destroy
     has_many :space_users, class_name: "Spaces::SpaceUser", dependent: :destroy
     has_many :spaces, class_name: "Spaces::Space", through: :space_users
     has_many :personal_spaces,
