@@ -10,15 +10,15 @@ module Onboardings
       end
 
       CATEGORY_PERCENTAGES = {
-        "Home" => 20,
-        "Food & Groceries" => 20,
+        "Home" => 25,
+        "Food & Groceries" => 10,
         "Utilities" => 5,
-        "Transportation" => 10,
+        "Transportation" => 5,
         "Insurance" => 5,
         "Dine Out & Entertainment" => 10,
         "Shopping" => 10,
-        "Subscriptions & Hobbies" => 10,
-        "Travel & Vacations" => 10
+        "Subscriptions & Hobbies" => 5,
+        "Travel & Vacations" => 5
       }.freeze
 
       def validate(params)
