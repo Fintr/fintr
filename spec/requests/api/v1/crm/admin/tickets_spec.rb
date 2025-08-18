@@ -15,7 +15,7 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
   describe 'GET /api/v1/crm/admin/tickets' do
     context 'when user is admin' do
       let(:mock_query) { instance_double(Crm::Queries::FilteredTickets) }
-      let(:query_result) { double("query_result", current_page: 1, total_pages: 1, total_count: 2) }
+      let(:query_result) { double("query_result", current_page: 1, total_pages: 1, total_count: 2) } # rubocop:disable RSpec/VerifiedDoubles
 
       before do
         allow(Crm::Queries::FilteredTickets).to receive(:call).and_return(
@@ -35,8 +35,8 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
       end
 
       it 'calls FilteredTickets query with correct parameters' do
-        get '/api/v1/crm/admin/tickets', 
-            params: { status: 'open', priority: 'high', page: 1 }, 
+        get '/api/v1/crm/admin/tickets',
+            params: { status: 'open', priority: 'high', page: 1 },
             headers: headers
 
         expect(Crm::Queries::FilteredTickets).to have_received(:call) do |args|
@@ -150,8 +150,8 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
         end
 
         it 'updates the ticket successfully' do
-          patch "/api/v1/crm/admin/tickets/#{ticket1.id}", 
-                params: update_params, 
+          patch "/api/v1/crm/admin/tickets/#{ticket1.id}",
+                params: update_params,
                 headers: headers
 
           expect(response).to have_http_status(:ok)
@@ -164,8 +164,8 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
         end
 
         it 'calls UpdateTicketStatus operation with correct parameters' do
-          patch "/api/v1/crm/admin/tickets/#{ticket1.id}", 
-                params: update_params, 
+          patch "/api/v1/crm/admin/tickets/#{ticket1.id}",
+                params: update_params,
                 headers: headers
 
           expect(mock_operation).to have_received(:call) do |params|
@@ -186,8 +186,8 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
         end
 
         it 'returns unprocessable entity with errors' do
-          patch "/api/v1/crm/admin/tickets/#{ticket1.id}", 
-                params: { status: 'invalid_status' }, 
+          patch "/api/v1/crm/admin/tickets/#{ticket1.id}",
+                params: { status: 'invalid_status' },
                 headers: headers
 
           expect(response).to have_http_status(:unprocessable_entity)
@@ -199,8 +199,8 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
 
       context 'when ticket does not exist' do
         it 'returns not found status' do
-          patch "/api/v1/crm/admin/tickets/non-existent-id", 
-                params: update_params, 
+          patch "/api/v1/crm/admin/tickets/non-existent-id",
+                params: update_params,
                 headers: headers
 
           expect(response).to have_http_status(:not_found)
@@ -213,8 +213,8 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
       let(:non_admin_headers) { non_admin_auth[:headers] }
 
       it 'returns forbidden status' do
-        patch "/api/v1/crm/admin/tickets/#{ticket1.id}", 
-              params: { status: 'resolved' }, 
+        patch "/api/v1/crm/admin/tickets/#{ticket1.id}",
+              params: { status: 'resolved' },
               headers: non_admin_headers
 
         expect(response).to have_http_status(:forbidden)
@@ -238,8 +238,8 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
         end
 
         it 'creates admin response successfully' do
-          post "/api/v1/crm/admin/tickets/#{ticket1.id}/respond", 
-               params: response_params, 
+          post "/api/v1/crm/admin/tickets/#{ticket1.id}/respond",
+               params: response_params,
                headers: headers
 
           expect(response).to have_http_status(:created)
@@ -250,8 +250,8 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
         end
 
         it 'calls CreateAdminResponse operation with correct parameters' do
-          post "/api/v1/crm/admin/tickets/#{ticket1.id}/respond", 
-               params: response_params, 
+          post "/api/v1/crm/admin/tickets/#{ticket1.id}/respond",
+               params: response_params,
                headers: headers
 
           expect(mock_operation).to have_received(:call) do |params|
@@ -271,8 +271,8 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
         end
 
         it 'returns unprocessable entity with errors' do
-          post "/api/v1/crm/admin/tickets/#{ticket1.id}/respond", 
-               params: { message: '' }, 
+          post "/api/v1/crm/admin/tickets/#{ticket1.id}/respond",
+               params: { message: '' },
                headers: headers
 
           expect(response).to have_http_status(:unprocessable_entity)
@@ -288,8 +288,8 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
       let(:non_admin_headers) { non_admin_auth[:headers] }
 
       it 'returns forbidden status' do
-        post "/api/v1/crm/admin/tickets/#{ticket1.id}/respond", 
-             params: { message: 'Unauthorized response' }, 
+        post "/api/v1/crm/admin/tickets/#{ticket1.id}/respond",
+             params: { message: 'Unauthorized response' },
              headers: non_admin_headers
 
         expect(response).to have_http_status(:forbidden)

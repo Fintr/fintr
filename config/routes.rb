@@ -35,7 +35,7 @@ Rails.application.routes.draw do
 
       namespace :crm do
         resources :tickets, only: %i[index show create] do
-          resources :responses, only: [:create], controller: 'ticket_responses'
+          resources :responses, only: [:create], controller: "ticket_responses"
         end
 
         namespace :admin do
