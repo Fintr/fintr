@@ -317,7 +317,7 @@ GEM
       ostruct (>= 0.2)
     ostruct (0.6.1)
     parallel (1.27.0)
-    parallel_tests (5.2.0)
+    parallel_tests (5.4.0)
       parallel
     parser (3.3.8.0)
       ast (~> 2.4.1)
@@ -546,7 +546,7 @@ DEPENDENCIES
   mini_magick (~> 4.12)
   money-rails (~> 1.15)
   oj (~> 3.16)
-  parallel_tests (~> 5.2)
+  parallel_tests (~> 5.4)
   pg (~> 1.1)
   pry-rails (~> 0.3.11)
   puma (>= 5.0)
