@@ -6,7 +6,7 @@ module Transactions
       queue_as :default
 
       def perform(date: Date.current)
-        parsed_date = Date.parse(date) if date.is_a?(String)
+        parsed_date = date.is_a?(String) ? Date.parse(date) : date
         query = Transactions::Transfer.where(balance_state: "pending", date: parsed_date.beginning_of_day..parsed_date.end_of_day)
 
         query.find_each(batch_size: 100) do |transfer|

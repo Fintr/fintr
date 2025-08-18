@@ -138,15 +138,17 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
     end
     let(:base64_image) { "data:image/jpeg;base64,dummy_base64_image_data" }
     let(:space_categories) { ["Groceries", "Restaurants"] }
+    let(:space_accounts) { ["Cash", "Bank Account"] }
     let(:ai_response_content) do
       <<~JSON
-        {"total_amount": "50.00", "category": "Groceries", "confidence": "high", "merchant_detected": "Whole Foods"}
+        {"total_amount": "50.00", "category": "Groceries", "account": "Cash", "confidence": "high", "merchant_detected": "Whole Foods"}
       JSON
     end
     let(:parsed_data) do
       {
         "total_amount" => "50.00",
         "category" => "Groceries",
+        "account" => "Cash",
         "confidence" => "high",
         "merchant_detected" => "Whole Foods"
       }
@@ -155,13 +157,15 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
       {
         total_amount: { value: "50.00", confidence_score: 0.90 },
         category: { value: "Groceries", confidence_score: 0.90 },
+        account: { value: "Cash", confidence_score: 0.90 },
         merchant: { value: "Whole Foods", confidence_score: 0.90 }
       }
     end
     let(:final_result) do
       {
         extracted_fields: validated_data,
-        suggested_category: "Groceries"
+        suggested_category: "Groceries",
+        suggested_account: "Cash"
       }
     end
 
@@ -186,6 +190,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         # Mock external dependencies for a successful full flow
         allow(Spaces::Space).to receive(:find).with(space_id).and_return(space) # Use find method
         allow(space).to receive(:expense_categories).and_return(instance_double(ActiveRecord::Relation, pluck: space_categories))
+        allow(space).to receive(:accounts).and_return(instance_double(ActiveRecord::Relation, pluck: space_accounts))
         allow(File).to receive(:binread).with(image_path).and_return("dummy image data")
         allow(Base64).to receive(:strict_encode64).and_return("ZHVtbXkgaW1hZ2UgZGF0YQ==")
 
@@ -338,6 +343,46 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
       end
     end
 
+    describe "#fetch_space_accounts" do
+      let(:account1) { create(:account, name: "Cash", space:) }
+      let(:account2) { create(:account, name: "Bank", space:) }
+
+      before do
+        account1
+        account2
+      end
+
+      context "when space has accounts" do
+        it "returns success with the account names" do
+          result = operation.__send__(:fetch_space_accounts, space:)
+          expect(result).to be_success
+          expect(result.value!).to contain_exactly("Cash", "Bank")
+        end
+      end
+
+      context "when space has no accounts" do
+        let(:space_without_accounts) { create(:space) }
+
+        it "returns success with default account labels" do
+          result = operation.__send__(:fetch_space_accounts, space: space_without_accounts)
+          expect(result).to be_success
+          expect(result.value!).to match_array(Transactions::Account::ACCOUNT_CATEGORY_LABELS.values)
+        end
+      end
+
+      context "when an error occurs" do
+        before do
+          allow(space).to receive(:accounts).and_raise(StandardError, "Database error for accounts")
+        end
+
+        it "returns failure with an error message" do
+          result = operation.__send__(:fetch_space_accounts, space:)
+          expect(result).to be_failure
+          expect(result.failure).to include(accounts_error: 'Failed to fetch accounts')
+        end
+      end
+    end
+
     describe "#encode_image_to_base64" do
       let(:test_image_path) { Rails.root.join("spec/fixtures/files/test_image.png").to_s }
 
@@ -430,7 +475,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
       end
 
       it "calls OpenAI API and returns success with content" do
-        result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:)
+        result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
         expect(result).to be_success
         expect(result.value!).to eq("{\"total_amount\": \"50.00\", \"category\": \"Food\", \"confidence\": \"high\"}")
       end
@@ -441,7 +486,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         end
 
         it "returns failure" do
-          result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:)
+          result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
           expect(result).to be_failure
           expect(result.failure).to include(ai_error: 'No response from OpenAI Vision')
         end
@@ -453,7 +498,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         end
 
         it "returns failure" do
-          result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:)
+          result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
           expect(result).to be_failure
           expect(result.failure).to include(ai_vision_error: 'OpenAI Vision API call failed')
         end
@@ -464,7 +509,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
       let(:space_categories) { ["Groceries", "Dining", "Transport"] }
 
       it "builds the system prompt correctly with categories" do
-        result = operation.__send__(:build_vision_system_prompt, space_categories)
+        result = operation.__send__(:build_vision_system_prompt, space_categories, [])
         expect(result).to include("Extract the transaction DATE from the receipt")
         expect(result).to include("ALWAYS provide a category suggestion")
         expect(result).to include("default to \"Groceries\"")
@@ -476,10 +521,31 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         let(:space_categories) { [] }
 
         it "builds the system prompt with default category 'Family'" do
-          result = operation.__send__(:build_vision_system_prompt, [])
+          result = operation.__send__(:build_vision_system_prompt, [], [])
           expect(result).to include("ALWAYS provide a category suggestion")
           expect(result).to include("default to \"Family\"")
           expect(result).to include("date\": \"YYYY-MM-DD\"")
+        end
+      end
+
+      context "when space_accounts are provided" do
+        let(:space_categories) { ["Groceries"] }
+        let(:space_accounts) { ["Checking", "Savings"] }
+
+        it "builds the system prompt correctly with accounts" do
+          result = operation.__send__(:build_vision_system_prompt, space_categories, space_accounts)
+          expect(result).to include("Checking, Savings")
+          expect(result).to include("default to \"Checking\"")
+        end
+      end
+
+      context "when space_accounts is empty" do
+        let(:space_categories) { ["Groceries"] }
+        let(:space_accounts) { [] }
+
+        it "builds the system prompt with default account 'Cash'" do
+          result = operation.__send__(:build_vision_system_prompt, space_categories, space_accounts)
+          expect(result).to include("default to \"Cash\"")
         end
       end
     end
@@ -548,6 +614,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
 
     describe "#validate_extracted_data" do
       let(:space_categories) { ["Groceries", "Dining", "Transportation", "Family"] }
+      let(:space_accounts) { ["Cash", "Bank Account", "Credit Card", "E-Wallet", "Investment"] }
 
       context "with valid extracted data" do
         let(:parsed_data) do
@@ -560,7 +627,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         end
 
         it "returns success with validated data" do
-          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:)
+          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:, space_accounts:)
           expect(result).to be_success
           expect(result.value!).to include(
             total_amount: { value: "123.45", confidence_score: 0.90 },
@@ -574,7 +641,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         let(:parsed_data) { nil }
 
         it "returns failure" do
-          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:)
+          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:, space_accounts:)
           expect(result).to be_failure
           expect(result.failure).to eq('Parsed data is missing')
         end
@@ -590,7 +657,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         end
 
         it "returns success without total_amount but with category" do
-          result = operation.__send__(:validate_extracted_data, parsed_data: parsed_data_without_total, space_categories:)
+          result = operation.__send__(:validate_extracted_data, parsed_data: parsed_data_without_total, space_categories:, space_accounts:)
           expect(result).to be_success
           expect(result.value!).to include(:category)
           expect(result.value!).not_to include(:total_amount)
@@ -609,7 +676,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         end
 
         it "returns success without total_amount" do
-          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:)
+          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:, space_accounts:)
           expect(result).to be_success
           expect(result.value!).not_to have_key(:total_amount)
         end
@@ -625,7 +692,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         end
 
         it "returns success with default category 'Groceries'" do
-          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:)
+          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:, space_accounts:)
           expect(result).to be_success
           expect(result.value![:category][:value]).to eq("Groceries")
         end
@@ -642,7 +709,7 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         end
 
         it "returns success with default category 'Groceries'" do
-          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:)
+          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:, space_accounts:)
           expect(result).to be_success
           expect(result.value![:category][:value]).to eq("Groceries")
         end
@@ -659,9 +726,62 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
         end
 
         it "returns success with the correctly cased category" do
-          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:)
+          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:, space_accounts:)
           expect(result).to be_success
           expect(result.value![:category][:value]).to eq("Groceries")
+        end
+      end
+
+      context "with missing account" do
+        let(:parsed_data) do
+          {
+            "total_amount" => "10.00",
+            "category" => "Groceries",
+            "confidence" => "high",
+            "merchant_detected" => "Store A"
+          }
+        end
+
+        it "returns success with default account 'Cash'" do
+          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:, space_accounts:)
+          expect(result).to be_success
+          expect(result.value![:account][:value]).to eq("Cash")
+        end
+      end
+
+      context "with account not in space_accounts" do
+        let(:parsed_data) do
+          {
+            "total_amount" => "25.00",
+            "category" => "Groceries",
+            "account" => "Crypto Wallet", # Not in account_list
+            "confidence" => "high",
+            "merchant_detected" => "Exchange"
+          }
+        end
+
+        it "returns success with default account 'Cash'" do
+          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:, space_accounts:)
+          expect(result).to be_success
+          expect(result.value![:account][:value]).to eq("Cash")
+        end
+      end
+
+      context "with a case-insensitive account match" do
+        let(:parsed_data) do
+          {
+            "total_amount" => "25.00",
+            "category" => "Groceries",
+            "account" => "cash", # Lowercase
+            "confidence" => "high",
+            "merchant_detected" => "ShopRite"
+          }
+        end
+
+        it "returns success with the correctly cased account" do
+          result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:, space_accounts:)
+          expect(result).to be_success
+          expect(result.value![:account][:value]).to eq("Cash")
         end
       end
     end
@@ -700,46 +820,62 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
       end
     end
 
-    describe "#clean_category" do
-      let(:space_categories) { ["Groceries", "Dining", "Transportation", "Family"] }
+    describe "#clean_item" do
+      let(:item_list) { ["Item1", "Item2", "Item3"] }
+      let(:account_list) { ["Cash", "Bank Account", "Credit Card", "E-Wallet", "Investment"] }
+      let(:space_categories) { ["Groceries", "Dining", "Transportation", "Family"] } # Added space_categories here
 
-      context "with exact match" do
-        it "returns the category" do
-          expect(operation.__send__(:clean_category, "Groceries", space_categories)).to eq("Groceries")
+      context "with exact match for a generic item" do
+        it "returns the item" do
+          expect(operation.__send__(:clean_item, "Item1", item_list)).to eq("Item1")
         end
       end
 
-      context "with case-insensitive match" do
-        it "returns the correctly cased category" do
-          expect(operation.__send__(:clean_category, "groceries", space_categories)).to eq("Groceries")
+      context "with case-insensitive match for a generic item" do
+        it "returns the correctly cased item" do
+          expect(operation.__send__(:clean_item, "item1", item_list)).to eq("Item1")
         end
       end
 
-      context "with no match" do
-        it "returns the first space category as default if available" do
-          expect(operation.__send__(:clean_category, "Electronics", space_categories)).to eq("Groceries")
-        end
-
-        it "returns 'Family' if space categories are empty" do
-          expect(operation.__send__(:clean_category, "Electronics", [])).to eq("Family")
+      context "with no match for a generic item" do
+        it "returns the first item in the list as default" do
+          expect(operation.__send__(:clean_item, "NonExistent", item_list)).to eq("Item1")
         end
       end
 
-      context "with blank category string" do
-        it "returns the first space category as default" do
-          expect(operation.__send__(:clean_category, "", space_categories)).to eq("Groceries")
+      context "with blank item string for a generic item" do
+        it "returns the first item in the list as default" do
+          expect(operation.__send__(:clean_item, "", item_list)).to eq("Item1")
         end
       end
 
-      context "with nil category string" do
-        it "returns the first space category as default" do
-          expect(operation.__send__(:clean_category, nil, space_categories)).to eq("Groceries")
+      context "with nil item string for a generic item" do
+        it "returns the first item in the list as default" do
+          expect(operation.__send__(:clean_item, nil, item_list)).to eq("Item1")
         end
       end
 
-      context "with 'null' category string" do
-        it "returns the first space category as default" do
-          expect(operation.__send__(:clean_category, "null", space_categories)).to eq("Groceries")
+      context "with 'null' item string for a generic item" do
+        it "returns the first item in the list as default" do
+          expect(operation.__send__(:clean_item, "null", item_list)).to eq("Item1")
+        end
+      end
+
+      context "with exact match for an account" do
+        it "returns the account" do
+          expect(operation.__send__(:clean_item, "Cash", account_list)).to eq("Cash")
+        end
+      end
+
+      context "with case-insensitive match for an account" do
+        it "returns the correctly cased account" do
+          expect(operation.__send__(:clean_item, "cash", account_list)).to eq("Cash")
+        end
+      end
+
+      context "with no match for an account" do
+        it "returns the first account in the list as default" do
+          expect(operation.__send__(:clean_item, "Crypto Wallet", account_list)).to eq("Cash")
         end
       end
     end
@@ -778,7 +914,8 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
           expect(result).to be_success
           expect(result.value!).to eq(
             extracted_fields: validated_data_with_category,
-            suggested_category: "Groceries"
+            suggested_category: "Groceries",
+            suggested_account: validated_data_with_category.dig(:account, :value) || "Cash"
           )
         end
       end
@@ -796,7 +933,8 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
           expect(result).to be_success
           expect(result.value!).to eq(
             extracted_fields: validated_data_without_category,
-            suggested_category: "Family"
+            suggested_category: "Family",
+            suggested_account: validated_data_without_category.dig(:account, :value) || "Cash"
           )
         end
       end
@@ -809,7 +947,8 @@ RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation 
           expect(result).to be_success
           expect(result.value!).to eq(
             extracted_fields: {},
-            suggested_category: "Family"
+            suggested_category: "Family",
+            suggested_account: empty_validated_data.dig(:account, :value) || "Cash"
           )
         end
       end

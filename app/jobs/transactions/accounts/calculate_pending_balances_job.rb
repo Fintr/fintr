@@ -6,8 +6,9 @@ module Transactions
       queue_as :default
 
       def perform(date: Date.current)
-        parsed_date = Date.parse(date) if date.is_a?(String)
-        query = Transactions::Transaction.where(balance_state: "pending", date: parsed_date.beginning_of_day..parsed_date.end_of_day)
+        parsed_date = date.is_a?(String) ? Date.parse(date) : date
+        query = Transactions::Transaction.where(balance_state: "pending",
+                                                date: parsed_date.beginning_of_day..parsed_date.end_of_day)
 
         query.find_each(batch_size: 100) do |transaction|
           Operations::Accounts::CalculateBalance.new.call(transaction_id: transaction.id)

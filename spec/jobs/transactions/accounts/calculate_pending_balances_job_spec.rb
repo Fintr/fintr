@@ -22,8 +22,8 @@ RSpec.describe Transactions::Accounts::CalculatePendingBalancesJob, type: :job d
       it 'processes each pending transaction with CalculateBalance operation' do
         job.perform
 
-        expect(operation_instance).to have_received(:call).with(params: { transaction_id: pending_transaction1.id })
-        expect(operation_instance).to have_received(:call).with(params: { transaction_id: pending_transaction2.id })
+        expect(operation_instance).to have_received(:call).with(transaction_id: pending_transaction1.id)
+        expect(operation_instance).to have_received(:call).with(transaction_id: pending_transaction2.id)
       end
     end
 
@@ -46,17 +46,35 @@ RSpec.describe Transactions::Accounts::CalculatePendingBalancesJob, type: :job d
       let!(:pending_transaction2) { create(:transaction, balance_state: 'pending', date: today) }
 
       before do
-        allow(operation_instance).to receive(:call).with(params: { transaction_id: pending_transaction1.id })
+        allow(operation_instance).to receive(:call).with(transaction_id: pending_transaction1.id)
           .and_return(Dry::Monads::Success())
-        allow(operation_instance).to receive(:call).with(params: { transaction_id: pending_transaction2.id })
+        allow(operation_instance).to receive(:call).with(transaction_id: pending_transaction2.id)
           .and_return(Dry::Monads::Failure(account: 'not found'))
       end
 
       it 'continues processing all transactions' do
         job.perform
 
-        expect(operation_instance).to have_received(:call).with(params: { transaction_id: pending_transaction1.id })
-        expect(operation_instance).to have_received(:call).with(params: { transaction_id: pending_transaction2.id })
+        expect(operation_instance).to have_received(:call).with(transaction_id: pending_transaction1.id)
+        expect(operation_instance).to have_received(:call).with(transaction_id: pending_transaction2.id)
+      end
+    end
+
+    context 'when a specific date is passed' do
+      let(:specific_date) { Date.new(2023, 1, 1) }
+      let!(:pending_transaction_for_specific_date) do
+        create(:transaction, balance_state: 'pending', date: specific_date)
+      end
+
+      before do
+        create(:transaction, balance_state: 'pending', date: today) # Not for specific date
+      end
+
+      it 'processes only pending transactions for the specified date' do
+        job.perform(date: specific_date.to_s)
+
+        expect(operation_instance).to have_received(:call).once
+        expect(operation_instance).to have_received(:call).with(transaction_id: pending_transaction_for_specific_date.id)
       end
     end
   end

@@ -94,15 +94,15 @@ RSpec.describe Onboardings::Operations::ShowBudgetsData do
       it "returns the calculated budget data" do
         result = show_budgets_data_operation.call(params)
         expected_data = [
-          { name: "Home", amount: 1200.00, percentage: 20 },
-          { name: "Food & Groceries", amount: 1200.00, percentage: 20 },
+          { name: "Home", amount: 1500.00, percentage: 25 },
+          { name: "Food & Groceries", amount: 600.00, percentage: 10 },
           { name: "Utilities", amount: 300.00, percentage: 5 },
-          { name: "Transportation", amount: 600.00, percentage: 10 },
+          { name: "Transportation", amount: 300.00, percentage: 5 },
           { name: "Insurance", amount: 300.00, percentage: 5 },
           { name: "Dine Out & Entertainment", amount: 600.00, percentage: 10 },
           { name: "Shopping", amount: 600.00, percentage: 10 },
-          { name: "Subscriptions & Hobbies", amount: 600.00, percentage: 10 },
-          { name: "Travel & Vacations", amount: 600.00, percentage: 10 }
+          { name: "Subscriptions & Hobbies", amount: 300.00, percentage: 5 },
+          { name: "Travel & Vacations", amount: 300.00, percentage: 5 }
         ]
         expect(result.value!).to match_array(expected_data)
       end

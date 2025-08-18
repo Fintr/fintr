@@ -369,7 +369,8 @@ module Receipts
       def prepare_extraction_result(validated_data:)
         result = {
           extracted_fields: validated_data,
-          suggested_category: validated_data.dig(:category, :value) || "Family"
+          suggested_category: validated_data.dig(:category, :value) || "Family",
+          suggested_account: validated_data.dig(:account, :value) || "Cash"
         }
 
         Success(result)
