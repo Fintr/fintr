@@ -14,7 +14,7 @@ gem "bootsnap", require: false
 gem "thruster", require: false
 gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
-gem "kamal", "~> 2.6"
+gem "kamal", "~> 2.7"
 gem "aws-sdk-s3", "~> 1.183"
 gem "csv", "~> 3.3"
 

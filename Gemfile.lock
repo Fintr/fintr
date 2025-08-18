@@ -226,7 +226,7 @@ GEM
     json (2.11.3)
     jwt (2.10.2)
       base64
-    kamal (2.6.1)
+    kamal (2.7.0)
       activesupport (>= 7.0)
       base64 (~> 0.2)
       bcrypt_pbkdf (~> 1.0)
@@ -315,7 +315,7 @@ GEM
     oj (3.16.11)
       bigdecimal (>= 3.0)
       ostruct (>= 0.2)
-    ostruct (0.6.1)
+    ostruct (0.6.2)
     parallel (1.27.0)
     parallel_tests (5.4.0)
       parallel
@@ -541,7 +541,7 @@ DEPENDENCIES
   factory_bot_rails
   ice_cube (~> 0.17.0)
   jwt (~> 2.7)
-  kamal (~> 2.6)
+  kamal (~> 2.7)
   kaminari (~> 1.2)
   mini_magick (~> 4.12)
   money-rails (~> 1.15)
