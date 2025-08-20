@@ -74,6 +74,8 @@ module Transactions
         end
 
         def update_balances(from:, transfer:, from_account:, to_account:)
+          from_account.reload
+          to_account.reload
           case from
           when :previous
             # Revert previous transfer effects

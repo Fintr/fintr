@@ -49,6 +49,7 @@ module Transactions
         end
 
         def update_balance(from:, transaction:, account:)
+          account.reload
           case from
           when :previous
             account.balance_cents -= step transaction_amount(transaction:, from:)
