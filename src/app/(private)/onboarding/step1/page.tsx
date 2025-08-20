@@ -9,7 +9,7 @@ import { FloatingInput } from "@/components/ui/floating-input";
 import { onboardingDataAtom, onboardingStepAtom } from "@/atoms/onboardingAtoms";
 import { useOnboarding } from "@/hooks/async/useOnboarding";
 import { toast } from "sonner";
-import { DollarSign, ArrowRight, ArrowLeft } from "lucide-react";
+import { PhilippinePeso, ArrowRight, ArrowLeft } from "lucide-react";
 
 export default function OnboardingStep1() {
   const router = useRouter();
@@ -88,7 +88,7 @@ export default function OnboardingStep1() {
         <Card className="shadow-lg border-border">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
-              <DollarSign className="h-8 w-8 text-primary" />
+              <PhilippinePeso className="h-8 w-8 text-primary" />
             </div>
             <CardTitle className="text-2xl">Tell us about your income</CardTitle>
             <CardDescription>
