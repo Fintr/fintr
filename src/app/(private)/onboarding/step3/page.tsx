@@ -200,7 +200,8 @@ export default function OnboardingStep3() {
             </div>
             <CardTitle className="text-2xl">Accounts Set-Up</CardTitle>
             <CardDescription>
-              Add your bank accounts, cards, and other financial accounts
+              Add your bank accounts, cards, and other financial accounts <br /> <br />
+              Click the account/s where your salary and/or business income comes in. Fintr will automatically add it every 1st of the month, so you don’t have to.
             </CardDescription>
           </CardHeader>
           
