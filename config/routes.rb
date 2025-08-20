@@ -61,7 +61,11 @@ Rails.application.routes.draw do
         end
       end
 
-      resource :dashboard, only: [:show]
+      resource :dashboard, only: [:show] do
+        collection do
+          post :reset_data
+        end
+      end
     end
   end
 

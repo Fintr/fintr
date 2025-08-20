@@ -41,13 +41,6 @@ RSpec.describe Spaces::Space, type: :model do
         space.create_default_transaction_categories
       end
     end
-
-    describe '#create_starting_budgets' do
-      it 'delegates to Budget.create_starting_budgets' do
-        expect(Budget).to receive(:create_starting_budgets).with(space)
-        space.create_starting_budgets
-      end
-    end
   end
 
   describe 'factory' do

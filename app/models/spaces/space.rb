@@ -23,9 +23,5 @@ module Spaces
     def create_default_transaction_categories
       Transactions::Category.create_default_categories(self)
     end
-
-    def create_starting_budgets
-      Budget.create_starting_budgets(self)
-    end
   end
 end

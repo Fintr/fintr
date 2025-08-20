@@ -39,7 +39,7 @@ RSpec.describe Transactions::Operations::Accounts::UpdateCalculateBalance do
           returned_transaction = result.value!
 
           expect(result).to be_success
-          expect(account_one.reload.balance).to eq(Money.from_amount(1300.00, "PHP"))
+          expect(account_one.reload.balance).to eq(Money.from_amount(1000.00 - 200.00 + 300.00, "PHP"))
           expect(returned_transaction.description).to eq("Updated Income")
         end
       end

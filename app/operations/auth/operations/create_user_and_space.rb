@@ -47,7 +47,6 @@ module Auth
         space.save!
 
         space.create_default_transaction_categories
-        space.create_starting_budgets
 
         Success(space)
       rescue ActiveRecord::RecordInvalid

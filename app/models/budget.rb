@@ -19,22 +19,6 @@ class Budget < ApplicationRecord
     category.transactions.where(space:, date: date.all_month)
   end
 
-  def self.create_starting_budgets(space)
-    transaction do
-      space.categories.expense.each do |category|
-        Budget.create!(
-          space:,
-          category:,
-          amount_cents: 0,
-          amount_currency: "PHP",
-          spent_cents: 0,
-          spent_currency: "PHP",
-          date: Time.zone.today
-        )
-      end
-    end
-  end
-
   private
 
   def category_is_expense
