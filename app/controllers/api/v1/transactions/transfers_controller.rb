@@ -8,7 +8,7 @@ module Api
           params = with_current_params(create_params)
           operation = ::Transactions::Operations::Transfers::CreateTransfer.new.call(params:)
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_created(record: operation.value!)
         end
@@ -23,7 +23,7 @@ module Api
           params = with_current_params(update_params)
           operation = ::Transactions::Operations::Transfers::UpdateTransfer.new.call(params)
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_success(data: operation.value!)
         end
@@ -32,7 +32,7 @@ module Api
           params = with_current_params(destroy_params)
           operation = ::Transactions::Operations::Transfers::DeleteTransfer.new.call(params)
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_success(data: operation.value!)
         end

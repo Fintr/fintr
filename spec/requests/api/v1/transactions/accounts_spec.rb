@@ -68,7 +68,7 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
         post "/api/v1/transactions/accounts", params: invalid_params, headers: headers
 
         # Check response
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to include('application/json')
 
         parsed_response = JSON.parse(response.body)
@@ -97,7 +97,7 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
         post "/api/v1/transactions/accounts", params: duplicate_params, headers: headers
 
         # Check response
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to include('application/json')
 
         parsed_response = JSON.parse(response.body)
@@ -159,7 +159,7 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
 
         put "/api/v1/transactions/accounts/#{account_to_update.id}", params: invalid_params, headers: headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to include('application/json')
 
         parsed_response = JSON.parse(response.body)
@@ -216,7 +216,7 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
 
         get "/api/v1/transactions/accounts", headers: headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to include('application/json')
 
         parsed_response = JSON.parse(response.body)
@@ -262,7 +262,7 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
 
         delete "/api/v1/transactions/accounts/#{account_with_transactions.id}", headers: headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to include('application/json')
 
         parsed_response = JSON.parse(response.body)
@@ -279,7 +279,7 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
 
         delete "/api/v1/transactions/accounts/invalid-id", headers: headers
 
-        expect(response).to have_http_status(:unprocessable_entity) # Changed to unprocessable_entity
+        expect(response).to have_http_status(:unprocessable_content) # Changed to unprocessable_content
         expect(response.content_type).to include('application/json')
 
         parsed_response = JSON.parse(response.body)
@@ -296,7 +296,7 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
 
         delete "/api/v1/transactions/accounts/#{account_to_delete.id}", headers: headers, params: { id: account_to_delete.id }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to include('application/json')
 
         parsed_response = JSON.parse(response.body)

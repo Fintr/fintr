@@ -190,7 +190,7 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
                 params: { status: 'invalid_status' },
                 headers: headers
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
           parsed_response = JSON.parse(response.body)
           expect(parsed_response).to include('success' => false)
           expect(parsed_response['error']).to include('details')
@@ -275,7 +275,7 @@ RSpec.describe 'Api::V1::Crm::Admin::Tickets', type: :request do
                params: { message: '' },
                headers: headers
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
           parsed_response = JSON.parse(response.body)
           expect(parsed_response).to include('success' => false)
           expect(parsed_response['error']).to include('details')

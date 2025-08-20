@@ -65,7 +65,7 @@ RSpec.describe "API V1 Transaction Categories", type: :request do
         post "/api/v1/transactions/categories", params: invalid_params, headers: headers
 
         # Check response
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to include('application/json')
 
         parsed_response = JSON.parse(response.body)
@@ -125,7 +125,7 @@ RSpec.describe "API V1 Transaction Categories", type: :request do
 
         put "/api/v1/transactions/categories/#{category_to_update.id}", params: invalid_params, headers: headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to include('application/json')
 
         parsed_response = JSON.parse(response.body)
@@ -182,7 +182,7 @@ RSpec.describe "API V1 Transaction Categories", type: :request do
 
         delete "/api/v1/transactions/categories/#{category_to_delete.id}", params: invalid_params, headers: headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(response.content_type).to include('application/json')
 
         parsed_response = JSON.parse(response.body)

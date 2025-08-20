@@ -72,8 +72,8 @@ RSpec.describe 'Api::V1::Budgets', type: :request do
         get api_v1_budgets_path, params: { space_code: space.code, date: date_param }, headers: headers
       end
 
-      it 'returns an HTTP status_unprocessable_entity' do
-        expect(response).to have_http_status(:unprocessable_entity)
+      it 'returns an HTTP status_unprocessable_content' do
+        expect(response).to have_http_status(:unprocessable_content)
       end
 
       it 'returns the failure details nested under error.details in the response body' do
@@ -181,8 +181,8 @@ RSpec.describe 'Api::V1::Budgets', type: :request do
         put api_v1_budget_path(budget), params: valid_update_params, headers: headers
       end
 
-      it 'returns an HTTP status_unprocessable_entity' do
-        expect(response).to have_http_status(:unprocessable_entity)
+      it 'returns an HTTP status_unprocessable_content' do
+        expect(response).to have_http_status(:unprocessable_content)
       end
 
       it 'returns the failure details in the response body' do
@@ -280,8 +280,8 @@ RSpec.describe 'Api::V1::Budgets', type: :request do
         post api_v1_budgets_path, params: valid_create_params, headers: headers
       end
 
-      it 'returns an HTTP status_unprocessable_entity' do
-        expect(response).to have_http_status(:unprocessable_entity)
+      it 'returns an HTTP status_unprocessable_content' do
+        expect(response).to have_http_status(:unprocessable_content)
       end
 
       it 'returns the failure details in the response body' do

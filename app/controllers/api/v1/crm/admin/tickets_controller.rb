@@ -33,7 +33,7 @@ module Api
               with_current_params(update_params.merge(id: @ticket.id))
             )
 
-            return render_unprocessable_entity(details: operation.failure) unless operation.success?
+            return render_unprocessable_content(details: operation.failure) unless operation.success?
 
             render_success(
               data: { id: operation.value!.id },
@@ -46,7 +46,7 @@ module Api
               with_current_params(response_params.merge(ticket_id: params[:id]))
             )
 
-            return render_unprocessable_entity(details: operation.failure) unless operation.success?
+            return render_unprocessable_content(details: operation.failure) unless operation.success?
 
             render_created(record: operation.value!)
           end

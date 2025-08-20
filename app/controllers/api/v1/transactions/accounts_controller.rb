@@ -7,7 +7,7 @@ module Api
         def index
           operation = ::Transactions::Operations::Accounts::ShowAccounts.new.call(with_current_params)
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           account_category_options = ::Transactions::Account.account_category_options
 
@@ -17,7 +17,7 @@ module Api
         def create
           operation = ::Transactions::Operations::Accounts::CreateAccount.new.call(with_current_params(create_params))
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_created(record: operation.value!)
         end
@@ -25,7 +25,7 @@ module Api
         def update
           operation = ::Transactions::Operations::Accounts::UpdateAccount.new.call(with_current_params(update_params))
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_success(data: operation.value!)
         end
@@ -33,7 +33,7 @@ module Api
         def destroy
           operation = ::Transactions::Operations::Accounts::DeleteAccount.new.call(with_current_params(delete_params))
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_success(data: operation.value!)
         end

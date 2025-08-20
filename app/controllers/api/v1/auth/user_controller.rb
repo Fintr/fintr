@@ -23,7 +23,7 @@ module Api
           if result.success?
             render_success(message: result.value!)
           else
-            render_unprocessable_entity(details: result.failure)
+            render_unprocessable_content(details: result.failure)
           end
         end
 

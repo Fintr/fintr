@@ -257,7 +257,7 @@ RSpec.describe 'Api::V1::Crm::Tickets', type: :request do
                params: { title: '', description: '' },
                headers: headers
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
           parsed_response = JSON.parse(response.body)
           expect(parsed_response).to include('success' => false)
           expect(parsed_response['error']).to include('details')
@@ -277,7 +277,7 @@ RSpec.describe 'Api::V1::Crm::Tickets', type: :request do
                params: { description: 'Some description' },
                headers: headers
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
           parsed_response = JSON.parse(response.body)
           expect(parsed_response).to include('success' => false)
           expect(parsed_response['error']['details']).to include('title')
@@ -306,7 +306,7 @@ RSpec.describe 'Api::V1::Crm::Tickets', type: :request do
                params: params_with_too_many_images,
                headers: headers
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
           parsed_response = JSON.parse(response.body)
           expect(parsed_response).to include('success' => false)
           expect(parsed_response['error']['details']).to include('images')

@@ -91,7 +91,7 @@ RSpec.describe 'Api::V1::Crm::TicketResponses', type: :request do
                params: { message: '' },
                headers: headers
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
           parsed_response = JSON.parse(response.body)
           expect(parsed_response).to include('success' => false)
           expect(parsed_response['error']).to include('details')
@@ -147,7 +147,7 @@ RSpec.describe 'Api::V1::Crm::TicketResponses', type: :request do
              params: {},
              headers: headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
 
@@ -164,7 +164,7 @@ RSpec.describe 'Api::V1::Crm::TicketResponses', type: :request do
              params: { message: long_message },
              headers: headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         parsed_response = JSON.parse(response.body)
         expect(parsed_response['error']['details']).to include('message')
       end
@@ -190,7 +190,7 @@ RSpec.describe 'Api::V1::Crm::TicketResponses', type: :request do
              params: { message: 'Test message', images: images },
              headers: headers
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         parsed_response = JSON.parse(response.body)
         expect(parsed_response['error']['details']).to include('images')
       end

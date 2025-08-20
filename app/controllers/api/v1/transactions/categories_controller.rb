@@ -7,7 +7,7 @@ module Api
         def index
           operation = ::Transactions::Operations::Categories::ShowAllCategories.new.call(with_current_params)
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_success(data: operation.value!)
         end
@@ -15,7 +15,7 @@ module Api
         def create
           operation = ::Transactions::Operations::Categories::CreateCategory.new.call(with_current_params(create_params))
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_created(record: operation.value!)
         end
@@ -23,7 +23,7 @@ module Api
         def update
           operation = ::Transactions::Operations::Categories::UpdateCategory.new.call(with_current_params(update_params))
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_success(data: { id: operation.value!.id, name: operation.value!.name }, message: "Category updated successfully")
         end
@@ -31,7 +31,7 @@ module Api
         def destroy
           operation = ::Transactions::Operations::Categories::DeleteCategory.new.call(with_current_params(destroy_params))
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_success(message: "Category deleted successfully")
         end

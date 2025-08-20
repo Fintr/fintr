@@ -16,7 +16,7 @@ module Api
           if whitelist.save
             render_success(data: whitelist)
           else
-            render_unprocessable_entity(details: whitelist.errors.full_messages)
+            render_unprocessable_content(details: whitelist.errors.full_messages)
           end
         end
 
@@ -26,7 +26,7 @@ module Api
           if whitelist.update(email: params[:email])
             render_success(data: whitelist)
           else
-            render_unprocessable_entity(details: whitelist.errors.full_messages)
+            render_unprocessable_content(details: whitelist.errors.full_messages)
           end
         end
 
@@ -36,7 +36,7 @@ module Api
           if whitelist.destroy
             render_success(message: "Whitelist deleted")
           else
-            render_unprocessable_entity(details: whitelist.errors.full_messages)
+            render_unprocessable_content(details: whitelist.errors.full_messages)
           end
         end
 

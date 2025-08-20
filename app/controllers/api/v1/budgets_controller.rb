@@ -5,21 +5,21 @@ module Api
     class BudgetsController < ApiController
       def index
         operation = Budgets::Operations::PrepareMonthlyReport.new.call(index_params)
-        return render_unprocessable_entity(details: operation.failure) unless operation.success?
+        return render_unprocessable_content(details: operation.failure) unless operation.success?
 
         render_success(data: operation.value!)
       end
 
       def create
         operation = Budgets::Operations::CreateBudget.new.call(with_current_params(create_params))
-        return render_unprocessable_entity(details: operation.failure) unless operation.success?
+        return render_unprocessable_content(details: operation.failure) unless operation.success?
 
         render_created(record: operation.value!)
       end
 
       def update
         operation = Budgets::Operations::UpdateBudget.new.call(with_current_params(update_params))
-        return render_unprocessable_entity(details: operation.failure) unless operation.success?
+        return render_unprocessable_content(details: operation.failure) unless operation.success?
 
         render_created(record: operation.value!)
       end

@@ -11,7 +11,7 @@ module Api
             with_current_params(create_params.merge(ticket_id: @ticket.id))
           )
 
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_created(record: operation.value!)
         end

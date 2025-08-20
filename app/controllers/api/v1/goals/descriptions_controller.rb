@@ -7,7 +7,7 @@ module Api
         def update
           params = with_current_params(goal_params)
           operation = ::Goals::Operations::UpdateGoalDescription.new.call(params)
-          return render_unprocessable_entity(details: operation.failure) unless operation.success?
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
 
           render_success(data: operation.value!)
         end

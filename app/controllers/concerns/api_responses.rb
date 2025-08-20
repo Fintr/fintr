@@ -49,8 +49,8 @@ module ApiResponses
   end
 
   # Often used for validation errors. `details` can contain the error messages.
-  def render_unprocessable_entity(message: "Unprocessable Entity", details: nil)
-    render_error(message:, status: :unprocessable_entity, details:)
+  def render_unprocessable_content(message: "Unprocessable Entity", details: nil)
+    render_error(message:, status: :unprocessable_content, details:)
   end
 
   def render_internal_server_error(message: "Internal Server Error", details: nil)
@@ -62,6 +62,6 @@ module ApiResponses
   # Helper specifically for ActiveRecord validation errors
   def render_validation_errors(*records)
     details = records.map { |record| [record.class.name.demodulize, record.errors] }.to_h
-    render_unprocessable_entity(message: "Validation Failed", details:)
+    render_unprocessable_content(message: "Validation Failed", details:)
   end
 end

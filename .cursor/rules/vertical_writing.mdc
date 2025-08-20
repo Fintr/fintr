@@ -31,13 +31,13 @@ new_user = Auth::User.create(
 
 render_error(
   message: "Specific error occurred",
-  status: :unprocessable_entity,
+  status: :unprocessable_content,
   details: { field: "value", issue: "too long" }
 )
 
 # Avoid (Horizontal)
 new_user = Auth::User.create(email: params[:email], full_name: params[:full_name], auth_id: params[:auth_id], photo_url: params[:photo_url])
-render_error(message: "Specific error occurred", status: :unprocessable_entity, details: { field: "value", issue: "too long" })
+render_error(message: "Specific error occurred", status: :unprocessable_content, details: { field: "value", issue: "too long" })
 ```
 
 ### Method Definitions (Including Rails Declarations like `has_many`, `validates`)
