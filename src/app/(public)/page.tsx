@@ -9,7 +9,15 @@ const HeroSection = dynamic(() => import("@/components/landing-page/hero-section
   loading: () => <div className="w-full h-96 flex items-center justify-center"><LoadingSpinner size="large" /></div>
 });
 
-const DashboardPreview = dynamic(() => import("@/components/landing-page/dashboard-preview"), {
+// const DashboardPreview = dynamic(() => import("@/components/landing-page/dashboard-preview"), {
+//   loading: () => <div className="w-full h-96 flex items-center justify-center"><LoadingSpinner size="large" /></div>
+// });
+
+const MoneyProblemsSection = dynamic(() => import("@/components/landing-page/money-problems-section"), {
+  loading: () => <div className="w-full h-96 flex items-center justify-center"><LoadingSpinner size="large" /></div>
+});
+
+const FinanceAssistantSection = dynamic(() => import("@/components/landing-page/finance-assistant-section"), {
   loading: () => <div className="w-full h-96 flex items-center justify-center"><LoadingSpinner size="large" /></div>
 });
 
@@ -23,10 +31,11 @@ export default async function LandingPage() {
       <Navbar />
       <main className="pt-20">
         <HeroSection />
-        <DashboardPreview />
-        <div id="core-features">
+        <MoneyProblemsSection />
+        <FinanceAssistantSection />
+        {/* <div id="core-features">
           <CoreFeatures />
-        </div>
+        </div> */}
 
         <MobileAppSection />
         <Footer />

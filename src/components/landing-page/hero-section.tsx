@@ -10,8 +10,8 @@ interface HeroSectionProps {
 }
 
 const HeroSection = ({
-  title = "Your Tracker to Financial Freedom",
-  subtitle = "Fintr helps you understand, manage, and optimize your money with intelligent insights that put your financial safety at the frontier.",
+  title = "Save More. Spend Smarter. Afford The Life You Want.",
+  subtitle = "Your personal finance assistant. Just take a photo of your receipt, Fintr will do the rest. Ask money questions, Fintr responds with answers tailored for you.",
   logoSrc = "/fintr-logo.png",
 }: HeroSectionProps) => {
   return (
@@ -38,18 +38,9 @@ const HeroSection = ({
             </h1>
 
             <p className="text-lg md:text-xl text-primary mb-8 leading-relaxed">
-              Take control of your money to achieve your own financial freedom,
-              whatever it may be.
+              {subtitle}
             </p>
 
-            <div className="w-full max-w-md mx-auto">
-              <WaitlistForm
-                buttonText="Join the Waitlist for Early Access"
-                placeholderText="Enter your email address"
-                className="shadow-none"
-                redirectTo="/waitlist"
-              />
-            </div>
           </motion.div>
         </div>
       </div>

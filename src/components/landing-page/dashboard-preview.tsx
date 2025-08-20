@@ -19,6 +19,8 @@ import {
   Wallet,
   Target,
   CreditCard,
+  List,
+  Plus,
 } from "lucide-react";
 import { Progress } from "../ui/progress";
 
@@ -53,7 +55,7 @@ const DashboardPreview = ({
             className="bg-primary hover:bg-primary/80 text-white px-6 py-2"
             onClick={() => (window.location.href = "/dashboard")}
           >
-            Account Dashboard
+            Try Dashboard
           </Button>
         </div>
 
@@ -61,206 +63,280 @@ const DashboardPreview = ({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="bg-background rounded-xl shadow-xl overflow-hidden"
+          className="bg-white rounded-xl shadow-xl overflow-hidden border"
         >
-          {/* Mock Dashboard Header */}
-          <div className="bg-white border-b border-gray-200 p-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center">
-                <img
-                  src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
-                  alt="Fintr Logo"
-                  className="h-8 w-auto"
-                />
+          {/* Dashboard Header */}
+          <div className="bg-white border-b p-6">
+            <div className="flex flex-col space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <img
+                    src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
+                    alt="Fintr Logo"
+                    className="h-8 w-auto"
+                  />
+                  <div>
+                    <h1 className="text-xl font-semibold text-primary">Your Financial Journey</h1>
+                    <p className="text-sm text-gray-600">Track your path to financial freedom</p>
+                  </div>
+                </div>
               </div>
-              {/* 'Try It Now' button removed */}
+              
+              {/* Navigation Tabs */}
+              <div className="border-b">
+                <div className="flex space-x-1 overflow-x-auto">
+                  <button className="px-4 py-2 text-sm font-medium text-primary border-b-2 border-primary bg-gray-50 rounded-t-md">
+                    Transactions
+                  </button>
+                  <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-primary">
+                    Budgets
+                  </button>
+                  <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-primary">
+                    Goals
+                  </button>
+                  <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-primary">
+                    Insights
+                  </button>
+                  <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-primary">
+                    Database
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Dashboard Content */}
-          <div className="p-6">
+          <div className="p-6 bg-gray-50">
+            {/* Transaction Controls */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex-1">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search transactions..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                  <List className="h-4 w-4" />
+                  List
+                </Button>
+                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Transaction
+                </Button>
+              </div>
+            </div>
+
+            {/* Recent Transactions */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Recent Transactions
+                </CardTitle>
+                <CardDescription>
+                  Your latest financial activities
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                        <span className="text-red-600 text-sm font-medium">🍕</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">Lunch at Pizza Palace</p>
+                        <p className="text-sm text-gray-500">Food & Dining • Today</p>
+                      </div>
+                    </div>
+                    <span className="text-red-600 font-semibold">-{formatCurrency(580)}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <span className="text-green-600 text-sm font-medium">💰</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">Salary Deposit</p>
+                        <p className="text-sm text-gray-500">Income • Yesterday</p>
+                      </div>
+                    </div>
+                    <span className="text-green-600 font-semibold">+{formatCurrency(75000)}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 text-sm font-medium">🚌</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">Bus Fare</p>
+                        <p className="text-sm text-gray-500">Transportation • 2 days ago</p>
+                      </div>
+                    </div>
+                    <span className="text-red-600 font-semibold">-{formatCurrency(25)}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <span className="text-purple-600 text-sm font-medium">🛒</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">Grocery Shopping</p>
+                        <p className="text-sm text-gray-500">Shopping • 3 days ago</p>
+                      </div>
+                    </div>
+                    <span className="text-red-600 font-semibold">-{formatCurrency(2450)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2 px-4">
-                  <CardTitle className="text-sm font-medium text-primary/70">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">
                     Total Balance
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-4">
-                  <div className="text-2xl font-bold text-primary">
-                    {formatCurrency(40000)}
+                <CardContent>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(72000)}
                   </div>
-                  <p className="text-xs text-green-600 mt-1">
+                  <p className="text-xs text-green-600 mt-1 flex items-center">
+                    <span className="mr-1">↗</span>
                     +5.2% from last month
                   </p>
                 </CardContent>
               </Card>
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2 px-4">
-                  <CardTitle className="text-sm font-medium text-primary/70">
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">
                     Monthly Income
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-4">
-                  <div className="text-2xl font-bold text-primary">
-                    {formatCurrency(80000)}
+                <CardContent>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(75000)}
                   </div>
-                  <p className="text-xs text-green-600 mt-1">
+                  <p className="text-xs text-green-600 mt-1 flex items-center">
+                    <span className="mr-1">↗</span>
                     +2.1% from last month
                   </p>
                 </CardContent>
               </Card>
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2 px-4">
-                  <CardTitle className="text-sm font-medium text-primary/70">
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">
                     Monthly Expenses
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-4">
-                  <div className="text-2xl font-bold text-primary">
-                    {formatCurrency(40000)}
+                <CardContent>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(3055)}
                   </div>
-                  <p className="text-xs text-red-600 mt-1">
-                    +8.4% from last month
+                  <p className="text-xs text-gray-500 mt-1">
+                    This month so far
                   </p>
                 </CardContent>
               </Card>
             </div>
 
+            {/* Insights Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Expense Breakdown Chart */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader className="px-4">
-                  <CardTitle>Expense Breakdown</CardTitle>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChart className="h-5 w-5" />
+                    Spending Categories
+                  </CardTitle>
                   <CardDescription>
-                    Your spending by category this month
+                    Where your money goes this month
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="px-4">
-                  <div className="h-80 flex flex-col items-center justify-center">
-                    {/* Mock Pie Chart */}
-                    <div className="relative w-48 h-48 mb-6">
-                      <svg viewBox="0 0 100 100" className="w-full h-full">
-                        {/* Income Slice - 53% */}
-                        <path
-                          d="M 50 50 L 50 5 A 45 45 0 0 1 95 50 Z"
-                          fill="#008080"
-                        />
-                        {/* Expenses Slice - 27% */}
-                        <path
-                          d="M 50 50 L 95 50 A 45 45 0 0 1 50 95 Z"
-                          fill="#FF6F61"
-                        />
-                        {/* Loan Slice - 20% */}
-                        <path
-                          d="M 50 50 L 50 95 A 45 45 0 0 1 5 50 A 45 45 0 0 1 50 5 Z"
-                          fill="#D6A3A1"
-                        />
-                      </svg>
-                    </div>
-
-                    {/* Legend */}
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-[#D6A3A1] rounded-full mr-2"></div>
-                        <div className="flex flex-col">
-                          <span className="text-xs text-primary font-medium">
-                            Income
-                          </span>
-                          <span className="text-xs text-primary/70">
-                            {formatCurrency(80000)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-[#FF6F61] rounded-full mr-2"></div>
-                        <div className="flex flex-col">
-                          <span className="text-xs text-primary font-medium">
-                            Expenses
-                          </span>
-                          <span className="text-xs text-primary/70">
-                            {formatCurrency(40000)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-[#008080] rounded-full mr-2"></div>
-                        <div className="flex flex-col">
-                          <span className="text-xs text-primary font-medium">
-                            Loan
-                          </span>
-                          <span className="text-xs text-primary/70">
-                            {formatCurrency(40000)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Financial Goals */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader className="px-4">
-                  <CardTitle>Financial Goals</CardTitle>
-                  <CardDescription>
-                    Track progress towards your financial targets
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="px-4">
+                <CardContent>
                   <div className="space-y-4">
-                    <div className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-medium text-primary flex items-center">
-                            <Target className="h-4 w-4 mr-2 text-primary" />
-                            Emergency Fund
-                          </h3>
-                          <p className="text-sm text-primary/70">
-                            Target: {formatCurrency(100000)} by Dec 2023
-                          </p>
-                        </div>
-                        <span className="text-xs font-medium px-2 py-1 rounded-full text-red-600 bg-opacity-10">
-                          High
-                        </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <span className="text-sm">Food & Dining</span>
                       </div>
-
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span>
-                            {formatCurrency(45000)} of {formatCurrency(100000)}
-                          </span>
-                          <span>45%</span>
-                        </div>
-                        <Progress value={45} className="h-2" />
+                      <div className="text-right">
+                        <div className="text-sm font-medium">{formatCurrency(1830)}</div>
+                        <div className="text-xs text-gray-500">60%</div>
                       </div>
                     </div>
-
-                    <div className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-medium text-primary flex items-center">
-                            <Target className="h-4 w-4 mr-2 text-primary" />
-                            Car Down Payment
-                          </h3>
-                          <p className="text-sm text-primary/70">
-                            Target: {formatCurrency(200000)} by Jun 2024
-                          </p>
-                        </div>
-                        <span className="text-xs font-medium px-2 py-1 rounded-full text-amber-600 bg-opacity-10">
-                          Medium
-                        </span>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <span className="text-sm">Transportation</span>
                       </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium">{formatCurrency(825)}</div>
+                        <div className="text-xs text-gray-500">27%</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                        <span className="text-sm">Shopping</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium">{formatCurrency(400)}</div>
+                        <div className="text-xs text-gray-500">13%</div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span>
-                            {formatCurrency(80000)} of {formatCurrency(200000)}
-                          </span>
-                          <span>40%</span>
-                        </div>
-                        <Progress value={40} className="h-2" />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    Financial Goals
+                  </CardTitle>
+                  <CardDescription>
+                    Track your progress
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Emergency Fund</span>
+                        <span className="text-sm text-gray-500">45%</span>
+                      </div>
+                      <Progress value={45} className="h-2" />
+                      <div className="text-xs text-gray-500">
+                        {formatCurrency(45000)} of {formatCurrency(100000)}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">New Laptop</span>
+                        <span className="text-sm text-gray-500">68%</span>
+                      </div>
+                      <Progress value={68} className="h-2" />
+                      <div className="text-xs text-gray-500">
+                        {formatCurrency(34000)} of {formatCurrency(50000)}
                       </div>
                     </div>
                   </div>
@@ -268,92 +344,31 @@ const DashboardPreview = ({
               </Card>
             </div>
 
-            {/* Feature Icons */}
-            <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col items-center text-center cursor-pointer hover:shadow-md transition-shadow">
-                <div className="bg-primary text-white p-3 rounded-full mb-3">
-                  <Wallet className="h-6 w-6" />
-                </div>
-                <h3 className="font-medium text-primary">Track Expenses</h3>
-                <p className="text-xs text-primary/70 mt-1">
-                  Monitor all your spending
-                </p>
-              </div>
-
-              <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col items-center text-center cursor-pointer hover:shadow-md transition-shadow">
-                <div className="bg-primary text-white p-3 rounded-full mb-3">
-                  <Target className="h-6 w-6" />
-                </div>
-                <h3 className="font-medium text-primary">Set Goals</h3>
-                <p className="text-xs text-primary/70 mt-1">
-                  Create and track financial goals
-                </p>
-              </div>
-
-              <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col items-center text-center cursor-pointer hover:shadow-md transition-shadow">
-                <div className="bg-primary text-white p-3 rounded-full mb-3">
-                  <CreditCard className="h-6 w-6" />
-                </div>
-                <h3 className="font-medium text-primary">Manage Loans</h3>
-                <p className="text-xs text-primary/70 mt-1">
-                  Track borrowed and lent money
-                </p>
-              </div>
-
-              <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col items-center text-center cursor-pointer hover:shadow-md transition-shadow">
-                <div className="bg-primary text-white p-3 rounded-full mb-3">
-                  <BarChart3 className="h-6 w-6" />
-                </div>
-                <h3 className="font-medium text-primary">Get Insights</h3>
-                <p className="text-xs text-primary/70 mt-1">
-                  AI-powered financial analysis
-                </p>
-              </div>
-            </div>
-
+            {/* Call to Action */}
             <div className="mt-8 text-center">
-              <Button
-                className="bg-primary hover:bg-primary/80 text-white px-6 py-2"
-                onClick={() => {
-                  // Open expandable preview linked to Dashboard
-                  const previewModal = document.createElement("div");
-                  previewModal.className =
-                    "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
-                  previewModal.innerHTML = `
-                    <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[80vh] flex flex-col overflow-hidden">
-                      <div class="flex justify-between items-center p-4 border-b">
-                        <h3 class="text-xl font-bold text-primary">Fintr Dashboard Preview</h3>
-                        <button id="close-preview" class="text-gray-500 hover:text-gray-700">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        </button>
-                      </div>
-                      <div class="flex-grow overflow-auto">
-                        <iframe src="/dashboard?preview=true" class="w-full h-full border-0"></iframe>
-                      </div>
-                      <div class="p-4 border-t bg-gray-50 flex justify-between items-center">
-                        <p class="text-sm text-primary/70">Experience the dashboard without signing up</p>
-                        <button id="try-full-version" class="bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-md text-sm">Try Full Version</button>
-                      </div>
-                    </div>
-                  `;
-                  document.body.appendChild(previewModal);
-
-                  // Add event listeners
-                  document
-                    .getElementById("close-preview")
-                    ?.addEventListener("click", () => {
-                      document.body.removeChild(previewModal);
-                    });
-
-                  document
-                    .getElementById("try-full-version")
-                    ?.addEventListener("click", () => {
-                      window.location.href = "/auth";
-                    });
-                }}
-              >
-                Try Fintr <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              <div className="bg-white rounded-lg p-6 border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Ready to take control of your finances?
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Join thousands of users who are already managing their money smarter with Fintr.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button
+                    className="bg-primary hover:bg-primary/80 text-white px-6 py-2"
+                    onClick={() => (window.location.href = "/auth")}
+                  >
+                    Get Started Free
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="px-6 py-2"
+                    onClick={() => (window.location.href = "/dashboard")}
+                  >
+                    View Live Demo <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </motion.div>

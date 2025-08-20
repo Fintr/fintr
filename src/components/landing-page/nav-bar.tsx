@@ -12,12 +12,12 @@ interface NavbarProps {
   companyName?: string;
 }
 
-const navLinks = [
-  { name: "Core Features", href: "/#core-features" },
-  { name: "What's Next", href: "/whats-next" },
-  { name: "Discover", href: "/discover" },
-  { name: "Contact Us", href: "/contact-us" },
-  { name: "Pricing", href: "/pricing" },
+const navLinks: { name: string; href: string }[] = [
+  // { name: "Core Features", href: "/#core-features" },
+  // { name: "What's Next", href: "/whats-next" },
+  // { name: "Discover", href: "/discover" },
+  // { name: "Contact Us", href: "/contact-us" },
+  // { name: "Pricing", href: "/pricing" },
 ];
 
 const Navbar = ({}: NavbarProps) => {
