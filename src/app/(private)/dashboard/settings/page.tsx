@@ -11,7 +11,8 @@ import { Toaster, toast } from 'sonner';
 import { updateUser, requestPasswordReset } from '@/services/auth/user/mutations';
 import { getUserAuth0Settings } from '@/services/auth/user/queries';
 import { useAuthApi } from '@/hooks/useAuthApi';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
+import ResetDataDialog from '../../../../components/dashboard/reset-data-dialog';
 
 /**
  * Renders the settings page where users can manage their profile information.
@@ -26,6 +27,7 @@ const SettingsPage = () => {
   const [isEmailLoading, setIsEmailLoading] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [usesEmail, setUsesEmail] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   useEffect(() => {
     const runGetUserAuth0Settings = async () => {
@@ -159,7 +161,43 @@ const SettingsPage = () => {
             </CardContent>
           </Card>
         )}
+
+        <Card className="border-red-200">
+          <CardHeader className="px-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <CardTitle className="text-red-900">Danger Zone</CardTitle>
+                <CardDescription className="text-red-600">
+                  Permanently delete all your data and start over.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4">
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                This will permanently delete all your financial data, including transactions, 
+                accounts, budgets, and goals. This action cannot be undone.
+              </p>
+              <Button 
+                variant="destructive" 
+                onClick={() => setIsResetDialogOpen(true)}
+                aria-label="Reset all data"
+              >
+                Reset Data
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <ResetDataDialog 
+        isOpen={isResetDialogOpen}
+        onClose={() => setIsResetDialogOpen(false)}
+      />
       <Toaster />
     </div>
   );
