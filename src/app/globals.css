@@ -49,6 +49,7 @@ html, body {
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-delete: var(--delete);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -88,6 +89,7 @@ html, body {
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+  --delete: #800020;
 }
 
 .dark {
@@ -132,3 +134,4 @@ html, body {
     @apply bg-background text-foreground;
   }
 }
+
