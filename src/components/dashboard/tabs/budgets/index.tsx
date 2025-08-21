@@ -297,7 +297,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-red-600"
+                            className="h-8 w-8 text-delete"
                             onClick={() => handleDeleteBudget(index)}
                           >
                             <Trash2 className="h-4 w-4 delete-icon" />
