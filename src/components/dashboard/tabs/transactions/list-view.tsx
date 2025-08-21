@@ -108,9 +108,9 @@ export function ListView({
                       <div
                       className={`w-1 h-12 rounded mr-3 flex-shrink-0 ${
                           transaction.type === CombinedTransactionTypeEnum.INCOME
-                            ? "bg-emerald-500"
+                            ? "bg-primary-green"
                           : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                            ? "bg-red-500"
+                            ? "bg-primary-red"
                             : "bg-blue-500"
                         }`}
                     />
@@ -151,9 +151,9 @@ export function ListView({
                       <div
                               className={`font-semibold text-sm ${
                           transaction.type === CombinedTransactionTypeEnum.INCOME
-                            ? "text-emerald-600"
+                            ? "text-primary-green"
                                   : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                            ? "text-red-600"
+                            ? "text-primary-red"
                             : "text-blue-600"
                         }`}
                       >
@@ -163,9 +163,9 @@ export function ListView({
                       <span
                               className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
                           transaction.type === CombinedTransactionTypeEnum.INCOME
-                                  ? "bg-emerald-100 text-emerald-700"
+                                  ? "bg-primary-green/10  text-primary-green"
                                   : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                                  ? "bg-red-100 text-red-700"
+                                  ? "bg-primary-red/10 text-primary-red"
                                   : "bg-blue-100 text-blue-700"
                         }`}
                       >

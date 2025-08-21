@@ -420,7 +420,7 @@ const InsightsTab = () => {
                     Total Income
                   </h4>
                   <div
-                    className={`text-2xl font-bold ${(insightsData?.summary?.totalIncome || 0) >= 0 ? "text-[#008080]" : "text-[#800020]"}`}
+                    className={`text-2xl font-bold ${(insightsData?.summary?.totalIncome || 0) >= 0 ? "text-primary-green" : "text-primary-red"}`}
                   >
                     {formatCurrency(insightsData?.summary?.totalIncome || 0)}
                   </div>
@@ -429,7 +429,7 @@ const InsightsTab = () => {
                   <h4 className="text-sm font-medium text-primary/70 mb-1">
                     Total Expenses
                   </h4>
-                  <div className="text-2xl font-bold text-[#800020]">
+                  <div className="text-2xl font-bold text-primary-red">
                     {formatCurrency(insightsData?.summary?.totalExpenses || 0)}
                   </div>
                 </div>
@@ -438,7 +438,7 @@ const InsightsTab = () => {
                     Net Savings
                   </h4>
                   <div
-                    className={`text-2xl font-bold ${(insightsData?.summary?.netSavings || 0) >= 0 ? "text-[#008080]" : "text-[#800020]"}`}
+                    className={`text-2xl font-bold ${(insightsData?.summary?.netSavings || 0) >= 0 ? "text-primary-green" : "text-primary-red"}`}
                   >
                     {formatCurrency(insightsData?.summary?.netSavings || 0)}
                   </div>
@@ -750,7 +750,7 @@ const InsightsTab = () => {
                   <Line
                     type="monotone"
                     dataKey="expenses"
-                    stroke="#e11d48"
+                    stroke="#800020"
                     strokeWidth={2}
                     dot={{ r: 4 }}
                     activeDot={{ r: 6 }}
@@ -759,7 +759,7 @@ const InsightsTab = () => {
                   <Line
                     type="monotone"
                     dataKey="savings"
-                    stroke="#16a34a"
+                    stroke="#008080"
                     strokeWidth={2}
                     dot={{ r: 4 }}
                     activeDot={{ r: 6 }}
