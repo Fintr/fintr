@@ -28,6 +28,7 @@ import {
   Filter,
 } from "lucide-react";
 import { useInsightsData } from "@/hooks/async/useInsightsData";
+import { useDashboardData } from "@/hooks/async/useDashboardData";
 import {
   LineChart as RechartsLineChart,
   Line,
@@ -43,7 +44,7 @@ import {
   BarChart as RechartsBarChart,
   Bar,
 } from "recharts";
-import { formatCurrency, getUniqueChartColor, resetChartColors, shouldShowV2Features } from "@/lib/utils";
+import { formatCurrency, getColor, getUniqueChartColor, resetChartColors, shouldShowV2Features } from "@/lib/utils";
 import { useMemo, useEffect } from "react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ScoreTag from "@/components/ui/score-tag";
@@ -89,6 +90,9 @@ const InsightsTab = () => {
     .toLocaleString("default", { month: "long" })
     .toLowerCase();
   const currentYear = new Date().getFullYear().toString();
+
+  // Fetch dashboard data for category options
+  const { data: dashboardData, isLoading: dashboardLoading } = useDashboardData();
 
   // Generate dynamic year options for the select dropdowns
   const generateYearOptions = () => {
@@ -136,7 +140,12 @@ const InsightsTab = () => {
     const sortedData = [...data].sort((a, b) => b.value - a.value);
 
     // Take top 5 categories
-    const top5 = sortedData.slice(0, 5);
+    const top5 = sortedData.slice(0, 5).map(item => ({
+      name: item.name,
+      value: item.value,
+      color: getColor("expenseBreakdown"),
+      percentage: item.percentage,
+    }));
 
     // Sum up the rest for "Other" category
     const otherValue = sortedData
@@ -153,7 +162,7 @@ const InsightsTab = () => {
       { 
         name: "Other", 
         value: otherValue, 
-        color: getUniqueChartColor("Other"), // Use our color function for "Other" category
+        color: getColor("expenseBreakdown"), // Use our color function for "Other" category
         details: otherDetails 
       },
     ];
@@ -363,22 +372,18 @@ const InsightsTab = () => {
                     defaultValue="all"
                     value={selectedCategory}
                     onValueChange={setSelectedCategory}
+                    disabled={dashboardLoading}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder={dashboardLoading ? "Loading categories..." : "Select category"} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="food">Food</SelectItem>
-                      <SelectItem value="transportation">
-                        Transportation
-                      </SelectItem>
-                      <SelectItem value="utilities">Utilities</SelectItem>
-                      <SelectItem value="entertainment">Entertainment</SelectItem>
-                      <SelectItem value="shopping">Shopping</SelectItem>
-                      <SelectItem value="house">House</SelectItem>
-                      <SelectItem value="income">Income</SelectItem>
-                      <SelectItem value="expense">Expense</SelectItem>
+                      {dashboardData?.categoryOptions?.map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          {category.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

@@ -87,7 +87,7 @@ export const transformBudgetsToCategories = (budgets: Budget[]) => {
         name: budget.category_name,
         spent: budget.total_spent || 0,
         budget: budget.amount,
-        color: getRandomColor(budget.category_name), // Assign a color based on category name
+        color: getColor(budget.category_name), // Assign a color based on category name
         subcategories: []
       });
     } else {
@@ -101,7 +101,7 @@ export const transformBudgetsToCategories = (budgets: Budget[]) => {
 };
 
 // Helper function to generate consistent colors for categories
-const getRandomColor = (categoryName: string) => {
+const getColor = (categoryName: string) => {
   // Generate a color based on the category name for consistency
   const colors = [
     '#0A3D62', '#3c6382', '#60a3bc', '#0c2461',

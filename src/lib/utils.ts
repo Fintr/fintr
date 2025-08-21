@@ -104,12 +104,39 @@ export function formatCurrency(amount: number, currency: string = "PHP"): string
   }).format(amount);
 }
 
-export function getRandomColor(): string {
+// Track color indices for each chart reference key
+const chartColorIndices: { [chartKey: string]: number } = {};
+
+export function getColor(chartKey: string): string {
   const colors = [
-    "#008080", "#FF6B6B", "#4ECDC4", "#45B7D1", 
-    "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8"
+    "#FF6F61", // Coral pink
+    "#CC5500", // Burnt orange
+    "#0A3D62", // Deep navy
+    "#E6B800", // Soft gold
+    "#B5E3C8", // Pale mint
+    "#E0E0E0", // Light gray
+    "#87CEEB", // Sky blue
+    "#D4B483", // Warm sand
+    "#C4C3D0", // Lavender gray
   ];
-  return colors[Math.floor(Math.random() * colors.length)];
+  
+  // Initialize index for this chart key if it doesn't exist
+  if (!(chartKey in chartColorIndices)) {
+    chartColorIndices[chartKey] = 0;
+  }
+
+  // Get the current color for this chart
+  const color = colors[chartColorIndices[chartKey]];
+  console.log('chartKey', chartKey, color);
+  // Move to the next color for this chart
+  chartColorIndices[chartKey]++;
+  
+  // Reset to 0 when all colors have been used for this chart
+  if (chartColorIndices[chartKey] >= colors.length) {
+    chartColorIndices[chartKey] = 0;
+  }
+  
+  return color;
 }
 
 // Darker, more royal color palette for charts

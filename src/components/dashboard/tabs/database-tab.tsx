@@ -25,7 +25,7 @@ import CategoryFormDialog from "../category-form-dialog";
 import DeleteCategoryDialog from "../delete-category-dialog";
 import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { useAccounts } from "@/hooks/async/useAccounts";
-import { getRandomColor, shouldShowV2Features } from "@/lib/utils";
+import { getColor, shouldShowV2Features } from "@/lib/utils";
 import { TransactionCategory } from "@/types/transactionCategoryTypes";
 import { Account } from "@/types/accountTypes";
 import { toast } from "sonner";
@@ -120,14 +120,14 @@ const DatabaseTab = () => {
   const transformedExpenseCategories = expenseCategories.map((category: TransactionCategory) => ({
     id: category.id,
     name: category.name,
-    color: category.color || getRandomColor(),
+    color: category.color || getColor(),
     type: "expense",
   }));
 
   const transformedIncomeCategories = incomeCategories.map((category: TransactionCategory) => ({
     id: category.id,
     name: category.name,
-    color: category.color || getRandomColor(),
+    color: category.color || getColor(),
     type: "income",
   }));
 
