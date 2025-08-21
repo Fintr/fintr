@@ -44,7 +44,7 @@ gem "amoeba", "~> 3.3"
 gem "activerecord-import", "~> 2.2"
 
 # DB Views
-gem "scenic", "~> 1.8"
+gem "scenic", "~> 1.9"
 
 # Recurrence
 gem "ice_cube", "~> 0.17.0"
