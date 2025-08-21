@@ -104,21 +104,24 @@ export function formatCurrency(amount: number, currency: string = "PHP"): string
   }).format(amount);
 }
 
+export const CHART_COLORS = [
+  "#FF6F61", // Coral pink
+  "#CC5500", // Burnt orange
+  "#0A3D62", // Deep navy
+  "#E6B800", // Soft gold
+  "#B5E3C8", // Pale mint
+  "#E0E0E0", // Light gray
+  "#87CEEB", // Sky blue
+  "#D4B483", // Warm sand
+  "#C4C3D0", // Lavender gray
+];
 // Track color indices for each chart reference key
 const chartColorIndices: { [chartKey: string]: number } = {};
 
-export function getColor(chartKey: string): string {
-  const colors = [
-    "#FF6F61", // Coral pink
-    "#CC5500", // Burnt orange
-    "#0A3D62", // Deep navy
-    "#E6B800", // Soft gold
-    "#B5E3C8", // Pale mint
-    "#E0E0E0", // Light gray
-    "#87CEEB", // Sky blue
-    "#D4B483", // Warm sand
-    "#C4C3D0", // Lavender gray
-  ];
+export function getColor(chartKey?: string): string {
+  if (!chartKey) {
+    return CHART_COLORS[Math.floor(Math.random() * CHART_COLORS.length)];
+  }
   
   // Initialize index for this chart key if it doesn't exist
   if (!(chartKey in chartColorIndices)) {
@@ -126,81 +129,19 @@ export function getColor(chartKey: string): string {
   }
 
   // Get the current color for this chart
-  const color = colors[chartColorIndices[chartKey]];
+  const color = CHART_COLORS[chartColorIndices[chartKey]];
   console.log('chartKey', chartKey, color);
   // Move to the next color for this chart
   chartColorIndices[chartKey]++;
   
   // Reset to 0 when all colors have been used for this chart
-  if (chartColorIndices[chartKey] >= colors.length) {
+  if (chartColorIndices[chartKey] >= CHART_COLORS.length) {
     chartColorIndices[chartKey] = 0;
   }
   
   return color;
 }
 
-// Darker, more royal color palette for charts
-const CHART_COLORS = [
-  "#1E40AF", // Royal Blue
-  "#9F1239", // Deep Red
-  "#047857", // Emerald Green
-  "#7E22CE", // Royal Purple
-  "#0E7490", // Cyan
-  "#6D28D9", // Violet
-  "#BE185D", // Pink
-  "#166534", // Green
-  "#4338CA", // Indigo
-  "#701A75", // Fuchsia
-  "#0F766E", // Teal
-  "#4F46E5", // Blue
-  "#C026D3", // Magenta
-  "#0369A1", // Sky Blue
-  "#059669"  // Green Teal
-];
-
-// Track used colors to avoid duplicates
-let usedChartColors: Set<string> = new Set();
-
-// Get a unique chart color
-export function getUniqueChartColor(identifier?: string): string {
-  // Reset used colors if all are used
-  if (usedChartColors.size >= CHART_COLORS.length) {
-    usedChartColors.clear();
-  }
-  
-  // If identifier is provided, use it to consistently pick the same color
-  if (identifier) {
-    const hash = identifier.split('').reduce((acc, char) => {
-      return acc + char.charCodeAt(0);
-    }, 0);
-    
-    // Try to find a color that hasn't been used yet
-    for (let i = 0; i < CHART_COLORS.length; i++) {
-      const colorIndex = (hash + i) % CHART_COLORS.length;
-      const color = CHART_COLORS[colorIndex];
-      
-      if (!usedChartColors.has(color)) {
-        usedChartColors.add(color);
-        return color;
-      }
-    }
-  }
-  
-  // If no identifier or all colors for this identifier are used,
-  // find the first unused color
-  for (const color of CHART_COLORS) {
-    if (!usedChartColors.has(color)) {
-      usedChartColors.add(color);
-      return color;
-    }
-  }
-  
-  // If all colors are used, return the first one
-  // (this should never happen due to the reset at the beginning)
-  return CHART_COLORS[0];
-}
-
-// Reset chart colors (useful when generating a new chart)
-export function resetChartColors(): void {
-  usedChartColors.clear();
+export function getColorByIndex(index: number): string {
+  return CHART_COLORS[index];
 }

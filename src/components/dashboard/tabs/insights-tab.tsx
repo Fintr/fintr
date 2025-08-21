@@ -44,7 +44,7 @@ import {
   BarChart as RechartsBarChart,
   Bar,
 } from "recharts";
-import { formatCurrency, getColor, getUniqueChartColor, resetChartColors, shouldShowV2Features } from "@/lib/utils";
+import { formatCurrency, getColor, getColorByIndex, shouldShowV2Features } from "@/lib/utils";
 import { useMemo, useEffect } from "react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ScoreTag from "@/components/ui/score-tag";
@@ -52,9 +52,6 @@ import ScoreTag from "@/components/ui/score-tag";
 interface InsightsTabProps {
   filteredTransactions?: any[];
 }
-
-// Reset chart colors to ensure consistent colors for mock data
-resetChartColors();
 
 // Mock data for charts - will be replaced by API data but kept as fallback
 const monthlyFinancialData = [
@@ -67,11 +64,11 @@ const monthlyFinancialData = [
 ];
 
 const categoryExpenseData = [
-  { name: "Food", value: 8500, color: getUniqueChartColor("Food"), percentage: "19.54%" },
-  { name: "Transportation", value: 3200, color: getUniqueChartColor("Transportation"), percentage: "6.51%" },
-  { name: "Entertainment", value: 2800, color: getUniqueChartColor("Entertainment"), percentage: "4.34%" },
-  { name: "Utilities", value: 4500, color: getUniqueChartColor("Utilities"), percentage: "13.03%" },
-  { name: "Shopping", value: 6200, color: getUniqueChartColor("Shopping"), percentage: "10.86%" },
+  { name: "Food", value: 8500, color: getColor("categoryExpenseData"), percentage: "19.54%" },
+  { name: "Transportation", value: 3200, color: getColor("categoryExpenseData"), percentage: "6.51%" },
+  { name: "Entertainment", value: 2800, color: getColor("categoryExpenseData"), percentage: "4.34%" },
+  { name: "Utilities", value: 4500, color: getColor("categoryExpenseData"), percentage: "13.03%" },
+  { name: "Shopping", value: 6200, color: getColor("categoryExpenseData"), percentage: "10.86%" },
 ];
 
 const weeklySpendingData = [
@@ -140,12 +137,7 @@ const InsightsTab = () => {
     const sortedData = [...data].sort((a, b) => b.value - a.value);
 
     // Take top 5 categories
-    const top5 = sortedData.slice(0, 5).map(item => ({
-      name: item.name,
-      value: item.value,
-      color: getColor("expenseBreakdown"),
-      percentage: item.percentage,
-    }));
+    const top5 = sortedData.slice(0, 5)
 
     // Sum up the rest for "Other" category
     const otherValue = sortedData
@@ -162,7 +154,7 @@ const InsightsTab = () => {
       { 
         name: "Other", 
         value: otherValue, 
-        color: getColor("expenseBreakdown"), // Use our color function for "Other" category
+        color: getColorByIndex(5), // Use our color function for "Other" category
         details: otherDetails 
       },
     ];

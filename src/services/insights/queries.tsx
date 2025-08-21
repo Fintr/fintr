@@ -1,5 +1,5 @@
 import { AxiosInstance } from 'axios';
-import { getUniqueChartColor, resetChartColors } from '@/lib/utils';
+import { getColor, getColorByIndex } from '@/lib/utils';
 
 /**
  * START: Raw API Response Interfaces
@@ -269,9 +269,6 @@ export const fetchInsights = async (
       return parseFloat(value.replace('%', ''));
     };
 
-    // Reset chart colors to ensure we start with a fresh palette
-    resetChartColors();
-
     // Transform the raw API data into the structure the frontend needs
     const transformedData: InsightsData = {
       summary: {
@@ -293,10 +290,10 @@ export const fetchInsights = async (
         rating: "", // Will be set below
         description: "", // Will be set below
       },
-      expenseBreakdown: apiData.expenseBreakdown?.map(item => ({
+      expenseBreakdown: apiData.expenseBreakdown?.map((item, index) => ({
         name: item.categoryName,
         value: parseFloat(item.amount),
-        color: getUniqueChartColor(item.categoryName), // Use unique color based on category name
+        color: getColorByIndex(index), // Use unique color based on category name
         percentage: item.percentage, // Assign as string directly
       })) || [],
       weeklySpending: aggregateWeeklySpending(apiData.weeklySpending),
