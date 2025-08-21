@@ -52,7 +52,7 @@ gem "ice_cube", "~> 0.17.0"
 # OCR and Image Processing
 gem "rtesseract", "~> 3.1"
 gem "mini_magick", "~> 5.3"
-gem "ruby-vips", "~> 2.1"
+gem "ruby-vips", "~> 2.2"
 
 # AI Processing
 gem "ruby-openai", "~> 8.2"

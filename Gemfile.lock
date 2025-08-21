@@ -455,7 +455,7 @@ GEM
       faraday (>= 1)
       faraday-multipart (>= 1)
     ruby-progressbar (1.13.0)
-    ruby-vips (2.2.4)
+    ruby-vips (2.2.5)
       ffi (~> 1.12)
       logger
     scenic (1.9.0)
@@ -566,7 +566,7 @@ DEPENDENCIES
   rubocop-rails-omakase
   rubocop-rspec
   ruby-openai (~> 8.2)
-  ruby-vips (~> 2.1)
+  ruby-vips (~> 2.2)
   scenic (~> 1.9)
   sentry-rails
   sentry-ruby
