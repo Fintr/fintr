@@ -9,7 +9,10 @@ test:
 	bundle exec rails parallel:spec
 
 specs:
-	bundle exec rspec
+	bundle exec rspec $(filter-out $@,$(MAKECMDGOALS))
 
 rubocop:
-	bundle exec rubocop -A
+	bundle exec rubocop -A  $(filter-out $@,$(MAKECMDGOALS))
+
+%:
+    @:

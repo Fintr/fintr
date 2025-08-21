@@ -17,7 +17,7 @@ RSpec.describe 'Api::V1::Dashboards', type: :request do
                           categories: [instance_double(Transactions::Category, name: 'Category1')],
                           expense_categories: [instance_double(Transactions::Category, name: 'ExpenseCategory1')],
                           income_categories: [instance_double(Transactions::Category, name: 'IncomeCategory1')],
-                          accounts: double(kept: [instance_double(Transactions::Account, name: 'Account1', id: 'account-1')]),
+                          accounts: double(kept: [instance_double(Transactions::Account, name: 'Account1', id: 'account-1')]), # rubocop:disable RSpec/VerifiedDoubles
                           id: space.id)
     end
 
