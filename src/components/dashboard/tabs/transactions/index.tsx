@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, List, Table2, CalendarDays, Plus } from "lucide-react";
+import { Search, List, Table2, CalendarDays, Plus, Filter } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   useQueryClient,
@@ -54,6 +54,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
 
   // Default to list view
   const [viewMode, setViewMode] = useState("list");
+  const [showFilters, setShowFilters] = useState(false);
   const initialFilters = {
     selectedMonth: currentMonth,
     selectedYear: currentYear,
@@ -433,13 +434,23 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   return (
     <>
       <Card className="border-0 shadow-none bg-transparent">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
           <div>
             <CardTitle>All Transactions</CardTitle>
             <CardDescription>
               Manage and filter your transaction history
             </CardDescription>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 bg-white"
+          >
+            <Filter className="h-4 w-4" />
+            <div className="hidden md:flex">
+              {showFilters ? "Hide" : "Show"} Filters
+            </div>
+          </Button>
           {shouldShowV2Features() && (
             <div className="flex items-center space-x-2">
               <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:gap-2">
@@ -469,17 +480,21 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           )}
         </CardHeader>
         <CardContent className="px-0">
-          <Filters
-            transactionFilterType="range"
-            applyFilters={applyFilters}
-          />
+          {showFilters && (
+            <Filters
+              transactionFilterType="range"
+              applyFilters={applyFilters}
+              isCollapsible={true}
+              defaultCollapsed={false}
+            />
+          )}
 
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-            <div className="relative flex-grow w-full md:w-auto">
+            <div className="relative flex-grow w-full">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search Transactions"
-                className="pl-10 bg-white"
+                className="pl-10 bg-white w-full"
                 value={searchInput}
                 onChange={handleSearchChange}
                 onKeyDown={(e) => {

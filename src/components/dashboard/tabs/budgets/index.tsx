@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Trash2, CalendarIcon } from "lucide-react";
+import { Trash2, CalendarIcon, Filter } from "lucide-react";
 import { transformBudgetsToCategories } from "@/services/budgets/queries";
 import { z } from "zod";
 import { formatCurrency } from "@/lib/utils";
@@ -25,6 +25,7 @@ interface BudgetsTabProps {}
 
 const BudgetsTab = ({}: BudgetsTabProps) => {
   // Budget state
+  const [showFilters, setShowFilters] = useState(false);
   const [budgetDate, setBudgetDate] = useState<Date | undefined>(() => {
     const today = new Date();
     return today; 
@@ -88,63 +89,77 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
             Track your spending against budget limits
           </CardDescription>
         </div>
-        <NewBudgetDialog
-          budgetsData={budgetsData}
-          createBudgetMutation={createBudgetMutation}
-        />
+        <div className="flex items-end flex-col md:flex-row gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 bg-white text-primary"
+          >
+            <Filter className="h-4 w-4" />
+            <div className="hidden md:flex">
+              {showFilters ? "Hide" : "Show"} Filters
+            </div>
+          </Button>
+          <NewBudgetDialog
+            budgetsData={budgetsData}
+            createBudgetMutation={createBudgetMutation}
+          />
+        </div>
       </CardHeader>
       <CardContent>
         {/* Budget Filters */}
-        <Card className="mb-6">
-          <CardHeader className="px-4">
-            <CardTitle>Budget Filters</CardTitle>
-            <CardDescription>Customize your budget view</CardDescription>
-          </CardHeader>
-          <CardContent className="px-4">
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-              <div className="space-y-2 flex-1">
-                <Label>Budget Month</Label>
-                <div className="flex items-center gap-6 flex-col md:flex-row items-start md:items-center">
-                  <Popover>
-                    <PopoverTrigger asChild>
+        {showFilters && (
+          <Card className="mb-6">
+            <CardHeader className="px-4">
+              <CardTitle>Budget Filters</CardTitle>
+              <CardDescription>Customize your budget view</CardDescription>
+            </CardHeader>
+            <CardContent className="px-4">
+              <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+                <div className="space-y-2 flex-1">
+                  <Label>Budget Month</Label>
+                  <div className="flex items-center gap-6 flex-col md:flex-row items-start md:items-center">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className="w-[250px] justify-start text-left font-normal text-sm"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {budgetDate ? (
+                            format(budgetDate, "MMMM d, yyyy")
+                          ) : (
+                            <span className="text-sm">Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={budgetDate}
+                          onSelect={handleDateSelect}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <div className="text-sm font-medium">
+                      {formattedDate}
+                    </div>
+                    <div className="md:self-end">
                       <Button
-                        variant={"outline"}
-                        className="w-[250px] justify-start text-left font-normal text-sm"
+                        className="bg-primary hover:bg-primary/80 w-full"
+                        onClick={handleApplyFilters}
+                        disabled={isLoading}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {budgetDate ? (
-                          format(budgetDate, "MMMM d, yyyy")
-                        ) : (
-                          <span className="text-sm">Pick a date</span>
-                        )}
+                        Apply Filters
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={budgetDate}
-                        onSelect={handleDateSelect}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <div className="text-sm font-medium">
-                    {formattedDate}
-                  </div>
-                  <div className="md:self-end">
-                    <Button
-                      className="bg-primary hover:bg-primary/80 w-full"
-                      onClick={handleApplyFilters}
-                      disabled={isLoading}
-                    >
-                      Apply Filters
-                    </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Budget Summary */}
         <Card className="mb-6">

@@ -25,6 +25,7 @@ import {
   LineChart,
   PieChart,
   BarChart3,
+  Filter,
 } from "lucide-react";
 import { useInsightsData } from "@/hooks/async/useInsightsData";
 import {
@@ -83,6 +84,7 @@ const weeklySpendingData = [
 ];
 
 const InsightsTab = () => {
+  const [showFilters, setShowFilters] = useState(false);
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
     .toLowerCase();
@@ -166,100 +168,63 @@ const InsightsTab = () => {
 
   return (
     <Card className="col-span-3 border-0 shadow-none bg-background">
-      <CardHeader>
-        <CardTitle>Monthly Overview</CardTitle>
-        <CardDescription>
-          Your financial activity for{" "}
-          {selectedMonth.charAt(0).toUpperCase() + selectedMonth.slice(1)}{" "}
-          {selectedYear}
-        </CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Monthly Overview</CardTitle>
+          <CardDescription>
+            Your financial activity for{" "}
+            {selectedMonth.charAt(0).toUpperCase() + selectedMonth.slice(1)}{" "}
+            {selectedYear}
+          </CardDescription>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center gap-2 bg-white text-primary"
+        >
+          <Filter className="h-4 w-4" />
+          <div className="hidden md:flex">
+            {showFilters ? "Hide" : "Show"} Filters
+          </div>
+        </Button>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Insights Filters */}
-        <Card className="mb-6">
-          <CardHeader className="px-4">
-            <CardTitle>Insights Filters</CardTitle>
-            <CardDescription>Customize your insights view</CardDescription>
-          </CardHeader>
-          <CardContent className="px-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="space-y-2 md:w-1/4">
-                <Label>View Type</Label>
-                <Select
-                  defaultValue="single"
-                  onValueChange={(value) => setFilterType(value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select view type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="single">Single Month</SelectItem>
-                    <SelectItem value="range">Month Range</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        {showFilters && (
+          <Card className="mb-6">
+            <CardHeader className="px-4">
+              <CardTitle>Insights Filters</CardTitle>
+              <CardDescription>Customize your insights view</CardDescription>
+            </CardHeader>
+            <CardContent className="px-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="space-y-2 md:w-1/4">
+                  <Label>View Type</Label>
+                  <Select
+                    defaultValue="single"
+                    onValueChange={(value) => setFilterType(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select view type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single">Single Month</SelectItem>
+                      <SelectItem value="range">Month Range</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {filterType === "single" ? (
-                <>
-                  <div className="space-y-2 md:w-1/4">
-                    <Label>Month</Label>
-                    <Select
-                      defaultValue={selectedMonth}
-                      value={selectedMonth}
-                      onValueChange={setSelectedMonth}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="january">January</SelectItem>
-                        <SelectItem value="february">February</SelectItem>
-                        <SelectItem value="march">March</SelectItem>
-                        <SelectItem value="april">April</SelectItem>
-                        <SelectItem value="may">May</SelectItem>
-                        <SelectItem value="june">June</SelectItem>
-                        <SelectItem value="july">July</SelectItem>
-                        <SelectItem value="august">August</SelectItem>
-                        <SelectItem value="september">September</SelectItem>
-                        <SelectItem value="october">October</SelectItem>
-                        <SelectItem value="november">November</SelectItem>
-                        <SelectItem value="december">December</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2 md:w-1/4">
-                    <Label>Year</Label>
-                    <Select
-                      defaultValue={selectedYear}
-                      value={selectedYear}
-                      onValueChange={setSelectedYear}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {yearOptions.map((year) => (
-                          <SelectItem key={year.value} value={year.value}>
-                            {year.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="space-y-2 md:w-1/4">
-                    <Label>Start Month & Year</Label>
-                    <div className="flex space-x-2">
+                {filterType === "single" ? (
+                  <>
+                    <div className="space-y-2 md:w-1/4">
+                      <Label>Month</Label>
                       <Select
-                        defaultValue={startMonth}
-                        value={startMonth}
-                        onValueChange={setStartMonth}
+                        defaultValue={selectedMonth}
+                        value={selectedMonth}
+                        onValueChange={setSelectedMonth}
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Start Month" />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select month" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="january">January</SelectItem>
@@ -276,13 +241,17 @@ const InsightsTab = () => {
                           <SelectItem value="december">December</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div className="space-y-2 md:w-1/4">
+                      <Label>Year</Label>
                       <Select
-                        defaultValue={startYear}
-                        value={startYear}
-                        onValueChange={setStartYear}
+                        defaultValue={selectedYear}
+                        value={selectedYear}
+                        onValueChange={setSelectedYear}
                       >
-                        <SelectTrigger className="w-24">
-                          <SelectValue placeholder="Year" />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select year" />
                         </SelectTrigger>
                         <SelectContent>
                           {yearOptions.map((year) => (
@@ -293,93 +262,140 @@ const InsightsTab = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-
-                  <div className="space-y-2 md:w-1/4">
-                    <Label>End Month & Year</Label>
-                    <div className="flex space-x-2">
-                      <Select
-                        defaultValue={endMonth}
-                        value={endMonth}
-                        onValueChange={setEndMonth}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="End Month" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="january">January</SelectItem>
-                          <SelectItem value="february">February</SelectItem>
-                          <SelectItem value="march">March</SelectItem>
-                          <SelectItem value="april">April</SelectItem>
-                          <SelectItem value="may">May</SelectItem>
-                          <SelectItem value="june">June</SelectItem>
-                          <SelectItem value="july">July</SelectItem>
-                          <SelectItem value="august">August</SelectItem>
-                          <SelectItem value="september">September</SelectItem>
-                          <SelectItem value="october">October</SelectItem>
-                          <SelectItem value="november">November</SelectItem>
-                          <SelectItem value="december">December</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        defaultValue={endYear}
-                        value={endYear}
-                        onValueChange={setEndYear}
-                      >
-                        <SelectTrigger className="w-24">
-                          <SelectValue placeholder="Year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {yearOptions.map((year) => (
-                            <SelectItem key={year.value} value={year.value}>
-                              {year.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2 md:w-1/4">
+                      <Label>Start Month & Year</Label>
+                      <div className="flex space-x-2">
+                        <Select
+                          defaultValue={startMonth}
+                          value={startMonth}
+                          onValueChange={setStartMonth}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Start Month" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="january">January</SelectItem>
+                            <SelectItem value="february">February</SelectItem>
+                            <SelectItem value="march">March</SelectItem>
+                            <SelectItem value="april">April</SelectItem>
+                            <SelectItem value="may">May</SelectItem>
+                            <SelectItem value="june">June</SelectItem>
+                            <SelectItem value="july">July</SelectItem>
+                            <SelectItem value="august">August</SelectItem>
+                            <SelectItem value="september">September</SelectItem>
+                            <SelectItem value="october">October</SelectItem>
+                            <SelectItem value="november">November</SelectItem>
+                            <SelectItem value="december">December</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          defaultValue={startYear}
+                          value={startYear}
+                          onValueChange={setStartYear}
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue placeholder="Year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {yearOptions.map((year) => (
+                              <SelectItem key={year.value} value={year.value}>
+                                {year.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
 
-              <div className="space-y-2 md:w-1/4">
-                <Label>Category</Label>
-                <Select
-                  defaultValue="all"
-                  value={selectedCategory}
-                  onValueChange={setSelectedCategory}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="food">Food</SelectItem>
-                    <SelectItem value="transportation">
-                      Transportation
-                    </SelectItem>
-                    <SelectItem value="utilities">Utilities</SelectItem>
-                    <SelectItem value="entertainment">Entertainment</SelectItem>
-                    <SelectItem value="shopping">Shopping</SelectItem>
-                    <SelectItem value="house">House</SelectItem>
-                    <SelectItem value="income">Income</SelectItem>
-                    <SelectItem value="expense">Expense</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                    <div className="space-y-2 md:w-1/4">
+                      <Label>End Month & Year</Label>
+                      <div className="flex space-x-2">
+                        <Select
+                          defaultValue={endMonth}
+                          value={endMonth}
+                          onValueChange={setEndMonth}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="End Month" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="january">January</SelectItem>
+                            <SelectItem value="february">February</SelectItem>
+                            <SelectItem value="march">March</SelectItem>
+                            <SelectItem value="april">April</SelectItem>
+                            <SelectItem value="may">May</SelectItem>
+                            <SelectItem value="june">June</SelectItem>
+                            <SelectItem value="july">July</SelectItem>
+                            <SelectItem value="august">August</SelectItem>
+                            <SelectItem value="september">September</SelectItem>
+                            <SelectItem value="october">October</SelectItem>
+                            <SelectItem value="november">November</SelectItem>
+                            <SelectItem value="december">December</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          defaultValue={endYear}
+                          value={endYear}
+                          onValueChange={setEndYear}
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue placeholder="Year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {yearOptions.map((year) => (
+                              <SelectItem key={year.value} value={year.value}>
+                                {year.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </>
+                )}
 
-              <div className="md:self-end">
-                <Button
-                  className="bg-primary hover:bg-primary/80 w-full"
-                  onClick={handleApplyFilters}
-                  disabled={isLoading}
-                >
-                  {isLoading ? <LoadingSpinner size="small" className="mr-2" /> : "Apply Filters"}
-                </Button>
+                <div className="space-y-2 md:w-1/4">
+                  <Label>Category</Label>
+                  <Select
+                    defaultValue="all"
+                    value={selectedCategory}
+                    onValueChange={setSelectedCategory}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="food">Food</SelectItem>
+                      <SelectItem value="transportation">
+                        Transportation
+                      </SelectItem>
+                      <SelectItem value="utilities">Utilities</SelectItem>
+                      <SelectItem value="entertainment">Entertainment</SelectItem>
+                      <SelectItem value="shopping">Shopping</SelectItem>
+                      <SelectItem value="house">House</SelectItem>
+                      <SelectItem value="income">Income</SelectItem>
+                      <SelectItem value="expense">Expense</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="md:self-end">
+                  <Button
+                    className="bg-primary hover:bg-primary/80 w-full"
+                    onClick={handleApplyFilters}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? <LoadingSpinner size="small" className="mr-2" /> : "Apply Filters"}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="mb-6 border border-primary/10">
           <CardHeader className="px-4">
