@@ -66,15 +66,15 @@ const AccountSetupFlow = () => {
   const [formData, setFormData] = useState({
     currency: "PHP",
     categories: [
-      { name: "Food", color: "#008080", isSelected: true },
+      { name: "Food", color: "var(--teal-600)", isSelected: true },
       { name: "Transportation", color: "#D6A3A1", isSelected: true },
       { name: "Entertainment", color: "#FF6F61", isSelected: true },
-      { name: "Utilities", color: "#800020", isSelected: true },
+      { name: "Utilities", color: "var(--red-900)", isSelected: true },
       { name: "Shopping", color: "#CC5500", isSelected: true },
       { name: "House", color: "#3D8D7F", isSelected: true },
     ],
     accounts: [
-      { name: "Cash", color: "#008080", balance: "", isSelected: false },
+      { name: "Cash", color: "var(--teal-600)", balance: "", isSelected: false },
       {
         name: "Checking Account",
         color: "#D6A3A1",
@@ -87,14 +87,14 @@ const AccountSetupFlow = () => {
         balance: "",
         isSelected: false,
       },
-      { name: "Credit Card", color: "#800020", balance: "", isSelected: false },
+      { name: "Credit Card", color: "var(--red-900)", balance: "", isSelected: false },
       { name: "E-Wallet", color: "#CC5500", balance: "", isSelected: false },
     ],
     budget: "",
     budgetCategories: [
       { name: "House/Condo", amount: "", color: "#D6A3A1", isSelected: true },
       { name: "Food", amount: "", color: "#FF6F61", isSelected: true },
-      { name: "Utilities", amount: "", color: "#800020", isSelected: true },
+      { name: "Utilities", amount: "", color: "var(--red-900)", isSelected: true },
       {
         name: "Transportation",
         amount: "",
@@ -410,10 +410,10 @@ const AccountSetupFlow = () => {
                     onClick={() => {
                       // Generate a random color for the new account
                       const colors = [
-                        "#008080",
+                        "var(--teal-600)",
                         "#D6A3A1",
                         "#FF6F61",
-                        "#800020",
+                        "var(--red-900)",
                         "#CC5500",
                         "#3D8D7F",
                         "#5EB99D",
@@ -529,10 +529,10 @@ const AccountSetupFlow = () => {
                     onClick={() => {
                       // Generate a random color for the new budget category
                       const colors = [
-                        "#008080",
+                        "var(--teal-600)",
                         "#D6A3A1",
                         "#FF6F61",
-                        "#800020",
+                        "var(--red-900)",
                         "#CC5500",
                         "#3D8D7F",
                         "#5EB99D",

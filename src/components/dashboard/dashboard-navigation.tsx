@@ -173,7 +173,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
                     >
                       <Bell className="h-5 w-5" />
                       {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                        <span className="absolute -top-1 -right-1 bg-red-900/80 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
                           {unreadCount}
                         </span>
                       )}
@@ -235,7 +235,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
                     >
                       <Bell className="h-5 w-5" />
                       {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                        <span className="absolute -top-1 -right-1 bg-red-900/80 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
                           {unreadCount}
                         </span>
                       )}

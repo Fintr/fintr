@@ -202,7 +202,7 @@ const InvestmentsTab = ({  }: InvestmentsTabProps) => {
                 Total Returns
               </h4>
               <div
-                className={`text-2xl font-bold ${320000 >= 0 ? "text-[#008080]" : "text-[#800020]"}`}
+                className={`text-2xl font-bold ${320000 >= 0 ? "text-[var(--teal-600)]" : "text-[var(--red-900)]"}`}
               >
                 {320000 >= 0 ? "+" : ""}
                 {formatCurrency(320000)}
@@ -212,7 +212,7 @@ const InvestmentsTab = ({  }: InvestmentsTabProps) => {
               <h4 className="text-sm font-medium text-primary/70 mb-1">
                 ROI
               </h4>
-              <div className="text-2xl font-bold text-[#008080]">+12.8%</div>
+              <div className="text-2xl font-bold text-[var(--teal-600)]">+12.8%</div>
             </div>
           </div>
         </div>
@@ -259,7 +259,7 @@ const InvestmentsTab = ({  }: InvestmentsTabProps) => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0 text-red-500"
+                            className="h-8 w-8 p-0 bg-red-800"
                           >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -293,14 +293,14 @@ const InvestmentsTab = ({  }: InvestmentsTabProps) => {
                           <span>{formatCurrency(investment.amount)}</span>
                           {investment.appreciation && (
                             <span
-                              className={`${investment.appreciation.startsWith("-") ? "text-[#800020] font-medium" : "text-[#008080] font-medium"}`}
+                              className={`${investment.appreciation.startsWith("-") ? "text-[var(--red-900)] font-medium" : "text-[var(--teal-600)] font-medium"}`}
                             >
                               {investment.appreciation}
                             </span>
                           )}
                           {investment.gain && (
                             <span
-                              className={`${investment.gain.startsWith("-") ? "text-[#800020] font-medium" : "text-[#008080] font-medium"}`}
+                              className={`${investment.gain.startsWith("-") ? "text-[var(--red-900)] font-medium" : "text-[var(--teal-600)] font-medium"}`}
                             >
                               ({investment.gain})
                             </span>

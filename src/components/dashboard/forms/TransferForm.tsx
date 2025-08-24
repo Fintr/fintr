@@ -330,7 +330,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
             onChange={(e) => handleFieldChange("amount", e.target.value)}
             className={`text-sm ${
               (formSubmitted && formErrors.amount)
-                ? "border-red-500 focus-visible:ring-red-500"
+                ? "border-red-800 focus-visible:ring-red-800"
                 : ""
             }`}
           />
@@ -348,7 +348,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
             onChange={(e) => handleFieldChange("transactionCost", e.target.value)}
             className={`text-sm ${
               (formSubmitted && formErrors.transactionCost)
-                ? "border-red-500 focus-visible:ring-red-500"
+                ? "border-red-800 focus-visible:ring-red-800"
                 : ""
             }`}
           />
@@ -378,7 +378,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
               id="transfer-from"
               className={`text-sm ${
                 (formSubmitted && formErrors.fromAccountName)
-                  ? "border-red-500 focus-visible:ring-red-500"
+                  ? "border-red-800 focus-visible:ring-red-800"
                   : ""
               }`}
             >
@@ -419,7 +419,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
               id="transfer-to"
               className={`text-sm ${
                 (formSubmitted && formErrors.toAccountName)
-                  ? "border-red-500 focus-visible:ring-red-500"
+                  ? "border-red-800 focus-visible:ring-red-800"
                   : ""
               }`}
             >
@@ -456,7 +456,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
               id="transfer-schedule-type"
               className={`text-sm ${
                 (formSubmitted && formErrors.scheduleType)
-                  ? "border-red-500 focus-visible:ring-red-500"
+                  ? "border-red-800 focus-visible:ring-red-800"
                   : ""
               }`}
             >
@@ -483,7 +483,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 id="transfer-repeat-interval"
                 className={`text-sm ${
                   (formSubmitted && formErrors.repeatInterval)
-                    ? "border-red-500 focus-visible:ring-red-500"
+                    ? "border-red-800 focus-visible:ring-red-800"
                     : ""
                 }`}
               >

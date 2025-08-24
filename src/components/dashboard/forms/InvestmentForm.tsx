@@ -280,7 +280,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
               Supports: JPG, PNG, PDF (Max 5MB)
             </p>
             {investmentForm.receipt && (
-              <p className="text-sm text-green-600 mt-2">
+              <p className="text-sm text-teal-600 mt-2">
                 File selected: {investmentForm.receipt.name}
               </p>
             )}

@@ -195,7 +195,7 @@ export default function OnboardingStep3() {
 
         <Card className="shadow-lg border-border">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
+            <div className="mx-auto mb-4 p-3 bg-primary/30 rounded-full w-fit">
               <CreditCard className="h-8 w-8 text-primary" />
             </div>
             <CardTitle className="text-2xl">Accounts Set-Up</CardTitle>
@@ -346,7 +346,7 @@ export default function OnboardingStep3() {
               <Button 
                 onClick={handleNext}
                 disabled={isUpdating}
-                className="flex-1 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
+                className="flex-1 bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-800"
               >
                 {isUpdating ? "Completing..." : "Complete Setup"}
                 <ArrowRight className="h-4 w-4 ml-2" />

@@ -90,7 +90,7 @@ export function SheetsView({
                   <tr>
                     <td
                       colSpan={5}
-                      className="text-center p-4 text-red-500"
+                      className="text-center p-4 bg-red-800"
                     >
                       Error: {error?.message}
                     </td>
@@ -138,7 +138,7 @@ export function SheetsView({
                                     onSaveEdit(transaction.id, "date")
                                   }
                                 >
-                                  <Check className="h-4 w-4 text-green-600" />
+                                  <Check className="h-4 w-4 text-teal-600" />
                                 </Button>
                                 <Button
                                   size="icon"
@@ -146,7 +146,7 @@ export function SheetsView({
                                   className="h-6 w-6"
                                   onClick={() => setEditingCell(null)}
                                 >
-                                  <X className="h-4 w-4 text-red-600" />
+                                  <X className="h-4 w-4 text-red-900" />
                                 </Button>
                               </div>
                             </div>
@@ -215,7 +215,7 @@ export function SheetsView({
                                     )
                                   }
                                 >
-                                  <Check className="h-4 w-4 text-green-600" />
+                                  <Check className="h-4 w-4 text-teal-600" />
                                 </Button>
                                 <Button
                                   size="icon"
@@ -223,7 +223,7 @@ export function SheetsView({
                                   className="h-6 w-6"
                                   onClick={() => setEditingCell(null)}
                                 >
-                                  <X className="h-4 w-4 text-red-600" />
+                                  <X className="h-4 w-4 text-red-900" />
                                 </Button>
                               </div>
                             </div>
@@ -305,7 +305,7 @@ export function SheetsView({
                                 className="h-6 w-6 ml-1"
                                 onClick={() => setEditingCell(null)}
                               >
-                                <X className="h-4 w-4 text-red-600" />
+                                <X className="h-4 w-4 text-red-900" />
                               </Button>
                             </div>
                           ) : (
@@ -364,7 +364,7 @@ export function SheetsView({
                                     onSaveEdit(transaction.id, "amount")
                                   }
                                 >
-                                  <Check className="h-4 w-4 text-green-600" />
+                                  <Check className="h-4 w-4 text-teal-600" />
                                 </Button>
                                 <Button
                                   size="icon"
@@ -372,7 +372,7 @@ export function SheetsView({
                                   className="h-6 w-6"
                                   onClick={() => setEditingCell(null)}
                                 >
-                                  <X className="h-4 w-4 text-red-600" />
+                                  <X className="h-4 w-4 text-red-900" />
                                 </Button>
                               </div>
                             </div>
@@ -418,7 +418,7 @@ export function SheetsView({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-primary hover:bg-primary/10"
+                              className="h-8 w-8 text-primary hover:bg-primary/30"
                               onClick={() => onRowEdit(transaction)}
                             >
                               <Edit className="h-4 w-4" />

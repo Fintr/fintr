@@ -64,7 +64,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
               />
             )}
             <div className="mt-2 flex items-center justify-between">
-              <p className="text-sm text-green-600">
+              <p className="text-sm text-teal-600">
                 Receipt attached: {file?.name}
                 {(file as any).isRemoteFile && (
                   <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
@@ -94,7 +94,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
             <p className="text-sm text-gray-500">Drag & drop your file here or <span className="text-primary font-medium">browse files</span></p>
             <p className="text-xs text-gray-400 mt-1">Supports: JPG, PNG, PDF (Max 5MB)</p>
             {file && !file.type?.startsWith('image/') && !(file as any).isRemoteFile && ( // Check if file exists and is not an image (already handled by preview)
-              <p className="text-sm text-green-600 mt-2">
+              <p className="text-sm text-teal-600 mt-2">
                 File selected: {file.name}
               </p>
             )}

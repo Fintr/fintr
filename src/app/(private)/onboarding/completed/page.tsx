@@ -4,7 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 
 // Custom SVG component for the completion icon
 const CompletionIcon = () => (
@@ -123,7 +123,7 @@ const CompletionIcon = () => (
         cx="15"
         cy="15"
         r="15"
-        fill="rgb(34 197 94)"
+        fill="oklch(59.6% 0.145 163.225)"
       />
       <path
         d="M8 15l4 4 8-8"
@@ -163,8 +163,8 @@ export default function OnboardingCompleted() {
             <div className="mb-6">
               <CompletionIcon />
             </div>
-            <CardTitle className="text-2xl text-primary dark:text-green-400">
-              Congratulations! 🎉
+            <CardTitle className="text-2xl text-primary dark:text-teal-400">
+              Congratulations!
             </CardTitle>
             <CardDescription className="text-lg">
               You've successfully completed your financial setup
@@ -173,14 +173,14 @@ export default function OnboardingCompleted() {
           
           <CardContent className="space-y-6 px-6">
             <div className="text-center space-y-4">
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
-                <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">
+              <div className="bg-teal-100/50 dark:bg-green-900/20 rounded-lg p-4 border border-teal-300 dark:border-green-800 flex flex-col items-center">
+                <h3 className="font-semibold text-green-800 dark:text-teal-300 mb-2">
                   What's been set up:
                 </h3>
-                <ul className="text-sm text-green-700 dark:text-green-300 space-y-1">
-                  <li>✅ Income information</li>
-                  <li>✅ Budget categories</li>
-                  <li>✅ Financial accounts</li>
+                <ul className="text-sm text-green-700 dark:text-teal-300 space-y-1">
+                  <li className="flex items-center flex-center"><Check className="h-4 w-4 mr-2" /> Income information</li>
+                  <li className="flex items-center flex-center"><Check className="h-4 w-4 mr-2" /> Budget categories</li>
+                  <li className="flex items-center flex-center"><Check className="h-4 w-4 mr-2" /> Financial accounts</li>
                 </ul>
               </div>
               
@@ -193,7 +193,7 @@ export default function OnboardingCompleted() {
             <div className="flex justify-center pt-4">
               <Button 
                 onClick={handleGoToDashboard}
-                className="px-8 bg-primary hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
+                className="px-8 bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-800"
                 size="lg"
               >
                 Go to Dashboard

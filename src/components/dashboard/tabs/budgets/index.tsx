@@ -169,7 +169,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
           </CardHeader>
           <CardContent className="px-4">
             {isError ? (
-              <div className="py-4 text-center text-red-500">
+              <div className="py-4 text-center bg-red-800">
                 Error loading budget data. Please try again.
               </div>
             ) : (
@@ -271,7 +271,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                           <span
                             className={
                               isItemOverBudget
-                                ? "text-[#800020]"
+                                ? "text-[var(--red-900)]"
                                 : "text-primary"
                             }
                           >

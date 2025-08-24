@@ -205,7 +205,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
               Supports: JPG, PNG, PDF (Max 5MB)
             </p>
             {loanForm.receipt && (
-              <p className="text-sm text-green-600 mt-2">
+              <p className="text-sm text-teal-600 mt-2">
                 File selected: {loanForm.receipt.name}
               </p>
             )}

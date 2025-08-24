@@ -79,7 +79,7 @@ export default function TicketDetailPage() {
     switch (status) {
       case 'open': return 'bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors';
       case 'in_progress': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors';
-      case 'resolved': return 'bg-green-100 text-green-800 hover:bg-green-200 transition-colors';
+      case 'resolved': return 'bg-teal-200 text-green-800 hover:bg-teal-300 transition-colors';
       case 'dismissed': return 'bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors';
       default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors';
     }
@@ -87,7 +87,7 @@ export default function TicketDetailPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-100 text-red-800 hover:bg-red-200 transition-colors';
+      case 'urgent': return 'bg-red-900/20 text-red-800 hover:bg-red-900/30 transition-colors';
       case 'high': return 'bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors';
       case 'medium': return 'bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors';
       case 'low': return 'bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors';
@@ -158,7 +158,7 @@ export default function TicketDetailPage() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-red-500 mb-4">
+            <p className="bg-red-800 mb-4">
               Failed to load ticket details. Please try again.
             </p>
             <div className="space-x-2">
@@ -398,7 +398,7 @@ export default function TicketDetailPage() {
             ) : (
               <form onSubmit={handleSubmit(onSubmitResponse)} className="space-y-4">
                 {createResponseMutation.isError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                  <div className="bg-red-100/50 border border-red-300 text-red-700 px-4 py-3 rounded">
                     Failed to add response. Please try again.
                   </div>
                 )}
@@ -410,7 +410,7 @@ export default function TicketDetailPage() {
                       onChange={(e) => setValue('message', e.target.value)}
                       onImagePaste={handleImagePaste}
                       placeholder="Type your response... (You can also paste images here)"
-                      className={`${errors.message ? 'border-red-500' : ''} min-h-[100px] max-h-[300px]`}
+                      className={`${errors.message ? 'border-red-800' : ''} min-h-[100px] max-h-[300px]`}
                       rows={4}
                     />
                     <div className="absolute bottom-2 right-2 text-xs text-gray-400 pointer-events-none">
@@ -418,7 +418,7 @@ export default function TicketDetailPage() {
                     </div>
                   </div>
                   {errors.message && (
-                    <p className="text-sm text-red-500 mt-1">{errors.message.message}</p>
+                    <p className="text-sm bg-red-800 mt-1">{errors.message.message}</p>
                   )}
                 </div>
 

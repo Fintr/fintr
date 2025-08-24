@@ -149,7 +149,7 @@ const CoreFeatures = ({
             <button
               key={index}
               onClick={() => handleFeatureClick(index)}
-              className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center whitespace-nowrap ${activeFeature === index ? "bg-primary text-white" : "bg-white text-primary border border-primary hover:bg-primary/10"}`}
+              className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center whitespace-nowrap ${activeFeature === index ? "bg-primary text-white" : "bg-white text-primary border border-primary hover:bg-primary/30"}`}
             >
               <span className="mr-2">{feature.icon}</span>
               {feature.title}

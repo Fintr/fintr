@@ -132,7 +132,7 @@ const SettingsPage = () => {
                   disabled={!usesEmail}
                 />
                 {user?.email_verified && (
-                  <div className="flex items-center text-green-600 px-2 py-1 rounded-md bg-green-50">
+                  <div className="flex items-center text-teal-600 px-2 py-1 rounded-md bg-teal-100/50">
                     <CheckCircle className="h-4 w-4 mr-1" />
                     <span className="text-sm font-medium">Verified</span>
                   </div>
@@ -162,15 +162,15 @@ const SettingsPage = () => {
           </Card>
         )}
 
-        <Card className="border-red-200">
+        <Card className="border-red-300">
           <CardHeader className="px-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-900/20">
+                <AlertTriangle className="h-5 w-5 text-red-900" />
               </div>
               <div>
                 <CardTitle className="text-red-900">Danger Zone</CardTitle>
-                <CardDescription className="text-red-600">
+                <CardDescription className="text-red-900">
                   Permanently delete all your data and start over.
                 </CardDescription>
               </div>

@@ -126,7 +126,7 @@ const MobileAppSection = ({
                         </h4>
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
-                            <div className="w-2 h-2 rounded-full mr-1 bg-[#008080]"></div>
+                            <div className="w-2 h-2 rounded-full mr-1 bg-[var(--teal-600)]"></div>
                             <span className="text-xs">Food</span>
                           </div>
                           <span className="text-xs">₱8,500</span>

@@ -122,7 +122,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
               if (localErrors.name) setLocalErrors({...localErrors, name: undefined});
             }} 
             disabled={isLoading} 
-            className={localErrors.name || accountValidationErrors.name ? "border-red-500 focus-visible:ring-red-500 bg-white" : "bg-white"} 
+            className={localErrors.name || accountValidationErrors.name ? "border-red-800 focus-visible:ring-red-800 bg-white" : "bg-white"} 
           />
           {localErrors.name && <FormError>{localErrors.name}</FormError>}
           {!localErrors.name && accountValidationErrors.name && (
@@ -148,7 +148,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
           >
             <SelectTrigger 
               id="new-account-category"
-              className={localErrors.accountCategory || accountValidationErrors.accountCategory ? "border-red-500 focus-visible:ring-red-500 bg-white" : "bg-white"}
+              className={localErrors.accountCategory || accountValidationErrors.accountCategory ? "border-red-800 focus-visible:ring-red-800 bg-white" : "bg-white"}
             >
               <SelectValue placeholder="Select account category" />
             </SelectTrigger>
@@ -181,7 +181,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
               if (localErrors.balance) setLocalErrors({...localErrors, balance: undefined});
             }} 
             disabled={isLoading} 
-            className={localErrors.balance || accountValidationErrors.balance ? "border-red-500 focus-visible:ring-red-500 bg-white" : "bg-white"} 
+            className={localErrors.balance || accountValidationErrors.balance ? "border-red-800 focus-visible:ring-red-800 bg-white" : "bg-white"} 
           />
           {localErrors.balance && <FormError>{localErrors.balance}</FormError>}
           {!localErrors.balance && accountValidationErrors.balance && (

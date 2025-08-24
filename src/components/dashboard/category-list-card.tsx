@@ -116,7 +116,7 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-delete hover:bg-red-50"
+                      className="h-8 w-8 text-delete hover:bg-red-100/50"
                       onClick={() => onDeleteItem(item)}
                     >
                       <Trash2 className="h-4 w-4" />

@@ -150,28 +150,28 @@ const DashboardPreview = ({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                        <span className="text-red-600 text-sm font-medium">🍕</span>
+                      <div className="w-8 h-8 bg-red-900/20 rounded-full flex items-center justify-center">
+                        <span className="text-red-900 text-sm font-medium">🍕</span>
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">Lunch at Pizza Palace</p>
                         <p className="text-sm text-gray-500">Food & Dining • Today</p>
                       </div>
                     </div>
-                    <span className="text-red-600 font-semibold">-{formatCurrency(580)}</span>
+                    <span className="text-red-900 font-semibold">-{formatCurrency(580)}</span>
                   </div>
                   
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <span className="text-green-600 text-sm font-medium">💰</span>
+                      <div className="w-8 h-8 bg-teal-200 rounded-full flex items-center justify-center">
+                        <span className="text-teal-600 text-sm font-medium">💰</span>
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">Salary Deposit</p>
                         <p className="text-sm text-gray-500">Income • Yesterday</p>
                       </div>
                     </div>
-                    <span className="text-green-600 font-semibold">+{formatCurrency(75000)}</span>
+                    <span className="text-teal-600 font-semibold">+{formatCurrency(75000)}</span>
                   </div>
                   
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -184,7 +184,7 @@ const DashboardPreview = ({
                         <p className="text-sm text-gray-500">Transportation • 2 days ago</p>
                       </div>
                     </div>
-                    <span className="text-red-600 font-semibold">-{formatCurrency(25)}</span>
+                    <span className="text-red-900 font-semibold">-{formatCurrency(25)}</span>
                   </div>
                   
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -197,7 +197,7 @@ const DashboardPreview = ({
                         <p className="text-sm text-gray-500">Shopping • 3 days ago</p>
                       </div>
                     </div>
-                    <span className="text-red-600 font-semibold">-{formatCurrency(2450)}</span>
+                    <span className="text-red-900 font-semibold">-{formatCurrency(2450)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -215,7 +215,7 @@ const DashboardPreview = ({
                   <div className="text-2xl font-bold text-gray-900">
                     {formatCurrency(72000)}
                   </div>
-                  <p className="text-xs text-green-600 mt-1 flex items-center">
+                  <p className="text-xs text-teal-600 mt-1 flex items-center">
                     <span className="mr-1">↗</span>
                     +5.2% from last month
                   </p>
@@ -232,7 +232,7 @@ const DashboardPreview = ({
                   <div className="text-2xl font-bold text-gray-900">
                     {formatCurrency(75000)}
                   </div>
-                  <p className="text-xs text-green-600 mt-1 flex items-center">
+                  <p className="text-xs text-teal-600 mt-1 flex items-center">
                     <span className="mr-1">↗</span>
                     +2.1% from last month
                   </p>
@@ -272,7 +272,7 @@ const DashboardPreview = ({
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-red-900/80 rounded-full"></div>
                         <span className="text-sm">Food & Dining</span>
                       </div>
                       <div className="text-right">

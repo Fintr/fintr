@@ -72,7 +72,7 @@ const DeleteAccountDialog: React.FC<DeleteAccountDialogProps> = ({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-delete hover:bg-red-100"
+          className="h-8 w-8 text-delete hover:bg-red-900/20"
           onClick={handleTriggerClick}
         >
           <Trash2 className="h-4 w-4" />
@@ -89,7 +89,7 @@ const DeleteAccountDialog: React.FC<DeleteAccountDialogProps> = ({
           </div>
 
           {errorMessage && (
-            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
+            <div className="text-sm text-red-900 bg-red-100/50 p-3 rounded-md border border-red-300">
               <strong>Error:</strong> {errorMessage}
             </div>
           )}          

@@ -117,7 +117,7 @@ export default function CreateTicketForm({ onSuccess }: CreateTicketFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {createTicketMutation.isError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-100/50 border border-red-300 text-red-700 px-4 py-3 rounded">
           <div className="flex items-center">
             <AlertCircle className="h-4 w-4 mr-2" />
             Failed to create ticket. Please try again.
@@ -136,11 +136,11 @@ export default function CreateTicketForm({ onSuccess }: CreateTicketFormProps) {
             trigger('title');
           }}
           placeholder="Brief description of your issue or request"
-          className={`${errors.title ? 'border-red-500' : ''} min-h-[40px] max-h-[120px]`}
+          className={`${errors.title ? 'border-red-800' : ''} min-h-[40px] max-h-[120px]`}
           rows={1}
         />
         {errors.title && (
-          <p className="text-sm text-red-500">{errors.title.message}</p>
+          <p className="text-sm bg-red-800">{errors.title.message}</p>
         )}
       </div>
 
@@ -168,7 +168,7 @@ export default function CreateTicketForm({ onSuccess }: CreateTicketFormProps) {
           <p className="text-sm text-gray-600">{getTypeDescription(watchedType)}</p>
         )}
         {errors.ticketType && (
-          <p className="text-sm text-red-500">{errors.ticketType.message}</p>
+          <p className="text-sm bg-red-800">{errors.ticketType.message}</p>
         )}
       </div>
 
@@ -193,7 +193,7 @@ export default function CreateTicketForm({ onSuccess }: CreateTicketFormProps) {
           <p className="text-sm text-gray-600">{getPriorityDescription(watchedPriority)}</p>
         )}
         {errors.priority && (
-          <p className="text-sm text-red-500">{errors.priority.message}</p>
+          <p className="text-sm bg-red-800">{errors.priority.message}</p>
         )}
       </div>
 
@@ -210,7 +210,7 @@ export default function CreateTicketForm({ onSuccess }: CreateTicketFormProps) {
             }}
             onImagePaste={handleImagePaste}
             placeholder="Provide detailed information about your issue or request... (You can also paste images here)"
-            className={`${errors.description ? 'border-red-500' : ''} min-h-[100px] max-h-[300px]`}
+            className={`${errors.description ? 'border-red-800' : ''} min-h-[100px] max-h-[300px]`}
             rows={3}
           />
           <div className="absolute bottom-2 right-2 text-xs text-gray-400 pointer-events-none">
@@ -218,7 +218,7 @@ export default function CreateTicketForm({ onSuccess }: CreateTicketFormProps) {
           </div>
         </div>
         {errors.description && (
-          <p className="text-sm text-red-500">{errors.description.message}</p>
+          <p className="text-sm bg-red-800">{errors.description.message}</p>
         )}
       </div>
 

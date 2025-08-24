@@ -29,7 +29,7 @@ export function CalendarView({
         </div>
       )}
       {isError && (
-        <div className="text-center p-4 text-red-500">
+        <div className="text-center p-4 bg-red-800">
           Error: {error?.message}
         </div>
       )}

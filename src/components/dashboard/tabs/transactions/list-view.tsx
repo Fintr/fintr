@@ -63,7 +63,7 @@ export function ListView({
         </div>
       )}
       {isError && error && (
-        <div className="text-red-500 text-center py-4">Error: {error.message}</div>
+        <div className="bg-red-800 text-center py-4">Error: {error.message}</div>
       )}
       {isSuccess && data && (
         <>
@@ -108,9 +108,9 @@ export function ListView({
                       <div
                       className={`w-1 h-12 rounded mr-3 flex-shrink-0 ${
                           transaction.type === CombinedTransactionTypeEnum.INCOME
-                            ? "bg-primary-green"
+                            ? "bg-teal-600"
                           : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                            ? "bg-primary-red"
+                            ? "bg-red-900"
                             : "bg-blue-500"
                         }`}
                     />
@@ -151,9 +151,9 @@ export function ListView({
                       <div
                               className={`font-semibold text-sm ${
                           transaction.type === CombinedTransactionTypeEnum.INCOME
-                            ? "text-primary-green"
+                            ? "text-teal-600"
                                   : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                            ? "text-primary-red"
+                            ? "text-red-900"
                             : "text-blue-600"
                         }`}
                       >
@@ -163,9 +163,9 @@ export function ListView({
                       <span
                               className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
                           transaction.type === CombinedTransactionTypeEnum.INCOME
-                                  ? "bg-primary-green/10  text-primary-green"
+                                  ? "bg-teal-100/50  text-teal-600"
                                   : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                                  ? "bg-primary-red/10 text-primary-red"
+                                  ? "bg-red-100/50 text-red-900"
                                   : "bg-blue-100 text-blue-700"
                         }`}
                       >
@@ -197,7 +197,7 @@ export function ListView({
                         <Button
                             variant="ghost"
                           size="icon"
-                            className="h-8 w-8 text-primary hover:bg-primary/10"
+                            className="h-8 w-8 text-primary hover:bg-primary/30"
                           onClick={() => onRowEdit(transaction)}
                         >
                           <Edit className="h-4 w-4" />

@@ -23,7 +23,7 @@ const FormError: React.FC<FormErrorProps> = ({ message, children, className = ''
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 20 20"
         fill="currentColor"
-        className="h-4 w-4 text-red-500 mr-1 flex-shrink-0"
+        className="h-4 w-4 bg-red-800 mr-1 flex-shrink-0"
       >
         <path
           fillRule="evenodd"
@@ -31,7 +31,7 @@ const FormError: React.FC<FormErrorProps> = ({ message, children, className = ''
           clipRule="evenodd"
         />
       </svg>
-      <p className="text-xs font-medium text-red-500">{errorMessage}</p>
+      <p className="text-xs font-medium bg-red-800">{errorMessage}</p>
     </div>
   );
 };

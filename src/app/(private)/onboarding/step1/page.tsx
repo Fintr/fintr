@@ -87,7 +87,7 @@ export default function OnboardingStep1() {
 
         <Card className="shadow-lg border-border">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
+            <div className="mx-auto mb-4 p-3 bg-primary/30 rounded-full w-fit">
               <PhilippinePeso className="h-8 w-8 text-primary" />
             </div>
             <CardTitle className="text-2xl">Tell us about your income</CardTitle>
@@ -135,7 +135,7 @@ export default function OnboardingStep1() {
                 <span className="text-sm font-medium text-muted-foreground">
                   Total Monthly Income:
                 </span>
-                <span className="text-lg font-bold text-primary dark:text-green-400">
+                <span className="text-lg font-bold text-primary dark:text-teal-400">
                   ₱{totalIncome.toLocaleString()}
                 </span>
               </div>

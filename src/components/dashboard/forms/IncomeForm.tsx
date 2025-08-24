@@ -360,7 +360,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
               onChange={(e) => handleFieldChange("amount", e.target.value)}
               type="number"
               placeholder="0.00"
-              className={`text-sm ${formSubmitted && formErrors.amount ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+              className={`text-sm ${formSubmitted && formErrors.amount ? "border-red-800 focus-visible:ring-red-800" : ""}`}
             />
             {formSubmitted && formErrors.amount?.map((error) => (
               <FormError key={error}>{error}</FormError>
@@ -378,7 +378,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             >
               <SelectTrigger 
                 id="scheduleType" 
-                className={`text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                className={`text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-800 focus-visible:ring-red-800" : ""}`}
               >
                 <SelectValue placeholder="Select schedule type" className="text-sm" />
               </SelectTrigger>
@@ -401,7 +401,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                 >
                   <SelectTrigger 
                     id="repeatInterval" 
-                    className={`text-sm ${formSubmitted && formErrors.repeatInterval ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                    className={`text-sm ${formSubmitted && formErrors.repeatInterval ? "border-red-800 focus-visible:ring-red-800" : ""}`}
                   >
                     <SelectValue placeholder="Select interval" className="text-sm" />
                   </SelectTrigger>
@@ -434,7 +434,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             >
               <SelectTrigger 
                 id="categoryName" 
-                className={`text-sm ${formSubmitted && formErrors.categoryName ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                className={`text-sm ${formSubmitted && formErrors.categoryName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
               >
                 <SelectValue placeholder="Select category" className="text-sm" />
               </SelectTrigger>
@@ -477,7 +477,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             >
               <SelectTrigger 
                 id="accountName" 
-                className={`text-sm ${formSubmitted && formErrors.accountName ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                className={`text-sm ${formSubmitted && formErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
               >
                 <SelectValue placeholder="Select Account" className="text-sm" />
               </SelectTrigger>

@@ -82,7 +82,7 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
               setCategoryName(e.target.value);
               if (localErrors.name) setLocalErrors({}); 
             }}
-            className={localErrors.name || categoryValidationErrors.name ? "border-red-500 focus-visible:ring-red-500 bg-white" : "bg-white"}
+            className={localErrors.name || categoryValidationErrors.name ? "border-red-800 focus-visible:ring-red-800 bg-white" : "bg-white"}
             disabled={isLoading}
           />
           {localErrors.name && <FormError>{localErrors.name}</FormError>}

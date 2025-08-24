@@ -18,7 +18,7 @@ const NotificationItem: React.FC<NotificationProps> = ({
   const getIcon = () => {
     switch (type) {
       case "success":
-        return <Check className="h-4 w-4 text-green-500" />;
+        return <Check className="h-4 w-4 text-teal-100/500" />;
       case "warning":
         return <AlertCircle className="h-4 w-4 text-amber-500" />;
       case "info":

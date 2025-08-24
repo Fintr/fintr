@@ -462,7 +462,7 @@ const DatabaseTab = () => {
         <CardContent>
           <div className="flex items-center justify-center p-8">
             <div className="text-center">
-              <p className="text-red-500 mb-4">Failed to load categories. Please try again.</p>
+              <p className="bg-red-800 mb-4">Failed to load categories. Please try again.</p>
               <Button onClick={() => window.location.reload()}>
                 Retry
               </Button>
@@ -608,7 +608,7 @@ const DatabaseTab = () => {
                     <LoadingSpinner size="medium" />
                   </div>
                 ) : accountsError ? (
-                  <p className="text-red-500 text-center py-4">
+                  <p className="bg-red-800 text-center py-4">
                     Error loading accounts. Please try again.
                   </p>
                 ) : accounts.length === 0 ? (

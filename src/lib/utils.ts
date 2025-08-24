@@ -148,10 +148,10 @@ export function getColorByIndex(index: number): string {
 
 export function getProgressColor(progress: number, type: "bg" | "font" | "all" = "all"): string {
   if (progress <= 80) {
-    return type === "bg" ? "bg-primary-green" : type === "font" ? "text-primary-green" : "bg-primary-green text-primary-green"; // teal
+    return type === "bg" ? "bg-teal-600" : type === "font" ? "text-teal-600" : "bg-teal-600 text-teal-600"; // teal
   } else if (progress <= 100) {
     return type === "bg" ? "bg-[#CC5500]" : type === "font" ? "text-[#CC5500]" : "bg-[#CC5500] text-[#CC5500]"; // burnt orange
   } else {
-    return type === "bg" ? "bg-primary-red" : type === "font" ? "text-primary-red" : "bg-primary-red text-primary-red"; // burgundy
+    return type === "bg" ? "bg-red-900" : type === "font" ? "text-red-900" : "bg-red-900 text-red-900"; // burgundy
   }
 }

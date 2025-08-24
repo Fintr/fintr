@@ -74,10 +74,10 @@ export const generateMockTransactions = () => {
 // Generate mock budgets
 export const generateMockBudgets = () => {
   return [
-    { name: "Food", spent: 8500, budget: 10000, color: "#008080" },
+    { name: "Food", spent: 8500, budget: 10000, color: "var(--teal-600)" },
     { name: "Transportation", spent: 3200, budget: 5000, color: "#D6A3A1" },
     { name: "Entertainment", spent: 2800, budget: 3000, color: "#FF6F61" },
-    { name: "Utilities", spent: 4500, budget: 6000, color: "#800020" },
+    { name: "Utilities", spent: 4500, budget: 6000, color: "var(--red-900)" },
     { name: "Shopping", spent: 6200, budget: 5000, color: "#CC5500" },
   ];
 };

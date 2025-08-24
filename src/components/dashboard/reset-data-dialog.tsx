@@ -70,12 +70,12 @@ const ResetDataDialog = ({ isOpen, onClose }: ResetDataDialogProps) => {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-900/20">
+              <AlertTriangle className="h-5 w-5 text-red-900" />
             </div>
             <div>
               <DialogTitle className="text-red-900">Reset All Data</DialogTitle>
-              <DialogDescription className="text-red-600">
+              <DialogDescription className="text-red-900">
                 This action cannot be undone.
               </DialogDescription>
             </div>
@@ -83,7 +83,7 @@ const ResetDataDialog = ({ isOpen, onClose }: ResetDataDialogProps) => {
         </DialogHeader>
         
         <div className="space-y-4">
-          <div className="rounded-lg bg-red-50 p-4">
+          <div className="rounded-lg bg-red-100/50 p-4">
             <p className="text-sm text-red-800">
               <strong>Warning:</strong> This will permanently delete all your financial data, 
               transactions, accounts, budgets, and goals. You will be redirected to the 

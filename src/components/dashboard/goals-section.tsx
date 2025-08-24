@@ -129,11 +129,11 @@ const GoalSection = ({  }: GoalSectionProps) => {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
-        return "text-red-600";
+        return "text-red-900";
       case "medium":
         return "text-amber-600";
       case "low":
-        return "text-green-600";
+        return "text-teal-600";
       default:
         return "text-gray-600";
     }
@@ -495,7 +495,7 @@ const GoalSection = ({  }: GoalSectionProps) => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-primary hover:bg-primary/10"
+                            className="h-8 w-8 text-primary hover:bg-primary/30"
                             onClick={() => {
                               // Set editing state
                               setEditingGoalIndex(index);
@@ -529,7 +529,7 @@ const GoalSection = ({  }: GoalSectionProps) => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 hover:bg-red-50"
+                            className="h-8 w-8 hover:bg-red-100/50"
                             onClick={() => {
                               // Remove goal from the list
                               const updatedGoals = [...goals];

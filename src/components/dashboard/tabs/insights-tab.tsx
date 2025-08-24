@@ -407,7 +407,7 @@ const InsightsTab = () => {
                 <LoadingSpinner size="medium" />
               </div>
             ) : isError ? (
-              <div className="text-center py-8 text-red-500">
+              <div className="text-center py-8 bg-red-800">
                 Error loading insights. Please try again.
               </div>
             ) : (
@@ -417,7 +417,7 @@ const InsightsTab = () => {
                     Total Income
                   </h4>
                   <div
-                    className={`text-2xl font-bold ${(insightsData?.summary?.totalIncome || 0) >= 0 ? "text-primary-green" : "text-primary-red"}`}
+                    className={`text-2xl font-bold ${(insightsData?.summary?.totalIncome || 0) >= 0 ? "text-teal-600" : "text-red-900"}`}
                   >
                     {formatCurrency(insightsData?.summary?.totalIncome || 0)}
                   </div>
@@ -426,7 +426,7 @@ const InsightsTab = () => {
                   <h4 className="text-sm font-medium text-primary/70 mb-1">
                     Total Expenses
                   </h4>
-                  <div className="text-2xl font-bold text-primary-red">
+                  <div className="text-2xl font-bold text-red-900">
                     {formatCurrency(insightsData?.summary?.totalExpenses || 0)}
                   </div>
                 </div>
@@ -435,7 +435,7 @@ const InsightsTab = () => {
                     Net Savings
                   </h4>
                   <div
-                    className={`text-2xl font-bold ${(insightsData?.summary?.netSavings || 0) >= 0 ? "text-primary-green" : "text-primary-red"}`}
+                    className={`text-2xl font-bold ${(insightsData?.summary?.netSavings || 0) >= 0 ? "text-teal-600" : "text-red-900"}`}
                   >
                     {formatCurrency(insightsData?.summary?.netSavings || 0)}
                   </div>
@@ -509,13 +509,13 @@ const InsightsTab = () => {
                       <ScoreTag
                         percentage={insightsData?.healthScores?.savingsPercentage?.percentage || "0%"}
                         score={insightsData?.healthScores?.savingsPercentage?.score || 0}
-                        color="bg-green-600"
+                        color="bg-teal-600"
                       />
                     </div>
                     <Progress
                       value={insightsData?.healthScores?.savingsPercentage?.score || 0}
                       className="h-2 bg-gray-200"
-                      indicatorClassName="bg-green-600"
+                      indicatorClassName="bg-teal-600"
                     />
 
                     <div className="flex justify-between items-center">
@@ -581,9 +581,9 @@ const InsightsTab = () => {
                     </div>
                   </div>
 
-                  <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+                  <div className="p-4 bg-teal-50 rounded-lg border border-teal-200">
                     <div className="flex items-start">
-                      <div className="bg-green-600 text-white p-2 rounded-full mr-3">
+                      <div className="bg-teal-600 text-white p-2 rounded-full mr-3">
                         <Target className="h-5 w-5" />
                       </div>
                       <div>
@@ -602,8 +602,8 @@ const InsightsTab = () => {
                           </div>
                           <Progress
                             value={65}
-                            className="h-2 bg-green-100"
-                            indicatorClassName="bg-green-600"
+                            className="h-2 bg-teal-200"
+                            indicatorClassName="bg-teal-600"
                           />
                         </div>
                       </div>
@@ -747,7 +747,7 @@ const InsightsTab = () => {
                   <Line
                     type="monotone"
                     dataKey="expenses"
-                    stroke="#800020"
+                    stroke="var(--red-900)"
                     strokeWidth={2}
                     dot={{ r: 4 }}
                     activeDot={{ r: 6 }}
@@ -756,7 +756,7 @@ const InsightsTab = () => {
                   <Line
                     type="monotone"
                     dataKey="savings"
-                    stroke="#008080"
+                    stroke="var(--teal-600)"
                     strokeWidth={2}
                     dot={{ r: 4 }}
                     activeDot={{ r: 6 }}

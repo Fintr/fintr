@@ -139,7 +139,7 @@ const AccountList: React.FC<AccountListProps> = ({
         <h3 className="text-xl font-medium">Your Accounts</h3>
         <div className="text-xl">
           Total:{" "}
-          <span className="font-medium" style={{ color: "#008080" }}>
+          <span className="font-medium" style={{ color: "var(--teal-600)" }}>
             {formatCurrency(totalBalance)}
           </span>
         </div>
@@ -162,7 +162,7 @@ const AccountList: React.FC<AccountListProps> = ({
               <div className="flex items-center">
                 <span
                   className="text-lg font-medium"
-                  style={{ color: balanceAmount < 0 ? "#800020" : "#008080" }}
+                  style={{ color: balanceAmount < 0 ? "var(--red-900)" : "var(--teal-600)" }}
                 >
                   {formatCurrency(balanceAmount)}
                 </span>
@@ -249,7 +249,7 @@ const AccountList: React.FC<AccountListProps> = ({
             </div>
 
             {errorMessage && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
+              <div className="text-sm text-red-900 bg-red-100/50 p-3 rounded-md border border-red-300">
                 <strong>Error:</strong> {errorMessage}
               </div>
             )}          

@@ -201,7 +201,7 @@ const HowToUse = ({
             <button
               key={index}
               onClick={() => setActiveFeature(index)}
-              className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center whitespace-nowrap ${activeFeature === index ? "bg-primary text-white" : "bg-white text-primary border border-primary hover:bg-primary/10"}`}
+              className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center whitespace-nowrap ${activeFeature === index ? "bg-primary text-white" : "bg-white text-primary border border-primary hover:bg-primary/30"}`}
             >
               <span className="mr-2">{feature.icon}</span>
               {feature.title}
@@ -314,7 +314,7 @@ const HowToUse = ({
                         <div
                           key={oIndex}
                           onClick={() => handleQuizAnswer(qIndex, oIndex)}
-                          className={`p-3 rounded-lg cursor-pointer transition-colors ${selectedQuizAnswers[qIndex] === oIndex ? "bg-primary text-white" : "bg-gray-100 text-primary hover:bg-gray-200"} ${showQuizResults && oIndex === quiz.correctAnswer ? "ring-2 ring-green-500" : ""}`}
+                          className={`p-3 rounded-lg cursor-pointer transition-colors ${selectedQuizAnswers[qIndex] === oIndex ? "bg-primary text-white" : "bg-gray-100 text-primary hover:bg-gray-200"} ${showQuizResults && oIndex === quiz.correctAnswer ? "ring-2 ring-teal-100/500" : ""}`}
                         >
                           {option}
                         </div>
@@ -322,7 +322,7 @@ const HowToUse = ({
                     </div>
                     {showQuizResults && (
                       <div
-                        className={`mt-4 p-3 rounded-lg ${selectedQuizAnswers[qIndex] === quiz.correctAnswer ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                        className={`mt-4 p-3 rounded-lg ${selectedQuizAnswers[qIndex] === quiz.correctAnswer ? "bg-teal-200 text-green-800" : "bg-red-900/20 text-red-800"}`}
                       >
                         {selectedQuizAnswers[qIndex] === quiz.correctAnswer
                           ? "✓ Correct!"

@@ -131,7 +131,7 @@ export default function OnboardingStep2() {
 
         <Card className="shadow-lg border-border">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
+            <div className="mx-auto mb-4 p-3 bg-primary/30 rounded-full w-fit">
               <Target className="h-8 w-8 text-primary" />
             </div>
             <CardTitle className="text-2xl">Budget Set-Up</CardTitle>
@@ -185,7 +185,7 @@ export default function OnboardingStep2() {
                           />
                         </div>
                         <div>
-                          <span className="text-xs font-medium text-muted-foreground bg-primary/10 px-2 py-1 rounded-full whitespace-nowrap">
+                          <span className="text-xs font-medium text-muted-foreground bg-primary/30 px-2 py-1 rounded-full whitespace-nowrap">
                             {calculatePercentage(category.amount)}% of budget
                           </span>
                         </div>
