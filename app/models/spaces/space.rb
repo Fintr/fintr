@@ -5,6 +5,7 @@ module Spaces
     has_many :transactions, class_name: "Transactions::Transaction", dependent: :destroy
     has_many :incomes, class_name: "Transactions::Income", dependent: :destroy
     has_many :expenses, class_name: "Transactions::Expense", dependent: :destroy
+    has_many :transfers, class_name: "Transactions::Transfer", dependent: :destroy
     has_many :space_users, class_name: "Spaces::SpaceUser", dependent: :destroy
     has_many :users, class_name: "Auth::User", through: :space_users
     has_many :categories, class_name: "Transactions::Category", dependent: :destroy
