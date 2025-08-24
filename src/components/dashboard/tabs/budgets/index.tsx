@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Trash2, CalendarIcon, Filter } from "lucide-react";
 import { transformBudgetsToCategories } from "@/services/budgets/queries";
 import { z } from "zod";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getProgressColor } from "@/lib/utils";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import { NewBudgetDialog } from "./new-budget-dialog";
 import { EditBudgetDialog } from "./edit-budget-dialog";
@@ -190,18 +190,14 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                     <div className="text-2xl font-bold text-primary">
                       {formatCurrency(totalSpent)}
                     </div>
-                    <div className="ml-2 text-sm font-medium text-primary">
+                    <div className={`ml-2 text-sm font-medium ${getProgressColor(budgetUsagePercentage, "font")}`}>
                       ({formattedBudgetPercentage}%)
                     </div>
                   </div>
                   <Progress
-                    value={
-                      budgetUsagePercentage > 100 ? 100 : budgetUsagePercentage
-                    }
+                    value={budgetUsagePercentage}
                     className="h-2 mt-2 bg-gray-200"
-                    indicatorClassName={
-                      isOverBudget ? "bg-[#800020]" : "bg-primary"
-                    }
+                    indicatorClassName={getProgressColor(budgetUsagePercentage, "bg")}
                   />
                 </div>
                 <div className="bg-[#f9f7f5] p-4 rounded-lg">
@@ -285,7 +281,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                             {" "}
                             / {formatCurrency(category.budget)}
                           </span>
-                          <span className="ml-2 text-primary">
+                          <span className={`ml-2 ${getProgressColor(budgetPercentage, "font")}`}>
                             ({formattedItemPercentage}%)
                           </span>
                         </div>
@@ -309,7 +305,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                       value={budgetPercentage > 100 ? 100 : budgetPercentage}
                       className="h-2 bg-gray-200"
                       indicatorClassName={
-                        isItemOverBudget ? "bg-[#800020]" : "bg-primary"
+                        getProgressColor(budgetPercentage, "bg")
                       }
                     />
                   </div>

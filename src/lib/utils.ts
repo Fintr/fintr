@@ -145,3 +145,13 @@ export function getColor(chartKey?: string): string {
 export function getColorByIndex(index: number): string {
   return CHART_COLORS[index];
 }
+
+export function getProgressColor(progress: number, type: "bg" | "font" | "all" = "all"): string {
+  if (progress <= 80) {
+    return type === "bg" ? "bg-primary-green" : type === "font" ? "text-primary-green" : "bg-primary-green text-primary-green"; // teal
+  } else if (progress <= 100) {
+    return type === "bg" ? "bg-[#CC5500]" : type === "font" ? "text-[#CC5500]" : "bg-[#CC5500] text-[#CC5500]"; // burnt orange
+  } else {
+    return type === "bg" ? "bg-primary-red" : type === "font" ? "text-primary-red" : "bg-primary-red text-primary-red"; // burgundy
+  }
+}
