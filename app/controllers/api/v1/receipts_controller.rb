@@ -18,14 +18,14 @@ module Api
             processing_method: "pure_ai"
           )
 
-          operation = Ai::Operations::Usages::CreateUsage.new.call(processing_params) do
+          operation = ::Ai::Operations::Usages::CreateUsage.new.call(processing_params) do
             ::Ai::Operations::Receipts::ProcessReceipt.new.call(params: processing_params)
           end
 
           # Clean up temporary files
           cleanup_temporary_files(image_path)
 
-          return render_internal_server_error(details: operation.failure) unless operation.success?
+          return render_internal_server_error(message: "Receipt processing failed", details: operation.failure) unless operation.success?
 
           # Add processing time to response
           result = operation.value!

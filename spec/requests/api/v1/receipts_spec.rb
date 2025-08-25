@@ -46,8 +46,8 @@ RSpec.describe 'Api::V1::Receipts', type: :request do
       end
 
       before do
-        allow(Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(mock_create_usage_instance)
-        allow(Ai::Operations::Receipts::ProcessReceipt).to receive(:new).and_return(mock_process_receipt_instance)
+        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(mock_create_usage_instance)
+        allow(::Ai::Operations::Receipts::ProcessReceipt).to receive(:new).and_return(mock_process_receipt_instance)
 
         allow(mock_create_usage_instance).to receive(:call).and_yield.and_return(
           Dry::Monads::Result::Success.new(receipt_processing_result)
@@ -106,8 +106,8 @@ RSpec.describe 'Api::V1::Receipts', type: :request do
       end
 
       before do
-        allow(Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(mock_create_usage_instance)
-        allow(Ai::Operations::Receipts::ProcessReceipt).to receive(:new).and_return(mock_process_receipt_instance)
+        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(mock_create_usage_instance)
+        allow(::Ai::Operations::Receipts::ProcessReceipt).to receive(:new).and_return(mock_process_receipt_instance)
 
         allow(mock_create_usage_instance).to receive(:call).and_yield.and_return(
           Dry::Monads::Result::Success.new(receipt_processing_result)
@@ -130,8 +130,8 @@ RSpec.describe 'Api::V1::Receipts', type: :request do
       let(:failure_details) { { "error" => "Failed to process receipt" } }
 
       before do
-        allow(Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(mock_create_usage_instance)
-        allow(Ai::Operations::Receipts::ProcessReceipt).to receive(:new).and_return(mock_process_receipt_instance)
+        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(mock_create_usage_instance)
+        allow(::Ai::Operations::Receipts::ProcessReceipt).to receive(:new).and_return(mock_process_receipt_instance)
 
         allow(mock_create_usage_instance).to receive(:call).and_yield.and_return(
           Dry::Monads::Result::Failure.new(failure_details)
@@ -150,7 +150,7 @@ RSpec.describe 'Api::V1::Receipts', type: :request do
       it 'returns the failure details in the response body' do
         json_response = JSON.parse(response.body)
         expect(json_response['success']).to be(false)
-        expect(json_response['error']['message']).to eq('Internal Server Error')
+        expect(json_response['error']['message']).to eq('Receipt processing failed')
         expect(json_response['error']['details']).to eq(Transformers::LowerCamelKeys.transform(failure_details.deep_stringify_keys).deep_stringify_keys)
       end
     end
@@ -217,7 +217,7 @@ RSpec.describe 'Api::V1::Receipts', type: :request do
       it 'returns an error message about file size' do
         json_response = JSON.parse(response.body)
         expect(json_response['success']).to be(false)
-        expect(json_response['error']['message']).to eq('Internal Server Error')
+        expect(json_response['error']['message']).to eq('Receipt processing failed')
         # The error might be different due to the operations being called
         expect(json_response['error']['details']['error']).to be_present
       end
@@ -264,7 +264,7 @@ RSpec.describe 'Api::V1::Receipts', type: :request do
         end
 
         before do
-          allow(Ai::Operations::Receipts::ProcessReceipt).to receive(:new).and_return(mock_process_receipt_instance)
+          allow(::Ai::Operations::Receipts::ProcessReceipt).to receive(:new).and_return(mock_process_receipt_instance)
           allow(mock_process_receipt_instance).to receive(:call).and_return(
             Dry::Monads::Result::Success.new(receipt_processing_result)
           )
@@ -294,7 +294,7 @@ RSpec.describe 'Api::V1::Receipts', type: :request do
         let(:failure_details) { { "error" => "Failed to process test receipt" } }
 
         before do
-          allow(Ai::Operations::Receipts::ProcessReceipt).to receive(:new).and_return(mock_process_receipt_instance)
+          allow(::Ai::Operations::Receipts::ProcessReceipt).to receive(:new).and_return(mock_process_receipt_instance)
           allow(mock_process_receipt_instance).to receive(:call).and_return(
             Dry::Monads::Result::Failure.new(failure_details)
           )
