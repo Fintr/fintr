@@ -11,13 +11,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle, XCircle } from "lucide-react";
+
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createWhitelist, deleteWhitelist } from "@/services/admin/whitelist/mutations";
-import { WhitelistEntry, CreateWhitelistPayload, DeleteWhitelistPayload } from "@/types/adminTypes";
+
 import { useRef, Fragment, useState } from "react";
 import { useInfiniteUsers } from "@/hooks/async/useInfiniteUsers";
 import { Input } from "@/components/ui/input";
@@ -52,84 +51,7 @@ export default function UsersPage() {
     hasNextPage: boolean;
   };
 
-  const { mutate: whitelistUser, isLoading: isWhitelisting } = useMutation<WhitelistEntry, Error, string>({
-    mutationFn: (email) => createWhitelist(api, { email }),
-    onSuccess: (newWhitelistEntry) => {
-      console.log("Whitelisting successful. New entry:", newWhitelistEntry);
-      queryClient.setQueryData(["admin", "users", appliedSearchQuery], (oldData: any) => {
-        if (!oldData) return oldData;
 
-        return {
-          ...oldData,
-          pages: oldData.pages.map((page: {
-            users: UserData[];
-            nextPage: number | undefined;
-          }) => ({
-            ...page,
-            users: page.users.map((user: UserData) => {
-              if (user.email === newWhitelistEntry.email) {
-                console.log("Updating user whitelistId for:", user.email, "from", user.whitelistId, "to", newWhitelistEntry.id);
-                return { ...user, whitelistId: newWhitelistEntry.id };
-              }
-              return user;
-            }),
-          })),
-        };
-      });
-      toast.success("User whitelisted successfully.");
-      queryClient.invalidateQueries({ queryKey: ["admin", "whitelists"], refetchType: 'active' });
-    },
-  });
-  const { mutate: removeWhitelistUser, isLoading: isRemovingWhitelist } = useMutation<void, Error, string>({
-    mutationFn: (id) => deleteWhitelist(api, { id }),
-    onSuccess: (data, removedWhitelistId) => {
-      console.log("Removing whitelist successful. Removed ID:", removedWhitelistId);
-      queryClient.setQueryData(["admin", "users", appliedSearchQuery], (oldData: any) => {
-        if (!oldData) return oldData;
-
-        return {
-          ...oldData,
-          pages: oldData.pages.map((page: {
-            users: UserData[];
-            nextPage: number | undefined;
-          }) => ({
-            ...page,
-            users: page.users.map((user: UserData) => {
-              if (user.whitelistId === removedWhitelistId) {
-                console.log("Updating user whitelistId for:", user.email, "from", user.whitelistId, "to null");
-                return { ...user, whitelistId: null };
-              }
-              return user;
-            }),
-          })),
-        };
-      });
-      toast.success("User removed from whitelist successfully.");
-      queryClient.invalidateQueries({ queryKey: ["admin", "whitelists"], refetchType: 'active' });
-    },
-  });
-
-  const handleWhitelistToggle = (user: UserData) => {
-    if (user.whitelistId) {
-      removeWhitelistUser(user.whitelistId, {
-        onSuccess: () => {
-          toast.success("User removed from whitelist successfully.");
-        },
-        onError: (err) => {
-          toast.error(`Failed to remove user from whitelist: ${err.message}`);
-        },
-      });
-    } else {
-      whitelistUser(user.email, {
-        onSuccess: () => {
-          toast.success("User whitelisted successfully.");
-        },
-        onError: (err) => {
-          toast.error(`Failed to whitelist user: ${err.message}`);
-        },
-      });
-    }
-  };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchInput(e.target.value);
@@ -191,8 +113,6 @@ export default function UsersPage() {
             <TableRow>
               <TableHead>Full Name</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Whitelisted</TableHead>
-              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -202,22 +122,6 @@ export default function UsersPage() {
                   <TableRow key={user.id}>
                     <TableCell>{user.fullName}</TableCell>
                     <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      {user.whitelistId ? (
-                        <CheckCircle className="h-5 w-5 text-teal-100/500" />
-                      ) : (
-                        <XCircle className="h-5 w-5 bg-red-800" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant={user.whitelistId ? "destructive" : "default"}
-                        onClick={() => handleWhitelistToggle(user)}
-                        disabled={isWhitelisting || isRemovingWhitelist}
-                      >
-                        {user.whitelistId ? "Remove Whitelist" : "Whitelist User"}
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 ))}
               </Fragment>

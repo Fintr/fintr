@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import DashboardNavigation from "@/components/dashboard/dashboard-navigation";
 import { useAtomValue } from 'jotai';
-import { isAdminAtom, isWhitelistedAtom } from '@/atoms/dashboardAtoms';
+import { isAdminAtom } from '@/atoms/dashboardAtoms';
 import { onboardingStepAtom, isOnboardingCompletedAtom } from '@/atoms/onboardingAtoms';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
@@ -16,7 +16,6 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     scope: "openid profile email read:current_user read:transactions read:users",
   });
   const isAdmin = useAtomValue(isAdminAtom);
-  const isWhitelisted = useAtomValue(isWhitelistedAtom);
   const onboardingStep = useAtomValue(onboardingStepAtom);
   const isOnboardingCompleted = useAtomValue(isOnboardingCompletedAtom);
   const pathname = usePathname();
@@ -53,18 +52,12 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     }
   }, [pathname, onboardingStep, router]);
 
-  useEffect(() => {
-    if (isWhitelisted != null && !isWhitelisted) {
-      router.push("/");
-      toast.error("Sorry. We're keeping this app invite only for now.");
-    }
-  }, [isWhitelisted]);
   return (
     <div className="min-h-screen bg-background text-primary">
       {!isOnOnboardingPage && (
         <DashboardNavigation hideActionButtons={hideActionButtons} isAdmin={isAdmin} />
       )}
-      <div className={isOnOnboardingPage ? "min-h-screen" : "p-0 md:p-8 max-w-7xl mx-auto pt-14"}>
+      <div className={isOnOnboardingPage ? "min-h-screen" : "p-0 md:p-8 max-w-7xl mx-auto"}>
         {children}
       </div>
     </div>

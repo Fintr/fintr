@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AxiosInstance } from "axios";
 import { useLocalStorage } from "./useLocalStorage";
 import { useAtomValue, useSetAtom } from "jotai";
-import { isWhitelistedAtom, isAdminAtom } from "@/atoms/dashboardAtoms";
+import { isAdminAtom } from "@/atoms/dashboardAtoms";
 import { onboardingStepAtom } from "@/atoms/onboardingAtoms";
 
 export function useGetSpaceCode(api: AxiosInstance) {
@@ -11,8 +11,6 @@ export function useGetSpaceCode(api: AxiosInstance) {
   const [spaceCode, setSpaceCode] = useLocalStorage("spaceCode", "");
   const setIsAdmin = useSetAtom(isAdminAtom);
   const isAdmin = useAtomValue(isAdminAtom);
-  const setIsWhitelisted = useSetAtom(isWhitelistedAtom);
-  const isWhitelisted = useAtomValue(isWhitelistedAtom);
   const setOnboardingStep = useSetAtom(onboardingStepAtom);
   const onboardingStep = useAtomValue(onboardingStepAtom);
 
@@ -22,7 +20,6 @@ export function useGetSpaceCode(api: AxiosInstance) {
       const response = await api.get("/auth/private");
       const fetchedSpaceCode = response.data?.data?.spaceCode;
       const fetchedIsAdmin = response.data?.data?.isAdmin;
-      const fetchedIsWhitelisted = response.data?.data?.isWhitelisted;
       const fetchedOnboardingStep = response.data?.data?.onboardingStep;
       if (isClient) {
         if (fetchedSpaceCode) {
@@ -30,9 +27,6 @@ export function useGetSpaceCode(api: AxiosInstance) {
         }
         if (fetchedIsAdmin !== undefined) {
           setIsAdmin(fetchedIsAdmin);
-        }
-        if (fetchedIsWhitelisted !== undefined) {
-          setIsWhitelisted(fetchedIsWhitelisted);
         }
         if (fetchedOnboardingStep) {
           setOnboardingStep(fetchedOnboardingStep);

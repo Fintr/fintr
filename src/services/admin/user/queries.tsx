@@ -6,7 +6,6 @@ export interface UserData {
   id: string;
   fullName: string;
   email: string;
-  whitelistId: string | null;
 }
 
 export const useGetUsers = () => {

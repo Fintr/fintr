@@ -19,17 +19,12 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
-  const [activeTab, setActiveTab] = useState("whitelists"); // Default active tab
+  const [activeTab, setActiveTab] = useState("users"); // Default active tab
   const [isSheetOpen, setIsSheetOpen] = useState(false); // State for mobile sheet
   const isAdmin = useAtomValue(isAdminAtom);
   const router = useRouter();
 
   const sidebarNavItems = [
-    {
-      title: "Whitelists",
-      href: "/admin/whitelists",
-    },
-    // Add more admin tabs here if needed in the future
     {
       title: "Users",
       href: "/admin/users",
