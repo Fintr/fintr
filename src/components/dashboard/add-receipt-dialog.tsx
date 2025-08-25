@@ -32,7 +32,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   const { data: aiUsage, isLoading: isLoadingUsage } = useAIUsage();
 
   // Check if tokens are available
-  const hasTokensAvailable = aiUsage ? aiUsage.remaining > 0 : true;
+  const hasTokensAvailable = aiUsage ? aiUsage.remaining > 0 : false;
 
   // Check if device is mobile
   const isMobile = typeof window !== 'undefined' ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) : false;
