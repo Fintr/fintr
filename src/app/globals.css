@@ -76,7 +76,7 @@ html, body {
   --muted-foreground: oklch(0.554 0.046 257.417);
   --accent: oklch(0.968 0.007 247.896);
   --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: var(--red-900);
+  --destructive: oklch(39.6% 0.141 25.723);
   --border: oklch(0.929 0.013 255.508);
   --input: oklch(0.929 0.013 255.508);
   --ring: oklch(0.704 0.04 256.788);
@@ -142,13 +142,3 @@ html, body {
     @apply bg-background text-foreground;
   }
 }
-
-/* Re-coloring 
-600 - primary
-500 - primary/80
-400 - primary/60
-300 - primary/50
-200 - primary/30
-100 - primary/20
-50 - primary/10
-*/
