@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe Receipts::Operations::ProcessReceipt, type: :operation do
+RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
   subject(:operation) { described_class.new }
 
   let(:user_id) { SecureRandom.uuid }
@@ -96,26 +96,26 @@ RSpec.describe Receipts::Operations::ProcessReceipt, type: :operation do
 
     before do
       # Stub sub-operations for pure AI processing
-      allow(Receipts::Operations::ExtractReceiptDataVision).to receive(:new) do |*args|
-        instance_double(Receipts::Operations::ExtractReceiptDataVision).tap do |op|
+      allow(Ai::Operations::Receipts::ExtractReceiptDataVision).to receive(:new) do |*args|
+        instance_double(Ai::Operations::Receipts::ExtractReceiptDataVision).tap do |op|
           allow(op).to receive(:call).and_return(extracted_data_success)
         end
       end
 
-      allow(Receipts::Operations::CalculateConfidenceAi).to receive(:new) do |*args|
-        instance_double(Receipts::Operations::CalculateConfidenceAi).tap do |op|
+      allow(Ai::Operations::Receipts::CalculateConfidenceAi).to receive(:new) do |*args|
+        instance_double(Ai::Operations::Receipts::CalculateConfidenceAi).tap do |op|
           allow(op).to receive(:call).and_return(confidence_analysis_success)
         end
       end
 
-      allow(Receipts::Operations::FormatResult).to receive(:new) do |*args|
-        instance_double(Receipts::Operations::FormatResult).tap do |op|
+      allow(Ai::Operations::Receipts::FormatResult).to receive(:new) do |*args|
+        instance_double(Ai::Operations::Receipts::FormatResult).tap do |op|
           allow(op).to receive(:call).and_return(formatted_result_success)
         end
       end
 
       # Explicitly allow new and call_original for CreateTransactionFromReceipt to enable spying.
-      allow(Receipts::Operations::CreateTransactionFromReceipt).to receive(:new).and_call_original
+      allow(Ai::Operations::Receipts::CreateTransactionFromReceipt).to receive(:new).and_call_original
     end
 
     it "successfully processes the receipt and returns formatted result" do
@@ -129,16 +129,16 @@ RSpec.describe Receipts::Operations::ProcessReceipt, type: :operation do
       )
       expect(result.value![:transaction]).to be_nil # auto_create_transaction is false
 
-      expect(Receipts::Operations::ExtractReceiptDataVision).to have_received(:new).with(no_args)
+      expect(Ai::Operations::Receipts::ExtractReceiptDataVision).to have_received(:new).with(no_args)
 
       # Ensure CreateTransactionFromReceipt is NOT called when auto_create_transaction is false
-      expect(Receipts::Operations::CreateTransactionFromReceipt).not_to have_received(:new)
+      expect(Ai::Operations::Receipts::CreateTransactionFromReceipt).not_to have_received(:new)
     end
 
     it "does not create a transaction when auto_create_transaction is false" do
       result = operation.call(params: params)
       expect(result).to be_success
-      expect(Receipts::Operations::CreateTransactionFromReceipt).not_to have_received(:new)
+      expect(Ai::Operations::Receipts::CreateTransactionFromReceipt).not_to have_received(:new)
     end
 
     it "creates a transaction when auto_create_transaction is true and no review is needed" do
@@ -146,20 +146,20 @@ RSpec.describe Receipts::Operations::ProcessReceipt, type: :operation do
       confidence_analysis_success_no_review = Success(field_confidence: {}, overall_confidence: 0.9, reliability_assessment: {}, validation_flags: { should_review: false }, recommendations: [])
 
       # Stub the specific instance for this test
-      allow(Receipts::Operations::CalculateConfidenceAi).to receive(:new) do |*args|
-        instance_double(Receipts::Operations::CalculateConfidenceAi).tap do |op|
+      allow(Ai::Operations::Receipts::CalculateConfidenceAi).to receive(:new) do |*args|
+        instance_double(Ai::Operations::Receipts::CalculateConfidenceAi).tap do |op|
           allow(op).to receive(:call).and_return(confidence_analysis_success_no_review)
         end
       end
 
       # Stub CreateTransactionFromReceipt specifically for this test to return success
-      create_transaction_from_receipt_double = instance_double(Receipts::Operations::CreateTransactionFromReceipt)
-      allow(Receipts::Operations::CreateTransactionFromReceipt).to receive(:new).and_return(create_transaction_from_receipt_double)
+      create_transaction_from_receipt_double = instance_double(Ai::Operations::Receipts::CreateTransactionFromReceipt)
+      allow(Ai::Operations::Receipts::CreateTransactionFromReceipt).to receive(:new).and_return(create_transaction_from_receipt_double)
       allow(create_transaction_from_receipt_double).to receive(:call).and_return(transaction_creation_success)
 
       result = operation.call(params: params)
       expect(result).to be_success
-      expect(Receipts::Operations::CreateTransactionFromReceipt).to have_received(:new)
+      expect(Ai::Operations::Receipts::CreateTransactionFromReceipt).to have_received(:new)
       expect(create_transaction_from_receipt_double).to have_received(:call).with(params: hash_including(user_id: user_id, space_id: space_id))
       expect(result.value![:transaction]).to be_present
     end
@@ -169,8 +169,8 @@ RSpec.describe Receipts::Operations::ProcessReceipt, type: :operation do
       confidence_analysis_needs_review = Success(field_confidence: {}, overall_confidence: 0.6, reliability_assessment: {}, validation_flags: { should_review: true }, recommendations: [])
 
       # Stub the specific instance for this test
-      allow(Receipts::Operations::CalculateConfidenceAi).to receive(:new) do |*args|
-        instance_double(Receipts::Operations::CalculateConfidenceAi).tap do |op|
+      allow(Ai::Operations::Receipts::CalculateConfidenceAi).to receive(:new) do |*args|
+        instance_double(Ai::Operations::Receipts::CalculateConfidenceAi).tap do |op|
           allow(op).to receive(:call).and_return(confidence_analysis_needs_review)
         end
       end
@@ -183,8 +183,8 @@ RSpec.describe Receipts::Operations::ProcessReceipt, type: :operation do
         suggested_transaction_payload: { amount: 100.00, category_name: "Groceries" },
         processing_timestamp: Time.current
       )
-      allow(Receipts::Operations::FormatResult).to receive(:new) do |*args|
-        instance_double(Receipts::Operations::FormatResult).tap do |op|
+      allow(Ai::Operations::Receipts::FormatResult).to receive(:new) do |*args|
+        instance_double(Ai::Operations::Receipts::FormatResult).tap do |op|
           allow(op).to receive(:call).and_return(formatted_result_needs_review)
         end
       end
@@ -195,8 +195,8 @@ RSpec.describe Receipts::Operations::ProcessReceipt, type: :operation do
     end
 
     it "fails if extract_receipt_data_vision fails" do
-      allow(Receipts::Operations::ExtractReceiptDataVision).to receive(:new) do |*args|
-        instance_double(Receipts::Operations::ExtractReceiptDataVision).tap do |op|
+      allow(Ai::Operations::Receipts::ExtractReceiptDataVision).to receive(:new) do |*args|
+        instance_double(Ai::Operations::Receipts::ExtractReceiptDataVision).tap do |op|
           allow(op).to receive(:call).and_return(Failure(process_error: "error"))
         end
       end
@@ -206,8 +206,8 @@ RSpec.describe Receipts::Operations::ProcessReceipt, type: :operation do
     end
 
     it "fails if calculate_confidence_vision fails" do
-      allow(Receipts::Operations::CalculateConfidenceAi).to receive(:new) do |*args|
-        instance_double(Receipts::Operations::CalculateConfidenceAi).tap do |op|
+      allow(Ai::Operations::Receipts::CalculateConfidenceAi).to receive(:new) do |*args|
+        instance_double(Ai::Operations::Receipts::CalculateConfidenceAi).tap do |op|
           allow(op).to receive(:call).and_return(Failure(confidence_error: "error"))
         end
       end
@@ -217,8 +217,8 @@ RSpec.describe Receipts::Operations::ProcessReceipt, type: :operation do
     end
 
     it "fails if format_result fails" do
-      allow(Receipts::Operations::FormatResult).to receive(:new) do |*args|
-        instance_double(Receipts::Operations::FormatResult).tap do |op|
+      allow(Ai::Operations::Receipts::FormatResult).to receive(:new) do |*args|
+        instance_double(Ai::Operations::Receipts::FormatResult).tap do |op|
           allow(op).to receive(:call).and_return(Failure(format_error: "error"))
         end
       end
@@ -230,8 +230,8 @@ RSpec.describe Receipts::Operations::ProcessReceipt, type: :operation do
     it "returns success even if create_transaction_if_requested fails, but transaction is nil" do
       params[:auto_create_transaction] = true
       # Stub the specific instance for this test to return failure
-      create_transaction_from_receipt_double = instance_double(Receipts::Operations::CreateTransactionFromReceipt)
-      allow(Receipts::Operations::CreateTransactionFromReceipt).to receive(:new).and_return(create_transaction_from_receipt_double)
+      create_transaction_from_receipt_double = instance_double(Ai::Operations::Receipts::CreateTransactionFromReceipt)
+      allow(Ai::Operations::Receipts::CreateTransactionFromReceipt).to receive(:new).and_return(create_transaction_from_receipt_double)
       allow(create_transaction_from_receipt_double).to receive(:call).and_return(Failure(transaction_error: "transaction error"))
 
       result = operation.call(params: params)

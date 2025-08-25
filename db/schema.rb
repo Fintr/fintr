@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_25_044412) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_25_052523) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -18,6 +18,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_25_044412) do
   # Custom types defined in this database.
   # Note that some types may not work with other database engines. Be careful if changing database.
   create_enum "account_category", ["cash", "savings", "debit", "credit_card", "e_wallet", "loan", "investment"]
+  create_enum "ai_usages_ai_status", ["pending", "success", "failure"]
+  create_enum "ai_usages_ai_type", ["pure_ai_ocr", "ai_chat"]
   create_enum "balance_state", ["pending", "calculated"]
   create_enum "category_type_enum", ["income", "expense"]
   create_enum "crm_priority", ["low", "medium", "high", "urgent"]
@@ -68,6 +70,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_25_044412) do
     t.uuid "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "ai_usages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "user_id", null: false
+    t.uuid "space_id", null: false
+    t.enum "ai_type", default: "pure_ai_ocr", null: false, enum_type: "ai_usages_ai_type"
+    t.enum "status", default: "pending", null: false, enum_type: "ai_usages_ai_status"
+    t.integer "tokens_used", default: 1, null: false
+    t.decimal "time_seconds", precision: 6, scale: 2, default: "0.0", null: false
+    t.jsonb "result", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id"], name: "index_ai_usages_on_space_id"
+    t.index ["user_id"], name: "index_ai_usages_on_user_id"
   end
 
   create_table "budgets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -271,6 +287,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_25_044412) do
   add_foreign_key "accounts", "spaces"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "ai_usages", "spaces"
+  add_foreign_key "ai_usages", "users"
   add_foreign_key "budgets", "spaces"
   add_foreign_key "budgets", "transactions_categories", column: "category_id"
   add_foreign_key "crm_ticket_responses", "crm_tickets", column: "ticket_id"

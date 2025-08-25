@@ -4,8 +4,6 @@ module Api
   module V1
     class ReceiptsController < ApiController
       def create
-        start_time = Time.current
-
         begin
           # Upload and save the image file first
           uploaded_file = params[:image]
@@ -17,10 +15,12 @@ module Api
           processing_params = with_current_params(
             image_path: image_path,
             auto_create_transaction: auto_create_transaction?,
-            processing_method: processing_method
+            processing_method: "pure_ai"
           )
 
-          operation = ::Receipts::Operations::ProcessReceipt.new.call(params: processing_params)
+          operation = Ai::Operations::Usages::CreateUsage.new.call(processing_params) do
+            ::Ai::Operations::Receipts::ProcessReceipt.new.call(params: processing_params)
+          end
 
           # Clean up temporary files
           cleanup_temporary_files(image_path)
@@ -29,10 +29,6 @@ module Api
 
           # Add processing time to response
           result = operation.value!
-
-          # Ensure processing_metadata exists before assigning
-          result[:processing_metadata] ||= {}
-          result[:processing_metadata][:total_processing_time] = (Time.current - start_time).round(3)
 
           render_success(
             data: result,
@@ -64,7 +60,7 @@ module Api
           auto_create_transaction: false # Don't auto-create for tests
         )
 
-        operation = ::Receipts::Operations::ProcessReceipt.new.call(params: processing_params)
+        operation = ::Ai::Operations::Receipts::ProcessReceipt.new.call(params: processing_params)
 
         return render_internal_server_error(details: operation.failure) unless operation.success?
 
@@ -125,14 +121,6 @@ module Api
         end
       end
 
-      def processing_method
-        # Return the processing method or default to ocr_ai
-        method = params[:processing_method]
-        return method if ["ocr_ai", "pure_ai"].include?(method)
-
-        "pure_ai" # Default to OCR+AI method
-      end
-
       def cleanup_temporary_files(*file_paths)
         file_paths.compact.each do |file_path|
           next unless file_path && File.exist?(file_path)
@@ -148,14 +136,6 @@ module Api
             Rails.logger.warn("Failed to clean up temporary file #{file_path}: #{e.message}")
           end
         end
-      end
-
-      def render_internal_server_error(message: "Internal server error", details: nil)
-        render_error(
-          message: message,
-          status: :internal_server_error,
-          details: details
-        )
       end
     end
   end

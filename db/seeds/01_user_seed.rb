@@ -6,8 +6,7 @@ end
 
 user_details = [
     { full_name: 'Miko Dagatan', email: 'miguel.dagatan@gmail.com' },
-    { full_name: 'Joel Paolo Paraiso', email: 'joelpaoloparaiso@gmail.com' },
-    { full_name: 'Stanley Hugo', email: 'stanleyhugo06@gmail.com' }
+    { full_name: 'Joel Paolo Paraiso', email: 'joelpaoloparaiso@gmail.com' }
   ]
 
 ENV["USER_AUTH0_ID"].split(',').each.with_index do |auth_id, index|

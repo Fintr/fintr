@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe Receipts::Operations::FormatResult, type: :operation do
+RSpec.describe Ai::Operations::Receipts::FormatResult, type: :operation do
   subject(:operation) { described_class.new }
 
   let(:receipt_data_fixture) do
@@ -315,7 +315,7 @@ RSpec.describe Receipts::Operations::FormatResult, type: :operation do
             params: { receipt_data: nil, confidence_analysis: confidence_analysis_fixture }
           )
           expect(result).to be_failure
-          expect(result.failure).to eq("Receipt data is missing")
+          expect(result.failure).to eq(error: "Receipt data is missing")
         end
       end
 
@@ -326,7 +326,7 @@ RSpec.describe Receipts::Operations::FormatResult, type: :operation do
             params: { receipt_data: receipt_data_fixture, confidence_analysis: nil }
           )
           expect(result).to be_failure
-          expect(result.failure).to eq("Confidence analysis is missing")
+          expect(result.failure).to eq(error: "Confidence analysis is missing")
         end
       end
 
@@ -339,7 +339,7 @@ RSpec.describe Receipts::Operations::FormatResult, type: :operation do
             params: { receipt_data: invalid_receipt_data, confidence_analysis: confidence_analysis_fixture }
           )
           expect(result).to be_failure
-          expect(result.failure).to eq("Extracted fields are missing")
+          expect(result.failure).to eq(error: "Extracted fields are missing")
         end
       end
 
@@ -352,7 +352,7 @@ RSpec.describe Receipts::Operations::FormatResult, type: :operation do
             params: { receipt_data: receipt_data_fixture, confidence_analysis: invalid_confidence_analysis }
           )
           expect(result).to be_failure
-          expect(result.failure).to eq("Field confidence data is missing")
+          expect(result.failure).to eq(error: "Field confidence data is missing")
         end
       end
 

@@ -18,6 +18,10 @@ Rails.application.routes.draw do
         resources :users, only: %i[index]
       end
 
+      namespace :ai do
+        resource :usage, only: [:show]
+      end
+
       # Use scope to keep the URL prefix without namespace nesting for controllers
       scope path: "transactions", module: "transactions" do
         resources :categories, only: %i[index create update destroy]
