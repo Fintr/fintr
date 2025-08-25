@@ -14,7 +14,6 @@ module Api
 
           render_success(data: {
             is_admin: current_user.has_role?(:admin),
-            is_whitelisted: ::Beta::Whitelist.exists?(email: current_user.email),
             space_code: personal_space.code,
             personal_space: personal_space,
             organization_spaces: organization_spaces,

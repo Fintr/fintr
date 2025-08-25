@@ -6,10 +6,6 @@ module Admin
       identifier :id
 
       fields :email, :full_name
-
-      field :whitelist_id do |user|
-        user.whitelist&.id
-      end
     end
   end
 end

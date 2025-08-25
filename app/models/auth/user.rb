@@ -31,10 +31,6 @@ module Auth
 
     after_create :create_onboarding
 
-    def whitelist
-      Beta::Whitelist.find_by(email: email)
-    end
-
     private
 
     def downcase_email

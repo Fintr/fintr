@@ -29,10 +29,6 @@ Rails.application.routes.draw do
         resource :description, only: [:update]
       end
 
-      namespace :beta do
-        resource :whitelist, only: %i[show create update destroy]
-      end
-
       namespace :crm do
         resources :tickets, only: %i[index show create] do
           resources :responses, only: [:create], controller: "ticket_responses"
