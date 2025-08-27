@@ -11,6 +11,7 @@ import { Plus } from "lucide-react";
 import { Pencil, Trash2 } from "lucide-react";
 import { NewAccountData } from "./add-account-form";
 import { CategoryToggleType } from "./category-toggle";
+import { DeleteButton } from "./tabs/transactions/buttons/DeleteButton";
 
 interface CategoryItem {
   id: string;
@@ -113,14 +114,7 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
                   {customDeleteComponent ? (
                     customDeleteComponent(item)
                   ) : (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-delete hover:bg-red-100/50"
-                      onClick={() => onDeleteItem(item)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <DeleteButton onClick={() => onDeleteItem(item)} />
                   )}
                 </div>
               </div>

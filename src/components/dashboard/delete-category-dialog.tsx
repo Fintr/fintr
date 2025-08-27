@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { DeleteButton } from "./tabs/transactions/buttons/DeleteButton";
 
 interface CategoryItem {
   id: string;
@@ -85,14 +86,7 @@ const DeleteCategoryDialog: React.FC<DeleteCategoryDialogProps> = ({
   return (
     <Dialog open={internalIsOpen} onOpenChange={handleOpenChangeFromDialog}>
       <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-delete hover:bg-red-100/50"
-          onClick={handleTriggerClick}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <DeleteButton onClick={handleTriggerClick} />
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>

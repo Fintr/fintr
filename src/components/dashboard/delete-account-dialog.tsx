@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Account } from "@/types/accountTypes";
+import { DeleteButton } from "./tabs/transactions/buttons/DeleteButton";
 
 interface DeleteAccountDialogProps {
   account: Account;
@@ -69,14 +70,7 @@ const DeleteAccountDialog: React.FC<DeleteAccountDialogProps> = ({
   return (
     <Dialog open={internalIsOpen} onOpenChange={handleOpenChangeFromDialog}>
       <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-delete hover:bg-red-900/20"
-          onClick={handleTriggerClick}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <DeleteButton onClick={handleTriggerClick} />
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>

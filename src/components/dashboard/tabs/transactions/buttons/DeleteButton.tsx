@@ -17,7 +17,7 @@ export const DeleteButton = ({
     <Button
       variant="ghost"
       size="icon"
-      className={`h-8 w-8 text-delete hover:bg-red-100/50 ${className || ''}`}
+      className={`h-8 w-8 text-red-900 hover:bg-red-100/50 hover:text-red-900 ${className || ''}`}
       {...props}
     >
       <Trash2 className="h-4 w-4" />

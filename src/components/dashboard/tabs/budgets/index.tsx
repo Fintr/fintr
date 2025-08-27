@@ -20,6 +20,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { DeleteButton } from "../transactions/buttons/DeleteButton";
 
 interface BudgetsTabProps {}
 
@@ -255,14 +256,9 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                             budget={category}
                             updateBudgetMutation={updateBudgetMutation}
                           />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-delete"
+                          <DeleteButton
                             onClick={() => handleDeleteBudget(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          />
                         </div>
                       </div>
                       
@@ -290,14 +286,12 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                             budget={category}
                             updateBudgetMutation={updateBudgetMutation}
                           />
-                          <Button
+                          <DeleteButton
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-delete"
                             onClick={() => handleDeleteBudget(index)}
-                          >
-                            <Trash2 className="h-4 w-4 delete-icon" />
-                          </Button>
+                          />
+                          
                         </div>
                       </div>
                     </div>

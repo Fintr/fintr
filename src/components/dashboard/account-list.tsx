@@ -182,10 +182,10 @@ const AccountList: React.FC<AccountListProps> = ({
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem 
-                        className="cursor-pointer text-delete"
+                        className="cursor-pointer text-red-900 hover:bg-red-100/50"
                         onClick={() => handleOpenDeleteDialog(account)}
                       >
-                        <Trash2 className="h-4 w-4 mr-2 text-delete" />
+                        <Trash2 className="h-4 w-4 mr-2 text-red-900" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
