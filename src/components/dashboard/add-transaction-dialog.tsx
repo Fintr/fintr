@@ -290,7 +290,7 @@ const AddTransactionDialog = ({
           className="w-full"
         >
           <div className="px-6">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsList className="grid w-full grid-cols-3 mb-4 bg-white">
               <TabsTrigger value="expense">Expense</TabsTrigger>
               <TabsTrigger value="income">Income</TabsTrigger>
               <TabsTrigger value="transfer">Transfer</TabsTrigger>
