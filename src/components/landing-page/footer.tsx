@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 
 interface FooterProps {
   companyName?: string;
@@ -18,6 +19,16 @@ const Footer = ({
               alt="Fintr Logo"
               className="h-8 w-auto"
             />
+          </div>
+
+          {/* Terms of Service Link */}
+          <div className="flex items-center">
+            <Link
+              href="/terms-of-service"
+              className="text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              Terms of Service
+            </Link>
           </div>
 
           {/* Social Media Icons */}
