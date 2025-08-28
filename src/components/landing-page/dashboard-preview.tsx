@@ -176,7 +176,7 @@ const DashboardPreview = ({
                   
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-blue-100/50 rounded-full flex items-center justify-center">
                         <span className="text-blue-600 text-sm font-medium">🚌</span>
                       </div>
                       <div>

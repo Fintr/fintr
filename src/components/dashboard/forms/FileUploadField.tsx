@@ -67,7 +67,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
               <p className="text-sm text-teal-600">
                 Receipt attached: {file?.name}
                 {(file as any).isRemoteFile && (
-                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  <span className="ml-2 text-xs bg-blue-100/50 text-blue-800 px-2 py-1 rounded">
                     From Receipt Upload
                   </span>
                 )}

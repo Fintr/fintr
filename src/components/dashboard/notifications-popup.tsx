@@ -21,7 +21,7 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({
         <h3 className="font-medium text-primary">
           Notifications
           {unreadCount > 0 && (
-            <span className="ml-2 text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
+            <span className="ml-2 text-xs bg-blue-100/50 text-blue-600 px-2 py-0.5 rounded-full">
               {unreadCount} new
             </span>
           )}

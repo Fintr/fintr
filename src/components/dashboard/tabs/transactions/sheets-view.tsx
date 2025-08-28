@@ -155,7 +155,7 @@ export function SheetsView({
                               className={`cursor-pointer px-2 py-1 rounded ${
                                 selectedCell?.id === transaction.id &&
                                 selectedCell?.field === "date"
-                                  ? "bg-blue-100 outline-2 outline-blue-500"
+                                  ? "bg-blue-100/50 outline-2 outline-blue-500"
                                   : "hover:bg-gray-100"
                               }`}
                               onClick={() =>
@@ -232,7 +232,7 @@ export function SheetsView({
                               className={`cursor-pointer px-2 py-1 rounded ${
                                 selectedCell?.id === transaction.id &&
                                 selectedCell?.field === "description"
-                                  ? "bg-blue-100 outline outline-2 outline-blue-500"
+                                  ? "bg-blue-100/50 outline outline-2 outline-blue-500"
                                   : "hover:bg-gray-100"
                               }`}
                               onClick={() =>
@@ -313,7 +313,7 @@ export function SheetsView({
                               className={`cursor-pointer px-2 py-1 rounded ${
                                 selectedCell?.id === transaction.id &&
                                 selectedCell?.field === "category"
-                                  ? "bg-blue-100 outline outline-2 outline-blue-500"
+                                  ? "bg-blue-100/50 outline outline-2 outline-blue-500"
                                   : "hover:bg-gray-100"
                               }`}
                               onClick={() =>
@@ -381,7 +381,7 @@ export function SheetsView({
                               className={`cursor-pointer px-2 py-1 rounded ${
                                 selectedCell?.id === transaction.id &&
                                 selectedCell?.field === "amount"
-                                  ? "bg-blue-100 outline outline-2 outline-blue-500"
+                                  ? "bg-blue-100/50 outline outline-2 outline-blue-500"
                                   : "hover:bg-gray-100"
                               }`}
                               onClick={() =>

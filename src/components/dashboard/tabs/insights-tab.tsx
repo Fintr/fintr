@@ -619,7 +619,7 @@ const InsightsTab = () => {
                         <h4 className="font-medium text-blue-800 mb-1">
                           Upcoming Bill Reminder
                         </h4>
-                        <p className="text-sm text-blue-700">
+                        <p className="text-sm text-blue-900">
                           Your electricity bill (approximately ₱4,500 based on
                           previous months) is due in 5 days. Make sure you have
                           sufficient funds in your account.
@@ -628,7 +628,7 @@ const InsightsTab = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-xs h-8 border-blue-300 text-blue-700"
+                            className="text-xs h-8 border-blue-300 text-blue-900"
                           >
                             Schedule Payment
                           </Button>

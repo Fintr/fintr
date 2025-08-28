@@ -112,7 +112,7 @@ export function ListView({
                             ? "bg-teal-600"
                           : transaction.type === CombinedTransactionTypeEnum.EXPENSE
                             ? "bg-red-900"
-                            : "bg-blue-500"
+                            : "bg-blue-900"
                         }`}
                     />
                     
@@ -155,7 +155,7 @@ export function ListView({
                             ? "text-teal-600"
                                   : transaction.type === CombinedTransactionTypeEnum.EXPENSE
                             ? "text-red-900"
-                            : "text-blue-600"
+                            : "text-blue-900"
                         }`}
                       >
                           {transaction.amount > 0 ? "+" : ""}
@@ -167,7 +167,7 @@ export function ListView({
                                   ? "bg-teal-100/50  text-teal-600"
                                   : transaction.type === CombinedTransactionTypeEnum.EXPENSE
                                   ? "bg-red-100/50 text-red-900"
-                                  : "bg-blue-100 text-blue-700"
+                                  : "bg-blue-100/50 text-blue-900"
                         }`}
                       >
                               {transaction.type === CombinedTransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline mr-1" />}

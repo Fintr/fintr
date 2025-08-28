@@ -55,7 +55,7 @@ export default function CRMRequestsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'open': return 'bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors';
+      case 'open': return 'bg-blue-100/50 text-blue-800 hover:bg-blue-200 transition-colors';
       case 'in_progress': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors';
       case 'resolved': return 'bg-teal-200 text-green-800 hover:bg-teal-300 transition-colors';
       case 'dismissed': return 'bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors';
@@ -67,7 +67,7 @@ export default function CRMRequestsPage() {
     switch (priority) {
       case 'urgent': return 'bg-red-900/20 text-red-800 hover:bg-red-900/30 transition-colors';
       case 'high': return 'bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors';
-      case 'medium': return 'bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors';
+      case 'medium': return 'bg-blue-100/50 text-blue-800 hover:bg-blue-200 transition-colors';
       case 'low': return 'bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors';
       default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors';
     }
