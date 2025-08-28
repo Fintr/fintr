@@ -148,6 +148,18 @@ export default function OnboardingStep2() {
           <CardContent className="space-y-6">
             {/* Budget Categories List */}
             <div className="space-y-4">
+              {/* Total budget summary */}
+              <div className="bg-muted rounded-lg p-4 border border-border mt-6">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Total Monthly Budget:
+                  </span>
+                  <span className="text-lg font-bold text-primary">
+                    ₱{totalBudget.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
               {budgetCategories.map((category, index) => (
                 <div key={index} className="border border-border rounded-lg p-4 space-y-4 bg-card relative">
                   {/* Delete button */}
@@ -215,18 +227,7 @@ export default function OnboardingStep2() {
               </Button>
             </div>
 
-            {/* Total budget summary */}
-            <div className="bg-muted rounded-lg p-4 border border-border mt-6">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-muted-foreground">
-                  Total Monthly Budget:
-                </span>
-                <span className="text-lg font-bold text-primary">
-                  ₱{totalBudget.toLocaleString()}
-                </span>
-              </div>
-            </div>
-
+            
             {/* Action buttons */}
             <div className="flex gap-3 pt-4">
               <Button 
