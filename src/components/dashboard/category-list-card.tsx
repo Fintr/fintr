@@ -12,6 +12,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { NewAccountData } from "./add-account-form";
 import { CategoryToggleType } from "./category-toggle";
 import { DeleteButton } from "./tabs/transactions/buttons/DeleteButton";
+import EditButton from "../ui/edit-button";
 
 interface CategoryItem {
   id: string;
@@ -89,27 +90,7 @@ const CategoryListCard: React.FC<CategoryListCardProps> = ({
                   {customEditComponent ? (
                     customEditComponent(item)
                   ) : (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-primary hover:bg-blue-50"
-                      onClick={() => onEditItem(item)}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                        <path d="m15 5 4 4" />
-                      </svg>
-                    </Button>
+                    <EditButton onClick={() => onEditItem(item)} />
                   )}
                   {customDeleteComponent ? (
                     customDeleteComponent(item)

@@ -31,6 +31,7 @@ import { Account } from "@/types/accountTypes";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
+import EditButton from "@/components/ui/edit-button";
 
 // Define CategoryItem interface to match CategoryListCard expectations
 interface CategoryItem {
@@ -404,13 +405,7 @@ const DatabaseTab = () => {
       onUpdate={handleUpdateCategory}
       isLoading={updateCategoryMutation.isLoading}
       trigger={
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-primary hover:bg-blue-50"
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <EditButton onClick={() => {}} />
       }
     />
   );

@@ -12,6 +12,7 @@ import {
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { Edit } from "lucide-react";
 import { DeleteButton } from "@/components/dashboard/tabs/transactions/buttons/DeleteButton";
+import EditButton from "@/components/ui/edit-button";
 
 interface ListViewProps {
   isPending: boolean;
@@ -194,14 +195,7 @@ export function ListView({
                         </div>
                         
                         <div className="flex gap-1 flex-shrink-0">
-                        <Button
-                            variant="ghost"
-                          size="icon"
-                            className="h-8 w-8 text-primary hover:bg-primary/30"
-                          onClick={() => onRowEdit(transaction)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <EditButton onClick={() => onRowEdit(transaction)} />
                         <DeleteButton
                           onClick={() => onRowDelete(transaction.id)}
                         />
