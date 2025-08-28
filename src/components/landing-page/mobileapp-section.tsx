@@ -41,7 +41,7 @@ const MobileAppSection = ({
   ];
 
   return (
-    <section className="py-16 md:py-24 bg-[#F7F2E7]">
+    <section className="py-16 md:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-primary">

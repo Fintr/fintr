@@ -42,7 +42,7 @@ const MoneyProblemsSection = ({
   ];
 
   return (
-    <section className="py-16 md:py-24 bg-white">
+    <section className="py-16 md:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
         <div className="max-w-3xl mx-auto text-center mb-12">
           <motion.div
