@@ -17,6 +17,7 @@ import {
   UpdateFinancialFreedomDescriptionType,
 } from "@/services/goals/mutations";
 import { toast } from "sonner";
+import LoadingScreen from "@/components/ui/loading-screen";
 
 export default function Layout({
   children,
@@ -28,7 +29,7 @@ export default function Layout({
   });
   
   const { spaceCode } = useGetSpaceCode(api);
-  const { data, isLoading, isError, refetch } = useDashboardData();
+  const { data, isLoading: isLoadingDashboardData, isError, refetch } = useDashboardData();
   
   const showV2Features = shouldShowV2Features();
 
@@ -65,17 +66,9 @@ export default function Layout({
   });
 
   // Only show loading spinner if spaceCode is not available OR dashboard data is loading
-  if (!spaceCode || isLoading) {
+  if (!spaceCode || isLoadingDashboardData) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen space-y-4">
-        <Image 
-          src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png" 
-          alt="Fintr Logo" 
-          width={100} 
-          height={100} 
-          className="animate-pulse"
-        />
-      </div>
+      <LoadingScreen />
     );
   }
 

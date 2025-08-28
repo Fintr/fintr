@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import DashboardNavigation from "@/components/dashboard/dashboard-navigation";
 import { useAtomValue } from 'jotai';
 import { isAdminAtom } from '@/atoms/dashboardAtoms';
@@ -10,6 +10,7 @@ import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
 import { usePathname } from 'next/navigation';
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import LoadingScreen from "@/components/ui/loading-screen";
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const { api } = useAuthApi({
@@ -20,6 +21,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const isOnboardingCompleted = useAtomValue(isOnboardingCompletedAtom);
   const pathname = usePathname();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
 
   // Determine if action buttons should be hidden (e.g., on admin page)
   const hideActionButtons = pathname.startsWith("/admin");
@@ -31,8 +33,11 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 
   // Check onboarding status and redirect if necessary
   useEffect(() => {
+    setIsLoading(true);
+    
     // Skip onboarding redirect if user is on onboarding pages or admin pages
     if (pathname.startsWith('/onboarding') || pathname.startsWith('/admin')) {
+      setIsLoading(false);
       return;
     }
 
@@ -50,7 +55,13 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
         router.push(redirectRoute);
       }
     }
+    
+    setIsLoading(false);
   }, [pathname, onboardingStep, router]);
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-background text-primary">
