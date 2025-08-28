@@ -1,14 +1,10 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, MoreVertical, Pencil } from "lucide-react";
+import EditButton from "@/components/ui/edit-button";
+import { DeleteButton } from "@/components/dashboard/tabs/transactions/buttons/DeleteButton";
 import { Account } from "@/types/accountTypes";
 import { useAccounts } from "@/hooks/async/useAccounts";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import {
   Dialog,
   DialogContent,
@@ -167,29 +163,10 @@ const AccountList: React.FC<AccountListProps> = ({
                   {formatCurrency(balanceAmount)}
                 </span>
                 <div className="ml-6">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        onClick={() => handleOpenEditDialog(account)}
-                      >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="cursor-pointer text-red-900 hover:bg-red-100/50"
-                        onClick={() => handleOpenDeleteDialog(account)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2 text-red-900" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="flex gap-1">
+                    <EditButton onClick={() => handleOpenEditDialog(account)} />
+                    <DeleteButton onClick={() => handleOpenDeleteDialog(account)} />
+                  </div>
                 </div>
               </div>
             </div>
