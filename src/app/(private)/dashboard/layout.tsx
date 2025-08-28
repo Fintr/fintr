@@ -34,7 +34,7 @@ export default function Layout({
   const showV2Features = shouldShowV2Features();
 
   const [isEditingGoalDescription, setIsEditingGoalDescription] = useState(false);
-  const [goalDescription, setGoalDescription] = useState(data?.goalDescription || "Having enough passive income to cover my expenses and being able to travel 3 months a year.");
+  const [goalDescription, setGoalDescription] = useState(data?.goalDescription || "Set your own financial freedom goal, whatever milestone or lifestyle you’re aiming for.");
   const queryClient = useQueryClient();
 
   useEffect(() => {
