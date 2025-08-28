@@ -6,7 +6,6 @@ namespace :admins do
     %w[
       miguel.dagatan@gmail.com
       joelpaoloparaiso@gmail.com
-      stanleyhugo06@gmail.com
     ].each do |email|
       next unless user = Auth::User.find_by(email:)
       next if user.has_role?(:admin)

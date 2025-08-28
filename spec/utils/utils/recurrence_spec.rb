@@ -4,6 +4,7 @@ require 'rails_helper'
 require 'ice_cube'
 
 RSpec.describe Utils::Recurrence do
+  include ActiveSupport::Testing::TimeHelpers
   describe '.schedule' do
     let(:start_date) { Date.new(2024, 1, 15) }
 
@@ -105,6 +106,67 @@ RSpec.describe Utils::Recurrence do
     it 'sets the start date of the schedule' do
       schedule = described_class.schedule(repeat_interval: :every_day, date: start_date)
       expect(schedule.start_time.to_date).to eq(start_date)
+    end
+  end
+
+  describe '.usage_period' do
+    let(:user) { create(:user) }
+    let(:record) { create(:user, created_at: Time.zone.local(2024, 3, 15, 10, 30, 0)) }
+    let(:reference_date) { Date.new(2024, 6, 1) }
+
+    context 'when record is a valid ActiveRecord::Base instance' do
+      it 'returns a range from target date to end of month' do
+        result = described_class.usage_period(record: record, reference_date: reference_date)
+
+        expect(result).to be_a(Range)
+        expect(result.begin).to eq(Date.new(2024, 6, 15))
+        expect(result.end).to eq(Date.new(2024, 7, 14).end_of_day)
+      end
+
+      it 'uses current date as default reference_date' do
+        travel_to(Time.zone.local(2024, 7, 10)) do
+          result = described_class.usage_period(record: record)
+
+          expect(result.begin).to eq(Date.new(2024, 7, 15))
+          expect(result.end).to eq(Date.new(2024, 8, 14).end_of_day)
+        end
+      end
+
+      it 'handles records created on the 30th for months with 31 days' do
+        record_on_30th = create(:user, created_at: Time.zone.local(2024, 4, 30, 10, 30, 0))
+        result = described_class.usage_period(record: record_on_30th, reference_date: Date.new(2024, 5, 1))
+
+        expect(result.begin).to eq(Date.new(2024, 5, 30))
+        expect(result.end).to eq(Date.new(2024, 6, 29).end_of_day)
+      end
+
+      it 'handles records created on the 30th for months with 30 days' do
+        record_on_30th = create(:user, created_at: Time.zone.local(2024, 4, 30, 10, 30, 0))
+        result = described_class.usage_period(record: record_on_30th, reference_date: Date.new(2024, 6, 1))
+
+        expect(result.begin).to eq(Date.new(2024, 6, 30))
+        expect(result.end).to eq(Date.new(2024, 7, 29).end_of_day)
+      end
+    end
+
+    context 'when record is not an ActiveRecord::Base instance' do
+      it 'raises an ArgumentError' do
+        expect do
+          described_class.usage_period(record: "not a record", reference_date: reference_date)
+        end.to raise_error(ArgumentError, "Record must be an AR record")
+      end
+
+      it 'raises an ArgumentError for nil record' do
+        expect do
+          described_class.usage_period(record: nil, reference_date: reference_date)
+        end.to raise_error(ArgumentError, "Record must be an AR record")
+      end
+
+      it 'raises an ArgumentError for non-ActiveRecord object' do
+        expect do
+          described_class.usage_period(record: { id: 1 }, reference_date: reference_date)
+        end.to raise_error(ArgumentError, "Record must be an AR record")
+      end
     end
   end
 end

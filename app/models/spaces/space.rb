@@ -2,6 +2,8 @@
 
 module Spaces
   class Space < ApplicationRecord
+    SPACE_TOKEN_LIMIT = 30
+
     has_many :transactions, class_name: "Transactions::Transaction", dependent: :destroy
     has_many :incomes, class_name: "Transactions::Income", dependent: :destroy
     has_many :expenses, class_name: "Transactions::Expense", dependent: :destroy
@@ -23,6 +25,16 @@ module Spaces
 
     def create_default_transaction_categories
       Transactions::Category.create_default_categories(self)
+    end
+
+    def can_ai?
+      usages = Ai::Queries::Usages::UsageInPeriod.new.call(params: { space_id: id })
+      return false unless usages.success?
+
+      tokens_used = usages.value!.sum(:tokens_used)
+      return false if tokens_used >= Spaces::Space::SPACE_TOKEN_LIMIT
+
+      true
     end
   end
 end

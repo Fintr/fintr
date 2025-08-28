@@ -76,7 +76,9 @@ module Crm
         valid_images = images.compact.select { |image| image.present? && valid_image?(image) }
 
         if valid_images.any?
-          ticket.images.attach(valid_images)
+          valid_images.each do |image|
+            Utils::ActiveStorage.attach_file(ticket.images, image, ticket.space_id)
+          end
         end
 
         Success(ticket)

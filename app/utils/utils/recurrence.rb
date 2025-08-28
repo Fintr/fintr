@@ -28,5 +28,19 @@ module Utils
         s.add_recurrence_rule(obj)
       end
     end
+
+    def self.usage_period(record:, reference_date: Date.current, to_string: false)
+      raise ArgumentError, "Record must be an AR record" unless record.is_a?(ActiveRecord::Base)
+
+      created_at = record.created_at
+      target_date = Date.new(reference_date.year, reference_date.month, created_at.day)
+      period = target_date..(target_date + 1.month - 1.day).end_of_day
+      to_string ? usage_period_string(period) : period
+    end
+
+    def self.usage_period_string(usage_period)
+      format = "%B %d, %Y"
+      "#{usage_period.begin.strftime(format)} - #{usage_period.end.strftime(format)}"
+    end
   end
 end

@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe Receipts::Operations::CalculateConfidenceAi, type: :operation do
+RSpec.describe Ai::Operations::Receipts::CalculateConfidenceAi, type: :operation do
   subject(:operation) { described_class.new }
 
   let(:receipt_data) do

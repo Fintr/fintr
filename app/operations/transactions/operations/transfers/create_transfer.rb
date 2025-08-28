@@ -120,7 +120,7 @@ module Transactions
         def attach_file(transfer:, params:)
           return Success(transfer) if params[:file].blank?
 
-          transfer.file.attach(params[:file])
+          Utils::ActiveStorage.attach_file(transfer.files, params[:file], params[:space_id])
           Success(transfer)
         end
 

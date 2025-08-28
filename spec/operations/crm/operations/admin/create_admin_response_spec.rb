@@ -6,6 +6,7 @@ RSpec.describe Crm::Operations::Admin::CreateAdminResponse do
   subject(:operation) { described_class.new }
 
   let(:user) { create(:user) }
+  let(:space) { create(:space) }
   let(:ticket) { create(:crm_ticket) }
 
   let(:valid_params) do

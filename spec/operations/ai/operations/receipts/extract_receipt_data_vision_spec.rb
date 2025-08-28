@@ -5,7 +5,7 @@ require "openai"
 require "fileutils"
 require "base64"
 
-RSpec.describe Receipts::Operations::ExtractReceiptDataVision, type: :operation do
+RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operation do
   subject(:operation) { described_class.new }
 
   let(:image_path) { Rails.root.join("spec/fixtures/files/test_receipt.jpg").to_s }

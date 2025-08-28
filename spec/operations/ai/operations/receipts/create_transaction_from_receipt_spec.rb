@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe Receipts::Operations::CreateTransactionFromReceipt, type: :operation do
+RSpec.describe Ai::Operations::Receipts::CreateTransactionFromReceipt, type: :operation do
   subject(:operation) { described_class.new }
 
   let(:user) { create(:user) }

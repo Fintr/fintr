@@ -18,14 +18,15 @@ module Crm
         end
 
         def call(params)
-          response, validated_params = ActiveRecord::Base.transaction do
+          response, validated_params, space = ActiveRecord::Base.transaction do
             validated_params = step validate(params)
             ticket = step find_ticket(validated_params[:ticket_id])
+            space = step find_space(ticket)
             response = step create_response(ticket, validated_params)
             _ = step update_ticket_status(ticket)
-            [response, validated_params]
+            [response, validated_params, space]
           end
-          _ = step attach_images(response, validated_params)
+          _ = step attach_images(response, validated_params, space)
           response
         end
 
@@ -43,6 +44,10 @@ module Crm
           return Failure(["Ticket not found"]) unless ticket
 
           Success(ticket)
+        end
+
+        def find_space(ticket)
+          Success(ticket.space)
         end
 
         def create_response(ticket, params)
@@ -73,10 +78,10 @@ module Crm
           Failure(error: e.message)
         end
 
-        def attach_images(response, params)
+        def attach_images(response, params, space)
           if params[:images].present?
             params[:images].each do |image|
-              response.images.attach(image)
+              Utils::ActiveStorage.attach_file(response.images, image, space.id)
             end
           end
 

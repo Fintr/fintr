@@ -17,6 +17,8 @@ if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
   # ./bin/rails db:migrate:primary
   # ./bin/rails db:migrate:cache
 
+  # ./bin/rails db:create
+  # ./bin/rails db:migrate
   # ./bin/rails db:setup
 fi
 
