@@ -121,8 +121,52 @@ export default function Layout({
       </div>
       <div>
         <TabsWrapper>
-          <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
-            <TabsList className="w-full min-w-[600px] sm:min-w-0 bg-white border flex-nowrap overflow-x-auto">
+          <div className="w-full">
+            {/* Mobile Grid Layout */}
+            <TabsList className="md:hidden grid grid-cols-2 gap-1 w-full bg-transparent border-none p-0 h-fit">
+              {/* Top Row */}
+              <TabsTrigger value="transactions" className="w-full bg-white border border-primary/10">
+                <Link prefetch href="/dashboard/" className="w-full h-full flex items-center justify-center">
+                  Transactions
+                </Link>
+              </TabsTrigger>
+              <TabsTrigger value="budgets" className="w-full bg-white border border-primary/10">
+                <Link prefetch href="/dashboard/budgets" className="w-full h-full flex items-center justify-center">
+                  Budgets
+                </Link>
+              </TabsTrigger>
+              
+              {/* Bottom Row - Always show 2 tabs */}
+              <TabsTrigger value="insights" className="w-full bg-white border border-primary/10">
+                <Link prefetch href="/dashboard/insights" className="w-full h-full flex items-center justify-center">
+                  Insights
+                </Link>
+              </TabsTrigger>
+              <TabsTrigger value="database" className="w-full bg-white border border-primary/10">
+                <Link prefetch href="/dashboard/database" className="w-full h-full flex items-center justify-center ">
+                  Database
+                </Link>
+              </TabsTrigger>
+              
+              {/* Additional row when showV2Features is true */}
+              {showV2Features && (
+                <>
+                  <TabsTrigger value="goals" className="w-full">
+                    <Link prefetch href="/dashboard/goals" className="w-full h-full flex items-center justify-center">
+                      Goals
+                    </Link>
+                  </TabsTrigger>
+                  <TabsTrigger value="investments" className="w-full">
+                    <Link prefetch href="/dashboard/investments" className="w-full h-full flex items-center justify-center">
+                      Investments
+                    </Link>
+                  </TabsTrigger>
+                </>
+              )}
+            </TabsList>
+            
+            {/* Desktop Horizontal Layout */}
+            <TabsList className="hidden md:flex w-full min-w-0 bg-white border flex-nowrap overflow-x-auto">
               <TabsTrigger asChild value="transactions">
                 <Link prefetch href="/dashboard/">Transactions</Link>
               </TabsTrigger>
