@@ -9,6 +9,7 @@ import { FloatingInput } from "@/components/ui/floating-input";
 import { useOnboarding } from "@/hooks/async/useOnboarding";
 import { BudgetCategory, BudgetCategoryInput } from "@/services/onboarding/mutations";
 import { onboardingBudgetCategoriesAtom, onboardingTotalBudgetAtom } from "@/atoms/budgetAtoms";
+import { onboardingDataAtom } from "@/atoms/onboardingAtoms";
 import { toast } from "sonner";
 import { Target, ArrowRight, ArrowLeft, X } from "lucide-react";
 
@@ -19,6 +20,7 @@ export default function OnboardingStep2() {
   // Use Jotai atoms for state management
   const [budgetCategories, setBudgetCategories] = useAtom(onboardingBudgetCategoriesAtom);
   const [totalBudget] = useAtom(onboardingTotalBudgetAtom);
+  const [onboardingData] = useAtom(onboardingDataAtom);
   const [errors, setErrors] = useState<{ [key: number]: { name?: string; amount?: string } }>({});
 
   const validateForm = () => {
@@ -109,10 +111,13 @@ export default function OnboardingStep2() {
     setBudgetCategories([...budgetCategories, newCategory]);
   };
 
+  // Calculate total income from step1
+  const totalIncome = (onboardingData.incomeData?.salary || 0) + (onboardingData.incomeData?.business || 0);
+
   const calculatePercentage = (amount: string): number => {
     const numAmount = Number(amount || 0);
-    if (totalBudget === 0) return 0;
-    return Math.round((numAmount / totalBudget) * 100);
+    if (totalIncome === 0) return 0;
+    return Math.round((numAmount / totalIncome) * 100);
   };
 
   return (
@@ -186,7 +191,7 @@ export default function OnboardingStep2() {
                         </div>
                         <div>
                           <span className="text-xs font-medium text-muted-foreground bg-primary/30 px-2 py-1 rounded-full whitespace-nowrap">
-                            {calculatePercentage(category.amount)}% of budget
+                            {calculatePercentage(category.amount)}% of income
                           </span>
                         </div>
                       </div>
