@@ -21,13 +21,19 @@ const Footer = ({
             />
           </div>
 
-          {/* Terms of Service Link */}
-          <div className="flex items-center">
+          {/* Legal Links */}
+          <div className="flex items-center space-x-6">
             <Link
               href="/terms-of-service"
               className="text-sm text-muted-foreground hover:text-primary transition-colors"
             >
               Terms of Service
+            </Link>
+            <Link
+              href="/privacy-policy"
+              className="text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              Privacy Policy
             </Link>
           </div>
 

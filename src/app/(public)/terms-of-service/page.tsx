@@ -1,16 +1,20 @@
 import React from "react";
 import Navbar from "@/components/landing-page/nav-bar";
+import Footer from "@/components/landing-page/footer";
 
 const TermsOfServicePage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="max-w-4xl mx-auto px-4 py-12">
+      <div className="max-w-4xl mx-auto px-4 py-24">
         <div className="prose prose-lg max-w-none">
-          <h1 className="text-3xl font-bold text-primary mb-8">
-            Terms of Service
-          </h1>
-          
+          <div className="text-center mb-12">
+            <h1 className="text-5xl font-bold text-primary mb-4">
+              Terms of Service
+            </h1>
+            <div className="w-24 h-1 bg-primary mx-auto"></div>
+          </div>
+        
           <div className="space-y-8">
             <section>
               <p className="text-muted-foreground leading-relaxed">
@@ -154,6 +158,7 @@ const TermsOfServicePage = () => {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };
