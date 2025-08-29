@@ -7,7 +7,7 @@ module Spaces
 
       field :goal_description do |space|
         space.goal_description&.description ||
-          "Having enough passive income to cover my expenses and being able to travel 3 months a year."
+          "Set your own financial freedom goal, whatever milestone or lifestyle you're aiming for."
       end
 
       field :category_options do |space|
