@@ -155,3 +155,12 @@ export function getProgressColor(progress: number, type: "bg" | "font" | "all" =
     return type === "bg" ? "bg-red-900" : type === "font" ? "text-red-900" : "bg-red-900 text-red-900"; // burgundy
   }
 }
+
+export function getNumberColor(value: number): string {
+  if (value < 0) {
+    return "text-red-900"; // negative values
+  } else if (value > 0) {
+    return "text-teal-600"; // positive values
+  }
+  return "text-gray-500"; // zero
+}

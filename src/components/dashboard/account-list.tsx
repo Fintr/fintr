@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { getNumberColor } from "@/lib/utils";
 
 interface AccountListProps {
   accounts: Account[];
@@ -135,7 +136,7 @@ const AccountList: React.FC<AccountListProps> = ({
         <h3 className="text-xl font-medium">Your Accounts</h3>
         <div className="text-xl">
           Total:{" "}
-          <span className="font-medium" style={{ color: "var(--teal-600)" }}>
+          <span className={`font-medium ${getNumberColor(totalBalance)}`}>
             {formatCurrency(totalBalance)}
           </span>
         </div>
@@ -157,8 +158,7 @@ const AccountList: React.FC<AccountListProps> = ({
               </div>
               <div className="flex items-center">
                 <span
-                  className="text-lg font-medium"
-                  style={{ color: balanceAmount < 0 ? "var(--red-900)" : "var(--teal-600)" }}
+                  className={`text-lg font-medium ${getNumberColor(balanceAmount)}`}
                 >
                   {formatCurrency(balanceAmount)}
                 </span>
