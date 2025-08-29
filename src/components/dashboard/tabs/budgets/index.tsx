@@ -205,7 +205,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                   <h4 className="text-sm font-medium text-primary/70 mb-1">
                     Remaining
                   </h4>
-                  <div className="text-2xl font-bold text-primary">
+                  <div className={`text-2xl font-bold text-primary ${getProgressColor(budgetUsagePercentage, "font")}`}>
                     {formatCurrency(totalRemaining)}
                   </div>
                 </div>
