@@ -23,9 +23,10 @@ module Budgets
       attr_reader :space
 
       def call(params)
-        params                = step validate(params:)
-        monthly_budgets_query = step fetch_monthly_budgets(params:)
-        output                = step process_monthly_budgets(monthly_budgets_query)
+        params                     = step validate(params:)
+        monthly_budgets_query      = step fetch_monthly_budgets(params:)
+        monthly_transactions_query = step fetch_monthly_transactions(params:)
+        output                     = step process_monthly_budgets(monthly_budgets_query, monthly_transactions_query)
 
         Success(output)
       end
@@ -34,17 +35,25 @@ module Budgets
         Budgets::Queries::MonthlyBudgets.call(params:)
       end
 
-      def process_monthly_budgets(monthly_budgets_query)
+      def fetch_monthly_transactions(params:)
+        Transactions::Queries::FilteredTransactions.call(
+          params: {
+            space_code: params[:space_code],
+            start_date: params[:date].to_date.all_month.first,
+            end_date: params[:date].to_date.all_month.last,
+            category_name: nil,
+            paginate: false
+          }
+        )
+      end
+
+      def process_monthly_budgets(monthly_budgets_query, monthly_transactions_query)
         monthly_budgets_array = monthly_budgets_query.to_a
-        currency_code = monthly_budgets_array.first&.amount_currency
+        # currency_code = monthly_budgets_array.first&.amount_currency
 
         total_budget = monthly_budgets_array.sum(&:amount_cents) / 100.to_d
 
-        # Ensure total_spent is treated as a BigDecimal for sum to handle potential nils gracefully
-        sum_of_total_spent_main_unit = monthly_budgets_array.sum do |b|
-          b.respond_to?(:total_spent) && !b.total_spent.nil? ? BigDecimal(b.total_spent.to_s) : BigDecimal(0)
-        end
-        total_spent = (sum_of_total_spent_main_unit).round.to_i
+        total_spent = monthly_transactions_query.sum(:amount_cents) / 100.to_d
 
         remaining = total_budget - total_spent
 
