@@ -196,7 +196,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                     </div>
                   </div>
                   <Progress
-                    value={budgetUsagePercentage}
+                    value={budgetUsagePercentage > 100 ? 100 : budgetUsagePercentage}
                     className="h-2 mt-2 bg-gray-200"
                     indicatorClassName={getProgressColor(budgetUsagePercentage, "bg")}
                   />
