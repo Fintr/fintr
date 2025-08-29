@@ -23,9 +23,9 @@ module Transactions
         relation = if params[:start_date].present? && params[:end_date].blank?
           relation.where(date: params[:start_date]..)
         elsif params[:start_date].blank? && params[:end_date].present?
-          relation.where(date: ..params[:end_date])
+          relation.where(date: ..params[:end_date].end_of_day)
         else
-          relation.where(date: params[:start_date]..params[:end_date])
+          relation.where(date: params[:start_date]..params[:end_date].end_of_day)
         end
         Success(relation)
       rescue StandardError
