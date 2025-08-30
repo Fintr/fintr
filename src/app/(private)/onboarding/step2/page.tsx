@@ -160,6 +160,18 @@ export default function OnboardingStep2() {
                 </div>
               </div>
 
+              {/* Potential savings preview */}
+              <div className="bg-muted rounded-lg p-4 border border-border mt-6">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Potential Monthly Savings:
+                  </span>
+                  <span className="text-lg font-bold text-teal-600">
+                    ₱{(totalIncome - totalBudget).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
               {budgetCategories.map((category, index) => (
                 <div key={index} className="border border-border rounded-lg p-4 space-y-4 bg-card relative">
                   {/* Delete button */}

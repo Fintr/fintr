@@ -92,7 +92,8 @@ export default function OnboardingStep1() {
             </div>
             <CardTitle className="text-2xl">Tell us about your income</CardTitle>
             <CardDescription>
-              This helps us create a personalized budget and financial plan for you
+              Enter your take-home pay after taxes and government deductions. 
+              We'll use this to build a personalized budget and financial plan for you.
             </CardDescription>
           </CardHeader>
           
