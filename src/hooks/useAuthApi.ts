@@ -38,6 +38,7 @@ export const useAuthApi = (options?: {
       const token = await getAccessTokenSilently({
         authorizationParams: params,
       });
+      console.log('token', token);
       return token;
     } catch (e: any) {
       console.error('Error getting access token:', e);
@@ -45,9 +46,11 @@ export const useAuthApi = (options?: {
       if (e.error === 'consent_required') {
         router.push('/consent');
       } else if (e.error === 'login_required') {
+        console.log('login_required');
         await loginWithRedirect();
       }
       throw e;
+      // return '';
     }
   }, [getAccessTokenSilently, loginWithRedirect, router, options?.scope]);
 

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Auth0Provider } from "@auth0/auth0-react";
+import AuthWrapper from "@/components/auth-wrapper";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(() => new QueryClient());
@@ -24,7 +25,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         }}
       >
         <Toaster />
-        {children}
+        <AuthWrapper>
+          {children}
+        </AuthWrapper>
       </Auth0Provider>
     </QueryClientProvider>
   );
