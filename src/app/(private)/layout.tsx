@@ -11,7 +11,6 @@ import { usePathname } from 'next/navigation';
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/ui/loading-screen";
-import AuthErrorBoundary from "@/components/auth-error-boundary";
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const { api, isLoading: isApiLoading } = useAuthApi({
