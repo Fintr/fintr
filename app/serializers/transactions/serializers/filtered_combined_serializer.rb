@@ -34,6 +34,10 @@ module Transactions
       field :in_series do |record|
         record.in_series?
       end
+
+      field :has_image do |record|
+        record.transactable.files.attached?
+      end
     end
   end
 end
