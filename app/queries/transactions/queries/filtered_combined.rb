@@ -2,7 +2,7 @@
 
 module Transactions
   module Queries
-    class FilteredCombined < BaseQuery
+    class FilteredCombined < Transactions::Queries::BaseQuery
       # Contract defined in app/queries/transactions/queries/filtered_transactions.rb
 
       def initialize(relation: Transactions::Combined.all, params: {})
@@ -69,8 +69,7 @@ module Transactions
       def order(relation)
         relation = relation.order(
           date: :desc,
-          transactable_type: :desc,
-          amount_cents: :desc
+          created_at: :desc
         )
         Success(relation)
       end

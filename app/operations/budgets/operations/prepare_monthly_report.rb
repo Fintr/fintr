@@ -42,6 +42,8 @@ module Budgets
             start_date: params[:date].to_date.all_month.first,
             end_date: params[:date].to_date.all_month.last,
             category_name: nil,
+            balance_state: "calculated",
+            transaction_type: "Transactions::Expense",
             paginate: false
           }
         )

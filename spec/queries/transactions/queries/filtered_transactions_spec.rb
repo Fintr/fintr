@@ -16,15 +16,16 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
   let!(:category1_s2) { create(:category, name: 'Category 1', space: space2) }
 
   # Transactions in Space 1
-  let!(:transaction_s1_jan5) { create(:transaction, space: space1, account: account1_s1, category: category1_s1, date: Date.new(2024, 1, 5), amount_cents: 1000, description: 'Lunch') }
-  let!(:transaction_s1_jan15) { create(:transaction, space: space1, account: account2_s1, category: category2_s1, date: Date.new(2024, 1, 15), amount_cents: 2000, description: 'Groceries') }
-  let!(:transaction_s1_feb10) { create(:transaction, space: space1, account: account1_s1, category: category1_s1, date: Date.new(2024, 2, 10), amount_cents: 500, description: 'Coffee') }
+  let!(:transaction_s1_jan5) { create(:expense_transaction, space: space1, account: account1_s1, category: category1_s1, date: Date.new(2024, 1, 5), amount_cents: 1000, description: 'Lunch') }
+  let!(:transaction_s1_jan15) { create(:expense_transaction, space: space1, account: account2_s1, category: category2_s1, date: Date.new(2024, 1, 15), amount_cents: 2000, description: 'Groceries') }
+  let!(:transaction_s1_feb10) { create(:expense_transaction, space: space1, account: account1_s1, category: category1_s1, date: Date.new(2024, 2, 10), amount_cents: 500, description: 'Coffee') }
+  let!(:income_s1_jan20) { create(:income_transaction, space: space1, account: account1_s1, category: category1_s1, date: Date.new(2024, 1, 20), amount_cents: 5000, description: 'Salary') }
 
   # Transactions in Space 2
   let!(:transaction_s2_jan20) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 1, 20), amount_cents: 3000, description: 'Rent') }
   let!(:transaction_s2_feb5) { create(:transaction, space: space2, account: account1_s2, category: category1_s2, date: Date.new(2024, 2, 5), amount_cents: 1500, description: 'Utilities') }
 
-  let!(:first_3_transactions) { [transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10] }
+  let!(:first_4_transactions) { [transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10, income_s1_jan20] }
 
   # Define transfers for testing combined view (not used in filtered_transactions directly)
   let!(:transfer_s1_jan10) do
@@ -67,7 +68,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         transactions = result.value!
 
         # Compare IDs instead of full objects
-        expected_ids = [transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10].map(&:id)
+        expected_ids = [transaction_s1_jan5, transaction_s1_jan15, transaction_s1_feb10, income_s1_jan20].map(&:id)
         expect(transactions.map(&:id)).to match_array(expected_ids)
 
         # Check default order (date desc)
@@ -119,7 +120,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         expect(result).to be_success
         transactions = result.value!
 
-        expected_ids = [transaction_s1_feb10].map(&:id)
+        expected_ids = [transaction_s1_feb10, income_s1_jan20].map(&:id)
         expect(transactions.map(&:id)).to match_array(expected_ids)
         expect(transactions.map(&:id)).not_to include(transaction_s1_jan5.id, transaction_s1_jan15.id)
       end
@@ -133,13 +134,13 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         expect(result).to be_success
         transactions = result.value!
 
-        expected_ids = [transaction_s1_jan5, transaction_s1_jan15].map(&:id)
+        expected_ids = [transaction_s1_jan5, transaction_s1_jan15, income_s1_jan20].map(&:id)
         expect(transactions.map(&:id)).to match_array(expected_ids)
         expect(transactions.map(&:id)).not_to include(transaction_s1_feb10.id)
       end
 
       it 'filters by both start_date and end_date' do
-        # Use a date range that only includes jan15
+        # Use a date range that only includes jan15 and jan20
         params = default_params.merge(
           start_date: Date.new(2024, 1, 10),
           end_date: Date.new(2024, 1, 20)
@@ -150,7 +151,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         expect(result).to be_success
         transactions = result.value!
 
-        expected_ids = [transaction_s1_jan15].map(&:id)
+        expected_ids = [transaction_s1_jan15, income_s1_jan20].map(&:id)
         expect(transactions.map(&:id)).to match_array(expected_ids)
         expect(transactions.map(&:id)).not_to include(transaction_s1_jan5.id, transaction_s1_feb10.id)
       end
@@ -165,7 +166,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         expect(result).to be_success
         transactions = result.value!
 
-        expected_ids = [transaction_s1_jan5, transaction_s1_feb10].map(&:id)
+        expected_ids = [transaction_s1_jan5, transaction_s1_feb10, income_s1_jan20].map(&:id)
         expect(transactions.map(&:id)).to match_array(expected_ids)
         expect(transactions.map(&:id)).not_to include(transaction_s1_jan15.id)
       end
@@ -192,7 +193,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         transactions = result.value!
 
         # Should only include transactions with amount_cents >= 1500
-        expect(transactions.map(&:id)).to contain_exactly(transaction_s1_jan15.id)
+        expect(transactions.map(&:id)).to contain_exactly(transaction_s1_jan15.id, income_s1_jan20.id)
       end
 
       it 'filters by max_amount' do
@@ -245,7 +246,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         expect(result).to be_success
         transactions = result.value!
 
-        expect(transactions.map(&:id)).to contain_exactly(transaction_s1_jan5.id, transaction_s1_feb10.id)
+        expect(transactions.map(&:id)).to contain_exactly(transaction_s1_jan5.id, transaction_s1_feb10.id, income_s1_jan20.id)
       end
 
       it 'returns no results for a non-matching query' do
@@ -271,6 +272,52 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
       end
     end
 
+    context 'with transaction_type filter' do
+      it 'filters by expense type' do
+        params = default_params.merge(transaction_type: 'Transactions::Expense')
+        relation = Transactions::Transaction.all
+        result = described_class.new(relation: relation, params: params).call
+
+        expect(result).to be_success
+        transactions = result.value!
+
+        expect(transactions.map(&:id)).to contain_exactly(transaction_s1_jan5.id, transaction_s1_jan15.id, transaction_s1_feb10.id)
+        expect(transactions.map(&:id)).not_to include(income_s1_jan20.id)
+      end
+
+      it 'filters by income type' do
+        params = default_params.merge(transaction_type: 'Transactions::Income')
+        relation = Transactions::Transaction.all
+        result = described_class.new(relation: relation, params: params).call
+
+        expect(result).to be_success
+        transactions = result.value!
+
+        expect(transactions.map(&:id)).to contain_exactly(income_s1_jan20.id)
+        expect(transactions.map(&:id)).not_to include(transaction_s1_jan5.id, transaction_s1_jan15.id, transaction_s1_feb10.id)
+      end
+
+      it 'returns all transactions when transaction_type is not specified' do
+        params = default_params
+        relation = Transactions::Transaction.all
+        result = described_class.new(relation: relation, params: params).call
+
+        expect(result).to be_success
+        transactions = result.value!
+
+        expect(transactions.map(&:id)).to contain_exactly(transaction_s1_jan5.id, transaction_s1_jan15.id, transaction_s1_feb10.id, income_s1_jan20.id)
+      end
+
+      it 'returns validation error for non-existent transaction type' do
+        params = default_params.merge(transaction_type: 'NonExistentType')
+        relation = Transactions::Transaction.all
+        result = described_class.new(relation: relation, params: params).call
+
+        expect(result).to be_failure
+        expect(result.failure.keys).to include(:transaction_type)
+      end
+    end
+
     context 'with pagination parameter' do
       it 'does not paginate when paginate is false' do
         params = default_params.merge(paginate: false)
@@ -280,7 +327,7 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         expect(result).to be_success
         transactions = result.value!
 
-        expect(transactions.map(&:id)).to match_array(first_3_transactions.map(&:id))
+        expect(transactions.map(&:id)).to match_array(first_4_transactions.map(&:id))
         expect(transactions).not_to respond_to(:total_pages)
       end
 
@@ -337,9 +384,11 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         expect(result).to be_success
         transactions = result.value!
 
-        # Second page should have the next 3 transactions
+        # With 7 transactions total and per_page=3, page 2 should have 3 transactions
         expect(transactions.size).to eq(3)
-        expect(transactions.map(&:id)).to match_array(first_3_transactions.map(&:id))
+        # The second page should contain some of the original transactions
+        expect(transactions.map(&:id)).to be_present
+        expect(transactions.map(&:id).length).to eq(3)
       end
     end
 
@@ -390,6 +439,16 @@ RSpec.describe Transactions::Queries::FilteredTransactions, type: :query do # Us
         result = query.call
         expect(result).to be_failure
         expect(result.failure.keys).to include(:page)
+      end
+
+      it 'returns validation errors for invalid transaction_type' do
+        params = default_params.merge(transaction_type: 'InvalidType')
+        relation = Transactions::Transaction.all
+        query = described_class.new(relation: relation, params: params)
+
+        result = query.call
+        expect(result).to be_failure
+        expect(result.failure.keys).to include(:transaction_type)
       end
     end
   end

@@ -59,7 +59,7 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
       end
 
       # Test required parameters missing
-      %i[space_code category_name start_date end_date].each do |field|
+      %i[space_code start_date end_date].each do |field|
         it "returns a failure if #{field} is missing" do
           params = base_valid_params.except(field)
           result = described_class.new(params: params).call
@@ -127,15 +127,15 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
       end
 
       it 'calls where with the correct space conditions' do
-        # Verify the space filtering
+        # Verify the space filtering - FilteredCombined should inherit by_space from Transactions::Queries::BaseQuery
         expect(mock_relation).to receive(:where).with(space: space1)
 
         described_class.new(relation: mock_relation, params: default_params).call
       end
 
       it 'calls where with the correct date range conditions' do
-        # Verify date filtering - note that the implementation uses a Range object
-        expect(mock_relation).to receive(:where).with(date: Date.new(2024, 1, 1)..Date.new(2024, 2, 28))
+        # Verify date filtering - note that the implementation uses a Range object with end_of_day
+        expect(mock_relation).to receive(:where).with(date: Date.new(2024, 1, 1)..Date.new(2024, 2, 28).end_of_day)
 
         described_class.new(relation: mock_relation, params: default_params).call
       end
@@ -168,8 +168,7 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
         # Verify ordering
         expect(mock_relation).to receive(:order).with(
           date: :desc,
-          transactable_type: :desc,
-          amount_cents: :desc
+          created_at: :desc
         )
 
         described_class.new(relation: mock_relation, params: default_params).call
