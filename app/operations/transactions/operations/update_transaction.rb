@@ -105,7 +105,7 @@ module Transactions
       end
 
       def adjust_balance(transaction:)
-        return Success(transaction) unless transaction.changed? && transaction.balance_state == :calculated
+        return Success(transaction) unless transaction.changed? && transaction.balance_state == "calculated"
 
         Transactions::Operations::Accounts::UpdateCalculateBalance.new.call(transaction:)
       end
