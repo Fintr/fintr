@@ -202,7 +202,7 @@ const InvestmentsTab = ({  }: InvestmentsTabProps) => {
                 Total Returns
               </h4>
               <div
-                className={`text-2xl font-bold ${320000 >= 0 ? "text-[var(--teal-600)]" : "text-[var(--red-900)]"}`}
+                className={`text-2xl font-bold ${320000 >= 0 ? "text-[oklch(59.6% 0.145 163.225)]" : "text-[oklch(39.6% 0.141 25.723)]"}`}
               >
                 {320000 >= 0 ? "+" : ""}
                 {formatCurrency(320000)}
@@ -212,7 +212,7 @@ const InvestmentsTab = ({  }: InvestmentsTabProps) => {
               <h4 className="text-sm font-medium text-primary/70 mb-1">
                 ROI
               </h4>
-              <div className="text-2xl font-bold text-[var(--teal-600)]">+12.8%</div>
+              <div className="text-2xl font-bold text-[oklch(59.6% 0.145 163.225)]">+12.8%</div>
             </div>
           </div>
         </div>
@@ -293,14 +293,14 @@ const InvestmentsTab = ({  }: InvestmentsTabProps) => {
                           <span>{formatCurrency(investment.amount)}</span>
                           {investment.appreciation && (
                             <span
-                              className={`${investment.appreciation.startsWith("-") ? "text-[var(--red-900)] font-medium" : "text-[var(--teal-600)] font-medium"}`}
+                              className={`${investment.appreciation.startsWith("-") ? "text-[oklch(39.6% 0.141 25.723)] font-medium" : "text-[oklch(59.6% 0.145 163.225)] font-medium"}`}
                             >
                               {investment.appreciation}
                             </span>
                           )}
                           {investment.gain && (
                             <span
-                              className={`${investment.gain.startsWith("-") ? "text-[var(--red-900)] font-medium" : "text-[var(--teal-600)] font-medium"}`}
+                              className={`${investment.gain.startsWith("-") ? "text-[oklch(39.6% 0.141 25.723)] font-medium" : "text-[oklch(59.6% 0.145 163.225)] font-medium"}`}
                             >
                               ({investment.gain})
                             </span>

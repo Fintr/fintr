@@ -747,7 +747,7 @@ const InsightsTab = () => {
                   <Line
                     type="monotone"
                     dataKey="expenses"
-                    stroke="var(--red-900)"
+                    stroke="oklch(39.6% 0.141 25.723)"
                     strokeWidth={2}
                     dot={{ r: 4 }}
                     activeDot={{ r: 6 }}
@@ -756,7 +756,7 @@ const InsightsTab = () => {
                   <Line
                     type="monotone"
                     dataKey="savings"
-                    stroke="var(--teal-600)"
+                    stroke="oklch(59.6% 0.145 163.225)"
                     strokeWidth={2}
                     dot={{ r: 4 }}
                     activeDot={{ r: 6 }}

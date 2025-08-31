@@ -91,7 +91,7 @@ const SettingsConfigurationsTab = () => {
   // Category data
   const categories = {
     expense: [
-      { id: "1", name: "Myself", color: "var(--teal-600)", type: "expense" },
+      { id: "1", name: "Myself", color: "oklch(59.6% 0.145 163.225)", type: "expense" },
       { id: "2", name: "Family", color: "#D6A3A1", type: "expense" },
       { id: "3", name: "Insurance", color: "#FF6F61", type: "expense" },
       { id: "4", name: "Home", color: "#4CAF50", type: "expense" },

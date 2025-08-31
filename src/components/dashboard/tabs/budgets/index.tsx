@@ -267,7 +267,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                           <span
                             className={
                               isItemOverBudget
-                                ? "text-[var(--red-900)]"
+                                ? "text-[oklch(39.6% 0.141 25.723)]"
                                 : "text-primary"
                             }
                           >
