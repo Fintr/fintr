@@ -155,9 +155,9 @@ module Transactions
       end
 
       def attach_file(transaction:, params:)
-        transaction.files.destroy_all
-
         return Success(transaction) if params[:file].blank?
+
+        transaction.files.destroy_all
 
         Utils::ActiveStorage.attach_file(transaction.files, params[:file], params[:space_id])
         Success(transaction)
