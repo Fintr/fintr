@@ -118,12 +118,12 @@ export function formatCurrency(amount: number, currency: string = "PHP"): string
 }
 
 export const CHART_COLORS = [
+  "#008080", // Teal
   "#FF6F61", // Coral pink
   "#CC5500", // Burnt orange
   "#0A3D62", // Deep navy
   "#E6B800", // Soft gold
   "#B5E3C8", // Pale mint
-  "#E0E0E0", // Light gray
   "#87CEEB", // Sky blue
   "#D4B483", // Warm sand
   "#C4C3D0", // Lavender gray

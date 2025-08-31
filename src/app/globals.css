@@ -80,12 +80,12 @@ html, body {
   --border: oklch(0.929 0.013 255.508);
   --input: oklch(0.929 0.013 255.508);
   --ring: oklch(0.704 0.04 256.788);
-  --chart-1: #FF6F61;
-  --chart-2: #CC5500;
-  --chart-3: #0A3D62;
-  --chart-4: #E6B800;
-  --chart-5: #B5E3C8;
-  --chart-6: #E0E0E0;
+  --chart-1: #008080;
+  --chart-2: #FF6F61;
+  --chart-3: #CC5500;
+  --chart-4: #0A3D62;
+  --chart-5: #E6B800;
+  --chart-6: #B5E3C8;
   --chart-7: #87CEEB;
   --chart-8: #D4B483;
   --chart-9: #C4C3D0;
