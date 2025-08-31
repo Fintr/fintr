@@ -55,7 +55,7 @@ gem "mini_magick", "~> 5.3"
 gem "ruby-vips", "~> 2.2"
 
 # AI Processing
-gem "ruby-openai", "~> 8.2"
+gem "ruby-openai", "~> 8.3"
 
 # Errors
 gem "sentry-ruby"
