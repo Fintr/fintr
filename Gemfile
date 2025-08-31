@@ -15,7 +15,7 @@ gem "thruster", require: false
 gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
 gem "kamal", "~> 2.7"
-gem "aws-sdk-s3", "~> 1.197"
+gem "aws-sdk-s3", "~> 1.198"
 gem "csv", "~> 3.3"
 
 # DRY Operations, Validation
@@ -55,7 +55,7 @@ gem "mini_magick", "~> 5.3"
 gem "ruby-vips", "~> 2.2"
 
 # AI Processing
-gem "ruby-openai", "~> 8.2"
+gem "ruby-openai", "~> 8.3"
 
 # Errors
 gem "sentry-ruby"

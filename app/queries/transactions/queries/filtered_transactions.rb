@@ -17,6 +17,7 @@ module Transactions
           optional(:paginate).value(:bool)
           optional(:search_query).value(:string)
           optional(:without_initial_balance).value(:bool)
+          optional(:transaction_type).value(:string)
         end
 
         rule(:min_amount, :max_amount) do
@@ -28,6 +29,13 @@ module Transactions
         rule(:balance_state) do
           if value
             key.failure("should be one of #{Transactions::Transaction.balance_states.values}") unless Transactions::Transaction.balance_states.values.include?(value)
+          end
+        end
+
+        rule(:transaction_type) do
+          if value
+            valid_types = ["Transactions::Income", "Transactions::Expense"]
+            key.failure("should be one of #{valid_types}") unless valid_types.include?(value)
           end
         end
       end
@@ -54,6 +62,7 @@ module Transactions
         relation = step without_initial_balance(relation, params)
         relation = step by_amount(relation, params)
         relation = step by_search_query(relation, params)
+        relation = step by_transaction_type(relation, params)
         relation = step select(relation)
         relation = step order(relation)
         relation = step paginate(relation, params) if params[:paginate] != false
@@ -116,6 +125,13 @@ module Transactions
         return Success(relation) unless params[:without_initial_balance]
 
         relation = relation.where.not(transactions_categories: { name: "Initial Balance" })
+        Success(relation)
+      end
+
+      def by_transaction_type(relation, params)
+        return Success(relation) unless params[:transaction_type]
+
+        relation = relation.where(type: params[:transaction_type])
         Success(relation)
       end
 
