@@ -105,7 +105,7 @@ module Transactions
       end
 
       def adjust_balance(transaction:)
-        return Success(transaction) unless transaction.changed? && transaction.balance_state == :calculated
+        return Success(transaction) unless transaction.changed? && transaction.balance_state == "calculated"
 
         Transactions::Operations::Accounts::UpdateCalculateBalance.new.call(transaction:)
       end
@@ -155,9 +155,9 @@ module Transactions
       end
 
       def attach_file(transaction:, params:)
-        transaction.files.destroy_all
-
         return Success(transaction) if params[:file].blank?
+
+        transaction.files.destroy_all
 
         Utils::ActiveStorage.attach_file(transaction.files, params[:file], params[:space_id])
         Success(transaction)
