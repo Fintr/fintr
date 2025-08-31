@@ -11,7 +11,7 @@ const leagueSpartan = League_Spartan({
 });
 
 export const metadata: Metadata = {
-  title: "Fintr - Personal Finance Management",
+  title: "Fintr - Save More. Spend Smarter. Afford The Life You Want.",
   description: "Manage your finances with ease using Fintr's comprehensive dashboard and analytics.",
 };
 
