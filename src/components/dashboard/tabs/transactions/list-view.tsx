@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { IndexTransaction, CombinedTransactionTypeEnum, TransactionsPage } from "@/types/transactionTypes";
 import { formatCurrency } from "@/lib/utils";
-import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Copy, Check } from "lucide-react";
+import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Copy, Check, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InfiniteData } from "@tanstack/react-query";
 import {
@@ -118,63 +118,67 @@ export function ListView({
                     
                     {/* Main content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                         {/* This div contains the description and the ID popover */}
-                          <div className="flex items-center gap-2 flex-auto min-w-0"> {/* Added flex-auto and min-w-0 */} 
-                            <h4 className="font-medium text-sm text-primary truncate pr-2"> {/* Removed flex-1 and min-w-0 */} 
-                          {transaction.description}
-                            </h4>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600"
-                                  onClick={() => handleCopyId(transaction.id)}
-                                  title={copiedId === transaction.id ? "Copied!" : `Click to copy ID: ${transaction.id}`}
-                                >
-                                  {copiedId === transaction.id ? (
-                                    <Check className="h-3 w-3" />
-                                  ) : (
-                                    <Copy className="h-3 w-3" />
-                                  )}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-2">
-                                <p className="text-xs">
-                                  {copiedId === transaction.id ? "Copied!" : `ID: ${transaction.id}`}
-                              </p>
-                              </PopoverContent>
-                            </Popover>
+                      <div className="flex items-center justify-between gap-1 md:gap-2">
+                        {/* This div contains the description and the ID popover */}
+                        <div className="flex items-center gap-1 md:gap-2 flex-auto min-w-0"> {/* Added flex-auto and min-w-0 */} 
+                          <h4 className="font-medium text-sm text-primary truncate"> {/* Removed flex-1 and min-w-0 */} 
+                            {transaction.description}
+                          </h4>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600"
+                                onClick={() => handleCopyId(transaction.id)}
+                                title={copiedId === transaction.id ? "Copied!" : `Click to copy ID: ${transaction.id}`}
+                              >
+                                {copiedId === transaction.id ? (
+                                  <Check className="h-3 w-3" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-2">
+                              <p className="text-xs">
+                                {copiedId === transaction.id ? "Copied!" : `ID: ${transaction.id}`}
+                            </p>
+                            </PopoverContent>
+                          </Popover>
+                          {/* Image icon - only show when hasImage is true */}
+                          {transaction.hasImage && (
+                            <Image className="h-4 w-4 min-w-4 min-h-4 text-primary" />
+                          )}
                         </div>
-                          {/* This div contains the amount and type badge */}
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                      <div
-                              className={`font-semibold text-sm ${
-                          transaction.type === CombinedTransactionTypeEnum.INCOME
-                            ? "text-teal-600"
-                                  : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                            ? "text-red-900"
-                            : "text-blue-900"
-                        }`}
-                      >
-                          {transaction.amount > 0 ? "+" : ""}
-                          {formatCurrency(transaction.amount)}
-                      </div>
-                      <span
-                              className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
-                          transaction.type === CombinedTransactionTypeEnum.INCOME
-                                  ? "bg-teal-100/50  text-teal-600"
-                                  : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                                  ? "bg-red-100/50 text-red-900"
-                                  : "bg-blue-100/50 text-blue-900"
-                        }`}
-                      >
-                              {transaction.type === CombinedTransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline mr-1" />}
-                              {transaction.type === CombinedTransactionTypeEnum.EXPENSE && <ArrowDownLeft className="h-3 w-3 inline mr-1" />}
-                              {transaction.type === CombinedTransactionTypeEnum.TRANSFER && <ArrowLeftRight className="h-3 w-3 inline mr-1" />}
-                        {transaction.type}
-                      </span>
+                        {/* This div contains the amount and type badge */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div
+                                  className={`font-semibold text-sm ${
+                              transaction.type === CombinedTransactionTypeEnum.INCOME
+                                ? "text-teal-600"
+                                      : transaction.type === CombinedTransactionTypeEnum.EXPENSE
+                                ? "text-red-900"
+                                : "text-blue-900"
+                            }`}
+                          >
+                              {transaction.amount > 0 ? "+" : ""}
+                              {formatCurrency(transaction.amount)}
+                          </div>
+                          <span
+                                  className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                              transaction.type === CombinedTransactionTypeEnum.INCOME
+                                      ? "bg-teal-100/50  text-teal-600"
+                                      : transaction.type === CombinedTransactionTypeEnum.EXPENSE
+                                      ? "bg-red-100/50 text-red-900"
+                                      : "bg-blue-100/50 text-blue-900"
+                            }`}
+                          >
+                                  {transaction.type === CombinedTransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline mr-1" />}
+                                  {transaction.type === CombinedTransactionTypeEnum.EXPENSE && <ArrowDownLeft className="h-3 w-3 inline mr-1" />}
+                                  {transaction.type === CombinedTransactionTypeEnum.TRANSFER && <ArrowLeftRight className="h-3 w-3 inline mr-1" />}
+                            {transaction.type}
+                          </span>
                         </div>
                       </div>
                       

@@ -2,7 +2,7 @@ import { IndexTransaction, TransactionsPage } from "@/types/transactionTypes";
 import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, X } from "lucide-react";
+import { Check, X, Image } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { InfiniteData } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -408,8 +408,16 @@ export function SheetsView({
                                     : "#dc2626",
                               }}
                             >
-                              {transaction.amount > 0 ? "+" : ""}
-                              {formatCurrency(transaction.amount)}
+                              <div className="flex items-center gap-2">
+                                <span>
+                                  {transaction.amount > 0 ? "+" : ""}
+                                  {formatCurrency(transaction.amount)}
+                                </span>
+                                {/* Image icon - only show when hasImage is true */}
+                                {transaction.hasImage && (
+                                  <Image className="h-4 w-4 text-primary" />
+                                )}
+                              </div>
                             </div>
                           )}
                         </td>

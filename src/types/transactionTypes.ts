@@ -10,6 +10,7 @@ export interface IndexTransaction {
   toAccountName: string;
   type: CombinedTransactionTypeEnum;
   inSeries: boolean;
+  hasImage: boolean;
 }
 
 export interface TransactionIndexInputType {
