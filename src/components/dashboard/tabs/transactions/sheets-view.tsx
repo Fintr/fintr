@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Check, X, Image } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, truncateText } from "@/lib/utils";
 import { InfiniteData } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LoadingSpinner from "@/components/ui/loading-spinner";
@@ -333,8 +333,10 @@ export function SheetsView({
                               onKeyDown={(e) =>
                                 onKeyDown(e, transaction, "category")
                               }
+                              title={transaction.categoryName}
                             >
-                              {transaction.categoryName}
+                              <span className="hidden md:block">{transaction.categoryName}</span>
+                              <span className="md:hidden">{truncateText(transaction.categoryName, 10, false)}</span>
                             </div>
                           )}
                         </td>

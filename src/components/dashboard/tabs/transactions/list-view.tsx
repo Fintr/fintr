@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { IndexTransaction, CombinedTransactionTypeEnum, TransactionsPage } from "@/types/transactionTypes";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, truncateText } from "@/lib/utils";
 import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Copy, Check, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InfiniteData } from "@tanstack/react-query";
@@ -166,7 +166,7 @@ export function ListView({
                               {formatCurrency(transaction.amount)}
                           </div>
                           <span
-                                  className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                                  className={`px-1 md:px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 gap-1 ${
                               transaction.type === CombinedTransactionTypeEnum.INCOME
                                       ? "bg-teal-100/50  text-teal-600"
                                       : transaction.type === CombinedTransactionTypeEnum.EXPENSE
@@ -174,27 +174,50 @@ export function ListView({
                                       : "bg-blue-100/50 text-blue-900"
                             }`}
                           >
-                                  {transaction.type === CombinedTransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline mr-1" />}
-                                  {transaction.type === CombinedTransactionTypeEnum.EXPENSE && <ArrowDownLeft className="h-3 w-3 inline mr-1" />}
-                                  {transaction.type === CombinedTransactionTypeEnum.TRANSFER && <ArrowLeftRight className="h-3 w-3 inline mr-1" />}
-                            {transaction.type}
+                                  {transaction.type === CombinedTransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline" />}
+                                  {transaction.type === CombinedTransactionTypeEnum.EXPENSE && <ArrowDownLeft className="h-3 w-3 inline" />}
+                                  {transaction.type === CombinedTransactionTypeEnum.TRANSFER && <ArrowLeftRight className="h-3 w-3 inline" />}
+                            <span className="hidden md:inline">{transaction.type}</span>
                           </span>
                         </div>
                       </div>
                       
                       <div className="flex items-center justify-between mt-1">
                         <div className="flex items-center gap-4 text-xs text-gray-600">
-                          <span>{new Date(transaction.date).toLocaleDateString()}</span>
-                          <span className="truncate">{transaction.categoryName}</span>
+                          <span className="flex-1">{new Date(transaction.date).toLocaleDateString()}</span>
+                          <span className="hidden md:block truncate" title={transaction.categoryName}>{transaction.categoryName}</span>
+                          <span className="md:hidden truncate" title={transaction.categoryName}>{truncateText(transaction.categoryName, 10, false)}</span>
                           {(transaction.fromAccountName || transaction.toAccountName) && (
-                            <span className="truncate">
-                              {transaction.fromAccountName && transaction.toAccountName 
-                                ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
-                                : transaction.fromAccountName 
-                                ? `From: ${transaction.fromAccountName}`
-                                : `To: ${transaction.toAccountName}`
-                              }
-                            </span>
+                            <>
+                              <span className="hidden md:block truncate" title={
+                                transaction.fromAccountName && transaction.toAccountName 
+                                  ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
+                                  : transaction.fromAccountName 
+                                  ? `${transaction.fromAccountName}`
+                                  : `${transaction.toAccountName}`
+                              }>
+                                {transaction.fromAccountName && transaction.toAccountName 
+                                  ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
+                                  : transaction.fromAccountName 
+                                  ? `${transaction.fromAccountName}`
+                                  : `${transaction.toAccountName}`
+                                }
+                              </span>
+                              <span className="md:hidden truncate" title={
+                                transaction.fromAccountName && transaction.toAccountName 
+                                  ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
+                                  : transaction.fromAccountName 
+                                  ? `${transaction.fromAccountName}`
+                                  : `${transaction.toAccountName}`
+                              }>
+                                {transaction.fromAccountName && transaction.toAccountName 
+                                  ? `${truncateText(transaction.fromAccountName, 10, false)} → ${truncateText(transaction.toAccountName, 10, false)}`
+                                  : transaction.fromAccountName 
+                                  ? `${truncateText(transaction.fromAccountName, 10, false)}`
+                                  : `${truncateText(transaction.toAccountName, 10, false)}`
+                                }
+                              </span>
+                            </>
                           )}
                         </div>
                         

@@ -5,6 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Utility function to truncate text with responsive behavior
+export const truncateText = (text: string, maxLength: number = 10, responsive: boolean = true): string => {
+  if (!text) return '';
+  
+  // If responsive is true, we'll use CSS classes instead of JS truncation
+  if (responsive) {
+    return text;
+  }
+  
+  // Only truncate if not responsive (for cases where we need JS truncation)
+  return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+};
+
 // Performance optimization utilities
 export const performanceUtils = {
   // Debounce function to prevent excessive function calls
