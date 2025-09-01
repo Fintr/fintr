@@ -46,6 +46,7 @@ RSpec.configure do |config|
 
   config.include FactoryBot::Syntax::Methods
   config.include Dry::Monads[:result], type: :operation
+  config.include ActiveSupport::Testing::TimeHelpers
 
   # RSpec Rails uses metadata to mix in different behaviours to your tests,
   # for example enabling you to call `get` and `post` in request specs. e.g.:

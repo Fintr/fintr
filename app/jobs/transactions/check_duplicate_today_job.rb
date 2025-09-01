@@ -12,7 +12,7 @@ module Transactions
       Rails.logger.info("Found #{query.count} transactions with schedule")
 
       query.find_each(batch_size: 100) do |transaction|
-        date = Time.zone.today.date.in_time_zone("Asia/Manila")
+        date = Time.zone.now.in_time_zone("Asia/Manila")
         schedule = IceCube::Schedule.from_hash(transaction.schedule)
         occurs = schedule.occurring_between?(
           date.at_beginning_of_day,
