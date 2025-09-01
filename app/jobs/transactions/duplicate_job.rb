@@ -5,7 +5,7 @@ module Transactions
     queue_as :default
 
     def perform(transaction_id)
-      date = Time.zone.today.date.in_time_zone("Asia/Manila")
+      date = Time.zone.today.in_time_zone("Asia/Manila")
       Transactions::Operations::CreateRepeatTransactions
         .new
         .call(

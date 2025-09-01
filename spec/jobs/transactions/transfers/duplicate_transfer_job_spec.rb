@@ -12,6 +12,7 @@ RSpec.describe Transactions::Transfers::DuplicateTransferJob, type: :job do
 
     before do
       allow(Time.zone).to receive(:today).and_return(today)
+      allow(today).to receive(:in_time_zone).and_return(today)
       allow(Transactions::Operations::Transfers::CreateRepeatTransfers).to receive(:new).and_return(operation_instance)
     end
 

@@ -9,6 +9,11 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
   let(:mock_money_struct) { Struct.new(:amount) }
   let(:new_mock_money) { ->(val) { mock_money_struct.new(val) } }
 
+  # Attached files helper
+  let(:has_image) { false }
+  let(:files) { OpenStruct.new(attached?: has_image) }
+  let(:transactable) { OpenStruct.new(files: files) }
+
   let(:record_id) { SecureRandom.uuid }
   let(:record_date) { Date.new(2024, 7, 1) }
   let(:record_description) { "Monthly Salary" }
@@ -29,7 +34,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       value: new_mock_money.call(record_amount), # Simulates Money object for value
       balance: new_mock_money.call(record_balance), # Simulates Money object for balance
       transactable_type: "Transactions::Income",
-      in_series?: false
+      in_series?: false,
+      transactable: transactable
     )
   end
 
@@ -78,7 +84,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
           value: new_mock_money.call(record_amount),
           balance: new_mock_money.call(record_balance),
           transactable_type: "Transactions::Income",
-          in_series?: false
+          in_series?: false,
+          transactable: transactable
         )
       end
 
@@ -99,7 +106,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
           value: new_mock_money.call(record_amount),
           balance: new_mock_money.call(record_balance),
           transactable_type: "Transactions::Expense",
-          in_series?: false
+          in_series?: false,
+          transactable: transactable
         )
       end
 
@@ -120,7 +128,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
           value: new_mock_money.call(record_amount),
           balance: new_mock_money.call(record_balance),
           transactable_type: "Transactions::Transfer",
-          in_series?: false
+          in_series?: false,
+          transactable: transactable
         )
       end
 
@@ -141,7 +150,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
           value: new_mock_money.call(record_amount),
           balance: new_mock_money.call(record_balance),
           transactable_type: "Unknown::Type",
-          in_series?: false
+          in_series?: false,
+          transactable: transactable
         )
       end
 
@@ -162,7 +172,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       :amount,
       :balance,
       :type,
-      :in_series
+      :in_series,
+      :has_image
     ]
     # Re-initialize record for this specific test to ensure all fields are present
     # This is because the :type field tests redefine 'record' with only transactable_type
@@ -176,7 +187,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       value: new_mock_money.call(record_amount),
       balance: new_mock_money.call(record_balance),
       transactable_type: "Transactions::Income",
-      in_series?: false
+      in_series?: false,
+      transactable: transactable
     )
     expect(described_class.render_as_hash(local_record).keys).to match_array(expected_keys)
   end
@@ -195,7 +207,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
         value: nil, # value (and thus amount) can be nil
         balance: nil, # balance can be nil
         transactable_type: "Transactions::Expense",
-        in_series?: false
+        in_series?: false,
+        transactable: transactable
       )
     end
 
@@ -240,7 +253,9 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
         date: record_date,
         value: new_mock_money.call(nil), # amount within value is nil
         balance: new_mock_money.call(nil), # amount within balance is nil
-        transactable_type: "Transactions::Transfer"
+        transactable_type: "Transactions::Transfer",
+        transactable: transactable,
+        in_series?: false
       )
     end
 
@@ -251,6 +266,40 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
 
     it 'includes nil for balance when balance.amount is nil' do
       expect(serialized_hash_with_nil_amounts[:balance]).to be_nil
+    end
+  end
+
+  context 'has_image field' do
+    let(:record) do
+      OpenStruct.new(
+        transactable_id: record_id,
+        date: record_date,
+        description: record_description,
+        to_account_name: record_to_account_name,
+        from_account_name: record_from_account_name,
+        category_name: record_category_name,
+        value: new_mock_money.call(record_amount),
+        balance: new_mock_money.call(record_balance),
+        transactable_type: "Transactions::Income",
+        in_series?: false,
+        transactable: transactable
+      )
+    end
+
+    context 'when files are attached' do
+      let(:has_image) { true }
+
+      it 'returns true' do
+        expect(serialized_hash[:has_image]).to eq(true)
+      end
+    end
+
+    context 'when files are not attached' do
+      let(:has_image) { false }
+
+      it 'returns false' do
+        expect(serialized_hash[:has_image]).to eq(false)
+      end
     end
   end
 end

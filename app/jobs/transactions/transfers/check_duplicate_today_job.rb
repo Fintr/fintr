@@ -5,7 +5,7 @@ module Transactions
     class CheckDuplicateTodayJob < ApplicationJob
       queue_as :default
 
-      def perform
+      def perform(time_zone: "Asia/Manila")
         Rails.logger.info("Starting Transfers::CheckDuplicateTodayJob")
 
         query = Transactions::Transfer.where.not(schedule: {})
@@ -13,7 +13,7 @@ module Transactions
         Rails.logger.info("Found #{query.count} transfers with schedule")
 
         query.find_each(batch_size: 100) do |transfer|
-          date = Time.zone.today.date.in_time_zone("Asia/Manila")
+          date = Time.zone.now.in_time_zone(time_zone)
           schedule = IceCube::Schedule.from_hash(transfer.schedule)
           occurs = schedule.occurring_between?(
             date.at_beginning_of_day,

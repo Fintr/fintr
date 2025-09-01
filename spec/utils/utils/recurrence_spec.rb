@@ -157,7 +157,7 @@ RSpec.describe Utils::Recurrence do
     end
 
     # CRITICAL: Testing that all time is covered with no gaps
-    context 'comprehensive time coverage - no gaps allowed' do
+    context 'when comprehensive time coverage - no gaps allowed' do
       let(:created_at) { Date.new(2025, 9, 20) }
 
       before do

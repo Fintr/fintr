@@ -6,7 +6,7 @@ module Transactions
       queue_as :default
 
       def perform(transfer_id)
-        date = Time.zone.today.date.in_time_zone("Asia/Manila")
+        date = Time.zone.today.in_time_zone("Asia/Manila")
         Transactions::Operations::Transfers::CreateRepeatTransfers
           .new
           .call(

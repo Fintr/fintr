@@ -42,17 +42,42 @@ RSpec.describe Transactions::Transfers::CheckDuplicateTodayJob, type: :job do
 
     context 'when transfer has schedule that does not occur today' do
       let(:schedule_hash) do
-        schedule = IceCube::Schedule.new
+        schedule = IceCube::Schedule.new(Time.utc(2022, 12, 26, 0, 0, 0)) # a Monday baseline
         schedule.add_recurrence_rule(IceCube::Rule.weekly.day(:monday))
-        # Ensure the test doesn't run on a Monday to make it reliable
-        allow(Time.zone).to receive(:today).and_return(Date.new(2023, 1, 3)) # This is a Tuesday
         schedule.to_hash
       end
 
       it 'does not call DuplicateTransferJob' do
         expect(DuplicateTransferJob).not_to receive(:perform_later) # rubocop:disable RSpec/MessageSpies
 
-        job.perform
+        travel_to(Time.utc(2023, 1, 3, 12, 0, 0)) do # Tuesday UTC
+          job.perform(time_zone: 'UTC')
+        end
+      end
+    end
+
+    context 'with time zone differences across day boundaries' do
+      let(:schedule_hash) do
+        schedule = IceCube::Schedule.new(Time.utc(2022, 12, 26, 0, 0, 0)) # a Monday baseline
+        schedule.add_recurrence_rule(IceCube::Rule.weekly.day(:monday))
+        schedule.to_hash
+      end
+
+      it 'enqueues in Asia/Manila when it is Monday there but still Sunday UTC' do
+        # 2023-01-01 16:30:00 UTC == 2023-01-02 00:30:00 Asia/Manila (Monday)
+        expect(DuplicateTransferJob).to receive(:perform_later).with(transfer.id) # rubocop:disable RSpec/MessageSpies
+
+        travel_to(Time.utc(2023, 1, 1, 16, 30, 0)) do
+          job.perform(time_zone: 'Asia/Manila')
+        end
+      end
+
+      it 'does not enqueue in UTC at the same instant (still Sunday UTC)' do
+        expect(DuplicateTransferJob).not_to receive(:perform_later) # rubocop:disable RSpec/MessageSpies
+
+        travel_to(Time.utc(2023, 1, 1, 16, 30, 0)) do
+          job.perform(time_zone: 'UTC')
+        end
       end
     end
   end

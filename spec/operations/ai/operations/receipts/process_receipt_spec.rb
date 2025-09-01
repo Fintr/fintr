@@ -8,6 +8,7 @@ RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
   let(:user_id) { SecureRandom.uuid }
   let(:space_id) { SecureRandom.uuid }
   let(:image_path) { Rails.root.join("spec/fixtures/files/test_receipt.jpg").to_s }
+  let(:file) { fixture_file_upload('test.jpg', 'image/jpeg') }
 
   # Ensure a test image exists for file existence validation
   before do
@@ -27,6 +28,7 @@ RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
         user_id: user_id,
         space_id: space_id,
         image_path: image_path,
+        file: file,
         auto_create_transaction: false
       }
     end
@@ -77,6 +79,7 @@ RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
         user_id: user_id,
         space_id: space_id,
         image_path: image_path,
+        file: file,
         auto_create_transaction: false
       }
     end
@@ -88,11 +91,21 @@ RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
         extracted_data: { total_amount: { value: "100.00" } },
         confidence_summary: { overallScore: 0.9, shouldReview: false },
         validation_flags: { reasonableAmount: true },
-        suggested_transaction_payload: { amount: 100.00, category_name: "Groceries" },
+        suggested_transaction_payload: {
+          amount: 100.00,
+          category_name: "Groceries",
+          date: Date.current,
+          account_name: "Cash",
+          description: "Grocery purchase"
+        },
         processing_timestamp: Time.current
       )
     end
-    let(:transaction_creation_success) { Success({ transaction_id: SecureRandom.uuid }) }
+    let(:transaction_creation_success) do
+      transaction_double = instance_double(Transactions::Draft)
+      allow(transaction_double).to receive(:id).and_return(SecureRandom.uuid)
+      transaction_double
+    end
 
     before do
       # Stub sub-operations for pure AI processing
@@ -114,8 +127,12 @@ RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
         end
       end
 
-      # Explicitly allow new and call_original for CreateTransactionFromReceipt to enable spying.
-      allow(Ai::Operations::Receipts::CreateTransactionFromReceipt).to receive(:new).and_call_original
+      # Mock CreateDraftFromReceiptResult to return success
+      allow(Ai::Operations::Receipts::CreateDraftFromReceiptResult).to receive(:new) do |*args|
+        instance_double(Ai::Operations::Receipts::CreateDraftFromReceiptResult).tap do |op|
+          allow(op).to receive(:call).and_return(Success(transaction_creation_success))
+        end
+      end
     end
 
     it "successfully processes the receipt and returns formatted result" do
@@ -127,18 +144,19 @@ RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
         validation_flags: kind_of(Hash),
         suggested_transaction_payload: kind_of(Hash)
       )
-      expect(result.value![:transaction]).to be_nil # auto_create_transaction is false
+      expect(result.value![:draft_id]).to be_present # draft is always created
 
       expect(Ai::Operations::Receipts::ExtractReceiptDataVision).to have_received(:new).with(no_args)
 
-      # Ensure CreateTransactionFromReceipt is NOT called when auto_create_transaction is false
-      expect(Ai::Operations::Receipts::CreateTransactionFromReceipt).not_to have_received(:new)
+      # Ensure CreateDraftFromReceiptResult is NOT called when auto_create_transaction is false
+      expect(Ai::Operations::Receipts::CreateDraftFromReceiptResult).to have_received(:new)
     end
 
-    it "does not create a transaction when auto_create_transaction is false" do
+    it "always creates a draft regardless of auto_create_transaction flag" do
       result = operation.call(params: params)
       expect(result).to be_success
-      expect(Ai::Operations::Receipts::CreateTransactionFromReceipt).not_to have_received(:new)
+      expect(Ai::Operations::Receipts::CreateDraftFromReceiptResult).to have_received(:new)
+      expect(result.value![:draft_id]).to be_present
     end
 
     it "creates a transaction when auto_create_transaction is true and no review is needed" do
@@ -152,16 +170,19 @@ RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
         end
       end
 
-      # Stub CreateTransactionFromReceipt specifically for this test to return success
-      create_transaction_from_receipt_double = instance_double(Ai::Operations::Receipts::CreateTransactionFromReceipt)
-      allow(Ai::Operations::Receipts::CreateTransactionFromReceipt).to receive(:new).and_return(create_transaction_from_receipt_double)
-      allow(create_transaction_from_receipt_double).to receive(:call).and_return(transaction_creation_success)
+      # Stub CreateDraftFromReceiptResult specifically for this test to return success
+      create_draft_from_receipt_double = instance_double(Ai::Operations::Receipts::CreateDraftFromReceiptResult)
+      allow(Ai::Operations::Receipts::CreateDraftFromReceiptResult).to receive(:new).and_return(create_draft_from_receipt_double)
+      allow(create_draft_from_receipt_double).to receive(:call).and_return(Success(transaction_creation_success))
 
       result = operation.call(params: params)
       expect(result).to be_success
-      expect(Ai::Operations::Receipts::CreateTransactionFromReceipt).to have_received(:new)
-      expect(create_transaction_from_receipt_double).to have_received(:call).with(params: hash_including(user_id: user_id, space_id: space_id))
-      expect(result.value![:transaction]).to be_present
+      expect(Ai::Operations::Receipts::CreateDraftFromReceiptResult).to have_received(:new)
+      expect(create_draft_from_receipt_double).to have_received(:call).with(
+        params: hash_including(user_id: user_id, space_id: space_id),
+        receipt_result: hash_including(:suggested_transaction_payload)
+      )
+      expect(result.value![:draft_id]).to be_present
     end
 
     it "does not create a transaction when auto_create_transaction is true but review is needed" do
@@ -180,7 +201,13 @@ RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
         extracted_data: { total_amount: { value: "100.00" } },
         confidence_summary: { overallScore: 0.6, shouldReview: true }, # Key change here
         validation_flags: { reasonableAmount: true },
-        suggested_transaction_payload: { amount: 100.00, category_name: "Groceries" },
+        suggested_transaction_payload: {
+          amount: 100.00,
+          category_name: "Groceries",
+          date: Date.current,
+          account_name: "Cash",
+          description: "Grocery purchase"
+        },
         processing_timestamp: Time.current
       )
       allow(Ai::Operations::Receipts::FormatResult).to receive(:new) do |*args|
@@ -227,16 +254,16 @@ RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
       expect(result.failure).to have_key(:format_error)
     end
 
-    it "returns success even if create_transaction_if_requested fails, but transaction is nil" do
+    it "fails if create_draft_from_receipt_result fails" do
       params[:auto_create_transaction] = true
       # Stub the specific instance for this test to return failure
-      create_transaction_from_receipt_double = instance_double(Ai::Operations::Receipts::CreateTransactionFromReceipt)
-      allow(Ai::Operations::Receipts::CreateTransactionFromReceipt).to receive(:new).and_return(create_transaction_from_receipt_double)
-      allow(create_transaction_from_receipt_double).to receive(:call).and_return(Failure(transaction_error: "transaction error"))
+      create_draft_from_receipt_double = instance_double(Ai::Operations::Receipts::CreateDraftFromReceiptResult)
+      allow(Ai::Operations::Receipts::CreateDraftFromReceiptResult).to receive(:new).and_return(create_draft_from_receipt_double)
+      allow(create_draft_from_receipt_double).to receive(:call).and_return(Failure(transaction_error: "transaction error"))
 
       result = operation.call(params: params)
-      expect(result).to be_success
-      expect(result.value![:transaction]).to be_nil
+      expect(result).to be_failure
+      expect(result.failure).to have_key(:transaction_error)
     end
   end
 end
