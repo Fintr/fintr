@@ -32,15 +32,27 @@ module Utils
     def self.usage_period(record:, reference_date: Date.current, to_string: false)
       raise ArgumentError, "Record must be an AR record" unless record.is_a?(ActiveRecord::Base)
 
-      created_at = record.created_at
-      target_date = Date.new(reference_date.year, reference_date.month, created_at.day)
-      period = target_date..(target_date + 1.month - 1.day).end_of_day
+      schedule = schedule(repeat_interval: "every_month", date: record.created_at)
+      occurrence = schedule.occurrences(reference_date).last || reference_date
+      period = occurrence.beginning_of_day..(occurrence + 1.month - 1.day).end_of_day
+
       to_string ? usage_period_string(period) : period
     end
 
     def self.usage_period_string(usage_period)
       format = "%B %d, %Y"
       "#{usage_period.begin.strftime(format)} - #{usage_period.end.strftime(format)}"
+    end
+
+    private
+
+
+    def self.safe_create_date(year, month, day)
+      # Try to create the date with the original day
+      Date.new(year, month, day)
+    rescue Date::Error
+      # If the day is invalid for this month, use the last day of the month
+      Date.new(year, month, 1).end_of_month
     end
   end
 end
