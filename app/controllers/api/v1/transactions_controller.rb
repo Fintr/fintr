@@ -87,7 +87,9 @@ module Api
           :repeat_count,
           :installment_period,
           :installment_count,
-          :file
+          :draft_id,
+          :file,
+          :file_id
         )
       end
 

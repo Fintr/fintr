@@ -15,7 +15,8 @@ module Api
           processing_params = with_current_params(
             image_path: image_path,
             auto_create_transaction: auto_create_transaction?,
-            processing_method: "pure_ai"
+            processing_method: "pure_ai",
+            file: create_file_upload_object(image_path, uploaded_file.original_filename, uploaded_file.content_type)
           )
 
           operation = ::Ai::Operations::Usages::CreateUsage.new.call(processing_params) do
@@ -94,11 +95,11 @@ module Api
         file_extension = File.extname(uploaded_file.original_filename)
         filename = "receipt_#{timestamp}_#{random_suffix}#{file_extension}"
 
-        # Save the file
+        # Save the file by copying the content
         temp_path = temp_dir.join(filename)
-        File.open(temp_path, "wb") do |file|
-          file.write(uploaded_file.read)
-        end
+
+        # Use FileUtils.copy_stream for efficient copying
+        FileUtils.copy_stream(uploaded_file, temp_path)
 
         temp_path.to_s
       end
@@ -107,6 +108,30 @@ module Api
         allowed_extensions = %w[.jpg .jpeg .png .bmp .tiff .tif]
         extension = File.extname(filename).downcase
         allowed_extensions.include?(extension)
+      end
+
+      def create_file_upload_object(file_path, original_filename, content_type)
+        # Create a file upload object that ActiveStorage can work with
+        File.open(file_path, "rb") do |file|
+          # Create a temporary file with the original filename
+          temp_file = Tempfile.new([File.basename(original_filename, ".*"), File.extname(original_filename)])
+          temp_file.binmode
+          temp_file.write(file.read)
+          temp_file.rewind
+
+          # Create an upload object that mimics the original uploaded file
+          upload = ActionDispatch::Http::UploadedFile.new(
+            tempfile: temp_file,
+            filename: original_filename,
+            type: content_type
+          )
+
+          # Store the temp file reference so it gets cleaned up
+          @temp_files ||= []
+          @temp_files << temp_file
+
+          upload
+        end
       end
 
       def auto_create_transaction?
@@ -122,6 +147,20 @@ module Api
       end
 
       def cleanup_temporary_files(*file_paths)
+        # Clean up temp files created by create_file_upload_object
+        if @temp_files
+          @temp_files.each do |temp_file|
+            begin
+              temp_file.close
+              temp_file.unlink
+            rescue StandardError => e
+              Rails.logger.warn("Failed to clean up temp file: #{e.message}")
+            end
+          end
+          @temp_files.clear
+        end
+
+        # Clean up file paths
         file_paths.compact.each do |file_path|
           next unless file_path && File.exist?(file_path)
 

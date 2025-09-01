@@ -9,6 +9,7 @@ module Ai
             required(:user_id).value(:string)
             required(:space_id).value(:string)
             required(:image_path).value(:string)
+            required(:file)
             optional(:auto_create_transaction).value(:bool)
           end
 
@@ -27,6 +28,7 @@ module Ai
         include FailureHandler
 
         def call(params:)
+          time_start                = Time.current
           params                    = step validate(params:)
           receipt_data              = step extract_receipt_data_vision(params:)
           confidence_analysis       = step calculate_confidence_vision(receipt_data:)
@@ -34,13 +36,11 @@ module Ai
                                             receipt_data:,
                                             confidence_analysis:
                                           )
-          transaction               = step create_transaction_if_requested(
-                                            params:,
-                                            receipt_result:
-                                          )
+          draft_transaction         = step CreateDraftFromReceiptResult.new.call(params:, receipt_result:)
           final_result              = step prepare_final_result(
                                             receipt_result:,
-                                            transaction:
+                                            draft_transaction:,
+                                            time_start:
                                           )
           final_result
         end
@@ -72,33 +72,10 @@ module Ai
           Ai::Operations::Receipts::FormatResult.new.call(params: format_params)
         end
 
-        def create_transaction_if_requested(params:, receipt_result:)
-          return Success(nil) unless params[:auto_create_transaction]
-          return Success(nil) if receipt_result[:confidence_summary][:should_review]
-
-          transaction_params = {
-            user_id: params[:user_id],
-            space_id: params[:space_id],
-            receipt_data: receipt_result[:extracted_data]
-          }
-
-          # Call the transaction creation operation and convert any failure to Success(nil)
-          # to allow the main receipt processing flow to continue.
-          creation_result = Ai::Operations::Receipts::CreateTransactionFromReceipt.new.call(params: transaction_params)
-
-          if creation_result.success?
-            creation_result
-          else
-            # Log the transaction creation failure but return success(nil) for the main flow
-            Rails.logger.warn "Transaction creation failed: #{creation_result.failure}"
-            Success(nil)
-          end
-        end
-
-        def prepare_final_result(receipt_result:, transaction:)
+        def prepare_final_result(receipt_result:, draft_transaction:, time_start:)
           result = receipt_result.dup
-          result[:transaction] = transaction if transaction.present?
-          result[:processing_time] = Time.current
+          result[:draft_id] = draft_transaction.id if draft_transaction.present?
+          result[:processing_time] = Time.current - time_start
           Success(result)
         end
       end
