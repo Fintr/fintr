@@ -6,12 +6,13 @@ module Transactions
       queue_as :default
 
       def perform(transfer_id)
+        date = Time.zone.today.date.in_time_zone("Asia/Manila")
         Transactions::Operations::Transfers::CreateRepeatTransfers
           .new
           .call(
             transfer_id:,
-            date_start: Time.zone.in_time_zone("Asia/Manila").today + 1.month,
-            date_end: Time.zone.in_time_zone("Asia/Manila").today + 1.month
+            date_start: date + 1.month,
+            date_end: date + 1.month
           )
       end
     end
