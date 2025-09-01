@@ -83,7 +83,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
     setShowNotifications(!showNotifications);
   };
 
-  const handleReceiptSuccess = (suggestedTransactionPayload: any, receiptImage: File) => {
+  const handleReceiptSuccess = (suggestedTransactionPayload: any, receiptImage: File, draftId?: string) => {
     const prefilledData = {
       type: 'expense' as const,
       amount: suggestedTransactionPayload.amount,
@@ -93,6 +93,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
       date: suggestedTransactionPayload.date,
       scheduleType: suggestedTransactionPayload.scheduleType,
       receiptImage: receiptImage,
+      draftId: draftId,
     };
     
     setPrefilledTransactionData(prefilledData);

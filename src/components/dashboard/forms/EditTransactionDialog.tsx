@@ -19,6 +19,7 @@ import { useAuthApi } from "@/hooks/useAuthApi";
 import { ScheduleTypeEnum, UpdateScopeEnum } from "@/constants/transactionConstants";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { createDisplayFileFromAttachment } from "@/utils/fileUtils";
 
 interface FileAttachment {
   id: string;
@@ -79,18 +80,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
           // Create a special file object that works with the form components
           const fileAttachment = processedData.files[0];
           if (fileAttachment && fileAttachment.url) {
-            // Create a custom file object that has the properties needed by the form
-            const customFile = {
-              name: fileAttachment.filename,
-              type: fileAttachment.contentType,
-              size: 0, // We don't have the size, but the form doesn't use it for display
-              
-              // Add the URL for preview generation
-              url: fileAttachment.url,
-              
-              // Add a flag to indicate this is a remote file (not a local File object)
-              isRemoteFile: true
-            };
+            // Use the reusable utility to create display file object
+            const customFile = createDisplayFileFromAttachment(fileAttachment);
             
             // Add the custom file to the transaction data
             processedData.file = customFile;

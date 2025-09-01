@@ -129,3 +129,19 @@ export const generateTransactionsCsv = async (
     throw error;
   }
 };
+
+/**
+ * Fetches transaction drafts for the current user
+ * 
+ * @param api - The authenticated Axios instance
+ * @returns Promise resolving to an array of draft transactions
+ */
+export const fetchTransactionDrafts = async (api: AxiosInstance) => {
+  try {
+    const response = await api.get('/transactions/drafts');
+    return response.data.data || [];
+  } catch (error) {
+    console.error("Error fetching transaction drafts:", error);
+    throw error;
+  }
+};

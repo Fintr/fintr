@@ -15,6 +15,9 @@ export interface CreateTransactionType {
   installmentPeriod?: number;
   // File data
   file?: File;
+  // Receipt draft ID for linking receipt processing to transaction creation
+  draftId?: string;
+  fileId?: string;
 }
 
 // Type for updating a transaction

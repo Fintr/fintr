@@ -32,11 +32,9 @@ import { UpdateTransactionType } from "@/types/transactionTypes";
 import ExpandableTextarea from '@/components/ui/expandable-textarea';
 import FileUploadField from "./FileUploadField";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
-import { createDisplayFileFromDraft } from "@/utils/fileUtils";
 import { useTransactionDrafts } from "@/hooks/async/useTransactionDrafts";
 import DraftItems from "./DraftItems";
 import { useQueryClient } from "@tanstack/react-query";
-import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
 
 // Keep Zod schemas as they are used by the adapter and nested forms
 const categorySchema = z.object({
@@ -164,23 +162,10 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Store draftId separately since it's not part of the form values
   const [draftId, setDraftId] = useState<string | undefined>(initialData?.draftId);
   
-  // Store fileId separately for handling draft files
-  const [fileId, setFileId] = useState<string | null>(null);
-  
   // Draft functionality
   const [showDrafts, setShowDrafts] = useState(false);
   const { data: drafts = [], refetch: refetchDrafts } = useTransactionDrafts();
   const queryClient = useQueryClient();
-
-  // Invalidate drafts query when form is loaded with initial data from Add Receipt
-  useEffect(() => {
-    if (initialData && initialData.draftId) {
-      // When loading from Add Receipt with a draftId, invalidate the drafts query
-      // to ensure we have the latest draft data
-      queryClient.invalidateQueries({ queryKey: ['transactionDrafts'] });
-      console.log('Invalidated transactionDrafts query due to Add Receipt initial data');
-    }
-  }, [initialData?.draftId, queryClient]);
   
   // Form errors
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
@@ -313,7 +298,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             ? parseInt(formState.installmentPeriod, 10) 
             : undefined 
         }),
-        ...(fileId && { fileId }), // Use fileId if available from draft
         ...(formState.file && { file: formState.file }), // Use formState.file
         ...(draftId && { draftId }) // Include draftId if available
       };
@@ -336,10 +320,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         onSubmitSuccess(response);
       }
       
-      // Invalidate drafts query after successful submission
-      queryClient.invalidateQueries({ queryKey: ['transactionDrafts'] });
-      console.log('Invalidated transactionDrafts query after successful submission');
-      
       // Reset form only if not in edit mode (edit mode closes dialog)
       if (!isEditMode) {
         setFormState({
@@ -352,7 +332,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           installmentPeriod: "",
           file: null, // Reset file in formState
         });
-        setFileId(null);
         setDate(undefined);
         // setFileState(null); // Removed
         setShowCustomCategoryInput(false);
@@ -386,7 +365,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Handle file removal
   const handleRemoveFile = () => {
     setFormState(prev => ({ ...prev, file: null }));
-    setFileId(null);
     if (onFileUpdate) onFileUpdate(null); // Notify parent of file removal
   };
 
@@ -394,27 +372,41 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const handleDraftSelect = async (draft: any) => {
     console.log('Draft selected:', draft);
     
-    // Handle file transfer from draft using the same logic as EditTransactionDialog
-    let displayFile = null;
-    let draftFileId = null;
-    
+    // Handle file transfer from draft
+    let draftFile = null;
     if (draft.files && draft.files.length > 0) {
+      // If draft has files, fetch the first file and convert to Blob
       const firstFile = draft.files[0];
       console.log('First file from draft:', firstFile);
       
-      // Use the reusable utility to create display file object
-      displayFile = createDisplayFileFromDraft({
-        id: firstFile.id,
-        url: firstFile.url,
-        name: firstFile.name || `receipt-${draft.id}.jpg`,
-        contentType: firstFile.contentType || 'image/jpeg'
-      });
-      
-      draftFileId = firstFile.id;
-      
-      console.log('Using fileId for draft file:', draftFileId);
-      console.log('Created display file:', displayFile);
-      toast.success('Draft file loaded successfully');
+      try {
+        // Fetch the image from the URL
+        const response = await fetch(firstFile.url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText}`);
+        }
+        
+        // Convert to blob
+        const blob = await response.blob();
+        
+        // Create a File object from the blob
+        draftFile = new File([blob], firstFile.name || `receipt-${draft.id}.jpg`, {
+          type: firstFile.contentType || 'image/jpeg'
+        });
+        
+        console.log('Created File object from draft:', draftFile);
+      } catch (error) {
+        console.error('Error fetching draft file (CORS issue likely):', error);
+        
+        // If CORS fails, we can't create a proper File object
+        // So we'll skip the file for now and show an error
+        console.error('CORS error prevents loading draft file. File will not be included.');
+        toast.error('Could not load draft file due to CORS restrictions. Please upload the file manually.');
+        draftFile = null;
+        
+        console.log('Created remote file object from draft:', draftFile);
+        toast.warning('Draft file loaded (remote reference). File will be downloaded when submitting.');
+      }
     } else {
       console.log('No files found in draft');
     }
@@ -427,19 +419,16 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       scheduleType: draft.scheduleType || ScheduleTypeEnum.ONE_TIME,
       repeatInterval: draft.repeatInterval || "",
       installmentPeriod: draft.installmentPeriod?.toString() || "",
-      file: displayFile, // Set the display file for preview
+      file: draftFile, // Transfer the file from draft
     };
     
     console.log('Setting new form state:', newFormState);
     setFormState(newFormState);
     
-    // Set file ID for submission
-    setFileId(draftFileId);
-    
-    // Notify parent with file info for preview
-    if (onFileUpdate && displayFile) {
-      console.log('Notifying parent of file info:', displayFile);
-      onFileUpdate(displayFile);
+    // Notify parent of file change if callback exists
+    if (onFileUpdate && draftFile) {
+      console.log('Notifying parent of file update:', draftFile);
+      onFileUpdate(draftFile);
     }
     
     if (draft.date) {
@@ -453,7 +442,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Handle drafts invalidation
   const handleDraftsInvalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['transactionDrafts'] });
-    console.log('Invalidated transactionDrafts query via handleDraftsInvalidate');
   };
 
   // Handle delete draft
@@ -475,7 +463,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         installmentPeriod: "",
         file: null,
       });
-      setFileId(null);
       setDate(new Date());
       setDraftId(undefined);
       
@@ -541,7 +528,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
               type="button"
               variant="outline"
               onClick={() => setShowDrafts(!showDrafts)}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground"
+              className="bg-primary/50 hover:bg-primary/60 text-primary-foreground"
             >
               <Receipt className="w-4 h-4 mr-2" />
               Receipt Drafts
@@ -549,9 +536,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             
             {draftId && (
               <Button
-                variant="destructive"
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={handleDeleteDraft}
-                className="bg-destructive text-white hover:text-white"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
               >
                 Delete Draft
               </Button>

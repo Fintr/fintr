@@ -42,7 +42,7 @@ export interface UpdateTransactionType {
 export interface TransferUpdateTransactionType extends UpdateTransactionType {
   fromAccountName: string;
   toAccountName: string;
-  transactionCost: number
+  transactionCost: number;
 }
 
 

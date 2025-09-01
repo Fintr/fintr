@@ -11,7 +11,7 @@ import { useAIUsage } from '@/hooks/async/useAIUsage';
 interface AddReceiptDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onReceiptSuccess?: (suggestedTransactionPayload: any, receiptImage: File) => void;
+  onReceiptSuccess?: (suggestedTransactionPayload: any, receiptImage: File, draftId?: string) => void;
 }
 
 const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, onReceiptSuccess }) => {
@@ -178,8 +178,8 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
       if (response?.data?.suggestedTransactionPayload && onReceiptSuccess) {
         toast.success('Receipt processed successfully! Opening expense form...');
         
-        // Call the callback with the suggested data and receipt image
-        onReceiptSuccess(response.data.suggestedTransactionPayload, selectedImage);
+        // Call the callback with the suggested data, receipt image, and draftId
+        onReceiptSuccess(response.data.suggestedTransactionPayload, selectedImage, response.data.draftId);
         handleCancel();
       } else {
         toast.success('Receipt uploaded successfully!');

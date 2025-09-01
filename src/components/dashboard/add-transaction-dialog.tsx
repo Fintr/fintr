@@ -36,6 +36,7 @@ interface AddTransactionDialogProps {
     date?: string;
     scheduleType?: string;
     receiptImage?: File;
+    draftId?: string;
   };
 }
 
@@ -72,6 +73,7 @@ const AddTransactionDialog = ({
         repeatInterval: '',
         installmentPeriod: 0,
         file: prefilledData.receiptImage || null,
+        draftId: prefilledData.draftId,
       };
     }
     return undefined;
