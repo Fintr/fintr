@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_25_052523) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_01_041006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -329,7 +329,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_25_052523) do
       NULL::uuid AS category_id,
       transfers.transaction_cost_cents,
       transfers.transaction_cost_currency,
-      transfers.balance_state
+      transfers.balance_state,
+      transfers.created_at
      FROM (((transfers
        JOIN spaces ON ((spaces.id = transfers.space_id)))
        JOIN accounts to_accounts ON ((to_accounts.id = transfers.to_account_id)))
@@ -356,7 +357,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_25_052523) do
       transactions_categories.id AS category_id,
       NULL::integer AS transaction_cost_cents,
       NULL::character varying AS transaction_cost_currency,
-      transactions.balance_state
+      transactions.balance_state,
+      transactions.created_at
      FROM (((transactions
        JOIN accounts ON ((accounts.id = transactions.account_id)))
        JOIN spaces ON ((spaces.id = transactions.space_id)))

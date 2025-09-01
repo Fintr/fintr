@@ -90,6 +90,137 @@ RSpec.describe Transactions::Operations::CreateTransaction do
       end
     end
 
+    context 'with draft transaction parameters' do
+      subject(:call_operation) { operation.call(draft_params) }
+
+      let(:draft_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 100.0,
+          date: Date.current,
+          description: 'Draft transaction',
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: 'one_time',
+          draft: true
+        }
+      end
+
+      it { is_expected.to be_success }
+
+      it 'creates a draft transaction' do
+        expect { call_operation }.to change(Transactions::Draft, :count).by(1)
+      end
+
+      it 'does not change the account balance' do
+        expect { call_operation }.not_to change { account.reload.balance.amount }
+      end
+
+      it 'sets the draft transaction attributes correctly' do
+        result = call_operation.value!
+        expect(result).to be_a(Transactions::Draft)
+        expect(result.amount.amount).to eq(100.0)
+        expect(result.date).to eq(Date.current)
+        expect(result.description).to eq('Draft transaction')
+        expect(result.space_id).to eq(space.id)
+        expect(result.account_id).to eq(account.id)
+        expect(result.category_id).to eq(expense_category.id)
+        expect(result.schedule_type).to eq('one_time')
+        expect(result.balance_state).to eq('pending')
+      end
+    end
+
+    context 'with file attachment' do
+      subject(:call_operation) { operation.call(file_params) }
+
+      let(:file) { fixture_file_upload('test.jpg', 'image/jpeg') }
+      let(:file_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 50.0,
+          date: Date.current,
+          description: 'Transaction with file',
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: 'one_time',
+          file: file
+        }
+      end
+
+      it { is_expected.to be_success }
+
+      it 'attaches the file to the transaction' do
+        result = call_operation.value!
+        expect(result.files).to be_attached
+      end
+    end
+
+    context 'with file_id attachment' do
+      subject(:call_operation) { operation.call(file_id_params) }
+
+      let(:existing_transaction) { create(:expense_transaction, user: user, space: space) }
+      let(:file) { fixture_file_upload('test.jpg', 'image/jpeg') }
+      let(:existing_attachment) do
+        existing_transaction.files.attach(
+          io: file,
+          filename: 'receipt.jpg',
+          content_type: 'image/jpeg'
+        )
+        existing_transaction.files.first
+      end
+      let(:file_id_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 50.0,
+          date: Date.current,
+          description: 'Transaction with file_id',
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: 'one_time',
+          file_id: existing_attachment.id
+        }
+      end
+
+      it { is_expected.to be_success }
+
+      it 'attaches the existing blob to the transaction' do
+        result = call_operation.value!
+        expect(result.files).to be_attached
+      end
+    end
+
+    context 'with draft removal' do
+      subject(:call_operation) { operation.call(draft_removal_params) }
+
+      let(:existing_draft) { create(:draft_transaction, user: user, space: space) }
+      let(:draft_removal_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 100.0,
+          date: Date.current,
+          description: 'Transaction with draft removal',
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: 'one_time',
+          draft_id: existing_draft.id
+        }
+      end
+
+      it { is_expected.to be_success }
+
+      it 'removes the existing draft' do
+        expect { call_operation }.to change(Transactions::Draft, :count).by(0)
+      end
+
+      it 'creates a new transaction' do
+        expect { call_operation }.to change(Transactions::Expense, :count).by(1)
+      end
+    end
+
     context 'with repeated expense transaction parameters' do
       subject(:call_operation) { operation.call(repeat_expense_params) }
 

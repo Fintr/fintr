@@ -50,7 +50,9 @@ module Api
             :schedule_type,
             :repeat_interval,
             :repeat_count,
-            :file
+            :file,
+            :draft_id,
+            :file_id
           )
         end
 

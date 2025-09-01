@@ -49,6 +49,10 @@ FactoryBot.define do
         installment_count { 6 }
       end
     end
+
+    factory :draft_transaction, class: "Transactions::Draft" do
+      type { "Transactions::Draft" }
+    end
   end
 
   factory :combined_transaction, class: "Transactions::Combined" do

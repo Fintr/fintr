@@ -27,6 +27,7 @@ Rails.application.routes.draw do
         resources :categories, only: %i[index create update destroy]
         resources :accounts, only: %i[index create update destroy]
         resources :transfers, only: %i[create show update destroy]
+        resources :drafts, only: %i[index]
       end
 
       scope path: "goals", module: "goals" do

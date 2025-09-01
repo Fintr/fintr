@@ -39,7 +39,8 @@ module Transactions
       field :type do |record|
         type_mapping = {
           "Transactions::Income" => "income",
-          "Transactions::Expense" => "expense"
+          "Transactions::Expense" => "expense",
+          "Transactions::Draft" => "draft"
         }
 
         type_mapping[record.type]

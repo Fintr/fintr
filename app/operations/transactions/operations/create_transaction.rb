@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "dry/types"
-
 module Transactions
   module Operations
     # NOTE: Create a transaction only at the start. This is the parent transaction.
@@ -12,7 +10,7 @@ module Transactions
           required(:user_id).value(:string)
           required(:space_id).value(:string)
           optional(:transfer_id).value(:string)
-          optional(:remove_calculation).maybe(Dry::Types["params.bool"])
+          optional(:remove_calculation).maybe(:bool)
 
           required(:amount).value(:decimal)
           required(:date).value(:date)
@@ -28,6 +26,10 @@ module Transactions
           optional(:installment_count).value(:integer)
 
           optional(:file)
+          optional(:file_id).maybe(:string)
+
+          optional(:draft).value(:bool)
+          optional(:draft_id).maybe(:string)
         end
 
         # Validate that schedule_type is valid
@@ -66,22 +68,24 @@ module Transactions
       include FailureHandler
 
       def call(params)
+        params             = step validate(params:)
+
         transaction = ActiveRecord::Base.transaction do
-          params             = step validate(params:)
           category           = step find_category(params:)
           account            = step find_account(params:)
           remove_calculation = step find_remove_calculation(params:)
           params             = step transform_params(params:, category:, account:)
           params             = step adjust_amount(params:)
           transaction        = step create_transaction(params:, category:)
-          _                  = step calculate_balance(transaction:, remove_calculation:)
+          _                  = step calculate_balance(transaction:, remove_calculation:, params:)
           transaction        = step create_schedule(transaction:, params:) if params[:schedule_type] != "one_time"
           _                  = step create_past_transactions(transaction:) if params[:schedule_type] != "one_time"
           _                  = step create_future_transactions(transaction:) if params[:schedule_type] != "one_time"
           transaction
         end
 
-        transaction     = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
+        transaction          = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
+        _                    = step remove_draft(params:)
         transaction.reload
       end
 
@@ -133,8 +137,9 @@ module Transactions
 
       def create_transaction(params:, category:)
         transaction_type = category.income? ? Transactions::Income : Transactions::Expense
+        transaction_type = Transactions::Draft if params[:draft]
 
-        transaction_params = params.except(:file)
+        transaction_params = params.except(:file, :draft, :draft_id, :file_id)
         transaction = transaction_type.new(**transaction_params)
 
         transaction.save!
@@ -144,7 +149,9 @@ module Transactions
         Failure(**transaction.errors.to_hash, error: e)
       end
 
-      def calculate_balance(transaction:, remove_calculation:)
+      def calculate_balance(transaction:, remove_calculation:, params:)
+        return Success(transaction) if params[:draft]
+
         Accounts::CalculateBalance.new.call(transaction_id: transaction.id, remove_calculation:)
       end
 
@@ -182,10 +189,18 @@ module Transactions
       end
 
       def attach_file(transaction:, params:)
-        return Success(transaction) if params[:file].blank?
+        return Success(transaction) if params[:file].blank? && params[:file_id].blank?
 
-        Utils::ActiveStorage.attach_file(transaction.files, params[:file], params[:space_id])
+        Utils::ActiveStorage.attach_file(transaction.files, params[:file], params[:space_id], file_id: params[:file_id])
         Success(transaction)
+      end
+
+      def remove_draft(params:)
+        return Success() unless params[:draft_id]
+
+        draft = Transactions::Draft.find_by(id: params[:draft_id])
+        draft&.destroy!
+        Success()
       end
     end
   end
