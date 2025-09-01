@@ -6,7 +6,7 @@ module Transactions
       queue_as :default
 
       def perform(date: Date.current)
-        parsed_date = date.is_a?(String) ? Date.parse(date) : date
+        parsed_date = date.is_a?(String) ? Date.parse(date).in_time_zone("Asia/Manila") : date
         query = Transactions::Transaction.where(balance_state: "pending",
                                                 date: parsed_date.beginning_of_day..parsed_date.end_of_day)
 
