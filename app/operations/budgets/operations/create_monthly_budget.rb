@@ -43,6 +43,8 @@ module Budgets
           Budget.new(
             space:,
             category: budget.category,
+            amount_cents: budget.amount_cents,
+            amount_currency: budget.amount_currency,
             date:
           )
         end
