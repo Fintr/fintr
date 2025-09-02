@@ -22,6 +22,8 @@ module Transactions
     monetize :balance_cents, allow_nil: true
     monetize :transaction_cost_cents, allow_nil: true
 
+    scope :non_draft, -> { where.not(transactable_type: "Transactions::Draft") }
+
     def readonly?
       true
     end
