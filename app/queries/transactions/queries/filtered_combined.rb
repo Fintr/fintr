@@ -5,7 +5,7 @@ module Transactions
     class FilteredCombined < Transactions::Queries::BaseQuery
       # Contract defined in app/queries/transactions/queries/filtered_transactions.rb
 
-      def initialize(relation: Transactions::Combined.all, params: {})
+      def initialize(relation: Transactions::Combined.non_draft, params: {})
         super(relation:, params:)
       end
 
