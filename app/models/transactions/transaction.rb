@@ -37,13 +37,5 @@ module Transactions
     def value
       amount
     end
-
-    def income
-      type.constantize.find(self.id).income
-    end
-
-    def expense
-      type.constantize.find(self.id).expense
-    end
   end
 end
