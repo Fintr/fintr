@@ -154,7 +154,7 @@ const InsightsTab = () => {
       { 
         name: "Other", 
         value: otherValue, 
-        color: getColorByIndex(5), // Use our color function for "Other" category
+        color: getColorByIndex(6), // Use our color function for "Other" category
         details: otherDetails 
       },
     ];
