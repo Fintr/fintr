@@ -16,8 +16,9 @@ module Transactions
           optional(:balance_state).value(:string)
           optional(:paginate).value(:bool)
           optional(:search_query).value(:string)
-          optional(:without_initial_balance).value(:bool)
           optional(:transaction_type).value(:string)
+
+          optional(:without_initial_balance).value(:bool)
         end
 
         rule(:min_amount, :max_amount) do

@@ -269,7 +269,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
     end
   end
 
-  context 'has_image field' do
+  context 'when has_image field' do
     let(:record) do
       OpenStruct.new(
         transactable_id: record_id,
@@ -290,7 +290,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       let(:has_image) { true }
 
       it 'returns true' do
-        expect(serialized_hash[:has_image]).to eq(true)
+        expect(serialized_hash[:has_image]).to be(true)
       end
     end
 
@@ -298,7 +298,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       let(:has_image) { false }
 
       it 'returns false' do
-        expect(serialized_hash[:has_image]).to eq(false)
+        expect(serialized_hash[:has_image]).to be(false)
       end
     end
   end
