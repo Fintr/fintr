@@ -152,6 +152,11 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       // Update schedule type state
       setScheduleType(getValidIncomeScheduleType(initialData.scheduleType)); // Use helper here
 
+      // Update date when initialData changes
+      if (initialData.date) {
+        setDate(new Date(initialData.date));
+      }
+
       // Store the current initialData reference to prevent re-running on same object
       prevInitialDataRef.current = initialData;
     } else if (!initialData && prevInitialDataRef.current) {
@@ -172,7 +177,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       setFormSubmitted(false);
       prevInitialDataRef.current = undefined;
     }
-  }, [initialData, initialData?.file]); // Add initialData?.file to dependencies
+  }, [initialData, initialData?.file]); // Add initialData?.file and setDate to dependencies
   
   // Form validation
   const validateForm = () => {
@@ -341,11 +346,18 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
               <PopoverTrigger asChild>
                 <Button variant={"outline"} className="w-full justify-start text-left font-normal text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "MMMM d, yyyy") : <span className="text-sm">Pick a date</span>}
+                  {date ? format(date, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus toDate={maxDate} />
+                <Calendar 
+                  mode="single" 
+                  selected={date} 
+                  onSelect={setDate} 
+                  initialFocus 
+                  toDate={maxDate} 
+                  defaultMonth={date || new Date()}
+                />
               </PopoverContent>
             </Popover>
           </div>

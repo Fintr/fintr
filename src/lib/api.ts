@@ -45,7 +45,6 @@ export const createAuthenticatedClient = (getToken: () => Promise<string>): Axio
   // Add auth token to all requests from this client
   authClient.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
-      console.log('Adding auth token to request');
       try {
         const token = await getToken();
         if (token) {

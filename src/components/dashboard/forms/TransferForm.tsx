@@ -303,7 +303,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 className={`w-full justify-start text-left font-normal text-sm`}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "MMMM d, yyyy") : <span className="text-sm">Pick a date</span>}
+                {date ? format(date, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
@@ -312,6 +312,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 selected={date}
                 onSelect={setDate}
                 initialFocus
+                defaultMonth={date || new Date()}
               />
             </PopoverContent>
           </Popover>

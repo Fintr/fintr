@@ -254,61 +254,6 @@ const DatabaseTab = () => {
     ] : [],
   };
 
-  // const handleAddCategory = () => {
-  //   if (newCategoryName.trim() === "") return;
-  //   // Logic to add a new category would go here
-  //   setNewCategoryName("");
-  // };
-
-  // const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   if (e.target.files && e.target.files.length > 0) {
-  //     setSelectedFile(e.target.files[0]);
-  //   }
-  // };
-
-  // const handleFileUpload = () => {
-  //   if (!selectedFile) {
-  //     // Show error or notification that no file is selected
-  //     console.log("No file selected");
-  //     return;
-  //   }
-
-  //   setIsUploading(true);
-  //   // Simulate upload process
-  //   setTimeout(() => {
-  //     console.log(`Uploading file: ${selectedFile.name}`);
-  //     // Here you would handle the actual file upload logic
-  //     setIsUploading(false);
-  //     setSelectedFile(null);
-  //     // Reset file input
-  //     const fileInput = document.getElementById(
-  //       "file-upload",
-  //     ) as HTMLInputElement;
-  //     if (fileInput) fileInput.value = "";
-  //   }, 1500);
-  // };
-
-  // const handleExportData = () => {
-  //   setIsExporting(true);
-  //   // Simulate export process
-  //   setTimeout(() => {
-  //     console.log("Exporting data as CSV");
-  //     // Here you would handle the actual export logic
-  //     setIsExporting(false);
-
-  //     // Create a mock CSV download
-  //     const csvContent =
-  //       "data:text/csv;charset=utf-8,Date,Category,Amount\n2023-06-01,Groceries,120.50\n2023-06-02,Utilities,85.75";
-  //     const encodedUri = encodeURI(csvContent);
-  //     const link = document.createElement("a");
-  //     link.setAttribute("href", encodedUri);
-  //     link.setAttribute("download", "financial_data.csv");
-  //     document.body.appendChild(link);
-  //     link.click();
-  //     document.body.removeChild(link);
-  //   }, 1500);
-  // };
-
   // Functions for category management
   const handleEditCategory = (item: CategoryItem) => {
     console.log("Edit category:", item);

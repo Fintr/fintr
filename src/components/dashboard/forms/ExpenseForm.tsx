@@ -211,6 +211,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       // Update draftId
       setDraftId(initialData.draftId);
 
+      // Update date when initialData changes
+      if (initialData.date) {
+        setDate(new Date(initialData.date));
+      }
+
       // Store the current initialData reference to prevent re-running on same object
       prevInitialDataRef.current = initialData;
     } else if (!initialData && prevInitialDataRef.current) {
@@ -577,11 +582,18 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
               <PopoverTrigger asChild>
                 <Button variant={"outline"} className="w-full justify-start text-left font-normal text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "MMMM d, yyyy") : <span className="text-sm">Pick a date</span>}
+                  {date ? format(date, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus toDate={maxDate} />
+                <Calendar 
+                  mode="single" 
+                  selected={date} 
+                  onSelect={setDate} 
+                  initialFocus 
+                  toDate={maxDate} 
+                  defaultMonth={date || new Date()}
+                />
               </PopoverContent>
             </Popover>
           </div>

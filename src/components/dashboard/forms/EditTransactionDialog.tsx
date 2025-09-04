@@ -94,7 +94,10 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         
         // Set the date from the transaction data
         if (processedData.date) {
-          setDate(new Date(processedData.date));
+          // Create a clean UTC date without time components to avoid timezone issues
+          const dateObj = new Date(processedData.date);
+          const cleanDate = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
+          setDate(cleanDate);
         }
       } catch (error) {
         toast.error("Failed to fetch transaction details.");

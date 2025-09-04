@@ -102,7 +102,6 @@ export function NewBudgetDialog({
   };
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log("VALUES ", values);
     setIsSubmitting(true);
     setFieldErrors({}); // Clear previous errors
     

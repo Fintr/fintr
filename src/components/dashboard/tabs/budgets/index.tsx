@@ -128,7 +128,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
                           {budgetDate ? (
-                            format(budgetDate, "MMMM d, yyyy")
+                            format(budgetDate, "MMM d, yyyy")
                           ) : (
                             <span className="text-sm">Pick a date</span>
                           )}

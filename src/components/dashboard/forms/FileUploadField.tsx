@@ -17,9 +17,6 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
   onRemoveFile,
   label = "Attach File (Optional)",
 }) => {
-  console.log('FileUploadField received file:', file);
-  console.log('File type:', typeof file);
-  console.log('Is remote file:', file && (file as any).isRemoteFile);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleInternalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

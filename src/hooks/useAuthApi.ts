@@ -38,7 +38,6 @@ export const useAuthApi = (options?: {
       const token = await getAccessTokenSilently({
         authorizationParams: params,
       });
-      console.log('token', token);
       return token;
     } catch (e: any) {
       console.error('Error getting access token:', e);
