@@ -137,7 +137,10 @@ const InsightsTab = () => {
     const sortedData = [...data].sort((a, b) => b.value - a.value);
 
     // Take top 5 categories
-    const top5 = sortedData.slice(0, 5)
+    const top5 = sortedData.slice(0, 5).map((item, index) => ({
+      ...item,
+      color: getColorByIndex(index), // Use unique color based on category name
+    }));
 
     // Sum up the rest for "Other" category
     const otherValue = sortedData
@@ -154,7 +157,7 @@ const InsightsTab = () => {
       { 
         name: "Other", 
         value: otherValue, 
-        color: getColorByIndex(6), // Use our color function for "Other" category
+        color: getColorByIndex(5), // Use our color function for "Other" category
         details: otherDetails 
       },
     ];

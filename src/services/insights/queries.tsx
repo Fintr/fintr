@@ -293,7 +293,7 @@ export const fetchInsights = async (
       expenseBreakdown: apiData.expenseBreakdown?.map((item, index) => ({
         name: item.categoryName,
         value: parseFloat(item.amount),
-        color: getColorByIndex(index), // Use unique color based on category name
+        color: "#FFF", // Use unique color based on category name
         percentage: item.percentage, // Assign as string directly
       })) || [],
       weeklySpending: aggregateWeeklySpending(apiData.weeklySpending),
