@@ -25,9 +25,9 @@ module Transactions
         def call(params)
           params              = step validate(params:)
           future_transfers    = step find_this_and_future_transfers(params:)
-          deleted_transfers   = step delete_this_and_future_transfers(future_transfers:)
+          _                   = step delete_this_and_future_transfers(future_transfers:)
 
-          deleted_transfers
+          params[:transfer]
         end
 
         private

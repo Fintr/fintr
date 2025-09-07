@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
 module Transactions
   module Operations
     module Transfers
@@ -62,9 +63,10 @@ module Transactions
         end
 
         include FailureHandler
+        include Dry::Operation::Extensions::ActiveRecord
 
         def call(params)
-          transfer = ActiveRecord::Base.transaction do
+          transfer = transaction do
             params              = step validate(params:)
             transfer            = step find_transfer(params:)
             from_account        = step find_account(params:, account_name: params[:from_account_name])
@@ -73,9 +75,9 @@ module Transactions
             changed_transfer    = step initialize_update_transfer(transfer:, params:)
             _                   = step adjust_balances(transfer: changed_transfer)
             changed_transfer    = step update_schedule(transfer: changed_transfer, params:)
-            _                   = step update_transfer_fee_transaction(transfer: changed_transfer, params:)
-            _                   = step update_repeat_transfers(transfer: changed_transfer, params:)
-            saved_transfer      = step save_transfer(transfer: changed_transfer)
+            new_transfer        = step update_repeat_transfers(transfer: changed_transfer, params:)
+            _                   = step update_transfer_fee_transaction(transfer: new_transfer, params:)
+            saved_transfer      = step save_transfer(transfer: new_transfer)
             saved_transfer
           end
           _ = step attach_file(transfer:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
@@ -125,12 +127,19 @@ module Transactions
           # Always create schedule for "this_and_future" updates to ensure proper job execution
           force_schedule_creation = params[:update_scope] == "this_and_future"
 
-          return Success(transfer) unless force_schedule_creation || params[:schedule_type] == "repeat"
+          return Success(transfer) unless force_schedule_creation ||
+                                          transfer.schedule_type_changed? ||
+                                          transfer.repeat_interval_changed? ||
+                                          transfer.date_changed?
 
-          schedule = Utils::Recurrence.schedule(
-            date: params[:date],
-            repeat_interval: params[:repeat_interval]
-          )
+          if transfer.schedule_type == "one_time"
+            schedule = {}
+          else
+            schedule = Utils::Recurrence.schedule(
+              date: transfer.date,
+              repeat_interval: transfer.repeat_interval
+            )
+          end
           transfer.assign_attributes(schedule:)
           Success(transfer)
         rescue StandardError => e
@@ -176,14 +185,13 @@ module Transactions
         end
 
         def update_repeat_transfers(transfer:, params:)
-          return Success() unless params[:update_scope] && transfer.changed?
+          return Success(transfer) unless params[:update_scope] && transfer.changed?
 
-          case params[:update_scope]
-          when "this_and_future", "all_in_series"
-            UpdateRepeatTransfers.new.call(transfer:, update_scope: params[:update_scope])
-          else
-            Success()
-          end
+          # - Future transfers: balance_state = "pending" (will be calculated by daily job)
+          UpdateRepeatTransfers.new.call(
+            transfer:,
+            update_scope: params[:update_scope]
+          )
         end
 
         def save_transfer(transfer:)

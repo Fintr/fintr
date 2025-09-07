@@ -67,6 +67,9 @@ RSpec/StubbedMock:
     - spec/operations/insights/operations/create_insights_data_spec.rb
     - spec/operations/insights/operations/create_summary_structure_spec.rb
     - spec/operations/insights/operations/create_weekly_spending_spec.rb
+    - spec/operations/transactions/operations/transfers/delete_all_in_series_transfers_spec.rb
+    - spec/operations/transactions/operations/transfers/update_this_and_future_transfers_spec.rb
+    - spec/operations/transactions/operations/delete_transaction_spec.rb
 
 RSpec/MessageChain:
   Enabled: true

@@ -40,7 +40,7 @@ module Repeatable
 
     # Find the record that has no parent (the root)
     current = self
-    while current.parent_id.present?
+    while current.parent_id.present? && current.parent_id != current.id
       current = current.parent
     end
     current

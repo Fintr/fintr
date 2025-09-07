@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Transactions::Operations::CreateRepeatTransactions do
+  include Dry::Monads[:result]
+
   let(:operation) { described_class.new }
   let(:user) { create(:user) }
   let(:space) { create(:personal_space) }
@@ -102,6 +104,22 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
         expect(new_transactions.third.repeat_count).to eq(transaction.repeat_count + 3)
         expect(new_transactions.fourth.repeat_count).to eq(transaction.repeat_count + 4)
       end
+
+      it 'handles nil last_transaction when calculating repeat_count' do
+        # Mock the fetch_last_transaction to return nil
+        allow(operation).to receive(:fetch_last_transaction).and_return(Success(nil))
+
+        call_operation
+        new_transactions = Transactions::Transaction.where(
+          parent_id: transaction.id
+        ).order(date: :asc)
+
+        # When last_transaction is nil, it should default to 1 and then add 1 + index
+        expect(new_transactions.first.repeat_count).to eq(2) # (1 || 1) + 1 + 0
+        expect(new_transactions.second.repeat_count).to eq(3) # (1 || 1) + 1 + 1
+        expect(new_transactions.third.repeat_count).to eq(4) # (1 || 1) + 1 + 2
+        expect(new_transactions.fourth.repeat_count).to eq(5) # (1 || 1) + 1 + 3
+      end
     end
 
     context 'with an installment transaction' do
@@ -162,6 +180,19 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
         ).order(date: :asc)
 
         expect(new_transactions.first.installment_count).to eq(transaction.installment_count + 1)
+      end
+
+      it 'handles nil last_transaction when calculating installment_count' do
+        # Mock the fetch_last_transaction to return nil
+        allow(operation).to receive(:fetch_last_transaction).and_return(Success(nil))
+
+        call_operation
+        new_transactions = Transactions::Transaction.where(
+          parent_id: transaction.id
+        ).order(date: :asc)
+
+        # When last_transaction is nil, it should default to 1 and then add 1 + index
+        expect(new_transactions.first.installment_count).to eq(2) # (1 || 1) + 1 + 0
       end
     end
 
