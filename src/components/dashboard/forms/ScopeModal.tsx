@@ -54,7 +54,7 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
     scheduleTypeChange?.from === "repeat" && scheduleTypeChange?.to === "one_time";
 
   // Determine if all_in_series option should be available
-  const isAllInSeriesAvailable = !hasScheduleChanges && inSeries;
+  const isAllInSeriesAvailable = inSeries;
 
   // For non-series transactions, only show "this_only" option
   const showOnlyThisOnly = !inSeries;
@@ -92,7 +92,7 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
       return {
         title: `Update ${entityType} Scope`,
         description: `You are updating schedule-related fields (schedule type, repeat interval, or installment period). Please choose which ${entityTypeLower}s to update:`,
-        warning: `⚠️ Changes to schedule settings cannot be applied to all ${entityTypeLower}s in the series.`,
+        warning: `⚠️ Changes to schedule settings will affect all selected ${entityTypeLower}s in the series.`,
       };
     }
 

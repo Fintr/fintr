@@ -195,6 +195,15 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       return;
     }
 
+    // Check if this is an installment transaction - show modal for any changes
+    if (originalScheduleType === ScheduleTypeEnum.INSTALLMENT) {
+      setScheduleTypeChange({ from: "installment", to: "installment" });
+      setUpdateScope(UpdateScopeEnum.THIS_ONLY); // Default selection
+      setPendingFormData(formData);
+      setShowUpdateScopeModal(true);
+      return;
+    }
+
     // If no schedule type change or one_time transaction, proceed directly
     handleSuccess(formData);
   };
@@ -388,6 +397,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         onScopeChange={handleUpdateScopeChange}
         hasScheduleChanges={hasScheduleChanges}
         transactionType={transaction?.type}
+        inSeries={fullTransactionData?.scheduleType === ScheduleTypeEnum.REPEAT || fullTransactionData?.scheduleType === ScheduleTypeEnum.INSTALLMENT}
       />
     </>
   );
