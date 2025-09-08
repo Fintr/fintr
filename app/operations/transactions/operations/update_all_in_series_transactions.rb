@@ -66,7 +66,7 @@ module Transactions
       end
 
       def find_parent_transaction(transaction:)
-        Success(transaction.parent)
+        Success(transaction.root_parent)
       end
 
       def find_other_series_transactions(transaction:)
