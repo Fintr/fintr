@@ -12,8 +12,9 @@ module Transactions
 
         Rails.logger.info("Found #{query.count} transfers with schedule")
 
+        date = Time.zone.now.in_time_zone(time_zone)
+
         query.find_each(batch_size: 100) do |transfer|
-          date = Time.zone.now.in_time_zone(time_zone)
           schedule = IceCube::Schedule.from_hash(transfer.schedule)
           occurs = schedule.occurring_between?(
             date.at_beginning_of_day,
