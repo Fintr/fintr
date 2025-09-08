@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
 module Transactions
   module Operations
     class UpdateTransaction < Dry::Operation
@@ -29,9 +30,10 @@ module Transactions
       end
 
       include FailureHandler
+      include Dry::Operation::Extensions::ActiveRecord
 
       def call(params)
-        transaction = ActiveRecord::Base.transaction do
+        transaction = transaction do
           params              = step validate(params:)
           transaction         = step find_transaction(params:)
           category            = step find_category(params:)
@@ -41,8 +43,8 @@ module Transactions
           _                   = step validate_installment_not_changed(transaction: changed_transaction)
           _                   = step adjust_balance(transaction: changed_transaction)
           changed_transaction = step update_schedule(transaction: changed_transaction, params:)
-          _                   = step update_repeat_transactions(transaction: changed_transaction, params:)
-          saved_transaction   = step save_transaction(transaction: changed_transaction)
+          new_transaction     = step update_repeat_transactions(transaction: changed_transaction, params:)
+          saved_transaction   = step save_transaction(transaction: new_transaction)
           saved_transaction
         end
         _ = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
@@ -117,7 +119,8 @@ module Transactions
         return Success(transaction) unless force_schedule_creation ||
                                            transaction.schedule_type_changed? ||
                                            transaction.repeat_interval_changed? ||
-                                           transaction.installment_period_changed?
+                                           transaction.installment_period_changed? ||
+                                           transaction.date_changed?
 
         if transaction.schedule_type == "one_time"
           schedule = {}
@@ -142,8 +145,7 @@ module Transactions
         # - Future transactions: balance_state = "pending" (will be calculated by daily job)
         UpdateRepeatTransactions.new.call(
           transaction:,
-          update_scope:,
-          original_params: params
+          update_scope:
         )
       end
 

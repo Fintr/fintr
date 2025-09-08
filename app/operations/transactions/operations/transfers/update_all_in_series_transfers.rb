@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
+
 module Transactions
   module Operations
     module Transfers
@@ -15,6 +17,8 @@ module Transactions
           end
         end
 
+        include Dry::Operation::Extensions::ActiveRecord
+
         def validate(params:)
           contract = Contract.new.call(**params)
           return Failure(contract.errors.to_h) if contract.failure?
@@ -23,18 +27,45 @@ module Transactions
         end
 
         def call(params)
-          params                     = step validate(params:)
-          transfer                   = step find_transfer(params:)
-          other_series_transfers     = step find_other_series_transfers(transfer:)
-          _                          = step update_all_in_series(transfer:, other_series_transfers:)
+          transaction do
+            params                      = step validate(params:)
+            transfer                    = step find_transfer(params:)
+            schedule_changed            = step determine_schedule_change(transfer:)
+            unless schedule_changed
+              other_series_transfers    = step find_other_series_transfers(transfer:)
+              _                         = step update_all_in_series(transfer:, other_series_transfers:)
+              return transfer
+            end
 
-          Success(params)
+            parent_transfer             = step find_parent_transfer(transfer:)
+            if transfer.id != parent_transfer.id
+              parent_transfer           = step transfer_attributes(parent_transfer:, transfer:)
+              _                         = step save_transfer(transfer:)
+            else
+              parent_transfer           = transfer
+            end
+            parent_transfer             = step update_this_and_future_transfers(parent_transfer:)
+
+            parent_transfer
+          end
         end
 
         private
 
         def find_transfer(params:)
           Success(params[:transfer])
+        end
+
+        def determine_schedule_change(transfer:)
+          schedule_changed = transfer.schedule_type_changed? ||
+                             transfer.repeat_interval_changed? ||
+                             transfer.date_changed?
+
+          Success(schedule_changed)
+        end
+
+        def find_parent_transfer(transfer:)
+          Success(transfer.parent)
         end
 
         def find_other_series_transfers(transfer:)
@@ -56,8 +87,8 @@ module Transactions
               # Note: We intentionally exclude schedule-related fields since we validated they haven't changed
             )
 
-            # Update balances if the transfer has changes and is calculated
-            if other_transfer.changed? && other_transfer.balance_state == "calculated"
+            account_changed = other_transfer.from_account_id_changed? || other_transfer.to_account_id_changed?
+            if balance_state == "calculated" && account_changed
               UpdateCalculateBalances.new.call(transfer: other_transfer)
             end
 
@@ -69,8 +100,6 @@ module Transactions
 
           Success(other_series_transfers)
         end
-
-
 
         def update_transfer_fee_transaction(transfer)
           fee_transaction = Transactions::Transaction.find_by(transfer_id: transfer.id)
@@ -108,6 +137,21 @@ module Transactions
         rescue StandardError => e
           # Log error but don't fail the entire operation
           Rails.logger.error "Failed to update fee transaction for transfer #{transfer.id}: #{e.message}"
+        end
+
+        def transfer_attributes(parent_transfer:, transfer:)
+          Transactions::Operations::TransferAttributes.new.call(from_record: transfer, to_record: parent_transfer)
+        end
+
+        def save_transfer(transfer:)
+          transfer.save!
+          Success(transfer)
+        end
+
+        def update_this_and_future_transfers(parent_transfer:)
+          Transactions::Operations::Transfers::UpdateThisAndFutureTransfers
+            .new
+            .call(transfer: parent_transfer, all_in_series: true)
         end
       end
     end

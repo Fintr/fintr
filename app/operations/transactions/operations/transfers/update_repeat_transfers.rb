@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
 module Transactions
   module Operations
     module Transfers
@@ -29,54 +30,55 @@ module Transactions
         end
 
         include FailureHandler
+        include Dry::Operation::Extensions::ActiveRecord
 
         def call(params)
-          ActiveRecord::Base.transaction do
-            params = step validate(params:)
-            _      = step validate_schedule_changes(params:)
-            _      = step update_transfers(params:)
+          transaction do
+            params      = step validate(params:)
+            transfer    = step update_transfers(params:)
+            transfer
           end
         end
 
         private
 
-        def validate_schedule_changes(params:)
-          return Success() unless params[:update_scope] == "all_in_series"
-
-          transfer = params[:transfer]
-
-          # Check if schedule-related fields have changed
-          schedule_changed = transfer.schedule_type_changed? ||
-                            transfer.repeat_interval_changed?
-
-          return Success() unless schedule_changed
-
-          Failure(schedule: "Cannot change schedule settings when updating all transfers in series. Use 'this_and_future' instead.")
-        end
 
         def update_transfers(params:)
-          affected_transfers = case params[:update_scope]
+          new_transfer = case params[:update_scope]
           when "this_and_future"
             step update_this_and_future_transfers(params:)
           when "all_in_series"
-            step Transactions::Operations::Transfers::UpdateAllInSeriesTransfers.new.call(params)
+            step update_all_in_series_transfers(params:)
           else
             Failure(update_scope: "invalid scope")
           end
-          Success(affected_transfers)
+          Success(new_transfer)
         end
 
         def update_this_and_future_transfers(params:)
           transfer = params[:transfer]
 
-          future_transfers = case
+          new_transfer = case
           when transfer.schedule_type_was == "repeat" && transfer.schedule_type == "one_time"
             step Transactions::Operations::Transfers::DeleteThisAndFutureTransfers.new.call(except_this_transfer: true, **params)
           else
             step Transactions::Operations::Transfers::UpdateThisAndFutureTransfers.new.call(params)
           end
 
-          Success(future_transfers)
+          Success(new_transfer)
+        end
+
+        def update_all_in_series_transfers(params:)
+          transfer = params[:transfer]
+
+          new_transfer = case
+          when transfer.schedule_type_was == "repeat" && transfer.schedule_type == "one_time"
+            step Transactions::Operations::Transfers::DeleteAllInSeriesTransfers.new.call(except_this_transfer: true, **params)
+          else
+            step Transactions::Operations::Transfers::UpdateAllInSeriesTransfers.new.call(params)
+          end
+
+          Success(new_transfer)
         end
       end
     end

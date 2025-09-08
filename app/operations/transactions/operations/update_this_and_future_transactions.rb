@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
 module Transactions
   module Operations
     class UpdateThisAndFutureTransactions < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
           required(:transaction)
+
+          optional(:all_in_series).value(:bool)
         end
 
         rule(:transaction) do
@@ -21,35 +24,33 @@ module Transactions
         Success(params)
       end
 
-      def call(params)
-        params                        = step validate(params:)
-        transaction                   = step find_transaction(params:)
-        previous_transactions         = step find_previous_transactions(transaction:)
-        _                             = step update_effective_parent(transaction:, previous_transactions:)
-        _                             = step clear_schedules_from_series(transaction:)
-        pending_transactions          = step find_pending_transactions(previous_transactions:)
-        _                             = step delete_pending_transactions(pending_transactions:)
-        calculated_transactions       = step find_calculated_transactions(previous_transactions:)
-        _                             = step delete_calculated_transactions(calculated_transactions:)
-        _                             = step recreate_past_to_present_transactions(transaction:)
-        _                             = step recreate_future_transactions(transaction:)
+      include Dry::Operation::Extensions::ActiveRecord
 
-        previous_transactions
+      def call(params)
+        transaction do
+          params                        = step validate(params:)
+          transaction                   = step find_transaction(params:)
+          previous_transactions         = step find_previous_transactions(transaction:, params:)
+          _                             = step update_effective_parent(transaction:, previous_transactions:)
+          _                             = step clear_schedules_from_series(transaction:)
+          pending_transactions          = step find_pending_transactions(previous_transactions:)
+          _                             = step delete_pending_transactions(pending_transactions:)
+          calculated_transactions       = step find_calculated_transactions(previous_transactions:)
+          _                             = step delete_calculated_transactions(calculated_transactions:)
+          _                             = step recreate_past_to_present_transactions(transaction:)
+          _                             = step recreate_future_transactions(transaction:)
+
+          transaction
+        end
       end
 
       def find_transaction(params:)
         Success(params[:transaction])
       end
 
-      # NOTE: Previous transactions can be in the past, present, or future, but definitely
-      # the future of the reference transaction.
-      def find_previous_transactions(transaction:)
-        # Find all transactions in the series that are from tomorrow onwards
-        # Use series_records to ensure we get all transactions in the series
-        previous_transactions = transaction.series_records.where("date >= ? AND id != ?",
-                                                                transaction.date,
-                                                                transaction.id)
-
+      def find_previous_transactions(transaction:, params:)
+        previous_transactions = transaction.series_records.where.not(id: transaction.id)
+        previous_transactions = previous_transactions.where(date: transaction.date..) unless params[:all_in_series]
         Success(previous_transactions)
       end
 

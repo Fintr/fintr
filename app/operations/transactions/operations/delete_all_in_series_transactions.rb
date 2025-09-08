@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
 module Transactions
   module Operations
     class DeleteAllInSeriesTransactions < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
           required(:transaction).filled
+
+          optional(:except_this_transaction).value(:bool)
         end
 
         rule(:transaction) do
@@ -13,13 +16,15 @@ module Transactions
         end
       end
 
+      include Dry::Operation::Extensions::ActiveRecord
+
       def call(params)
         params                = step validate(params:)
         transaction           = step find_transaction(params:)
         transactions          = step find_transactions(params:)
-        deleted_transactions  = step delete_transactions(transaction:, transactions:)
+        _                     = step delete_transactions(ref_transaction: transaction, transactions:, params:)
 
-        deleted_transactions
+        transaction
       end
 
       private
@@ -40,12 +45,14 @@ module Transactions
         Success(transaction.series_transactions)
       end
 
-      def delete_transactions(transaction:, transactions:)
-        transactions.where.not(id: transaction.id).each do |t|
-          Transactions::Operations::DeleteThisTransaction.new.call(transaction: t)
-        end
+      def delete_transactions(ref_transaction:, transactions:, params:)
+        transaction do
+          transactions.where.not(id: ref_transaction.id).each do |t|
+            step Transactions::Operations::DeleteThisTransaction.new.call(transaction: t)
+          end
 
-        Transactions::Operations::DeleteThisTransaction.new.call(transaction:) # NOTE: Delete the reference transaction last.
+          step Transactions::Operations::DeleteThisTransaction.new.call(transaction: ref_transaction) unless params[:except_this_transaction]
+        end
 
         Success(transactions)
       end

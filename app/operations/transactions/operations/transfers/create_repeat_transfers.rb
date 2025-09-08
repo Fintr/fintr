@@ -104,7 +104,7 @@ module Transactions
               date:,
               balance_state: params[:balance_state], # NOTE: Tells the app whether pending or calculated. We assume that transactions in the past were already reflected in current balances.
             )
-            new_record.repeat_count = last_transfer.repeat_count + 1 + index if parent_transfer.repeat?
+            new_record.repeat_count = (last_transfer&.repeat_count || 1) + 1 + index if parent_transfer.repeat?
             new_record
           end
 

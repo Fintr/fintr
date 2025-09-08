@@ -101,8 +101,8 @@ module Transactions
             balance_state: params[:balance_state], # NOTE: Tells the app whether pending or calculated. We assume that transactions in the past were already reflected in current balances.
             balance: account_balance # NOTE: Only update balance if balance_state is calculated
           )
-          new_transaction.repeat_count = (last_transaction.repeat_count || 1) + 1 + index if parent_transaction.repeat?
-          new_transaction.installment_count = (last_transaction.installment_count || 1) + 1 + index if parent_transaction.installment?
+          new_transaction.repeat_count = (last_transaction&.repeat_count || 1) + 1 + index if parent_transaction.repeat?
+          new_transaction.installment_count = (last_transaction&.installment_count || 1) + 1 + index if parent_transaction.installment?
           new_transaction
         end
 

@@ -194,12 +194,26 @@ RSpec.describe Transactions::Operations::Transfers::CreateRepeatTransfers do
         expect(result).to be_success
       end
 
-      it 'assigns the correct repeat_count to new transfers' do
+      it 'assigns the correct repeat_count to new transfers when last_transfer exists' do
         allow(Transactions::Queries::LastRecord).to receive(:call).and_return(Success(instance_double(Transactions::Transfer, repeat_count: 5)))
 
         expect(Transactions::Transfer).to receive(:bulk_import) do |transfers, options|
           expect(transfers.length).to eq(3)
           expect(transfers.map(&:repeat_count)).to eq([6, 7, 8])
+          expect(options).to eq({ validate: true, validate_uniqueness: true })
+          Success()
+        end
+
+        result = operation.call(params: params)
+        expect(result).to be_success
+      end
+
+      it 'assigns the correct repeat_count to new transfers when last_transfer is nil' do
+        allow(Transactions::Queries::LastRecord).to receive(:call).and_return(Success(nil))
+
+        expect(Transactions::Transfer).to receive(:bulk_import) do |transfers, options|
+          expect(transfers.length).to eq(3)
+          expect(transfers.map(&:repeat_count)).to eq([2, 3, 4]) # (1 || 1) + 1 + index
           expect(options).to eq({ validate: true, validate_uniqueness: true })
           Success()
         end
