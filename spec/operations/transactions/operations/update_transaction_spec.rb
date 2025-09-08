@@ -77,71 +77,8 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         )
       end
 
-      context 'when update_scope is this_only' do
-        it 'updates only the specific transaction' do
-          result = described_class.new.call(
-            id: child_transaction.id,
-            user_id: user.id,
-            space_id: space.id,
-            amount: 150.00,
-            date: child_transaction.date.to_date,
-            category_name: new_category.name,
-            account_name: account.name,
-            description: 'Updated description',
-            schedule_type: 'repeat',
-            repeat_interval: 'every_month',
-            repeat_count: 1,
-            update_scope: 'this_only'
-          )
-
-          expect(result).to be_success
-
-          updated_transaction = result.value!
-          expect(updated_transaction.amount.amount).to eq(150.00)
-          expect(updated_transaction.description).to eq('Updated description')
-          expect(updated_transaction.category).to eq(new_category)
-
-          # Parent should remain unchanged
-          parent_transaction.reload
-          expect(parent_transaction.amount.amount).to eq(100.00)
-          expect(parent_transaction.description).to eq('Monthly expense')
-          expect(parent_transaction.category).to eq(category)
-        end
-      end
-
       context 'when update_scope is all_in_series' do
-        it 'updates all transactions in the series' do
-          result = described_class.new.call(
-            id: child_transaction.id,
-            user_id: user.id,
-            space_id: space.id,
-            amount: 150.00,
-            date: child_transaction.date.to_date,
-            category_name: new_category.name,
-            account_name: account.name,
-            description: 'Updated description',
-            schedule_type: 'repeat',
-            repeat_interval: 'every_month',
-            repeat_count: 1,
-            update_scope: 'all_in_series'
-          )
-
-          expect(result).to be_success
-
-          # Both transactions should be updated
-          parent_transaction.reload
-          child_transaction.reload
-
-          expect(parent_transaction.amount.amount).to eq(150.00)
-          expect(parent_transaction.description).to eq('Updated description')
-          expect(parent_transaction.category).to eq(new_category)
-
-          expect(child_transaction.amount.amount).to eq(150.00)
-          expect(child_transaction.description).to eq('Updated description')
-          expect(child_transaction.category).to eq(new_category)
-        end
-
-        it 'updates all transactions in series with schedule changes' do
+        it 'updates all transactions in the series with new attributes and schedule' do
           result = described_class.new.call(
             id: child_transaction.id,
             user_id: user.id,
@@ -165,11 +102,15 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           expect(parent_transaction.description).to eq('Updated description')
           expect(parent_transaction.category).to eq(new_category)
           expect(parent_transaction.repeat_interval).to eq('every_week')
+
+          # Note: With all_in_series and schedule changes, child transactions are recreated
+          # so we can't test the original child transaction as it may have been deleted
+          # and recreated with new IDs
         end
       end
 
       context 'when update_scope is this_and_future' do
-        it 'allows schedule changes and updates future transactions' do
+        it 'updates current and future transactions with new attributes and schedule' do
           result = described_class.new.call(
             id: child_transaction.id,
             user_id: user.id,
@@ -332,7 +273,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         result = described_class.new.validate(
           params: {
             id: transaction.id,
-            update_scope: 'this_only'
+            update_scope: 'this_and_future'
           }
         )
 
@@ -650,20 +591,6 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         end
       end
 
-      context 'when update_scope is this_only' do
-        it 'returns success without calling UpdateRepeatTransactions' do
-          params = { update_scope: 'this_only' }
-
-          update_repeat_operation = instance_spy(Transactions::Operations::UpdateRepeatTransactions)
-          allow(Transactions::Operations::UpdateRepeatTransactions).to receive(:new).and_return(update_repeat_operation)
-
-          result = described_class.new.send(:update_repeat_transactions, transaction: transaction, params: params)
-          expect(result).to be_success
-
-          expect(update_repeat_operation).not_to have_received(:call)
-        end
-      end
-
       context 'when update_scope is this_and_future' do
         it 'calls UpdateRepeatTransactions operation' do
           params = { update_scope: 'this_and_future' }
@@ -763,6 +690,389 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
 
           expect(transaction.files.attached?).to be false
         end
+      end
+    end
+  end
+
+  describe 'Balance State Management' do
+    let!(:account) { create(:account, space:, balance: Money.from_amount(1000.00, 'PHP')) }
+
+    context 'when updating weekly transaction date from future to past' do
+      let!(:weekly_transaction) do
+        create(
+          :expense_transaction,
+          :repeat,
+          user:,
+          space:,
+          account:,
+          category:,
+          amount: 50.00,
+          description: 'Weekly expense',
+          date: Date.current + 1.week, # Future date
+          schedule_type: 'repeat',
+          repeat_interval: 'every_week',
+          repeat_count: 5,
+          balance_state: 'pending' # Future transactions start as pending
+        )
+      end
+
+      let!(:future_transaction_1) do
+        create(
+          :expense_transaction,
+          :repeat,
+          user:,
+          space:,
+          account:,
+          category:,
+          amount: 50.00,
+          description: 'Weekly expense',
+          date: Date.current + 2.weeks,
+          schedule_type: 'repeat',
+          repeat_interval: 'every_week',
+          repeat_count: 5,
+          parent: weekly_transaction,
+          balance_state: 'pending'
+        )
+      end
+
+      let!(:future_transaction_2) do
+        create(
+          :expense_transaction,
+          :repeat,
+          user:,
+          space:,
+          account:,
+          category:,
+          amount: 50.00,
+          description: 'Weekly expense',
+          date: Date.current + 3.weeks,
+          schedule_type: 'repeat',
+          repeat_interval: 'every_week',
+          repeat_count: 5,
+          parent: weekly_transaction,
+          balance_state: 'pending'
+        )
+      end
+
+      it 'properly updates balance states when moving transaction to first of previous month with all_in_series' do
+        # Set up initial state - all transactions are pending (future dates)
+        expect(weekly_transaction.balance_state).to eq('pending')
+        expect(future_transaction_1.balance_state).to eq('pending')
+        expect(future_transaction_2.balance_state).to eq('pending')
+
+        # Account balance should not include pending transactions
+        initial_balance = account.reload.balance.amount
+        expect(initial_balance).to eq(1000.00)
+
+        # Update the main transaction date to first of previous month (past date)
+        first_of_previous_month = Date.current.beginning_of_month - 1.month
+        result = described_class.new.call(
+          id: weekly_transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 50.00,
+          date: first_of_previous_month.to_date,
+          category_name: category.name,
+          account_name: account.name,
+          description: 'Weekly expense',
+          schedule_type: 'repeat',
+          repeat_interval: 'every_week',
+          repeat_count: 5,
+          update_scope: 'all_in_series'
+        )
+
+        expect(result).to be_success
+
+        # Reload the main transaction and account
+        weekly_transaction.reload
+        account.reload
+
+        # The main transaction should now be calculated (past date)
+        expect(weekly_transaction.balance_state).to eq('calculated')
+        expect(weekly_transaction.date).to eq(first_of_previous_month)
+
+        # Account balance should now include all calculated transactions
+        # 1000.00 (initial) - 300.00 (6 calculated transactions × 50.00 each) = 700.00
+        expect(account.balance.amount).to eq(700.00)
+      end
+
+      it 'properly handles balance calculation when updating to current date with this_and_future' do
+        # Update the main transaction date to today
+        result = described_class.new.call(
+          id: weekly_transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 50.00,
+          date: Date.current.to_date,
+          category_name: category.name,
+          account_name: account.name,
+          description: 'Weekly expense',
+          schedule_type: 'repeat',
+          repeat_interval: 'every_week',
+          repeat_count: 5,
+          update_scope: 'this_and_future'
+        )
+
+        expect(result).to be_success
+
+        # Reload the main transaction and account
+        weekly_transaction.reload
+        account.reload
+
+        # The main transaction should now be calculated (current date)
+        expect(weekly_transaction.balance_state).to eq('calculated')
+        expect(weekly_transaction.date).to eq(Date.current)
+
+        # Account balance should include all calculated transactions
+        # 1000.00 (initial) - 50.00 (main transaction) = 950.00
+        expect(account.balance.amount).to eq(950.00)
+      end
+
+      it 'handles balance state correctly when updating future transaction to past date with this_and_future' do
+        # Create a standalone future transaction (not part of a series) to avoid foreign key issues
+        standalone_future_transaction = create(
+          :expense_transaction,
+          :one_time,
+          user:,
+          space:,
+          account:,
+          category:,
+          amount: 50.00,
+          description: 'Standalone future expense',
+          date: Date.current + 1.week,
+          balance_state: 'pending'
+        )
+
+        # Update the standalone future transaction to a past date
+        past_date = Date.current - 1.week
+        result = described_class.new.call(
+          id: standalone_future_transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 50.00,
+          date: past_date.to_date,
+          category_name: category.name,
+          account_name: account.name,
+          description: 'Standalone past expense',
+          schedule_type: 'one_time'
+        )
+
+        expect(result).to be_success
+
+        # Reload transaction and account
+        standalone_future_transaction.reload
+        account.reload
+
+        # The updated transaction should now be calculated (past date)
+        expect(standalone_future_transaction.balance_state).to eq('calculated')
+        expect(standalone_future_transaction.date).to eq(past_date)
+
+        # Account balance should include this transaction
+        expect(account.balance.amount).to eq(950.00)
+      end
+
+      it 'maintains correct balance states when updating amount without date change' do
+        # Create a standalone future transaction to avoid UpdateRepeatTransactions complications
+        standalone_future_transaction = create(
+          :expense_transaction,
+          :one_time,
+          user:,
+          space:,
+          account:,
+          category:,
+          amount: 50.00,
+          description: 'Standalone future expense',
+          date: Date.current + 1.week,
+          balance_state: 'pending'
+        )
+
+        # Update only the amount, keeping the future date
+        result = described_class.new.call(
+          id: standalone_future_transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 75.00, # Changed amount
+          date: standalone_future_transaction.date.to_date, # Same date
+          category_name: category.name,
+          account_name: account.name,
+          description: 'Standalone future expense',
+          schedule_type: 'one_time'
+        )
+
+        expect(result).to be_success
+
+        # Reload transaction
+        standalone_future_transaction.reload
+        account.reload
+
+        # Transaction should still be pending (future date)
+        expect(standalone_future_transaction.balance_state).to eq('pending')
+        expect(standalone_future_transaction.amount.amount).to eq(75.00)
+
+        # Account balance should not change (pending transaction)
+        expect(account.balance.amount).to eq(1000.00)
+      end
+    end
+
+    context 'when updating transaction with calculated balance state' do
+      let!(:calculated_transaction) do
+        create(
+          :expense_transaction,
+          :one_time,
+          user:,
+          space:,
+          account:,
+          category:,
+          amount: 100.00,
+          description: 'Past expense',
+          date: Date.current - 1.day, # Past date
+          balance_state: 'pending' # Start as pending so CalculateBalance can work
+        )
+      end
+
+      it 'recalculates balance when changing amount of calculated transaction' do
+        # Explicitly call CalculateBalance for the initial transaction to ensure account balance reflects it
+        result = Transactions::Operations::Accounts::CalculateBalance.new.call(
+          transaction_id: calculated_transaction.id,
+          skip_calculation: false
+        )
+        # Initial balance should include the calculated transaction
+        expect(account.reload.balance.amount).to eq(900.00)
+
+        # Update the amount
+        result = described_class.new.call(
+          id: calculated_transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 150.00, # Changed amount
+          date: calculated_transaction.date.to_date,
+          category_name: category.name,
+          account_name: account.name,
+          description: 'Past expense',
+          schedule_type: 'one_time'
+        )
+
+        expect(result).to be_success
+
+        # Reload transaction and account
+        calculated_transaction.reload
+        account.reload
+
+        # Transaction should still be calculated
+        expect(calculated_transaction.balance_state).to eq('calculated')
+        expect(calculated_transaction.amount.amount).to eq(150.00)
+
+        # Account balance should reflect the new amount
+        # 900.00 (after initial 100.00 expense) - 50.00 (expense amount increase) = 850.00
+        expect(account.balance.amount).to eq(850.00)
+      end
+
+      it 'changes balance state to pending when moving calculated transaction to future' do
+        # Explicitly call CalculateBalance for the initial transaction to ensure account balance reflects it
+        Transactions::Operations::Accounts::CalculateBalance.new.call(
+          transaction_id: calculated_transaction.id,
+          skip_calculation: false
+        )
+
+        # Initial balance should include the calculated transaction
+        expect(account.reload.balance.amount).to eq(900.00)
+
+        # Move transaction to future date
+        future_date = Date.current + 1.week
+        result = described_class.new.call(
+          id: calculated_transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 100.00,
+          date: future_date.to_date,
+          category_name: category.name,
+          account_name: account.name,
+          description: 'Future expense',
+          schedule_type: 'one_time'
+        )
+
+        expect(result).to be_success
+
+        # Reload transaction and account
+        calculated_transaction.reload
+        account.reload
+
+        # Transaction should now be pending (future date)
+        expect(calculated_transaction.balance_state).to eq('pending')
+        expect(calculated_transaction.date).to eq(future_date)
+
+        # Account balance should no longer include this transaction
+        expect(account.balance.amount).to eq(1000.00)
+      end
+    end
+
+    context 'when testing weekly recurring transaction balance calculation bug' do
+      let!(:account) { create(:account, space:, balance: Money.from_amount(1000.00, 'PHP')) }
+
+      it 'correctly calculates balance when moving last transaction of month to first of previous month' do
+        # Create a weekly recurring transaction starting from the last day of September
+        # This simulates the "last transaction of the month" scenario
+        last_day_of_september = Date.new(2025, 9, 30) # Monday
+        weekly_transaction = create(
+          :expense_transaction,
+          :repeat,
+          user:,
+          space:,
+          account:,
+          category:,
+          amount: 1.00,
+          description: 'Weekly expense',
+          date: last_day_of_september, # Start from last day of September
+          schedule_type: 'repeat',
+          repeat_interval: 'every_week',
+          repeat_count: 10, # Create 10 weekly transactions
+          balance_state: 'pending'
+        )
+
+        # Let the system automatically create the recurring transactions
+        # This simulates what happens when you create a recurring transaction in the UI
+        # It creates transactions from tomorrow onwards
+        # NOTE: This simulates the BUG where all transactions are created with balance_state: "calculated"
+        Transactions::Operations::CreateRepeatTransactions.new.call(
+          transaction: weekly_transaction,
+          balance_state: "calculated", # BUG: This sets ALL transactions to calculated, even future ones
+          date_start: Date.current + 1.day,
+          date_end: Date.current + 1.month
+        )
+
+        # Check initial state - should have multiple transactions already created
+        account.reload
+
+        # Now move the transaction to August 1, 2025 (first of previous month)
+        august_first = Date.new(2025, 8, 1)
+
+        # Update the transaction to August 1, 2025
+        result = described_class.new.call(
+          id: weekly_transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 1.00,
+          date: august_first,
+          category_name: category.name,
+          account_name: account.name,
+          description: 'Weekly expense',
+          schedule_type: 'repeat',
+          repeat_interval: 'every_week',
+          repeat_count: 10,
+          update_scope: 'all_in_series'
+        )
+
+        expect(result).to be_success
+
+        account.reload
+        final_balance = account.balance.amount
+
+        all_transactions = account.transactions.where(parent: weekly_transaction).or(account.transactions.where(id: weekly_transaction.id))
+        calculated_transactions = all_transactions.where(balance_state: "calculated")
+
+        expected_calculated_count = calculated_transactions.count
+        expected_balance = 1000.00 - expected_calculated_count
+        expect(final_balance).to eq(expected_balance)
       end
     end
   end

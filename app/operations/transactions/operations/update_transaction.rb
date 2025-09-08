@@ -41,8 +41,9 @@ module Transactions
           params              = step transform_params(params:, category:, account:)
           changed_transaction = step initialize_update_transaction(transaction:, params:)
           _                   = step validate_installment_not_changed(transaction: changed_transaction)
-          _                   = step adjust_balance(transaction: changed_transaction)
           changed_transaction = step update_schedule(transaction: changed_transaction, params:)
+          changed_transaction = step update_balance_state(transaction: changed_transaction)
+          _                   = step adjust_balance(transaction: changed_transaction)
           new_transaction     = step update_repeat_transactions(transaction: changed_transaction, params:)
           saved_transaction   = step save_transaction(transaction: new_transaction)
           saved_transaction
@@ -106,11 +107,6 @@ module Transactions
         Success()
       end
 
-      def adjust_balance(transaction:)
-        return Success(transaction) unless transaction.changed? && transaction.balance_state == "calculated"
-
-        Transactions::Operations::Accounts::UpdateCalculateBalance.new.call(transaction:)
-      end
 
       def update_schedule(transaction:, params:)
         # Always create schedule for "this_and_future" updates to ensure proper job execution
@@ -132,6 +128,40 @@ module Transactions
         Success(transaction)
       end
 
+
+
+      def update_balance_state(transaction:)
+        # Update balance state based on transaction date
+        # - Past and current date transactions: balance_state = "calculated" (already reflected in balances)
+        # - Future transactions: balance_state = "pending" (will be calculated by daily job)
+        balance_state = transaction.date <= Time.zone.today ? "calculated" : "pending"
+
+        # Only update if the balance state is actually changing
+        if transaction.balance_state != balance_state
+          transaction.balance_state = balance_state
+        end
+
+        Success(transaction)
+      end
+
+      def adjust_balance(transaction:)
+        return Success(transaction) unless transaction.changed?
+
+        case
+        when transaction.balance_state_was == "pending" && transaction.balance_state == "calculated"
+          result = Transactions::Operations::Accounts::CalculateBalance.new.call(transaction_id: transaction.id)
+          return result if result.failure?
+        when transaction.balance_state_was == "calculated" && transaction.balance_state == "pending"
+          result = Transactions::Operations::Accounts::RemoveCalculation.new.call(transaction_id: transaction.id)
+          return result if result.failure?
+        when transaction.balance_state_was == "calculated" &&
+             transaction.balance_state == "calculated" &&
+             %w[amount_cents account_id].any? { |key| transaction.changes.key?(key) }
+          result = Transactions::Operations::Accounts::UpdateCalculateBalance.new.call(transaction:)
+          return result if result.failure?
+        end
+        Success(transaction)
+      end
 
       def update_repeat_transactions(transaction:, params:)
         update_scope = params[:update_scope]

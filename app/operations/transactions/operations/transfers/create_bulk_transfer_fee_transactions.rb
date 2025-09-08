@@ -60,7 +60,7 @@ module Transactions
           sorted_dates = params[:dates].sort.map { |date| date.to_date.in_time_zone("Asia/Manila") }
           created_transfers = Transactions::Transfer.where(
             parent_id: parent_id,
-            date: sorted_dates.first..sorted_dates.last.end_of_day
+            date: sorted_dates.empty? ? nil : sorted_dates.first..sorted_dates.last.end_of_day
           ).order(date: :asc)
           Success(created_transfers)
         end
