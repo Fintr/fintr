@@ -4,7 +4,9 @@ module Utils
   class Recurrence
     class << self
       def schedule(repeat_interval:, date:, installment_period: nil)
-        IceCube::Schedule.new(date) do |s|
+        # Ensure consistent timezone handling by converting to beginning of day in UTC
+        start_time = date.is_a?(Date) ? date.beginning_of_day : date
+        IceCube::Schedule.new(start_time) do |s|
           obj = case repeat_interval.to_sym
           when :every_day
             IceCube::Rule.daily

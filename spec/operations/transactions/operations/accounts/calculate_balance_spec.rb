@@ -33,11 +33,11 @@ RSpec.describe Transactions::Operations::Accounts::CalculateBalance do
         expect(transaction.reload.balance_state).to eq('calculated')
       end
 
-      context 'when remove_calculation is true' do
-        let(:params_remove_calculation) do
+      context 'when skip_calculation is true' do
+        let(:params_skip_calculation) do
           {
             transaction_id: transaction.id,
-            remove_calculation: true
+            skip_calculation: true
           }
         end
 
@@ -47,7 +47,7 @@ RSpec.describe Transactions::Operations::Accounts::CalculateBalance do
 
         it 'updates transaction balance_state to calculated without recalculating balance' do
           current_balance = account.balance.amount
-          result = operation.call(params_remove_calculation)
+          result = operation.call(params_skip_calculation)
 
           expect(result).to be_success
           expect(account.reload.balance.amount).to eq(current_balance)
@@ -211,7 +211,7 @@ RSpec.describe Transactions::Operations::Accounts::CalculateBalance do
     end
 
     describe '#calculate_balance' do
-      context 'when balance_state is pending and remove_calculation is false' do
+      context 'when balance_state is pending and skip_calculation is false' do
         it 'updates account and transaction balances' do
           old_account_balance = account.balance.amount
           old_transaction_balance = transaction.balance.amount
@@ -219,7 +219,7 @@ RSpec.describe Transactions::Operations::Accounts::CalculateBalance do
           result = operation.send(:calculate_balance,
                                   transaction: transaction,
                                   account: account,
-                                  remove_calculation: false)
+                                  skip_calculation: false)
 
           expect(result).to be_success
           expect(account.reload.balance.amount).to eq(old_account_balance + transaction.value.amount)
@@ -228,7 +228,7 @@ RSpec.describe Transactions::Operations::Accounts::CalculateBalance do
         end
       end
 
-      context 'when remove_calculation is true' do
+      context 'when skip_calculation is true' do
         before do
           transaction.update!(balance_state: 'calculated')
         end
@@ -238,7 +238,7 @@ RSpec.describe Transactions::Operations::Accounts::CalculateBalance do
           result = operation.send(:calculate_balance,
                                   transaction: transaction,
                                   account: account,
-                                  remove_calculation: true)
+                                  skip_calculation: true)
 
           expect(result).to be_success
           expect(account.reload.balance.amount).to eq(old_account_balance)
@@ -258,7 +258,7 @@ RSpec.describe Transactions::Operations::Accounts::CalculateBalance do
           result = operation.send(:calculate_balance,
                                   transaction: transaction,
                                   account: account,
-                                  remove_calculation: false)
+                                  skip_calculation: false)
 
           expect(result).to be_success
           expect(account.reload.balance.amount).to eq(current_account_balance)

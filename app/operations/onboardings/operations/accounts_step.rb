@@ -125,7 +125,7 @@ module Onboardings
             account_name: salary_account_name,
             date: Date.current.beginning_of_month,
             amount: onboarding.data["income"]["salary_income"].to_d,
-            remove_calculation: true,
+            skip_calculation: true,
             schedule_type: "repeat",
             repeat_interval: "every_month",
           )
@@ -139,7 +139,7 @@ module Onboardings
             account_name: business_account_name,
             date: Date.current.beginning_of_month,
             amount: onboarding.data["income"]["business_income"].to_d,
-            remove_calculation: true,
+            skip_calculation: true,
             schedule_type: "repeat",
             repeat_interval: "every_month",
           )

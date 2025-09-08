@@ -10,7 +10,7 @@ module Transactions
           required(:user_id).value(:string)
           required(:space_id).value(:string)
           optional(:transfer_id).value(:string)
-          optional(:remove_calculation).maybe(:bool)
+          optional(:skip_calculation).maybe(:bool)
 
           required(:amount).value(:decimal)
           required(:date).value(:date)
@@ -73,11 +73,11 @@ module Transactions
         transaction = ActiveRecord::Base.transaction do
           category           = step find_category(params:)
           account            = step find_account(params:)
-          remove_calculation = step find_remove_calculation(params:)
+          skip_calculation = step find_skip_calculation(params:)
           params             = step transform_params(params:, category:, account:)
           params             = step adjust_amount(params:)
           transaction        = step create_transaction(params:, category:)
-          _                  = step calculate_balance(transaction:, remove_calculation:, params:)
+          _                  = step calculate_balance(transaction:, skip_calculation:, params:)
           transaction        = step create_schedule(transaction:, params:) if params[:schedule_type] != "one_time"
           _                  = step create_past_transactions(transaction:) if params[:schedule_type] != "one_time"
           _                  = step create_future_transactions(transaction:) if params[:schedule_type] != "one_time"
@@ -105,8 +105,8 @@ module Transactions
         Success(account)
       end
 
-      def find_remove_calculation(params:)
-        Success(params[:remove_calculation] ? true : false)
+      def find_skip_calculation(params:)
+        Success(params[:skip_calculation] ? true : false)
       end
 
       # Note: Add default values for currencies and repeat_count
@@ -122,7 +122,7 @@ module Transactions
         params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
         params.delete(:category_name)
         params.delete(:account_name)
-        params.delete(:remove_calculation)
+        params.delete(:skip_calculation)
 
         Success(params)
       end
@@ -149,10 +149,10 @@ module Transactions
         Failure(**transaction.errors.to_hash, error: e)
       end
 
-      def calculate_balance(transaction:, remove_calculation:, params:)
+      def calculate_balance(transaction:, skip_calculation:, params:)
         return Success(transaction) if params[:draft]
 
-        Accounts::CalculateBalance.new.call(transaction_id: transaction.id, remove_calculation:)
+        Accounts::CalculateBalance.new.call(transaction_id: transaction.id, skip_calculation:)
       end
 
       def create_schedule(transaction:, params:)

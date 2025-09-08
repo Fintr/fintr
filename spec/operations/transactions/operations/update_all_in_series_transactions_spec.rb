@@ -382,10 +382,10 @@ RSpec.describe Transactions::Operations::UpdateAllInSeriesTransactions do
       expect(result.value!).to eq(parent_transaction)
     end
 
-    it 'returns nil for parent transactions (no parent)' do
+    it 'returns the parent transaction (no parent)' do
       result = operation.send(:find_parent_transaction, transaction: parent_transaction)
       expect(result).to be_success
-      expect(result.value!).to be_nil
+      expect(result.value!).to eq(parent_transaction)
     end
   end
 

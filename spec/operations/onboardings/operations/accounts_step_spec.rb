@@ -187,7 +187,7 @@ RSpec.describe Onboardings::Operations::AccountsStep do
             account_name: "Cash", # Assuming 'Cash' is for salary
             date: Date.current.beginning_of_month,
             amount: 1000.0.to_d,
-            remove_calculation: true,
+            skip_calculation: true,
             schedule_type: "repeat",
             repeat_interval: "every_month",
             accounts: valid_params[:accounts]
@@ -207,7 +207,7 @@ RSpec.describe Onboardings::Operations::AccountsStep do
             account_name: "Savings", # Assuming 'Savings' is for business
             date: Date.current.beginning_of_month,
             amount: 500.0.to_d,
-            remove_calculation: true,
+            skip_calculation: true,
             schedule_type: "repeat",
             repeat_interval: "every_month",
             accounts: valid_params[:accounts]
