@@ -1,20 +1,14 @@
 "use client";
 import React, { useState } from "react";
-import { ArrowRight, Bell, LogOut, Settings, Camera, Plus, Menu, X, Search, User as UserIcon, Target, Headphones } from "lucide-react";
+import { Bell, Settings, Camera, Plus, Menu, User as UserIcon, Target, Headphones } from "lucide-react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { usePathname } from "next/navigation";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
 import AddReceiptDialog from "@/components/dashboard/add-receipt-dialog";
 import NotificationsPopup from "@/components/dashboard/notifications-popup";
 import { NotificationProps } from "@/components/dashboard/notification-item";
-import MobileNavDrawer from "@/components/dashboard/mobile-nav-drawer";
+import NavDrawer from "@/components/dashboard/nav-drawer";
 import Link from "next/link";
 import { shouldShowV2Features } from "@/lib/utils";
 
@@ -35,7 +29,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
   const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isDesktopNavOpen, setIsDesktopNavOpen] = useState(false);
 
   const pathname = usePathname();
   const showV2Features = shouldShowV2Features();
@@ -112,17 +106,17 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
     });
   };
 
-  const mobileNavItems: NavItem[] = [
+  const navItems: NavItem[] = [
     { title: "Settings", href: "/dashboard/settings", icon: Settings },
     { title: "Support", href: "/crm/requests", icon: Headphones },
   ];
 
   if (showV2Features) {
-    mobileNavItems.push({ title: "Goals", href: "/dashboard/goals", icon: Target });
+    navItems.push({ title: "Goals", href: "/dashboard/goals", icon: Target });
   }
 
   if (isAdmin) {
-    mobileNavItems.push({ title: "Admin", href: "/admin", icon: UserIcon });
+    navItems.push({ title: "Admin", href: "/admin", icon: UserIcon });
   }
 
   return (
@@ -251,48 +245,32 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
                   </div>
                 )
               }
-              <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-                <DropdownMenuTrigger className="text-primary hover:text-primary/80 flex items-center gap-2">
-                  <UserIcon className="h-5 w-5" />
-                  <span>{user?.name || "User"}</span>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => {}} onClick={() => setIsDropdownOpen(false)}>
-                    <Link href="/dashboard/settings" className="flex items-center w-full">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => {}} onClick={() => setIsDropdownOpen(false)}>
-                    <Link href="/crm/requests" className="flex items-center w-full">
-                      <Headphones className="mr-2 h-4 w-4" />
-                      <span>Support</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <DropdownMenuItem onSelect={() => {}} onClick={() => setIsDropdownOpen(false)}>
-                      <Link href="/admin" className="flex items-center w-full">
-                        <UserIcon className="mr-2 h-4 w-4" />
-                        <span>Admin</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Logout</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <button
+                className="text-primary hover:text-primary/80 flex items-center gap-2"
+                onClick={() => setIsDesktopNavOpen(true)}
+              >
+                <UserIcon className="h-5 w-5" />
+                <span>{user?.name || "User"}</span>
+              </button>
             </div>
           </div>
         </div>
       </header>
       
-      <MobileNavDrawer
+      <NavDrawer
         open={isMobileNavOpen}
         onClose={() => setIsMobileNavOpen(false)}
         onLogout={handleLogout}
-        navItems={mobileNavItems}
+        navItems={navItems}
+        isMobile={true}
+      />
+      
+      <NavDrawer
+        open={isDesktopNavOpen}
+        onClose={() => setIsDesktopNavOpen(false)}
+        onLogout={handleLogout}
+        navItems={navItems}
+        isMobile={false}
       />
       
       <AddReceiptDialog
