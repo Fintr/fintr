@@ -7,7 +7,7 @@ export const useInfiniteUsers = ({
   loadMoreRef,
   searchQuery = "",
 }: {
-  loadMoreRef: React.RefObject<HTMLDivElement | null>;
+  loadMoreRef: React.RefObject<HTMLElement | null>;
   searchQuery?: string;
 }) => {
   const { api } = useAuthApi({
@@ -28,6 +28,7 @@ export const useInfiniteUsers = ({
   } = useInfiniteQuery<{
     users: UserData[];
     nextPage: number | undefined;
+    totalCount?: number;
   },
   Error,
   number,

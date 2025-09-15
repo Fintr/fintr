@@ -41,7 +41,7 @@ export default function UsersPage() {
     searchQuery: appliedSearchQuery,
   }) as {
     data: {
-      pages: { users: UserData[]; nextPage: number | undefined; }[];
+      pages: { users: UserData[]; nextPage: number | undefined; totalCount?: number; }[];
       pageParams: (number | undefined)[];
     } | undefined;
     isFetching: boolean;
@@ -50,6 +50,9 @@ export default function UsersPage() {
     isFetchingNextPage: boolean;
     hasNextPage: boolean;
   };
+
+  // Get total count from the first page
+  const totalCount = data?.pages[0]?.totalCount;
 
 
 
@@ -87,7 +90,14 @@ export default function UsersPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Users</CardTitle>
+        <CardTitle>
+          Users
+          {totalCount !== undefined && (
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              ({totalCount} total)
+            </span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
@@ -140,7 +150,7 @@ export default function UsersPage() {
                 </TableCell>
               </TableRow>
             )}
-            <tr ref={loadMoreRef} />
+            <TableRow ref={loadMoreRef} />
           </TableBody>
         </Table>
       </CardContent>
