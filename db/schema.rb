@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_01_041006) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_15_070456) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -265,6 +265,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_01_041006) do
     t.index ["user_id"], name: "index_transfers_on_user_id"
   end
 
+  create_table "user_activities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "user_id", null: false
+    t.date "activity_date", null: false
+    t.integer "login_count", default: 0, null: false
+    t.integer "api_request_count", default: 0, null: false
+    t.integer "transaction_created_count", default: 0, null: false
+    t.integer "dashboard_viewed_count", default: 0, null: false
+    t.integer "total_requests", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["activity_date"], name: "index_user_activities_on_activity_date"
+    t.index ["total_requests"], name: "index_user_activities_on_total_requests"
+    t.index ["user_id", "activity_date"], name: "index_user_activities_on_user_id_and_activity_date", unique: true
+    t.index ["user_id"], name: "index_user_activities_on_user_id"
+  end
+
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "auth_id", null: false
     t.string "full_name"
@@ -312,6 +328,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_01_041006) do
   add_foreign_key "transfers", "transfers", column: "effective_parent_id"
   add_foreign_key "transfers", "transfers", column: "parent_id"
   add_foreign_key "transfers", "users"
+  add_foreign_key "user_activities", "users"
 
   create_view "combined_transactions", sql_definition: <<-SQL
       SELECT 'Transactions::Transfer'::character varying AS transactable_type,
