@@ -16,6 +16,12 @@ Rails.application.routes.draw do
 
       namespace :admin do
         resources :users, only: %i[index]
+        resources :user_activity, only: [] do
+          collection do
+            get :analytics
+            get :daily_active_users
+          end
+        end
       end
 
       namespace :ai do

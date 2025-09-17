@@ -36,6 +36,11 @@ module Secured
       c_user = current_user
       c_user.is_a?(Auth::User) ? c_user : nil
     end
+
+    # Track user activity when user is successfully authenticated
+    track_user_activity if @current_user.present?
+
+    @current_user
   end
 
   # NOTE: Cached and invalid? Check again if the token is now valid.
@@ -68,6 +73,29 @@ module Secured
   end
 
   private
+
+  def track_user_activity
+    # Use a background job to avoid blocking the request
+    UserActivityTrackingJob.perform_later(
+      user_id: @current_user.id,
+      activity_type: determine_activity_type
+    )
+  rescue StandardError => e
+    # Log error but don't fail the request
+    Rails.logger.error "Failed to track user activity: #{e.message}"
+  end
+
+  def determine_activity_type
+    # Determine activity type based on the request
+    case request.path
+    when /\/dashboard/
+      "dashboard_viewed"
+    when /\/transactions/
+      "api_request"
+    else
+      "api_request"
+    end
+  end
 
   def token_from_request
     authorization_header_elements = request.headers["Authorization"]&.split

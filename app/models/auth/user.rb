@@ -21,6 +21,7 @@ module Auth
              through: :space_users,
              source: :space,
              class_name: "Spaces::OrganizationSpace"
+    has_many :user_activities, dependent: :destroy
 
     validates :email,
               presence: true,
