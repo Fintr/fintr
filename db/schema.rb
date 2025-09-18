@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_01_041006) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_17_232256) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -163,9 +163,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_01_041006) do
 
   create_table "space_users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "space_id", null: false
-    t.uuid "user_id", null: false
+    t.uuid "user_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.uuid "invited_by_id"
+    t.string "access_code"
+    t.string "invitation_status", default: "active"
+    t.datetime "invitation_expires_at"
+    t.datetime "invitation_used_at"
+    t.index ["access_code"], name: "index_space_users_on_access_code", unique: true
+    t.index ["invitation_expires_at"], name: "index_space_users_on_invitation_expires_at"
+    t.index ["invitation_status"], name: "index_space_users_on_invitation_status"
+    t.index ["invited_by_id"], name: "index_space_users_on_invited_by_id"
+    t.index ["space_id", "invitation_status"], name: "index_space_users_on_space_id_and_invitation_status"
     t.index ["space_id", "user_id"], name: "index_space_users_on_space_id_and_user_id", unique: true
     t.index ["space_id"], name: "index_space_users_on_space_id"
     t.index ["user_id"], name: "index_space_users_on_user_id"
@@ -272,8 +282,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_01_041006) do
     t.string "photo_url"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.uuid "last_accessed_space_id"
     t.index ["auth_id"], name: "index_users_on_auth_id", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["last_accessed_space_id"], name: "index_users_on_last_accessed_space_id"
   end
 
   create_table "users_roles", id: false, force: :cascade do |t|
@@ -299,6 +311,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_01_041006) do
   add_foreign_key "onboardings", "users"
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
+  add_foreign_key "space_users", "users", column: "invited_by_id"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "transactions", column: "effective_parent_id"
   add_foreign_key "transactions", "transactions", column: "parent_id"
@@ -312,6 +325,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_01_041006) do
   add_foreign_key "transfers", "transfers", column: "effective_parent_id"
   add_foreign_key "transfers", "transfers", column: "parent_id"
   add_foreign_key "transfers", "users"
+  add_foreign_key "users", "spaces", column: "last_accessed_space_id"
 
   create_view "combined_transactions", sql_definition: <<-SQL
       SELECT 'Transactions::Transfer'::character varying AS transactable_type,
