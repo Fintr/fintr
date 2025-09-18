@@ -17,7 +17,8 @@ Fintr is a personal finance application with heavy integration with AI. Fintr wi
 2. Install the ruby version. We prefer using [asdf](https://asdf-vm.com/) and [asdf-ruby](https://github.com/asdf-vm/asdf-ruby)
 3. Get the .env credentials from `miko@fintr.ai`.
 4. `bundle install`
-5. `rails db:create db:migrate db:seed`
+5. `brew install vips`
+6. `rails db:create db:migrate db:seed`
 
 ## How to get included in the seed
 
