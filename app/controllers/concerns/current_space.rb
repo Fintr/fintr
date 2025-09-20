@@ -21,13 +21,12 @@ module CurrentSpace
     return nil unless current_user && current_space
     
     @current_space_role ||= begin
-      # Use Rolify to get user role for the specific space
       if current_user.has_role?(:admin, current_space)
         "admin"
       elsif current_user.has_role?(:member, current_space)
         "member"
       else
-        "member" # Default fallback
+        "member" # default
       end
     end
   end
@@ -55,18 +54,18 @@ module CurrentSpace
   def ensure_space_access!
     return if current_space
     
-    render_forbidden("No space access. Please provide a valid X-Space-Code header.")
+    render_forbidden(message: "No space access. Please provide a valid X-Space-Code header.")
   end
 
   def ensure_space_admin!
-    return if current_space_role == 'admin'
+    return if current_user.has_role?(:admin, current_space)
     
-    render_forbidden("Admin access required for this action.")
+    render_forbidden(message: "Admin access required for this action.")
   end
 
   def ensure_space_member!
-    return if current_space_user.present?
+    return if current_user.has_role?(:admin, current_space) || current_user.has_role?(:member, current_space)
     
-    render_forbidden("You must be a member of this space to perform this action.")
+    render_forbidden(message: "You must be a member of this space to perform this action.")
   end
 end

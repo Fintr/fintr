@@ -88,17 +88,13 @@ module Api
       end
 
       def get_user_role(space)
-        # Direct database query to get user role
-        result = ActiveRecord::Base.connection.execute(
-          "SELECT r.name FROM roles r 
-           INNER JOIN users_roles ur ON r.id = ur.role_id 
-           WHERE ur.user_id = '#{current_user.id}' 
-           AND r.resource_type = '#{space.class.name}' 
-           AND r.resource_id = '#{space.id}' 
-           LIMIT 1"
-        )
-        
-        result.first&.[]('name') || "member"
+        if current_user.has_role?(:admin, space)
+          "admin"
+        elsif current_user.has_role?(:member, space)
+          "member"
+        else
+          "member" # default
+        end
       end
     end
   end
