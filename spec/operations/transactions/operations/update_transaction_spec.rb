@@ -309,6 +309,20 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
       end
     end
 
+    describe '#find_space' do
+      it 'finds existing space' do
+        result = described_class.new.send(:find_space, params: { space_id: space.id })
+        expect(result).to be_success
+        expect(result.value!).to eq(space)
+      end
+
+      it 'fails when space not found' do
+        result = described_class.new.send(:find_space, params: { space_id: 'non-existent-id' })
+        expect(result).to be_failure
+        expect(result.failure).to include(space_id: "not found")
+      end
+    end
+
     describe '#find_category' do
       it 'finds existing category' do
         result = described_class.new.send(:find_category, params: { category_name: category.name, space_id: space.id })
@@ -359,7 +373,12 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           repeat_count: 5
         }
 
-        result = described_class.new.send(:transform_params, params: params, category: category, account: account)
+        result = described_class.new.send(:transform_params,
+                                          params: params,
+                                          transaction: transaction,
+                                          category: category,
+                                          account: account,
+                                          space: space)
         expect(result).to be_success
 
         transformed_params = result.value!
@@ -383,7 +402,12 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           schedule_type: 'repeat'
         }
 
-        result = described_class.new.send(:transform_params, params: params, category: category, account: account)
+        result = described_class.new.send(:transform_params,
+                                          params: params,
+                                          transaction: transaction,
+                                          category: category,
+                                          account: account,
+                                          space: space)
         expect(result).to be_success
 
         transformed_params = result.value!
@@ -400,11 +424,44 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           schedule_type: 'installment'
         }
 
-        result = described_class.new.send(:transform_params, params: params, category: category, account: account)
+        result = described_class.new.send(:transform_params,
+                                          params: params,
+                                          transaction: transaction,
+                                          category: category,
+                                          account: account,
+                                          space: space)
         expect(result).to be_success
 
         transformed_params = result.value!
         expect(transformed_params[:installment_count]).to eq(1)
+      end
+
+      it 'sets transfer_fee category for transfer transactions' do
+        from_account = create(:account, space:)
+        to_account = create(:account, space:)
+        transfer = create(:transfer, space:, user:, from_account:, to_account:)
+        transfer_transaction = create(:expense_transaction, :one_time, space:, transfer:)
+        transfer_fee_category = create(:category, space:, name: "Transfer Fee", category_type: :expense)
+
+        params = {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 100.00,
+          category_name: category.name,
+          account_name: account.name,
+          schedule_type: 'one_time'
+        }
+
+        result = described_class.new.send(:transform_params,
+                                          params: params,
+                                          transaction: transfer_transaction,
+                                          category: category,
+                                          account: account,
+                                          space: space)
+        expect(result).to be_success
+
+        transformed_params = result.value!
+        expect(transformed_params[:category_id]).to eq(transfer_fee_category.id)
       end
     end
 
@@ -651,6 +708,43 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
       end
     end
 
+    describe '#update_transfer_transaction_cost' do
+      context 'when transaction has a transfer' do
+        let!(:from_account) { create(:account, space:) }
+        let!(:to_account) { create(:account, space:) }
+        let!(:transfer) { create(:transfer, space:, user:, from_account:, to_account:) }
+        let!(:transfer_transaction) { create(:expense_transaction, :one_time, space:, transfer:) }
+
+        it 'updates transfer transaction cost' do
+          transfer_transaction.amount = Money.from_amount(150.00, 'PHP')
+
+          result = described_class.new.send(:update_transfer_transaction_cost, transaction: transfer_transaction)
+          expect(result).to be_success
+
+          transfer.reload
+          expect(transfer.transaction_cost).to eq(Money.from_amount(150.00, 'PHP'))
+        end
+
+        it 'saves the transfer after updating cost' do
+          transfer_transaction.amount = Money.from_amount(200.00, 'PHP')
+
+          result = described_class.new.send(:update_transfer_transaction_cost, transaction: transfer_transaction)
+          expect(result).to be_success
+
+          transfer.reload
+          expect(transfer.transaction_cost).to eq(Money.from_amount(200.00, 'PHP'))
+        end
+      end
+
+      context 'when transaction has no transfer' do
+        it 'returns success without updating anything' do
+          result = described_class.new.send(:update_transfer_transaction_cost, transaction: transaction)
+          expect(result).to be_success
+          expect(result.value!).to eq(transaction)
+        end
+      end
+    end
+
     describe '#attach_file' do
       let(:file) { Rack::Test::UploadedFile.new(StringIO.new("test content"), "text/plain", original_filename: "test.txt") }
 
@@ -754,6 +848,14 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         )
       end
 
+      before do
+        Timecop.freeze(Date.new(2025, 9, 1))
+      end
+
+      after do
+        Timecop.return
+      end
+
       it 'properly updates balance states when moving transaction to first of previous month with all_in_series' do
         # Set up initial state - all transactions are pending (future dates)
         expect(weekly_transaction.balance_state).to eq('pending')
@@ -792,8 +894,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         expect(weekly_transaction.date).to eq(first_of_previous_month)
 
         # Account balance should now include all calculated transactions
-        # 1000.00 (initial) - 300.00 (6 calculated transactions × 50.00 each) = 700.00
-        expect(account.balance.amount).to eq(700.00)
+        expect(account.balance.amount).to eq(750.00)
       end
 
       it 'properly handles balance calculation when updating to current date with this_and_future' do

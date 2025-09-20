@@ -91,6 +91,48 @@ RSpec.describe Transactions::Operations::DeleteThisTransaction do
           expect(result.value!).to eq(transaction)
         end
       end
+
+      context 'when transaction has a transfer' do
+        let!(:from_account) { create(:account, space:, balance: Money.from_amount(100, "PHP")) }
+        let!(:to_account) { create(:account, space:, balance: Money.from_amount(100, "PHP")) }
+        let!(:transfer) { create(:transfer, space:, user:, from_account:, to_account:, transaction_cost: Money.from_amount(100, "PHP")) }
+        let!(:transfer_transaction) do
+          create(
+            :expense_transaction,
+            :one_time,
+            space:,
+            transfer:,
+            account: from_account,
+            balance_state: "calculated",
+            amount: Money.from_amount(100, "PHP")
+          )
+        end
+
+        it 'deletes the transaction and updates transfer transaction cost to zero' do
+          initial_from_balance = from_account.balance
+          transaction_value = transfer_transaction.value
+
+          result = operation.call(transaction: transfer_transaction)
+          expect(result).to be_success
+
+          # Verify transaction is deleted
+          expect { transfer_transaction.reload }.to raise_error(ActiveRecord::RecordNotFound)
+
+          # Verify balance is reverted
+          from_account.reload
+          expect(from_account.balance).to eq(initial_from_balance - transaction_value)
+
+          # Verify transfer transaction cost is set to zero
+          transfer.reload
+          expect(transfer.transaction_cost).to eq(Money.from_amount(0, "PHP"))
+        end
+
+        it 'returns the deleted transaction' do
+          result = operation.call(transaction: transfer_transaction)
+          expect(result).to be_success
+          expect(result.value!).to eq(transfer_transaction)
+        end
+      end
     end
 
     context 'with invalid transaction' do
@@ -179,6 +221,42 @@ RSpec.describe Transactions::Operations::DeleteThisTransaction do
         allow(transaction).to receive(:destroy!).and_raise(StandardError.new("Destroy failed"))
 
         expect { operation.send(:delete_transaction, transaction: transaction) }.to raise_error(StandardError, "Destroy failed")
+      end
+    end
+
+    describe '#update_transfer_transaction_cost' do
+      let(:from_account) { create(:account, space:) }
+      let(:to_account) { create(:account, space:) }
+      let(:transfer) { create(:transfer, space:, user:, from_account:, to_account:) }
+      let(:transfer_transaction) { create(:expense_transaction, :one_time, space:, transfer:) }
+
+      it 'updates transfer transaction cost to zero and saves' do
+        # Set initial transaction cost
+        transfer.update!(transaction_cost: Money.from_amount(50, "PHP"))
+
+        result = operation.send(:update_transfer_transaction_cost, transaction: transfer_transaction)
+        expect(result).to be_success
+        expect(result.value!).to eq(transfer)
+
+        # Verify transfer transaction cost is set to zero
+        transfer.reload
+        expect(transfer.transaction_cost).to eq(Money.from_amount(0, "PHP"))
+      end
+
+      it 'saves the transfer after updating cost' do
+        transfer.update!(transaction_cost: Money.from_amount(100, "PHP"))
+
+        result = operation.send(:update_transfer_transaction_cost, transaction: transfer_transaction)
+        expect(result).to be_success
+
+        transfer.reload
+        expect(transfer.transaction_cost).to eq(Money.from_amount(0, "PHP"))
+      end
+
+      it 'raises error when transfer save fails' do
+        allow(transfer).to receive(:save!).and_raise(StandardError.new("Save failed"))
+
+        expect { operation.send(:update_transfer_transaction_cost, transaction: transfer_transaction) }.to raise_error(StandardError, "Save failed")
       end
     end
   end

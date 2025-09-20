@@ -28,6 +28,9 @@ module Transactions
     validate :accounts_are_different
     validate :currencies_match
 
+    scope :ordered, ->(direction: :asc) { order(date: direction) }
+
+
     def value
       amount
     end

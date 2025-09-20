@@ -83,6 +83,19 @@ RSpec.describe Transactions::Category, type: :model do
     end
   end
 
+  describe '.transfer_fee' do
+    let!(:transfer_fee_category) { create(:category, space: space, category_type: :expense, name: "Transfer Fee") }
+
+    it 'returns the Transfer Fee category' do
+      expect(described_class.transfer_fee).to eq(transfer_fee_category)
+    end
+
+    it 'returns nil when no Transfer Fee category exists' do
+      transfer_fee_category.destroy
+      expect(described_class.transfer_fee).to be_nil
+    end
+  end
+
   describe '.create_default_categories' do
     # Build space without running callbacks to isolate the class method
     let(:new_space) { build(:space) }

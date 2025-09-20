@@ -33,6 +33,7 @@ module Transactions
     scope :calculated, -> { where(balance_state: :calculated) }
     scope :pending, -> { where(balance_state: :pending) }
     scope :non_draft, -> { where.not(type: "Transactions::Draft") }
+    scope :ordered, ->(direction: :asc) { order(date: direction, created_at: :desc) }
 
     def value
       amount

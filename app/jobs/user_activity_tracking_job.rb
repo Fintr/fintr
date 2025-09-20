@@ -17,4 +17,3 @@ class UserActivityTrackingJob < ApplicationJob
     # Don't re-raise to avoid job retries for data integrity issues
   end
 end
-
