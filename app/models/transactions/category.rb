@@ -22,6 +22,10 @@ module Transactions
     scope :income, -> { where(category_type: :income).where.not(name: UNINCLUDED_INCOME_CATEGORIES) }
     scope :expense, -> { where(category_type: :expense).where.not(name: UNINCLUDED_EXPENSE_CATEGORIES) }
 
+    def self.transfer_fee
+      self.find_by(name: "Transfer Fee")
+    end
+
     def self.create_default_categories(space)
       transaction do
         (DEFAULT_INCOME_CATEGORIES + ["Initial Balance"]).each do |name| # 'Initial Balance' should not be selected by user anytime

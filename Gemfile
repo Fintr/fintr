@@ -75,4 +75,5 @@ group :development, :test do
   gem "factory_bot_rails"
   gem "simplecov", "~> 0.22.0"
   gem "parallel_tests", "~> 5.4"
+  gem "timecop", "~> 0.9.10"
 end

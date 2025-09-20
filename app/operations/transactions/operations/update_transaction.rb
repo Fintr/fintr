@@ -36,9 +36,10 @@ module Transactions
         transaction = transaction do
           params              = step validate(params:)
           transaction         = step find_transaction(params:)
+          space               = step find_space(params:)
           category            = step find_category(params:)
           account             = step find_account(params:)
-          params              = step transform_params(params:, category:, account:)
+          params              = step transform_params(params:, transaction:, category:, account:, space:)
           changed_transaction = step initialize_update_transaction(transaction:, params:)
           _                   = step validate_installment_not_changed(transaction: changed_transaction)
           changed_transaction = step update_schedule(transaction: changed_transaction, params:)
@@ -46,6 +47,7 @@ module Transactions
           _                   = step adjust_balance(transaction: changed_transaction)
           new_transaction     = step update_repeat_transactions(transaction: changed_transaction, params:)
           saved_transaction   = step save_transaction(transaction: new_transaction)
+          _                   = step update_transfer_transaction_cost(transaction: saved_transaction) if saved_transaction.transfer
           saved_transaction
         end
         _ = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
@@ -59,6 +61,13 @@ module Transactions
         Success(transaction)
       rescue ActiveRecord::RecordNotFound
         Failure(id: "transaction not found")
+      end
+
+      def find_space(params:)
+        space = Spaces::Space.find(params[:space_id])
+        Success(space)
+      rescue ActiveRecord::RecordNotFound
+        Failure(space_id: "not found")
       end
 
       def find_category(params:)
@@ -75,9 +84,10 @@ module Transactions
         Failure(account_name: "not found")
       end
 
-      def transform_params(params:, category:, account:)
+      def transform_params(params:, transaction:, category:, account:, space:)
         params = params.dup
         params[:category_id] = category.id
+        params[:category_id] = space.categories.transfer_fee.id if transaction.transfer.present?
         params[:account_id] = account.id
         params[:amount_currency] = "PHP"
         params[:balance_currency] = "PHP"
@@ -184,6 +194,15 @@ module Transactions
         Success(transaction)
       rescue ActiveRecord::ActiveRecordError => e
         Failure(error: e)
+      end
+
+      def update_transfer_transaction_cost(transaction:)
+        transfer = transaction.transfer
+        return Success(transaction) unless transfer
+
+        transfer.transaction_cost = transaction.amount
+        transfer.save!
+        Success(transfer)
       end
 
       def attach_file(transaction:, params:)

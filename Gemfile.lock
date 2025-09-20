@@ -505,6 +505,7 @@ GEM
     thruster (0.1.15-aarch64-linux)
     thruster (0.1.15-arm64-darwin)
     thruster (0.1.15-x86_64-linux)
+    timecop (0.9.10)
     timeout (0.4.3)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
@@ -576,6 +577,7 @@ DEPENDENCIES
   solid_cache
   solid_queue
   thruster
+  timecop (~> 0.9.10)
   tzinfo-data
 
 BUNDLED WITH
