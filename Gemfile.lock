@@ -114,7 +114,7 @@ GEM
     bcrypt_pbkdf (1.1.1)
     benchmark (0.4.1)
     bigdecimal (3.2.3)
-    blueprinter (1.1.2)
+    blueprinter (1.2.1)
     bootsnap (1.18.6)
       msgpack (~> 1.2)
     brakeman (7.1.0)
@@ -537,7 +537,7 @@ DEPENDENCIES
   amoeba (~> 3.3)
   auth0 (~> 5.12)
   aws-sdk-s3 (~> 1.199)
-  blueprinter (~> 1.1)
+  blueprinter (~> 1.2)
   bootsnap
   brakeman
   csv (~> 3.3)
