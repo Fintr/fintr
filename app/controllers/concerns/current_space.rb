@@ -21,17 +21,14 @@ module CurrentSpace
     return nil unless current_user && current_space
     
     @current_space_role ||= begin
-      # Direct database query to get user role
-      result = ActiveRecord::Base.connection.execute(
-        "SELECT r.name FROM roles r 
-         INNER JOIN users_roles ur ON r.id = ur.role_id 
-         WHERE ur.user_id = '#{current_user.id}' 
-         AND r.resource_type = '#{current_space.class.name}' 
-         AND r.resource_id = '#{current_space.id}' 
-         LIMIT 1"
-      )
-      
-      result.first&.[]('name') || "member"
+      # Use Rolify to get user role for the specific space
+      if current_user.has_role?(:admin, current_space)
+        "admin"
+      elsif current_user.has_role?(:member, current_space)
+        "member"
+      else
+        "member" # Default fallback
+      end
     end
   end
 
@@ -58,33 +55,18 @@ module CurrentSpace
   def ensure_space_access!
     return if current_space
     
-    render json: { 
-      success: false, 
-      error: { 
-        message: "No space access. Please provide a valid X-Space-Code header." 
-      } 
-    }, status: :forbidden
+    render_forbidden("No space access. Please provide a valid X-Space-Code header.")
   end
 
   def ensure_space_admin!
     return if current_space_role == 'admin'
     
-    render json: { 
-      success: false, 
-      error: { 
-        message: "Admin access required for this action." 
-      } 
-    }, status: :forbidden
+    render_forbidden("Admin access required for this action.")
   end
 
   def ensure_space_member!
     return if current_space_user.present?
     
-    render json: { 
-      success: false, 
-      error: { 
-        message: "You must be a member of this space to perform this action." 
-      } 
-    }, status: :forbidden
+    render_forbidden("You must be a member of this space to perform this action.")
   end
 end
