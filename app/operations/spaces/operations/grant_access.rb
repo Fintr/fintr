@@ -24,9 +24,10 @@ module Spaces
         validated_params = step validate(params:)
         
         ActiveRecord::Base.transaction do
-          target_user = step find_or_create_user(validated_params)
-          space_user = step create_invitation(validated_params, target_user)
-          _ = step assign_role(validated_params, target_user)
+          inviter        = step find_inviter(validated_params)
+          target_user    = step find_or_create_user(validated_params)
+          space_user     = step create_invitation(validated_params, target_user, inviter)
+          _              = step assign_role(validated_params, target_user)
           
           { 
             access_link: generate_access_link(validated_params, space_user),
@@ -37,6 +38,13 @@ module Spaces
       end
 
       private
+
+      def find_inviter(params)
+        user = Auth::User.find_by(id: params[:user_id])
+        return Failure(errors: { user: ["not found"] }) unless user
+        
+        Success(user)
+      end
 
       def find_or_create_user(params)
         user = Auth::User.find_by(email: params[:email])
@@ -49,7 +57,7 @@ module Spaces
         Success(user)
       end
 
-      def create_invitation(params, target_user)
+      def create_invitation(params, target_user, inviter)
         space = Spaces::Space.find(params[:space_id])
         
         # Check if user already belongs to this space
@@ -59,7 +67,7 @@ module Spaces
         space_user = Spaces::SpaceUser.create!(
           space: space,
           user: target_user,
-          invited_by: Auth::User.find(params[:user_id]),
+          invited_by: inviter,
           invitation_status: 'pending'
         )
         
@@ -72,20 +80,8 @@ module Spaces
         space = Spaces::Space.find(params[:space_id])
         role_name = params[:role] == 'admin' ? 'admin' : 'member'
         
-        # Use the specific space type class for role assignment
-        resource_class = space.class.name
-        
-        # Direct role assignment to bypass rolify issues
-        role = Auth::Role.create!(
-          name: role_name,
-          resource_type: resource_class,
-          resource_id: space.id
-        )
-        
-        # Add to users_roles join table
-        ActiveRecord::Base.connection.execute(
-          "INSERT INTO users_roles (user_id, role_id) VALUES ('#{target_user.id}', '#{role.id}')"
-        )
+        # Use Rolify to assign role to user for specific space
+        target_user.add_role role_name.to_sym, space
         
         Success()
       rescue => e

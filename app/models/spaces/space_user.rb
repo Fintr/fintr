@@ -16,7 +16,7 @@ module Spaces
       used: 'used',          # Invitation used
       expired: 'expired',    # Invitation expired
       revoked: 'revoked'     # Invitation revoked
-    }, default: 'active'
+    }, default: 'active', prefix: :invitation
 
     scope :invited, -> { where.not(invited_by_id: nil) }
     scope :direct_members, -> { where(invited_by_id: nil) }
@@ -29,12 +29,8 @@ module Spaces
     validate :user_can_only_have_one_of_each_space_type, on: :create
     validate :invitation_fields_consistency
 
-    def invitation_pending?
-      invitation_status == 'pending'
-    end
-
     def invitation_expired?
-      invitation_status == 'pending' && invitation_expires_at < Time.current
+      invitation_pending? && invitation_expires_at < Time.current
     end
 
     def use_invitation!(user)
