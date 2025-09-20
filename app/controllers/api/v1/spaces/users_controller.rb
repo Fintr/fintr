@@ -9,7 +9,9 @@ module Api
 
           users = current_space.users.includes(:roles)
           render_success(
-            data: { users: users.map { |user| serialize_user(user) } }
+            data: { 
+              users: ::Spaces::Serializers::SpaceUserSerializer.render_as_hash(users, space: current_space)
+            }
           )
         end
 
@@ -49,26 +51,6 @@ module Api
           params.permit(:id)
         end
 
-        def serialize_user(user)
-          {
-            id: user.id,
-            email: user.email,
-            full_name: user.full_name,
-            role: get_user_role_for_space(user, current_space),
-            joined_at: user.space_users.find_by(space: current_space)&.created_at
-          }
-        end
-
-        def get_user_role_for_space(user, space)
-          # Use Rolify to get user role for the specific space
-          if user.has_role?(:admin, space)
-            "admin"
-          elsif user.has_role?(:member, space)
-            "member"
-          else
-            "member" # Default fallback
-          end
-        end
       end
     end
   end
