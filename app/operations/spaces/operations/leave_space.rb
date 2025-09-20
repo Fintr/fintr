@@ -24,9 +24,11 @@ module Spaces
         validated_params = step validate(params:)
         
         transaction do
-          _ = step validate_can_leave(validated_params)
-          _ = step remove_user_from_space(validated_params)
-          _ = step remove_user_roles(validated_params)
+          current_user = step find_user(validated_params)
+          space        = step find_space(validated_params)
+          _            = step validate_can_leave(current_user, space)
+          _            = step remove_user_from_space(space, current_user)
+          _            = step remove_user_roles(space, current_user)
           
           { message: "Successfully left the space" }
         end
@@ -34,10 +36,21 @@ module Spaces
 
       private
 
-      def validate_can_leave(params)
-        current_user = Auth::User.find(params[:user_id])
-        space = Spaces::Space.find(params[:space_id])
+      def find_user(params)
+        user = Auth::User.find_by(id: params[:user_id])
+        return Failure(errors: { user: ["not found"] }) unless user
         
+        Success(user)
+      end
+
+      def find_space(params)
+        space = Spaces::Space.find_by(id: params[:space_id])
+        return Failure(errors: { space: ["not found"] }) unless space
+
+        Success(space)
+      end
+
+      def validate_can_leave(current_user, space)
         # Check if user belongs to this space
         unless current_user.spaces.include?(space)
           return Failure(errors: { user: ["User does not belong to this space"] })
@@ -51,10 +64,7 @@ module Spaces
         Success()
       end
 
-      def remove_user_from_space(params)
-        space = Spaces::Space.find(params[:space_id])
-        current_user = Auth::User.find(params[:user_id])
-        
+      def remove_user_from_space(space, current_user)
         space_user = Spaces::SpaceUser.find_by(user: current_user, space: space)
         return Failure(errors: { user: ["User not found in this space"] }) unless space_user
         
@@ -62,10 +72,7 @@ module Spaces
         Success()
       end
 
-      def remove_user_roles(params)
-        space = Spaces::Space.find(params[:space_id])
-        current_user = Auth::User.find(params[:user_id])
-        
+      def remove_user_roles(space, current_user)
         # Remove all roles for this user in this space
         current_user.roles.where(resource: space).destroy_all
         Success()
