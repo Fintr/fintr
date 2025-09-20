@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
+
 module Spaces
   module Operations
     class GrantAccess < Dry::Operation
+      include Dry::Operation::Extensions::ActiveRecord
       class Contract < Dry::Validation::Contract
         params do
           required(:user_id).filled(:string)
@@ -23,7 +26,7 @@ module Spaces
       def call(params)
         validated_params = step validate(params:)
         
-        ActiveRecord::Base.transaction do
+        transaction do
           inviter        = step find_inviter(validated_params)
           target_user    = step find_or_create_user(validated_params)
           space_user     = step create_invitation(validated_params, target_user, inviter)

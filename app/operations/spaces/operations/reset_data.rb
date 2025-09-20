@@ -5,6 +5,7 @@ require "dry/operation/extensions/active_record"
 module Spaces
   module Operations
     class ResetData < Dry::Operation
+      include Dry::Operation::Extensions::ActiveRecord
       class Contract < Dry::Validation::Contract
         params do
           required(:space_id).filled(:string)

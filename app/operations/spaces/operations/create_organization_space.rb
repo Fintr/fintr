@@ -1,6 +1,9 @@
+require "dry/operation/extensions/active_record"
+
 module Spaces
   module Operations
     class CreateOrganizationSpace < Dry::Operation
+      include Dry::Operation::Extensions::ActiveRecord
       class Contract < Dry::Validation::Contract
         params do
           required(:user_id).filled(:string)
@@ -20,7 +23,7 @@ module Spaces
       def call(params)
         validated_params = step validate(params:)
         
-        ActiveRecord::Base.transaction do
+        transaction do
           user           = step find_user(validated_params)
           space          = step create_organization_space(validated_params)
           _              = step join_user_to_space(validated_params, space, user)
