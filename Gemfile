@@ -15,7 +15,7 @@ gem "thruster", require: false
 gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
 gem "kamal", "~> 2.7"
-gem "aws-sdk-s3", "~> 1.198"
+gem "aws-sdk-s3", "~> 1.199"
 gem "csv", "~> 3.3"
 
 # DRY Operations, Validation
