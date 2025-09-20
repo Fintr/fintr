@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
+
 module Spaces
   module Operations
     class RemoveUser < Dry::Operation
@@ -22,7 +24,7 @@ module Spaces
       def call(params)
         validated_params = step validate(params:)
         
-        ActiveRecord::Base.transaction do
+        transaction do
           _ = step validate_permissions(validated_params)
           _ = step remove_user_from_space(validated_params)
           _ = step remove_user_roles(validated_params)

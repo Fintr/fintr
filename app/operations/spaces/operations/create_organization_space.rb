@@ -21,16 +21,24 @@ module Spaces
         validated_params = step validate(params:)
         
         ActiveRecord::Base.transaction do
-          space = step create_organization_space(validated_params)
-          _     = step join_user_to_space(validated_params, space)
-          _     = step assign_admin_role(validated_params, space)
-          _     = step create_default_categories(space)
+          user           = step find_user(validated_params)
+          space          = step create_organization_space(validated_params)
+          _              = step join_user_to_space(validated_params, space, user)
+          _              = step assign_admin_role(space, user)
+          _              = step create_default_categories(space)
           
           space
         end
       end
 
       private
+
+      def find_user(params)
+        user = Auth::User.find_by(id: params[:user_id])
+        return Failure(errors: { user: ["not found"] }) unless user
+        
+        Success(user)
+      end
 
       def create_organization_space(params)
         code = generate_space_code(params[:name])
@@ -47,20 +55,14 @@ module Spaces
         Failure(errors: e.record.errors.full_messages)
       end
 
-      def join_user_to_space(params, space)
-        user = Auth::User.find_by(id: params[:user_id])
-        return Failure(errors: { user: ["not found"] }) unless user
-        
+      def join_user_to_space(params, space, user)
         space_user = Spaces::SpaceUser.create!(user: user, space: space)
         Success(space_user)
       rescue ActiveRecord::RecordInvalid => e
         Failure(errors: e.record.errors.full_messages)
       end
 
-      def assign_admin_role(params, space)
-        user = Auth::User.find_by(id: params[:user_id])
-        return Failure(errors: { user: ["not found"] }) unless user
-        
+      def assign_admin_role(space, user)
         user.add_role(:admin, space)
         Success()
       end

@@ -60,17 +60,14 @@ module Api
         end
 
         def get_user_role_for_space(user, space)
-          # Direct database query to get user role
-          result = ActiveRecord::Base.connection.execute(
-            "SELECT r.name FROM roles r 
-             INNER JOIN users_roles ur ON r.id = ur.role_id 
-             WHERE ur.user_id = '#{user.id}' 
-             AND r.resource_type = '#{space.class.name}' 
-             AND r.resource_id = '#{space.id}' 
-             LIMIT 1"
-          )
-          
-          result.first&.[]('name') || "member"
+          # Use Rolify to get user role for the specific space
+          if user.has_role?(:admin, space)
+            "admin"
+          elsif user.has_role?(:member, space)
+            "member"
+          else
+            "member" # Default fallback
+          end
         end
       end
     end

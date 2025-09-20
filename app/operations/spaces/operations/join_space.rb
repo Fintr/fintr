@@ -1,3 +1,5 @@
+require "dry/operation/extensions/active_record"
+
 module Spaces
   module Operations
     class JoinSpace < Dry::Operation
@@ -18,7 +20,7 @@ module Spaces
       def call(params)
         validated_params = step validate(params:)
         
-        ActiveRecord::Base.transaction do
+        transaction do
           space_user = step find_invitation(validated_params)
           _ = step validate_invitation(space_user)
           _ = step use_invitation(space_user, validated_params)
