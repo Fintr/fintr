@@ -83,9 +83,7 @@ module Spaces
         space = Spaces::Space.find(params[:space_id])
         role_name = params[:role] == 'admin' ? 'admin' : 'member'
         
-        # Use Rolify to assign role to user for specific space
-        target_user.add_role role_name.to_sym, space
-        
+        target_user.add_role(role_name.to_sym, space)
         Success()
       rescue => e
         Failure(errors: { role: ["Failed to assign role: #{e.message}"] })

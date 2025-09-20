@@ -74,7 +74,6 @@ module Spaces
       end
 
       def remove_user_roles(space, current_user)
-        # Remove all roles for this user in this space
         current_user.roles.where(resource: space).destroy_all
         Success()
       end
