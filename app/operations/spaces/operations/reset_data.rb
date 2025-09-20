@@ -22,14 +22,15 @@ module Spaces
 
       def call(params)
         validated_params = step validate(params:)
-        space = step find_space(params: validated_params)
-        user = step find_user(params: validated_params)
+
         transaction do
+          space = step find_space(params: validated_params)
+          user = step find_user(params: validated_params)
           _ = step delete_data(space:, user:)
           _ = step populate_initial_data(space:, user:)
-        end
 
-        params
+          validated_params
+        end
       end
 
       def find_space(params:)
