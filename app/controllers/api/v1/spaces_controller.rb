@@ -5,12 +5,14 @@ module Api
 
       # GET /api/v1/spaces
       # Returns all spaces accessible to the current user
-      def index
-        spaces = current_user.spaces
-        render_success(
-          data: { spaces: spaces.map { |space| serialize_space(space) } }
-        )
-      end
+        def index
+          spaces = current_user.spaces
+          render_success(
+            data: { 
+              spaces: ::Spaces::Serializers::SpaceSerializer.render_as_hash(spaces, current_user: current_user)
+            }
+          )
+        end
 
       # GET /api/v1/spaces/:id
       # Returns detailed information about a specific space
@@ -22,7 +24,9 @@ module Api
         
         return render_not_found(details: "Space not found") unless space
 
-        render_success(data: { space: serialize_space(space) })
+        render_success(
+          data: { space: ::Spaces::Serializers::SpaceSerializer.render_as_hash(space, current_user: current_user) }
+        )
       end
 
       # POST /api/v1/spaces
@@ -72,30 +76,6 @@ module Api
         params.permit(:code)
       end
 
-      def serialize_space(space)
-        {
-          id: space.id,
-          code: space.code,
-          name: space.name,
-          type: space.type,
-          currency: space.currency,
-          isPersonal: space.is_a?(::Spaces::PersonalSpace),
-          isOrganization: space.is_a?(::Spaces::OrganizationSpace),
-          userRole: get_user_role(space),
-          createdAt: space.created_at,
-          updatedAt: space.updated_at
-        }
-      end
-
-      def get_user_role(space)
-        if current_user.has_role?(:admin, space)
-          "admin"
-        elsif current_user.has_role?(:member, space)
-          "member"
-        else
-          "member" # default
-        end
-      end
     end
   end
 end
