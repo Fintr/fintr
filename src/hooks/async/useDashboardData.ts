@@ -15,16 +15,15 @@ export const useDashboardData = () => {
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
-  
-  // Use the SSR-safe useLocalStorage hook
+
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  
+
   // Get atom setters
   const setAccountOptions = useSetAtom(accountOptionsAtom);
   const setExpenseCategoryOptions = useSetAtom(expenseCategoryOptionsAtom);
   const setIncomeCategoryOptions = useSetAtom(incomeCategoryOptionsAtom);
   const setCategoryOptions = useSetAtom(categoryOptionsAtom);
-  
+
   const { data, error, isLoading, isError, isSuccess, refetch } = useQuery({
     queryKey: ["dashboard", spaceCode],
     queryFn: async () => {

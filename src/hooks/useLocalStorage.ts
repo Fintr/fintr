@@ -49,14 +49,28 @@ export function useLocalStorage(key: string, initialValue: any) {
     }
   };
 
-  // Cleanup on unmount for mobile memory management
+  // Listen for external changes to localStorage (e.g., from space switching)
   useEffect(() => {
+    const handleStorageChange = (e: CustomEvent) => {
+      if (e.detail?.spaceCode !== undefined && key === 'spaceCode') {
+        setStoredValue(e.detail.spaceCode);
+      }
+    };
+
+    // Listen for our custom spaceCodeChanged event
+    if (typeof window !== 'undefined') {
+      window.addEventListener('spaceCodeChanged', handleStorageChange as EventListener);
+    }
+
     return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('spaceCodeChanged', handleStorageChange as EventListener);
+      }
       if (performanceUtils.isMobileDevice()) {
         performanceUtils.cleanupMemory();
       }
     };
-  }, []);
+  }, [key]);
 
   return [storedValue, setValue];
 }

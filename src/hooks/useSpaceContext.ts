@@ -59,9 +59,11 @@ export function useSpaceContext(api: AxiosInstance) {
       const space = spaces?.find(s => s.code === spaceCode);
       if (space) {
         setCurrentSpace(space);
-        // Update localStorage for persistence
+        // Update localStorage for persistence - this will trigger re-renders in components using useLocalStorage
         if (typeof window !== 'undefined') {
           localStorage.setItem("spaceCode", spaceCode);
+          // Dispatch a custom event to notify components of the change
+          window.dispatchEvent(new CustomEvent('spaceCodeChanged', { detail: { spaceCode } }));
         }
       }
       return { space };
@@ -73,6 +75,8 @@ export function useSpaceContext(api: AxiosInstance) {
       queryClient.invalidateQueries({ queryKey: ["budgets"] });
       queryClient.invalidateQueries({ queryKey: ["insights"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["transactionCategories"] });
+      queryClient.invalidateQueries({ queryKey: ["transactionDrafts"] });
     },
   });
 
@@ -88,10 +92,15 @@ export function useSpaceContext(api: AxiosInstance) {
         const space = spaces.find(s => s.code === savedSpaceCode);
         if (space) {
           setCurrentSpace(space);
+        } else if (spaces.length > 0) {
+          // If saved space not found, default to first space and update localStorage
+          setCurrentSpace(spaces[0]);
+          localStorage.setItem("spaceCode", spaces[0].code);
         }
       } else if (spaces.length > 0) {
         // Default to first space if no saved preference
         setCurrentSpace(spaces[0]);
+        localStorage.setItem("spaceCode", spaces[0].code);
       }
     }
   }, [spaces, currentSpace, setCurrentSpace]);
@@ -102,7 +111,7 @@ export function useSpaceContext(api: AxiosInstance) {
     spaceContext,
     switchSpace,
     isLoading: spacesLoading || contextLoading,
-    isSwitching: switchSpaceMutation.isPending,
+    isSwitching: switchSpaceMutation.isLoading,
   };
 }
 

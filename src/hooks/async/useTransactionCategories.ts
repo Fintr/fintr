@@ -10,7 +10,6 @@ export const useTransactionCategories = () => {
     scope: "openid profile email read:current_user read:transactions",
   });
   
-  // Use the SSR-safe useLocalStorage hook
   const [spaceCode] = useLocalStorage("spaceCode", "");
   
   const { data, error, isLoading, isError, isSuccess, refetch } = useQuery({
