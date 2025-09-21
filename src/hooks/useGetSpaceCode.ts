@@ -22,7 +22,9 @@ export function useGetSpaceCode(api: AxiosInstance) {
       const fetchedIsAdmin = response.data?.data?.isAdmin;
       const fetchedOnboardingStep = response.data?.data?.onboardingStep;
       if (isClient) {
-        if (fetchedSpaceCode) {
+        // Only update spaceCode if there's no existing value in localStorage
+        // This prevents the backend from overriding user's space selection
+        if (fetchedSpaceCode && !spaceCode) {
           setSpaceCode(fetchedSpaceCode);
         }
         if (fetchedIsAdmin !== undefined) {
