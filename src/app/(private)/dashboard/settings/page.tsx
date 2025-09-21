@@ -13,6 +13,7 @@ import { getUserAuth0Settings } from '@/services/auth/user/queries';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { CheckCircle, AlertTriangle } from 'lucide-react';
 import ResetDataDialog from '../../../../components/dashboard/reset-data-dialog';
+import SpaceAccessCard from '../../../../components/dashboard/space-access-card';
 
 /**
  * Renders the settings page where users can manage their profile information.
@@ -161,6 +162,9 @@ const SettingsPage = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Space Access Management */}
+        <SpaceAccessCard />
 
         <Card className="border-red-300">
           <CardHeader className="px-4">

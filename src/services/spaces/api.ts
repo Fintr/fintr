@@ -38,7 +38,7 @@ export const spacesApi = {
 
   // Get space users (admin only)
   getSpaceUsers: (api: AxiosInstance, spaceCode: string) =>
-    api.get<{ data: { users: SpaceUser[] } }>(`/spaces/${spaceCode}/users`),
+    api.get<{ data: { success: boolean; message: string; data: { users: SpaceUser[] } } }>(`/spaces/${spaceCode}/users`),
 
   // Grant access to space (admin only)
   grantAccess: (api: AxiosInstance, spaceCode: string, data: GrantAccessRequest) =>
@@ -49,6 +49,6 @@ export const spacesApi = {
 
   // Remove user from space (admin only)
   removeUser: (api: AxiosInstance, spaceCode: string, userId: string) =>
-    api.delete<{ message: string }>(`/spaces/${spaceCode}/users/${userId}`),
+    api.delete<{ message: string }>(`/spaces/${spaceCode}/users/${userId}/remove`),
 };
 
