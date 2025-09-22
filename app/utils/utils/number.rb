@@ -19,5 +19,9 @@ module Utils
     def self.format_number(number)
       number.round(2)
     end
+
+    def self.format_delimiter(number)
+      number_with_delimiter(number, precision: 2, delimiter: ",")
+    end
   end
 end
