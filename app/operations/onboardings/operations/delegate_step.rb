@@ -20,7 +20,10 @@ module Onboardings
           operation = ShowBudgetsData.new.call(params)
           return Failure(operation.failure) unless operation.success?
 
-          return Success({ budgets_data: operation.value! })
+          show_income_data = ShowIncomeData.new.call(params)
+          return Failure(show_income_data.failure) unless show_income_data.success?
+
+          return Success({ budgets_data: operation.value!, income_data: show_income_data.value! })
         when "accounts"
           return ShowAccountsData.new.call(params)
         end

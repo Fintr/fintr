@@ -17,22 +17,33 @@ RSpec.describe Onboardings::Operations::DelegateStep do
             { "name" => "Food & Groceries", "amount" => 1200.00, "percentage" => 20 }
           ]
         end
+        let(:income_data) do
+          { "salary_income" => 1000.00, "business_income" => 500.00 }
+        end
 
         before do
           show_budgets_data_operation = instance_double(Onboardings::Operations::ShowBudgetsData)
+          show_income_data_operation = instance_double(Onboardings::Operations::ShowIncomeData)
           allow(Onboardings::Operations::ShowBudgetsData)
             .to receive(:new)
             .and_return(show_budgets_data_operation)
+          allow(Onboardings::Operations::ShowIncomeData)
+            .to receive(:new)
+            .and_return(show_income_data_operation)
           allow(show_budgets_data_operation)
             .to receive(:call)
             .with(params)
             .and_return(Dry::Monads::Success(budgets_data))
+          allow(show_income_data_operation)
+            .to receive(:call)
+            .with(params)
+            .and_return(Dry::Monads::Success(income_data))
         end
 
         it "returns a successful result with budgets data" do
           result = delegate_step_operation.call(params)
           expect(result).to be_success
-          expect(result.value!).to eq(budgets_data: budgets_data)
+          expect(result.value!).to eq(budgets_data: budgets_data, income_data: income_data)
         end
 
         it "calls ShowBudgetsData operation" do
