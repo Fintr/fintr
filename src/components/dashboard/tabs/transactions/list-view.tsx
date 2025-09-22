@@ -69,7 +69,7 @@ export function ListView({
       {isSuccess && data && (
         <>
           {(() => {
-            let lastDisplayedMonthYear: string | null = null;
+            let lastDisplayedDate: string | null = null;
             
             // Flatten all transactions and deduplicate by ID as a safety measure
             const allTransactions = data.pages.flatMap(page => page.transactions);
@@ -79,27 +79,28 @@ export function ListView({
             
             return uniqueTransactions.map((transaction: IndexTransaction, idx: number) => {
               const transactionDate = new Date(transaction.date);
-              const currentMonthYear = `${transactionDate.toLocaleString(
-                "default",
-                { month: "long" }
-              )} ${transactionDate.getFullYear()}`;
+              const currentDate = transactionDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
               let showDivider = false;
 
-              if (currentMonthYear !== lastDisplayedMonthYear) {
+              if (currentDate !== lastDisplayedDate) {
                 showDivider = true;
-                lastDisplayedMonthYear = currentMonthYear;
+                lastDisplayedDate = currentDate;
               }
 
               return (
                 <React.Fragment key={transaction.id}>
                   {showDivider && (
                     <div
-                      key={`divider-${currentMonthYear}-${idx}`}
-                      className="flex items-center my-3"
+                      key={`divider-${currentDate}-${idx}`}
+                      className="flex items-center my-5"
                     >
-                      <div className="flex-grow border-t border-gray-300" />
-                      <span className="px-3 text-xs font-semibold text-primary bg-white">
-                        {currentMonthYear}
+                      <div className="border-t border-gray-300" style={{width: '2rem'}} />
+                      <span className="text-xs font-semibold text-primary bg-white px-3">
+                        {currentDate}
                       </span>
                       <div className="flex-grow border-t border-gray-300" />
                     </div>
