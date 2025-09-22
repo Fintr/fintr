@@ -23,7 +23,7 @@ gem "dry-operation", "~> 1.0"
 gem "dry-validation", "~> 1.11"
 
 # Serialization
-gem "blueprinter", "~> 1.1"
+gem "blueprinter", "~> 1.2"
 gem "oj", "~> 3.16"
 
 # Authentication
