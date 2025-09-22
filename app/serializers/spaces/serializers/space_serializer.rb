@@ -10,15 +10,15 @@ module Spaces
              :type,
              :currency
 
-      field :isPersonal do |space|
+      field :is_personal do |space|
         space.is_a?(::Spaces::PersonalSpace)
       end
 
-      field :isOrganization do |space|
+      field :is_organization do |space|
         space.is_a?(::Spaces::OrganizationSpace)
       end
 
-      field :userRole do |space, options|
+      field :user_role do |space, options|
         current_user = options[:current_user]
         return "member" unless current_user
 
@@ -31,11 +31,11 @@ module Spaces
         end
       end
 
-      field :createdAt do |space|
+      field :created_at do |space|
         space.created_at
       end
 
-      field :updatedAt do |space|
+      field :updated_at do |space|
         space.updated_at
       end
     end

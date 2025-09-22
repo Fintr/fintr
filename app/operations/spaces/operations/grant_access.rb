@@ -28,7 +28,7 @@ module Spaces
         
         transaction do
           inviter        = step find_inviter(validated_params)
-          target_user    = step find_or_create_user(validated_params)
+          target_user    = step find_user(validated_params)
           space_user     = step create_invitation(validated_params, target_user, inviter)
           _              = step assign_role(validated_params, target_user)
           
@@ -49,7 +49,7 @@ module Spaces
         Success(user)
       end
 
-      def find_or_create_user(params)
+      def find_user(params)
         user = Auth::User.find_by(email: params[:email])
         
         if user.nil?
