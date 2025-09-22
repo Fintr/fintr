@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom, useSetAtom } from "jotai";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ export default function OnboardingStep2() {
   // Use Jotai atoms for state management
   const [budgetCategories, setBudgetCategories] = useAtom(onboardingBudgetCategoriesAtom);
   const [totalBudget] = useAtom(onboardingTotalBudgetAtom);
-  const [onboardingData] = useAtom(onboardingDataAtom);
+  const [onboardingData, setOnboardingData] = useAtom(onboardingDataAtom);
   const [errors, setErrors] = useState<{ [key: number]: { name?: string; amount?: string } }>({});
 
   const validateForm = () => {
