@@ -67,6 +67,7 @@ module Api
           :start_date,
           :end_date,
           :category_name,
+          :account_name,
           :min_amount,
           :max_amount,
           :search_query,

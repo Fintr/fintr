@@ -28,6 +28,7 @@ module Transactions
         relation      = step by_amount(relation, params)
         relation      = step by_category(relation, params)
         relation      = step by_search_query(relation, params)
+        relation      = step by_account(relation, params)
         relation      = step order(relation)
         relation      = step paginate(relation, params) if params[:paginate] != false
         relation
@@ -48,6 +49,14 @@ module Transactions
         return Success(relation) if ["all", "", nil].include?(params[:category_name])
 
         relation = relation.where(category_name: params[:category_name])
+        Success(relation)
+      end
+
+      def by_account(relation, params)
+        return Success(relation) if ["all", "", nil].include?(params[:account_name])
+
+        relation = relation.where(to_account_name: params[:account_name])
+                           .or(relation.where(from_account_name: params[:account_name]))
         Success(relation)
       end
 

@@ -164,6 +164,50 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
         described_class.new(relation: mock_relation, params: params).call
       end
 
+      # Add tests for account filtering
+      it 'calls where with the correct account condition when account_name is specified' do
+        params = default_params.merge(account_name: 'Test Account')
+        allow(mock_relation).to receive(:where).with(to_account_name: 'Test Account').and_return(mock_relation)
+        allow(mock_relation).to receive(:or).with(mock_relation).and_return(mock_relation)
+        allow(mock_relation).to receive(:where).with(from_account_name: 'Test Account').and_return(mock_relation)
+
+        result = described_class.new(relation: mock_relation, params: params).call
+        expect(result).to be_success
+      end
+
+      it 'does not call where for account when account_name is "all"' do
+        params = default_params.merge(account_name: 'all')
+        # Expectation is that where is *not* called with account conditions
+        expect(mock_relation).not_to receive(:where).with(
+          "to_account_name = :account_name OR from_account_name = :account_name",
+          any_args
+        )
+
+        described_class.new(relation: mock_relation, params: params).call
+      end
+
+      it 'does not call where for account when account_name is empty string' do
+        params = default_params.merge(account_name: '')
+        # Expectation is that where is *not* called with account conditions
+        expect(mock_relation).not_to receive(:where).with(
+          "to_account_name = :account_name OR from_account_name = :account_name",
+          any_args
+        )
+
+        described_class.new(relation: mock_relation, params: params).call
+      end
+
+      it 'does not call where for account when account_name is nil' do
+        params = default_params.merge(account_name: nil)
+        # Expectation is that where is *not* called with account conditions
+        expect(mock_relation).not_to receive(:where).with(
+          "to_account_name = :account_name OR from_account_name = :account_name",
+          any_args
+        )
+
+        described_class.new(relation: mock_relation, params: params).call
+      end
+
       it 'calls order with the correct ordering' do
         # Verify ordering
         expect(mock_relation).to receive(:order).with(
@@ -226,6 +270,100 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
       #
       #   described_class.new(relation: mock_relation, params: params).call
       # end
+    end
+
+    # New contexts for real data account filtering tests
+    context 'with account filtering (real data)' do
+      # Create accounts with specific names for testing
+      let!(:checking_account) { create(:account, space: space1, name: 'Checking Account') }
+      let!(:savings_account) { create(:account, space: space1, name: 'Savings Account') }
+      let!(:credit_card_account) { create(:account, space: space1, name: 'Credit Card') }
+
+      # Create transactions with different account combinations
+      let!(:income_to_checking) { create(:income_transaction, space: space1, account: checking_account, category: category1_s1, date: Date.new(2024, 1, 5), amount_cents: 1000) }
+      let!(:expense_from_checking) { create(:expense_transaction, space: space1, account: checking_account, category: category2_s1, date: Date.new(2024, 1, 10), amount_cents: 500) }
+      let!(:expense_from_savings) { create(:expense_transaction, space: space1, account: savings_account, category: category1_s1, date: Date.new(2024, 1, 15), amount_cents: 750) }
+      let!(:transfer_checking_to_savings) do
+        create(
+          :transfer,
+          space: space1,
+          from_account: checking_account,
+          to_account: savings_account,
+          date: Date.new(2024, 1, 20),
+          amount_cents: 300
+        )
+      end
+      let!(:transfer_savings_to_credit) do
+        create(
+          :transfer,
+          space: space1,
+          from_account: savings_account,
+          to_account: credit_card_account,
+          date: Date.new(2024, 1, 25),
+          amount_cents: 200
+        )
+      end
+
+      it 'filters correctly by account name for Checking Account' do
+        params = default_params.merge(account_name: 'Checking Account', start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 1, 31))
+        result = described_class.new(params: params).call.value!
+
+        # Should include: income TO checking, expense FROM checking, transfer FROM checking TO savings
+        expected_records = [income_to_checking, expense_from_checking, transfer_checking_to_savings]
+        expect(result.map(&:transactable)).to match_array(expected_records)
+      end
+
+      it 'filters correctly by account name for Savings Account' do
+        params = default_params.merge(account_name: 'Savings Account', start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 1, 31))
+        result = described_class.new(params: params).call.value!
+
+        # Should include: expense FROM savings, transfer TO savings FROM checking, transfer FROM savings TO credit
+        expected_records = [expense_from_savings, transfer_checking_to_savings, transfer_savings_to_credit]
+        expect(result.map(&:transactable)).to match_array(expected_records)
+      end
+
+      it 'filters correctly by account name for Credit Card' do
+        params = default_params.merge(account_name: 'Credit Card', start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 1, 31))
+        result = described_class.new(params: params).call.value!
+
+        # Should include: transfer TO credit card FROM savings
+        expected_records = [transfer_savings_to_credit]
+        expect(result.map(&:transactable)).to match_array(expected_records)
+      end
+
+      it 'returns empty results for non-existent account name' do
+        params = default_params.merge(account_name: 'Non-existent Account', start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 1, 31))
+        result = described_class.new(params: params).call.value!
+
+        expect(result).to be_empty
+      end
+
+      it 'returns all transactions when account_name is "all"' do
+        params = default_params.merge(account_name: 'all', start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 1, 31))
+        result = described_class.new(params: params).call.value!
+
+        # Should include all transactions in the date range
+        expect(result).not_to be_empty
+        expect(result.size).to be >= 5 # At least the 5 new transactions we created
+      end
+
+      it 'returns all transactions when account_name is empty string' do
+        params = default_params.merge(account_name: '', start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 1, 31))
+        result = described_class.new(params: params).call.value!
+
+        # Should include all transactions in the date range
+        expect(result).not_to be_empty
+        expect(result.size).to be >= 5 # At least the 5 new transactions we created
+      end
+
+      it 'returns all transactions when account_name is nil' do
+        params = default_params.merge(account_name: nil, start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 1, 31))
+        result = described_class.new(params: params).call.value!
+
+        # Should include all transactions in the date range
+        expect(result).not_to be_empty
+        expect(result.size).to be >= 5 # At least the 5 new transactions we created
+      end
     end
 
     # New contexts for real data amount filtering tests
