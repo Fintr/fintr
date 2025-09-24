@@ -1,22 +1,23 @@
 import React from 'react';
-import { X, User, Settings, LogOut } from 'lucide-react'; // Removed Camera, Plus
+import { X, User, Settings, LogOut } from 'lucide-react';
 import Link from "next/link";
 import { useAuth0 } from "@auth0/auth0-react";
 
 interface NavItem {
   title: string;
   href: string;
-  icon: React.ElementType; // To allow passing different icons
+  icon: React.ElementType;
 }
 
-interface MobileNavDrawerProps {
+interface NavDrawerProps {
   open: boolean;
   onClose: () => void;
   onLogout: () => void;
-  navItems: NavItem[]; // New prop for dynamic navigation items
+  navItems: NavItem[];
+  isMobile?: boolean;
 }
 
-const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ open, onClose, onLogout, navItems }) => {
+const NavDrawer: React.FC<NavDrawerProps> = ({ open, onClose, onLogout, navItems, isMobile = true }) => {
   const { user } = useAuth0();
 
   return (
@@ -44,9 +45,9 @@ const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ open, onClose, onLogo
         >
           <X className="h-6 w-6" />
         </button>
-        <div className="pt-12 px-6 pb-6 flex flex-col gap-4 h-full overflow-y-auto">
+        <div className={`${isMobile ? 'pt-12' : 'pt-4'} px-6 pb-6 flex flex-col gap-4 h-full overflow-y-auto`}>
           {/* Menu header */}
-          <h3 className="text-lg font-semibold mb-2">Menu</h3>
+          <h3 className="text-lg font-semibold mb-2">{isMobile ? 'Menu' : 'Account'}</h3>
           
           <div className="flex flex-col gap-2 mt-2">
             <button
@@ -86,4 +87,4 @@ const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({ open, onClose, onLogo
   );
 };
 
-export default MobileNavDrawer; 
+export default NavDrawer; 
