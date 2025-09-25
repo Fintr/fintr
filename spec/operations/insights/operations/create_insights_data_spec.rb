@@ -32,12 +32,14 @@ RSpec.describe Insights::Operations::CreateInsightsData do
   let(:mocked_expense_breakdown_result) { Success([{ category: 'Food', amount: 100 }]) }
   let(:mocked_weekly_spending_result) { Success([{ week: 1, amount: 50 }]) }
   let(:mocked_monthly_spending_result) { Success([{ month: 'January', amount: 1000 }]) }
+  let(:mocked_account_breakdown_result) { Success({ total_balance: '1000.00', breakdown: [{ name: 'Savings', balance: '1000.00', percentage: '100.0%' }] }) }
 
   # Instance doubles for sub-operations
   let(:mock_create_summary_structure_op) { instance_double(Insights::Operations::CreateSummaryStructure) }
   let(:mock_create_health_scores_op) { instance_double(Insights::Operations::CreateHealthScores) }
   let(:mock_create_expense_breakdown_op) { instance_double(Insights::Operations::CreateExpenseBreakdown) }
   let(:mock_create_weekly_spending_op) { instance_double(Insights::Operations::CreateWeeklySpending) }
+  let(:mock_create_account_breakdown_op) { instance_double(Insights::Operations::CreateAccountBreakdown) }
 
   describe '#call' do
     before do
@@ -59,6 +61,9 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
       allow(Insights::Operations::CreateWeeklySpending).to receive(:new).and_return(mock_create_weekly_spending_op)
       allow(mock_create_weekly_spending_op).to receive(:call).and_return(mocked_weekly_spending_result)
+
+      allow(Insights::Operations::CreateAccountBreakdown).to receive(:new).and_return(mock_create_account_breakdown_op)
+      allow(mock_create_account_breakdown_op).to receive(:call).and_return(mocked_account_breakdown_result)
     end
 
     context 'with valid parameters and successful sub-operations' do
@@ -71,7 +76,8 @@ RSpec.describe Insights::Operations::CreateInsightsData do
           health_scores: mocked_health_scores_result.value!,
           expense_breakdown: mocked_expense_breakdown_result.value!,
           weekly_spending: mocked_weekly_spending_result.value!,
-          monthly_spending: mocked_monthly_spending_result.value!
+          monthly_spending: mocked_monthly_spending_result.value!,
+          account_breakdown: mocked_account_breakdown_result.value!
         })
       end
 
@@ -115,6 +121,11 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
       it 'calls Insights::Operations::CreateWeeklySpending with transactions' do
         expect(mock_create_weekly_spending_op).to receive(:call).with(transactions: mocked_transactions_result.value!).and_return(mocked_weekly_spending_result)
+        call_operation
+      end
+
+      it 'calls Insights::Operations::CreateAccountBreakdown with space' do
+        expect(mock_create_account_breakdown_op).to receive(:call).with(space: space).and_return(mocked_account_breakdown_result)
         call_operation
       end
     end
@@ -228,6 +239,13 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
       context 'when monthly_spending fails' do
         before { allow(Insights::Queries::MonthlySpending).to receive(:call).and_return(mocked_failure_monad) }
+
+        it { expect(operation.call(valid_params)).to be_failure }
+        it { expect(operation.call(valid_params).failure).to eq("Sub-operation failed") }
+      end
+
+      context 'when create_account_breakdown fails' do
+        before { allow(mock_create_account_breakdown_op).to receive(:call).and_return(mocked_failure_monad) }
 
         it { expect(operation.call(valid_params)).to be_failure }
         it { expect(operation.call(valid_params).failure).to eq("Sub-operation failed") }

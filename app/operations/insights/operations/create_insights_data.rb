@@ -34,12 +34,14 @@ module Insights
         expense_breakdown      = step create_expense_breakdown(transactions:)
         weekly_spending        = step create_weekly_spending(transactions:)
         monthly_spending       = step create_monthly_spending(params:)
+        account_breakdown      = step create_account_breakdown(space:)
         insights_data          =  {
                                     summary_structure:,
                                     health_scores:,
                                     expense_breakdown:,
                                     weekly_spending:,
-                                    monthly_spending:
+                                    monthly_spending:,
+                                    account_breakdown:
                                   }
         insights_data
       end
@@ -81,6 +83,10 @@ module Insights
           date_from: 6.months.ago.beginning_of_month.to_date
         }
         Insights::Queries::MonthlySpending.call(params:)
+      end
+
+      def create_account_breakdown(space:)
+        Insights::Operations::CreateAccountBreakdown.new.call(space:)
       end
     end
   end

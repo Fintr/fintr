@@ -7,6 +7,7 @@ module Transactions
         params do
           required(:space_code).value(:string)
           optional(:category_name).maybe(:string)
+          optional(:account_name).maybe(:string)
           required(:start_date).value(:date)
           required(:end_date).value(:date)
           optional(:page).value(:integer)
