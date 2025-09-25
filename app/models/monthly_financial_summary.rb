@@ -41,14 +41,16 @@ class MonthlyFinancialSummary < ApplicationRecord
         -> { order(year: :desc, month: :desc) }
 
   def self.find_or_create_for_space_and_month(space:, year: Date.current.year, month: Date.current.month)
-    summary = find_or_create_by(
+    summary = find_or_initialize_by(
       space:,
       year:,
       month:
     ) do |summary|
       summary.calculated_at = Time.current
     end
-    summary.recalculate! if !summary.persisted?
+    persisted = summary.persisted?
+    summary.save!
+    summary.recalculate! if persisted
     summary
   end
 
