@@ -12,6 +12,7 @@ import { Button } from "../../ui/button";
 import { Upload, CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Calendar } from "../../ui/calendar";
+import { PhilippinesTaxCalculator } from "../../ui/philippines-tax-calculator";
 import { format, endOfMonth } from "date-fns";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { incomeCategoryOptionsAtom, accountOptionsAtom } from "@/atoms/dashboardAtoms";
@@ -120,6 +121,22 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     repeatInterval: initialData?.repeatInterval || "",
     file: initialData?.file || null,
   });
+  
+  // Tax calculator integration
+  const grossIncome = parseFloat(formState.amount) || 0;
+  const [taxCalculation, setTaxCalculation] = useState({
+    grossIncome: 0,
+    sssContribution: 0,
+    philhealthContribution: 0,
+    pagibigContribution: 0,
+    incomeTax: 0,
+    totalDeductions: 0,
+    netIncome: 0
+  });
+  
+  // Deduction options state
+  const [deductTaxes, setDeductTaxes] = useState(false);
+  const [deductContributions, setDeductContributions] = useState(false);
   
   // Form errors
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
@@ -237,8 +254,16 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     }
     
     try {
+      // Calculate the amount to use based on deduction options
+      let amountToUse = parseFloat(formState.amount);
+      
+      // If deductions are enabled, use the net income from tax calculation
+      if ((deductTaxes || deductContributions) && taxCalculation) {
+        amountToUse = taxCalculation.netIncome;
+      }
+      
       const transactionData = {
-        amount: parseFloat(formState.amount),
+        amount: amountToUse,
         description: formState.description || "",
         categoryName: formState.categoryName,
         accountName: formState.accountName,
@@ -339,7 +364,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     <form ref={formRef} onSubmit={handleSubmit}>
       <div className="space-y-4">
         {/* Date Picker */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
           <div className="space-y-2">
             <Label htmlFor="date" className="text-sm">Date</Label>
             <Popover modal>
@@ -377,10 +402,51 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             {formSubmitted && formErrors.amount?.map((error) => (
               <FormError key={error}>{error}</FormError>
             ))}
+            
+          </div>
+
+          {/* Deduction Options - Spanning 2 columns */}
+          <div className="col-span-2 flex justify-end gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => setDeductTaxes(!deductTaxes)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
+                deductTaxes 
+                  ? 'bg-primary text-white border border-primary shadow-md' 
+                  : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+              }`}
+            >
+              Deduct Taxes
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeductContributions(!deductContributions)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
+                deductContributions 
+                  ? 'bg-primary text-white border border-primary shadow-md' 
+                  : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+              }`}
+            >
+              Deduct Contributions
+            </button>
           </div>
         </div>
 
+         {/* Tax Calculator */}
+         {(deductTaxes || deductContributions) && (
+           <div className="w-full animate-in slide-in-from-top-2 fade-in duration-300">
+             <PhilippinesTaxCalculator 
+               grossIncome={grossIncome}
+               deductTaxes={deductTaxes}
+               deductContributions={deductContributions}
+               onCalculationChange={setTaxCalculation}
+               className="w-full"
+             />
+           </div>
+         )}
+
         <div className="grid grid-cols-2 gap-4">
+         
           {/* Schedule Type Field */}
           <div className="space-y-2">
             <Label htmlFor="scheduleType" className="text-sm">Schedule Type</Label>
@@ -533,6 +599,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         />
 
       </div>
+      
       {/* Submit/Cancel Buttons */}
       <div className="flex justify-end gap-2 mt-4">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-sm">
