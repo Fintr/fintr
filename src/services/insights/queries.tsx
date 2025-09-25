@@ -47,12 +47,28 @@ interface ApiMonthlySpendingItem {
   id: string | null;
 }
 
+interface ApiAccountBreakdownItem {
+  name: string;
+  balance: {
+    cents: number;
+    currency_iso: string;
+  };
+  percentage: string;
+  category: string;
+}
+
+interface ApiAccountBreakdown {
+  totalBalance: string;
+  breakdown: ApiAccountBreakdownItem[];
+}
+
 interface ApiInsightsResponse {
   summaryStructure: ApiSummaryStructure;
   healthScores: ApiHealthScores;
   expenseBreakdown: ApiExpenseBreakdownItem[];
   weeklySpending: ApiWeeklySpendingItem[];
   monthlySpending: ApiMonthlySpendingItem[];
+  accountBreakdown: ApiAccountBreakdown;
 }
 /** END: Raw API Response Interfaces */
 
@@ -101,12 +117,26 @@ export interface MonthlySpending {
   savings: number;
 }
 
+export interface AccountBreakdownItem {
+  name: string;
+  value: number;
+  color: string;
+  percentage: string;
+  category: string;
+}
+
+export interface AccountBreakdown {
+  totalBalance: number;
+  breakdown: AccountBreakdownItem[];
+}
+
 export interface InsightsData {
   summary: InsightsSummary;
   healthScores: FinancialHealthScore;
   expenseBreakdown: ExpenseBreakdown[];
   weeklySpending: WeeklySpending[];
   monthlySpending: MonthlySpending[];
+  accountBreakdown: AccountBreakdown;
 }
 /** END: Frontend Data Interfaces */
 
@@ -303,6 +333,16 @@ export const fetchInsights = async (
         expenses: item.total_expense, // Keep expenses as positive values
         savings: item.net_amount,
       })) || [],
+      accountBreakdown: {
+        totalBalance: parseFloat((apiData.accountBreakdown?.totalBalance || '0').replace(/,/g, '')),
+        breakdown: apiData.accountBreakdown?.breakdown?.map((item, index) => ({
+          name: item.name,
+          value: item.balance.cents / 100, // Convert cents to actual amount
+          color: getColorByIndex(index), // Use unique color based on index
+          percentage: item.percentage,
+          category: item.category,
+        })) || [],
+      },
     };
 
     // Calculate overall financial health score and rating

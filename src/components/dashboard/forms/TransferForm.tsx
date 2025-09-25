@@ -295,7 +295,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
       <div className="flex">
         <div className="space-y-2 w-1/2">
           <Label htmlFor="transfer-date" className="text-sm">Date</Label>
-          <Popover>
+          <Popover modal>
             <PopoverTrigger asChild>
               <Button
                 type="button"

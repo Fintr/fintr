@@ -48,6 +48,7 @@ import { formatCurrency, getColor, getColorByIndex, shouldShowV2Features } from 
 import { useMemo, useEffect } from "react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ScoreTag from "@/components/ui/score-tag";
+import AccountBreakdownComponent from "@/components/dashboard/account-breakdown";
 
 interface InsightsTabProps {
   filteredTransactions?: any[];
@@ -712,6 +713,12 @@ const InsightsTab = () => {
             </Card>
           )}
         </div>
+
+        {/* Account Breakdown */}
+        <AccountBreakdownComponent 
+          data={insightsData?.accountBreakdown || { totalBalance: 0, breakdown: [] }} 
+          isLoading={isLoading}
+        />
 
         <Card className="border-0 mt-6">
           <CardHeader>

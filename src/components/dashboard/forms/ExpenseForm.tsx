@@ -578,7 +578,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="date" className="text-sm">Date</Label>
-            <Popover>
+            <Popover modal>
               <PopoverTrigger asChild>
                 <Button variant={"outline"} className="w-full justify-start text-left font-normal text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
