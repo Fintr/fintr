@@ -14,5 +14,11 @@ specs:
 rubocop:
 	bundle exec rubocop -A  $(filter-out $@,$(MAKECMDGOALS))
 
+mspecs:
+	mise exec -- bundle exec rspec $(filter-out $@,$(MAKECMDGOALS))
+
+mrubocop:
+	mise exec -- bundle exec rubocop -A $(filter-out $@,$(MAKECMDGOALS))
+
 %:
     @:

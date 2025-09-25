@@ -1264,4 +1264,68 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
       end
     end
   end
+
+  describe 'Monthly Summary Update' do
+    let!(:transaction) do
+      create(
+        :expense_transaction,
+        :one_time,
+        user:,
+        space:,
+        account:,
+        category:
+      )
+    end
+
+    context 'with monthly summary update' do
+      it 'calls update_monthly_summary after successful transaction update' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Success())
+
+        result = described_class.new.call(
+          id: transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 150.00,
+          date: transaction.date.to_date,
+          category_name: category.name,
+          account_name: account.name,
+          schedule_type: 'one_time'
+        )
+
+        expect(result).to be_success
+
+        expect(update_summary_operation).to have_received(:call).with(
+          space_id: transaction.space_id,
+          transaction_date: transaction.date.to_date
+        )
+      end
+    end
+
+    describe '#update_monthly_summary' do
+      it 'calls MonthlyFinancialSummaries::Operations::UpdateSummary with correct parameters' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Success())
+
+        result = described_class.new.send(:update_monthly_summary, transaction: transaction)
+        expect(result).to be_success
+
+        expect(update_summary_operation).to have_received(:call).with(
+          space_id: transaction.space_id,
+          transaction_date: transaction.date.to_date
+        )
+      end
+
+      it 'returns success even when UpdateSummary fails' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Failure(error: "Summary update failed"))
+
+        result = described_class.new.send(:update_monthly_summary, transaction: transaction)
+        expect(result).to be_success
+      end
+    end
+  end
 end

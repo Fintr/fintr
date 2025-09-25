@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_15_070456) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_23_060648) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -140,6 +140,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_15_070456) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["space_id"], name: "index_goal_descriptions_on_space_id"
+  end
+
+  create_table "monthly_financial_summaries", force: :cascade do |t|
+    t.uuid "space_id", null: false
+    t.integer "year", null: false
+    t.integer "month", null: false
+    t.decimal "total_income", precision: 15, scale: 2, default: "0.0", null: false
+    t.decimal "total_expenses", precision: 15, scale: 2, default: "0.0", null: false
+    t.decimal "net_savings", precision: 15, scale: 2, default: "0.0", null: false
+    t.datetime "calculated_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id", "year", "month"], name: "index_monthly_financial_summaries_on_space_year_month", unique: true
+    t.index ["space_id"], name: "index_monthly_financial_summaries_on_space_id"
+    t.index ["year", "month"], name: "index_monthly_financial_summaries_on_year_month"
   end
 
   create_table "onboardings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -312,6 +327,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_15_070456) do
   add_foreign_key "crm_tickets", "spaces"
   add_foreign_key "crm_tickets", "users"
   add_foreign_key "goal_descriptions", "spaces"
+  add_foreign_key "monthly_financial_summaries", "spaces"
   add_foreign_key "onboardings", "users"
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"

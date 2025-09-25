@@ -45,6 +45,10 @@ module Spaces
           }
         end
       end
+
+      field :financial_summary do |dashboard_data|
+        dashboard_data[:financial_summary]
+      end
     end
   end
 end

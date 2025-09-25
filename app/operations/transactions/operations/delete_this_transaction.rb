@@ -30,6 +30,7 @@ module Transactions
           _           = step revert_calculated_balance(transaction:) if transaction.balance_state == "calculated"
           _           = step update_transfer_transaction_cost(transaction:) if transaction.transfer
           _           = step delete_transaction(transaction:)
+
           transaction
         end
       end

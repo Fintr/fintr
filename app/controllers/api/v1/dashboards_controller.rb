@@ -4,15 +4,11 @@ module Api
   module V1
     class DashboardsController < ApiController
       def show
-        query = Spaces::Queries::DashboardData.call(params: show_params)
+        operation = Dashboards::Operations::ShowDashboardData.new.call(show_params)
 
-        return render_internal_server_error(details: query.failure) unless query.success?
+        return render_internal_server_error(details: operation.failure) unless operation.success?
 
-        render_single(
-          query.value!,
-          serializer: Spaces::Serializers::DashboardSerializer,
-          key: :dashboard
-        )
+        render_success(data: { dashboard: operation.value! })
       end
 
       def reset_data

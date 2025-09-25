@@ -16,9 +16,9 @@ We're creating spec files using this playbook. What we're doing is making sure e
 2. Look for the spec file corresponding to that file.
 3. If there is already a file, check the difference of that file. To check the difference. Use the terminal and write `git diff <relative_location>`. Use these differences to understand what changes you may need to make to the spec file for that file.
 4. If there is no file, create the specs based on best practices that you know. If there are many spec files around the location or any similar files, check those files too. It's best to read 3 files when you're doing this so that you understand what is the style and format of the specs.
-5. Test the spec. Run `bundle exec rspec <location>`. If it doesn't work, please run `mise exec -- make specs <location>`.
+5. Test the spec. Run `bundle exec rspec <location>`. If that doesn't work, please run `make mspecs <location>`
 7. If it fails, review the errors and make the necessary changes to pass the tests. Do not make changes to the file. Only make changes to the spec file instead. Then do step 5.
-8. Test the spec for rubocop offenses. Run `bundle exec rubocop <location>`. If there are auto-correctable offenses, fix them by running `bundle exec rubocop -A <location>`. If those commands don't run please run `mise exec -- make rubocop <location>`
+8. Test the spec for rubocop offenses. Run `bundle exec rubocop <location>`.  If there are auto-correctable offenses, fix them by running `bundle exec rubocop -A <location>`. If that doesn't work, please run `make mrubocop <location>`.
 9. Fix the rubocop offenses, test the files.
 10. If rspec and rubocop are passing. End the session.
 
