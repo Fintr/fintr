@@ -3,6 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Transactions::Operations::CreateTransaction do
+  include Dry::Monads[:result]
   let(:operation) { described_class.new }
   let(:user) { create(:user) }
   let(:space) { create(:personal_space) }
@@ -128,6 +129,36 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         expect(result.category_id).to eq(expense_category.id)
         expect(result.schedule_type).to eq('one_time')
         expect(result.balance_state).to eq('pending')
+      end
+    end
+
+    context 'with monthly summary update' do
+      subject(:call_operation) { operation.call(income_params) }
+
+      let(:income_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 150.0,
+          date: Date.current,
+          description: 'Salary payment',
+          category_name: income_category.name,
+          account_name: account.name,
+          schedule_type: 'one_time'
+        }
+      end
+
+      it 'calls UpdateSummary operation for monthly financial summary' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Success())
+
+        call_operation
+
+        expect(update_summary_operation).to have_received(:call).with(
+          space_id: space.id,
+          transaction_date: Date.current
+        )
       end
     end
 

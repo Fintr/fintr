@@ -73,6 +73,7 @@ module Transactions
             transfer.reload
           end
           _   = step attach_file(transfer:, params:)
+          _   = step update_monthly_summary(transfer:)
           transfer.reload
         end
 
@@ -165,6 +166,15 @@ module Transactions
             date_start: Time.zone.tomorrow,
             date_end: Time.zone.today + 1.month
           })
+        end
+
+        def update_monthly_summary(transfer:)
+          MonthlyFinancialSummaries::Operations::UpdateSummary.new.call(
+            space_id: transfer.space_id,
+            transaction_date: transfer.date.to_date
+          )
+
+          Success()
         end
       end
     end

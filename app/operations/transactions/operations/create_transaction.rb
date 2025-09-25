@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
 module Transactions
   module Operations
     # NOTE: Create a transaction only at the start. This is the parent transaction.
@@ -66,14 +67,15 @@ module Transactions
       end
 
       include FailureHandler
+      include Dry::Operation::Extensions::ActiveRecord
 
       def call(params)
         params             = step validate(params:)
 
-        transaction = ActiveRecord::Base.transaction do
+        transaction = transaction do
           category           = step find_category(params:)
           account            = step find_account(params:)
-          skip_calculation = step find_skip_calculation(params:)
+          skip_calculation   = step find_skip_calculation(params:)
           params             = step transform_params(params:, category:, account:)
           params             = step adjust_amount(params:)
           transaction        = step create_transaction(params:, category:)
@@ -86,6 +88,7 @@ module Transactions
 
         transaction          = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
         _                    = step remove_draft(params:)
+        _                    = step update_monthly_summary(transaction:)
         transaction.reload
       end
 
@@ -200,6 +203,15 @@ module Transactions
 
         draft = Transactions::Draft.find_by(id: params[:draft_id])
         draft&.destroy!
+        Success()
+      end
+
+      def update_monthly_summary(transaction:)
+        MonthlyFinancialSummaries::Operations::UpdateSummary.new.call(
+          space_id: transaction.space_id,
+          transaction_date: transaction.date.to_date
+        )
+
         Success()
       end
     end

@@ -81,6 +81,7 @@ module Transactions
             saved_transfer
           end
           _ = step attach_file(transfer:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
+          _ = step update_monthly_summary(transfer:)
           transfer.reload
         end
 
@@ -208,6 +209,15 @@ module Transactions
 
           Utils::ActiveStorage.attach_file(transfer.files, params[:file], params[:space_id])
           Success(transfer)
+        end
+
+        def update_monthly_summary(transfer:)
+          MonthlyFinancialSummaries::Operations::UpdateSummary.new.call(
+            space_id: transfer.space_id,
+            transaction_date: transfer.date.to_date
+          )
+
+          Success()
         end
       end
     end

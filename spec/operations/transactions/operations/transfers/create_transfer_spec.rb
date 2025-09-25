@@ -842,5 +842,32 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         expect(create_repeat_operation).not_to have_received(:call)
       end
     end
+
+    describe '#update_monthly_summary' do
+      let(:transfer) { create(:transfer, user:, space:, from_account:, to_account:, date: Time.zone.today) }
+
+      it 'calls MonthlyFinancialSummaries::Operations::UpdateSummary with correct parameters' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Success())
+
+        result = operation.send(:update_monthly_summary, transfer: transfer)
+        expect(result).to be_success
+
+        expect(update_summary_operation).to have_received(:call).with(
+          space_id: transfer.space_id,
+          transaction_date: transfer.date.to_date
+        )
+      end
+
+      it 'returns success when update summary operation succeeds' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Success())
+
+        result = operation.send(:update_monthly_summary, transfer: transfer)
+        expect(result).to be_success
+      end
+    end
   end
 end

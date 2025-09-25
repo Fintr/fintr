@@ -72,6 +72,29 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
     end
   end
 
+  describe ':financial_summary field' do
+    subject(:serialized_hash_with_data) { described_class.render_as_hash(dashboard_data_with_financial_summary) }
+
+    let(:financial_summary_data) { { total_income: 5000, total_expenses: 3000, net_savings: 2000 } }
+    let(:dashboard_data_with_financial_summary) do
+      space.tap do |s|
+        data = financial_summary_data
+        s.define_singleton_method(:[]) do |key|
+          key == :financial_summary ? data : super(key)
+        end
+      end
+    end
+
+
+    it 'includes the financial_summary data from dashboard_data hash' do
+      expect(serialized_hash_with_data[:financial_summary]).to eq(financial_summary_data)
+    end
+
+    it 'returns nil when financial_summary is not provided in dashboard_data' do
+      expect(serialized_hash[:financial_summary]).to be_nil
+    end
+  end
+
   it 'serializes all expected top-level fields' do
     expected_keys = [
       :id,
@@ -79,7 +102,8 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
       :expense_category_options,
       :income_category_options,
       :account_options,
-      :goal_description
+      :goal_description,
+      :financial_summary
     ]
     expect(serialized_hash.keys).to match_array(expected_keys)
   end

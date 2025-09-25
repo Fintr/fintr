@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
 module Transactions
   module Operations
     class DeleteTransaction < Dry::Operation
@@ -24,13 +25,18 @@ module Transactions
         Success(params)
       end
 
+      include Dry::Operation::Extensions::ActiveRecord
+
       def call(params)
-        ActiveRecord::Base.transaction do
+        transaction = transaction do
           params      = step validate(params:)
           transaction = step find_transaction(params:)
           _           = step determine_action(params:, transaction:)
           transaction
         end
+        _           = step update_monthly_summary(transaction:)
+
+        transaction
       end
 
       def find_transaction(params:)
@@ -50,6 +56,15 @@ module Transactions
         else
           Transactions::Operations::DeleteThisTransaction.new.call(transaction:)
         end
+      end
+
+      def update_monthly_summary(transaction:)
+        MonthlyFinancialSummaries::Operations::UpdateSummary.new.call(
+          space_id: transaction.space_id,
+          transaction_date: transaction.date.to_date
+        )
+
+        Success()
       end
     end
   end

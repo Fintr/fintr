@@ -112,10 +112,27 @@ RSpec.describe Transactions::Operations::DeleteTransaction do
     end
 
     context 'with valid parameters' do
+      let(:update_summary_operation) { instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary) }
+
+      before do
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Success())
+      end
+
       it 'returns the transaction when successful' do
         result = operation.call({ id: transaction.id })
         expect(result).to be_success
         expect(result.value!).to eq(transaction)
+      end
+
+      it 'calls update_monthly_summary after successful deletion' do
+        result = operation.call({ id: transaction.id })
+        expect(result).to be_success
+
+        expect(update_summary_operation).to have_received(:call).with(
+          space_id: transaction.space_id,
+          transaction_date: transaction.date.to_date
+        )
       end
     end
 
@@ -304,6 +321,40 @@ RSpec.describe Transactions::Operations::DeleteTransaction do
                                transaction: transaction)
         expect(result).to be_success
       end
+    end
+  end
+
+  describe '#update_monthly_summary' do
+    let(:update_summary_operation) { instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary) }
+
+    before do
+      allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+    end
+
+    it 'calls MonthlyFinancialSummaries::Operations::UpdateSummary with correct parameters' do
+      allow(update_summary_operation).to receive(:call).and_return(Success())
+
+      result = operation.send(:update_monthly_summary, transaction: transaction)
+      expect(result).to be_success
+
+      expect(update_summary_operation).to have_received(:call).with(
+        space_id: transaction.space_id,
+        transaction_date: transaction.date.to_date
+      )
+    end
+
+    it 'returns success when update summary operation succeeds' do
+      allow(update_summary_operation).to receive(:call).and_return(Success())
+
+      result = operation.send(:update_monthly_summary, transaction: transaction)
+      expect(result).to be_success
+    end
+
+    it 'returns success even when update summary operation fails' do
+      allow(update_summary_operation).to receive(:call).and_return(Failure(error: "Update failed"))
+
+      result = operation.send(:update_monthly_summary, transaction: transaction)
+      expect(result).to be_success
     end
   end
 end

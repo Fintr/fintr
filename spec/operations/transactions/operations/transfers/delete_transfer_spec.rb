@@ -199,6 +199,13 @@ RSpec.describe Transactions::Operations::Transfers::DeleteTransfer do
       end
 
       context 'when delete operation succeeds' do
+        let(:update_summary_operation) { instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary) }
+
+        before do
+          allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+          allow(update_summary_operation).to receive(:call).and_return(Success())
+        end
+
         it 'returns the transfer from DeleteThisTransfer' do
           expect(delete_this_operation).to receive(:call).with(transfer:).and_return(Success(transfer)) # rubocop:disable RSpec/StubbedMock # rubocop:disable RSpec/StubbedMock
 
@@ -223,6 +230,18 @@ RSpec.describe Transactions::Operations::Transfers::DeleteTransfer do
           result = operation.call(params_all_in_series)
           expect(result).to be_success
           expect(result.value!).to eq(transfer)
+        end
+
+        it 'calls update_monthly_summary after successful deletion' do
+          expect(delete_this_operation).to receive(:call).with(transfer:).and_return(Success(transfer)) # rubocop:disable RSpec/StubbedMock # rubocop:disable RSpec/StubbedMock
+
+          result = operation.call(valid_params)
+          expect(result).to be_success
+
+          expect(update_summary_operation).to have_received(:call).with(
+            space_id: transfer.space_id,
+            transaction_date: transfer.date.to_date
+          )
         end
       end
     end
@@ -348,6 +367,40 @@ RSpec.describe Transactions::Operations::Transfers::DeleteTransfer do
         expect(result).to be_failure
         expect(result.failure).to include(:error)
       end
+    end
+  end
+
+  describe '#update_monthly_summary' do
+    let(:update_summary_operation) { instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary) }
+
+    before do
+      allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+    end
+
+    it 'calls MonthlyFinancialSummaries::Operations::UpdateSummary with correct parameters' do
+      allow(update_summary_operation).to receive(:call).and_return(Success())
+
+      result = operation.send(:update_monthly_summary, transfer: transfer)
+      expect(result).to be_success
+
+      expect(update_summary_operation).to have_received(:call).with(
+        space_id: transfer.space_id,
+        transaction_date: transfer.date.to_date
+      )
+    end
+
+    it 'returns success when update summary operation succeeds' do
+      allow(update_summary_operation).to receive(:call).and_return(Success())
+
+      result = operation.send(:update_monthly_summary, transfer: transfer)
+      expect(result).to be_success
+    end
+
+    it 'returns success even when update summary operation fails' do
+      allow(update_summary_operation).to receive(:call).and_return(Failure(error: "Update failed"))
+
+      result = operation.send(:update_monthly_summary, transfer: transfer)
+      expect(result).to be_success
     end
   end
 end

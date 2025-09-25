@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
 module Transactions
   module Operations
     module Transfers
@@ -26,11 +27,14 @@ module Transactions
           Success(params)
         end
 
+        include Dry::Operation::Extensions::ActiveRecord
+
         def call(params)
-          ActiveRecord::Base.transaction do
+          transaction do
             params   = step validate(params:)
             transfer = step find_transfer(params:)
             _        = step determine_action(params:, transfer:)
+            _        = step update_monthly_summary(transfer:)
             transfer
           end
         end
@@ -54,6 +58,15 @@ module Transactions
           else
             Transactions::Operations::Transfers::DeleteThisTransfer.new.call(transfer:)
           end
+        end
+
+        def update_monthly_summary(transfer:)
+          MonthlyFinancialSummaries::Operations::UpdateSummary.new.call(
+            space_id: transfer.space_id,
+            transaction_date: transfer.date.to_date
+          )
+
+          Success()
         end
       end
     end

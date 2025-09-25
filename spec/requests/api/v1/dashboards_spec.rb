@@ -10,38 +10,33 @@ RSpec.describe 'Api::V1::Dashboards', type: :request do
   let(:headers) { auth[:headers].merge({ 'Accept' => 'application/json' }) }
 
   describe 'GET /api/v1/dashboard' do
-    let(:dashboard_data_query_output) do
-      # Mock a space object that responds to necessary methods
-      instance_double(Spaces::Space,
-                          goal_description: instance_double(GoalDescription, description: 'Some goal description', id: 'goal-1'),
-                          categories: [instance_double(Transactions::Category, name: 'Category1')],
-                          expense_categories: [instance_double(Transactions::Category, name: 'ExpenseCategory1')],
-                          income_categories: [instance_double(Transactions::Category, name: 'IncomeCategory1')],
-                          accounts: double(kept: [instance_double(Transactions::Account, name: 'Account1', id: 'account-1')]), # rubocop:disable RSpec/VerifiedDoubles
-                          id: space.id)
-    end
-
-    # Define the expected serialized data with camelCase keys
-    let(:expected_serialized_dashboard_data) do
+    let(:mock_show_dashboard_operation) { instance_double(Dashboards::Operations::ShowDashboardData) }
+    let(:operation_success_result) do
       {
         'id' => space.id,
         'goalDescription' => 'Some goal description',
         'categoryOptions' => [{ 'label' => 'Category1', 'value' => 'Category1' }],
         'expenseCategoryOptions' => [{ 'label' => 'ExpenseCategory1', 'value' => 'ExpenseCategory1' }],
         'incomeCategoryOptions' => [{ 'label' => 'IncomeCategory1', 'value' => 'IncomeCategory1' }],
-        'accountOptions' => [{ 'label' => 'Account1', 'value' => 'Account1' }]
+        'accountOptions' => [{ 'label' => 'Account1', 'value' => 'Account1' }],
+        'financialSummary' => {
+          'totalIncome' => '5,000.00',
+          'totalExpenses' => '3,000.00',
+          'netSavings' => '2,000.00',
+          'savingsPercentage' => 40.0,
+          'calculatedAt' => '2023-01-01T00:00:00.000Z'
+        }
       }
     end
 
-    let(:expected_query_params) do
-      hash_including(space_code: space.code)
+    let(:expected_operation_params) do
+      { space_code: space.code }
     end
 
-    context 'when the query is successful' do
-      let(:mock_dashboard_data_query) { instance_double(Spaces::Queries::DashboardData) }
-
+    context 'when the operation is successful' do
       before do
-        allow(Spaces::Queries::DashboardData).to receive(:call).and_return(Dry::Monads::Result::Success.new(dashboard_data_query_output))
+        allow(Dashboards::Operations::ShowDashboardData).to receive(:new).and_return(mock_show_dashboard_operation)
+        allow(mock_show_dashboard_operation).to receive(:call).and_return(Dry::Monads::Result::Success.new(operation_success_result))
 
         get api_v1_dashboard_path, params: { space_code: space.code }, headers: headers
       end
@@ -50,22 +45,23 @@ RSpec.describe 'Api::V1::Dashboards', type: :request do
         expect(response).to have_http_status(:ok)
       end
 
-      it 'calls the DashboardData query with correct parameters' do
-        expect(Spaces::Queries::DashboardData).to have_received(:call).with(params: expected_query_params).once
+      it 'calls the ShowDashboardData operation with correct parameters' do
+        expect(mock_show_dashboard_operation).to have_received(:call).with(expected_operation_params).once
       end
 
-      it 'returns the dashboard data in the response body' do
+      it 'returns the dashboard data wrapped in dashboard key' do
         json_response = JSON.parse(response.body)
         expect(json_response['success']).to be(true)
-        expect(json_response['data']['dashboard']).to eq(expected_serialized_dashboard_data)
+        expect(json_response['data']['dashboard']).to eq(operation_success_result)
       end
     end
 
-    context 'when the DashboardData query fails' do
-      let(:failure_details_from_query) { { 'base' => ['Failed to retrieve dashboard data'] } }
+    context 'when the ShowDashboardData operation fails' do
+      let(:failure_details_from_operation) { { 'base' => ['Failed to retrieve dashboard data'] } }
 
       before do
-        allow(Spaces::Queries::DashboardData).to receive(:call).and_return(Dry::Monads::Result::Failure.new(failure_details_from_query))
+        allow(Dashboards::Operations::ShowDashboardData).to receive(:new).and_return(mock_show_dashboard_operation)
+        allow(mock_show_dashboard_operation).to receive(:call).and_return(Dry::Monads::Result::Failure.new(failure_details_from_operation))
 
         get api_v1_dashboard_path, params: { space_code: space.code }, headers: headers
       end
@@ -78,7 +74,7 @@ RSpec.describe 'Api::V1::Dashboards', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response['success']).to be(false)
         expect(json_response['error']['message']).to eq('Internal Server Error')
-        expect(json_response['error']['details']).to eq(failure_details_from_query)
+        expect(json_response['error']['details']).to eq(failure_details_from_operation)
       end
     end
 

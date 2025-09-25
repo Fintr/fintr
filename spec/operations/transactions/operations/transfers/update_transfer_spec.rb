@@ -405,6 +405,22 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
       end
     end
 
+    context 'with monthly summary update' do
+      it 'calls update_monthly_summary after successful transfer update' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Success())
+
+        result = operation.call(valid_params)
+        expect(result).to be_success
+
+        expect(update_summary_operation).to have_received(:call).with(
+          space_id: transfer.space_id,
+          transaction_date: transfer.date.to_date
+        )
+      end
+    end
+
     context 'with invalid parameters' do
       it 'fails when transfer is not found' do
         params = valid_params.merge(id: "non-existent-id")
@@ -836,6 +852,31 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
         expect(result).to be_success
 
         expect(transfer.files).to have_received(:destroy_all)
+      end
+    end
+
+    describe '#update_monthly_summary' do
+      it 'calls MonthlyFinancialSummaries::Operations::UpdateSummary with correct parameters' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Success())
+
+        result = operation.send(:update_monthly_summary, transfer: transfer)
+        expect(result).to be_success
+
+        expect(update_summary_operation).to have_received(:call).with(
+          space_id: transfer.space_id,
+          transaction_date: transfer.date.to_date
+        )
+      end
+
+      it 'returns success even when UpdateSummary fails' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Failure(error: "Summary update failed"))
+
+        result = operation.send(:update_monthly_summary, transfer: transfer)
+        expect(result).to be_success
       end
     end
   end
