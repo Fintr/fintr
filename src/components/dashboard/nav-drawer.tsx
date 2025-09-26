@@ -2,6 +2,7 @@ import React from 'react';
 import { X, User, Settings, LogOut } from 'lucide-react';
 import Link from "next/link";
 import { useAuth0 } from "@auth0/auth0-react";
+import { SpaceSwitcher } from "@/components/space/space-switcher";
 
 interface NavItem {
   title: string;
@@ -15,9 +16,17 @@ interface NavDrawerProps {
   onLogout: () => void;
   navItems: NavItem[];
   isMobile?: boolean;
+  showSpaceSwitcher?: boolean;
 }
 
-const NavDrawer: React.FC<NavDrawerProps> = ({ open, onClose, onLogout, navItems, isMobile = true }) => {
+const NavDrawer: React.FC<NavDrawerProps> = ({ 
+  open, 
+  onClose, 
+  onLogout, 
+  navItems, 
+  isMobile = true,
+  showSpaceSwitcher = true 
+}) => {
   const { user } = useAuth0();
 
   return (
@@ -49,19 +58,28 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ open, onClose, onLogout, navItems
           {/* Menu header */}
           <h3 className="text-lg font-semibold mb-2">{isMobile ? 'Menu' : 'Account'}</h3>
           
+          {/* Space Switcher Section */}
+          <SpaceSwitcher 
+            showSpaceSwitcher={showSpaceSwitcher} 
+            isMobile={isMobile} 
+          />
+          
+          {/* User Info */}
           <div className="flex flex-col gap-2 mt-2">
             <button
               className="flex items-center gap-2 w-full text-left font-semibold text-primary py-2 px-2 rounded hover:bg-gray-100 focus:outline-none"
               onClick={() => {}}
               aria-expanded={true}
-              aria-controls="mobile-account-menu"
+              aria-controls="account-menu"
             >
               <User className="h-5 w-5 mr-2" />
-              {user?.name || "John Doe"}
+              {user?.name || "User"}
             </button>
+            
+            {/* Navigation Items */}
             <div
-              id="mobile-account-menu"
-              className={`overflow-visible transition-none max-h-full opacity-100`}
+              id="account-menu"
+              className="overflow-visible transition-none max-h-full opacity-100"
               style={{ pointerEvents: 'auto' }}
             >
               {navItems.map((item, index) => (
@@ -75,7 +93,12 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ open, onClose, onLogout, navItems
                   {item.title}
                 </Link>
               ))}
-              <button className="flex items-center gap-2 py-2 px-2 rounded hover:bg-gray-100 text-primary w-full" onClick={onLogout}>
+              
+              {/* Logout */}
+              <button 
+                className="flex items-center gap-2 py-2 px-2 rounded hover:bg-gray-100 text-primary w-full" 
+                onClick={onLogout}
+              >
                 <LogOut className="h-4 w-4 mr-2" />
                 Log Out
               </button>
@@ -83,6 +106,7 @@ const NavDrawer: React.FC<NavDrawerProps> = ({ open, onClose, onLogout, navItems
           </div>
         </div>
       </aside>
+
     </>
   );
 };
