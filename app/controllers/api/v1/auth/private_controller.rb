@@ -6,7 +6,7 @@ module Api
       class PrivateController < ApiController
         before_action :authorize
 
-        skip_before_action :current_space
+        skip_before_action :ensure_space_access!
 
         def private
           personal_space = current_user.personal_spaces.first
