@@ -57,7 +57,7 @@ export function SheetsView({
 
         <div className="mt-4">
         <div className="bg-white rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto md:overflow-x-auto overflow-x-hidden">
             <table className="w-full" ref={tableRef} tabIndex={0}>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
