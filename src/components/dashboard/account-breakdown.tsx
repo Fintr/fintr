@@ -203,7 +203,7 @@ const AccountTransactions = ({ accountName }: AccountTransactionsProps) => {
   return (
     <div className="mt-3 p-3 bg-gray-50 rounded-lg">
       <h4 className="text-sm font-semibold text-gray-700 mb-3">Recent Transactions</h4>
-      <div className="max-h-96 overflow-y-auto space-y-4">
+      <div className="max-h-96 overflow-y-auto overflow-x-hidden space-y-4">
         {sortedDates.map((date) => (
           <div key={date}>
             <DayDivider date={date} textClassName="bg-gray-50" />
@@ -211,9 +211,9 @@ const AccountTransactions = ({ accountName }: AccountTransactionsProps) => {
               {transactionsByDate[date].map((transaction) => (
                 <div 
                   key={transaction.id}
-                  className="flex items-center justify-between p-2 bg-white rounded border hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between p-2 bg-white rounded border hover:bg-gray-50 transition-colors min-w-0"
                 >
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
                     <div
                       className={`w-1 h-8 rounded flex-shrink-0 ${
                         transaction.type === CombinedTransactionTypeEnum.INCOME
@@ -224,15 +224,28 @@ const AccountTransactions = ({ accountName }: AccountTransactionsProps) => {
                       }`}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-primary truncate">
+                      <p className="text-sm font-medium text-primary truncate md:truncate" title={transaction.description}>
                         {transaction.description}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {transaction.categoryName}
-                      </p>
+                      {transaction.type === CombinedTransactionTypeEnum.TRANSFER ? (
+                        <p className="text-xs text-gray-500 truncate" title={`${transaction.fromAccountName || 'Unknown'} → ${transaction.toAccountName || 'Unknown'}`}>
+                          {transaction.fromAccountName && transaction.toAccountName 
+                            ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
+                            : transaction.fromAccountName 
+                            ? `From: ${transaction.fromAccountName}`
+                            : transaction.toAccountName 
+                            ? `To: ${transaction.toAccountName}`
+                            : transaction.categoryName
+                          }
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500 truncate" title={transaction.categoryName}>
+                          {transaction.categoryName}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex-shrink-0 ml-2">
                     <p className={`text-sm font-semibold ${
                       transaction.type === CombinedTransactionTypeEnum.INCOME
                         ? "text-teal-600"
@@ -240,8 +253,29 @@ const AccountTransactions = ({ accountName }: AccountTransactionsProps) => {
                           ? "text-red-900"
                           : "text-blue-900"
                     }`}>
-                      {transaction.type === CombinedTransactionTypeEnum.EXPENSE ? '-' : '+'}
-                      {formatCurrency(Math.abs(transaction.amount))}
+                      {(() => {
+                        if (transaction.type === CombinedTransactionTypeEnum.TRANSFER) {
+                          // For transfers, determine the sign based on account perspective
+                          // If this account is the source (fromAccount), it's negative (money going out)
+                          // If this account is the destination (toAccount), it's positive (money coming in)
+                          const isFromAccount = transaction.fromAccountName === accountName;
+                          const isToAccount = transaction.toAccountName === accountName;
+                          
+                          if (isFromAccount && !isToAccount) {
+                            // Money going out of this account
+                            return `-${formatCurrency(Math.abs(transaction.amount))}`;
+                          } else if (isToAccount && !isFromAccount) {
+                            // Money coming into this account
+                            return `+${formatCurrency(Math.abs(transaction.amount))}`;
+                          } else {
+                            // Fallback to original amount display
+                            return `${transaction.amount > 0 ? '+' : ''}${formatCurrency(transaction.amount)}`;
+                          }
+                        } else {
+                          // For income and expenses, use the original logic
+                          return `${transaction.type === CombinedTransactionTypeEnum.EXPENSE ? '-' : '+'}${formatCurrency(Math.abs(transaction.amount))}`;
+                        }
+                      })()}
                     </p>
                   </div>
                 </div>
