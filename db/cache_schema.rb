@@ -10,18 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 1) do
+ActiveRecord::Schema[8.0].define(version: 0) do
+  create_schema "_timescaledb_cache"
+  create_schema "_timescaledb_catalog"
+  create_schema "_timescaledb_config"
+  create_schema "_timescaledb_debug"
+  create_schema "_timescaledb_functions"
+  create_schema "_timescaledb_internal"
+  create_schema "timescaledb_experimental"
+  create_schema "timescaledb_information"
+  create_schema "toolkit_experimental"
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "timescaledb"
+  enable_extension "timescaledb_toolkit"
 
-  create_table "solid_cache_entries", force: :cascade do |t|
-    t.binary "key", null: false
-    t.binary "value", null: false
-    t.datetime "created_at", null: false
-    t.bigint "key_hash", null: false
-    t.integer "byte_size", null: false
-    t.index ["byte_size"], name: "index_solid_cache_entries_on_byte_size"
-    t.index ["key_hash", "byte_size"], name: "index_solid_cache_entries_on_key_hash_and_byte_size"
-    t.index ["key_hash"], name: "index_solid_cache_entries_on_key_hash", unique: true
-  end
 end

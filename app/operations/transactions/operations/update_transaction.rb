@@ -52,6 +52,12 @@ module Transactions
         end
         _ = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
         _ = step update_monthly_summary(transaction:)
+
+        # Regenerate embedding if relevant fields changed
+        if should_regenerate_embedding?(transaction:, params:)
+          step regenerate_embedding_async(transaction:)
+        end
+
         transaction.reload
       end
 
@@ -222,6 +228,22 @@ module Transactions
         )
 
         Success()
+      end
+
+      def should_regenerate_embedding?(transaction:, params:)
+        params.key?(:description) ||
+        params.key?(:amount) ||
+        params.key?(:category_name) ||
+        params.key?(:account_name)
+      end
+
+      def regenerate_embedding_async(transaction:)
+        Ai::Embeddings::GenerateEmbeddingJob.perform_later(
+          embeddable_id: transaction.id,
+          embeddable_type: transaction.class.name,
+          space_id: transaction.space_id
+        )
+        Success(transaction)
       end
     end
   end

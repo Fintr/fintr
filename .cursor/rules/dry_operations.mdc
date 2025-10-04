@@ -31,6 +31,7 @@ alwaysApply: true
            params       = step validate(params)
            step1_result = step step1(params:)
            step2_result = step step2(params:)
+           step2_result # NOTE: in calls, please don't output monads because it's automatically wrapped in monads.
          end
 
          private
@@ -56,6 +57,7 @@ alwaysApply: true
    - Use `ActiveRecord::Base.transaction` for database operations
    - Return `Success` or `Failure` monads
    - Include clear error messages in failures
+   - In the call methods, don't wrap results in the `Success` monads. It's automatically wrapped by Dry::Operation.
 
 4. **When Not to Use**:
    - Simple CRUD operations that don't need validation

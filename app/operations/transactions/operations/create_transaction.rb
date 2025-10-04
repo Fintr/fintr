@@ -89,6 +89,7 @@ module Transactions
         transaction          = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
         _                    = step remove_draft(params:)
         _                    = step update_monthly_summary(transaction:)
+        _                    = step generate_embedding_async(transaction:)
         transaction.reload
       end
 
@@ -213,6 +214,15 @@ module Transactions
         )
 
         Success()
+      end
+
+      def generate_embedding_async(transaction:)
+        Ai::Embeddings::GenerateEmbeddingJob.perform_later(
+          embeddable_id: transaction.id,
+          embeddable_type: transaction.class.name,
+          space_id: transaction.space_id
+        )
+        Success(transaction)
       end
     end
   end

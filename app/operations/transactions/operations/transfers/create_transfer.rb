@@ -74,6 +74,7 @@ module Transactions
           end
           _   = step attach_file(transfer:, params:)
           _   = step update_monthly_summary(transfer:)
+          _   = step generate_embedding_async(transfer:)
           transfer.reload
         end
 
@@ -175,6 +176,15 @@ module Transactions
           )
 
           Success()
+        end
+
+        def generate_embedding_async(transfer:)
+          Ai::Embeddings::GenerateEmbeddingJob.perform_later(
+            embeddable_id: transfer.id,
+            embeddable_type: transfer.class.name,
+            space_id: transfer.space_id
+          )
+          Success(transfer)
         end
       end
     end

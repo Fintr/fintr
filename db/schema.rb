@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # This file is auto-generated from the current state of the database. Instead
 # of editing this file, please use the migrations feature of Active Record to
 # incrementally modify your database, and then regenerate this schema definition.
@@ -10,10 +12,25 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_23_060648) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_30_070044) do
+  # These schemas are created by the timescaledb extension and should not be recreated
+  # create_schema "_timescaledb_cache"
+  # create_schema "_timescaledb_catalog"
+  # create_schema "_timescaledb_config"
+  # create_schema "_timescaledb_debug"
+  # create_schema "_timescaledb_functions"
+  # create_schema "_timescaledb_internal"
+  # create_schema "timescaledb_experimental"
+  # create_schema "timescaledb_information"
+  # create_schema "toolkit_experimental"
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
+  enable_extension "timescaledb"
+  enable_extension "timescaledb_toolkit"
+  enable_extension "vector"
+  enable_extension "vectorscale"
 
   # Custom types defined in this database.
   # Note that some types may not work with other database engines. Be careful if changing database.
@@ -70,6 +87,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_060648) do
     t.uuid "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "ai_interactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "user_id", null: false
+    t.uuid "space_id", null: false
+    t.string "session_id", null: false
+    t.text "request", null: false
+    t.text "enhanced_prompt"
+    t.text "response"
+    t.integer "tokens_used", default: 0
+    t.string "status", default: "pending"
+    t.text "error"
+    t.jsonb "metadata", default: {}
+    t.decimal "time_seconds", precision: 6, scale: 2, default: "0.0"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["session_id"], name: "index_ai_interactions_on_session_id"
+    t.index ["space_id", "created_at"], name: "index_ai_interactions_on_space_id_and_created_at"
+    t.index ["space_id"], name: "index_ai_interactions_on_space_id"
+    t.index ["status"], name: "index_ai_interactions_on_status"
+    t.index ["user_id", "created_at"], name: "index_ai_interactions_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_ai_interactions_on_user_id"
   end
 
   create_table "ai_usages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -164,6 +203,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_060648) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_onboardings_on_user_id"
+  end
+
+  create_table "rag_embeddings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "space_id", null: false
+    t.string "embeddable_type", null: false
+    t.uuid "embeddable_id", null: false
+    t.text "content", null: false
+    t.vector "embedding", limit: 1536, null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["embeddable_type", "embeddable_id"], name: "index_rag_embeddings_on_embeddable_type_and_embeddable_id", unique: true
+    t.index ["embedding"], name: "rag_embeddings_embedding_hnsw_idx", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["space_id"], name: "index_rag_embeddings_on_space_id"
   end
 
   create_table "roles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -330,6 +383,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_060648) do
   add_foreign_key "accounts", "spaces"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "ai_interactions", "spaces"
+  add_foreign_key "ai_interactions", "users"
   add_foreign_key "ai_usages", "spaces"
   add_foreign_key "ai_usages", "users"
   add_foreign_key "budgets", "spaces"
@@ -341,6 +396,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_060648) do
   add_foreign_key "goal_descriptions", "spaces"
   add_foreign_key "monthly_financial_summaries", "spaces"
   add_foreign_key "onboardings", "users"
+  add_foreign_key "rag_embeddings", "spaces"
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
   add_foreign_key "space_users", "users", column: "invited_by_id"

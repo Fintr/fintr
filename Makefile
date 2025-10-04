@@ -20,5 +20,11 @@ mspecs:
 mrubocop:
 	mise exec -- bundle exec rubocop -A $(filter-out $@,$(MAKECMDGOALS))
 
+docker:
+	docker compose -f docker-compose.local.yml up -d
+
+docker-down:
+	docker compose -f docker-compose.local.yml down
+
 %:
     @:

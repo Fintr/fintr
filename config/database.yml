@@ -1,139 +1,135 @@
-# PostgreSQL. Versions 9.3 and up are supported.
-#
-# Install the pg driver:
-#   gem install pg
-# On macOS with Homebrew:
-#   gem install pg -- --with-pg-config=/usr/local/bin/pg_config
-# On Windows:
-#   gem install pg
-#       Choose the win32 build.
-#       Install PostgreSQL and put its /bin directory on your path.
-#
-# Configure Using Gemfile
-# gem "pg"
-#
+# Database configuration for all environments
+
 default: &default
   adapter: postgresql
   encoding: unicode
-  # For details on connection pooling, see Rails configuration guide
-  # https://guides.rubyonrails.org/configuring.html#database-pooling
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  username: <%= ENV['DATABASE_USER'] %>
-  password: <%= ENV['DATABASE_PASSWORD'] %>
-  host: <%= ENV['DATABASE_HOST'] %>
-  port: 5432
 
 development:
   primary: &primary_development
     <<: *default
-    database: fintr_be_development
+    database: fintr_development
+    host: localhost
+    port: 5433  # Different port to avoid conflict with local PostgreSQL
+    username: fintr_rails
+    password: <%= ENV['DATABASE_PASSWORD'] || 'postgres' %>
+    # Basic settings for local development with TimescaleDB
+    variables:
+      work_mem: '4MB'
+      maintenance_work_mem: '64MB'
+      effective_cache_size: '1GB'
+    # Connection pooling for high concurrency
+    pool: 20
+    timeout: 5000
   cache:
     <<: *primary_development
-    database: fintr_be_development_cache
+    database: fintr_development_cache
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_development_cache" %>
     migrations_paths: db/cache_migrate
   queue:
     <<: *primary_development
-    database: fintr_be_development_queue
+    database: fintr_development_queue
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_development_queue" %>
     migrations_paths: db/queue_migrate
   cable:
     <<: *primary_development
-    database: fintr_be_development_cable
+    database: fintr_development_cable
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_development_cable" %>
     migrations_paths: db/cable_migrate
 
-  # The specified database role being used to connect to PostgreSQL.
-  # To create additional roles in PostgreSQL see `$ createuser --help`.
-  # When left blank, PostgreSQL will use the default role. This is
-  # the same name as the operating system user running Rails.
-  #username: fintr_be
-
-  # The password associated with the PostgreSQL role (username).
-  #password:
-
-  # Connect on a TCP socket. Omitted by default since the client uses a
-  # domain socket that doesn't need configuration. Windows does not have
-  # domain sockets, so uncomment these lines.
-  #host: localhost
-
-  # The TCP port the server listens on. Defaults to 5432.
-  # If your server runs on a different port number, change accordingly.
-  #port: 5432
-
-  # Schema search path. The server defaults to $user,public
-  #schema_search_path: myapp,sharedapp,public
-
-  # Minimum log levels, in increasing order:
-  #   debug5, debug4, debug3, debug2, debug1,
-  #   log, notice, warning, error, fatal, and panic
-  # Defaults to warning.
-  #min_messages: notice
-
-# Warning: The database defined as "test" will be erased and
-# re-generated from your development database when you run "rake".
-# Do not set this db to the same as development or production.
 test:
-  <<: *default
-  database: fintr_be_test
-  url:  <%= "#{ENV['DB_BASE_URL']}/fintr_be_test#{ENV['TEST_ENV_NUMBER']}" %>
-
-# As with config/credentials.yml, you never want to store sensitive information,
-# like your database password, in your source code. If your source code is
-# ever seen by anyone, they now have access to your database.
-#
-# Instead, provide the password or a full connection URL as an environment
-# variable when you boot the app. For example:
-#
-#   DATABASE_URL="postgres://myuser:mypass@localhost/somedatabase"
-#
-# If the connection URL is provided in the special DATABASE_URL environment
-# variable, Rails will automatically merge its configuration values on top of
-# the values provided in this file. Alternatively, you can specify a connection
-# URL environment variable explicitly:
-#
-#   production:
-#     url: <%= ENV["MY_APP_DATABASE_URL"] %>
-#
-# Read https://guides.rubyonrails.org/configuring.html#configuring-a-database
-# for a full overview on how database connection configuration can be specified.
-#
+  primary: &primary_test
+    <<: *default
+    database: fintr_test
+    host: localhost
+    port: 5433
+    username: fintr_rails
+    password: <%= ENV['DATABASE_PASSWORD'] || 'postgres' %>
+    # Basic settings for local development with TimescaleDB
+    variables:
+      work_mem: '4MB'
+      maintenance_work_mem: '64MB'
+      effective_cache_size: '1GB'
+    pool: 10
+    timeout: 5000
+  cache:
+    <<: *primary_test
+    database: fintr_test_cache
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_test_cache" %>
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *primary_test
+    database: fintr_test_queue
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_test_queue" %>
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *primary_test
+    database: fintr_test_cable
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_test_cable" %>
+    migrations_paths: db/cable_migrate
 
 staging:
   primary: &primary_staging
     <<: *default
-    database: fintr_be_staging
-    url: <%= "#{ENV['DB_BASE_URL']}/fintr_be_staging" %>
+    database: fintr_staging
+    host: <%= ENV['DATABASE_HOST'] || 'staging-api.fintr.ai' %>
+    port: 5432
+    username: fintr_rails
+    password: <%= ENV['DATABASE_PASSWORD'] %>
+    # pgvectorscale specific settings
+    variables:
+      work_mem: '256MB'
+      maintenance_work_mem: '1GB'
+      effective_cache_size: '4GB'
+    # Connection pooling for high concurrency
+    pool: 20
+    timeout: 5000
   cache:
     <<: *primary_staging
-    database: fintr_be_staging_cache
-    url: <%= "#{ENV['DB_BASE_URL']}/fintr_be_staging_cache" %>
+    database: fintr_staging_cache
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_cache" %>
     migrations_paths: db/cache_migrate
   queue:
     <<: *primary_staging
-    database: fintr_be_staging_queue
-    url: <%= "#{ENV['DB_BASE_URL']}/fintr_be_staging_queue" %>
+    database: fintr_staging_queue
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_queue" %>
     migrations_paths: db/queue_migrate
   cable:
     <<: *primary_staging
-    database: fintr_be_staging_cable
-    url: <%= "#{ENV['DB_BASE_URL']}/fintr_be_staging_cable" %>
+    database: fintr_staging_cable
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_cable" %>
     migrations_paths: db/cable_migrate
-
+    
 production:
   primary: &primary_production
     <<: *default
-    database: fintr_be_production
-    url: <%= "#{ENV['DB_BASE_URL']}/fintr_be_production" %>
+    database: fintr_production
+    host: <%= ENV['DATABASE_HOST'] || 'api.fintr.ai' %>
+    port: 5432
+    username: fintr_rails
+    password: <%= ENV['DATABASE_PASSWORD'] %>
+    # pgvectorscale specific settings
+    variables:
+      work_mem: '256MB'
+      maintenance_work_mem: '1GB'
+      effective_cache_size: '4GB'
+    # Connection pooling for high concurrency
+    pool: 20
+    timeout: 5000
   cache:
     <<: *primary_production
-    database: fintr_be_production_cache
-    url: <%= "#{ENV['DB_BASE_URL']}/fintr_be_production_cache" %>
+    database: fintr_production_cache
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'api.fintr.ai'}:5432/fintr_production_cache" %>
     migrations_paths: db/cache_migrate
   queue:
     <<: *primary_production
-    database: fintr_be_production_queue
-    url: <%= "#{ENV['DB_BASE_URL']}/fintr_be_production_queue" %>
+    database: fintr_production_queue
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'api.fintr.ai'}:5432/fintr_production_queue" %>
     migrations_paths: db/queue_migrate
   cable:
     <<: *primary_production
-    database: fintr_be_production_cable
-    url: <%= "#{ENV['DB_BASE_URL']}/fintr_be_production_cable" %>
+    database: fintr_production_cable
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'api.fintr.ai'}:5432/fintr_production_cable" %>
     migrations_paths: db/cable_migrate
+
+

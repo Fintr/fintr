@@ -15,6 +15,7 @@ module Transactions
     has_many :fee_transactions, class_name: "Transactions::Transaction", foreign_key: :transfer_id, dependent: :nullify
 
     has_many_attached :files
+    has_one :rag_embedding, class_name: "Ai::RagEmbedding", as: :embeddable, dependent: :destroy
 
     monetize :amount_cents, allow_nil: false
     monetize :transaction_cost_cents, allow_nil: false
