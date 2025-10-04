@@ -13,8 +13,8 @@ class Budget < ApplicationRecord
 
   delegate :month, :year, to: :date
 
-  scope :for_month, lambda do |reference_date, time_zone = "Asia/Manila"|
-    where(date: reference_date.in_time_zone(time_zone).all_month) 
+  scope :for_month, ->(reference_date, time_zone = "Asia/Manila") do
+    where(date: reference_date.in_time_zone(time_zone).all_month)
   end
 
   def transactions
