@@ -33,6 +33,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       title: "User Analytics",
       href: "/admin/analytics",
     },
+    {
+      title: "AI Interactions",
+      href: "/admin/ai-interactions",
+    },
   ];
 
   useEffect(() => {
