@@ -178,7 +178,6 @@ export default function OnboardingCompleted() {
                   What's been set up:
                 </h3>
                 <ul className="text-sm text-green-700 dark:text-teal-300 space-y-1">
-                  <li className="flex items-center flex-center"><Check className="h-4 w-4 mr-2" /> Income information</li>
                   <li className="flex items-center flex-center"><Check className="h-4 w-4 mr-2" /> Budget categories</li>
                   <li className="flex items-center flex-center"><Check className="h-4 w-4 mr-2" /> Financial accounts</li>
                 </ul>

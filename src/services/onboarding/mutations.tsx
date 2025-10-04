@@ -20,8 +20,7 @@ export interface AccountDataInput {
 export interface SaveStep1DataArgs {
   api: AxiosInstance;
   step: string;
-  salaryIncome?: number;
-  businessIncome?: number;
+  income?: number;
 }
 
 export interface SaveStep2DataArgs {
@@ -41,15 +40,13 @@ export interface SaveStep3DataArgs {
  * @param {SaveStep1DataArgs} args - Arguments for saving step 1 data.
  * @param {AxiosInstance} args.api - Authenticated Axios instance.
  * @param {string} args.step - The current onboarding step.
- * @param {number} [args.salaryIncome] - User's salary income.
- * @param {number} [args.businessIncome] - User's business income.
+ * @param {number} [args.income] - User's total income.
  * @returns {Promise<any>} - The response data from the backend API.
  */
-export const saveStep1Data = async ({ api, step, salaryIncome, businessIncome }: SaveStep1DataArgs) => {
+export const saveStep1Data = async ({ api, step, income }: SaveStep1DataArgs) => {
   const response = await api.post('/onboardings', {
     step,
-    salaryIncome,
-    businessIncome,
+    income,
   });
   return response.data;
 };

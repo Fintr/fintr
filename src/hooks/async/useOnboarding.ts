@@ -47,8 +47,7 @@ export const useOnboarding = (step?: string) => {
         if (response.data.budgetsData) {
           setBudgetCategories(response.data.budgetsData);
           setOnboardingData({...onboardingDataFromAtom, incomeData: {
-            salary: Number(response.data.incomeData.salaryIncome),
-            business: Number(response.data.incomeData.businessIncome),
+            income: response.data.incomeData.income,
           }})
           console.log('onboardingDataFromAtom', onboardingDataFromAtom)
         }
