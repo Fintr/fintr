@@ -18,8 +18,8 @@ function getDefaultValue(path: string) {
     defaultValue = "investments";
   } else if (path.includes("/dashboard/insights")) {
     defaultValue = "insights";
-  } else if (path.includes("/dashboard/database")) {
-    defaultValue = "database";
+  } else if (path.includes("/dashboard/space_settings")) {
+    defaultValue = "space_settings";
   }
 
   return defaultValue;

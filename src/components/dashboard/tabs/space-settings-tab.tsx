@@ -43,7 +43,7 @@ interface CategoryItem {
   [key: string]: any; // For any additional properties
 }
 
-const DatabaseTab = () => {
+const SpaceSettingsTab = () => {
   const [activeMainTab, setActiveMainTab] = useState("categories");
   const [activeSubTab, setActiveSubTab] = useState("expense");
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -567,4 +567,4 @@ const DatabaseTab = () => {
   );
 };
 
-export default DatabaseTab;
+export default SpaceSettingsTab;

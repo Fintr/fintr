@@ -156,9 +156,9 @@ export default function Layout({
                   Insights
                 </Link>
               </TabsTrigger>
-              <TabsTrigger value="database" className="w-full bg-white border border-primary/10">
-                <Link prefetch href="/dashboard/database" className="w-full h-full flex items-center justify-center ">
-                  Database
+              <TabsTrigger value="space_settings" className="w-full bg-white border border-primary/10">
+                <Link prefetch href="/dashboard/space_settings" className="w-full h-full flex items-center justify-center ">
+                  Settings
                 </Link>
               </TabsTrigger>
               
@@ -200,8 +200,8 @@ export default function Layout({
               <TabsTrigger asChild value="insights">
                 <Link prefetch href="/dashboard/insights">Insights</Link>
               </TabsTrigger>
-              <TabsTrigger asChild value="database">
-                <Link prefetch href="/dashboard/database">Database</Link>
+              <TabsTrigger asChild value="space_settings">
+                <Link prefetch href="/dashboard/space_settings">Settings</Link>
               </TabsTrigger>
             </TabsList>
           </div>
