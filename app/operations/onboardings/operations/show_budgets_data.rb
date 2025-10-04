@@ -46,7 +46,7 @@ module Onboardings
       def show_budget_setup(onboarding)
         return Failure("Onboarding data not found") if onboarding.data["income"].blank?
 
-        total_income = onboarding.data["income"]["salary_income"].to_d.round(2) + onboarding.data["income"]["business_income"].to_d.round(2)
+        total_income = onboarding.data["income"].to_d.round(2)
         data = CATEGORY_PERCENTAGES.map do |category, percentage|
           amount = (total_income * percentage / 100).round(2)
 

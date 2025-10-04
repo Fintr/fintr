@@ -54,8 +54,7 @@ RSpec.describe Onboardings::Operations::ShowIncomeData do
         result = show_income_data_operation.call(valid_params)
         expect(result).to be_success
         expect(result.value!).to eq(
-          salary_income: onboarding_data["income"]["salary_income"],
-          business_income: onboarding_data["income"]["business_income"]
+          income: onboarding_data["income"]
         )
       end
 

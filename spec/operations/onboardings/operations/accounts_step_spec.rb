@@ -14,8 +14,8 @@ RSpec.describe Onboardings::Operations::AccountsStep do
       user_id: user.id,
       space_id: space.id,
       accounts: [
-        { name: "Cash", balance: 1000.00, account_category: "cash_account", for_salary: true },
-        { name: "Savings", balance: 5000.00, account_category: "bank_account", for_business: true }
+        { name: "Cash", balance: 1000.00, account_category: "cash_account" },
+        { name: "Savings", balance: 5000.00, account_category: "bank_account" }
       ]
     }
   end
@@ -100,10 +100,6 @@ RSpec.describe Onboardings::Operations::AccountsStep do
       allow(Budgets::Operations::CreateBudget)
         .to receive(:new)
         .and_return(instance_double(Budgets::Operations::CreateBudget, call: Dry::Monads::Success(true)))
-
-      allow(Transactions::Operations::CreateTransaction)
-        .to receive(:new)
-        .and_return(instance_double(Transactions::Operations::CreateTransaction, call: Dry::Monads::Success(true)))
     end
 
     context "when valid params and existing onboarding" do
@@ -116,7 +112,7 @@ RSpec.describe Onboardings::Operations::AccountsStep do
         accounts_step_operation.call(valid_params)
         expected_data = onboarding_with_all_data.data.merge(
           accounts: valid_params[:accounts].map do |account|
-            account.except(:for_salary, :for_business).merge(balance: account[:balance].to_s).deep_stringify_keys
+            account.merge(balance: account[:balance].to_s).deep_stringify_keys
           end
         )
         expect(onboarding_with_all_data).to have_received(:update!).with(
@@ -170,46 +166,6 @@ RSpec.describe Onboardings::Operations::AccountsStep do
             category_name: "Home",
             date: Date.current,
             amount: 1000.0.to_d,
-            accounts: valid_params[:accounts]
-          )
-      end
-
-      it "calls CreateTransaction for salary income" do
-        accounts_step_operation.call(valid_params)
-        expect(Transactions::Operations::CreateTransaction)
-          .to have_received(:new).at_least(:once)
-        expect(Transactions::Operations::CreateTransaction.new)
-          .to have_received(:call)
-          .with(
-            user_id: user.id,
-            space_id: space.id,
-            category_name: "Salary",
-            account_name: "Cash", # Assuming 'Cash' is for salary
-            date: Date.current.beginning_of_month,
-            amount: 1000.0.to_d,
-            skip_calculation: true,
-            schedule_type: "repeat",
-            repeat_interval: "every_month",
-            accounts: valid_params[:accounts]
-          )
-      end
-
-      it "calls CreateTransaction for business income" do
-        accounts_step_operation.call(valid_params)
-        expect(Transactions::Operations::CreateTransaction)
-          .to have_received(:new).at_least(:once)
-        expect(Transactions::Operations::CreateTransaction.new)
-          .to have_received(:call)
-          .with(
-            user_id: user.id,
-            space_id: space.id,
-            category_name: "Business",
-            account_name: "Savings", # Assuming 'Savings' is for business
-            date: Date.current.beginning_of_month,
-            amount: 500.0.to_d,
-            skip_calculation: true,
-            schedule_type: "repeat",
-            repeat_interval: "every_month",
             accounts: valid_params[:accounts]
           )
       end
