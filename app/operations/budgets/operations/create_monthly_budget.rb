@@ -39,18 +39,19 @@ module Budgets
       end
 
       def create_monthly_budgets(space:, date:)
-        records = space.budgets.for_month(date - 1.month).map do |budget|
-          Budget.new(
-            space:,
-            category: budget.category,
-            amount_cents: budget.amount_cents,
-            amount_currency: budget.amount_currency,
-            date:
-          )
+        Time.use_zone("Asia/Manila") do
+          records = space.budgets.for_month(date - 1.month).map do |budget|
+            Budget.new(
+              space:,
+              category: budget.category,
+              amount_cents: budget.amount_cents,
+              amount_currency: budget.amount_currency,
+              date:
+            )
+          end
+          result = Budget.bulk_import(records, validate: true, all_or_none: true)
+          Success(result.results)
         end
-
-        result = Budget.bulk_import(records, validate: true, all_or_none: true)
-        Success(result.results)
       rescue ActiveRecord::RecordInvalid
         Failure(budgets: result.failed_instances)
       end
