@@ -80,7 +80,7 @@ Rails.application.routes.draw do
           post :join
           delete :leave
         end
-        
+
         resources :users, module: :spaces, only: [:index] do
           collection do
             post :grant_access

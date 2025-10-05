@@ -8,8 +8,7 @@ module Onboardings
           required(:user_id).value(:string)
           required(:space_id).value(:string)
 
-          required(:salary_income).value(:decimal)
-          required(:business_income).value(:decimal)
+          required(:income).value(:decimal)
         end
       end
 
@@ -44,10 +43,7 @@ module Onboardings
       def store_income(onboarding, params)
         onboarding.update!(
           data: onboarding.data.merge(
-            "income" => {
-              "salary_income" => params[:salary_income],
-              "business_income" => params[:business_income]
-            }
+            "income" => params[:income]
           )
         )
 

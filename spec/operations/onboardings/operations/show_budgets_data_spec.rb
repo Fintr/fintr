@@ -10,10 +10,7 @@ RSpec.describe Onboardings::Operations::ShowBudgetsData do
     create(:onboarding,
            user: user,
            data: {
-             "income" => {
-               "salary_income" => "5000.00",
-               "business_income" => "1000.00"
-             }
+             "income" => "6000.00"
            })
   end
 

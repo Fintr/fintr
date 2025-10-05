@@ -17,8 +17,7 @@ RSpec.describe Onboardings::Operations::IncomeStep do
         {
           user_id: user.id,
           space_id: space.id,
-          salary_income: 1000.00,
-          business_income: 500.00
+          income: 1500.00
         }
       end
 
@@ -50,10 +49,7 @@ RSpec.describe Onboardings::Operations::IncomeStep do
       it "updates the onboarding with income data" do
         income_step_operation.call(params)
         updated_onboarding = Onboarding.find(onboarding.id)
-        expect(updated_onboarding.data["income"]).to eq(
-          "salary_income" => params[:salary_income].to_s,
-          "business_income" => params[:business_income].to_s
-        )
+        expect(updated_onboarding.data["income"]).to eq(params[:income].to_s)
       end
 
       it "updates the onboarding step to budgets" do
@@ -84,8 +80,7 @@ RSpec.describe Onboardings::Operations::IncomeStep do
         {
           user_id: user_without_onboarding.id,
           space_id: space.id,
-          salary_income: 2000.00,
-          business_income: 1000.00
+          income: 3000.00
         }
       end
 
@@ -104,10 +99,7 @@ RSpec.describe Onboardings::Operations::IncomeStep do
       it "stores income data in the new onboarding" do
         income_step_operation.call(params)
         created_onboarding = user_without_onboarding.reload.onboarding
-        expect(created_onboarding.data["income"]).to eq(
-          "salary_income" => params[:salary_income].to_s,
-          "business_income" => params[:business_income].to_s
-        )
+        expect(created_onboarding.data["income"]).to eq(params[:income].to_s)
       end
     end
 
@@ -116,8 +108,7 @@ RSpec.describe Onboardings::Operations::IncomeStep do
         {
           user_id: user.id,
           space_id: space.id,
-          salary_income: nil,
-          business_income: nil
+          income: nil
         }
       end
 
@@ -129,8 +120,7 @@ RSpec.describe Onboardings::Operations::IncomeStep do
       it "returns errors for missing income" do
         result = income_step_operation.call(params)
         expect(result.failure).to include(
-          salary_income: ["must be a decimal"],
-          business_income: ["must be a decimal"]
+          income: ["must be a decimal"]
         )
       end
     end
@@ -140,8 +130,7 @@ RSpec.describe Onboardings::Operations::IncomeStep do
         {
           user_id: "non_existent_user_id",
           space_id: space.id,
-          salary_income: 1000.00,
-          business_income: 500.00
+          income: 1500.00
         }
       end
 

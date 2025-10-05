@@ -6,16 +6,16 @@ class UpdateExistingSpaceUsersInvitationStatus < ActiveRecord::Migration[8.0]
     reversible do |dir|
       dir.up do
         execute <<-SQL
-          UPDATE space_users 
-          SET invitation_status = 'active' 
+          UPDATE space_users
+          SET invitation_status = 'active'
           WHERE invitation_status IS NULL
         SQL
       end
-      
+
       dir.down do
         execute <<-SQL
-          UPDATE space_users 
-          SET invitation_status = NULL 
+          UPDATE space_users
+          SET invitation_status = NULL
           WHERE invitation_status = 'active'
         SQL
       end

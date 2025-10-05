@@ -24,7 +24,7 @@ module Spaces
 
       def call(params)
         validated_params = step validate(params:)
-        
+
         transaction do
           current_user = step find_current_user(validated_params)
           target_user  = step find_target_user(validated_params)
@@ -32,7 +32,7 @@ module Spaces
           _            = step validate_permissions(current_user, target_user, space)
           _            = step remove_user_from_space(space, target_user)
           _            = step remove_user_roles(space, target_user)
-          
+
           { message: "User successfully removed from space" }
         end
       end
@@ -42,7 +42,7 @@ module Spaces
       def find_current_user(params)
         user = Auth::User.find_by(id: params[:user_id])
         return Failure(errors: { user: ["not found"] }) unless user
-        
+
         Success(user)
       end
 
@@ -56,7 +56,7 @@ module Spaces
       def find_space(params)
         space = Spaces::Space.find_by(id: params[:space_id])
         return Failure(errors: { space: ["not found"] }) unless space
-        
+
         Success(space)
       end
 
@@ -65,19 +65,19 @@ module Spaces
         unless current_user.has_role?(:admin, space)
           return Failure(errors: { permission: ["Only admins can remove users from space"] })
         end
-        
+
         # Cannot remove yourself
         if current_user.id == target_user.id
           return Failure(errors: { permission: ["Cannot remove yourself from space"] })
         end
-        
+
         Success()
       end
 
       def remove_user_from_space(space, target_user)
         space_user = Spaces::SpaceUser.find_by(user: target_user, space: space)
         return Failure(errors: { user: ["User not found in this space"] }) unless space_user
-        
+
         space_user.destroy!
         Success()
       end

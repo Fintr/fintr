@@ -41,8 +41,7 @@ module Api
       def income_params
         params.permit(
           :step,
-          :salary_income,
-          :business_income
+          :income
         )
       end
 
@@ -56,7 +55,7 @@ module Api
       def accounts_params
         params.permit(
           :step,
-          accounts: [:name, :account_category, :balance, :for_salary, :for_business]
+          accounts: [:name, :account_category, :balance]
         )
       end
 

@@ -25,14 +25,14 @@ module Spaces
 
       def call(params)
         validated_params = step validate(params:)
-        
+
         transaction do
           inviter        = step find_inviter(validated_params)
           target_user    = step find_user(validated_params)
           space_user     = step create_invitation(validated_params, target_user, inviter)
           _              = step assign_role(validated_params, target_user)
-          
-          { 
+
+          {
             access_link: generate_access_link(validated_params, space_user),
             user: target_user,
             space_user: space_user
@@ -45,35 +45,35 @@ module Spaces
       def find_inviter(params)
         user = Auth::User.find_by(id: params[:user_id])
         return Failure(errors: { user: ["not found"] }) unless user
-        
+
         Success(user)
       end
 
       def find_user(params)
         user = Auth::User.find_by(email: params[:email])
-        
+
         if user.nil?
           # For now, return failure - user must exist to be granted access
           return Failure(errors: { email: ["User not found. User must have an account first."] })
         end
-        
+
         Success(user)
       end
 
       def create_invitation(params, target_user, inviter)
         space = Spaces::Space.find(params[:space_id])
-        
+
         # Check if user already belongs to this space
-        return Failure(errors: { user: ["already belongs to this space"] }) if 
+        return Failure(errors: { user: ["already belongs to this space"] }) if
           target_user.spaces.include?(space)
-        
+
         space_user = Spaces::SpaceUser.create!(
           space: space,
           user: target_user,
           invited_by: inviter,
-          invitation_status: 'pending'
+          invitation_status: "pending"
         )
-        
+
         Success(space_user)
       rescue ActiveRecord::RecordInvalid => e
         Failure(errors: e.record.errors.full_messages)
@@ -81,8 +81,8 @@ module Spaces
 
       def assign_role(params, target_user)
         space = Spaces::Space.find(params[:space_id])
-        role_name = params[:role] == 'admin' ? 'admin' : 'member'
-        
+        role_name = params[:role] == "admin" ? "admin" : "member"
+
         target_user.add_role(role_name.to_sym, space)
         Success()
       rescue => e

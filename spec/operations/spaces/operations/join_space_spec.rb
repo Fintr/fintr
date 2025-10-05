@@ -7,7 +7,7 @@ RSpec.describe Spaces::Operations::JoinSpace, type: :operation do
   let(:space) { create(:organization_space) }
   let(:invited_by) { create(:user) }
   let!(:space_user_invitation) { create(:space_user, space: space, user: nil, invitation_status: 'pending', access_code: 'VALID123', invited_by: invited_by) }
-  
+
   let(:valid_params) do
     {
       user_id: user.id.to_s,
@@ -19,7 +19,7 @@ RSpec.describe Spaces::Operations::JoinSpace, type: :operation do
     context "with valid parameters" do
       it "successfully joins user to space" do
         result = described_class.new.call(valid_params)
-        
+
         expect(result).to be_success
         expect(result.value!.id).to eq(space.id)
         expect(user.reload.spaces).to include(space)
@@ -32,7 +32,7 @@ RSpec.describe Spaces::Operations::JoinSpace, type: :operation do
 
       it "returns failure" do
         result = described_class.new.call(invalid_params)
-        
+
         expect(result).to be_failure
         expect(result.failure).to include(errors: { access: ["not found or expired"] })
       end
@@ -44,7 +44,7 @@ RSpec.describe Spaces::Operations::JoinSpace, type: :operation do
 
       it "returns failure" do
         result = described_class.new.call(expired_params)
-        
+
         expect(result).to be_failure
         expect(result.failure).to include(errors: { access: ["has expired"] })
       end
@@ -57,7 +57,7 @@ RSpec.describe Spaces::Operations::JoinSpace, type: :operation do
 
       it "returns failure" do
         result = described_class.new.call(valid_params)
-        
+
         expect(result).to be_failure
         expect(result.failure).to include(errors: { user: ["already belongs to this space"] })
       end
@@ -68,7 +68,7 @@ RSpec.describe Spaces::Operations::JoinSpace, type: :operation do
 
       it "returns failure" do
         result = described_class.new.call(invalid_params)
-        
+
         expect(result).to be_failure
       end
     end

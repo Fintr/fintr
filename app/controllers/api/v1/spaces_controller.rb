@@ -1,14 +1,16 @@
+# frozen_string_literal: true
+
 module Api
   module V1
     class SpacesController < ApiController
       skip_before_action :ensure_space_access!, only: [:index, :show, :create, :join]
 
-      # GET /api/v1/spaces
-      # Returns all spaces accessible to the current user
+        # GET /api/v1/spaces
+        # Returns all spaces accessible to the current user
         def index
           spaces = current_user.spaces
           render_success(
-            data: { 
+            data: {
               spaces: ::Spaces::Serializers::SpaceSerializer.render_as_hash(spaces, current_user: current_user)
             }
           )
@@ -19,9 +21,9 @@ module Api
       # Can accept either space ID (UUID) or space code
       def show
         # Try to find by ID first (UUID), then by code
-        space = current_user.spaces.find { |s| s.id == params[:id] } || 
+        space = current_user.spaces.find { |s| s.id == params[:id] } ||
                 current_user.spaces.find { |s| s.code == params[:id] }
-        
+
         return render_not_found(details: "Space not found") unless space
 
         render_success(
@@ -75,7 +77,6 @@ module Api
       def leave_params
         params.permit(:code)
       end
-
     end
   end
 end

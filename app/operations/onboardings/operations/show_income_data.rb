@@ -33,8 +33,7 @@ module Onboardings
 
       def show_income_setup(onboarding)
         Success({
-          salary_income: onboarding.data.dig("income", "salary_income"),
-          business_income: onboarding.data.dig("income", "business_income")
+          income: onboarding.data.dig("income")
         })
       end
     end
