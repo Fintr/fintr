@@ -6,11 +6,12 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
   subject(:operation) { described_class.new }
 
   let(:user) { create(:user) }
-  let(:space) { create(:personal_space, user: user) }
+  let(:space) { create(:personal_space) }
+  let(:space_user) { create(:space_user, user: user, space: space) }
   let(:account) { create(:account, space: space) }
   let(:category) { create(:category, space: space) }
   let(:transaction) { create(:expense_transaction, space: space, account: account, category: category) }
-  let(:embedding_vector) { [0.1, 0.2, 0.3, 0.4, 0.5] }
+  let(:embedding_vector) { Array.new(1536) { rand(-1.0..1.0) } }
 
   let(:params) do
     {
@@ -119,30 +120,35 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
 
   describe "#call" do
     let(:rag_embedding) do
-      create(:ai_rag_embedding,
-             space: space,
-             embeddable: transaction,
-             content: "Transaction: Grocery purchase",
-             embedding: embedding_vector,
-             metadata: {
-               transaction_type: "Transactions::Expense",
-               category: category.name,
-               account: account.name,
-               date: transaction.date.iso8601
-             })
+      embedding = create(:ai_rag_embedding,
+                        space: space,
+                        embeddable: transaction,
+                        content: "Transaction: Grocery purchase",
+                        embedding: embedding_vector,
+                        metadata: {
+                          transaction_type: "Transactions::Expense",
+                          category: category.name,
+                          account: account.name,
+                          date: transaction.date.iso8601
+                        })
+      # Add neighbor_distance method to the embedding object
+      def embedding.neighbor_distance
+        0.2
+      end
+      embedding
     end
 
     let(:search_results) { [rag_embedding] }
 
-    before do
-      # Mock OpenAI client
-      openai_client = instance_double(OpenAI::Client)
-      allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-      allow(openai_client).to receive(:embeddings).and_return(openai_response)
+      before do
+        # Mock OpenAI client
+        openai_client = instance_double(OpenAI::Client)
+        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
+        allow(openai_client).to receive(:embeddings).and_return(openai_response)
 
-      # Mock vector search results
-      allow_any_instance_of(Ai::RagEmbedding).to receive(:nearest_neighbors_optimized).and_return(search_results)
-    end
+        # Mock vector search results
+        allow(Ai::RagEmbedding).to receive(:nearest_neighbors_optimized).and_return(search_results)
+      end
 
     context "when all steps succeed" do
       it "successfully performs vector search and returns formatted results" do
@@ -174,6 +180,7 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
       it "calls OpenAI with correct parameters" do
         openai_client = instance_double(OpenAI::Client)
         allow(OpenAI::Client).to receive(:new).and_return(openai_client)
+        allow(openai_client).to receive(:embeddings).and_return(openai_response)
 
         operation.call(params)
 
@@ -241,7 +248,8 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
 
     context "when perform_vector_search fails" do
       before do
-        allow_any_instance_of(Ai::RagEmbedding).to receive(:nearest_neighbors_optimized).and_raise(StandardError.new("Search error"))
+        # Mock the Ai::RagEmbedding class to raise an error
+        allow(Ai::RagEmbedding).to receive(:for_space).and_raise(StandardError.new("Search error"))
       end
 
       it "returns a failure" do
@@ -253,6 +261,7 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
 
     context "when format_results fails" do
       before do
+        # Mock the search results to cause an error in format_results
         allow(search_results).to receive(:map).and_raise(StandardError.new("Format error"))
       end
 
@@ -279,6 +288,7 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
       it "calls OpenAI with correct parameters" do
         openai_client = instance_double(OpenAI::Client)
         allow(OpenAI::Client).to receive(:new).and_return(openai_client)
+        allow(openai_client).to receive(:embeddings).and_return(openai_response)
 
         operation.send(:generate_query_embedding, params: params)
 
@@ -310,14 +320,54 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
         expect(result).to be_failure
         expect(result.failure).to have_key(:embedding_error)
       end
+
+      it "handles empty embedding vector" do
+        openai_client = instance_double(OpenAI::Client)
+        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
+        allow(openai_client).to receive(:embeddings).and_return({ "data" => [{ "embedding" => [] }] })
+
+        result = operation.send(:generate_query_embedding, params: params)
+        expect(result).to be_failure
+        expect(result.failure).to have_key(:embedding_error)
+        expect(result.failure[:embedding_error]).to include("Invalid embedding response from OpenAI")
+      end
+
+      it "handles nil embedding vector" do
+        openai_client = instance_double(OpenAI::Client)
+        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
+        allow(openai_client).to receive(:embeddings).and_return({ "data" => [{ "embedding" => nil }] })
+
+        result = operation.send(:generate_query_embedding, params: params)
+        expect(result).to be_failure
+        expect(result.failure).to have_key(:embedding_error)
+        expect(result.failure[:embedding_error]).to include("Invalid embedding response from OpenAI")
+      end
     end
 
     describe "#perform_vector_search" do
       let(:query_embedding) { embedding_vector }
+      let(:rag_embedding) do
+        embedding = create(:ai_rag_embedding,
+                          space: space,
+                          embeddable: transaction,
+                          content: "Transaction: Grocery purchase",
+                          embedding: embedding_vector,
+                          metadata: {
+                            transaction_type: "Transactions::Expense",
+                            category: category.name,
+                            account: account.name,
+                            date: transaction.date.iso8601
+                          })
+        # Add neighbor_distance method to the embedding object
+        def embedding.neighbor_distance
+          0.2
+        end
+        embedding
+      end
       let(:search_results) { [rag_embedding] }
 
       before do
-        allow_any_instance_of(Ai::RagEmbedding).to receive(:nearest_neighbors_optimized).and_return(search_results)
+        allow(Ai::RagEmbedding).to receive(:nearest_neighbors_optimized).and_return(search_results)
       end
 
       it "performs vector search successfully" do
@@ -345,13 +395,11 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
       end
 
       it "calls nearest_neighbors_optimized with correct parameters" do
-        scope_double = instance_double(Ai::RagEmbedding)
-        allow(Ai::RagEmbedding).to receive(:for_space).and_return(scope_double)
-        allow(scope_double).to receive(:nearest_neighbors_optimized).and_return(search_results)
+        allow(Ai::RagEmbedding).to receive(:nearest_neighbors_optimized).and_return(search_results)
 
         operation.send(:perform_vector_search, query_embedding: query_embedding, params: params)
 
-        expect(scope_double).to have_received(:nearest_neighbors_optimized).with(
+        expect(Ai::RagEmbedding).to have_received(:nearest_neighbors_optimized).with(
           query_embedding,
           limit: 10,
           threshold: 0.7
@@ -416,7 +464,7 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
         expect(result).to eq(scope)
       end
 
-      it "handles empty filters" do
+      it "handles empty or nil filters" do
         result = operation.send(:apply_filters, scope, nil)
         expect(result).to eq(scope)
       end
@@ -424,17 +472,22 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
 
     describe "#format_results" do
       let(:rag_embedding) do
-        create(:ai_rag_embedding,
-               space: space,
-               embeddable: transaction,
-               content: "Transaction: Grocery purchase",
-               embedding: embedding_vector,
-               metadata: {
-                 transaction_type: "Transactions::Expense",
-                 category: category.name,
-                 account: account.name,
-                 date: transaction.date.iso8601
-               })
+        embedding = create(:ai_rag_embedding,
+                          space: space,
+                          embeddable: transaction,
+                          content: "Transaction: Grocery purchase",
+                          embedding: embedding_vector,
+                          metadata: {
+                            transaction_type: "Transactions::Expense",
+                            category: category.name,
+                            account: account.name,
+                            date: transaction.date.iso8601
+                          })
+        # Add neighbor_distance method to the embedding object
+        def embedding.neighbor_distance
+          0.2
+        end
+        embedding
       end
 
       let(:search_results) { [rag_embedding] }
@@ -487,12 +540,17 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
       end
 
       it "handles multiple results" do
+        # Create a different transaction to avoid unique constraint violation
+        transaction2 = create(:expense_transaction, space: space, account: account, category: category)
         rag_embedding2 = create(:ai_rag_embedding,
                                 space: space,
-                                embeddable: transaction,
+                                embeddable: transaction2,
                                 content: "Another transaction",
                                 embedding: embedding_vector)
-        allow(rag_embedding2).to receive(:neighbor_distance).and_return(0.3)
+
+        # Define the neighbor_distance method on the objects
+        rag_embedding.define_singleton_method(:neighbor_distance) { 0.2 }
+        rag_embedding2.define_singleton_method(:neighbor_distance) { 0.3 }
 
         multiple_results = [rag_embedding, rag_embedding2]
         result = operation.send(:format_results, results: multiple_results, params: params)

@@ -43,6 +43,11 @@ module Ai
           )
 
           embedding_vector = response.dig("data", 0, "embedding")
+
+          if embedding_vector.nil? || embedding_vector.empty?
+            return Failure(embedding_error: "Invalid embedding response from OpenAI")
+          end
+
           Success(embedding_vector)
         rescue StandardError => e
           Failure(embedding_error: "Failed to generate query embedding: #{e.message}")
@@ -69,9 +74,13 @@ module Ai
           )
 
           Success(results)
+        rescue StandardError => e
+          Failure(embedding_error: "Failed to perform vector search: #{e.message}")
         end
 
         def apply_filters(scope, filters)
+          return scope if filters.nil?
+
           if filters[:embeddable_type].present?
             scope = scope.where(embeddable_type: filters[:embeddable_type])
           end
@@ -118,6 +127,8 @@ module Ai
             total_count: formatted_results.count,
             space_id: params[:space_id]
           })
+        rescue StandardError => e
+          Failure(embedding_error: "Failed to format results: #{e.message}")
         end
       end
     end

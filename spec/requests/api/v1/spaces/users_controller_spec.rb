@@ -30,7 +30,7 @@ RSpec.describe Api::V1::Spaces::UsersController, type: :request do
       expect(users_data.length).to eq(2) # admin_user and member_user
     end
 
-    context "when user is not an admin" do
+    context "when as non-admin user" do
       it "returns 403 for non-admin" do
         get "/api/v1/spaces/#{space.code}/users", headers: member_auth[:headers]
 
@@ -66,10 +66,10 @@ RSpec.describe Api::V1::Spaces::UsersController, type: :request do
 
       post "/api/v1/spaces/#{space.code}/users/grant_access", params: invalid_params, headers: admin_auth[:headers]
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
-    context "when user is not an admin" do
+    context "when as non-admin user" do
       it "returns 403 for non-admin" do
         post "/api/v1/spaces/#{space.code}/users/grant_access", params: grant_params, headers: member_auth[:headers]
 
@@ -93,10 +93,10 @@ RSpec.describe Api::V1::Spaces::UsersController, type: :request do
     it "returns error when trying to remove admin user" do
       delete "/api/v1/spaces/#{space.code}/users/#{admin_user.id}/remove", headers: admin_auth[:headers]
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
-    context "when user is not an admin" do
+    context "when as non-admin user" do
       it "returns 403 for non-admin" do
         delete "/api/v1/spaces/#{space.code}/users/#{target_user.id}/remove", headers: member_auth[:headers]
 

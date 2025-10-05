@@ -60,6 +60,9 @@ gem "ruby-vips", "~> 2.2"
 # AI Processing
 gem "ruby-openai", "~> 8.3"
 
+# Documentation
+gem "rdoc", "~> 6.15.0"
+
 # Time-based grouping
 gem "groupdate", "~> 6.5"
 

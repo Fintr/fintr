@@ -231,7 +231,18 @@ RSpec.describe Ai::Operations::Embeddings::GenerateEmbedding, type: :operation d
 
     context "when store_embedding fails" do
       before do
-        allow_any_instance_of(Ai::RagEmbedding).to receive(:save!).and_raise(StandardError.new("Database error"))
+        # Mock the database to fail when saving
+        allow(Ai::RagEmbedding).to receive(:find_or_initialize_by).and_return(
+          instance_double(Ai::RagEmbedding).tap do |embedding|
+            allow(embedding).to receive(:save!).and_raise(StandardError.new("Database error"))
+            allow(embedding).to receive(:assign_attributes)
+            allow(embedding).to receive(:embeddable=)
+            allow(embedding).to receive(:space=)
+            allow(embedding).to receive(:content=)
+            allow(embedding).to receive(:embedding=)
+            allow(embedding).to receive(:metadata=)
+          end
+        )
       end
 
       it "returns a failure" do
@@ -256,7 +267,10 @@ RSpec.describe Ai::Operations::Embeddings::GenerateEmbedding, type: :operation d
 
         existing_embedding.reload
         expect(existing_embedding.content).to eq(content)
-        expect(existing_embedding.embedding.first(5).map { |x| x.round(5) }).to eq(embedding_vector.first(5).map { |x| x.round(5) })
+        # Use be_within for floating-point comparison to avoid precision issues
+        existing_embedding.embedding.first(5).zip(embedding_vector.first(5)).each do |actual, expected|
+          expect(actual).to be_within(0.00001).of(expected)
+        end
       end
     end
   end
@@ -397,11 +411,25 @@ RSpec.describe Ai::Operations::Embeddings::GenerateEmbedding, type: :operation d
         existing_embedding.reload
         expect(existing_embedding.content).to eq(content)
         expect(existing_embedding.embedding.length).to eq(embedding_vector.length)
-        expect(existing_embedding.embedding.first(5).map { |x| x.round(5) }).to eq(embedding_vector.first(5).map { |x| x.round(5) })
+        # Use be_within for floating-point comparison to avoid precision issues
+        existing_embedding.embedding.first(5).zip(embedding_vector.first(5)).each do |actual, expected|
+          expect(actual).to be_within(0.00001).of(expected)
+        end
       end
 
       it "returns failure when save fails" do
-        allow_any_instance_of(Ai::RagEmbedding).to receive(:save!).and_raise(StandardError.new("Database error"))
+        # Mock the database to fail when saving
+        allow(Ai::RagEmbedding).to receive(:find_or_initialize_by).and_return(
+          instance_double(Ai::RagEmbedding).tap do |embedding|
+            allow(embedding).to receive(:save!).and_raise(StandardError.new("Database error"))
+            allow(embedding).to receive(:assign_attributes)
+            allow(embedding).to receive(:embeddable=)
+            allow(embedding).to receive(:space=)
+            allow(embedding).to receive(:content=)
+            allow(embedding).to receive(:embedding=)
+            allow(embedding).to receive(:metadata=)
+          end
+        )
 
         result = operation.send(:store_embedding,
                                embeddable: transaction,

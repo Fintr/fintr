@@ -43,7 +43,7 @@ test:
     database: fintr_test
     host: localhost
     port: 5433
-    username: fintr_rails
+    username: <%= ENV['DATABASE_USER'] || 'postgres' %>
     password: <%= ENV['DATABASE_PASSWORD'] || 'postgres' %>
     # Basic settings for local development with TimescaleDB
     variables:
@@ -52,21 +52,6 @@ test:
       effective_cache_size: '1GB'
     pool: 10
     timeout: 5000
-  cache:
-    <<: *primary_test
-    database: fintr_test_cache
-    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_test_cache" %>
-    migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_test
-    database: fintr_test_queue
-    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_test_queue" %>
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *primary_test
-    database: fintr_test_cable
-    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_test_cable" %>
-    migrations_paths: db/cable_migrate
 
 staging:
   primary: &primary_staging

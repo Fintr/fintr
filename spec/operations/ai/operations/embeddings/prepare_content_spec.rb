@@ -1,98 +1,70 @@
 # frozen_string_literal: true
 
-require "spec_helper"
+require "rails_helper"
 
-RSpec.describe Ai::Operations::Embeddings::PrepareContent do
+RSpec.describe Ai::Operations::Embeddings::PrepareContent, type: :operation do
   describe "#call" do
     let(:operation) { described_class.new }
+    let(:user) { create(:user) }
+    let(:space) { create(:personal_space) }
+    let(:account) { create(:account, space: space) }
+    let(:category) { create(:category, space: space) }
 
     context "when embeddable is a Transactions::Expense" do
-      let(:space) { instance_double(Spaces::Space, name: "Test Space") }
-      let(:account) { instance_double(Transactions::Account, name: "Test Account") }
-      let(:category) { instance_double(Transactions::Category, name: "Test Category") }
-      let(:transaction) do
-        instance_double(Transactions::Expense,
-                        type: "Transactions::Expense",
-                        description: "Coffee purchase",
-                        amount: instance_double(Money, format: "₱5.00"),
-                        category:,
-                        account:,
-                        date: Date.parse("2024-01-15"),
-                        space:)
-      end
+      let(:transaction) { create(:expense_transaction, space: space, account: account, category: category, description: "Coffee purchase", amount: Money.from_amount(5.00, "PHP"), date: Date.parse("2024-01-15")) }
 
       it "builds transaction content with negative amount display" do
         result = operation.call(embeddable: transaction)
 
-        expect(result).to eq(
+        expect(result).to be_success
+        expect(result.value!).to eq(
           "Transaction: Coffee purchase, " \
           "Amount: -₱5.00, " \
-          "Category: Test Category, " \
-          "Account: Test Account, " \
+          "Category: #{category.name}, " \
+          "Account: #{account.name}, " \
           "Date: January 15, 2024, " \
           "Type: Transactions::Expense, " \
-          "Space: Test Space"
+          "Space: #{space.name}"
         )
       end
     end
 
     context "when embeddable is a Transactions::Income" do
-      let(:space) { instance_double(Spaces::Space, name: "Test Space") }
-      let(:account) { instance_double(Transactions::Account, name: "Test Account") }
-      let(:category) { instance_double(Transactions::Category, name: "Test Category") }
-      let(:transaction) do
-        instance_double(Transactions::Income,
-                        type: "Transactions::Income",
-                        description: "Salary payment",
-                        amount: instance_double(Money, format: "₱3,000.00"),
-                        category:,
-                        account:,
-                        date: Date.parse("2024-01-15"),
-                        space:)
-      end
+      let(:transaction) { create(:income_transaction, space: space, account: account, category: category, description: "Salary payment", amount: Money.from_amount(3000.00, "PHP"), date: Date.parse("2024-01-15")) }
 
       it "builds transaction content with positive amount display" do
         result = operation.call(embeddable: transaction)
 
-        expect(result).to eq(
+        expect(result).to be_success
+        expect(result.value!).to eq(
           "Transaction: Salary payment, " \
           "Amount: +₱3,000.00, " \
-          "Category: Test Category, " \
-          "Account: Test Account, " \
+          "Category: #{category.name}, " \
+          "Account: #{account.name}, " \
           "Date: January 15, 2024, " \
           "Type: Transactions::Income, " \
-          "Space: Test Space"
+          "Space: #{space.name}"
         )
       end
     end
 
     context "when embeddable is a Transactions::Transfer" do
-      let(:space) { instance_double(Spaces::Space, name: "Test Space") }
-      let(:from_account) { instance_double(Transactions::Account, name: "Checking Account") }
-      let(:to_account) { instance_double(Transactions::Account, name: "Savings Account") }
-      let(:transfer) do
-        instance_double(Transactions::Transfer,
-                        description: "Monthly savings transfer",
-                        amount: instance_double(Money, format: "₱1,000.00"),
-                        from_account:,
-                        to_account:,
-                        transaction_cost: instance_double(Money, format: "₱0.00"),
-                        date: Date.parse("2024-01-15"),
-                        space:)
-      end
+      let(:to_account) { create(:account, space: space) }
+      let(:transfer) { create(:transfer, space: space, from_account: account, to_account: to_account, description: "Monthly savings transfer", amount: Money.from_amount(1000.00, "PHP"), transaction_cost: Money.from_amount(0.00, "PHP"), date: Date.parse("2024-01-15")) }
 
       it "builds transfer content" do
         result = operation.call(embeddable: transfer)
 
-        expect(result).to eq(
+        expect(result).to be_success
+        expect(result.value!).to eq(
           "Transfer: Monthly savings transfer, " \
           "Amount: ₱1,000.00, " \
-          "From Account: Checking Account, " \
-          "To Account: Savings Account, " \
+          "From Account: #{account.name}, " \
+          "To Account: #{to_account.name}, " \
           "Transaction Cost: ₱0.00, " \
           "Date: January 15, 2024, " \
           "Type: Transfer, " \
-          "Space: Test Space"
+          "Space: #{space.name}"
         )
       end
     end

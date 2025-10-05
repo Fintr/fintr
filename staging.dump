@@ -1,0 +1,2057 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 17.4
+-- Dumped by pg_dump version 17.5
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
+--
+-- Name: account_category; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.account_category AS ENUM (
+    'cash',
+    'savings',
+    'debit',
+    'credit_card',
+    'e_wallet',
+    'loan',
+    'investment'
+);
+
+
+ALTER TYPE public.account_category OWNER TO postgres;
+
+--
+-- Name: ai_usages_ai_status; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.ai_usages_ai_status AS ENUM (
+    'pending',
+    'success',
+    'failure'
+);
+
+
+ALTER TYPE public.ai_usages_ai_status OWNER TO postgres;
+
+--
+-- Name: ai_usages_ai_type; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.ai_usages_ai_type AS ENUM (
+    'pure_ai_ocr',
+    'ai_chat'
+);
+
+
+ALTER TYPE public.ai_usages_ai_type OWNER TO postgres;
+
+--
+-- Name: balance_state; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.balance_state AS ENUM (
+    'pending',
+    'calculated'
+);
+
+
+ALTER TYPE public.balance_state OWNER TO postgres;
+
+--
+-- Name: category_type_enum; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.category_type_enum AS ENUM (
+    'income',
+    'expense'
+);
+
+
+ALTER TYPE public.category_type_enum OWNER TO postgres;
+
+--
+-- Name: crm_priority; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.crm_priority AS ENUM (
+    'low',
+    'medium',
+    'high',
+    'urgent'
+);
+
+
+ALTER TYPE public.crm_priority OWNER TO postgres;
+
+--
+-- Name: crm_ticket_response_type; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.crm_ticket_response_type AS ENUM (
+    'user_reply',
+    'admin_response',
+    'system_update'
+);
+
+
+ALTER TYPE public.crm_ticket_response_type OWNER TO postgres;
+
+--
+-- Name: crm_ticket_status; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.crm_ticket_status AS ENUM (
+    'open',
+    'in_progress',
+    'resolved',
+    'dismissed'
+);
+
+
+ALTER TYPE public.crm_ticket_status OWNER TO postgres;
+
+--
+-- Name: crm_ticket_type; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.crm_ticket_type AS ENUM (
+    'bug_report',
+    'feature_request',
+    'general_feedback',
+    'help_request',
+    'billing_issue',
+    'account_issue',
+    'other'
+);
+
+
+ALTER TYPE public.crm_ticket_type OWNER TO postgres;
+
+--
+-- Name: onboarding_step_enum; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.onboarding_step_enum AS ENUM (
+    'income',
+    'budgets',
+    'accounts',
+    'completed'
+);
+
+
+ALTER TYPE public.onboarding_step_enum OWNER TO postgres;
+
+--
+-- Name: repeat_interval; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.repeat_interval AS ENUM (
+    'every_day',
+    'every_week',
+    'every_2_weeks',
+    'every_month',
+    'every_2_months',
+    'every_3_months',
+    'every_6_months',
+    'every_year'
+);
+
+
+ALTER TYPE public.repeat_interval OWNER TO postgres;
+
+--
+-- Name: schedule_type; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.schedule_type AS ENUM (
+    'one_time',
+    'repeat',
+    'installment'
+);
+
+
+ALTER TYPE public.schedule_type OWNER TO postgres;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: accounts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.accounts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    space_id uuid NOT NULL,
+    name character varying NOT NULL,
+    balance_cents integer DEFAULT 0 NOT NULL,
+    balance_currency character varying DEFAULT 'PHP'::character varying NOT NULL,
+    account_category public.account_category NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    discarded_at timestamp(6) without time zone
+);
+
+
+ALTER TABLE public.accounts OWNER TO postgres;
+
+--
+-- Name: active_storage_attachments; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.active_storage_attachments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name character varying NOT NULL,
+    record_type character varying NOT NULL,
+    record_id uuid NOT NULL,
+    blob_id uuid NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.active_storage_attachments OWNER TO postgres;
+
+--
+-- Name: active_storage_blobs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.active_storage_blobs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    key character varying NOT NULL,
+    filename character varying NOT NULL,
+    content_type character varying,
+    metadata text,
+    service_name character varying NOT NULL,
+    byte_size bigint NOT NULL,
+    checksum character varying,
+    created_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.active_storage_blobs OWNER TO postgres;
+
+--
+-- Name: active_storage_variant_records; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.active_storage_variant_records (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    blob_id uuid NOT NULL,
+    variation_digest character varying NOT NULL
+);
+
+
+ALTER TABLE public.active_storage_variant_records OWNER TO postgres;
+
+--
+-- Name: ai_usages; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.ai_usages (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    space_id uuid NOT NULL,
+    ai_type public.ai_usages_ai_type DEFAULT 'pure_ai_ocr'::public.ai_usages_ai_type NOT NULL,
+    status public.ai_usages_ai_status DEFAULT 'pending'::public.ai_usages_ai_status NOT NULL,
+    tokens_used integer DEFAULT 1 NOT NULL,
+    time_seconds numeric(6,2) DEFAULT 0.0 NOT NULL,
+    result jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.ai_usages OWNER TO postgres;
+
+--
+-- Name: ar_internal_metadata; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.ar_internal_metadata (
+    key character varying NOT NULL,
+    value character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.ar_internal_metadata OWNER TO postgres;
+
+--
+-- Name: budgets; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.budgets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    space_id uuid NOT NULL,
+    category_id uuid NOT NULL,
+    amount_cents integer DEFAULT 0 NOT NULL,
+    amount_currency character varying DEFAULT 'PHP'::character varying NOT NULL,
+    spent_cents integer DEFAULT 0 NOT NULL,
+    spent_currency character varying DEFAULT 'PHP'::character varying NOT NULL,
+    date date NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.budgets OWNER TO postgres;
+
+--
+-- Name: spaces; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.spaces (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name character varying NOT NULL,
+    code character varying NOT NULL,
+    currency character varying DEFAULT 'PHP'::character varying NOT NULL,
+    type character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.spaces OWNER TO postgres;
+
+--
+-- Name: transactions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.transactions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    parent_id uuid,
+    effective_parent_id uuid,
+    date timestamp(6) without time zone NOT NULL,
+    amount_cents integer DEFAULT 0 NOT NULL,
+    amount_currency character varying DEFAULT 'PHP'::character varying NOT NULL,
+    balance_cents integer DEFAULT 0 NOT NULL,
+    balance_currency character varying DEFAULT 'PHP'::character varying NOT NULL,
+    description character varying,
+    type character varying NOT NULL,
+    schedule_type public.schedule_type NOT NULL,
+    repeat_interval public.repeat_interval,
+    balance_state public.balance_state NOT NULL,
+    repeat_count integer,
+    installment_period integer,
+    installment_count integer,
+    schedule jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    space_id uuid,
+    category_id uuid NOT NULL,
+    account_id uuid NOT NULL,
+    transfer_id uuid
+);
+
+
+ALTER TABLE public.transactions OWNER TO postgres;
+
+--
+-- Name: transactions_categories; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.transactions_categories (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    space_id uuid NOT NULL,
+    name character varying NOT NULL,
+    category_type public.category_type_enum NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.transactions_categories OWNER TO postgres;
+
+--
+-- Name: transfers; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.transfers (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    space_id uuid NOT NULL,
+    from_account_id uuid NOT NULL,
+    to_account_id uuid NOT NULL,
+    parent_id uuid,
+    effective_parent_id uuid,
+    amount_cents integer DEFAULT 0 NOT NULL,
+    amount_currency character varying DEFAULT 'PHP'::character varying NOT NULL,
+    transaction_cost_cents integer DEFAULT 0 NOT NULL,
+    transaction_cost_currency character varying DEFAULT 'PHP'::character varying NOT NULL,
+    date timestamp(6) without time zone NOT NULL,
+    description character varying,
+    schedule jsonb DEFAULT '{}'::jsonb,
+    schedule_type public.schedule_type NOT NULL,
+    repeat_interval public.repeat_interval,
+    repeat_count integer,
+    balance_state public.balance_state DEFAULT 'pending'::public.balance_state NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.transfers OWNER TO postgres;
+
+--
+-- Name: combined_transactions; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.combined_transactions AS
+ SELECT 'Transactions::Transfer'::character varying AS transactable_type,
+    transfers.id AS transactable_id,
+    transfers.space_id,
+    transfers.date,
+    transfers.amount_cents,
+    transfers.amount_currency,
+    transfers.description,
+    to_accounts.name AS to_account_name,
+    from_accounts.name AS from_account_name,
+    NULL::integer AS balance_cents,
+    NULL::character varying AS balance_currency,
+    NULL::character varying AS category_name,
+    NULL::uuid AS category_id,
+    transfers.transaction_cost_cents,
+    transfers.transaction_cost_currency,
+    transfers.balance_state,
+    transfers.created_at
+   FROM (((public.transfers
+     JOIN public.spaces ON ((spaces.id = transfers.space_id)))
+     JOIN public.accounts to_accounts ON ((to_accounts.id = transfers.to_account_id)))
+     JOIN public.accounts from_accounts ON ((from_accounts.id = transfers.from_account_id)))
+UNION ALL
+ SELECT transactions.type AS transactable_type,
+    transactions.id AS transactable_id,
+    transactions.space_id,
+    transactions.date,
+    transactions.amount_cents,
+    transactions.amount_currency,
+    transactions.description,
+        CASE
+            WHEN ((transactions.type)::text = 'Transactions::Income'::text) THEN accounts.name
+            ELSE NULL::character varying
+        END AS to_account_name,
+        CASE
+            WHEN ((transactions.type)::text = 'Transactions::Expense'::text) THEN accounts.name
+            ELSE NULL::character varying
+        END AS from_account_name,
+    transactions.balance_cents,
+    transactions.balance_currency,
+    transactions_categories.name AS category_name,
+    transactions_categories.id AS category_id,
+    NULL::integer AS transaction_cost_cents,
+    NULL::character varying AS transaction_cost_currency,
+    transactions.balance_state,
+    transactions.created_at
+   FROM (((public.transactions
+     JOIN public.accounts ON ((accounts.id = transactions.account_id)))
+     JOIN public.spaces ON ((spaces.id = transactions.space_id)))
+     JOIN public.transactions_categories ON ((transactions_categories.id = transactions.category_id)));
+
+
+ALTER VIEW public.combined_transactions OWNER TO postgres;
+
+--
+-- Name: crm_ticket_responses; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.crm_ticket_responses (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    ticket_id uuid NOT NULL,
+    responder_id uuid,
+    message text NOT NULL,
+    response_type public.crm_ticket_response_type DEFAULT 'user_reply'::public.crm_ticket_response_type NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.crm_ticket_responses OWNER TO postgres;
+
+--
+-- Name: crm_tickets; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.crm_tickets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    title character varying NOT NULL,
+    description text DEFAULT ''::text NOT NULL,
+    ticket_type public.crm_ticket_type DEFAULT 'bug_report'::public.crm_ticket_type NOT NULL,
+    priority public.crm_priority DEFAULT 'low'::public.crm_priority NOT NULL,
+    status public.crm_ticket_status DEFAULT 'open'::public.crm_ticket_status NOT NULL,
+    user_id uuid NOT NULL,
+    space_id uuid NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.crm_tickets OWNER TO postgres;
+
+--
+-- Name: goal_descriptions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.goal_descriptions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    description text,
+    space_id uuid NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.goal_descriptions OWNER TO postgres;
+
+--
+-- Name: monthly_financial_summaries; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.monthly_financial_summaries (
+    id bigint NOT NULL,
+    space_id uuid NOT NULL,
+    year integer NOT NULL,
+    month integer NOT NULL,
+    total_income numeric(15,2) DEFAULT 0.0 NOT NULL,
+    total_expenses numeric(15,2) DEFAULT 0.0 NOT NULL,
+    net_savings numeric(15,2) DEFAULT 0.0 NOT NULL,
+    calculated_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.monthly_financial_summaries OWNER TO postgres;
+
+--
+-- Name: monthly_financial_summaries_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.monthly_financial_summaries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.monthly_financial_summaries_id_seq OWNER TO postgres;
+
+--
+-- Name: monthly_financial_summaries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.monthly_financial_summaries_id_seq OWNED BY public.monthly_financial_summaries.id;
+
+
+--
+-- Name: onboardings; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.onboardings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    step public.onboarding_step_enum DEFAULT 'income'::public.onboarding_step_enum NOT NULL,
+    data jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.onboardings OWNER TO postgres;
+
+--
+-- Name: roles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.roles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name character varying,
+    resource_type character varying,
+    resource_id uuid,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.roles OWNER TO postgres;
+
+--
+-- Name: schema_migrations; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.schema_migrations (
+    version character varying NOT NULL
+);
+
+
+ALTER TABLE public.schema_migrations OWNER TO postgres;
+
+--
+-- Name: space_users; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.space_users (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    space_id uuid NOT NULL,
+    user_id uuid,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    invited_by_id uuid,
+    access_code character varying,
+    invitation_status character varying DEFAULT 'active'::character varying,
+    invitation_expires_at timestamp(6) without time zone,
+    invitation_used_at timestamp(6) without time zone
+);
+
+
+ALTER TABLE public.space_users OWNER TO postgres;
+
+--
+-- Name: user_activities; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.user_activities (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    activity_date date NOT NULL,
+    login_count integer DEFAULT 0 NOT NULL,
+    api_request_count integer DEFAULT 0 NOT NULL,
+    transaction_created_count integer DEFAULT 0 NOT NULL,
+    dashboard_viewed_count integer DEFAULT 0 NOT NULL,
+    total_requests integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.user_activities OWNER TO postgres;
+
+--
+-- Name: users; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.users (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    auth_id character varying NOT NULL,
+    full_name character varying,
+    email character varying,
+    photo_url character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE public.users OWNER TO postgres;
+
+--
+-- Name: users_roles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.users_roles (
+    user_id uuid,
+    role_id uuid
+);
+
+
+ALTER TABLE public.users_roles OWNER TO postgres;
+
+--
+-- Name: monthly_financial_summaries id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.monthly_financial_summaries ALTER COLUMN id SET DEFAULT nextval('public.monthly_financial_summaries_id_seq'::regclass);
+
+
+--
+-- Data for Name: accounts; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.accounts (id, space_id, name, balance_cents, balance_currency, account_category, created_at, updated_at, discarded_at) FROM stdin;
+09ce89ae-50f0-47f3-98f0-787c71aec7d6	990097e3-0566-4130-842c-e036164c62ef	Debit Card	0	PHP	debit	2025-09-24 05:28:53.684824	2025-09-24 05:28:53.684824	\N
+09216ccd-bcc4-4770-be60-1f244d118f9e	990097e3-0566-4130-842c-e036164c62ef	Credit Card	0	PHP	credit_card	2025-09-24 05:28:53.691593	2025-09-24 05:28:53.691593	\N
+15054087-0afb-4d88-b26c-a153a2033a69	990097e3-0566-4130-842c-e036164c62ef	E-Wallet	0	PHP	e_wallet	2025-09-24 05:28:53.698681	2025-09-24 05:28:53.698681	\N
+45c9ad0a-b29c-4f71-a42a-2a079f03b4fa	990097e3-0566-4130-842c-e036164c62ef	Loan	0	PHP	loan	2025-09-24 05:28:53.705485	2025-09-24 05:28:53.705485	\N
+d45f506c-dd20-4212-956d-4c34bba75610	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Cash	300000	PHP	cash	2025-09-01 13:23:42.584999	2025-09-01 13:23:42.675316	\N
+9eb12d62-1fb4-4e8c-8a66-81437dee68fc	6ffe601b-01dc-49e8-9930-5d1ff06633cf	E-Wallet	0	PHP	e_wallet	2025-09-01 13:23:42.734341	2025-09-01 13:23:42.734341	\N
+98eefb95-ce38-439a-a8b4-4d1bd5f4176d	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Loan	0	PHP	loan	2025-09-01 13:23:42.742834	2025-09-01 13:23:42.742834	\N
+1752c7b7-b37f-4458-8a30-0fe2c9a11c26	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Investment	0	PHP	investment	2025-09-01 13:23:42.753211	2025-09-01 13:23:42.753211	\N
+67af9fec-e1e5-4f30-ac9c-9c71358eaa56	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Credit Card	-1422943	PHP	credit_card	2025-09-01 13:23:42.722891	2025-09-01 13:25:43.471897	\N
+3dc420bb-6065-4f09-97ff-1ad6b0590d68	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Debit Card	200000	PHP	debit	2025-09-01 13:23:42.714326	2025-09-01 13:29:18.725796	\N
+24f4bafb-2b88-4bfc-a7ac-67783dbe6e15	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Savings	7799000	PHP	savings	2025-09-01 13:23:42.702132	2025-10-01 16:15:00.480036	\N
+c959bb39-d403-4de3-a951-e8a91610b18f	990097e3-0566-4130-842c-e036164c62ef	Investment	200000	PHP	investment	2025-09-24 05:28:53.712674	2025-10-01 16:15:00.501205	\N
+c66615c4-f6ad-48b9-9d79-0d31e223bcaa	f830bceb-8869-4f78-8b25-40a786ffc551	BDO Acct	7000000	PHP	debit	2025-08-28 21:37:11.275649	2025-09-01 16:15:00.563244	\N
+b3a0d796-89a8-4074-a702-c696975cc042	f830bceb-8869-4f78-8b25-40a786ffc551	BPI Payroll	10000000	PHP	savings	2025-08-28 21:37:11.22148	2025-09-01 16:15:00.582334	\N
+5d5387c7-dbfa-4aed-aed8-bc95d8f529e3	f830bceb-8869-4f78-8b25-40a786ffc551	BPI Checking	0	PHP	savings	2025-08-28 21:37:11.411219	2025-08-28 21:37:11.411219	\N
+e3e57677-69c8-404c-b7c7-7f4f892e2e6f	f830bceb-8869-4f78-8b25-40a786ffc551	Cash	491500	PHP	cash	2025-08-28 21:37:11.127828	2025-08-28 23:13:50.587133	\N
+156e6b02-e369-4311-8dc9-8e9fd2dd646f	f830bceb-8869-4f78-8b25-40a786ffc551	BDO CC	-8234700	PHP	credit_card	2025-08-28 21:37:11.329232	2025-08-28 23:14:42.832462	\N
+017ca22b-613e-40c8-8b2b-a78828042159	f830bceb-8869-4f78-8b25-40a786ffc551	GCash	491500	PHP	e_wallet	2025-08-28 21:37:11.335979	2025-08-29 08:56:34.951197	\N
+265e1f49-9ac1-4ef7-bced-0f04d6b2afc6	f830bceb-8869-4f78-8b25-40a786ffc551	Maya	587900	PHP	e_wallet	2025-08-28 21:37:11.373413	2025-08-29 16:45:51.89244	\N
+a7809d30-831e-4bcb-9981-785b04faae3c	f830bceb-8869-4f78-8b25-40a786ffc551	BPI CC	-64620	PHP	credit_card	2025-08-29 10:41:47.308363	2025-08-29 17:09:45.150358	\N
+45e8683e-7981-45c8-99bd-9ceba339f146	990097e3-0566-4130-842c-e036164c62ef	Cash	0	PHP	cash	2025-09-24 05:28:53.658776	2025-09-24 05:28:53.658776	\N
+d311a690-e616-409b-9756-af3cb4f2923f	990097e3-0566-4130-842c-e036164c62ef	Savings	0	PHP	savings	2025-09-24 05:28:53.677603	2025-09-24 05:28:53.677603	\N
+\.
+
+
+--
+-- Data for Name: active_storage_attachments; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.active_storage_attachments (id, name, record_type, record_id, blob_id, created_at) FROM stdin;
+49604810-bfc0-43ec-8e8b-ae580bc35bff	images	Crm::Ticket	4e679099-38b1-407d-bbe6-0ede5acb7298	af7d2803-5e37-44f9-963d-d7f3485b96e5	2025-08-21 21:54:48.169222
+3768d6d6-d671-440d-8c2c-eea9a1fb9c71	files	Transactions::Transaction	63615385-f2e5-4c4c-b6b4-3ceb38819d87	e3649c27-32b2-4cfa-a7d0-b6e589173509	2025-08-28 23:13:50.652326
+24e6ec50-6597-4a3d-a260-e4c12c93e907	files	Transactions::Transaction	ad487439-3bd0-43a0-a6d4-f38f83f990c9	a3c34add-1978-4d23-8556-49d0b46a5b60	2025-08-28 23:14:42.860213
+f2073282-fe2d-4f9b-abe4-4eab0cebc70d	files	Transactions::Transaction	4ce74c88-2094-4ffe-b6cb-d03e995d2a23	ca67f288-179d-4fe6-aa24-b0b6d50a7037	2025-08-29 08:56:34.974808
+e340dff7-4919-4c3f-be93-3bfefeac8e4b	files	Transactions::Transaction	575a653e-0112-4150-a7fa-56258f4d28b8	2ef7f000-a1e1-4d01-8fea-b60745ce8b05	2025-08-29 10:41:52.905379
+9c9a5bea-ed0e-45b2-90ae-55cd5e7fb66a	files	Transactions::Transaction	b4167362-cb4f-44d0-83e9-b834eadb5120	54dda54b-59e3-4cc4-83f4-861cd4bc7e65	2025-08-29 16:45:51.982136
+2952309c-5b3a-44ab-b7d7-42530b8a2328	files	Transactions::Transaction	a6deed2d-9d16-40a2-83f3-35b215c853a8	cf466211-7f4c-433b-bd99-7f8a7691971b	2025-08-29 17:09:45.206323
+d38d4487-94cc-47cb-b62c-52931207de57	files	Transactions::Transaction	a9d6bd04-141c-4253-b959-6e116a755c88	a2e56700-acdc-400c-9fc0-0a0486819419	2025-09-01 13:25:43.499403
+\.
+
+
+--
+-- Data for Name: active_storage_blobs; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.active_storage_blobs (id, key, filename, content_type, metadata, service_name, byte_size, checksum, created_at) FROM stdin;
+af7d2803-5e37-44f9-963d-d7f3485b96e5	ny1oj3pz732j1khruf99c5fzoonp	IMG_0051.jpeg	image/jpeg	{"identified":true,"width":1170,"height":189,"analyzed":true}	amazon	76549	vJKP0ARrlWW/nYaBA3yKOA==	2025-08-21 21:54:48.157788
+ca67f288-179d-4fe6-aa24-b0b6d50a7037	spaces/f830bceb-8869-4f78-8b25-40a786ffc551/0c82db4b-29f5-4b2a-9204-90f2b7061235-IMG_0089.jpeg	IMG_0089.jpeg	image/jpeg	{"identified":true,"width":3024,"height":4032,"analyzed":true}	amazon	1465445	jbwC+h7HN4AvNDbmH+wRMQ==	2025-08-29 08:56:34.972487
+2ef7f000-a1e1-4d01-8fea-b60745ce8b05	spaces/f830bceb-8869-4f78-8b25-40a786ffc551/f44fb113-4d92-46ed-9f09-be9acf9c1bd3-IMG_0106.png	IMG_0106.png	image/png	{"identified":true,"width":1170,"height":2532,"analyzed":true}	amazon	197421	CdXmJmMYJdjqSmhquW78Tw==	2025-08-29 10:41:52.902268
+54dda54b-59e3-4cc4-83f4-861cd4bc7e65	spaces/f830bceb-8869-4f78-8b25-40a786ffc551/2700c929-0f9b-4bcf-a37a-360ede0db7b1-IMG_0109.jpeg	IMG_0109.jpeg	image/jpeg	{"identified":true,"width":1170,"height":2010,"analyzed":true}	amazon	120497	DfM8VvTTAYnFglWBl0YpWA==	2025-08-29 16:45:51.972997
+cf466211-7f4c-433b-bd99-7f8a7691971b	spaces/f830bceb-8869-4f78-8b25-40a786ffc551/b7e23a35-a727-417d-90ee-461b06952e5c-IMG_0111.jpeg	IMG_0111.jpeg	image/jpeg	{"identified":true,"width":1170,"height":494,"analyzed":true}	amazon	113052	ptnmHklqvncDxPbaX56Rog==	2025-08-29 17:09:45.203269
+a2e56700-acdc-400c-9fc0-0a0486819419	spaces/6ffe601b-01dc-49e8-9930-5d1ff06633cf/4af25db4-f102-4bb9-b9a6-ba0045caead2-camera-photo.jpg	camera-photo.jpg	image/jpeg	{"identified":true,"width":1920,"height":1080,"analyzed":true}	amazon	279990	D1qMk5rj7WXc+xF3Y9KeQA==	2025-09-01 13:25:43.496453
+e3649c27-32b2-4cfa-a7d0-b6e589173509	spaces/f830bceb-8869-4f78-8b25-40a786ffc551/b2ec4dce-3457-4cdf-b940-0ba1a3201919-IMG_0089.jpeg	IMG_0089.jpeg	image/jpeg	{"identified":true,"width":3024,"height":4032,"analyzed":true}	amazon	1465445	jbwC+h7HN4AvNDbmH+wRMQ==	2025-08-28 23:13:50.646967
+a3c34add-1978-4d23-8556-49d0b46a5b60	spaces/f830bceb-8869-4f78-8b25-40a786ffc551/5c8892f5-4ad4-4373-9e83-c536b04dd21a-IMG_0062.jpeg	IMG_0062.jpeg	image/jpeg	{"identified":true,"width":3024,"height":4032,"analyzed":true}	amazon	1903697	ATlasqfyeEAZjhJm9n8JEw==	2025-08-28 23:14:42.857469
+\.
+
+
+--
+-- Data for Name: active_storage_variant_records; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.active_storage_variant_records (id, blob_id, variation_digest) FROM stdin;
+\.
+
+
+--
+-- Data for Name: ai_usages; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.ai_usages (id, user_id, space_id, ai_type, status, tokens_used, time_seconds, result, created_at, updated_at) FROM stdin;
+e6208068-98b4-45b7-8945-de4167b4c2f7	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	pure_ai_ocr	success	1	4.64	{}	2025-08-26 13:48:23.455393	2025-08-26 13:48:28.052877
+df842870-0641-4ef1-815b-3a44da9c6453	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	pure_ai_ocr	success	1	7.26	{}	2025-08-27 03:49:50.771512	2025-08-27 03:49:58.013433
+9e20a8a9-8a7a-4784-94e5-a6675fc130cc	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	pure_ai_ocr	success	1	9.75	{}	2025-08-27 03:50:25.155056	2025-08-27 03:50:34.89856
+ba86b704-9bf5-4a97-a4aa-d3ec96bd92a5	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	pure_ai_ocr	success	1	3.24	{}	2025-08-27 22:20:32.849528	2025-08-27 22:20:36.065151
+c72f19e0-52a0-4f61-bc84-4a1230ae2ae2	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	pure_ai_ocr	success	1	6.79	{}	2025-08-28 23:13:36.885288	2025-08-28 23:13:43.650867
+d3f012a6-8594-41d0-9023-5960a45a7172	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	pure_ai_ocr	success	1	6.37	{}	2025-08-28 23:14:19.666895	2025-08-28 23:14:26.019745
+1bebe2e9-1ee8-462f-977e-c8e892ac1f6a	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	pure_ai_ocr	success	1	6.51	{}	2025-08-29 08:56:18.845319	2025-08-29 08:56:25.349702
+d5860023-99c7-4282-b4e4-3631674517d8	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	pure_ai_ocr	success	1	4.31	{}	2025-08-29 10:41:13.834044	2025-08-29 10:41:18.12721
+7e64c2a0-b7f5-40e7-8516-6e8b831da011	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	pure_ai_ocr	success	1	3.83	{}	2025-08-29 16:45:26.867998	2025-08-29 16:45:30.645724
+0652c984-8677-4e54-8a78-6fc3a4c92db7	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	pure_ai_ocr	success	1	6.57	{}	2025-08-29 17:09:23.290472	2025-08-29 17:09:29.836066
+f78726d6-c914-4244-a27f-161ca83585da	f98315a2-b72c-4291-a440-ea58ac6b11ec	6ffe601b-01dc-49e8-9930-5d1ff06633cf	pure_ai_ocr	success	1	7.05	{}	2025-09-01 13:25:15.200421	2025-09-01 13:25:22.216927
+4fdcc8f3-b202-47c2-86f3-e192470453f3	724de54c-e26f-4bc6-8c40-2ce650dc67af	990097e3-0566-4130-842c-e036164c62ef	pure_ai_ocr	success	1	9.60	{}	2025-09-04 13:59:22.417952	2025-09-04 13:59:31.99308
+\.
+
+
+--
+-- Data for Name: ar_internal_metadata; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.ar_internal_metadata (key, value, created_at, updated_at) FROM stdin;
+environment	staging	2025-08-17 06:14:30.486135	2025-08-17 06:14:30.48614
+schema_sha1	5601b2d78f891408fd3bfc1dd932f679429b37a1	2025-08-17 06:14:30.493639	2025-08-17 06:14:30.493644
+\.
+
+
+--
+-- Data for Name: budgets; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.budgets (id, space_id, category_id, amount_cents, amount_currency, spent_cents, spent_currency, date, created_at, updated_at) FROM stdin;
+8c58caa6-dd2a-4b2a-b072-ba628ff28e3e	f830bceb-8869-4f78-8b25-40a786ffc551	86da6308-f019-446b-b0f8-9cfab80cf713	2500000	PHP	0	PHP	2025-08-28	2025-08-28 21:37:11.495369	2025-08-28 21:37:11.495369
+eb8a5a1e-8d61-497e-ab7c-345fa1e94f09	f830bceb-8869-4f78-8b25-40a786ffc551	f5702a6e-7bc8-45da-9957-82dde9ca90db	1000000	PHP	0	PHP	2025-08-28	2025-08-28 21:37:11.511331	2025-08-28 21:37:11.511331
+1a02794f-0e89-486c-b8c1-57474fe5f932	f830bceb-8869-4f78-8b25-40a786ffc551	9a286f61-2ae7-4db7-88da-88bc3f18466e	500000	PHP	0	PHP	2025-08-28	2025-08-28 21:37:11.523734	2025-08-28 21:37:11.523734
+1bcbf6fb-1990-44a3-84a4-a77c57458c2d	f830bceb-8869-4f78-8b25-40a786ffc551	e8b47257-f38f-47ec-876b-8c3830158dda	500000	PHP	0	PHP	2025-08-28	2025-08-28 21:37:11.534936	2025-08-28 21:37:11.534936
+d3d03c40-cdc6-40cd-a67f-44b4d0a945bf	f830bceb-8869-4f78-8b25-40a786ffc551	f25023a8-c4ae-42e0-a5d3-d068818bfd9f	500000	PHP	0	PHP	2025-08-28	2025-08-28 21:37:11.546542	2025-08-28 21:37:11.546542
+7fc4ff8c-53ac-4b48-b0d7-3e4b9cefd3ec	f830bceb-8869-4f78-8b25-40a786ffc551	187d3be1-25e3-48f1-a210-621f59e8c57d	1000000	PHP	0	PHP	2025-08-28	2025-08-28 21:37:11.55855	2025-08-28 21:37:11.55855
+502ef382-8dad-4d72-b695-1ee182dd567f	f830bceb-8869-4f78-8b25-40a786ffc551	47f55970-9adb-4676-86de-679960e8d74f	1000000	PHP	0	PHP	2025-08-28	2025-08-28 21:37:11.569812	2025-08-28 21:37:11.569812
+c0798df0-e0a2-41a2-be03-03bf1f8d2101	f830bceb-8869-4f78-8b25-40a786ffc551	b5b9514e-79b9-49eb-9d17-799890cbd16c	500000	PHP	0	PHP	2025-08-28	2025-08-28 21:37:11.580872	2025-08-28 21:37:11.580872
+017faef6-5ed3-470c-95ce-18e42818974f	f830bceb-8869-4f78-8b25-40a786ffc551	db05a2bc-33ce-4fb5-83b1-39340cff85c5	500000	PHP	0	PHP	2025-08-28	2025-08-28 21:37:11.592079	2025-08-28 21:37:11.592079
+21e33872-129d-4b90-af33-d7815bd76d8e	6ffe601b-01dc-49e8-9930-5d1ff06633cf	4936c0b9-e0c7-44ad-864c-c40ba74f2173	2000000	PHP	0	PHP	2025-09-01	2025-09-01 13:23:42.863169	2025-09-01 13:23:42.863169
+08e8c030-8d96-4ef5-9276-62e45affd4a0	6ffe601b-01dc-49e8-9930-5d1ff06633cf	4a0f6bf6-900a-4aae-b6e7-519917bd972d	800000	PHP	0	PHP	2025-09-01	2025-09-01 13:23:42.888556	2025-09-01 13:23:42.888556
+b73e88dc-9e23-4a32-9a31-9b4f5b85bb53	6ffe601b-01dc-49e8-9930-5d1ff06633cf	cec6721e-5688-4e90-a451-4fe3e87c8cda	400000	PHP	0	PHP	2025-09-01	2025-09-01 13:23:42.905614	2025-09-01 13:23:42.905614
+6099b12c-e413-4cff-aa66-fd2aeb125bc0	6ffe601b-01dc-49e8-9930-5d1ff06633cf	2b5bd658-b7ff-417a-8b09-bc13781c973e	400000	PHP	0	PHP	2025-09-01	2025-09-01 13:23:42.924192	2025-09-01 13:23:42.924192
+8bea82be-993c-4115-bd6a-2f59f6b9a056	6ffe601b-01dc-49e8-9930-5d1ff06633cf	f574f822-d19a-4885-9dde-0dda2a7e9169	400000	PHP	0	PHP	2025-09-01	2025-09-01 13:23:42.937255	2025-09-01 13:23:42.937255
+a315a903-0da2-4a42-ac7c-338688774f52	6ffe601b-01dc-49e8-9930-5d1ff06633cf	0db50a71-f900-4b1e-aae2-8aabd9e0a96e	800000	PHP	0	PHP	2025-09-01	2025-09-01 13:23:42.950595	2025-09-01 13:23:42.950595
+02ab83c8-d007-4b7a-a802-b14e6ca3f217	6ffe601b-01dc-49e8-9930-5d1ff06633cf	13171088-d8b4-4929-916c-af06c8928e33	800000	PHP	0	PHP	2025-09-01	2025-09-01 13:23:42.963758	2025-09-01 13:23:42.963758
+b6646c51-205b-47a3-a7dc-36b60f63d260	6ffe601b-01dc-49e8-9930-5d1ff06633cf	884aa890-0dce-469e-93ec-2a6df2713259	400000	PHP	0	PHP	2025-09-01	2025-09-01 13:23:42.976055	2025-09-01 13:23:42.976055
+b8367406-50a0-4d3d-8c2a-fd5262f3a90b	6ffe601b-01dc-49e8-9930-5d1ff06633cf	38695414-dd6e-4436-a920-3d8fcd1d9a4e	400000	PHP	0	PHP	2025-09-01	2025-09-01 13:23:42.990004	2025-09-01 13:23:42.990004
+8ef46d0f-5807-49e3-b421-8ed5f282d1e1	990097e3-0566-4130-842c-e036164c62ef	f99dd19a-1675-4f4e-8f87-aa896756c74a	100000	PHP	0	PHP	2025-09-24	2025-09-24 05:28:53.894089	2025-09-24 05:28:53.894089
+8d0f7682-18c3-4baa-8c9c-f314f2a116e1	990097e3-0566-4130-842c-e036164c62ef	c81af77a-fac4-46b5-baa7-b7f1b6ff66e7	40000	PHP	0	PHP	2025-09-24	2025-09-24 05:28:53.921446	2025-09-24 05:28:53.921446
+d946b97e-256f-4b13-a9c4-1a2b32dd6944	990097e3-0566-4130-842c-e036164c62ef	85690d46-875d-41c9-bdf2-d4c8df7ab93d	20000	PHP	0	PHP	2025-09-24	2025-09-24 05:28:53.937253	2025-09-24 05:28:53.937253
+5c1d2ff3-e81a-4b96-b12d-8fb010f38820	990097e3-0566-4130-842c-e036164c62ef	a1bd9235-47a1-49f0-a7a8-645be7d39bcc	20000	PHP	0	PHP	2025-09-24	2025-09-24 05:28:53.951444	2025-09-24 05:28:53.951444
+e343affe-17c4-4b44-83d6-4c9cf7b291ed	990097e3-0566-4130-842c-e036164c62ef	c96b2027-7706-4db7-9acb-5fc24c405632	20000	PHP	0	PHP	2025-09-24	2025-09-24 05:28:53.967063	2025-09-24 05:28:53.967063
+8407ec09-700f-4a6a-a986-c493ac2fb45f	990097e3-0566-4130-842c-e036164c62ef	a3bccaff-a00d-4f53-b7cd-0c40bacdae7f	40000	PHP	0	PHP	2025-09-24	2025-09-24 05:28:53.980942	2025-09-24 05:28:53.980942
+1755855b-aabe-48fb-9c88-1cbb082a8e23	990097e3-0566-4130-842c-e036164c62ef	e2505e6c-594b-49ca-a4d4-1090b277276d	40000	PHP	0	PHP	2025-09-24	2025-09-24 05:28:53.994919	2025-09-24 05:28:53.994919
+4077f0ba-3ba9-45ef-97ae-09d5ad546ee4	990097e3-0566-4130-842c-e036164c62ef	6a6a33cb-16a9-4a99-85a4-e9ec4463a653	20000	PHP	0	PHP	2025-09-24	2025-09-24 05:28:54.0107	2025-09-24 05:28:54.0107
+629af246-e2a2-4344-80fe-83d29c2101e3	990097e3-0566-4130-842c-e036164c62ef	5e2c2a92-63b7-4d5a-92fe-4cd9c5dc8b89	20000	PHP	0	PHP	2025-09-24	2025-09-24 05:28:54.03241	2025-09-24 05:28:54.03241
+\.
+
+
+--
+-- Data for Name: crm_ticket_responses; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.crm_ticket_responses (id, ticket_id, responder_id, message, response_type, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: crm_tickets; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.crm_tickets (id, title, description, ticket_type, priority, status, user_id, space_id, created_at, updated_at) FROM stdin;
+db83be5c-c114-4654-bd2a-523b5d9a8588	X	X	general_feedback	medium	open	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	2025-08-21 01:35:46.372138	2025-08-21 01:35:46.372138
+4e679099-38b1-407d-bbe6-0ede5acb7298	Ehd	Je	general_feedback	medium	open	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	f830bceb-8869-4f78-8b25-40a786ffc551	2025-08-21 21:54:48.064562	2025-08-21 21:54:50.144787
+\.
+
+
+--
+-- Data for Name: goal_descriptions; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.goal_descriptions (id, description, space_id, created_at, updated_at) FROM stdin;
+93028005-4d8b-4a2e-a862-be35d3e42818	Set your own financial freedom goal, whatever milestone or lifestyle you're aiming for.	f830bceb-8869-4f78-8b25-40a786ffc551	2025-08-28 23:10:23.029148	2025-08-28 23:10:23.037898
+\.
+
+
+--
+-- Data for Name: monthly_financial_summaries; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.monthly_financial_summaries (id, space_id, year, month, total_income, total_expenses, net_savings, calculated_at, created_at, updated_at) FROM stdin;
+1	990097e3-0566-4130-842c-e036164c62ef	2025	9	2000.00	0.00	2000.00	2025-09-28 13:27:12.736253	2025-09-25 06:27:46.42546	2025-09-28 13:27:12.736523
+2	990097e3-0566-4130-842c-e036164c62ef	2025	10	0.00	0.00	0.00	2025-10-05 14:40:55.898464	2025-10-05 14:40:55.920086	2025-10-05 14:40:55.920086
+\.
+
+
+--
+-- Data for Name: onboardings; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.onboardings (id, user_id, step, data, created_at, updated_at) FROM stdin;
+7ffb24fe-aded-474c-8f31-ed19dec1e873	8c55c6dd-d4bf-471d-98e2-9389bc69be83	income	{}	2025-08-22 22:45:12.39298	2025-08-22 22:45:12.39298
+3ceab860-139d-43c1-af58-a5e32fa985d4	724de54c-e26f-4bc6-8c40-2ce650dc67af	completed	{"income": {"salary_income": "2000.0", "business_income": "2000.0"}, "budgets": [{"name": "Home", "amount": "1000.0"}, {"name": "Food & Groceries", "amount": "400.0"}, {"name": "Utilities", "amount": "200.0"}, {"name": "Transportation", "amount": "200.0"}, {"name": "Insurance", "amount": "200.0"}, {"name": "Dine Out & Entertainment", "amount": "400.0"}, {"name": "Shopping", "amount": "400.0"}, {"name": "Subscriptions & Hobbies", "amount": "200.0"}, {"name": "Travel & Vacations", "amount": "200.0"}], "accounts": [{"name": "Cash", "balance": "0", "account_category": "cash"}, {"name": "Savings", "balance": "0", "account_category": "savings"}, {"name": "Debit Card", "balance": "0", "account_category": "debit"}, {"name": "Credit Card", "balance": "0", "account_category": "credit_card"}, {"name": "E-Wallet", "balance": "0", "account_category": "e_wallet"}, {"name": "Loan", "balance": "0", "account_category": "loan"}, {"name": "Investment", "balance": "0", "account_category": "investment"}]}	2025-09-21 14:52:39.213059	2025-09-24 05:28:53.58475
+eb93a3b8-a624-4f2f-936d-11823e541a60	f98315a2-b72c-4291-a440-ea58ac6b11ec	completed	{"income": {"salary_income": "80000.0", "business_income": "0.0"}, "budgets": [{"name": "Home", "amount": "20000.0"}, {"name": "Food & Groceries", "amount": "8000.0"}, {"name": "Utilities", "amount": "4000.0"}, {"name": "Transportation", "amount": "4000.0"}, {"name": "Insurance", "amount": "4000.0"}, {"name": "Dine Out & Entertainment", "amount": "8000.0"}, {"name": "Shopping", "amount": "8000.0"}, {"name": "Subscriptions & Hobbies", "amount": "4000.0"}, {"name": "Travel & Vacations", "amount": "4000.0"}], "accounts": [{"name": "Cash", "balance": "3000", "account_category": "cash"}, {"name": "Savings", "balance": "0", "account_category": "savings"}, {"name": "Debit Card", "balance": "0", "account_category": "debit"}, {"name": "Credit Card", "balance": "0", "account_category": "credit_card"}, {"name": "E-Wallet", "balance": "0", "account_category": "e_wallet"}, {"name": "Loan", "balance": "0", "account_category": "loan"}, {"name": "Investment", "balance": "0", "account_category": "investment"}]}	2025-09-01 13:23:11.255198	2025-09-01 13:23:42.566696
+ee88e03d-ec76-44f9-b733-2ab6915f1d2b	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	completed	{"income": {"salary_income": "50000.0", "business_income": "50000.0"}, "budgets": [{"name": "Home", "amount": "25000.0"}, {"name": "Food & Groceries", "amount": "10000.0"}, {"name": "Utilities", "amount": "5000.0"}, {"name": "Transportation", "amount": "5000.0"}, {"name": "Insurance", "amount": "5000.0"}, {"name": "Dine Out & Entertainment", "amount": "10000.0"}, {"name": "Shopping", "amount": "10000.0"}, {"name": "Subscriptions & Hobbies", "amount": "5000.0"}, {"name": "Travel & Vacations", "amount": "5000.0"}], "accounts": [{"name": "Cash", "balance": "5000", "account_category": "cash"}, {"name": "BPI Payroll", "balance": "50000", "account_category": "savings"}, {"name": "BDO Acct", "balance": "20000", "account_category": "debit"}, {"name": "BDO CC", "balance": "0", "account_category": "credit_card"}, {"name": "GCash", "balance": "5000", "account_category": "e_wallet"}, {"name": "Maya", "balance": "5000", "account_category": "e_wallet"}, {"name": "BPI Checking", "balance": "0", "account_category": "savings"}]}	2025-08-28 21:33:00.651837	2025-08-28 21:37:11.106873
+\.
+
+
+--
+-- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.roles (id, name, resource_type, resource_id, created_at, updated_at) FROM stdin;
+41fe18ef-988f-47b7-bbb7-d89ac5875b36	admin	Spaces::PersonalSpace	990097e3-0566-4130-842c-e036164c62ef	2025-08-17 06:15:09.797994	2025-08-17 06:15:09.797994
+60ac1e73-09a3-426e-8ea6-7556bfc26fe3	admin	\N	\N	2025-08-17 06:16:42.960548	2025-08-17 06:16:42.960548
+3bda3924-3d5a-49e3-8975-1782bd599d4a	admin	Spaces::PersonalSpace	f830bceb-8869-4f78-8b25-40a786ffc551	2025-08-17 13:02:28.48353	2025-08-17 13:02:28.48353
+368ddde6-9451-479e-a892-90e26423f7fb	admin	Spaces::PersonalSpace	e8f0d7c9-3651-4cca-bf80-3c7cc5da5781	2025-08-22 22:45:12.488541	2025-08-22 22:45:12.488541
+b5605f8f-93fd-4784-9e59-e013b1f6015b	admin	Spaces::PersonalSpace	6ffe601b-01dc-49e8-9930-5d1ff06633cf	2025-09-01 13:23:11.383319	2025-09-01 13:23:11.383319
+\.
+
+
+--
+-- Data for Name: schema_migrations; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.schema_migrations (version) FROM stdin;
+20250814040759
+20250806063831
+20250803114923
+20250803113502
+20250802091122
+20250720120623
+20250508140559
+20250505125212
+20250501171115
+20250426150955
+20250417150210
+20250417121516
+20250417060221
+20250417032847
+20250417031220
+20250413063131
+20250409055902
+20250409055901
+20250816144151
+20250816144206
+20250825044412
+20250825052523
+20250901041006
+20250915070456
+20250923060648
+20250913143431
+20250913143503
+20250917232256
+\.
+
+
+--
+-- Data for Name: space_users; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.space_users (id, space_id, user_id, created_at, updated_at, invited_by_id, access_code, invitation_status, invitation_expires_at, invitation_used_at) FROM stdin;
+53eb5834-9eb5-4a1c-816b-9ad6d6d50a96	990097e3-0566-4130-842c-e036164c62ef	724de54c-e26f-4bc6-8c40-2ce650dc67af	2025-08-17 06:15:09.707657	2025-08-17 06:15:09.707657	\N	\N	active	\N	\N
+a8adb7fd-f07d-42d1-a155-0a3d97b15d9b	f830bceb-8869-4f78-8b25-40a786ffc551	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	2025-08-17 13:02:28.474833	2025-08-17 13:02:28.474833	\N	\N	active	\N	\N
+0d2ec87c-c728-4381-b3e8-623ab103dbe8	e8f0d7c9-3651-4cca-bf80-3c7cc5da5781	8c55c6dd-d4bf-471d-98e2-9389bc69be83	2025-08-22 22:45:12.480994	2025-08-22 22:45:12.480994	\N	\N	active	\N	\N
+841fe678-bcc1-479a-8809-c502410f4b3b	6ffe601b-01dc-49e8-9930-5d1ff06633cf	f98315a2-b72c-4291-a440-ea58ac6b11ec	2025-09-01 13:23:11.372866	2025-09-01 13:23:11.372866	\N	\N	active	\N	\N
+\.
+
+
+--
+-- Data for Name: spaces; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.spaces (id, name, code, currency, type, created_at, updated_at) FROM stdin;
+990097e3-0566-4130-842c-e036164c62ef	Miguel Dagatan's Space	miguel-dagatan-gmail-com-personal-space	PHP	Spaces::PersonalSpace	2025-08-17 06:15:09.479407	2025-08-17 06:15:09.479407
+f830bceb-8869-4f78-8b25-40a786ffc551	Paolo Paraiso's Space	joelpaoloparaiso-gmail-com-personal-space	PHP	Spaces::PersonalSpace	2025-08-17 13:02:28.391392	2025-08-17 13:02:28.391392
+e8f0d7c9-3651-4cca-bf80-3c7cc5da5781	paraiso.jpaolo@gmail.com's Space	paraiso-jpaolo-gmail-com-personal-space	PHP	Spaces::PersonalSpace	2025-08-22 22:45:12.417007	2025-08-22 22:45:12.417007
+6ffe601b-01dc-49e8-9930-5d1ff06633cf	Miguel Dagatan (Miko)'s Space	miguel-dagatan-getlavanda-com-personal-space	PHP	Spaces::PersonalSpace	2025-09-01 13:23:11.280456	2025-09-01 13:23:11.280456
+\.
+
+
+--
+-- Data for Name: transactions; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.transactions (id, user_id, parent_id, effective_parent_id, date, amount_cents, amount_currency, balance_cents, balance_currency, description, type, schedule_type, repeat_interval, balance_state, repeat_count, installment_period, installment_count, schedule, created_at, updated_at, space_id, category_id, account_id, transfer_id) FROM stdin;
+d699b0cc-7346-453e-9c09-f394cd4e6a85	724de54c-e26f-4bc6-8c40-2ce650dc67af	84c6753e-3989-4cf4-94ef-f539a8baa799	84c6753e-3989-4cf4-94ef-f539a8baa799	2025-10-19 00:00:00	200000	PHP	0	PHP		Transactions::Income	repeat	every_month	pending	2	\N	\N	{}	2025-09-24 05:29:15.924628	2025-09-24 05:29:15.924628	990097e3-0566-4130-842c-e036164c62ef	c6a8a72a-4c0a-4021-94f9-cbdcedaee788	c959bb39-d403-4de3-a951-e8a91610b18f	\N
+ea542072-5f55-4bb9-8a5a-d6e23383a8cf	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-28 00:00:00	500000	PHP	500000	PHP	\N	Transactions::Income	one_time	\N	calculated	\N	\N	\N	{}	2025-08-28 21:37:11.170485	2025-08-28 21:37:11.205644	f830bceb-8869-4f78-8b25-40a786ffc551	696b5cd1-40bc-4b47-9ec9-28543c71bec4	e3e57677-69c8-404c-b7c7-7f4f892e2e6f	\N
+a6111f0e-d030-4038-87c9-9a5e6664dde8	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-28 00:00:00	5000000	PHP	5000000	PHP	\N	Transactions::Income	one_time	\N	calculated	\N	\N	\N	{}	2025-08-28 21:37:11.239699	2025-08-28 21:37:11.253078	f830bceb-8869-4f78-8b25-40a786ffc551	696b5cd1-40bc-4b47-9ec9-28543c71bec4	b3a0d796-89a8-4074-a702-c696975cc042	\N
+dba3c6fa-9f0f-472f-9395-c266a4eb7af3	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-28 00:00:00	2000000	PHP	2000000	PHP	\N	Transactions::Income	one_time	\N	calculated	\N	\N	\N	{}	2025-08-28 21:37:11.302768	2025-08-28 21:37:11.318554	f830bceb-8869-4f78-8b25-40a786ffc551	696b5cd1-40bc-4b47-9ec9-28543c71bec4	c66615c4-f6ad-48b9-9d79-0d31e223bcaa	\N
+34cfce8b-fb84-4520-a189-0cb83898bfae	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-28 00:00:00	500000	PHP	500000	PHP	\N	Transactions::Income	one_time	\N	calculated	\N	\N	\N	{}	2025-08-28 21:37:11.350924	2025-08-28 21:37:11.362879	f830bceb-8869-4f78-8b25-40a786ffc551	696b5cd1-40bc-4b47-9ec9-28543c71bec4	017ca22b-613e-40c8-8b2b-a78828042159	\N
+888f64c9-fa36-4140-bc01-19753cd24ba5	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-28 00:00:00	500000	PHP	500000	PHP	\N	Transactions::Income	one_time	\N	calculated	\N	\N	\N	{}	2025-08-28 21:37:11.389403	2025-08-28 21:37:11.40126	f830bceb-8869-4f78-8b25-40a786ffc551	696b5cd1-40bc-4b47-9ec9-28543c71bec4	265e1f49-9ac1-4ef7-bced-0f04d6b2afc6	\N
+176054ab-9158-43b0-bc5b-446fbecc64c8	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-01 00:00:00	5000000	PHP	0	PHP	\N	Transactions::Income	repeat	every_month	calculated	1	\N	\N	{"rrules": [{"interval": 1, "rule_type": "IceCube::MonthlyRule", "validations": {}}], "rtimes": [], "extimes": [], "start_time": "2025-08-01T00:00:00.000+00:00"}	2025-08-28 21:37:11.61008	2025-08-28 21:37:11.637755	f830bceb-8869-4f78-8b25-40a786ffc551	201820bf-3c96-4edd-8e69-39c5562efac8	b3a0d796-89a8-4074-a702-c696975cc042	\N
+8b72cdc4-d49c-4392-a223-1a8d164f5966	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-01 00:00:00	5000000	PHP	0	PHP	\N	Transactions::Income	repeat	every_month	calculated	1	\N	\N	{"rrules": [{"interval": 1, "rule_type": "IceCube::MonthlyRule", "validations": {}}], "rtimes": [], "extimes": [], "start_time": "2025-08-01T00:00:00.000+00:00"}	2025-08-28 21:37:11.713794	2025-08-28 21:37:11.722669	f830bceb-8869-4f78-8b25-40a786ffc551	80f70fe8-4996-4f72-a8da-b59689408453	c66615c4-f6ad-48b9-9d79-0d31e223bcaa	\N
+8e2da5e5-5733-4950-bd71-905cf290c481	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-29 00:00:00	800000	PHP	0	PHP		Transactions::Expense	one_time	\N	calculated	\N	\N	\N	{}	2025-08-28 21:38:15.11716	2025-08-28 23:11:21.606526	f830bceb-8869-4f78-8b25-40a786ffc551	db05a2bc-33ce-4fb5-83b1-39340cff85c5	156e6b02-e369-4311-8dc9-8e9fd2dd646f	\N
+ad487439-3bd0-43a0-a6d4-f38f83f990c9	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-23 00:00:00	134700	PHP	-8234700	PHP	YummyChix Corp - Eat with Family	Transactions::Expense	one_time	\N	calculated	\N	\N	\N	{}	2025-08-28 23:14:42.821837	2025-08-28 23:14:45.653348	f830bceb-8869-4f78-8b25-40a786ffc551	187d3be1-25e3-48f1-a210-621f59e8c57d	156e6b02-e369-4311-8dc9-8e9fd2dd646f	\N
+63615385-f2e5-4c4c-b6b4-3ceb38819d87	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-27 00:00:00	8500	PHP	491500	PHP	Global Parking Management Inc.	Transactions::Expense	one_time	\N	calculated	\N	\N	\N	{}	2025-08-28 23:13:50.573643	2025-08-28 23:13:54.038022	f830bceb-8869-4f78-8b25-40a786ffc551	e8b47257-f38f-47ec-876b-8c3830158dda	e3e57677-69c8-404c-b7c7-7f4f892e2e6f	\N
+b4167362-cb4f-44d0-83e9-b834eadb5120	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-29 00:00:00	87900	PHP	587900	PHP	Tap and Save	Transactions::Income	one_time	\N	calculated	\N	\N	\N	{}	2025-08-29 16:45:51.867846	2025-08-29 16:45:53.975478	f830bceb-8869-4f78-8b25-40a786ffc551	80f70fe8-4996-4f72-a8da-b59689408453	265e1f49-9ac1-4ef7-bced-0f04d6b2afc6	\N
+4ce74c88-2094-4ffe-b6cb-d03e995d2a23	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-27 00:00:00	8500	PHP	491500	PHP	Global Parking Management Inc.	Transactions::Expense	one_time	\N	calculated	\N	\N	\N	{}	2025-08-29 08:56:34.938821	2025-08-29 08:56:37.71316	f830bceb-8869-4f78-8b25-40a786ffc551	e8b47257-f38f-47ec-876b-8c3830158dda	017ca22b-613e-40c8-8b2b-a78828042159	\N
+575a653e-0112-4150-a7fa-56258f4d28b8	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-29 00:00:00	54720	PHP	-54720	PHP	Mang Inasal	Transactions::Expense	one_time	\N	calculated	\N	\N	\N	{}	2025-08-29 10:41:52.871622	2025-08-29 10:41:54.802351	f830bceb-8869-4f78-8b25-40a786ffc551	f5702a6e-7bc8-45da-9957-82dde9ca90db	a7809d30-831e-4bcb-9981-785b04faae3c	\N
+a6deed2d-9d16-40a2-83f3-35b215c853a8	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	\N	\N	2025-08-29 00:00:00	9900	PHP	-64620	PHP	Ligaya Daily	Transactions::Expense	one_time	\N	calculated	\N	\N	\N	{}	2025-08-29 17:09:45.130315	2025-08-29 17:09:46.911547	f830bceb-8869-4f78-8b25-40a786ffc551	4b172815-36b8-4b8c-8c8a-643639840729	a7809d30-831e-4bcb-9981-785b04faae3c	\N
+fb3da76b-c23c-45a5-a44a-28e6cca43ace	f98315a2-b72c-4291-a440-ea58ac6b11ec	\N	\N	2025-09-01 00:00:00	300000	PHP	300000	PHP	\N	Transactions::Income	one_time	\N	calculated	\N	\N	\N	{}	2025-09-01 13:23:42.634749	2025-09-01 13:23:42.683162	6ffe601b-01dc-49e8-9930-5d1ff06633cf	ee2c6c6e-1a7d-44ce-878c-dbaf2b67035f	d45f506c-dd20-4212-956d-4c34bba75610	\N
+79f7ca3d-9c3f-4ec7-8fbc-e89b2096dda8	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	8b72cdc4-d49c-4392-a223-1a8d164f5966	8b72cdc4-d49c-4392-a223-1a8d164f5966	2025-09-01 00:00:00	5000000	PHP	7000000	PHP	\N	Transactions::Income	repeat	every_month	calculated	2	\N	\N	{}	2025-08-28 21:37:11.749641	2025-09-01 16:15:00.567325	f830bceb-8869-4f78-8b25-40a786ffc551	80f70fe8-4996-4f72-a8da-b59689408453	c66615c4-f6ad-48b9-9d79-0d31e223bcaa	\N
+b22f3225-4ee8-48df-b8f4-eca7a52ce682	6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	176054ab-9158-43b0-bc5b-446fbecc64c8	176054ab-9158-43b0-bc5b-446fbecc64c8	2025-09-01 00:00:00	5000000	PHP	10000000	PHP	\N	Transactions::Income	repeat	every_month	calculated	2	\N	\N	{}	2025-08-28 21:37:11.691607	2025-09-01 16:15:00.58757	f830bceb-8869-4f78-8b25-40a786ffc551	201820bf-3c96-4edd-8e69-39c5562efac8	b3a0d796-89a8-4074-a702-c696975cc042	\N
+cfa0f2a5-e1b2-4c11-82af-61a8751ceb74	f98315a2-b72c-4291-a440-ea58ac6b11ec	\N	\N	2025-09-01 00:00:00	8000000	PHP	0	PHP	\N	Transactions::Income	repeat	every_month	calculated	1	\N	\N	{"rrules": [{"interval": 1, "rule_type": "IceCube::MonthlyRule", "validations": {}}], "rtimes": [], "extimes": [], "start_time": "2025-09-01T00:00:00.000+00:00"}	2025-09-01 13:23:43.022581	2025-09-01 13:23:43.039355	6ffe601b-01dc-49e8-9930-5d1ff06633cf	d9e1843d-a126-439c-9aed-1688142d59c1	24f4bafb-2b88-4bfc-a7ac-67783dbe6e15	\N
+a9d6bd04-141c-4253-b959-6e116a755c88	f98315a2-b72c-4291-a440-ea58ac6b11ec	\N	\N	2025-09-01 00:00:00	1422943	PHP	-1422943	PHP	SM	Transactions::Expense	one_time	\N	calculated	\N	\N	\N	{}	2025-09-01 13:25:43.458748	2025-09-01 13:25:45.537498	6ffe601b-01dc-49e8-9930-5d1ff06633cf	13171088-d8b4-4929-916c-af06c8928e33	67af9fec-e1e5-4f30-ac9c-9c71358eaa56	\N
+58f92523-96be-412f-9d2b-db1748bbbca7	f98315a2-b72c-4291-a440-ea58ac6b11ec	\N	\N	2025-09-01 00:00:00	1000	PHP	-1000	PHP	Transfer ID: d5a9237a-deed-4951-bf21-498f6b05d8c6, Transfer fee for: 123	Transactions::Expense	one_time	\N	calculated	\N	\N	\N	{}	2025-09-01 13:29:18.688207	2025-09-01 13:29:18.704994	6ffe601b-01dc-49e8-9930-5d1ff06633cf	14f017ab-fb93-464c-8ef1-4666c927a486	24f4bafb-2b88-4bfc-a7ac-67783dbe6e15	d5a9237a-deed-4951-bf21-498f6b05d8c6
+84c6753e-3989-4cf4-94ef-f539a8baa799	724de54c-e26f-4bc6-8c40-2ce650dc67af	\N	\N	2025-09-30 00:00:00	200000	PHP	0	PHP		Transactions::Income	repeat	every_month	calculated	1	\N	\N	{"rrules": [{"interval": 1, "rule_type": "IceCube::MonthlyRule", "validations": {}}], "rtimes": [], "extimes": [], "start_time": {"time": "2025-09-30T00:00:00.000Z", "zone": "UTC"}}	2025-09-24 05:28:54.300829	2025-09-30 16:15:00.48569	990097e3-0566-4130-842c-e036164c62ef	c6a8a72a-4c0a-4021-94f9-cbdcedaee788	c959bb39-d403-4de3-a951-e8a91610b18f	\N
+283a532a-c1b9-4b41-acd6-f33e291e8fcd	f98315a2-b72c-4291-a440-ea58ac6b11ec	cfa0f2a5-e1b2-4c11-82af-61a8751ceb74	cfa0f2a5-e1b2-4c11-82af-61a8751ceb74	2025-10-01 00:00:00	8000000	PHP	7799000	PHP	\N	Transactions::Income	repeat	every_month	calculated	2	\N	\N	{}	2025-09-01 13:23:43.097044	2025-10-01 16:15:00.484826	6ffe601b-01dc-49e8-9930-5d1ff06633cf	d9e1843d-a126-439c-9aed-1688142d59c1	24f4bafb-2b88-4bfc-a7ac-67783dbe6e15	\N
+4329f05d-de14-44e0-8db7-1b9dae911ebc	724de54c-e26f-4bc6-8c40-2ce650dc67af	126caed0-fa7f-4fa6-a2db-ba1656947838	126caed0-fa7f-4fa6-a2db-ba1656947838	2025-10-01 00:00:00	200000	PHP	200000	PHP	\N	Transactions::Income	repeat	every_month	calculated	2	\N	\N	{}	2025-09-24 05:28:54.264565	2025-10-01 16:15:00.504882	990097e3-0566-4130-842c-e036164c62ef	cc2df752-8e16-4b29-8915-4e7ccdf1465e	c959bb39-d403-4de3-a951-e8a91610b18f	\N
+126caed0-fa7f-4fa6-a2db-ba1656947838	724de54c-e26f-4bc6-8c40-2ce650dc67af	\N	\N	2025-09-01 00:00:00	200000	PHP	0	PHP	\N	Transactions::Income	repeat	every_month	calculated	1	\N	\N	{"rrules": [{"interval": 1, "rule_type": "IceCube::MonthlyRule", "validations": {}}], "rtimes": [], "extimes": [], "start_time": {"time": "2025-09-01T00:00:00.000Z", "zone": "UTC"}}	2025-09-24 05:28:54.128152	2025-09-24 05:28:54.183731	990097e3-0566-4130-842c-e036164c62ef	cc2df752-8e16-4b29-8915-4e7ccdf1465e	c959bb39-d403-4de3-a951-e8a91610b18f	\N
+\.
+
+
+--
+-- Data for Name: transactions_categories; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.transactions_categories (id, space_id, name, category_type, created_at, updated_at) FROM stdin;
+cc2df752-8e16-4b29-8915-4e7ccdf1465e	990097e3-0566-4130-842c-e036164c62ef	Salary	income	2025-09-21 14:52:39.163738	2025-09-21 14:52:39.163738
+3f89324b-17ec-4fdd-9f9e-e3aa16450c3b	990097e3-0566-4130-842c-e036164c62ef	Freelance	income	2025-09-21 14:52:39.17727	2025-09-21 14:52:39.17727
+c6a8a72a-4c0a-4021-94f9-cbdcedaee788	990097e3-0566-4130-842c-e036164c62ef	Business	income	2025-09-21 14:52:39.186206	2025-09-21 14:52:39.186206
+5eac304a-bbd9-41aa-b51c-665827fec7b0	990097e3-0566-4130-842c-e036164c62ef	Initial Balance	income	2025-09-21 14:52:39.195975	2025-09-21 14:52:39.195975
+44e30025-f084-418c-8ac8-786edf559685	990097e3-0566-4130-842c-e036164c62ef	Transfer Fee	expense	2025-09-21 14:52:39.205842	2025-09-21 14:52:39.205842
+f99dd19a-1675-4f4e-8f87-aa896756c74a	990097e3-0566-4130-842c-e036164c62ef	Home	expense	2025-09-24 05:28:53.751275	2025-09-24 05:28:53.751275
+c81af77a-fac4-46b5-baa7-b7f1b6ff66e7	990097e3-0566-4130-842c-e036164c62ef	Food & Groceries	expense	2025-09-24 05:28:53.768725	2025-09-24 05:28:53.768725
+85690d46-875d-41c9-bdf2-d4c8df7ab93d	990097e3-0566-4130-842c-e036164c62ef	Utilities	expense	2025-09-24 05:28:53.779303	2025-09-24 05:28:53.779303
+a1bd9235-47a1-49f0-a7a8-645be7d39bcc	990097e3-0566-4130-842c-e036164c62ef	Transportation	expense	2025-09-24 05:28:53.786424	2025-09-24 05:28:53.786424
+c96b2027-7706-4db7-9acb-5fc24c405632	990097e3-0566-4130-842c-e036164c62ef	Insurance	expense	2025-09-24 05:28:53.794647	2025-09-24 05:28:53.794647
+a3bccaff-a00d-4f53-b7cd-0c40bacdae7f	990097e3-0566-4130-842c-e036164c62ef	Dine Out & Entertainment	expense	2025-09-24 05:28:53.800536	2025-09-24 05:28:53.800536
+e2505e6c-594b-49ca-a4d4-1090b277276d	990097e3-0566-4130-842c-e036164c62ef	Shopping	expense	2025-09-24 05:28:53.807222	2025-09-24 05:28:53.807222
+6a6a33cb-16a9-4a99-85a4-e9ec4463a653	990097e3-0566-4130-842c-e036164c62ef	Subscriptions & Hobbies	expense	2025-09-24 05:28:53.813328	2025-09-24 05:28:53.813328
+5e2c2a92-63b7-4d5a-92fe-4cd9c5dc8b89	990097e3-0566-4130-842c-e036164c62ef	Travel & Vacations	expense	2025-09-24 05:28:53.819789	2025-09-24 05:28:53.819789
+201820bf-3c96-4edd-8e69-39c5562efac8	f830bceb-8869-4f78-8b25-40a786ffc551	Salary	income	2025-08-28 21:33:00.59572	2025-08-28 21:33:00.59572
+4c00e5c4-9c0e-4092-bad6-960a0941d159	f830bceb-8869-4f78-8b25-40a786ffc551	Freelance	income	2025-08-28 21:33:00.615507	2025-08-28 21:33:00.615507
+e7491602-0bd0-45de-9441-c5e69ec43fc0	e8f0d7c9-3651-4cca-bf80-3c7cc5da5781	Salary	income	2025-08-22 22:45:12.430243	2025-08-22 22:45:12.430243
+bf45e244-2b48-4096-a175-3e6820d5769c	e8f0d7c9-3651-4cca-bf80-3c7cc5da5781	Freelance	income	2025-08-22 22:45:12.439715	2025-08-22 22:45:12.439715
+69bc02eb-11ee-4041-8246-0f931da43a8c	e8f0d7c9-3651-4cca-bf80-3c7cc5da5781	Business	income	2025-08-22 22:45:12.448797	2025-08-22 22:45:12.448797
+b3712442-532c-4d99-8cf8-55112acba77b	e8f0d7c9-3651-4cca-bf80-3c7cc5da5781	Initial Balance	income	2025-08-22 22:45:12.457298	2025-08-22 22:45:12.457298
+fae98f03-b58e-48b2-a7c6-88d829bba2b2	e8f0d7c9-3651-4cca-bf80-3c7cc5da5781	Transfer Fee	expense	2025-08-22 22:45:12.466041	2025-08-22 22:45:12.466041
+80f70fe8-4996-4f72-a8da-b59689408453	f830bceb-8869-4f78-8b25-40a786ffc551	Business	income	2025-08-28 21:33:00.627395	2025-08-28 21:33:00.627395
+696b5cd1-40bc-4b47-9ec9-28543c71bec4	f830bceb-8869-4f78-8b25-40a786ffc551	Initial Balance	income	2025-08-28 21:33:00.636038	2025-08-28 21:33:00.636038
+f0ded06c-6818-4a54-998b-e8d9606bb35c	f830bceb-8869-4f78-8b25-40a786ffc551	Transfer Fee	expense	2025-08-28 21:33:00.646631	2025-08-28 21:33:00.646631
+86da6308-f019-446b-b0f8-9cfab80cf713	f830bceb-8869-4f78-8b25-40a786ffc551	Home	expense	2025-08-28 21:37:11.423631	2025-08-28 21:37:11.423631
+f5702a6e-7bc8-45da-9957-82dde9ca90db	f830bceb-8869-4f78-8b25-40a786ffc551	Food & Groceries	expense	2025-08-28 21:37:11.430597	2025-08-28 21:37:11.430597
+9a286f61-2ae7-4db7-88da-88bc3f18466e	f830bceb-8869-4f78-8b25-40a786ffc551	Utilities	expense	2025-08-28 21:37:11.436727	2025-08-28 21:37:11.436727
+e8b47257-f38f-47ec-876b-8c3830158dda	f830bceb-8869-4f78-8b25-40a786ffc551	Transportation	expense	2025-08-28 21:37:11.442339	2025-08-28 21:37:11.442339
+f25023a8-c4ae-42e0-a5d3-d068818bfd9f	f830bceb-8869-4f78-8b25-40a786ffc551	Insurance	expense	2025-08-28 21:37:11.448181	2025-08-28 21:37:11.448181
+187d3be1-25e3-48f1-a210-621f59e8c57d	f830bceb-8869-4f78-8b25-40a786ffc551	Dine Out & Entertainment	expense	2025-08-28 21:37:11.453392	2025-08-28 21:37:11.453392
+47f55970-9adb-4676-86de-679960e8d74f	f830bceb-8869-4f78-8b25-40a786ffc551	Shopping	expense	2025-08-28 21:37:11.459705	2025-08-28 21:37:11.459705
+b5b9514e-79b9-49eb-9d17-799890cbd16c	f830bceb-8869-4f78-8b25-40a786ffc551	Subscriptions & Hobbies	expense	2025-08-28 21:37:11.466012	2025-08-28 21:37:11.466012
+db05a2bc-33ce-4fb5-83b1-39340cff85c5	f830bceb-8869-4f78-8b25-40a786ffc551	Travel & Vacations	expense	2025-08-28 21:37:11.471673	2025-08-28 21:37:11.471673
+df4af02d-2081-4fb1-9f46-8ccf77110def	f830bceb-8869-4f78-8b25-40a786ffc551	Business	expense	2025-08-29 16:45:49.278502	2025-08-29 16:45:49.278502
+4b172815-36b8-4b8c-8c8a-643639840729	f830bceb-8869-4f78-8b25-40a786ffc551	Self	expense	2025-08-29 17:09:39.080989	2025-08-29 17:09:39.080989
+d9e1843d-a126-439c-9aed-1688142d59c1	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Salary	income	2025-09-01 13:23:11.296391	2025-09-01 13:23:11.296391
+1da929b2-3ce0-42fb-bac1-525597021261	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Freelance	income	2025-09-01 13:23:11.311662	2025-09-01 13:23:11.311662
+bfb8d9bd-b49d-4a0c-925e-19fb68a0fd6c	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Business	income	2025-09-01 13:23:11.323965	2025-09-01 13:23:11.323965
+ee2c6c6e-1a7d-44ce-878c-dbaf2b67035f	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Initial Balance	income	2025-09-01 13:23:11.33243	2025-09-01 13:23:11.33243
+14f017ab-fb93-464c-8ef1-4666c927a486	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Transfer Fee	expense	2025-09-01 13:23:11.343249	2025-09-01 13:23:11.343249
+4936c0b9-e0c7-44ad-864c-c40ba74f2173	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Home	expense	2025-09-01 13:23:42.764499	2025-09-01 13:23:42.764499
+4a0f6bf6-900a-4aae-b6e7-519917bd972d	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Food & Groceries	expense	2025-09-01 13:23:42.773337	2025-09-01 13:23:42.773337
+cec6721e-5688-4e90-a451-4fe3e87c8cda	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Utilities	expense	2025-09-01 13:23:42.779507	2025-09-01 13:23:42.779507
+2b5bd658-b7ff-417a-8b09-bc13781c973e	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Transportation	expense	2025-09-01 13:23:42.786462	2025-09-01 13:23:42.786462
+f574f822-d19a-4885-9dde-0dda2a7e9169	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Insurance	expense	2025-09-01 13:23:42.792926	2025-09-01 13:23:42.792926
+0db50a71-f900-4b1e-aae2-8aabd9e0a96e	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Dine Out & Entertainment	expense	2025-09-01 13:23:42.799788	2025-09-01 13:23:42.799788
+13171088-d8b4-4929-916c-af06c8928e33	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Shopping	expense	2025-09-01 13:23:42.805527	2025-09-01 13:23:42.805527
+884aa890-0dce-469e-93ec-2a6df2713259	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Subscriptions & Hobbies	expense	2025-09-01 13:23:42.812877	2025-09-01 13:23:42.812877
+38695414-dd6e-4436-a920-3d8fcd1d9a4e	6ffe601b-01dc-49e8-9930-5d1ff06633cf	Travel & Vacations	expense	2025-09-01 13:23:42.821337	2025-09-01 13:23:42.821337
+\.
+
+
+--
+-- Data for Name: transfers; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.transfers (id, user_id, space_id, from_account_id, to_account_id, parent_id, effective_parent_id, amount_cents, amount_currency, transaction_cost_cents, transaction_cost_currency, date, description, schedule, schedule_type, repeat_interval, repeat_count, balance_state, created_at, updated_at) FROM stdin;
+d5a9237a-deed-4951-bf21-498f6b05d8c6	f98315a2-b72c-4291-a440-ea58ac6b11ec	6ffe601b-01dc-49e8-9930-5d1ff06633cf	24f4bafb-2b88-4bfc-a7ac-67783dbe6e15	3dc420bb-6065-4f09-97ff-1ad6b0590d68	\N	\N	200000	PHP	1000	PHP	2025-09-01 00:00:00	123	{}	one_time	\N	\N	calculated	2025-09-01 13:29:18.658738	2025-09-01 13:29:18.730727
+\.
+
+
+--
+-- Data for Name: user_activities; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.user_activities (id, user_id, activity_date, login_count, api_request_count, transaction_created_count, dashboard_viewed_count, total_requests, created_at, updated_at) FROM stdin;
+5f65b951-d017-4b20-94dd-06ad030b5727	724de54c-e26f-4bc6-8c40-2ce650dc67af	2025-09-22	0	24	0	0	24	2025-09-22 06:59:54.233719	2025-09-22 06:59:54.233719
+e63c00c8-b5d4-487c-9ca0-168ef410cd4c	724de54c-e26f-4bc6-8c40-2ce650dc67af	2025-09-21	0	236	0	41	236	2025-09-21 11:29:48.866698	2025-09-21 11:29:48.866698
+0e2a5e6b-85ed-40ec-b1eb-a187b02aa634	724de54c-e26f-4bc6-8c40-2ce650dc67af	2025-09-23	0	10	0	0	10	2025-09-23 07:08:17.87732	2025-09-23 07:08:17.87732
+c4a7cfda-d2a2-4ed2-bac6-36c8fe754ae1	724de54c-e26f-4bc6-8c40-2ce650dc67af	2025-09-28	0	113	0	21	113	2025-09-28 10:37:01.083712	2025-09-28 10:37:01.083712
+035c6a9e-f7d5-4723-ab59-d7330da31286	724de54c-e26f-4bc6-8c40-2ce650dc67af	2025-09-25	0	17	0	12	17	2025-09-25 06:17:20.554164	2025-09-25 06:17:20.554164
+e632c6bf-6d8a-4629-bfcd-846d707e0e6e	724de54c-e26f-4bc6-8c40-2ce650dc67af	2025-10-05	0	23	0	3	23	2025-10-05 14:40:56.03877	2025-10-05 14:40:56.03877
+61a11325-2487-4987-ab6a-98b0a4d540fa	724de54c-e26f-4bc6-8c40-2ce650dc67af	2025-09-27	0	27	0	15	27	2025-09-27 10:44:51.311006	2025-09-27 10:44:51.311006
+22ddd40b-32b9-423e-99f7-33d9b710d52d	724de54c-e26f-4bc6-8c40-2ce650dc67af	2025-09-24	0	137	0	48	137	2025-09-24 05:10:42.612021	2025-09-24 05:10:42.612021
+\.
+
+
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.users (id, auth_id, full_name, email, photo_url, created_at, updated_at) FROM stdin;
+724de54c-e26f-4bc6-8c40-2ce650dc67af	google-oauth2|106155691539393236437	Miguel Dagatan	miguel.dagatan@gmail.com	\N	2025-08-17 06:15:09.354077	2025-08-17 06:15:09.354077
+6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	google-oauth2|117966800232001596347	Paolo Paraiso	joelpaoloparaiso@gmail.com	\N	2025-08-17 13:02:28.353277	2025-08-17 13:02:28.353277
+8c55c6dd-d4bf-471d-98e2-9389bc69be83	auth0|68a8f2e9d300de35ab6303a7	paraiso.jpaolo@gmail.com	paraiso.jpaolo@gmail.com	\N	2025-08-22 22:45:12.385411	2025-08-22 22:45:12.385411
+f98315a2-b72c-4291-a440-ea58ac6b11ec	google-oauth2|103827493677560082587	Miguel Dagatan (Miko)	miguel.dagatan@getlavanda.com	\N	2025-09-01 13:23:11.247101	2025-09-01 13:23:11.247101
+\.
+
+
+--
+-- Data for Name: users_roles; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.users_roles (user_id, role_id) FROM stdin;
+724de54c-e26f-4bc6-8c40-2ce650dc67af	41fe18ef-988f-47b7-bbb7-d89ac5875b36
+724de54c-e26f-4bc6-8c40-2ce650dc67af	60ac1e73-09a3-426e-8ea6-7556bfc26fe3
+6417ba13-ebfd-4c1c-ac27-5d2cf171bdce	3bda3924-3d5a-49e3-8975-1782bd599d4a
+8c55c6dd-d4bf-471d-98e2-9389bc69be83	368ddde6-9451-479e-a892-90e26423f7fb
+f98315a2-b72c-4291-a440-ea58ac6b11ec	b5605f8f-93fd-4784-9e59-e013b1f6015b
+\.
+
+
+--
+-- Name: monthly_financial_summaries_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.monthly_financial_summaries_id_seq', 2, true);
+
+
+--
+-- Name: accounts accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.accounts
+    ADD CONSTRAINT accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: active_storage_attachments active_storage_attachments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.active_storage_attachments
+    ADD CONSTRAINT active_storage_attachments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: active_storage_blobs active_storage_blobs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.active_storage_blobs
+    ADD CONSTRAINT active_storage_blobs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: active_storage_variant_records active_storage_variant_records_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.active_storage_variant_records
+    ADD CONSTRAINT active_storage_variant_records_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ai_usages ai_usages_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ai_usages
+    ADD CONSTRAINT ai_usages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ar_internal_metadata ar_internal_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ar_internal_metadata
+    ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: budgets budgets_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.budgets
+    ADD CONSTRAINT budgets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: crm_ticket_responses crm_ticket_responses_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.crm_ticket_responses
+    ADD CONSTRAINT crm_ticket_responses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: crm_tickets crm_tickets_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.crm_tickets
+    ADD CONSTRAINT crm_tickets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: goal_descriptions goal_descriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.goal_descriptions
+    ADD CONSTRAINT goal_descriptions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: monthly_financial_summaries monthly_financial_summaries_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.monthly_financial_summaries
+    ADD CONSTRAINT monthly_financial_summaries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: onboardings onboardings_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.onboardings
+    ADD CONSTRAINT onboardings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.schema_migrations
+    ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: space_users space_users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.space_users
+    ADD CONSTRAINT space_users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: spaces spaces_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.spaces
+    ADD CONSTRAINT spaces_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transactions_categories transactions_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transactions_categories
+    ADD CONSTRAINT transactions_categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transactions transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transfers transfers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transfers
+    ADD CONSTRAINT transfers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_activities user_activities_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_activities
+    ADD CONSTRAINT user_activities_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_on_date_type_amount_currency_amount_cents_5ec151a267; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_on_date_type_amount_currency_amount_cents_5ec151a267 ON public.transactions USING btree (date, type, amount_currency, amount_cents);
+
+
+--
+-- Name: index_accounts_on_discarded_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_accounts_on_discarded_at ON public.accounts USING btree (discarded_at);
+
+
+--
+-- Name: index_accounts_on_space_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_accounts_on_space_id ON public.accounts USING btree (space_id);
+
+
+--
+-- Name: index_accounts_on_space_id_and_name_where_not_discarded; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_accounts_on_space_id_and_name_where_not_discarded ON public.accounts USING btree (space_id, name) WHERE (discarded_at IS NULL);
+
+
+--
+-- Name: index_active_storage_attachments_on_blob_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_active_storage_attachments_on_blob_id ON public.active_storage_attachments USING btree (blob_id);
+
+
+--
+-- Name: index_active_storage_attachments_uniqueness; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_active_storage_attachments_uniqueness ON public.active_storage_attachments USING btree (record_type, record_id, name, blob_id);
+
+
+--
+-- Name: index_active_storage_blobs_on_key; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_active_storage_blobs_on_key ON public.active_storage_blobs USING btree (key);
+
+
+--
+-- Name: index_active_storage_variant_records_uniqueness; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_active_storage_variant_records_uniqueness ON public.active_storage_variant_records USING btree (blob_id, variation_digest);
+
+
+--
+-- Name: index_ai_usages_on_space_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_ai_usages_on_space_id ON public.ai_usages USING btree (space_id);
+
+
+--
+-- Name: index_ai_usages_on_user_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_ai_usages_on_user_id ON public.ai_usages USING btree (user_id);
+
+
+--
+-- Name: index_budgets_on_amount_cents_and_amount_currency; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_budgets_on_amount_cents_and_amount_currency ON public.budgets USING btree (amount_cents, amount_currency);
+
+
+--
+-- Name: index_budgets_on_category_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_budgets_on_category_id ON public.budgets USING btree (category_id);
+
+
+--
+-- Name: index_budgets_on_space_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_budgets_on_space_id ON public.budgets USING btree (space_id);
+
+
+--
+-- Name: index_budgets_on_space_id_and_category_id_and_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_budgets_on_space_id_and_category_id_and_date ON public.budgets USING btree (space_id, category_id, date);
+
+
+--
+-- Name: index_budgets_on_spent_cents_and_spent_currency; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_budgets_on_spent_cents_and_spent_currency ON public.budgets USING btree (spent_cents, spent_currency);
+
+
+--
+-- Name: index_crm_ticket_responses_on_created_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_crm_ticket_responses_on_created_at ON public.crm_ticket_responses USING btree (created_at);
+
+
+--
+-- Name: index_crm_ticket_responses_on_responder_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_crm_ticket_responses_on_responder_id ON public.crm_ticket_responses USING btree (responder_id);
+
+
+--
+-- Name: index_crm_ticket_responses_on_response_type; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_crm_ticket_responses_on_response_type ON public.crm_ticket_responses USING btree (response_type);
+
+
+--
+-- Name: index_crm_ticket_responses_on_ticket_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_crm_ticket_responses_on_ticket_id ON public.crm_ticket_responses USING btree (ticket_id);
+
+
+--
+-- Name: index_crm_tickets_on_created_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_crm_tickets_on_created_at ON public.crm_tickets USING btree (created_at);
+
+
+--
+-- Name: index_crm_tickets_on_priority; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_crm_tickets_on_priority ON public.crm_tickets USING btree (priority);
+
+
+--
+-- Name: index_crm_tickets_on_space_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_crm_tickets_on_space_id ON public.crm_tickets USING btree (space_id);
+
+
+--
+-- Name: index_crm_tickets_on_status; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_crm_tickets_on_status ON public.crm_tickets USING btree (status);
+
+
+--
+-- Name: index_crm_tickets_on_ticket_type; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_crm_tickets_on_ticket_type ON public.crm_tickets USING btree (ticket_type);
+
+
+--
+-- Name: index_crm_tickets_on_user_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_crm_tickets_on_user_id ON public.crm_tickets USING btree (user_id);
+
+
+--
+-- Name: index_goal_descriptions_on_space_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_goal_descriptions_on_space_id ON public.goal_descriptions USING btree (space_id);
+
+
+--
+-- Name: index_monthly_financial_summaries_on_space_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_monthly_financial_summaries_on_space_id ON public.monthly_financial_summaries USING btree (space_id);
+
+
+--
+-- Name: index_monthly_financial_summaries_on_space_year_month; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_monthly_financial_summaries_on_space_year_month ON public.monthly_financial_summaries USING btree (space_id, year, month);
+
+
+--
+-- Name: index_monthly_financial_summaries_on_year_month; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_monthly_financial_summaries_on_year_month ON public.monthly_financial_summaries USING btree (year, month);
+
+
+--
+-- Name: index_onboardings_on_user_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_onboardings_on_user_id ON public.onboardings USING btree (user_id);
+
+
+--
+-- Name: index_roles_on_name_and_resource_type_and_resource_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_roles_on_name_and_resource_type_and_resource_id ON public.roles USING btree (name, resource_type, resource_id);
+
+
+--
+-- Name: index_roles_on_resource; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_roles_on_resource ON public.roles USING btree (resource_type, resource_id);
+
+
+--
+-- Name: index_space_users_on_access_code; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_space_users_on_access_code ON public.space_users USING btree (access_code);
+
+
+--
+-- Name: index_space_users_on_invitation_expires_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_space_users_on_invitation_expires_at ON public.space_users USING btree (invitation_expires_at);
+
+
+--
+-- Name: index_space_users_on_invitation_status; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_space_users_on_invitation_status ON public.space_users USING btree (invitation_status);
+
+
+--
+-- Name: index_space_users_on_invited_by_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_space_users_on_invited_by_id ON public.space_users USING btree (invited_by_id);
+
+
+--
+-- Name: index_space_users_on_space_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_space_users_on_space_id ON public.space_users USING btree (space_id);
+
+
+--
+-- Name: index_space_users_on_space_id_and_invitation_status; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_space_users_on_space_id_and_invitation_status ON public.space_users USING btree (space_id, invitation_status);
+
+
+--
+-- Name: index_space_users_on_space_id_and_user_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_space_users_on_space_id_and_user_id ON public.space_users USING btree (space_id, user_id);
+
+
+--
+-- Name: index_space_users_on_user_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_space_users_on_user_id ON public.space_users USING btree (user_id);
+
+
+--
+-- Name: index_spaces_on_code; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_spaces_on_code ON public.spaces USING btree (code);
+
+
+--
+-- Name: index_spaces_on_currency; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_spaces_on_currency ON public.spaces USING btree (currency);
+
+
+--
+-- Name: index_spaces_on_type; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_spaces_on_type ON public.spaces USING btree (type);
+
+
+--
+-- Name: index_transactions_categories_on_space_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transactions_categories_on_space_id ON public.transactions_categories USING btree (space_id);
+
+
+--
+-- Name: index_transactions_on_account_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transactions_on_account_id ON public.transactions USING btree (account_id);
+
+
+--
+-- Name: index_transactions_on_category_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transactions_on_category_id ON public.transactions USING btree (category_id);
+
+
+--
+-- Name: index_transactions_on_effective_parent_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transactions_on_effective_parent_id ON public.transactions USING btree (effective_parent_id);
+
+
+--
+-- Name: index_transactions_on_effective_parent_id_and_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transactions_on_effective_parent_id_and_date ON public.transactions USING btree (effective_parent_id, date);
+
+
+--
+-- Name: index_transactions_on_parent_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transactions_on_parent_id ON public.transactions USING btree (parent_id);
+
+
+--
+-- Name: index_transactions_on_parent_id_and_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transactions_on_parent_id_and_date ON public.transactions USING btree (parent_id, date);
+
+
+--
+-- Name: index_transactions_on_space_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transactions_on_space_id ON public.transactions USING btree (space_id);
+
+
+--
+-- Name: index_transactions_on_transfer_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transactions_on_transfer_id ON public.transactions USING btree (transfer_id);
+
+
+--
+-- Name: index_transactions_on_user_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transactions_on_user_id ON public.transactions USING btree (user_id);
+
+
+--
+-- Name: index_transactions_on_user_id_and_date_and_type; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transactions_on_user_id_and_date_and_type ON public.transactions USING btree (user_id, date, type);
+
+
+--
+-- Name: index_transfers_on_effective_parent_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_effective_parent_id ON public.transfers USING btree (effective_parent_id);
+
+
+--
+-- Name: index_transfers_on_effective_parent_id_and_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_effective_parent_id_and_date ON public.transfers USING btree (effective_parent_id, date);
+
+
+--
+-- Name: index_transfers_on_from_account_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_from_account_id ON public.transfers USING btree (from_account_id);
+
+
+--
+-- Name: index_transfers_on_from_account_id_and_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_from_account_id_and_date ON public.transfers USING btree (from_account_id, date);
+
+
+--
+-- Name: index_transfers_on_from_account_id_and_to_account_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_from_account_id_and_to_account_id ON public.transfers USING btree (from_account_id, to_account_id);
+
+
+--
+-- Name: index_transfers_on_parent_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_parent_id ON public.transfers USING btree (parent_id);
+
+
+--
+-- Name: index_transfers_on_parent_id_and_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_parent_id_and_date ON public.transfers USING btree (parent_id, date);
+
+
+--
+-- Name: index_transfers_on_space_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_space_id ON public.transfers USING btree (space_id);
+
+
+--
+-- Name: index_transfers_on_space_id_and_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_space_id_and_date ON public.transfers USING btree (space_id, date);
+
+
+--
+-- Name: index_transfers_on_to_account_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_to_account_id ON public.transfers USING btree (to_account_id);
+
+
+--
+-- Name: index_transfers_on_to_account_id_and_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_to_account_id_and_date ON public.transfers USING btree (to_account_id, date);
+
+
+--
+-- Name: index_transfers_on_user_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_user_id ON public.transfers USING btree (user_id);
+
+
+--
+-- Name: index_transfers_on_user_id_and_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_transfers_on_user_id_and_date ON public.transfers USING btree (user_id, date);
+
+
+--
+-- Name: index_tx_categories_on_space_type_name; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_tx_categories_on_space_type_name ON public.transactions_categories USING btree (space_id, category_type, name);
+
+
+--
+-- Name: index_user_activities_on_activity_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_user_activities_on_activity_date ON public.user_activities USING btree (activity_date);
+
+
+--
+-- Name: index_user_activities_on_total_requests; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_user_activities_on_total_requests ON public.user_activities USING btree (total_requests);
+
+
+--
+-- Name: index_user_activities_on_user_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_user_activities_on_user_id ON public.user_activities USING btree (user_id);
+
+
+--
+-- Name: index_user_activities_on_user_id_and_activity_date; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_user_activities_on_user_id_and_activity_date ON public.user_activities USING btree (user_id, activity_date);
+
+
+--
+-- Name: index_users_on_auth_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_users_on_auth_id ON public.users USING btree (auth_id);
+
+
+--
+-- Name: index_users_on_email; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX index_users_on_email ON public.users USING btree (email);
+
+
+--
+-- Name: index_users_roles_on_role_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_users_roles_on_role_id ON public.users_roles USING btree (role_id);
+
+
+--
+-- Name: index_users_roles_on_user_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_users_roles_on_user_id ON public.users_roles USING btree (user_id);
+
+
+--
+-- Name: index_users_roles_on_user_id_and_role_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_users_roles_on_user_id_and_role_id ON public.users_roles USING btree (user_id, role_id);
+
+
+--
+-- Name: space_users fk_rails_008420bbf1; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.space_users
+    ADD CONSTRAINT fk_rails_008420bbf1 FOREIGN KEY (invited_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: transactions fk_rails_01f020e267; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT fk_rails_01f020e267 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: space_users fk_rails_02fa3287db; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.space_users
+    ADD CONSTRAINT fk_rails_02fa3287db FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: transactions fk_rails_0e013bfc2b; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT fk_rails_0e013bfc2b FOREIGN KEY (effective_parent_id) REFERENCES public.transactions(id);
+
+
+--
+-- Name: transactions fk_rails_0ea2ad3927; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT fk_rails_0ea2ad3927 FOREIGN KEY (category_id) REFERENCES public.transactions_categories(id);
+
+
+--
+-- Name: transfers fk_rails_0ed16a9709; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transfers
+    ADD CONSTRAINT fk_rails_0ed16a9709 FOREIGN KEY (to_account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: ai_usages fk_rails_11d68f92fd; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ai_usages
+    ADD CONSTRAINT fk_rails_11d68f92fd FOREIGN KEY (space_id) REFERENCES public.spaces(id);
+
+
+--
+-- Name: transfers fk_rails_12a4d3af0f; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transfers
+    ADD CONSTRAINT fk_rails_12a4d3af0f FOREIGN KEY (space_id) REFERENCES public.spaces(id);
+
+
+--
+-- Name: monthly_financial_summaries fk_rails_199a1218f8; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.monthly_financial_summaries
+    ADD CONSTRAINT fk_rails_199a1218f8 FOREIGN KEY (space_id) REFERENCES public.spaces(id);
+
+
+--
+-- Name: ai_usages fk_rails_1b726c8628; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ai_usages
+    ADD CONSTRAINT fk_rails_1b726c8628 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: crm_ticket_responses fk_rails_2854703958; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.crm_ticket_responses
+    ADD CONSTRAINT fk_rails_2854703958 FOREIGN KEY (ticket_id) REFERENCES public.crm_tickets(id);
+
+
+--
+-- Name: transfers fk_rails_344b52b7fd; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transfers
+    ADD CONSTRAINT fk_rails_344b52b7fd FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: transfers fk_rails_3b260aee3c; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transfers
+    ADD CONSTRAINT fk_rails_3b260aee3c FOREIGN KEY (from_account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: crm_ticket_responses fk_rails_41672d01fe; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.crm_ticket_responses
+    ADD CONSTRAINT fk_rails_41672d01fe FOREIGN KEY (responder_id) REFERENCES public.users(id);
+
+
+--
+-- Name: crm_tickets fk_rails_49dc41eacc; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.crm_tickets
+    ADD CONSTRAINT fk_rails_49dc41eacc FOREIGN KEY (space_id) REFERENCES public.spaces(id);
+
+
+--
+-- Name: user_activities fk_rails_56e545161c; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_activities
+    ADD CONSTRAINT fk_rails_56e545161c FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: transfers fk_rails_5bab147120; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transfers
+    ADD CONSTRAINT fk_rails_5bab147120 FOREIGN KEY (parent_id) REFERENCES public.transfers(id);
+
+
+--
+-- Name: budgets fk_rails_5fde8bb13b; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.budgets
+    ADD CONSTRAINT fk_rails_5fde8bb13b FOREIGN KEY (space_id) REFERENCES public.spaces(id);
+
+
+--
+-- Name: transactions fk_rails_77364e6416; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT fk_rails_77364e6416 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: onboardings fk_rails_79b836a814; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.onboardings
+    ADD CONSTRAINT fk_rails_79b836a814 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: transfers fk_rails_79d9d7bea3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transfers
+    ADD CONSTRAINT fk_rails_79d9d7bea3 FOREIGN KEY (effective_parent_id) REFERENCES public.transfers(id);
+
+
+--
+-- Name: transactions fk_rails_86d9416874; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT fk_rails_86d9416874 FOREIGN KEY (transfer_id) REFERENCES public.transfers(id);
+
+
+--
+-- Name: space_users fk_rails_8f983cb345; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.space_users
+    ADD CONSTRAINT fk_rails_8f983cb345 FOREIGN KEY (space_id) REFERENCES public.spaces(id);
+
+
+--
+-- Name: active_storage_variant_records fk_rails_993965df05; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.active_storage_variant_records
+    ADD CONSTRAINT fk_rails_993965df05 FOREIGN KEY (blob_id) REFERENCES public.active_storage_blobs(id);
+
+
+--
+-- Name: accounts fk_rails_a162149ce2; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.accounts
+    ADD CONSTRAINT fk_rails_a162149ce2 FOREIGN KEY (space_id) REFERENCES public.spaces(id);
+
+
+--
+-- Name: budgets fk_rails_a52bce3297; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.budgets
+    ADD CONSTRAINT fk_rails_a52bce3297 FOREIGN KEY (category_id) REFERENCES public.transactions_categories(id);
+
+
+--
+-- Name: goal_descriptions fk_rails_acaaeb1c16; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.goal_descriptions
+    ADD CONSTRAINT fk_rails_acaaeb1c16 FOREIGN KEY (space_id) REFERENCES public.spaces(id);
+
+
+--
+-- Name: active_storage_attachments fk_rails_c3b3935057; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.active_storage_attachments
+    ADD CONSTRAINT fk_rails_c3b3935057 FOREIGN KEY (blob_id) REFERENCES public.active_storage_blobs(id);
+
+
+--
+-- Name: transactions fk_rails_e081824cad; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT fk_rails_e081824cad FOREIGN KEY (parent_id) REFERENCES public.transactions(id);
+
+
+--
+-- Name: crm_tickets fk_rails_e84cfaa3e9; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.crm_tickets
+    ADD CONSTRAINT fk_rails_e84cfaa3e9 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: transactions_categories fk_rails_fd34a3d598; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.transactions_categories
+    ADD CONSTRAINT fk_rails_fd34a3d598 FOREIGN KEY (space_id) REFERENCES public.spaces(id);
+
+
+--
+-- PostgreSQL database dump complete
+--
+

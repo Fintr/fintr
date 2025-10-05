@@ -12,15 +12,15 @@ module Ai
           end
         end
 
-        def validate(params)
-          contract = Contract.new.call(**params)
+        def validate(params:)
+          contract = Contract.new.call(params)
           return Failure(contract.errors.to_h) unless contract.success?
 
           Success(contract.to_h)
         end
 
         def call(params)
-          validated_params = step validate(params)
+          validated_params = step validate(params: params)
           data = step retrieve_structured_data(params: validated_params)
           formatted_data = step format_data_for_ai(data:, requirements: validated_params[:data_requirements])
           formatted_data
@@ -124,7 +124,7 @@ module Ai
 
         def retrieve_general_financial_data(space_id:, requirements:)
           # Fallback to general transaction data
-          step retrieve_transaction_data(space_id:, requirements:)
+          retrieve_transaction_data(space_id:, requirements:)
         end
 
         def build_transaction_query(space_id:, requirements:)
@@ -378,14 +378,14 @@ module Ai
 
         def format_data_for_ai(data:, requirements:)
           data_summary_result = step build_data_summary(data, requirements)
-          
+
           formatted = {
             query_type: requirements[:query_type],
             data_summary: data_summary_result,
             raw_data: data,
             metadata: {
               total_records: data.is_a?(Array) ? data.length : 1,
-              aggregation_applied: requirements.dig(:aggregations, :group_by)&.any?,
+              aggregation_applied: requirements.dig(:aggregations, :group_by)&.any? || false,
               time_range: requirements[:time_range],
               filters_applied: requirements[:filters]
             }

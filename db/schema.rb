@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 # This file is auto-generated from the current state of the database. Instead
 # of editing this file, please use the migrations feature of Active Record to
 # incrementally modify your database, and then regenerate this schema definition.
@@ -13,16 +11,7 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema[8.0].define(version: 2025_09_30_070044) do
-  # These schemas are created by the timescaledb extension and should not be recreated
-  # create_schema "_timescaledb_cache"
-  # create_schema "_timescaledb_catalog"
-  # create_schema "_timescaledb_config"
-  # create_schema "_timescaledb_debug"
-  # create_schema "_timescaledb_functions"
-  # create_schema "_timescaledb_internal"
-  # create_schema "timescaledb_experimental"
-  # create_schema "timescaledb_information"
-  # create_schema "toolkit_experimental"
+
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"

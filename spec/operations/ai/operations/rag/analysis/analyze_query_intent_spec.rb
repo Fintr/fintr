@@ -6,7 +6,8 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
   subject(:operation) { described_class.new }
 
   let(:user) { create(:user) }
-  let(:space) { create(:personal_space, user: user) }
+  let(:space) { create(:personal_space) }
+  let!(:space_user) { create(:space_user, user: user, space: space) }
   let(:query) { "What's my biggest expense this month?" }
   let(:space_id) { space.id }
 
@@ -101,21 +102,21 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       it "successfully analyzes query intent and returns requirements" do
         result = operation.call(params)
         expect(result).to be_success
-        
+
         response = result.value!
         expect(response).to include(
           :requirements,
           :raw_ai_analysis,
           :parsed_analysis
         )
-        
+
         expect(response[:requirements]).to include(
           query_type: "spending_analysis",
           data_sources: ["transactions"],
-          aggregations: hash_including("group_by" => ["category"]),
-          filters: hash_including("transaction_type" => ["expense"]),
-          time_range: hash_including("period" => "this_month"),
-          sorting: hash_including("field" => "amount", "direction" => "desc"),
+          aggregations: hash_including(group_by: ["category"]),
+          filters: hash_including(transaction_type: ["expense"]),
+          time_range: hash_including(period: "this_month"),
+          sorting: hash_including(field: "amount", direction: "desc"),
           limit: 1
         )
       end
@@ -123,7 +124,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       it "includes raw AI response in the result" do
         result = operation.call(params)
         expect(result).to be_success
-        
+
         response = result.value!
         expect(response[:raw_ai_analysis]).to be_present
         expect(response[:raw_ai_analysis]).to include("query_type")
@@ -132,7 +133,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       it "includes parsed analysis in the result" do
         result = operation.call(params)
         expect(result).to be_success
-        
+
         response = result.value!
         expect(response[:parsed_analysis]).to be_present
         expect(response[:parsed_analysis]).to include(:query_type)
@@ -180,7 +181,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       it "falls back to default analysis" do
         result = operation.call(params)
         expect(result).to be_success
-        
+
         response = result.value!
         expect(response[:requirements][:query_type]).to eq("spending_analysis")
         expect(response[:requirements][:data_sources]).to eq(["transactions"])
@@ -219,7 +220,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       it "returns success with parsed analysis and raw response" do
         result = operation.send(:analyze_query_intent, params: params)
         expect(result).to be_success
-        
+
         response = result.value!
         expect(response).to include(:parsed_analysis, :raw_response)
         expect(response[:parsed_analysis][:query_type]).to eq("spending_analysis")
@@ -229,9 +230,10 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       it "calls OpenAI with correct parameters" do
         openai_client = instance_double(OpenAI::Client)
         allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        
+        allow(openai_client).to receive(:chat).and_return(openai_response)
+
         operation.send(:analyze_query_intent, params: params)
-        
+
         expect(openai_client).to have_received(:chat).with(
           parameters: hash_including(
             model: "gpt-3.5-turbo",
@@ -249,7 +251,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
         openai_client = instance_double(OpenAI::Client)
         allow(OpenAI::Client).to receive(:new).and_return(openai_client)
         allow(openai_client).to receive(:chat).and_raise(StandardError.new("API error"))
-        
+
         result = operation.send(:analyze_query_intent, params: params)
         expect(result).to be_failure
         expect(result.failure).to have_key(:analysis_error)
@@ -273,7 +275,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       it "returns success with requirements" do
         result = operation.send(:determine_data_requirements, analysis: analysis)
         expect(result).to be_success
-        
+
         requirements = result.value!
         expect(requirements).to include(
           query_type: "spending_analysis",
@@ -290,7 +292,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
     describe "#build_analysis_prompt" do
       it "returns a prompt with current date context" do
         prompt = operation.send(:build_analysis_prompt)
-        
+
         expect(prompt).to include("CURRENT DATE CONTEXT:")
         expect(prompt).to include(Date.current.strftime("%B %d, %Y"))
         expect(prompt).to include(Date.current.year.to_s)
@@ -299,7 +301,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
 
       it "includes smart date inference rules" do
         prompt = operation.send(:build_analysis_prompt)
-        
+
         expect(prompt).to include("SMART DATE INFERENCE:")
         expect(prompt).to include("most recent occurrence")
         expect(prompt).to include("this month")
@@ -308,7 +310,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
 
       it "includes JSON response format instructions" do
         prompt = operation.send(:build_analysis_prompt)
-        
+
         expect(prompt).to include("query_type")
         expect(prompt).to include("data_sources")
         expect(prompt).to include("aggregations")
@@ -320,7 +322,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
 
       it "includes examples" do
         prompt = operation.send(:build_analysis_prompt)
-        
+
         expect(prompt).to include("Examples:")
         expect(prompt).to include("What's my biggest spend")
         expect(prompt).to include("How much did I spend on coffee")
@@ -354,16 +356,16 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
 
         it "returns parsed analysis" do
           result = operation.send(:parse_analysis_response, response_text)
-          
-          expect(result).to include(
-            query_type: "spending_analysis",
-            data_sources: ["transactions"],
-            aggregations: { "group_by" => ["category"], "metrics" => ["sum", "count"] },
-            filters: { "transaction_type" => ["expense"] },
-            time_range: { "period" => "this_month" },
-            sorting: { "field" => "amount", "direction" => "desc" },
-            limit: 5
-          )
+
+        expect(result).to include(
+          query_type: "spending_analysis",
+          data_sources: ["transactions"],
+          aggregations: { group_by: ["category"], metrics: ["sum", "count"] },
+          filters: { transaction_type: ["expense"] },
+          time_range: { period: "this_month" },
+          sorting: { field: "amount", direction: "desc" },
+          limit: 5
+        )
         end
       end
 
@@ -372,7 +374,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
 
         it "returns default analysis" do
           result = operation.send(:parse_analysis_response, response_text)
-          
+
           expect(result).to include(
             query_type: "spending_analysis",
             data_sources: ["transactions"],
@@ -394,7 +396,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
 
         it "fills in missing fields with defaults" do
           result = operation.send(:parse_analysis_response, response_text)
-          
+
           expect(result[:query_type]).to eq("income_analysis")
           expect(result[:data_sources]).to eq([])
           expect(result[:aggregations]).to eq({})
@@ -423,7 +425,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
     describe "#default_analysis" do
       it "returns default analysis with current month context" do
         result = operation.send(:default_analysis)
-        
+
         expect(result).to include(
           query_type: "spending_analysis",
           data_sources: ["transactions"],
@@ -433,7 +435,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
           sorting: { field: "amount", direction: "desc" },
           limit: 10
         )
-        
+
         # Check that time_range includes current month dates
         current_date = Date.current
         expect(result[:time_range][:start_date]).to eq(current_date.beginning_of_month.strftime("%Y-%m-%d"))

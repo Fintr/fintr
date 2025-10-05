@@ -69,4 +69,10 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
   # arbitrary gems may also be filtered via:
   # config.filter_gems_from_backtrace("gem name")
+  #
+  unless ENV["SKIP_MAINTAIN_TEST_SCHEMA"] == "true"
+    ActiveRecord::Migration.maintain_test_schema!
+  else
+    puts "⚙️  Skipping schema maintenance for test environment..."
+  end
 end

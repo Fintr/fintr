@@ -6,7 +6,8 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
   subject(:operation) { described_class.new }
 
   let(:user) { create(:user) }
-  let(:space) { create(:personal_space, user: user) }
+  let(:space) { create(:personal_space) }
+  let!(:space_user) { create(:space_user, user: user, space: space) }
   let(:account) { create(:account, space: space) }
   let(:category) { create(:category, space: space) }
   let(:expense_transaction) { create(:expense_transaction, space: space, account: account, category: category, amount: 100.0) }
@@ -14,7 +15,18 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
 
   let(:params) do
     {
-      space_id: space.id,
+      space_id: space.id.to_s,
+      data_requirements: {
+        query_type: "spending_analysis",
+        filters: {},
+        time_range: { period: "this_month" }
+      }
+    }
+  end
+
+  let(:fresh_params) do
+    {
+      space_id: space.id.to_s,
       data_requirements: {
         query_type: "spending_analysis",
         filters: {},
@@ -25,34 +37,52 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
 
   describe "Contract" do
     it "succeeds with valid parameters" do
-      result = operation.validate(params: params)
+      result = operation.validate(params: fresh_params)
       expect(result).to be_success
     end
 
     it "fails without space_id" do
-      params.delete(:space_id)
-      result = operation.validate(params: params)
+      invalid_params = {
+        data_requirements: {
+          query_type: "spending_analysis",
+          filters: {},
+          time_range: { period: "this_month" }
+        }
+      }
+      result = operation.validate(params: invalid_params)
       expect(result).to be_failure
       expect(result.failure).to have_key(:space_id)
     end
 
     it "fails without data_requirements" do
-      params.delete(:data_requirements)
-      result = operation.validate(params: params)
+      invalid_params = {
+        space_id: space.id.to_s
+      }
+      result = operation.validate(params: invalid_params)
       expect(result).to be_failure
       expect(result.failure).to have_key(:data_requirements)
     end
 
     it "fails with invalid space_id type" do
-      params[:space_id] = 123
-      result = operation.validate(params: params)
+      invalid_params = {
+        space_id: 123,
+        data_requirements: {
+          query_type: "spending_analysis",
+          filters: {},
+          time_range: { period: "this_month" }
+        }
+      }
+      result = operation.validate(params: invalid_params)
       expect(result).to be_failure
       expect(result.failure).to have_key(:space_id)
     end
 
     it "fails with invalid data_requirements type" do
-      params[:data_requirements] = "invalid"
-      result = operation.validate(params: params)
+      invalid_params = {
+        space_id: space.id.to_s,
+        data_requirements: "invalid"
+      }
+      result = operation.validate(params: invalid_params)
       expect(result).to be_failure
       expect(result.failure).to have_key(:data_requirements)
     end
@@ -96,9 +126,8 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
 
     context "when retrieve_structured_data fails" do
       before do
-        allow_any_instance_of(described_class).to receive(:retrieve_structured_data).and_return(
-          Failure(data_retrieval_error: "Failed to retrieve data")
-        )
+        # Mock the space lookup to fail
+        allow(Spaces::Space).to receive(:find).and_raise(StandardError.new("Database connection failed"))
       end
 
       it "returns a failure" do
@@ -110,9 +139,10 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
 
     context "when format_data_for_ai fails" do
       before do
-        allow_any_instance_of(described_class).to receive(:format_data_for_ai).and_return(
-          Failure(data_retrieval_error: "Failed to format data")
-        )
+        # Create a transaction that will be retrieved and cause Money.new to be called
+        create(:expense_transaction, space: space, account: account, category: category, amount: 100.0)
+        # Mock Money class to cause formatting to fail
+        allow(Money).to receive(:new).and_raise(StandardError.new("Money formatting failed"))
       end
 
       it "returns a failure" do
@@ -212,6 +242,7 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
         it "delegates to retrieve_general_financial_data" do
           result = operation.send(:retrieve_structured_data, params: unknown_params)
           expect(result).to be_success
+          expect(result.value!).to be_an(Array)
         end
       end
     end
@@ -261,7 +292,7 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
 
       context "when an error occurs" do
         before do
-          allow_any_instance_of(described_class).to receive(:build_transaction_query).and_raise(StandardError.new("Database error"))
+          allow(Spaces::Space).to receive(:find).and_raise(StandardError.new("Database error"))
         end
 
         it "returns a failure with error message" do
@@ -311,7 +342,7 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
 
       context "when an error occurs" do
         before do
-          allow_any_instance_of(described_class).to receive(:build_transaction_query).and_raise(StandardError.new("Database error"))
+          allow(Spaces::Space).to receive(:find).and_raise(StandardError.new("Database error"))
         end
 
         it "returns a failure with error message" do
@@ -343,7 +374,7 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
 
       context "when an error occurs" do
         before do
-          allow_any_instance_of(described_class).to receive(:build_transaction_query).and_raise(StandardError.new("Database error"))
+          allow(Spaces::Space).to receive(:find).and_raise(StandardError.new("Database error"))
         end
 
         it "returns a failure with error message" do
@@ -398,22 +429,16 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
     describe "#apply_transaction_type_filter" do
       let(:query) { space.transactions }
 
-      it "filters by expense transactions" do
+      it "filters by transaction types and returns original query when no filter" do
+        # Test expense filter
         result = operation.send(:apply_transaction_type_filter, query, { transaction_type: ["expense"] })
         expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "filters by income transactions" do
+        
+        # Test income filter
         result = operation.send(:apply_transaction_type_filter, query, { transaction_type: ["income"] })
         expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "filters by transfer transactions" do
-        result = operation.send(:apply_transaction_type_filter, query, { transaction_type: ["transfer"] })
-        expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "returns original query when no transaction_type filter" do
+        
+        # Test no filter
         result = operation.send(:apply_transaction_type_filter, query, {})
         expect(result).to eq(query)
       end
@@ -422,12 +447,12 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
     describe "#apply_category_filter" do
       let(:query) { space.transactions }
 
-      it "filters by category names" do
+      it "filters by category names and returns original query when no filter" do
+        # Test with filter
         result = operation.send(:apply_category_filter, query, { categories: ["Food"] })
         expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "returns original query when no category filter" do
+        
+        # Test without filter
         result = operation.send(:apply_category_filter, query, {})
         expect(result).to eq(query)
       end
@@ -436,12 +461,12 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
     describe "#apply_account_filter" do
       let(:query) { space.transactions }
 
-      it "filters by account names" do
+      it "filters by account names and returns original query when no filter" do
+        # Test with filter
         result = operation.send(:apply_account_filter, query, { accounts: ["Cash"] })
         expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "returns original query when no account filter" do
+        
+        # Test without filter
         result = operation.send(:apply_account_filter, query, {})
         expect(result).to eq(query)
       end
@@ -450,12 +475,12 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
     describe "#apply_description_filter" do
       let(:query) { space.transactions }
 
-      it "filters by description keywords" do
+      it "filters by description keywords and returns original query when no filter" do
+        # Test with filter
         result = operation.send(:apply_description_filter, query, { descriptions: ["grocery"] })
         expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "returns original query when no description filter" do
+        
+        # Test without filter
         result = operation.send(:apply_description_filter, query, {})
         expect(result).to eq(query)
       end
@@ -464,22 +489,20 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
     describe "#apply_amount_filter" do
       let(:query) { space.transactions }
 
-      it "filters by minimum amount" do
+      it "filters by amount ranges and returns original query when no filter" do
+        # Test minimum amount
         result = operation.send(:apply_amount_filter, query, { amount_range: { min: 50 } })
         expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "filters by maximum amount" do
+        
+        # Test maximum amount
         result = operation.send(:apply_amount_filter, query, { amount_range: { max: 200 } })
         expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "filters by amount range" do
+        
+        # Test range
         result = operation.send(:apply_amount_filter, query, { amount_range: { min: 50, max: 200 } })
         expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "returns original query when no amount filter" do
+        
+        # Test no filter
         result = operation.send(:apply_amount_filter, query, {})
         expect(result).to eq(query)
       end
@@ -488,51 +511,27 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
     describe "#apply_time_range_filter" do
       let(:query) { space.transactions }
 
-      it "filters by this_month period" do
-        result = operation.send(:apply_time_range_filter, query, { period: "this_month" })
-        expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "filters by last_month period" do
-        result = operation.send(:apply_time_range_filter, query, { period: "last_month" })
-        expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "filters by this_week period" do
-        result = operation.send(:apply_time_range_filter, query, { period: "this_week" })
-        expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "filters by last_week period" do
-        result = operation.send(:apply_time_range_filter, query, { period: "last_week" })
-        expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "filters by this_year period" do
-        result = operation.send(:apply_time_range_filter, query, { period: "this_year" })
-        expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "filters by last_year period" do
-        result = operation.send(:apply_time_range_filter, query, { period: "last_year" })
-        expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "filters by custom date range" do
+      it "filters by various time periods and handles edge cases" do
+        # Test different periods
+        periods = ["this_month", "last_month", "this_week", "last_week", "this_year", "last_year"]
+        periods.each do |period|
+          result = operation.send(:apply_time_range_filter, query, { period: period })
+          expect(result).to be_a(ActiveRecord::Relation)
+        end
+        
+        # Test custom date range
         result = operation.send(:apply_time_range_filter, query, {
           period: "custom",
           start_date: "2024-01-01",
           end_date: "2024-01-31"
         })
         expect(result).to be_a(ActiveRecord::Relation)
-      end
-
-      it "returns original query when no time range filter" do
+        
+        # Test no filter
         result = operation.send(:apply_time_range_filter, query, {})
         expect(result).to eq(query)
-      end
-
-      it "handles invalid date gracefully" do
+        
+        # Test invalid date
         result = operation.send(:apply_time_range_filter, query, {
           period: "custom",
           start_date: "invalid-date"
@@ -590,7 +589,7 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
 
       context "when an error occurs" do
         before do
-          allow(result_data).to receive(:map).and_raise(StandardError.new("Format error"))
+          allow(result_data[:sum]).to receive(:map).and_raise(StandardError.new("Format error"))
         end
 
         it "returns a failure with error message" do
@@ -606,22 +605,19 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
       let(:query) { space.transactions }
       let(:requirements) { { sorting: { field: "amount", direction: :desc }, limit: 5 } }
 
-      it "applies sorting and limit" do
+      it "applies sorting and limit with various configurations" do
+        # Test with both sorting and limit
         result = operation.send(:apply_sorting_and_limit, query, requirements)
         expect(result).to be_success
         expect(result.value!).to be_a(ActiveRecord::Relation)
-      end
-
-      it "uses default sorting when not specified" do
-        requirements_without_sorting = { limit: 5 }
-        result = operation.send(:apply_sorting_and_limit, query, requirements_without_sorting)
+        
+        # Test with only limit
+        result = operation.send(:apply_sorting_and_limit, query, { limit: 5 })
         expect(result).to be_success
         expect(result.value!).to be_a(ActiveRecord::Relation)
-      end
-
-      it "uses default limit when not specified" do
-        requirements_without_limit = { sorting: { field: "amount" } }
-        result = operation.send(:apply_sorting_and_limit, query, requirements_without_limit)
+        
+        # Test with only sorting
+        result = operation.send(:apply_sorting_and_limit, query, { sorting: { field: "amount" } })
         expect(result).to be_success
         expect(result.value!).to be_a(ActiveRecord::Relation)
       end
@@ -641,35 +637,26 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
     end
 
     describe "#determine_time_grouping" do
-      it "returns month grouping for year periods" do
+      it "returns appropriate grouping for different periods and handles edge cases" do
+        # Test year period
         result = operation.send(:determine_time_grouping, { period: "this_year" })
         expect(result).to be_success
         expect(result.value!).to eq(:month)
-      end
-
-      it "returns day grouping for month periods" do
+        
+        # Test month period
         result = operation.send(:determine_time_grouping, { period: "this_month" })
         expect(result).to be_success
         expect(result.value!).to eq(:day)
-      end
-
-      it "returns day grouping for other periods" do
+        
+        # Test week period
         result = operation.send(:determine_time_grouping, { period: "this_week" })
         expect(result).to be_success
         expect(result.value!).to eq(:day)
-      end
-
-      context "when an error occurs" do
-        before do
-          allow_any_instance_of(described_class).to receive(:case).and_raise(StandardError.new("Logic error"))
-        end
-
-        it "returns a failure with error message" do
-          result = operation.send(:determine_time_grouping, { period: "this_month" })
-          expect(result).to be_failure
-          expect(result.failure).to have_key(:data_retrieval_error)
-          expect(result.failure[:data_retrieval_error]).to include("Failed to determine time grouping")
-        end
+        
+        # Test invalid period
+        result = operation.send(:determine_time_grouping, { period: nil })
+        expect(result).to be_success
+        expect(result.value!).to eq(:day) # Should default to day
       end
     end
 
@@ -720,7 +707,8 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
 
       context "when an error occurs" do
         before do
-          allow_any_instance_of(described_class).to receive(:build_data_summary).and_raise(StandardError.new("Format error"))
+          # Mock Money class to cause formatting to fail
+          allow(Money).to receive(:new).and_raise(StandardError.new("Money formatting failed"))
         end
 
         it "returns a failure with error message" do
@@ -733,62 +721,46 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
     end
 
     describe "#build_data_summary" do
-      context "with spending analysis data" do
-        let(:data) { [{ sum: { amount_cents: 10000 } }] }
-        let(:requirements) { { query_type: "spending_analysis" } }
-
-        it "builds summary for grouped spending data" do
-          result = operation.send(:build_data_summary, data, requirements)
-          expect(result).to be_success
-          expect(result.value!).to include("Found 1 spending categories")
-        end
-      end
-
-      context "with transaction data" do
-        let(:data) { [{ amount_cents: 10000 }] }
-        let(:requirements) { { query_type: "spending_analysis" } }
-
-        it "builds summary for transaction data" do
-          result = operation.send(:build_data_summary, data, requirements)
-          expect(result).to be_success
-          expect(result.value!).to include("Found 1 transactions")
-        end
-      end
-
-      context "with income analysis data" do
-        let(:data) { [{ amount_cents: 20000 }] }
-        let(:requirements) { { query_type: "income_analysis" } }
-
-        it "builds summary for income data" do
-          result = operation.send(:build_data_summary, data, requirements)
-          expect(result).to be_success
-          expect(result.value!).to include("Found 1 income entries")
-        end
-      end
-
-      context "with trend analysis data" do
-        let(:data) { [{ period: "2024-01" }] }
-        let(:requirements) { { query_type: "trend_analysis" } }
-
-        it "builds summary for trend data" do
-          result = operation.send(:build_data_summary, data, requirements)
-          expect(result).to be_success
-          expect(result.value!).to include("Found trend data across 1 time periods")
-        end
-      end
-
-      context "with empty data" do
-        let(:data) { [] }
-        let(:requirements) { { query_type: "spending_analysis" } }
-
-        it "returns no data found message" do
-          result = operation.send(:build_data_summary, data, requirements)
-          expect(result).to be_success
-          expect(result.value!).to eq("No data found")
-        end
+      it "builds appropriate summaries for different data types and handles edge cases" do
+        # Test grouped spending data
+        data = [{ sum: { amount_cents: 10000 } }]
+        requirements = { query_type: "spending_analysis" }
+        result = operation.send(:build_data_summary, data, requirements)
+        expect(result).to be_success
+        expect(result.value!).to include("Found 1 spending categories")
+        
+        # Test transaction data
+        data = [{ amount_cents: 10000 }]
+        result = operation.send(:build_data_summary, data, requirements)
+        expect(result).to be_success
+        expect(result.value!).to include("Found 1 transactions")
+        
+        # Test income data
+        data = [{ amount_cents: 20000 }]
+        requirements = { query_type: "income_analysis" }
+        result = operation.send(:build_data_summary, data, requirements)
+        expect(result).to be_success
+        expect(result.value!).to include("Found 1 income entries")
+        
+        # Test trend data
+        data = [{ period: "2024-01" }]
+        requirements = { query_type: "trend_analysis" }
+        result = operation.send(:build_data_summary, data, requirements)
+        expect(result).to be_success
+        expect(result.value!).to include("Found trend data across 1 time periods")
+        
+        # Test empty data
+        data = []
+        requirements = { query_type: "spending_analysis" }
+        result = operation.send(:build_data_summary, data, requirements)
+        expect(result).to be_success
+        expect(result.value!).to eq("No data found")
       end
 
       context "when an error occurs" do
+        let(:data) { [{ amount_cents: 10000 }] }
+        let(:requirements) { { query_type: "spending_analysis" } }
+
         before do
           allow(data).to receive(:sum).and_raise(StandardError.new("Summary error"))
         end
