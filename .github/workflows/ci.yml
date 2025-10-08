@@ -48,7 +48,7 @@ jobs:
       DATABASE_PASSWORD: postgres
     services:
       postgres:
-        image: postgres:17
+        image: timescale/timescaledb-ha:pg17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
