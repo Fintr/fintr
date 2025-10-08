@@ -80,5 +80,8 @@ jobs:
       - name: Set up database
         run: RAILS_ENV=test bundle exec rails db:create db:migrate
 
+      - name: Clean TimescaleDB schemas
+        run: bundle exec rake db:clean_timescaledb_schemas
+
       - name: Run specs
         run: bundle exec rspec 
