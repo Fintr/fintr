@@ -35,3 +35,4 @@
 
 .env*
 *.log
+.kamal/ssh_config

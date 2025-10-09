@@ -10,10 +10,14 @@ servers:
   web:
     hosts:
       - api.fintr.ai
+    options:
+      network: 'private'
   job:
     hosts:
-      - api.fintr.ai
+      - staging-api.fintr.ai
     cmd: bin/jobs
+    options:
+      network: 'private'
 
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
 # Remove this section when using multiple web servers and ensure you terminate SSL at your load balancer.
@@ -25,8 +29,9 @@ proxy:
   app_port: 3000 # The port your application container listens on (default: 80)
   healthcheck:
     path: /up # The path for the health check endpoint in your app (default: /up)
-    interval: 10 # How often to check (default: 1s)
+    interval: 1 # How often to check (default: 1s)
     timeout: 15 # Timeout for the health check request (default: 5s)
+  response_timeout: 30
   # Other options like buffering, logging, response_timeout, etc.
 
 # Credentials for your image host.
@@ -55,6 +60,10 @@ builder:
 
 # Inject ENV variables into containers (secrets come from .kamal/secrets).
 env:
+  clear:
+    DATABASE_HOST: fintr-be-staging-postgres
+    DATABASE_USER: fintr_rails
+    DATABASE_NAME: fintr_production
   secret:
     - RAILS_MASTER_KEY
     - AUTH0_URL
@@ -65,9 +74,7 @@ env:
     - RAILS_ENV
     - PORT
     - USER_AUTH0_ID
-    - DATABASE_USER
     - DATABASE_PASSWORD
-    - DATABASE_HOST
     - DB_BASE_URL
     - SENTRY_DSN
     - OPENAI_API_KEY
@@ -86,7 +93,8 @@ env:
 # Use a different ssh user than root
 #
 ssh:
-  user: ec2-user
+  user: root
+  config: true
 
 # Use a persistent storage volume.
 #
@@ -110,7 +118,6 @@ accessories:
   postgres:
     image: timescale/timescaledb-ha:pg17
     host: api.fintr.ai
-    port: 5432
     env:
       clear:
         POSTGRES_DB: fintr_production
@@ -129,11 +136,8 @@ accessories:
       memory: 1g
       cpus: 1.0
       restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fintr_admin -d fintr_production"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-deploy_timeout: 300
-
+      network: 'private'
+deploy_timeout: 60
+boot:
+  limit: 1     # Deploy one container at a time
+  wait: 10  
