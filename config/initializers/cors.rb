@@ -11,12 +11,12 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
     # Get allowed origins from environment variable or use defaults
     # Format in .env: CORS_ORIGINS=http://localhost:5173,http://localhost:3000
-    origins ENV.fetch("CORS_ORIGINS", "localhost:5173,localhost:3000").split(",").map(&:strip)
+    origins ENV.fetch("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",").map(&:strip)
 
     resource "/api/*",
-      headers: %w[Authorization X-Space-Code],
-      methods: :any,
-      expose: %w[Authorization X-Space-Code Content-Disposition],
+      headers: %w[Authorization X-Space-Code Content-Type Accept Cache-Control Connection Pragma Expires X-Accel-Buffering],
+      methods: [:get, :post, :put, :patch, :delete, :options, :head],
+      expose: %w[Authorization X-Space-Code Content-Disposition Content-Type Cache-Control Connection],
       max_age: 600
   end
 end

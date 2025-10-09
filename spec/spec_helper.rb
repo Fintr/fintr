@@ -16,16 +16,26 @@
 #
 # See https://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 #
-require 'simplecov'
-SimpleCov.start 'rails' do
-  add_group "Models", "app/models"
-  add_group "Controllers", "app/controllers"
-  add_group "Operations", "app/operations"
-  add_group "Queries", "app/queries"
-  add_group "Services", "app/services"
-  add_group "Serializers", "app/serializers"
-  add_group "Jobs", "app/jobs"
-  add_group "Lib", "lib"
+# Only load SimpleCov if explicitly requested and not in problematic environments
+if ENV['COVERAGE'] == 'true' && !ENV['CI']
+  begin
+    require 'simplecov'
+    SimpleCov.start 'rails' do
+      add_group "Models", "app/models"
+      add_group "Controllers", "app/controllers"
+      add_group "Operations", "app/operations"
+      add_group "Queries", "app/queries"
+      add_group "Services", "app/services"
+      add_group "Serializers", "app/serializers"
+      add_group "Jobs", "app/jobs"
+      add_group "Lib", "lib"
+    end
+  rescue => e
+    puts "SimpleCov failed to start: #{e.message}"
+    # Continue without coverage
+  end
+else
+  puts "SimpleCov disabled (set COVERAGE=true to enable)"
 end
 
 RSpec.configure do |config|

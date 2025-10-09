@@ -1,9 +1,14 @@
 migrate:
-	bundle exec rails db:migrate parallel:prepare 
+	mise exec -- bundle exec rails db:migrate
+	mise exec -- bundle exec rake db:clean_timescaledb_schemas
+
+clean-schemas:
+	mise exec -- bundle exec rake db:clean_timescaledb_schemas 
 
 db-setup:
 	if [ -f db/schema.rb ]; then rm db/schema.rb; fi
-	bundle exec rails db:drop parallel:drop db:create db:migrate parallel:create
+	mise exec -- bundle exec rails db:drop parallel:drop db:create db:migrate parallel:create
+	mise exec -- bundle exec rake db:clean_timescaledb_schemas
 
 test:
 	bundle exec rails parallel:spec
@@ -19,6 +24,12 @@ mspecs:
 
 mrubocop:
 	mise exec -- bundle exec rubocop -A $(filter-out $@,$(MAKECMDGOALS))
+
+docker:
+	docker compose -f docker-compose.local.yml up -d
+
+docker-down:
+	docker compose -f docker-compose.local.yml down
 
 %:
     @:

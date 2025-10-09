@@ -2,23 +2,23 @@ development:
   check_duplicate_today:
     class: Transactions::CheckDuplicateTodayJob
     queue: default
-    schedule: every minute
+    schedule: every hour
   transfers_check_duplicate_today:
     class: Transactions::Transfers::CheckDuplicateTodayJob
     queue: default
-    schedule: every minute
+    schedule: every hour
   accounts_calculate_pending_balances:
     class: Transactions::Accounts::CalculatePendingBalancesJob
     queue: default
-    schedule: 'every 2 minutes'
+    schedule: every hour
   transfers_calculate_pending_balances:
     class: Transactions::Transfers::CalculatePendingBalancesJob
     queue: default
-    schedule: 'every 2 minutes'
+    schedule: every hour
   budgets_create_space_monthly_budgets:
     class: Budgets::CreateSpaceMonthlyBudgetsJob
     queue: default
-    schedule: 'every 1 minute'
+    schedule: every hour
 
 staging:
   check_duplicate_today:

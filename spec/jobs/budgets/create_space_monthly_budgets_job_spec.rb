@@ -6,6 +6,14 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
   let(:job) { described_class.new }
   let(:space1) { create(:space) }
   let(:space2) { create(:space) }
+  let(:test_timezones) do
+    [
+      "Asia/Manila",
+      "UTC",
+      "America/New_York",
+      "Europe/London"
+    ]
+  end
 
   before do
     allow(Rails.logger).to receive(:info)
@@ -108,34 +116,11 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
       end
     end
 
-    context "when date crosses month boundary" do
+    context "when date is at month boundary" do
       around do |example|
-        Time.use_zone("Asia/Manila") do
-          # Set to end of month
-          travel_to Time.zone.parse("2024-01-31 23:59:59")
-          example.run
-        end
-      end
-
-      it "uses the correct date in Asia/Manila timezone" do
-        expected_date = Date.current.in_time_zone("Asia/Manila")
-
-        expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
-          space_id: space1.id,
-          date: expected_date
-        )
-
-        job.perform
-      end
-    end
-
-    context "when date is at month boundary in different timezone" do
-      around do |example|
-        Time.use_zone("UTC") do
-          # Set to end of month in UTC
-          travel_to Time.zone.parse("2024-01-31 23:59:59")
-          example.run
-        end
+        # Set to end of month
+        travel_to Time.zone.parse("2024-01-31 23:59:59")
+        example.run
       end
 
       it "uses Asia/Manila timezone regardless of system timezone" do
@@ -148,36 +133,28 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
 
         job.perform
       end
-    end
 
-    context "when date is at month boundary in Asia/Manila" do
-      around do |example|
-        Time.use_zone("Asia/Manila") do
-          # Set to end of month in Asia/Manila
-          travel_to Time.zone.parse("2024-01-31 23:59:59")
-          example.run
+      it "works consistently across different system timezones" do
+        test_timezones.each do |tz|
+          Time.use_zone(tz) do
+            expected_date = Date.current.in_time_zone("Asia/Manila")
+
+            expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
+              space_id: space1.id,
+              date: expected_date
+            )
+
+            job.perform
+          end
         end
-      end
-
-      it "uses the correct date in Asia/Manila timezone" do
-        expected_date = Date.current.in_time_zone("Asia/Manila")
-
-        expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
-          space_id: space1.id,
-          date: expected_date
-        )
-
-        job.perform
       end
     end
 
-    context "when date is at month boundary in America/New_York" do
+    context "when date is at month boundary with leap year" do
       around do |example|
-        Time.use_zone("America/New_York") do
-          # Set to end of month in America/New_York
-          travel_to Time.zone.parse("2024-01-31 23:59:59")
-          example.run
-        end
+        # Set to end of month in leap year
+        travel_to Time.zone.parse("2024-02-29 23:59:59")
+        example.run
       end
 
       it "uses Asia/Manila timezone regardless of system timezone" do
@@ -190,152 +167,20 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
 
         job.perform
       end
-    end
 
-    context "when date is at month boundary in Europe/London" do
-      around do |example|
-        Time.use_zone("Europe/London") do
-          # Set to end of month in Europe/London
-          travel_to Time.zone.parse("2024-01-31 23:59:59")
-          example.run
+      it "works consistently across different system timezones in leap year" do
+        test_timezones.each do |tz|
+          Time.use_zone(tz) do
+            expected_date = Date.current.in_time_zone("Asia/Manila")
+
+            expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
+              space_id: space1.id,
+              date: expected_date
+            )
+
+            job.perform
+          end
         end
-      end
-
-      it "uses Asia/Manila timezone regardless of system timezone" do
-        expected_date = Date.current.in_time_zone("Asia/Manila")
-
-        expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
-          space_id: space1.id,
-          date: expected_date
-        )
-
-        job.perform
-      end
-    end
-
-    context "when date is at month boundary in Asia/Manila with DST" do
-      around do |example|
-        Time.use_zone("Asia/Manila") do
-          # Set to end of month in Asia/Manila (no DST, but testing consistency)
-          travel_to Time.zone.parse("2024-01-31 23:59:59")
-          example.run
-        end
-      end
-
-      it "uses the correct date in Asia/Manila timezone" do
-        expected_date = Date.current.in_time_zone("Asia/Manila")
-
-        expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
-          space_id: space1.id,
-          date: expected_date
-        )
-
-        job.perform
-      end
-    end
-
-    context "when date is at month boundary in America/New_York with DST" do
-      around do |example|
-        Time.use_zone("America/New_York") do
-          # Set to end of month in America/New_York (with DST)
-          travel_to Time.zone.parse("2024-01-31 23:59:59")
-          example.run
-        end
-      end
-
-      it "uses Asia/Manila timezone regardless of system timezone" do
-        expected_date = Date.current.in_time_zone("Asia/Manila")
-
-        expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
-          space_id: space1.id,
-          date: expected_date
-        )
-
-        job.perform
-      end
-    end
-
-    context "when date is at month boundary in Europe/London with DST" do
-      around do |example|
-        Time.use_zone("Europe/London") do
-          # Set to end of month in Europe/London (with DST)
-          travel_to Time.zone.parse("2024-01-31 23:59:59")
-          example.run
-        end
-      end
-
-      it "uses Asia/Manila timezone regardless of system timezone" do
-        expected_date = Date.current.in_time_zone("Asia/Manila")
-
-        expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
-          space_id: space1.id,
-          date: expected_date
-        )
-
-        job.perform
-      end
-    end
-
-    context "when date is at month boundary in Asia/Manila with leap year" do
-      around do |example|
-        Time.use_zone("Asia/Manila") do
-          # Set to end of month in Asia/Manila (leap year)
-          travel_to Time.zone.parse("2024-02-29 23:59:59")
-          example.run
-        end
-      end
-
-      it "uses the correct date in Asia/Manila timezone" do
-        expected_date = Date.current.in_time_zone("Asia/Manila")
-
-        expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
-          space_id: space1.id,
-          date: expected_date
-        )
-
-        job.perform
-      end
-    end
-
-    context "when date is at month boundary in America/New_York with leap year" do
-      around do |example|
-        Time.use_zone("America/New_York") do
-          # Set to end of month in America/New_York (leap year)
-          travel_to Time.zone.parse("2024-02-29 23:59:59")
-          example.run
-        end
-      end
-
-      it "uses Asia/Manila timezone regardless of system timezone" do
-        expected_date = Date.current.in_time_zone("Asia/Manila")
-
-        expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
-          space_id: space1.id,
-          date: expected_date
-        )
-
-        job.perform
-      end
-    end
-
-    context "when date is at month boundary in Europe/London with leap year" do
-      around do |example|
-        Time.use_zone("Europe/London") do
-          # Set to end of month in Europe/London (leap year)
-          travel_to Time.zone.parse("2024-02-29 23:59:59")
-          example.run
-        end
-      end
-
-      it "uses Asia/Manila timezone regardless of system timezone" do
-        expected_date = Date.current.in_time_zone("Asia/Manila")
-
-        expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
-          space_id: space1.id,
-          date: expected_date
-        )
-
-        job.perform
       end
     end
   end
