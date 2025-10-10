@@ -1,11 +1,12 @@
 "use client";
 import React, { useState } from "react";
-import { Bell, Settings, Camera, Plus, Menu, User as UserIcon, Target, Headphones } from "lucide-react";
+import { Bell, Settings, Camera, Plus, Menu, User as UserIcon, Target, Headphones, MessageSquare } from "lucide-react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
 import AddReceiptDialog from "@/components/dashboard/add-receipt-dialog";
+import AiChatModal from "@/components/dashboard/ai-chat-modal";
 import NotificationsPopup from "@/components/dashboard/notifications-popup";
 import { NotificationProps } from "@/components/dashboard/notification-item";
 import NavDrawer from "@/components/dashboard/nav-drawer";
@@ -30,6 +31,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
   const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isDesktopNavOpen, setIsDesktopNavOpen] = useState(false);
+  const [isAiChatOpen, setIsAiChatOpen] = useState(false);
 
   const pathname = usePathname();
   const showV2Features = shouldShowV2Features();
@@ -135,6 +137,16 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
               </Link>
             </div>
             <div className="flex flex-row items-center gap-2">
+              <Button
+                onClick={() => setIsAiChatOpen(true)}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-primary hover:bg-gray-100 p-0 border border-primary rounded-full"
+                aria-label="AI Chat"
+              >
+                <MessageSquare className="h-5 w-5" />
+                <span className="sr-only">AI Chat</span>
+              </Button>
               {showAddButtons && (
                 <>
                   <Button
@@ -202,6 +214,14 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
             </div>
             <div className="flex flex-1" />
             <div className="flex flex-row items-center gap-2 md:gap-4">
+              <Button
+                onClick={() => setIsAiChatOpen(true)}
+                variant="outline"
+                className="border-primary text-primary hover:bg-primary hover:text-white"
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                AI Chat
+              </Button>
               {showAddButtons && (
                 <>
                   <Button
@@ -286,6 +306,11 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
           setPrefilledTransactionData(null);
         }}
         prefilledData={prefilledTransactionData}
+      />
+      
+      <AiChatModal
+        isOpen={isAiChatOpen}
+        onClose={() => setIsAiChatOpen(false)}
       />
     </>
   );

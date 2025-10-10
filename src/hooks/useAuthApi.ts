@@ -13,6 +13,7 @@ export const useAuthApi = (options?: {
   scope?: string;
 }): {
   api: AxiosInstance;
+  getToken: () => Promise<string>;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: Error | null;
@@ -58,6 +59,7 @@ export const useAuthApi = (options?: {
 
   return {
     api,
+    getToken,
     isAuthenticated,
     isLoading,
     error: error as Error | null,
