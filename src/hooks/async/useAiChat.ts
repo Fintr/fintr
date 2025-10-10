@@ -268,7 +268,7 @@ export const useAiChat = () => {
     };
 
     // Start polling every 5 seconds for debugging
-    pollingIntervalRef.current = setInterval(poll, 5000);
+    pollingIntervalRef.current = setInterval(poll, 1000);
     
     // Also poll immediately
     poll();
