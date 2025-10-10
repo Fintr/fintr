@@ -19,6 +19,7 @@ import { createTransfer } from "@/services/transactions/transfers/mutation";
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { FormError } from "@/components/ui/form-error";
+import { numberFormatting } from "@/lib/utils";
 import * as z from "zod";
 import { ScheduleTypeEnum, REPEAT_INTERVALS } from "@/constants/transactionConstants";
 import AccountCreationForm from "./AccountCreationForm";
@@ -326,9 +327,12 @@ const TransferForm: React.FC<TransferFormProps> = ({
           <Input
             id="transfer-amount"
             type="text" 
-            value={formState.amount}
+            value={numberFormatting.formatForInput(formState.amount)}
             placeholder="0.00"
-            onChange={(e) => handleFieldChange("amount", e.target.value)}
+            onChange={(e) => {
+              const cleanValue = numberFormatting.cleanForBackend(e.target.value);
+              handleFieldChange("amount", cleanValue.toString());
+            }}
             className={`text-sm ${
               (formSubmitted && formErrors.amount)
                 ? "border-red-800 focus-visible:ring-red-800"
@@ -344,9 +348,12 @@ const TransferForm: React.FC<TransferFormProps> = ({
           <Input
             id="transfer-transaction-cost"
             type="text" 
-            value={formState.transactionCost}
+            value={numberFormatting.formatForInput(formState.transactionCost)}
             placeholder="0.00"
-            onChange={(e) => handleFieldChange("transactionCost", e.target.value)}
+            onChange={(e) => {
+              const cleanValue = numberFormatting.cleanForBackend(e.target.value);
+              handleFieldChange("transactionCost", cleanValue.toString());
+            }}
             className={`text-sm ${
               (formSubmitted && formErrors.transactionCost)
                 ? "border-red-800 focus-visible:ring-red-800"

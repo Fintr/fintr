@@ -177,3 +177,36 @@ export function getNumberColor(value: number): string {
   }
   return "text-gray-500"; // zero
 }
+
+// Number formatting utilities
+export const numberFormatting = {
+  // Format number with comma delimiters for display
+  formatNumber: (value: string | number): string => {
+    if (!value && value !== 0) return '';
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(numValue)) return '';
+    return numValue.toLocaleString('en-US');
+  },
+
+  // Parse formatted number back to clean numeric value
+  parseNumber: (formattedValue: string): number => {
+    if (!formattedValue) return 0;
+    // Remove all non-numeric characters except decimal point
+    const cleanValue = formattedValue.replace(/[^0-9.]/g, '');
+    const parsed = parseFloat(cleanValue);
+    return isNaN(parsed) ? 0 : parsed;
+  },
+
+  // Format number for input display (with commas)
+  formatForInput: (value: string | number): string => {
+    if (!value && value !== 0) return '';
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(numValue)) return '';
+    return numValue.toLocaleString('en-US');
+  },
+
+  // Clean number for backend (remove commas)
+  cleanForBackend: (formattedValue: string): number => {
+    return numberFormatting.parseNumber(formattedValue);
+  }
+};

@@ -10,6 +10,7 @@ import { useOnboarding } from "@/hooks/async/useOnboarding";
 import { BudgetCategory, BudgetCategoryInput } from "@/services/onboarding/mutations";
 import { onboardingBudgetCategoriesAtom, onboardingTotalBudgetAtom } from "@/atoms/budgetAtoms";
 import { onboardingDataAtom } from "@/atoms/onboardingAtoms";
+import { numberFormatting } from "@/lib/utils";
 import { toast } from "sonner";
 import { Target, ArrowRight, ArrowLeft, X } from "lucide-react";
 
@@ -76,7 +77,13 @@ export default function OnboardingStep2() {
 
   const updateCategory = (index: number, field: 'name' | 'amount', value: string) => {
     const updatedCategories = [...budgetCategories];
-    updatedCategories[index] = { ...updatedCategories[index], [field]: value };
+    if (field === 'amount') {
+      // For amount field, store the clean numeric value but display formatted
+      const cleanValue = numberFormatting.cleanForBackend(value);
+      updatedCategories[index] = { ...updatedCategories[index], [field]: cleanValue.toString() };
+    } else {
+      updatedCategories[index] = { ...updatedCategories[index], [field]: value };
+    }
     setBudgetCategories(updatedCategories);
   };
 
@@ -112,7 +119,7 @@ export default function OnboardingStep2() {
   };
 
   // Calculate total income from step1
-  const totalIncome = (onboardingData.incomeData?.salary || 0) + (onboardingData.incomeData?.business || 0);
+  const totalIncome = onboardingData.incomeData?.income || 0;
 
   const calculatePercentage = (amount: string): number => {
     const numAmount = Number(amount || 0);
@@ -204,12 +211,11 @@ export default function OnboardingStep2() {
                       <div className="flex gap-2 items-center">
                         <div className="flex-1">
                           <FloatingInput
-                            type="number"
+                            type="text"
                             label="Amount (₱)"
-                            value={category.amount}
+                            value={numberFormatting.formatForInput(category.amount)}
                             onChange={(e) => updateCategory(index, 'amount', e.target.value)}
-                            min="0"
-                            step="0.01"
+                            onWheel={(e) => e.currentTarget.blur()}
                             className={errors[index]?.amount ? "border-destructive" : ""}
                           />
                         </div>

@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
+import { numberFormatting } from "@/lib/utils";
 import * as z from "zod"; 
 import { createTransaction, updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
 import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
@@ -604,9 +605,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <Input
               id="amount"
               name="amount"
-              value={formState.amount}
-              onChange={(e) => handleFieldChange("amount", e.target.value)}
-              type="number"
+              value={numberFormatting.formatForInput(formState.amount)}
+              onChange={(e) => {
+                const cleanValue = numberFormatting.cleanForBackend(e.target.value);
+                handleFieldChange("amount", cleanValue.toString());
+              }}
+              type="text"
               placeholder="0.00"
               className={`text-sm ${formSubmitted && formErrors.amount ? "border-red-800 focus-visible:ring-red-800" : ""}`}
             />

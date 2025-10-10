@@ -5,8 +5,7 @@ export type OnboardingStep = 'income' | 'budgets' | 'accounts' | 'completed';
 export interface OnboardingData {
   step: OnboardingStep;
   incomeData?: {
-    salary: number;
-    business: number;
+    income: number;
   };
   budgetsData?: any; // We'll define this later
   accountsData?: any; // We'll define this later
