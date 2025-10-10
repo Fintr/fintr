@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_30_070044) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_10_040002) do
 
 
   # These are extensions that must be enabled in order to support this database
@@ -39,7 +39,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_070044) do
   create_table "accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "space_id", null: false
     t.string "name", null: false
-    t.integer "balance_cents", default: 0, null: false
+    t.bigint "balance_cents", default: 0, null: false
     t.string "balance_currency", default: "PHP", null: false
     t.enum "account_category", null: false, enum_type: "account_category"
     t.datetime "created_at", null: false
@@ -117,9 +117,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_070044) do
   create_table "budgets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "space_id", null: false
     t.uuid "category_id", null: false
-    t.integer "amount_cents", default: 0, null: false
+    t.bigint "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "PHP", null: false
-    t.integer "spent_cents", default: 0, null: false
+    t.bigint "spent_cents", default: 0, null: false
     t.string "spent_currency", default: "PHP", null: false
     t.date "date", null: false
     t.datetime "created_at", null: false
@@ -255,9 +255,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_070044) do
     t.uuid "parent_id"
     t.uuid "effective_parent_id"
     t.datetime "date", null: false
-    t.integer "amount_cents", default: 0, null: false
+    t.bigint "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "PHP", null: false
-    t.integer "balance_cents", default: 0, null: false
+    t.bigint "balance_cents", default: 0, null: false
     t.string "balance_currency", default: "PHP", null: false
     t.string "description"
     t.string "type", null: false
@@ -304,9 +304,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_070044) do
     t.uuid "to_account_id", null: false
     t.uuid "parent_id"
     t.uuid "effective_parent_id"
-    t.integer "amount_cents", default: 0, null: false
+    t.bigint "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "PHP", null: false
-    t.integer "transaction_cost_cents", default: 0, null: false
+    t.bigint "transaction_cost_cents", default: 0, null: false
     t.string "transaction_cost_currency", default: "PHP", null: false
     t.datetime "date", null: false
     t.string "description"
@@ -412,7 +412,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_070044) do
       transfers.description,
       to_accounts.name AS to_account_name,
       from_accounts.name AS from_account_name,
-      NULL::integer AS balance_cents,
+      NULL::bigint AS balance_cents,
       NULL::character varying AS balance_currency,
       NULL::character varying AS category_name,
       NULL::uuid AS category_id,
@@ -444,7 +444,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_070044) do
       transactions.balance_currency,
       transactions_categories.name AS category_name,
       transactions_categories.id AS category_id,
-      NULL::integer AS transaction_cost_cents,
+      NULL::bigint AS transaction_cost_cents,
       NULL::character varying AS transaction_cost_currency,
       transactions.balance_state,
       transactions.created_at
