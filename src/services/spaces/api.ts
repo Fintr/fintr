@@ -38,7 +38,7 @@ export const spacesApi = {
 
   // Get space users (admin only)
   getSpaceUsers: (api: AxiosInstance, spaceCode: string) =>
-    api.get<{ data: { success: boolean; message: string; data: { users: SpaceUser[] } } }>(`/spaces/${spaceCode}/users`),
+    api.get<{ success: boolean; message: string; data: { users: SpaceUser[] } }>(`/spaces/${spaceCode}/users`),
 
   // Grant access to space (admin only)
   grantAccess: (api: AxiosInstance, spaceCode: string, data: GrantAccessRequest) =>
