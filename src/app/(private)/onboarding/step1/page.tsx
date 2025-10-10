@@ -10,6 +10,7 @@ import { PhilippinesTaxCalculator } from "@/components/ui/philippines-tax-calcul
 import { onboardingDataAtom, onboardingStepAtom } from "@/atoms/onboardingAtoms";
 import { useOnboarding } from "@/hooks/async/useOnboarding";
 import { numberFormatting } from "@/lib/utils";
+import { useNumberInput } from "@/hooks/useNumberInput";
 import { toast } from "sonner";
 import { PhilippinePeso, ArrowRight, ArrowLeft } from "lucide-react";
 
@@ -21,9 +22,11 @@ export default function OnboardingStep1() {
   const [income, setIncome] = useState<string>(
     onboardingData.incomeData?.income?.toString() || ""
   );
-  const [displayIncome, setDisplayIncome] = useState<string>(
-    numberFormatting.formatForInput(onboardingData.incomeData?.income || 0)
-  );
+  // Number input hook for income field
+  const incomeInput = useNumberInput({
+    initialValue: income,
+    onValueChange: (cleanValue) => setIncome(cleanValue.toString())
+  });
   
   const [errors, setErrors] = useState<{ income?: string }>({});
   
@@ -43,11 +46,6 @@ export default function OnboardingStep1() {
   const [deductTaxes, setDeductTaxes] = useState(true);
   const [deductContributions, setDeductContributions] = useState(true);
 
-  const handleIncomeChange = (value: string) => {
-    const cleanValue = numberFormatting.cleanForBackend(value);
-    setIncome(cleanValue.toString());
-    setDisplayIncome(numberFormatting.formatForInput(cleanValue));
-  };
 
   const validateForm = () => {
     const newErrors: { income?: string } = {};
@@ -130,8 +128,8 @@ export default function OnboardingStep1() {
                 <FloatingInput
                   type="text"
                   label="Monthly Income (₱)"
-                  value={displayIncome}
-                  onChange={(e) => handleIncomeChange(e.target.value)}
+                  value={incomeInput.displayValue}
+                  onChange={(e) => incomeInput.handleInputChange(e.target.value)}
                   onWheel={(e) => e.currentTarget.blur()}
                   className={errors.income ? "border-destructive" : ""}
                 />

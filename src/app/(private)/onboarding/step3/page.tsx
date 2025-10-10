@@ -22,6 +22,9 @@ export default function OnboardingStep3() {
   const [accountsData, setAccountsData] = useAtom(onboardingAccountsDataAtom);
   const [accountCategories] = useAtom(onboardingAccountCategoriesAtom);
   const [errors, setErrors] = useState<{ [key: number]: { name?: string; accountCategory?: string; balance?: string } }>({});
+  
+  // Display values for balance fields to handle formatting
+  const [displayBalances, setDisplayBalances] = useState<{ [key: number]: string }>({});
 
   const validateForm = () => {
     const newErrors: { [key: number]: { name?: string; accountCategory?: string; balance?: string } } = {};
@@ -86,9 +89,11 @@ export default function OnboardingStep3() {
   const updateAccount = (index: number, field: 'name' | 'accountCategory' | 'balance', value: string | number) => {
     const updatedAccounts = [...accountsData];
     if (field === 'balance') {
-      // For balance field, clean the formatted value
-      const cleanValue = numberFormatting.cleanForBackend(value.toString());
+      // For balance field, use handleInputChange for formatting and store clean value
+      const formattedValue = numberFormatting.handleInputChange(value.toString());
+      const cleanValue = numberFormatting.cleanForBackend(formattedValue);
       updatedAccounts[index] = { ...updatedAccounts[index], [field]: cleanValue };
+      setDisplayBalances(prev => ({ ...prev, [index]: formattedValue }));
     } else {
       updatedAccounts[index] = { ...updatedAccounts[index], [field]: value };
     }
@@ -206,7 +211,7 @@ export default function OnboardingStep3() {
                         <FloatingInput
                           type="text"
                           label="Balance (₱)"
-                          value={numberFormatting.formatForInput(account.balance)}
+                          value={displayBalances[index] || numberFormatting.formatForInput(account.balance)}
                           onChange={(e) => updateAccount(index, 'balance', e.target.value)}
                           onWheel={(e) => e.currentTarget.blur()}
                           className={errors[index]?.balance ? "border-destructive" : ""}

@@ -30,6 +30,7 @@ import {
   Target,
   CreditCardIcon,
 } from "lucide-react";
+import { numberFormatting } from "@/lib/utils";
 
 const STEPS = [
   {
@@ -182,7 +183,10 @@ const AccountSetupFlow = () => {
 
   const updateBudgetCategoryAmount = (index: number, amount: string) => {
     const updatedBudgetCategories = [...formData.budgetCategories];
-    updatedBudgetCategories[index].amount = amount;
+    // Use handleInputChange for formatting and store clean value
+    const formattedValue = numberFormatting.handleInputChange(amount);
+    const cleanValue = numberFormatting.cleanForBackend(formattedValue);
+    updatedBudgetCategories[index].amount = cleanValue.toString();
     setFormData({ ...formData, budgetCategories: updatedBudgetCategories });
   };
 

@@ -22,6 +22,7 @@ import { useAuthApi } from "@/hooks/useAuthApi";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import { numberFormatting } from "@/lib/utils";
+import { useNumberInput } from "@/hooks/useNumberInput";
 import { createTransaction, updateTransaction } from "@/services/transactions/mutation";
 import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum } from "@/constants/transactionConstants";
 import AccountCreationForm from "./AccountCreationForm";
@@ -123,6 +124,12 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     file: initialData?.file || null,
   });
   
+  // Number input hook for amount field
+  const amountInput = useNumberInput({
+    initialValue: formState.amount,
+    onValueChange: (cleanValue) => handleFieldChange("amount", cleanValue.toString())
+  });
+  
   // Tax calculator integration
   const grossIncome = parseFloat(formState.amount) || 0;
   const [taxCalculation, setTaxCalculation] = useState({
@@ -167,6 +174,9 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         file: initialData.file || null,
       });
       
+      // Update number input hook
+      amountInput.setDisplayValue(initialData.amount?.toString() || "");
+      
       // Update schedule type state
       setScheduleType(getValidIncomeScheduleType(initialData.scheduleType)); // Use helper here
 
@@ -188,6 +198,8 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         repeatInterval: "",
         file: null,
       });
+      // Reset number input hook
+      amountInput.reset();
       setDate(undefined);
       setShowCustomCategoryInput(false);
       setShowCustomAccountInput(false);
@@ -256,7 +268,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     
     try {
       // Calculate the amount to use based on deduction options
-      let amountToUse = parseFloat(formState.amount);
+      let amountToUse = numberFormatting.cleanForBackend(formState.amount);
       
       // If deductions are enabled, use the net income from tax calculation
       if ((deductTaxes || deductContributions) && taxCalculation) {
@@ -305,6 +317,8 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           repeatInterval: "",
           file: null,
         });
+        // Reset number input hook
+        amountInput.reset();
         setDate(undefined);
         setFileState(null);
         setShowCustomCategoryInput(false);
@@ -394,11 +408,8 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             <Input
               id="amount"
               name="amount"
-              value={numberFormatting.formatForInput(formState.amount)}
-              onChange={(e) => {
-                const cleanValue = numberFormatting.cleanForBackend(e.target.value);
-                handleFieldChange("amount", cleanValue.toString());
-              }}
+              value={amountInput.displayValue}
+              onChange={(e) => amountInput.handleInputChange(e.target.value)}
               onWheel={(e) => e.currentTarget.blur()}
               type="text"
               placeholder="0.00"

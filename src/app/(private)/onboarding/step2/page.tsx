@@ -78,14 +78,19 @@ export default function OnboardingStep2() {
   const updateCategory = (index: number, field: 'name' | 'amount', value: string) => {
     const updatedCategories = [...budgetCategories];
     if (field === 'amount') {
-      // For amount field, store the clean numeric value but display formatted
-      const cleanValue = numberFormatting.cleanForBackend(value);
+      // For amount field, use handleInputChange for formatting and store clean value
+      const formattedValue = numberFormatting.handleInputChange(value);
+      const cleanValue = numberFormatting.cleanForBackend(formattedValue);
       updatedCategories[index] = { ...updatedCategories[index], [field]: cleanValue.toString() };
+      setDisplayAmounts(prev => ({ ...prev, [index]: formattedValue }));
     } else {
       updatedCategories[index] = { ...updatedCategories[index], [field]: value };
     }
     setBudgetCategories(updatedCategories);
   };
+
+  // Display values for amount fields to handle formatting
+  const [displayAmounts, setDisplayAmounts] = useState<{ [key: number]: string }>({});
 
   const deleteCategory = (index: number) => {
     const updatedCategories = budgetCategories.filter((_, i) => i !== index);
@@ -213,7 +218,7 @@ export default function OnboardingStep2() {
                           <FloatingInput
                             type="text"
                             label="Amount (₱)"
-                            value={numberFormatting.formatForInput(category.amount)}
+                            value={displayAmounts[index] || numberFormatting.formatForInput(category.amount)}
                             onChange={(e) => updateCategory(index, 'amount', e.target.value)}
                             onWheel={(e) => e.currentTarget.blur()}
                             className={errors[index]?.amount ? "border-destructive" : ""}
