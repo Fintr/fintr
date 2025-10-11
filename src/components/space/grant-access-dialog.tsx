@@ -157,9 +157,9 @@ export function GrantAccessDialog({ open, onOpenChange }: GrantAccessDialogProps
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={grantAccessMutation.isPending}
+                  disabled={grantAccessMutation.isLoading}
                 >
-                  {grantAccessMutation.isPending ? "Granting..." : "Grant Access"}
+                  {grantAccessMutation.isLoading ? "Granting..." : "Grant Access"}
                 </Button>
               </DialogFooter>
             </form>
