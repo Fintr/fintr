@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Api
   module V1
     module Spaces
@@ -9,7 +11,7 @@ module Api
 
           users = current_space.users.includes(:roles)
           render_success(
-            data: { 
+            data: {
               users: ::Spaces::Serializers::SpaceUserSerializer.render_as_hash(users, space: current_space)
             }
           )
@@ -50,7 +52,6 @@ module Api
         def remove_params
           params.permit(:id)
         end
-
       end
     end
   end

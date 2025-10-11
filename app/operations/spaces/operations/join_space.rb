@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "dry/operation/extensions/active_record"
 
 module Spaces
@@ -20,7 +22,7 @@ module Spaces
 
       def call(params)
         validated_params = step validate(params:)
-        
+
         transaction do
           space_user = step find_invitation(validated_params)
           _ = step validate_invitation(space_user)
@@ -35,27 +37,27 @@ module Spaces
       def find_invitation(params)
         space_user = Spaces::SpaceUser.find_by(
           access_code: params[:access_code],
-          invitation_status: 'pending'
+          invitation_status: "pending"
         )
         return Failure(errors: { access: ["not found or expired"] }) unless space_user
-        
+
         Success(space_user)
       end
 
       def validate_invitation(space_user)
         return Failure(errors: { access: ["has expired"] }) if space_user.invitation_expired?
-        
+
         Success()
       end
 
       def use_invitation(space_user, params)
         user = Auth::User.find_by(id: params[:user_id])
         return Failure(errors: { user: ["not found"] }) unless user
-        
+
         # Check if user already belongs to this space
-        return Failure(errors: { user: ["already belongs to this space"] }) if 
+        return Failure(errors: { user: ["already belongs to this space"] }) if
           user.spaces.include?(space_user.space)
-        
+
         space_user.use_invitation!(user)
         Success(space_user)
       end
@@ -63,7 +65,7 @@ module Spaces
       def assign_member_role(params, space)
         user = Auth::User.find_by(id: params[:user_id])
         return Failure(errors: { user: ["not found"] }) unless user
-        
+
         user.add_role(:member, space)
         Success()
       end

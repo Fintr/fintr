@@ -12,12 +12,12 @@ module Api
       def with_current_params(params = {})
         params ||= {}
         params = params.merge(user_id: current_user.id)
-        
+
         # Only add space context if current_space exists
         if current_space
           params = params.merge(space_id: current_space.id, space_code: current_space.code)
         end
-        
+
         params
       end
     end

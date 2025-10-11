@@ -11,17 +11,17 @@ module Spaces
     validates :invitation_expires_at, presence: true, if: :invitation_pending?
 
     enum :invitation_status, {
-      active: 'active',      # Direct membership (no invitation)
-      pending: 'pending',    # Invitation created but not used
-      used: 'used',          # Invitation used
-      expired: 'expired',    # Invitation expired
-      revoked: 'revoked'     # Invitation revoked
-    }, default: 'active', prefix: :invitation
+      active: "active",      # Direct membership (no invitation)
+      pending: "pending",    # Invitation created but not used
+      used: "used",          # Invitation used
+      expired: "expired",    # Invitation expired
+      revoked: "revoked"     # Invitation revoked
+    }, default: "active", prefix: :invitation
 
     scope :invited, -> { where.not(invited_by_id: nil) }
     scope :direct_members, -> { where(invited_by_id: nil) }
-    scope :active_invitations, -> { where(invitation_status: :pending).where('invitation_expires_at > ?', Time.current) }
-    scope :expired_invitations, -> { where(invitation_status: :pending).where('invitation_expires_at < ?', Time.current) }
+    scope :active_invitations, -> { where(invitation_status: :pending).where("invitation_expires_at > ?", Time.current) }
+    scope :expired_invitations, -> { where(invitation_status: :pending).where("invitation_expires_at < ?", Time.current) }
 
     before_validation :generate_access_code, on: :create, if: :invitation_pending?
     before_validation :set_invitation_expiration, on: :create, if: :invitation_pending?
@@ -35,7 +35,7 @@ module Spaces
 
     def use_invitation!(user)
       return false unless invitation_pending?
-      
+
       update!(
         user: user,
         invitation_status: :used,
