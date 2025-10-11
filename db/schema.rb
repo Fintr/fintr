@@ -345,6 +345,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_060648) do
   add_foreign_key "transfers", "transfers", column: "parent_id"
   add_foreign_key "transfers", "users"
   add_foreign_key "user_activities", "users"
+<<<<<<< Updated upstream
+=======
+  add_foreign_key "users", "spaces", column: "last_accessed_space_id"
+>>>>>>> Stashed changes
 
   create_view "combined_transactions", sql_definition: <<-SQL
       SELECT 'Transactions::Transfer'::character varying AS transactable_type,
