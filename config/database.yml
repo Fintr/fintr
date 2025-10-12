@@ -59,7 +59,7 @@ staging:
     database: fintr_staging
     host: <%= ENV['DATABASE_HOST'] || 'staging-api.fintr.ai' %>
     port: 5432
-    username: postgres
+    username: fintr_rails
     password: <%= ENV['DATABASE_PASSWORD'] %>
     # pgvectorscale specific settings
     variables:
@@ -72,17 +72,17 @@ staging:
   cache:
     <<: *primary_staging
     database: fintr_staging_cache
-    url: <%= "postgresql://postgres:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_cache" %>
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_cache" %>
     migrations_paths: db/cache_migrate
   queue:
     <<: *primary_staging
     database: fintr_staging_queue
-    url: <%= "postgresql://postgres:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_queue" %>
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_queue" %>
     migrations_paths: db/queue_migrate
   cable:
     <<: *primary_staging
     database: fintr_staging_cable
-    url: <%= "postgresql://postgres:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_cable" %>
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_cable" %>
     migrations_paths: db/cable_migrate
     
 production:

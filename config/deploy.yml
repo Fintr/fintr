@@ -14,7 +14,7 @@ servers:
       network: 'private'
   job:
     hosts:
-      - staging-api.fintr.ai
+      - api.fintr.ai
     cmd: bin/jobs
     options:
       network: 'private'
