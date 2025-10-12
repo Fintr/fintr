@@ -8,10 +8,6 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
   let(:auth_setup) { setup_authentication(user: user, space: space, auth_id: user.auth_id) }
 
   before do
-    allow(Rails.cache).to receive(:write)
-    allow(Rails.cache).to receive(:read)
-    allow(AiChatJob).to receive(:perform_later)
-
     # Mock the controller's set_space method to avoid authentication issues
     allow_any_instance_of(described_class).to receive(:set_space) do |instance|
       instance.instance_variable_set(:@space, space)
@@ -25,6 +21,13 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
 
     context "with valid parameters" do
       it "returns session_id and processing status" do
+        create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
+        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
+        allow(create_usage_operation).to receive(:call).and_yield.and_return(Dry::Monads::Success(true))
+
+        allow(Rails.cache).to receive(:write)
+        allow(AiChatJob).to receive(:perform_later)
+
         post "/api/v1/ai/rag/query",
              params: valid_params,
              headers: auth_setup[:headers]
@@ -37,6 +40,10 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
       end
 
       it "stores initial state in Rails cache" do
+        create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
+        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
+        allow(create_usage_operation).to receive(:call).and_yield.and_return(Dry::Monads::Success(true))
+
         expect(Rails.cache).to receive(:write).with(
           match(/ai_chat_[a-f0-9-]{36}/),
           hash_including(
@@ -55,6 +62,12 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
       end
 
       it "starts background processing with AiChatJob" do
+        create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
+        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
+        allow(create_usage_operation).to receive(:call).and_yield.and_return(Dry::Monads::Success(true))
+
+        allow(Rails.cache).to receive(:write)
+
         expect(AiChatJob).to receive(:perform_later).with(
           match(/[a-f0-9-]{36}/), # session_id
           query,
@@ -89,6 +102,43 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
              headers: invalid_headers
 
         expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context "when CreateUsage operation fails" do
+      before do
+        create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
+        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
+        allow(create_usage_operation).to receive(:call).and_return(Dry::Monads::Failure("Space token limit reached"))
+      end
+
+      it "returns internal server error with failure details" do
+        post "/api/v1/ai/rag/query",
+             params: valid_params,
+             headers: auth_setup[:headers]
+
+        expect(response).to have_http_status(:internal_server_error)
+
+        response_data = JSON.parse(response.body)
+        expect(response_data["success"]).to be false
+        expect(response_data["error"]["message"]).to eq("AI chat query processing failed")
+        expect(response_data["error"]["details"]).to eq("Space token limit reached")
+      end
+
+      it "does not store data in cache when operation fails" do
+        expect(Rails.cache).not_to receive(:write)
+
+        post "/api/v1/ai/rag/query",
+             params: valid_params,
+             headers: auth_setup[:headers]
+      end
+
+      it "does not start background processing when operation fails" do
+        expect(AiChatJob).not_to receive(:perform_later)
+
+        post "/api/v1/ai/rag/query",
+             params: valid_params,
+             headers: auth_setup[:headers]
       end
     end
   end

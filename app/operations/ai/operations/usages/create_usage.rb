@@ -9,6 +9,7 @@ module Ai
           params do
             required(:user_id).value(:string)
             required(:space_id).value(:string)
+            optional(:tokens_used).maybe(:integer, gt?: 0)
             optional(:ai_type).maybe(:string)
           end
         end
@@ -54,15 +55,23 @@ module Ai
         end
 
         def create_usage(params:)
-          usage = Ai::Usage.create(user_id: params[:user_id], space_id: params[:space_id], ai_type: params[:ai_type] || "pure_ai_ocr")
+          usage = Ai::Usage.create(
+            user_id: params[:user_id],
+            space_id: params[:space_id],
+            ai_type: params[:ai_type] || "pure_ai_ocr",
+            tokens_used: params[:tokens_used] || 1,
+          )
           usage
         end
 
         def transform_result(result, usage:, time_start:)
-          if result.success?
+          if result.is_a?(Dry::Monads::Success)
             update_usage(usage:, time_start:, result: {})
             Dry::Monads::Success(result.value!)
-          else
+          elsif result == true
+            update_usage(usage:, time_start:, result: {})
+            Dry::Monads::Success(result)
+          elsif result.is_a?(Dry::Monads::Failure)
             update_usage(usage:, time_start:, status: :failure, result: result.failure)
             Dry::Monads::Failure(result.failure)
           end
