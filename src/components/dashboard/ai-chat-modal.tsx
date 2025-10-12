@@ -14,6 +14,7 @@ import {
   StopCircle
 } from "lucide-react";
 import { useAiChat } from "@/hooks/async/useAiChat";
+import { useAIUsage } from "@/hooks/async/useAIUsage";
 import { ChatMessage } from "@/types/aiChatTypes";
 import { formatDistanceToNow } from "date-fns";
 import LoadingSpinner from "@/components/ui/loading-spinner";
@@ -36,6 +37,8 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
     cancelStreaming,
   } = useAiChat();
   
+  const { data: aiUsage, isLoading: isLoadingUsage, refetch: refetchAIUsage } = useAIUsage();
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -50,6 +53,18 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // Refetch AI usage when chat completes (streaming stops)
+  useEffect(() => {
+    if (!isStreaming && !isLoading && messages.length > 0) {
+      // Small delay to ensure the backend has processed the usage
+      const timeoutId = setTimeout(() => {
+        refetchAIUsage();
+      }, 1000);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isStreaming, isLoading, messages.length, refetchAIUsage]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -94,11 +109,6 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
           {/* Message metadata */}
           <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
             <span>{formatDistanceToNow(message.timestamp, { addSuffix: true })}</span>
-            {message.metadata?.confidence && (
-              <Badge variant="secondary" className="text-xs">
-                {Math.round(message.metadata.confidence * 100)}% confidence
-              </Badge>
-            )}
           </div>
           
           {/* AI Analysis Debug Info - only show for assistant messages with analysis */}
@@ -174,6 +184,22 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
         </DialogHeader>
+        
+        {/* Token usage display below header */}
+        <div className="flex justify-center mb-4 px-4">
+          {isLoadingUsage ? (
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span className="font-medium">Loading token usage...</span>
+            </div>
+          ) : aiUsage ? (
+            <div className="flex flex-col items-center justify-between text-sm bg-primary/5 w-fit p-2 rounded-md border-primary/50 border text-primary">
+              <span className={`font-medium ${aiUsage.remaining <= 0 ? 'text-destructive' : ''}`}>
+                <strong>{aiUsage.remaining}</strong> tokens left
+              </span>
+              <span className="text-xs">{aiUsage.usagePeriod}</span>
+            </div>
+          ) : null}
+        </div>
         
         {/* Messages area */}
         <div className="flex-1 flex flex-col min-h-0">
