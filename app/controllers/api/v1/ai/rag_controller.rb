@@ -7,23 +7,32 @@ module Api
         before_action :set_space
 
         def query
-          # Generate a unique session ID for this chat
           session_id = SecureRandom.uuid
 
-          # Store initial state in Rails cache
-          Rails.cache.write("ai_chat_#{session_id}", {
-            status: "processing",
-            content: "",
-            query: rag_params[:query],
+          operation = ::Ai::Operations::Usages::CreateUsage.new
+          .call(
+            user_id: current_user.id,
             space_id: @space.id,
-            created_at: Time.current
-          }, expires_in: 10.minutes)
+            ai_type: "ai_chat",
+            tokens_used: 3
+          ) do
+            # Store initial state in Rails cache
+            Rails.cache.write("ai_chat_#{session_id}", {
+              status: "processing",
+              content: "",
+              query: rag_params[:query],
+              space_id: @space.id,
+              created_at: Time.current
+            }, expires_in: 10.minutes)
 
-          # Start background processing
-          AiChatJob.perform_later(session_id, rag_params[:query], @space.id, current_user.id)
+            # Start background processing
+            AiChatJob.perform_later(session_id, rag_params[:query], @space.id, current_user.id)
+            true
+          end
 
-          # Return session ID immediately
-          render json: { session_id: session_id, status: "processing" }
+          return render json: { session_id: session_id, status: "processing" } if operation.success?
+
+          render_internal_server_error(message: "AI chat query processing failed", details: operation.failure)
         end
 
         def status
