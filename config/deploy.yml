@@ -14,7 +14,7 @@ servers:
       network: 'private'
   job:
     hosts:
-      - staging-api.fintr.ai
+      - api.fintr.ai
     cmd: bin/jobs
     options:
       network: 'private'
@@ -61,7 +61,7 @@ builder:
 # Inject ENV variables into containers (secrets come from .kamal/secrets).
 env:
   clear:
-    DATABASE_HOST: fintr-be-staging-postgres
+    DATABASE_HOST: fintr-be-postgres
     DATABASE_USER: fintr_rails
     DATABASE_NAME: fintr_production
   secret:
