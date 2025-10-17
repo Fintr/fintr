@@ -198,8 +198,8 @@ const InsightsTab = () => {
         {showFilters && (
           <Card className="mb-6">
             <CardHeader className="px-4">
-              <CardTitle>Insights Filters</CardTitle>
-              <CardDescription>Customize your insights view</CardDescription>
+              <CardTitle>Dashboard Filters</CardTitle> 
+              <CardDescription>Customize your dashboard view</CardDescription>
             </CardHeader>
             <CardContent className="px-4">
               <div className="flex flex-col md:flex-row gap-4">
@@ -400,7 +400,8 @@ const InsightsTab = () => {
 
         <Card className="mb-6 border border-primary/10">
           <CardHeader className="px-4">
-            <CardTitle>Insights Summary</CardTitle>
+            {/* Insights Summary */}
+            <CardTitle>Dashboard Summary</CardTitle>
             <CardDescription>
               Overview of your financial performance
             </CardDescription>

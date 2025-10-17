@@ -198,7 +198,8 @@ export default function Layout({
                 </>
               )}
               <TabsTrigger asChild value="insights">
-                <Link prefetch href="/dashboard/insights">Insights</Link>
+                {/* Insights -> Dashboard */}
+                <Link prefetch href="/dashboard/insights">Dashboard</Link>
               </TabsTrigger>
               <TabsTrigger asChild value="space_settings">
                 <Link prefetch href="/dashboard/space_settings">Settings</Link>
