@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_10_040002) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_19_060328) do
 
 
   # These are extensions that must be enabled in order to support this database
@@ -76,6 +76,34 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_10_040002) do
     t.uuid "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "ai_conversation_messages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "conversation_id", null: false
+    t.text "content", null: false
+    t.integer "openai_role", default: 0, null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["conversation_id", "created_at"], name: "idx_on_conversation_id_created_at_c02dfcf735"
+    t.index ["conversation_id"], name: "index_ai_conversation_messages_on_conversation_id"
+    t.index ["openai_role"], name: "index_ai_conversation_messages_on_openai_role"
+  end
+
+  create_table "ai_conversations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "user_id", null: false
+    t.uuid "space_id", null: false
+    t.string "title", null: false
+    t.datetime "last_message_at"
+    t.string "openai_conversation_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["last_message_at"], name: "index_ai_conversations_on_last_message_at"
+    t.index ["openai_conversation_id"], name: "index_ai_conversations_on_openai_conversation_id", unique: true
+    t.index ["space_id", "created_at"], name: "index_ai_conversations_on_space_id_and_created_at"
+    t.index ["space_id"], name: "index_ai_conversations_on_space_id"
+    t.index ["user_id", "created_at"], name: "index_ai_conversations_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_ai_conversations_on_user_id"
   end
 
   create_table "ai_interactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -372,6 +400,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_10_040002) do
   add_foreign_key "accounts", "spaces"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "ai_conversation_messages", "ai_conversations", column: "conversation_id"
+  add_foreign_key "ai_conversations", "spaces"
+  add_foreign_key "ai_conversations", "users"
   add_foreign_key "ai_interactions", "spaces"
   add_foreign_key "ai_interactions", "users"
   add_foreign_key "ai_usages", "spaces"

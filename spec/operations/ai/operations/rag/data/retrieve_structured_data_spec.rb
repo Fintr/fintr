@@ -433,11 +433,11 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
         # Test expense filter
         result = operation.send(:apply_transaction_type_filter, query, { transaction_type: ["expense"] })
         expect(result).to be_a(ActiveRecord::Relation)
-        
+
         # Test income filter
         result = operation.send(:apply_transaction_type_filter, query, { transaction_type: ["income"] })
         expect(result).to be_a(ActiveRecord::Relation)
-        
+
         # Test no filter
         result = operation.send(:apply_transaction_type_filter, query, {})
         expect(result).to eq(query)
@@ -451,7 +451,7 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
         # Test with filter
         result = operation.send(:apply_category_filter, query, { categories: ["Food"] })
         expect(result).to be_a(ActiveRecord::Relation)
-        
+
         # Test without filter
         result = operation.send(:apply_category_filter, query, {})
         expect(result).to eq(query)
@@ -465,7 +465,7 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
         # Test with filter
         result = operation.send(:apply_account_filter, query, { accounts: ["Cash"] })
         expect(result).to be_a(ActiveRecord::Relation)
-        
+
         # Test without filter
         result = operation.send(:apply_account_filter, query, {})
         expect(result).to eq(query)
@@ -479,7 +479,7 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
         # Test with filter
         result = operation.send(:apply_description_filter, query, { descriptions: ["grocery"] })
         expect(result).to be_a(ActiveRecord::Relation)
-        
+
         # Test without filter
         result = operation.send(:apply_description_filter, query, {})
         expect(result).to eq(query)
@@ -493,15 +493,15 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
         # Test minimum amount
         result = operation.send(:apply_amount_filter, query, { amount_range: { min: 50 } })
         expect(result).to be_a(ActiveRecord::Relation)
-        
+
         # Test maximum amount
         result = operation.send(:apply_amount_filter, query, { amount_range: { max: 200 } })
         expect(result).to be_a(ActiveRecord::Relation)
-        
+
         # Test range
         result = operation.send(:apply_amount_filter, query, { amount_range: { min: 50, max: 200 } })
         expect(result).to be_a(ActiveRecord::Relation)
-        
+
         # Test no filter
         result = operation.send(:apply_amount_filter, query, {})
         expect(result).to eq(query)
@@ -518,7 +518,7 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
           result = operation.send(:apply_time_range_filter, query, { period: period })
           expect(result).to be_a(ActiveRecord::Relation)
         end
-        
+
         # Test custom date range
         result = operation.send(:apply_time_range_filter, query, {
           period: "custom",
@@ -526,11 +526,11 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
           end_date: "2024-01-31"
         })
         expect(result).to be_a(ActiveRecord::Relation)
-        
+
         # Test no filter
         result = operation.send(:apply_time_range_filter, query, {})
         expect(result).to eq(query)
-        
+
         # Test invalid date
         result = operation.send(:apply_time_range_filter, query, {
           period: "custom",
@@ -610,12 +610,12 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
         result = operation.send(:apply_sorting_and_limit, query, requirements)
         expect(result).to be_success
         expect(result.value!).to be_a(ActiveRecord::Relation)
-        
+
         # Test with only limit
         result = operation.send(:apply_sorting_and_limit, query, { limit: 5 })
         expect(result).to be_success
         expect(result.value!).to be_a(ActiveRecord::Relation)
-        
+
         # Test with only sorting
         result = operation.send(:apply_sorting_and_limit, query, { sorting: { field: "amount" } })
         expect(result).to be_success
@@ -642,17 +642,17 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
         result = operation.send(:determine_time_grouping, { period: "this_year" })
         expect(result).to be_success
         expect(result.value!).to eq(:month)
-        
+
         # Test month period
         result = operation.send(:determine_time_grouping, { period: "this_month" })
         expect(result).to be_success
         expect(result.value!).to eq(:day)
-        
+
         # Test week period
         result = operation.send(:determine_time_grouping, { period: "this_week" })
         expect(result).to be_success
         expect(result.value!).to eq(:day)
-        
+
         # Test invalid period
         result = operation.send(:determine_time_grouping, { period: nil })
         expect(result).to be_success
@@ -728,27 +728,27 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
         result = operation.send(:build_data_summary, data, requirements)
         expect(result).to be_success
         expect(result.value!).to include("Found 1 spending categories")
-        
+
         # Test transaction data
         data = [{ amount_cents: 10000 }]
         result = operation.send(:build_data_summary, data, requirements)
         expect(result).to be_success
         expect(result.value!).to include("Found 1 transactions")
-        
+
         # Test income data
         data = [{ amount_cents: 20000 }]
         requirements = { query_type: "income_analysis" }
         result = operation.send(:build_data_summary, data, requirements)
         expect(result).to be_success
         expect(result.value!).to include("Found 1 income entries")
-        
+
         # Test trend data
         data = [{ period: "2024-01" }]
         requirements = { query_type: "trend_analysis" }
         result = operation.send(:build_data_summary, data, requirements)
         expect(result).to be_success
         expect(result.value!).to include("Found trend data across 1 time periods")
-        
+
         # Test empty data
         data = []
         requirements = { query_type: "spending_analysis" }

@@ -3,34 +3,66 @@
 module Api
   module V1
     module Ai
-      class RagController < ApplicationController
-        before_action :set_space
-
+      class RagController < ApiController
         def query
           session_id = SecureRandom.uuid
+          conversation_id = rag_params[:conversation_id]
+
+          # Create or find conversation
+          conversation = if conversation_id.present?
+            current_user.conversations.find_by(id: conversation_id, space_id: with_current_params[:space_id])
+          else
+            # Create new conversation using operation
+            operation = ::Ai::Operations::Conversations::CreateConversation.new.call(
+              **with_current_params,
+              title: rag_params[:query]&.truncate(50) || "New Conversation"
+            )
+
+            if operation.success?
+              operation.value!
+            else
+              return render_unprocessable_content(
+                message: "Failed to create conversation",
+                details: operation.failure
+              )
+            end
+          end
+
+          # Add user message to conversation
+          conversation.add_user_message(rag_params[:query])
 
           operation = ::Ai::Operations::Usages::CreateUsage.new
           .call(
-            user_id: current_user.id,
-            space_id: @space.id,
+            user_id: with_current_params[:user_id],
+            space_id: with_current_params[:space_id],
             ai_type: "ai_chat",
             tokens_used: 3
           ) do
-            # Store initial state in Rails cache
+            # Store initial state in Rails cache with conversation info
             Rails.cache.write("ai_chat_#{session_id}", {
               status: "processing",
               content: "",
               query: rag_params[:query],
-              space_id: @space.id,
+              space_id: with_current_params[:space_id],
+              conversation_id: conversation.id,
               created_at: Time.current
             }, expires_in: 10.minutes)
 
-            # Start background processing
-            AiChatJob.perform_later(session_id, rag_params[:query], @space.id, current_user.id)
+            # Start background processing with OpenAI conversation context
+            ::Ai::AiChatJob.perform_later(
+              session_id,
+              rag_params[:query],
+              with_current_params[:space_id],
+              with_current_params[:user_id], conversation.id
+            )
             true
           end
 
-          return render json: { session_id: session_id, status: "processing" } if operation.success?
+          return render json: {
+            session_id: session_id,
+            status: "processing",
+            conversation_id: conversation.id
+          } if operation.success?
 
           render_internal_server_error(message: "AI chat query processing failed", details: operation.failure)
         end
@@ -57,8 +89,9 @@ module Api
         end
 
         def rag_params
-          params.permit(:query)
+          params.permit(:query, :conversation_id)
         end
+
 
         def render_streaming_response(rag_data)
           Rails.logger.info "[STREAMING] Starting streaming response"

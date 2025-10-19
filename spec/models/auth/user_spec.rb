@@ -4,9 +4,15 @@ require 'rails_helper'
 
 RSpec.describe Auth::User, type: :model do
   describe 'associations' do
+    it { is_expected.to have_one(:onboarding).class_name("Onboarding").dependent(:destroy) }
     it { is_expected.to have_many(:transactions).class_name("Transactions::Transaction").dependent(:destroy) }
+    it { is_expected.to have_many(:tickets).class_name("Crm::Ticket").dependent(:destroy) }
     it { is_expected.to have_many(:space_users).class_name("Spaces::SpaceUser").dependent(:destroy) }
     it { is_expected.to have_many(:spaces).class_name("Spaces::Space").through(:space_users) }
+    it { is_expected.to have_many(:personal_spaces).class_name("Spaces::PersonalSpace").through(:space_users) }
+    it { is_expected.to have_many(:organization_spaces).class_name("Spaces::OrganizationSpace").through(:space_users) }
+    it { is_expected.to have_many(:user_activities).dependent(:destroy) }
+    it { is_expected.to have_many(:conversations).class_name("Ai::Conversation").dependent(:destroy) }
   end
 
   describe 'validations' do
@@ -32,6 +38,42 @@ RSpec.describe Auth::User, type: :model do
         user = described_class.new(email: 'invalid-email')
         user.valid?
         expect(user.errors[:email]).to include('must be a valid email address')
+      end
+    end
+  end
+
+  describe 'callbacks' do
+    describe 'before_validation :downcase_email' do
+      it 'downcases email before validation' do
+        user = build(:user, email: 'USER@EXAMPLE.COM')
+        user.valid?
+        expect(user.email).to eq('user@example.com')
+      end
+
+      it 'handles nil email gracefully' do
+        user = build(:user, email: nil)
+        user.valid?
+        expect(user.email).to be_nil
+      end
+
+      it 'handles empty email gracefully' do
+        user = build(:user, email: '')
+        user.valid?
+        expect(user.email).to eq('')
+      end
+    end
+
+    describe 'after_create :create_onboarding' do
+      it 'creates an onboarding record after user creation' do
+        expect { create(:user) }.to change(Onboarding, :count).by(1)
+      end
+
+      it 'creates onboarding with correct attributes' do
+        user = create(:user)
+        onboarding = user.onboarding
+        expect(onboarding).to be_present
+        expect(onboarding.user).to eq(user)
+        expect(onboarding.step).to eq('income')
       end
     end
   end
