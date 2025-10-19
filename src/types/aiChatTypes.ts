@@ -1,8 +1,8 @@
 export interface ChatMessage {
   id: string;
   content: string;
-  isUser: boolean;
-  timestamp: Date;
+  openaiRole: 'user' | 'assistant' | 'developer';
+  createdAt: string;
   metadata?: {
     confidence?: number;
     sources?: Array<{
@@ -11,18 +11,18 @@ export interface ChatMessage {
       similarity: number;
       content: string;
     }>;
-    ai_analysis?: {
-      query_type: string;
-      data_sources: string[];
-      time_range: {
+    aiAnalysis?: {
+      queryType: string;
+      dataSources: string[];
+      timeRange: {
         period: string;
-        start_date?: string;
-        end_date?: string;
+        startDate?: string;
+        endDate?: string;
       };
       filters: Record<string, any>;
     };
   };
-  raw_ai_analysis?: string;
+  rawAiAnalysis?: string;
 }
 
 export interface StreamingEvent {
@@ -43,6 +43,7 @@ export interface StreamingEvent {
 
 export interface ChatParams {
   query: string;
+  conversation_id?: string;
 }
 
 export interface ChatState {

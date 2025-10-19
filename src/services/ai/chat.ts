@@ -3,6 +3,7 @@ import { ChatParams } from "@/types/aiChatTypes";
 
 export interface ChatSession {
   sessionId: string;
+  conversationId?: string;
 }
 
 export interface ChatStatus {
@@ -16,18 +17,18 @@ export interface ChatStatus {
       similarity: number;
       content: string;
     }>;
-    ai_analysis?: {
-      query_type: string;
-      data_sources: string[];
-      time_range: {
+    aiAnalysis?: {
+      queryType: string;
+      dataSources: string[];
+      timeRange: {
         period: string;
-        start_date?: string;
-        end_date?: string;
+        startDate?: string;
+        endDate?: string;
       };
       filters: Record<string, any>;
     };
   };
-  raw_ai_analysis?: string;
+  rawAiAnalysis?: string;
   error?: string;
 }
 
@@ -39,6 +40,7 @@ export const startChatQuery = async (
     const response = await api.post('/ai/rag/query', params);
     return {
       sessionId: response.data.sessionId || response.data.session_id,
+      conversationId: response.data.conversation_id,
     };
   } catch (error) {
     console.error('Error starting chat session:', error);

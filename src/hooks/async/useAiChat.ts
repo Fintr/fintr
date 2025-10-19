@@ -16,17 +16,19 @@ export const useAiChat = () => {
     isStreaming: false,
   });
 
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentSessionRef = useRef<string | null>(null);
   const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const targetContentRef = useRef<string>('');
   const displayedContentRef = useRef<string>('');
 
-  const addMessage = useCallback((message: Omit<ChatMessage, 'id' | 'timestamp'>) => {
+  const addMessage = useCallback((message: Omit<ChatMessage, 'id' | 'createdAt'>) => {
     const newMessage: ChatMessage = {
       ...message,
       id: crypto.randomUUID(),
-      timestamp: new Date(),
+      createdAt: new Date().toISOString(),
     };
     setChatState(prev => ({
       ...prev,
@@ -152,9 +154,9 @@ export const useAiChat = () => {
             metadata: {
               confidence: status.metadata.confidence,
               sources: status.metadata.sources,
-              ai_analysis: status.metadata.ai_analysis,
+              aiAnalysis: status.metadata.aiAnalysis,
             },
-            raw_ai_analysis: status.raw_ai_analysis,
+            rawAiAnalysis: status.rawAiAnalysis,
           });
         }
 
@@ -293,13 +295,13 @@ export const useAiChat = () => {
 
     addMessage({
       content: query,
-      isUser: true,
+      openaiRole: 'user',
     });
 
     // Add placeholder assistant message
     const assistantMessageId = addMessage({
       content: '',
-      isUser: false,
+      openaiRole: 'assistant',
     });
 
     setChatState(prev => ({
@@ -312,8 +314,16 @@ export const useAiChat = () => {
 
     try {
       // Start the chat session
-      const { sessionId } = await startChatQuery(api, { query });
+      const { sessionId, conversationId } = await startChatQuery(api, { 
+        query, 
+        conversation_id: currentConversationId || undefined
+      });
       currentSessionRef.current = sessionId;
+      
+      // Update conversation ID if we got a new one
+      if (conversationId) {
+        setCurrentConversationId(conversationId);
+      }
       
       // Start polling for updates
       startPolling(sessionId, assistantMessageId);
@@ -327,7 +337,7 @@ export const useAiChat = () => {
         isStreaming: false,
       }));
     }
-  }, [addMessage, api, startPolling]);
+  }, [addMessage, api, startPolling, currentConversationId]);
 
   const clearChat = useCallback(() => {
     // Stop polling and typing animation
@@ -390,10 +400,41 @@ export const useAiChat = () => {
     };
   }, []);
 
+  const loadConversation = useCallback((conversationId: string, messages: ChatMessage[]) => {
+    setCurrentConversationId(conversationId);
+    setChatState(prev => ({
+      ...prev,
+      messages: messages.map(msg => ({
+        ...msg,
+        timestamp: new Date(msg.timestamp)
+      })),
+      isLoading: false,
+      error: null,
+      currentStreamingMessage: '',
+      isStreaming: false,
+    }));
+  }, []);
+
+  const startNewConversation = useCallback(async () => {
+    setCurrentConversationId(null);
+    setChatState({
+      messages: [],
+      isLoading: false,
+      error: null,
+      currentStreamingMessage: '',
+      isStreaming: false,
+    });
+  }, []);
+
   return {
     ...chatState,
+    currentConversationId,
     sendMessage,
     clearChat,
     cancelStreaming,
+    loadConversation,
+    startNewConversation,
+    setCurrentConversationId,
+    setChatState,
   };
 };
