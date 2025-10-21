@@ -19,7 +19,24 @@ module Api
                                    .for_space(with_current_params[:space_id])
                                    .find(params[:id])
 
-          render_success(data: ::Ai::Serializers::ConversationWithMessagesSerializer.render_as_hash(conversation))
+          # Check if pagination is requested
+          if conversation_params[:page].present?
+            query = ::Ai::Queries::PaginatedMessages.call(
+              relation: conversation.conversation_messages,
+              params: with_current_params(conversation_params).merge(conversation_id: conversation.id)
+            )
+
+            return render_internal_server_error(details: query.failure) unless query.success?
+
+            render_paginated(
+              query.value!,
+              serializer: ::Ai::Serializers::ConversationMessageSerializer,
+              key: :messages
+            )
+          else
+            # Return full conversation with all messages
+            render_success(data: ::Ai::Serializers::ConversationWithMessagesSerializer.render_as_hash(conversation))
+          end
         end
 
         def create
@@ -67,7 +84,7 @@ module Api
         private
 
         def conversation_params
-          params.permit(:title)
+          params.permit(:title, :page, :per_page)
         end
       end
     end

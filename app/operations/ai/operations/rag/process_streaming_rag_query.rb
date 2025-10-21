@@ -8,6 +8,7 @@ module Ai
           params do
             required(:query).value(:string)
             required(:space_id).value(:string)
+            optional(:openai_conversation_id).maybe(:string)
           end
         end
 
@@ -43,6 +44,7 @@ module Ai
           # Return all the data needed for streaming - don't call LLM here
           {
             enhanced_prompt: enhanced_prompt,
+            user_query: params[:user_query],
             structured_data: structured_data,
             search_results: search_results,
             data_requirements: data_requirements,
@@ -55,7 +57,8 @@ module Ai
         def analyze_query_intent(params:)
           Ai::Operations::Rag::Analysis::AnalyzeQueryIntent.new.call(
             query: params[:query],
-            space_id: params[:space_id]
+            space_id: params[:space_id],
+            openai_conversation_id: params[:openai_conversation_id]
           )
         end
 
@@ -98,6 +101,7 @@ module Ai
             QUERY ANALYSIS:
             The user's query was analyzed as: #{requirements[:query_type]}
             Data retrieved: #{structured_data[:data_summary]}
+            Chart suggestion: #{requirements[:chart_suggestion]}
 
             USER QUERY: #{params[:query]}
 
@@ -109,6 +113,31 @@ module Ai
             5. Be conversational but precise
             6. When the structured data outputs "Initial Balance" don't count it in your calculations. They're supposed to be there to show how much an account has.
             7. When outputting your answers, make sure to only consider what the USER QUERY is. No need to talk about the additional data sent to you.
+
+            CHART GENERATION:
+            When your response would benefit from visual representation, include charts using this format:
+
+         *****[chart-type]-chart*****
+         {
+           "Category1": { "value": 1000, "color": "#008080" },
+           "Category2": { "value": 500, "color": "#FF6F61" },
+           "Category3": { "value": 300, "color": "#CC5500" }
+         }
+         *****[chart-type]-chart-end*****
+
+            Supported chart types: pie, bar, line, area
+
+            Use charts when:
+            - Showing spending breakdown by category
+            - Comparing different time periods
+            - Displaying trends over time
+            - Showing income vs expenses
+            - Any data that would be clearer visually
+
+            Chart data should be in this format:
+            - Keys: category names, time periods, or data labels
+            - Values: objects with "value" (numeric) and optional "color" (hex color)
+            - Colors: Use these brand colors: #008080 (Teal), #FF6F61 (Coral pink), #CC5500 (Burnt orange), #0A3D62 (Deep navy), #E6B800 (Soft gold), #B5E3C8 (Pale mint), #87CEEB (Sky blue), #D4B483 (Warm sand), #C4C3D0 (Lavender gray)
 
             Please provide a comprehensive response based on the actual financial data above.
           PROMPT
