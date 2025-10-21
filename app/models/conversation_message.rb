@@ -8,7 +8,7 @@ module Ai
     validates :content, presence: true
     validates :openai_role, presence: true
 
-    enum openai_role: {
+    enum :openai_role, {
       user: 0,
       assistant: 1,
       developer: 2
