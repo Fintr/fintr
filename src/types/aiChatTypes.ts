@@ -1,3 +1,16 @@
+export interface ChartData {
+  type: string;
+  data: Record<string, any>;
+  title?: string;
+  description?: string;
+}
+
+export interface MessageSegment {
+  type: 'text' | 'chart';
+  content?: string;
+  chart?: ChartData;
+}
+
 export interface ChatMessage {
   id: string;
   content: string;
@@ -23,6 +36,8 @@ export interface ChatMessage {
     };
   };
   rawAiAnalysis?: string;
+  charts?: ChartData[];
+  segments?: MessageSegment[];
 }
 
 export interface StreamingEvent {
@@ -52,4 +67,8 @@ export interface ChatState {
   error: string | null;
   currentStreamingMessage: string;
   isStreaming: boolean;
+  currentStreamingCharts?: ChartData[];
+  currentStreamingSegments?: MessageSegment[];
+  hasIncompleteChart?: boolean;
+  incompleteChartType?: string;
 }

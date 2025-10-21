@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAiChat } from "@/hooks/async/useAiChat";
 import { useAIUsage } from "@/hooks/async/useAIUsage";
+import { ChartComponent } from "@/components/ai-chat/chart-components";
 import { ChatMessage } from "@/types/aiChatTypes";
 import { formatDistanceToNow } from "date-fns";
 import LoadingSpinner from "@/components/ui/loading-spinner";
@@ -82,7 +83,7 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
   };
 
   const renderMessage = (message: ChatMessage) => {
-    const isUser = message.isUser;
+    const isUser = message.openaiRole === 'user';
     
     return (
       <div
@@ -95,7 +96,7 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
           </div>
         )}
         
-        <div className={`max-w-[80%] ${isUser ? "order-first" : ""}`}>
+        <div className={`${isUser ? "max-w-[80%] order-first" : "w-full"}`}>
           <div
             className={`rounded-lg px-4 py-2 ${
               isUser
@@ -104,15 +105,30 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
             }`}
           >
             <p className="whitespace-pre-wrap">{message.content}</p>
+            
+            {/* Render charts if they exist */}
+            {message.charts && message.charts.length > 0 && (
+              <div className="mt-4 space-y-4">
+                {message.charts.map((chart, index) => (
+                  <ChartComponent
+                    key={index}
+                    type={chart.type}
+                    data={chart.data}
+                    title={chart.title}
+                    description={chart.description}
+                  />
+                ))}
+              </div>
+            )}
           </div>
           
           {/* Message metadata */}
           <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-            <span>{formatDistanceToNow(message.timestamp, { addSuffix: true })}</span>
+            <span>{formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}</span>
           </div>
           
           {/* AI Analysis Debug Info - only show for assistant messages with analysis */}
-          {!isUser && message.raw_ai_analysis && (
+          {!isUser && message.rawAiAnalysis && (
             <details className="mt-2 text-xs">
               <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
                 🔍 AI Analysis (Debug)
@@ -121,16 +137,16 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
                 <div className="mb-2">
                   <strong>Query Analysis:</strong>
                   <pre className="mt-1 text-xs bg-white p-2 rounded border overflow-x-auto">
-                    {message.raw_ai_analysis}
+                    {message.rawAiAnalysis}
                   </pre>
                 </div>
-                {message.metadata?.ai_analysis && (
+                {message.metadata?.aiAnalysis && (
                   <div className="text-xs">
-                    <div><strong>Query Type:</strong> {message.metadata.ai_analysis.query_type}</div>
-                    <div><strong>Data Sources:</strong> {message.metadata.ai_analysis.data_sources?.join(', ')}</div>
-                    <div><strong>Time Range:</strong> {message.metadata.ai_analysis.time_range?.period}</div>
-                    {message.metadata.ai_analysis.filters && Object.keys(message.metadata.ai_analysis.filters).length > 0 && (
-                      <div><strong>Filters:</strong> {JSON.stringify(message.metadata.ai_analysis.filters, null, 2)}</div>
+                    <div><strong>Query Type:</strong> {message.metadata.aiAnalysis.queryType}</div>
+                    <div><strong>Data Sources:</strong> {message.metadata.aiAnalysis.dataSources?.join(', ')}</div>
+                    <div><strong>Time Range:</strong> {message.metadata.aiAnalysis.timeRange?.period}</div>
+                    {message.metadata.aiAnalysis.filters && Object.keys(message.metadata.aiAnalysis.filters).length > 0 && (
+                      <div><strong>Filters:</strong> {JSON.stringify(message.metadata.aiAnalysis.filters, null, 2)}</div>
                     )}
                   </div>
                 )}
@@ -229,7 +245,7 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
               {messages
                 .filter(message => {
                   // Hide empty assistant messages when loading or streaming
-                  if (!message.isUser && !message.content && (isLoading || isStreaming)) {
+                  if (message.openaiRole !== 'user' && !message.content && (isLoading || isStreaming)) {
                     return false;
                   }
                   return true;
