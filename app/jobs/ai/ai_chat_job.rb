@@ -21,15 +21,17 @@ module Ai
         start_time = Time.current
 
         # Get conversation if it exists
-        conversation = nil
+        openai_conversation_id = nil
         if conversation_id.present?
           conversation = Ai::Conversation.find(conversation_id)
+          openai_conversation_id = conversation.openai_conversation_id
         end
 
         # Process the RAG query to get context
         rag_result = ::Ai::Operations::Rag::ProcessStreamingRagQuery.new.call(
           query: query,
-          space_id: space_id
+          space_id: space_id,
+          openai_conversation_id:
         )
 
         if rag_result.failure?
@@ -53,7 +55,12 @@ module Ai
         })
 
         # Stream LLM response with cache updates
-        response_content = stream_llm_response_to_cache(session_id, rag_data[:enhanced_prompt])
+        response_content = stream_llm_response_to_cache(
+          session_id,
+          rag_data[:enhanced_prompt],
+          openai_conversation_id,
+          user_query: query
+        )
 
         # Calculate tokens and time
         end_time = Time.current
@@ -148,20 +155,19 @@ module Ai
       }
     end
 
-    def stream_llm_response_to_cache(session_id, enhanced_prompt)
+    def stream_llm_response_to_cache(session_id, enhanced_prompt, openai_conversation_id, user_query:)
       client = OpenAI::Client.new(access_token: ENV["OPENAI_API_KEY"])
       accumulated_content = ""
 
-      client.chat(
+      client.responses.create(
         parameters: {
           model: "gpt-4",
-          messages: [
-            { role: "system", content: "You are a helpful financial assistant." },
-            { role: "user", content: enhanced_prompt }
-          ],
+          conversation: { id: openai_conversation_id },
+          input: user_query,
+          instructions: enhanced_prompt,
           stream: proc do |chunk, _event|
-            if chunk.dig("choices", 0, "delta", "content")
-              content = chunk.dig("choices", 0, "delta", "content")
+            if chunk.dig("delta")
+              content = chunk.dig("delta")
               accumulated_content += content
 
               # Update cache with new content
@@ -171,8 +177,8 @@ module Ai
               })
             end
           end,
-          temperature: 0.7,
-          max_tokens: 2000
+          temperature: 0.1,
+          max_output_tokens: 2000
         }
       )
 

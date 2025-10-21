@@ -9,6 +9,7 @@ module Ai
           params do
             required(:query).value(:string)
             required(:space_id).value(:string)
+            optional(:openai_conversation_id).maybe(:string)
           end
         end
 
@@ -43,20 +44,18 @@ module Ai
           system_prompt = build_analysis_prompt
           user_query = params[:query]
 
-
-          response = client.chat(
+          response = client.responses.create(
             parameters: {
               model: "gpt-3.5-turbo",
-              messages: [
-                { role: "system", content: system_prompt },
-                { role: "user", content: user_query }
-              ],
+              conversation: { id: params[:openai_conversation_id] },
+              input: user_query,
               temperature: 0.1,
-              max_tokens: 1000
+              max_output_tokens: 1000,
+              instructions: system_prompt
             }
           )
 
-          analysis_text = response.dig("choices", 0, "message", "content")
+          analysis_text = response.dig("output", 0, "content", 0, "text")
 
           parsed_analysis = parse_analysis_response(analysis_text)
 
@@ -131,15 +130,22 @@ module Ai
                 "field": "amount|date|frequency",
                 "direction": "desc|asc"
               },
-              "limit": 10
+              "limit": 10,
+              "chart_suggestion": {
+                "should_include_chart": true|false,
+                "chart_type": "pie|bar|line|area",
+                "chart_reason": "explanation of why this chart would be helpful"
+              }
             }
 
             Examples:
-            - "What's my biggest spend" → query_type: "spending_analysis", group_by: ["category"], metrics: ["sum", "count"], sorting: {field: "amount", direction: "desc"}, limit: 1
-            - "How much did I spend on coffee this month" → query_type: "spending_analysis", filters: {categories: ["coffee"]}, time_range: {period: "this_month"}, metrics: ["sum", "count"]
-            - "Show my top 5 merchants" → query_type: "spending_analysis", group_by: ["description"], metrics: ["sum", "count"], sorting: {field: "amount", direction: "desc"}, limit: 5
-            - "What's my income for September" → query_type: "income_analysis", time_range: {period: "custom", start_date: "#{current_year - 1}-09-01", end_date: "#{current_year - 1}-09-30"}, metrics: ["sum", "count"] (assuming most recent September)
-            - "How much did I spend last month" → query_type: "spending_analysis", time_range: {period: "custom", start_date: "#{current_date.last_month.beginning_of_month.strftime("%Y-%m-%d")}", end_date: "#{current_date.last_month.end_of_month.strftime("%Y-%m-%d")}"}, metrics: ["sum", "count"]}
+            - "What's my biggest spend" → query_type: "spending_analysis", group_by: ["category"], metrics: ["sum", "count"], sorting: {field: "amount", direction: "desc"}, limit: 1, chart_suggestion: {should_include_chart: true, chart_type: "pie", chart_reason: "Visual breakdown of spending by category"}
+            - "How much did I spend on coffee this month" → query_type: "spending_analysis", filters: {categories: ["coffee"]}, time_range: {period: "this_month"}, metrics: ["sum", "count"], chart_suggestion: {should_include_chart: false, chart_type: null, chart_reason: "Single category query doesn't need visualization"}
+            - "Show my top 5 merchants" → query_type: "spending_analysis", group_by: ["description"], metrics: ["sum", "count"], sorting: {field: "amount", direction: "desc"}, limit: 5, chart_suggestion: {should_include_chart: true, chart_type: "bar", chart_reason: "Bar chart shows comparison between merchants"}
+            - "What's my income for September" → query_type: "income_analysis", time_range: {period: "custom", start_date: "#{current_year - 1}-09-01", end_date: "#{current_year - 1}-09-30"}, metrics: ["sum", "count"], chart_suggestion: {should_include_chart: false, chart_type: null, chart_reason: "Single value doesn't need visualization"}
+            - "How much did I spend last month" → query_type: "spending_analysis", time_range: {period: "custom", start_date: "#{current_date.last_month.beginning_of_month.strftime("%Y-%m-%d")}", end_date: "#{current_date.last_month.end_of_month.strftime("%Y-%m-%d")}"}, metrics: ["sum", "count"], chart_suggestion: {should_include_chart: false, chart_type: null, chart_reason: "Single total amount doesn't need visualization"}
+            - "Show my spending trends" → query_type: "trend_analysis", group_by: ["month"], metrics: ["sum"], chart_suggestion: {should_include_chart: true, chart_type: "line", chart_reason: "Line chart shows trends over time"}
+            - "Breakdown my expenses by category" → query_type: "spending_analysis", group_by: ["category"], metrics: ["sum"], chart_suggestion: {should_include_chart: true, chart_type: "pie", chart_reason: "Pie chart shows proportional spending by category"}
 
             DATE LOGIC RULES:
             1. If no year is specified, use the most recent occurrence of that month/period
@@ -167,7 +173,8 @@ module Ai
             filters: parsed[:filters] || {},
             time_range: parsed[:time_range] || { period: "this_month" },
             sorting: parsed[:sorting] || { field: "amount", direction: "desc" },
-            limit: [parsed[:limit] || 10, 50].min # Cap at 50 results
+            limit: [parsed[:limit] || 10, 50].min, # Cap at 50 results
+            chart_suggestion: parsed[:chart_suggestion] || { should_include_chart: false, chart_type: nil, chart_reason: nil }
           }
         rescue JSON::ParserError
           default_analysis
@@ -186,7 +193,8 @@ module Ai
               end_date: current_date.end_of_month.strftime("%Y-%m-%d")
             },
             sorting: { field: "amount", direction: "desc" },
-            limit: 10
+            limit: 10,
+            chart_suggestion: { should_include_chart: false, chart_type: nil, chart_reason: nil }
           }
         end
         end
