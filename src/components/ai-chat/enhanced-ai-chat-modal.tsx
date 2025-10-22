@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,12 +20,16 @@ import {
 import { useAiChat } from "@/hooks/async/useAiChat";
 import { useAIUsage } from "@/hooks/async/useAIUsage";
 import { useConversations } from "@/hooks/async/useConversations";
+import { useInfiniteMessages } from "@/hooks/async/useInfiniteMessages";
 import { ChatMessage } from "@/types/aiChatTypes";
 import { Conversation } from "@/types/conversationTypes";
 import { formatDistanceToNow } from "date-fns";
 import ConversationList from "./conversation-list";
 import ConversationRenameDialog from "./conversation-rename-dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { ChartComponent } from "./chart-components";
+import { ChartPlaceholder } from "./chart-placeholder";
+import { parseContentWithCharts, parseContentWithInlineCharts } from "@/utils/chartParser";
 
 interface EnhancedAiChatModalProps {
   isOpen: boolean;
@@ -47,6 +51,10 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
     currentStreamingMessage, 
     isStreaming, 
     currentConversationId,
+    currentStreamingCharts,
+    currentStreamingSegments,
+    hasIncompleteChart,
+    incompleteChartType,
     sendMessage, 
     cancelStreaming,
     loadConversation,
@@ -59,16 +67,68 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   const { fetchConversation, createNewConversation, isCreating } = useConversations();
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  
+  // Infinite scroll for messages
+  const { 
+    messages: paginatedMessages, 
+    isFetching: isLoadingMessages, 
+    isFetchingNextPage: isLoadingMoreMessages,
+    hasNextPage: hasMoreMessages,
+    setHasUserScrolled,
+  } = useInfiniteMessages({
+    conversationId: currentConversationId,
+    loadMoreRef,
+  });
 
-  // Auto-scroll to bottom when new messages arrive
+  // Combine and deduplicate messages
+  const allMessages = useMemo(() => {
+    const messageMap = new Map();
+    
+    // Add paginated messages first (historical messages)
+    paginatedMessages.forEach(msg => {
+      messageMap.set(msg.id, msg);
+    });
+    
+    // Add current session messages (new messages)
+    messages.forEach(msg => {
+      messageMap.set(msg.id, msg);
+    });
+    
+    // Convert back to array and sort by creation time
+    return Array.from(messageMap.values()).sort((a, b) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [paginatedMessages, messages]);
+
+
+  // Auto-scroll to bottom when new messages arrive or conversation changes
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    const scrollToBottom = () => {
+      if (scrollAreaRef.current) {
+        // Try to find the scroll container
+        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        } else {
+          // Alternative: scroll the ScrollArea itself
+          scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
+        
+        // Enable infinite scroll after programmatic scroll
+        console.log("Programmatic scroll completed, enabling infinite scroll");
+        setTimeout(() => {
+          setHasUserScrolled(true);
+        }, 1000);
       }
-    }
-  }, [messages, currentStreamingMessage]);
+    };
+
+    // Small delay to ensure DOM has updated
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [allMessages, currentStreamingMessage, setHasUserScrolled]);
+
 
   // Refetch AI usage when streaming completes
   useEffect(() => {
@@ -154,19 +214,17 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
 
   const handleSelectConversation = async (conversation: Conversation) => {
     try {
-      const conversationWithMessages = await fetchConversation(conversation.id);
-      if (conversationWithMessages) {
-        const chatMessages: ChatMessage[] = conversationWithMessages.messages.map(msg => ({
-          id: msg.id,
-          content: msg.content,
-          openaiRole: msg.openaiRole,
-          createdAt: msg.createdAt,
-          metadata: msg.metadata,
-        }));
-        loadConversation(conversation.id, chatMessages);
-        // Hide the sidebar after selecting a conversation
-        setShowSidebar(false);
-      }
+      // Don't load all messages initially - let infinite scroll handle it
+      setCurrentConversationId(conversation.id);
+      setChatState({
+        messages: [], // Start with empty messages
+        isLoading: false,
+        error: null,
+        currentStreamingMessage: '',
+        isStreaming: false,
+      });
+      // Hide the sidebar after selecting a conversation
+      setShowSidebar(false);
     } catch (error) {
       console.error("Failed to load conversation:", error);
     }
@@ -210,7 +268,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
           </div>
         )}
         
-        <div className={`flex flex-col max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+        <div className={`flex flex-col ${isUser ? 'max-w-[80%] items-end' : 'w-full items-start'}`}>
           <div className={`flex items-center gap-2 mb-1 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
             <span className="text-sm font-medium">
               {isUser ? "You" : "Fintr AI"}
@@ -228,7 +286,38 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
               ? "bg-primary text-primary-foreground" 
               : "bg-muted"
           }`}>
-            <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+            {message.segments ? (
+              // Render segments with inline charts
+              <div className="space-y-4">
+                {message.segments.map((segment, index) => (
+                  <div key={index}>
+                    {segment.type === 'text' && segment.content && !segment.content.includes('*****') && (
+                      <p className="whitespace-pre-wrap text-sm">{segment.content}</p>
+                    )}
+                    {segment.type === 'chart' && segment.chart && (
+                      <ChartComponent
+                        type={segment.chart.type}
+                        data={segment.chart.data}
+                        title={segment.chart.title}
+                        description={segment.chart.description}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Fallback to regular content rendering
+              <div>
+                <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                {/* Debug: Show if content has chart blocks but no segments */}
+                {message.content.includes('*****') && (
+                  <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded text-xs">
+                    <strong>Debug:</strong> Content contains chart markers but no segments. 
+                    Content: {message.content.substring(0, 200)}...
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
         </div>
@@ -347,11 +436,11 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
               
               {/* Chat Messages */}
               <ScrollArea ref={scrollAreaRef} className="flex-1">
-                {isLoading && messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-32">
+                {isLoading && allMessages.length === 0 ? (
+                  <div className="flex items-center justify-center h-full min-h-[200px]">
                     <LoadingSpinner />
                   </div>
-                ) : messages.length === 0 ? (
+                ) : allMessages.length === 0 ? (
                   <div className="text-center text-gray-500 mt-8">
                     <Bot className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                     <p className="text-lg font-medium text-primary">Welcome to Fintr AI Assistant!</p>
@@ -371,7 +460,28 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                     </div>
                   </div>
                 ) : (
-                  messages.map(renderMessage)
+                  <>
+                    {/* Load more trigger for infinite scroll */}
+                    {hasMoreMessages && (
+                      <div ref={loadMoreRef} className="flex justify-center py-4">
+                        {isLoadingMoreMessages ? (
+                          <LoadingSpinner size="small" />
+                        ) : (
+                          <div className="text-xs text-muted-foreground">Scroll up to load more messages</div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Show loading state for initial messages */}
+                    {isLoadingMessages && paginatedMessages.length === 0 && (
+                      <div className="flex justify-center py-8">
+                        <LoadingSpinner />
+                      </div>
+                    )}
+                    
+                    {/* All messages (deduplicated and sorted) */}
+                    {allMessages.map(renderMessage)}
+                  </>
                 )}
                 
                 {/* Streaming message */}
@@ -380,13 +490,42 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center">
                       <Bot className="h-4 w-4" />
                     </div>
-                    <div className="flex flex-col max-w-[80%] items-start">
+                    <div className="flex flex-col w-full items-start">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-medium">Fintr AI</span>
                         <span className="text-xs text-muted-foreground">typing...</span>
                       </div>
                       <div className="rounded-lg px-4 py-2 bg-muted">
-                        <p className="whitespace-pre-wrap text-sm">{currentStreamingMessage}</p>
+                        {currentStreamingSegments ? (
+                          // Render segments with inline charts
+                          <div className="space-y-4">
+                            {currentStreamingSegments.map((segment, index) => (
+                              <div key={index}>
+                                {segment.type === 'text' && segment.content && (
+                                  <p className="whitespace-pre-wrap text-sm">{segment.content}</p>
+                                )}
+                                {segment.type === 'chart' && segment.chart && (
+                                  <ChartComponent
+                                    type={segment.chart.type}
+                                    data={segment.chart.data}
+                                    title={segment.chart.title}
+                                    description={segment.chart.description}
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          // Fallback to regular content rendering
+                          <p className="whitespace-pre-wrap text-sm">{currentStreamingMessage}</p>
+                        )}
+                        
+                        {/* Show placeholder for incomplete chart */}
+                        {hasIncompleteChart && incompleteChartType && (
+                          <div className="mt-4">
+                            <ChartPlaceholder chartType={incompleteChartType} />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

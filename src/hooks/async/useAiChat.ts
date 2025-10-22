@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { ChatMessage, ChatParams, ChatState } from '@/types/aiChatTypes';
 import { startChatQuery, getChatStatus, ChatSession } from '@/services/ai/chat';
+import { parseContentWithCharts, detectIncompleteCharts, parseContentWithInlineCharts } from '@/utils/chartParser';
 
 export const useAiChat = () => {
   const { api } = useAuthApi({
@@ -14,6 +15,10 @@ export const useAiChat = () => {
     error: null,
     currentStreamingMessage: '',
     isStreaming: false,
+    currentStreamingCharts: undefined,
+    currentStreamingSegments: undefined,
+    hasIncompleteChart: false,
+    incompleteChartType: undefined,
   });
 
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
@@ -44,6 +49,12 @@ export const useAiChat = () => {
         msg.id === messageId ? { ...msg, ...updates } : msg
       ),
     }));
+  }, []);
+
+  // Function to clean streaming content by hiding chart text
+  const cleanStreamingContent = useCallback((content: string) => {
+    // Hide chart text that starts with ***** and hasn't ended yet
+    return content.replace(/\*\*\*\*\*[^-]+-chart\*\*\*\*\*[\s\S]*?(?=\*\*\*\*\*[^-]+-chart-end\*\*\*\*\*|$)/g, '');
   }, []);
 
   const startTypingAnimation = useCallback((targetContent: string, isComplete = false) => {
@@ -97,7 +108,6 @@ export const useAiChat = () => {
     const poll = async () => {
       // Check if we've exceeded the timeout
       if (Date.now() - startTime > timeoutMs) {
-        console.warn('Polling timeout reached (30 seconds)');
         
         // Stop polling immediately
         if (pollingIntervalRef.current) {
@@ -136,15 +146,29 @@ export const useAiChat = () => {
         if (status.content !== lastContent) {
           lastContent = status.content;
           
+          // Check for incomplete charts during streaming
+          const incompleteChartInfo = detectIncompleteCharts(status.content);
+          
+          // Parse content with inline chart positioning
+          const segments = parseContentWithInlineCharts(status.content);
+          const hasCharts = segments.some(segment => segment.type === 'chart');
+          
+          // Clean the streaming content to hide chart text
+          const cleanedContent = cleanStreamingContent(status.content);
+          
           // Update streaming state
           setChatState(prev => ({
             ...prev,
             isStreaming: status.status === 'streaming' || status.status === 'processing',
+            currentStreamingMessage: cleanedContent, // Use cleaned content for streaming
+            currentStreamingSegments: hasCharts ? segments : undefined,
+            hasIncompleteChart: incompleteChartInfo.hasIncompleteChart,
+            incompleteChartType: incompleteChartInfo.chartType,
           }));
           
           // Start typing animation for new content
-          if (status.content) {
-            startTypingAnimation(status.content);
+          if (cleanedContent) {
+            startTypingAnimation(cleanedContent);
           }
         }
 
@@ -183,9 +207,14 @@ export const useAiChat = () => {
               typingIntervalRef.current = null;
             }
             
+            // Parse charts from content with inline positioning
+            const segments = parseContentWithInlineCharts(status.content);
+            const hasCharts = segments.some(segment => segment.type === 'chart');
+            
             // Update the message first
             updateMessage(assistantMessageId, {
-              content: status.content,
+              content: status.content, // Keep original content
+              segments: hasCharts ? segments : undefined,
             });
             
             // Use a micro-task to ensure React renders the message first
@@ -195,6 +224,10 @@ export const useAiChat = () => {
                 isStreaming: false,
                 isLoading: false,
                 currentStreamingMessage: '',
+                currentStreamingCharts: undefined,
+                currentStreamingSegments: undefined,
+                hasIncompleteChart: false,
+                incompleteChartType: undefined,
               }));
               
               // Reset typing refs
@@ -274,7 +307,7 @@ export const useAiChat = () => {
     
     // Also poll immediately
     poll();
-  }, [api, updateMessage, startTypingAnimation]);
+  }, [api, updateMessage, startTypingAnimation, cleanStreamingContent]);
 
   const sendMessage = useCallback(async (query: string, options?: Partial<ChatParams>) => {
     if (!query.trim()) return;
@@ -406,7 +439,7 @@ export const useAiChat = () => {
       ...prev,
       messages: messages.map(msg => ({
         ...msg,
-        timestamp: new Date(msg.timestamp)
+        createdAt: msg.createdAt
       })),
       isLoading: false,
       error: null,
