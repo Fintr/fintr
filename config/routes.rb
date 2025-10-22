@@ -44,6 +44,13 @@ Rails.application.routes.draw do
 
         # Conversations endpoints
         resources :conversations, only: %i[index show create update destroy]
+
+        # Responses endpoints
+        resources :responses, only: [:create] do
+          collection do
+            post :stream
+          end
+        end
       end
 
       # Use scope to keep the URL prefix without namespace nesting for controllers
