@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
 import AddReceiptDialog from "@/components/dashboard/add-receipt-dialog";
-import AiChatModal from "@/components/dashboard/ai-chat-modal";
+import EnhancedAiChatModal from "@/components/ai-chat/enhanced-ai-chat-modal";
 import NotificationsPopup from "@/components/dashboard/notifications-popup";
 import { NotificationProps } from "@/components/dashboard/notification-item";
 import NavDrawer from "@/components/dashboard/nav-drawer";
@@ -308,7 +308,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
         prefilledData={prefilledTransactionData}
       />
       
-      <AiChatModal
+      <EnhancedAiChatModal
         isOpen={isAiChatOpen}
         onClose={() => setIsAiChatOpen(false)}
       />
