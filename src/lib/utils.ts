@@ -156,7 +156,7 @@ export function getColor(chartKey?: string): string {
 }
 
 export function getColorByIndex(index: number): string {
-  return CHART_COLORS[index];
+  return CHART_COLORS[index % CHART_COLORS.length];
 }
 
 export function getProgressColor(progress: number, type: "bg" | "font" | "all" = "all"): string {

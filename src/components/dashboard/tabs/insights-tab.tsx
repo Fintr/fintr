@@ -129,9 +129,17 @@ const InsightsTab = () => {
   // Process expense breakdown data to show top 5 categories and group others
   const processedExpenseBreakdown = useMemo(() => {
     const data = insightsData?.expenseBreakdown || categoryExpenseData;
+    
+    console.log('Raw expense breakdown data:', data);
+    console.log('Insights data:', insightsData);
 
     if (data.length <= 5) {
-      return data;
+      const result = data.map((item, index) => ({
+        ...item,
+        color: getColorByIndex(index), // Ensure all items have colors
+      }));
+      console.log('Processed expense breakdown (≤5 items):', result);
+      return result;
     }
 
     // Sort data in descending order of value
@@ -153,7 +161,7 @@ const InsightsTab = () => {
       percent: item.percentage, // Use percentage as string directly from API
     }));
 
-    return [
+    const result = [
       ...top5,
       { 
         name: "Other", 
@@ -162,6 +170,8 @@ const InsightsTab = () => {
         details: otherDetails 
       },
     ];
+    console.log('Processed expense breakdown (>5 items):', result);
+    return result;
   }, [insightsData?.expenseBreakdown]);
 
   // Handle filter application
@@ -666,6 +676,10 @@ const InsightsTab = () => {
                 {isLoading ? (
                   <div className="text-center py-8">
                     <LoadingSpinner size="medium" />
+                  </div>
+                ) : processedExpenseBreakdown.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-gray-500">No expense data available</p>
                   </div>
                 ) : (
                   <div className="h-96 w-full">
