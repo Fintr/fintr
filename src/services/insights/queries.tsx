@@ -323,7 +323,7 @@ export const fetchInsights = async (
       expenseBreakdown: apiData.expenseBreakdown?.map((item, index) => ({
         name: item.categoryName,
         value: parseFloat(item.amount),
-        color: "#FFF", // Use unique color based on category name
+        color: getColorByIndex(index), // Use unique color based on index
         percentage: item.percentage, // Assign as string directly
       })) || [],
       weeklySpending: aggregateWeeklySpending(apiData.weeklySpending),
@@ -364,6 +364,7 @@ export const fetchInsights = async (
     }
 
     console.log('Transformed insights data:', transformedData);
+    console.log('Expense breakdown data:', transformedData.expenseBreakdown);
     
     return transformedData;
   } catch (error) {
