@@ -35,16 +35,16 @@ Rails.application.configure do
   config.solid_queue.logger = ActiveSupport::Logger.new(STDOUT)
 
   # Add these lines to your development.rb
-  config.logger = ActiveSupport::Logger.new(STDOUT)
-  config.log_level = :debug
+  # config.logger = ActiveSupport::Logger.new(STDOUT)
+  # config.log_level = :debug
 
-  # Ensure all loggers output to STDOUT
-  config.solid_queue.logger = ActiveSupport::Logger.new(STDOUT)
-  config.active_job.logger = ActiveSupport::Logger.new(STDOUT)
+  # # Ensure all loggers output to STDOUT
+  # config.solid_queue.logger = ActiveSupport::Logger.new(STDOUT)
+  # config.active_job.logger = ActiveSupport::Logger.new(STDOUT)
 
-  # Enable verbose logging for jobs
-  config.active_job.verbose_enqueue_logs = true
-  config.active_job.verbose_execution_logs = true
+  # # Enable verbose logging for jobs
+  # config.active_job.verbose_enqueue_logs = true
+  # config.active_job.verbose_execution_logs = true
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :amazon

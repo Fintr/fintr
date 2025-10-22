@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe AiChatJob, type: :job do
+RSpec.describe Ai::AiChatJob, type: :job do
   let(:session_id) { "test_session_123" }
   let(:query) { "What are my expenses this month?" }
   let(:space_id) { 1 }
@@ -18,6 +18,140 @@ RSpec.describe AiChatJob, type: :job do
   end
 
   describe "#perform" do
+    context "when conversation_id is provided" do
+      let(:conversation_id) { 123 }
+      let(:conversation) { instance_double(Ai::Conversation) }
+      let(:rag_data) do
+        {
+          enhanced_prompt: "Enhanced prompt with context",
+          raw_ai_analysis: "AI analysis of the query",
+          structured_data: {
+            metadata: { total_records: 5 },
+            query_type: "expense_analysis",
+            data_summary: "5 transactions found"
+          },
+          search_results: {
+            results: [
+              {
+                id: "result_1",
+                similarity_score: 0.95,
+                content: "Transaction content here...",
+                embeddable_type: "Transactions::Expense"
+              }
+            ]
+          },
+          data_requirements: {
+            query_type: "expense_analysis",
+            data_sources: ["transactions"],
+            time_range: "current_month",
+            filters: { category: "food" }
+          }
+        }
+      end
+      let(:mock_rag_operation) { instance_double(Ai::Operations::Rag::ProcessStreamingRagQuery) }
+      let(:mock_interaction) { instance_double(Ai::Interaction) }
+
+      before do
+        allow(Ai::Operations::Rag::ProcessStreamingRagQuery).to receive(:new).and_return(mock_rag_operation)
+        allow(mock_rag_operation).to receive(:call).and_return(Dry::Monads::Result::Success.new(rag_data))
+        allow(Ai::Interaction).to receive(:create_from_chat_session).and_return(mock_interaction)
+        allow(Ai::Conversation).to receive(:find).with(conversation_id).and_return(conversation)
+        allow(conversation).to receive(:add_assistant_message)
+        allow(job).to receive(:stream_llm_response_to_cache).and_return("AI response content")
+        allow(mock_interaction).to receive(:update_with_response)
+      end
+
+      it "finds the conversation when conversation_id is present" do
+        expect(Ai::Conversation).to receive(:find).with(conversation_id)
+
+        job.perform(session_id, query, space_id, user_id, conversation_id)
+      end
+
+      it "saves assistant message to conversation" do
+        expect(conversation).to receive(:add_assistant_message).with(
+          "AI response content",
+          hash_including(query: query)
+        )
+
+        job.perform(session_id, query, space_id, user_id, conversation_id)
+      end
+
+      it "handles conversation save errors gracefully" do
+        allow(conversation).to receive(:add_assistant_message).and_raise(StandardError.new("Database error"))
+
+        expect(Rails.logger).to receive(:warn).with(
+          "[AI_CHAT_JOB] Could not save to conversation: Database error"
+        )
+
+        job.perform(session_id, query, space_id, user_id, conversation_id)
+      end
+
+      it "continues processing even if conversation save fails" do
+        allow(conversation).to receive(:add_assistant_message).and_raise(StandardError.new("Database error"))
+        allow(Rails.logger).to receive(:warn)
+
+        expect(Rails.cache).to receive(:write).with(
+          "ai_chat_#{session_id}",
+          hash_including(status: "complete"),
+          expires_in: 10.minutes
+        )
+
+        job.perform(session_id, query, space_id, user_id, conversation_id)
+      end
+    end
+
+    context "when conversation_id is not provided" do
+      let(:rag_data) do
+        {
+          enhanced_prompt: "Enhanced prompt with context",
+          raw_ai_analysis: "AI analysis of the query",
+          structured_data: {
+            metadata: { total_records: 5 },
+            query_type: "expense_analysis",
+            data_summary: "5 transactions found"
+          },
+          search_results: {
+            results: [
+              {
+                id: "result_1",
+                similarity_score: 0.95,
+                content: "Transaction content here...",
+                embeddable_type: "Transactions::Expense"
+              }
+            ]
+          },
+          data_requirements: {
+            query_type: "expense_analysis",
+            data_sources: ["transactions"],
+            time_range: "current_month",
+            filters: { category: "food" }
+          }
+        }
+      end
+      let(:mock_rag_operation) { instance_double(Ai::Operations::Rag::ProcessStreamingRagQuery) }
+      let(:mock_interaction) { instance_double(Ai::Interaction) }
+
+      before do
+        allow(Ai::Operations::Rag::ProcessStreamingRagQuery).to receive(:new).and_return(mock_rag_operation)
+        allow(mock_rag_operation).to receive(:call).and_return(Dry::Monads::Result::Success.new(rag_data))
+        allow(Ai::Interaction).to receive(:create_from_chat_session).and_return(mock_interaction)
+        allow(job).to receive(:stream_llm_response_to_cache).and_return("AI response content")
+        allow(mock_interaction).to receive(:update_with_response)
+      end
+
+      it "does not attempt to find conversation" do
+        expect(Ai::Conversation).not_to receive(:find)
+
+        job.perform(session_id, query, space_id, user_id)
+      end
+
+      it "does not save to conversation" do
+        expect_any_instance_of(Ai::Conversation).not_to receive(:add_assistant_message)
+
+        job.perform(session_id, query, space_id, user_id)
+      end
+    end
+
     context "when RAG query is successful" do
       let(:rag_data) do
         {

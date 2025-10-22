@@ -18,6 +18,7 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
   describe "POST /api/v1/ai/rag/query" do
     let(:query) { "What are my expenses this month?" }
     let(:valid_params) { { query: query } }
+    let(:conversation) { create(:ai_conversation, user: user, space: space) }
 
     context "with valid parameters" do
       it "returns session_id and processing status" do
@@ -26,7 +27,7 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
         allow(create_usage_operation).to receive(:call).and_yield.and_return(Dry::Monads::Success(true))
 
         allow(Rails.cache).to receive(:write)
-        allow(AiChatJob).to receive(:perform_later)
+        allow(Ai::AiChatJob).to receive(:perform_later)
 
         post "/api/v1/ai/rag/query",
              params: valid_params,
@@ -37,6 +38,7 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
         response_data = JSON.parse(response.body)
         expect(response_data["session_id"]).to be_present
         expect(response_data["status"]).to eq("processing")
+        expect(response_data["conversation_id"]).to be_present
       end
 
       it "stores initial state in Rails cache" do
@@ -51,6 +53,7 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
             content: "",
             query: query,
             space_id: space.id,
+            conversation_id: match(/[a-f0-9-]{36}/),
             created_at: be_a(Time)
           ),
           expires_in: 10.minutes
@@ -61,18 +64,19 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
              headers: auth_setup[:headers]
       end
 
-      it "starts background processing with AiChatJob" do
+      it "starts background processing with Ai::AiChatJob" do
         create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
         allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
         allow(create_usage_operation).to receive(:call).and_yield.and_return(Dry::Monads::Success(true))
 
         allow(Rails.cache).to receive(:write)
 
-        expect(AiChatJob).to receive(:perform_later).with(
+        expect(Ai::AiChatJob).to receive(:perform_later).with(
           match(/[a-f0-9-]{36}/), # session_id
           query,
           space.id,
-          user.id
+          user.id,
+          match(/[a-f0-9-]{36}/) # conversation_id
         )
 
         post "/api/v1/ai/rag/query",
@@ -81,13 +85,59 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
       end
     end
 
+    context "with existing conversation" do
+      let(:conversation_params) { { query: query, conversation_id: conversation.id } }
+
+      before do
+        allow(user.conversations).to receive(:find_by).with(id: conversation.id, space_id: space.id).and_return(conversation)
+      end
+
+      it "uses existing conversation" do
+        create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
+        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
+        allow(create_usage_operation).to receive(:call).and_yield.and_return(Dry::Monads::Success(true))
+
+        allow(Rails.cache).to receive(:write)
+        allow(Ai::AiChatJob).to receive(:perform_later)
+
+        expect(conversation).to receive(:add_user_message).with(query)
+
+        post "/api/v1/ai/rag/query",
+             params: conversation_params,
+             headers: auth_setup[:headers]
+
+        expect(response).to have_http_status(:ok)
+        response_data = JSON.parse(response.body)
+        expect(response_data["conversation_id"]).to eq(conversation.id)
+      end
+    end
+
+    context "when conversation creation fails" do
+      before do
+        create_conversation_operation = instance_double(::Ai::Operations::Conversations::CreateConversation)
+        allow(::Ai::Operations::Conversations::CreateConversation).to receive(:new).and_return(create_conversation_operation)
+        allow(create_conversation_operation).to receive(:call).and_return(Dry::Monads::Failure("Failed to create conversation"))
+      end
+
+      it "returns unprocessable content error" do
+        post "/api/v1/ai/rag/query",
+             params: valid_params,
+             headers: auth_setup[:headers]
+
+        expect(response).to have_http_status(:unprocessable_content)
+        response_data = JSON.parse(response.body)
+        expect(response_data["success"]).to be false
+        expect(response_data["error"]["message"]).to eq("Failed to create conversation")
+      end
+    end
+
     context "with missing query parameter" do
-      it "returns success with empty query" do
+      it "returns unprocessable content error" do
         post "/api/v1/ai/rag/query",
              params: {},
              headers: auth_setup[:headers]
 
-        expect(response).to have_http_status(:ok)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
 
@@ -96,12 +146,17 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
         auth_setup[:headers].merge("X-Space-Code" => "nonexistent")
       end
 
-      it "returns success due to mocking" do
+      before do
+        allow(Rails.cache).to receive(:fetch).with("current_space_nonexistent", expires_in: 15.minutes).and_return(nil)
+        allow_any_instance_of(described_class).to receive(:set_space).and_raise(ActiveRecord::RecordNotFound)
+      end
+
+      it "returns forbidden error" do
         post "/api/v1/ai/rag/query",
              params: valid_params,
              headers: invalid_headers
 
-        expect(response).to have_http_status(:ok)
+        expect(response).to have_http_status(:forbidden)
       end
     end
 
@@ -134,7 +189,7 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
       end
 
       it "does not start background processing when operation fails" do
-        expect(AiChatJob).not_to receive(:perform_later)
+        expect(Ai::AiChatJob).not_to receive(:perform_later)
 
         post "/api/v1/ai/rag/query",
              params: valid_params,

@@ -16,6 +16,7 @@ RSpec.describe Spaces::Space, type: :model do
     it { is_expected.to have_many(:budgets).class_name('Budget').dependent(:destroy) }
     it { is_expected.to have_many(:tickets).class_name('Crm::Ticket').dependent(:destroy) }
     it { is_expected.to have_one(:goal_description).class_name('GoalDescription').dependent(:destroy) }
+    it { is_expected.to have_many(:conversations).class_name('Ai::Conversation').dependent(:destroy) }
 
     # Note: monthly_totals association exists in model but table doesn't exist in current schema
     # Skipping association test to avoid database errors
@@ -102,6 +103,11 @@ RSpec.describe Spaces::Space, type: :model do
         association = space.class.reflect_on_association(:tickets)
         expect(association.options[:dependent]).to eq(:destroy)
       end
+
+      it 'has dependent destroy set for conversations association' do
+        association = space.class.reflect_on_association(:conversations)
+        expect(association.options[:dependent]).to eq(:destroy)
+      end
     end
 
     describe 'filtered categories' do
@@ -139,6 +145,12 @@ RSpec.describe Spaces::Space, type: :model do
         )
         expect(ticket).to be_persisted
         expect(space.tickets).to include(ticket)
+      end
+
+      it 'can create associated conversations' do
+        conversation = create(:ai_conversation, space: space)
+        expect(conversation).to be_persisted
+        expect(space.conversations).to include(conversation)
       end
     end
   end

@@ -1,0 +1,215 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe Ai::ConversationMessage, type: :model do
+  describe 'associations' do
+    it { is_expected.to belong_to(:conversation).class_name("Ai::Conversation") }
+  end
+
+  describe 'validations' do
+    subject { build(:ai_conversation_message) }
+
+    it { is_expected.to validate_presence_of(:content) }
+    it { is_expected.to validate_presence_of(:openai_role) }
+  end
+
+  describe 'scopes' do
+    let(:conversation) { create(:ai_conversation) }
+    let!(:user_message1) { create(:ai_conversation_message, conversation: conversation, openai_role: :user) }
+    let!(:user_message2) { create(:ai_conversation_message, conversation: conversation, openai_role: :user) }
+    let!(:assistant_message1) { create(:ai_conversation_message, conversation: conversation, openai_role: :assistant) }
+    let!(:assistant_message2) { create(:ai_conversation_message, conversation: conversation, openai_role: :assistant) }
+
+    describe '.user_messages' do
+      it 'returns only user messages' do
+        user_messages = described_class.user_messages
+        expect(user_messages).to include(user_message1, user_message2)
+        expect(user_messages).not_to include(assistant_message1, assistant_message2)
+      end
+    end
+
+    describe '.assistant_messages' do
+      it 'returns only assistant messages' do
+        assistant_messages = described_class.assistant_messages
+        expect(assistant_messages).to include(assistant_message1, assistant_message2)
+        expect(assistant_messages).not_to include(user_message1, user_message2)
+      end
+    end
+
+    describe '.chronological' do
+      let(:test_conversation) { create(:ai_conversation) }
+      let!(:message1) { create(:ai_conversation_message, conversation: test_conversation, created_at: 2.hours.ago) }
+      let!(:message2) { create(:ai_conversation_message, conversation: test_conversation, created_at: 1.hour.ago) }
+      let!(:message3) { create(:ai_conversation_message, conversation: test_conversation, created_at: 30.minutes.ago) }
+
+      it 'orders messages by created_at in ascending order' do
+        chronological_messages = described_class.chronological
+        expect(chronological_messages).to include(message1, message2, message3)
+        expect(chronological_messages.index(message1)).to be < chronological_messages.index(message2)
+        expect(chronological_messages.index(message2)).to be < chronological_messages.index(message3)
+      end
+    end
+  end
+
+  describe 'instance methods' do
+    let(:conversation) { create(:ai_conversation) }
+
+    describe '#user_message?' do
+      context 'when openai_role is user' do
+        let(:message) { build(:ai_conversation_message, conversation: conversation, openai_role: :user) }
+
+        it 'returns true' do
+          puts "Debug: openai_role = #{message.openai_role.inspect}"
+          puts "Debug: user_message? = #{message.user_message?.inspect}"
+          puts "Debug: user? = #{message.user?.inspect}"
+          puts "Debug: assistant? = #{message.assistant?.inspect}"
+          expect(message.openai_role).to eq("user")
+          expect(message.user_message?).to be true
+        end
+      end
+
+      context 'when openai_role is assistant' do
+        let(:message) { build(:ai_conversation_message, conversation: conversation, openai_role: :assistant) }
+
+        it 'returns false' do
+          expect(message.openai_role).to eq("assistant")
+          expect(message.user_message?).to be false
+        end
+      end
+    end
+
+    describe '#assistant_message?' do
+      context 'when openai_role is user' do
+        let(:message) { build(:ai_conversation_message, conversation: conversation, openai_role: :user) }
+
+        it 'returns false' do
+          expect(message.openai_role).to eq("user")
+          expect(message.assistant_message?).to be false
+        end
+      end
+
+      context 'when openai_role is assistant' do
+        let(:message) { build(:ai_conversation_message, conversation: conversation, openai_role: :assistant) }
+
+        it 'returns true' do
+          expect(message.openai_role).to eq("assistant")
+          expect(message.assistant_message?).to be true
+        end
+      end
+    end
+  end
+
+  describe 'factory' do
+    it 'creates a valid conversation message' do
+      message = build(:ai_conversation_message)
+      expect(message).to be_valid
+    end
+
+    it 'creates a conversation message with all required attributes' do
+      message = create(:ai_conversation_message)
+      expect(message.content).to be_present
+      expect(message.conversation).to be_present
+      expect(message.openai_role).to be_present
+    end
+
+    it 'creates a user message by default' do
+      message = create(:ai_conversation_message)
+      expect(message.openai_role).to eq("user")
+    end
+
+    context 'with user_message trait' do
+      it 'creates a user message with correct attributes' do
+        message = create(:ai_conversation_message, :user_message)
+        expect(message.openai_role).to eq("user")
+        expect(message.content).to eq("Hello, how can I help you?")
+      end
+    end
+
+    context 'with assistant_message trait' do
+      it 'creates an assistant message with correct attributes' do
+        message = create(:ai_conversation_message, :assistant_message)
+        expect(message.openai_role).to eq("assistant")
+        expect(message.content).to eq("I'm here to help you with your financial questions.")
+        expect(message.metadata).to eq({ "model" => "gpt-4", "tokens" => 50 })
+      end
+    end
+
+    context 'with with_metadata trait' do
+      it 'creates a message with detailed metadata' do
+        message = create(:ai_conversation_message, :with_metadata)
+        expect(message.metadata).to eq({
+          "model" => "gpt-4",
+          "tokens" => 100,
+          "temperature" => 0.7
+        })
+      end
+    end
+  end
+
+  describe 'database constraints' do
+    it 'requires content to be present' do
+      message = build(:ai_conversation_message, content: nil)
+      expect(message).not_to be_valid
+      expect(message.errors[:content]).to include("can't be blank")
+    end
+
+    it 'requires openai_role to be present' do
+      message = build(:ai_conversation_message, openai_role: nil)
+      expect(message).not_to be_valid
+      expect(message.errors[:openai_role]).to include("can't be blank")
+    end
+
+    it 'requires a conversation association' do
+      message = build(:ai_conversation_message, conversation: nil)
+      expect(message).not_to be_valid
+      expect(message.errors[:conversation]).to include("must exist")
+    end
+  end
+
+  describe 'content validation edge cases' do
+    let(:conversation) { create(:ai_conversation) }
+
+    it 'allows empty string content' do
+      message = build(:ai_conversation_message, conversation: conversation, content: "")
+      expect(message).not_to be_valid
+      expect(message.errors[:content]).to include("can't be blank")
+    end
+
+    it 'allows long content' do
+      long_content = "A" * 10000
+      message = build(:ai_conversation_message, conversation: conversation, content: long_content)
+      expect(message).to be_valid
+    end
+
+    it 'allows content with special characters' do
+      special_content = "Hello! @#$%^&*()_+-=[]{}|;':\",./<>?`~"
+      message = build(:ai_conversation_message, conversation: conversation, content: special_content)
+      expect(message).to be_valid
+    end
+  end
+
+  describe 'openai_role validation edge cases' do
+    let(:conversation) { create(:ai_conversation) }
+
+    it 'accepts user for openai_role' do
+      message = build(:ai_conversation_message, conversation: conversation, openai_role: :user)
+      expect(message).to be_valid
+    end
+
+    it 'accepts assistant for openai_role' do
+      message = build(:ai_conversation_message, conversation: conversation, openai_role: :assistant)
+      expect(message).to be_valid
+    end
+
+    it 'rejects nil for openai_role' do
+      message = build(:ai_conversation_message, conversation: conversation, openai_role: nil)
+      expect(message).not_to be_valid
+    end
+
+    it 'accepts string values for openai_role' do
+      message = build(:ai_conversation_message, conversation: conversation, openai_role: "user")
+      expect(message).to be_valid
+    end
+  end
+end

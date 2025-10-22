@@ -41,6 +41,9 @@ Rails.application.routes.draw do
         post "/rag/query", to: "rag#query"
         get "/rag/status/:session_id", to: "rag#status"
         post "/rag/generate_embeddings", to: "rag#generate_embeddings"
+
+        # Conversations endpoints
+        resources :conversations, only: %i[index show create update destroy]
       end
 
       # Use scope to keep the URL prefix without namespace nesting for controllers
