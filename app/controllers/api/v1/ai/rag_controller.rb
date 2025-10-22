@@ -8,6 +8,8 @@ module Api
           session_id = SecureRandom.uuid
           conversation_id = rag_params[:conversation_id]
 
+          Rails.logger.info "[RAG] Query: #{rag_params[:query]}"
+          Rails.logger.info "[RAG] Params: #{rag_params.inspect}"
           # Create or find conversation
           conversation = if conversation_id.present?
             current_user.conversations.find_by(id: conversation_id, space_id: with_current_params[:space_id])
@@ -27,6 +29,8 @@ module Api
               )
             end
           end
+
+          Rails.logger.info "[RAG] Conversation: #{conversation&.inspect}"
 
           # Add user message to conversation
           conversation.add_user_message(rag_params[:query])
