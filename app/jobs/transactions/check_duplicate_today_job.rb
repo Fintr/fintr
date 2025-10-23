@@ -4,14 +4,15 @@ module Transactions
   class CheckDuplicateTodayJob < ApplicationJob
     queue_as :default
 
-    def perform
+    def perform(date = nil)
       Rails.logger.info("Starting DuplicateTransactionDailyJob")
 
       query = Transactions::Transaction.where.not(schedule: {})
 
       Rails.logger.info("Found #{query.count} transactions with schedule")
 
-      date = Time.zone.now.in_time_zone("Asia/Manila")
+      date = date.to_date if date.is_a?(String)
+      date ||= Time.zone.now.in_time_zone("Asia/Manila")
 
       query.find_each(batch_size: 100) do |transaction|
         schedule = IceCube::Schedule.from_hash(transaction.schedule)
