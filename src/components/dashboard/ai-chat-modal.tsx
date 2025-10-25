@@ -85,6 +85,11 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
   const renderMessage = (message: ChatMessage) => {
     const isUser = message.openaiRole === 'user';
     
+    // Don't render empty assistant messages during streaming
+    if (!isUser && (!message.content || message.content.trim() === '') && (isLoading || isStreaming)) {
+      return null;
+    }
+    
     return (
       <div
         key={message.id}
@@ -242,15 +247,7 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
                 </div>
               )}
               
-              {messages
-                .filter(message => {
-                  // Hide empty assistant messages when loading or streaming
-                  if (message.openaiRole !== 'user' && !message.content && (isLoading || isStreaming)) {
-                    return false;
-                  }
-                  return true;
-                })
-                .map(renderMessage)}
+              {messages.map(renderMessage)}
               
               {/* Loading or streaming message */}
               {(isLoading || isStreaming) && (
@@ -265,6 +262,10 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
                         <span className="inline-block w-2 h-4 bg-gray-400 ml-1 animate-pulse" />
                       </p>
                     </div>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                      <span>Fintr AI</span>
+                      <span>typing...</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -277,7 +278,20 @@ const AiChatModal: React.FC<AiChatModalProps> = ({ isOpen, onClose }) => {
                   </div>
                   <div className="max-w-[80%]">
                     <div className="rounded-lg px-4 py-2 bg-red-50 text-red-800 border border-red-200">
-                      <p className="text-sm">Sorry, something went wrong: {error}</p>
+                      <p className="text-sm font-medium mb-1">
+                        {error.includes('token limit') || error.includes('Space token limit reached') 
+                          ? 'Token limit reached'
+                          : error.includes('Request failed with status code') 
+                            ? 'Server Error'
+                            : 'Request failed'
+                        }
+                      </p>
+                      <p className="text-xs text-red-600">
+                        {error.includes('token limit') || error.includes('Space token limit reached') 
+                          ? 'You have reached your AI usage limit for this period. Please try again later or contact support if you need assistance.'
+                          : error
+                        }
+                      </p>
                     </div>
                   </div>
                 </div>
