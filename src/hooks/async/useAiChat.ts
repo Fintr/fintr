@@ -252,6 +252,7 @@ export const useAiChat = () => {
             typingIntervalRef.current = null;
           }
           
+          
           setChatState(prev => ({
             ...prev,
             error: status.error || 'An error occurred',
@@ -284,16 +285,44 @@ export const useAiChat = () => {
           typingIntervalRef.current = null;
         }
         
+        // Extract detailed error message from API response
+        let errorMessage = 'Polling failed';
+        
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        
+        // Try to extract more specific error details from the API response
+        if ((error as any)?.response?.data) {
+          const apiError = (error as any).response.data;
+          
+          // Handle different API error response formats
+          if (apiError.error) {
+            if (typeof apiError.error === 'string') {
+              errorMessage = apiError.error;
+            } else if (apiError.error.message) {
+              errorMessage = apiError.error.message;
+              if (apiError.error.details) {
+                errorMessage += `: ${apiError.error.details}`;
+              }
+            }
+          } else if (apiError.message) {
+            errorMessage = apiError.message;
+          } else if (apiError.details) {
+            errorMessage = apiError.details;
+          }
+        }
+        
         setChatState(prev => ({
           ...prev,
-          error: error instanceof Error ? error.message : 'Polling failed',
+          error: errorMessage,
           isStreaming: false,
           isLoading: false,
           currentStreamingMessage: '',
         }));
         
         updateMessage(assistantMessageId, {
-          content: error instanceof Error ? error.message : 'Polling failed',
+          content: errorMessage,
         });
         
         // Reset typing refs
@@ -363,9 +392,38 @@ export const useAiChat = () => {
       
     } catch (error) {
       console.error("Error starting chat:", error);
+      
+      // Extract detailed error message from API response
+      let errorMessage = 'An unknown error occurred';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      // Try to extract more specific error details from the API response
+      if ((error as any)?.response?.data) {
+        const apiError = (error as any).response.data;
+        
+        // Handle different API error response formats
+        if (apiError.error) {
+          if (typeof apiError.error === 'string') {
+            errorMessage = apiError.error;
+          } else if (apiError.error.message) {
+            errorMessage = apiError.error.message;
+            if (apiError.error.details) {
+              errorMessage += `: ${apiError.error.details}`;
+            }
+          }
+        } else if (apiError.message) {
+          errorMessage = apiError.message;
+        } else if (apiError.details) {
+          errorMessage = apiError.details;
+        }
+      }
+      
       setChatState(prev => ({
         ...prev,
-        error: error instanceof Error ? error.message : 'An unknown error occurred',
+        error: errorMessage,
         isLoading: false,
         isStreaming: false,
       }));
