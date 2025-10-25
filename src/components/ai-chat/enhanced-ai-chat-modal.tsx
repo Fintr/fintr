@@ -255,6 +255,11 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   const renderMessage = (message: ChatMessage) => {
     const isUser = message.openaiRole === 'user';
     
+    // Don't render empty assistant messages during streaming
+    if (!isUser && (!message.content || message.content.trim() === '') && (isLoading || isStreaming)) {
+      return null;
+    }
+    
     return (
       <div
         key={message.id}
