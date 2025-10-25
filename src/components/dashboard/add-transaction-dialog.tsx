@@ -211,6 +211,11 @@ const AddTransactionDialog = ({
       exact: false // Allow partial matches for any transactions query
     });
     
+    // Invalidate dashboard query to refresh financial summary
+    queryClient.invalidateQueries({
+      queryKey: ["dashboard"],
+    });
+    
     setDialogOpen(false);
   };
 

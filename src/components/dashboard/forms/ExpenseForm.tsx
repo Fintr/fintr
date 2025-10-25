@@ -23,6 +23,8 @@ import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
+import { numberFormatting } from "@/lib/utils";
+import { useNumberInput } from "@/hooks/useNumberInput";
 import * as z from "zod"; 
 import { createTransaction, updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
 import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
@@ -161,6 +163,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     file: initialData?.file || null,
   });
   
+  // Number input hook for amount field
+  const amountInput = useNumberInput({
+    initialValue: formState.amount,
+    onValueChange: (cleanValue) => handleFieldChange("amount", cleanValue.toString())
+  });
+  
   // Store draftId separately since it's not part of the form values
   const [draftId, setDraftId] = useState<string | undefined>(initialData?.draftId);
   
@@ -204,6 +212,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         file: initialData.file || null,
       });
       
+      // Update number input hook
+      amountInput.setDisplayValue(initialData.amount?.toString() || "");
+      
       
       // Update schedule type state
       setScheduleType(initialData.scheduleType || ScheduleTypeEnum.ONE_TIME);
@@ -230,6 +241,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         installmentPeriod: "",
         file: null,
       });
+      // Reset number input hook
+      amountInput.reset();
       setDate(undefined);
       setShowCustomCategoryInput(false);
       setShowCustomAccountInput(false);
@@ -304,7 +317,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     
     try {
       const transactionData = {
-        amount: parseFloat(formState.amount),
+        amount: numberFormatting.cleanForBackend(formState.amount),
         description: formState.description || "",
         categoryName: formState.categoryName,
         accountName: formState.accountName,
@@ -357,6 +370,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           installmentPeriod: "",
           file: null, // Reset file in formState
         });
+        // Reset number input hook
+        amountInput.reset();
         setFileId(null);
         setDate(undefined);
         // setFileState(null); // Removed
@@ -578,7 +593,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="date" className="text-sm">Date</Label>
-            <Popover>
+            <Popover modal>
               <PopoverTrigger asChild>
                 <Button variant={"outline"} className="w-full justify-start text-left font-normal text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
@@ -604,9 +619,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <Input
               id="amount"
               name="amount"
-              value={formState.amount}
-              onChange={(e) => handleFieldChange("amount", e.target.value)}
-              type="number"
+              value={amountInput.displayValue}
+              onChange={(e) => amountInput.handleInputChange(e.target.value)}
+              type="text"
               placeholder="0.00"
               className={`text-sm ${formSubmitted && formErrors.amount ? "border-red-800 focus-visible:ring-red-800" : ""}`}
             />

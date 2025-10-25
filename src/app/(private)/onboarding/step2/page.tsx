@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom, useSetAtom } from "jotai";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { useOnboarding } from "@/hooks/async/useOnboarding";
 import { BudgetCategory, BudgetCategoryInput } from "@/services/onboarding/mutations";
 import { onboardingBudgetCategoriesAtom, onboardingTotalBudgetAtom } from "@/atoms/budgetAtoms";
 import { onboardingDataAtom } from "@/atoms/onboardingAtoms";
+import { numberFormatting } from "@/lib/utils";
 import { toast } from "sonner";
 import { Target, ArrowRight, ArrowLeft, X } from "lucide-react";
 
@@ -20,7 +21,7 @@ export default function OnboardingStep2() {
   // Use Jotai atoms for state management
   const [budgetCategories, setBudgetCategories] = useAtom(onboardingBudgetCategoriesAtom);
   const [totalBudget] = useAtom(onboardingTotalBudgetAtom);
-  const [onboardingData] = useAtom(onboardingDataAtom);
+  const [onboardingData, setOnboardingData] = useAtom(onboardingDataAtom);
   const [errors, setErrors] = useState<{ [key: number]: { name?: string; amount?: string } }>({});
 
   const validateForm = () => {
@@ -76,9 +77,20 @@ export default function OnboardingStep2() {
 
   const updateCategory = (index: number, field: 'name' | 'amount', value: string) => {
     const updatedCategories = [...budgetCategories];
-    updatedCategories[index] = { ...updatedCategories[index], [field]: value };
+    if (field === 'amount') {
+      // For amount field, use handleInputChange for formatting and store clean value
+      const formattedValue = numberFormatting.handleInputChange(value);
+      const cleanValue = numberFormatting.cleanForBackend(formattedValue);
+      updatedCategories[index] = { ...updatedCategories[index], [field]: cleanValue.toString() };
+      setDisplayAmounts(prev => ({ ...prev, [index]: formattedValue }));
+    } else {
+      updatedCategories[index] = { ...updatedCategories[index], [field]: value };
+    }
     setBudgetCategories(updatedCategories);
   };
+
+  // Display values for amount fields to handle formatting
+  const [displayAmounts, setDisplayAmounts] = useState<{ [key: number]: string }>({});
 
   const deleteCategory = (index: number) => {
     const updatedCategories = budgetCategories.filter((_, i) => i !== index);
@@ -112,7 +124,7 @@ export default function OnboardingStep2() {
   };
 
   // Calculate total income from step1
-  const totalIncome = (onboardingData.incomeData?.salary || 0) + (onboardingData.incomeData?.business || 0);
+  const totalIncome = onboardingData.incomeData?.income || 0;
 
   const calculatePercentage = (amount: string): number => {
     const numAmount = Number(amount || 0);
@@ -204,12 +216,11 @@ export default function OnboardingStep2() {
                       <div className="flex gap-2 items-center">
                         <div className="flex-1">
                           <FloatingInput
-                            type="number"
+                            type="text"
                             label="Amount (₱)"
-                            value={category.amount}
+                            value={displayAmounts[index] || numberFormatting.formatForInput(category.amount)}
                             onChange={(e) => updateCategory(index, 'amount', e.target.value)}
-                            min="0"
-                            step="0.01"
+                            onWheel={(e) => e.currentTarget.blur()}
                             className={errors[index]?.amount ? "border-destructive" : ""}
                           />
                         </div>

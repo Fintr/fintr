@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FloatingInput } from "@/components/ui/floating-input";
 import { FloatingSelect } from "@/components/ui/floating-select";
 import { useOnboarding } from "@/hooks/async/useOnboarding";
-import { onboardingAccountsDataAtom, onboardingAccountCategoriesAtom, AccountData, incomeRequirementsAtom } from "@/atoms/budgetAtoms";
+import { onboardingAccountsDataAtom, onboardingAccountCategoriesAtom, AccountData } from "@/atoms/budgetAtoms";
 import { onboardingDataAtom } from "@/atoms/onboardingAtoms";
+import { numberFormatting } from "@/lib/utils";
 import { toast } from "sonner";
 import { CreditCard, ArrowRight, ArrowLeft, X } from "lucide-react";
 
@@ -20,13 +21,13 @@ export default function OnboardingStep3() {
   // Use Jotai atoms for state management
   const [accountsData, setAccountsData] = useAtom(onboardingAccountsDataAtom);
   const [accountCategories] = useAtom(onboardingAccountCategoriesAtom);
-  const [incomeRequirements] = useAtom(incomeRequirementsAtom);
   const [errors, setErrors] = useState<{ [key: number]: { name?: string; accountCategory?: string; balance?: string } }>({});
-  const [generalErrors, setGeneralErrors] = useState<{ salary?: string; business?: string }>({});
+  
+  // Display values for balance fields to handle formatting
+  const [displayBalances, setDisplayBalances] = useState<{ [key: number]: string }>({});
 
   const validateForm = () => {
     const newErrors: { [key: number]: { name?: string; accountCategory?: string; balance?: string } } = {};
-    const newGeneralErrors: { salary?: string; business?: string } = {};
     
     accountsData.forEach((account, index) => {
       const accountErrors: { name?: string; accountCategory?: string; balance?: string } = {};
@@ -47,50 +48,21 @@ export default function OnboardingStep3() {
         newErrors[index] = accountErrors;
       }
     });
-
-    // Check if salary income account is required and selected (using atom instead of API data)
-    if (incomeRequirements.salaryIncome) {
-      const hasSalaryAccount = accountsData.some(account => account.forSalary);
-      if (!hasSalaryAccount) {
-        newGeneralErrors.salary = "Please select an account to receive your salary income";
-      }
-    }
-
-    // Check if business income account is required and selected (using atom instead of API data)
-    if (incomeRequirements.businessIncome) {
-      const hasBusinessAccount = accountsData.some(account => account.forBusiness);
-      if (!hasBusinessAccount) {
-        newGeneralErrors.business = "Please select an account to receive your business income";
-      }
-    }
     
     setErrors(newErrors);
-    setGeneralErrors(newGeneralErrors);
     
-    return Object.keys(newErrors).length === 0 && Object.keys(newGeneralErrors).length === 0;
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = async () => {
     if (validateForm()) {
       try {
-        // Filter out false boolean attributes before sending to backend
-        const processedAccountsData = accountsData.map(account => {
-          const processedAccount: any = {
-            name: account.name,
-            accountCategory: account.accountCategory,
-            balance: account.balance
-          };
-          
-          // Only include boolean attributes if they're true
-          if (account.forSalary) {
-            processedAccount.forSalary = true;
-          }
-          if (account.forBusiness) {
-            processedAccount.forBusiness = true;
-          }
-          
-          return processedAccount;
-        });
+        // Process account data for backend
+        const processedAccountsData = accountsData.map(account => ({
+          name: account.name,
+          accountCategory: account.accountCategory,
+          balance: account.balance
+        }));
         
         // Save step 3 data to backend
         await saveStep3Data({
@@ -114,9 +86,17 @@ export default function OnboardingStep3() {
     router.push('/onboarding/step2');
   };
 
-  const updateAccount = (index: number, field: 'name' | 'accountCategory' | 'balance' | 'forSalary' | 'forBusiness', value: string | number | boolean) => {
+  const updateAccount = (index: number, field: 'name' | 'accountCategory' | 'balance', value: string | number) => {
     const updatedAccounts = [...accountsData];
-    updatedAccounts[index] = { ...updatedAccounts[index], [field]: value };
+    if (field === 'balance') {
+      // For balance field, use handleInputChange for formatting and store clean value
+      const formattedValue = numberFormatting.handleInputChange(value.toString());
+      const cleanValue = numberFormatting.cleanForBackend(formattedValue);
+      updatedAccounts[index] = { ...updatedAccounts[index], [field]: cleanValue };
+      setDisplayBalances(prev => ({ ...prev, [index]: formattedValue }));
+    } else {
+      updatedAccounts[index] = { ...updatedAccounts[index], [field]: value };
+    }
     setAccountsData(updatedAccounts);
   };
 
@@ -153,32 +133,6 @@ export default function OnboardingStep3() {
     setAccountsData([...accountsData, newAccount]);
   };
 
-  const handleSalaryAccountSelection = (selectedIndex: number) => {
-    const updatedAccounts = accountsData.map((account, index) => ({
-      ...account,
-      forSalary: index === selectedIndex ? !account.forSalary : false
-    }));
-    setAccountsData(updatedAccounts);
-    
-    // Clear salary error if an account is now selected
-    if (updatedAccounts.some(account => account.forSalary)) {
-      setGeneralErrors(prev => ({ ...prev, salary: undefined }));
-    }
-  };
-
-  const handleBusinessAccountSelection = (selectedIndex: number) => {
-    const updatedAccounts = accountsData.map((account, index) => ({
-      ...account,
-      forBusiness: index === selectedIndex ? !account.forBusiness : false
-    }));
-    setAccountsData(updatedAccounts);
-    
-    // Clear business error if an account is now selected
-    if (updatedAccounts.some(account => account.forBusiness)) {
-      setGeneralErrors(prev => ({ ...prev, business: undefined }));
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -200,8 +154,7 @@ export default function OnboardingStep3() {
             </div>
             <CardTitle className="text-2xl">Accounts Set-Up</CardTitle>
             <CardDescription>
-              Add your bank accounts, cards, and other financial accounts <br /> <br />
-              Click the account/s where your salary and/or business income comes in. Fintr will automatically add it every 1st of the month, so you don’t have to.
+              Add your bank accounts, cards, and other financial accounts to track your finances
             </CardDescription>
           </CardHeader>
           
@@ -252,50 +205,20 @@ export default function OnboardingStep3() {
                       </div>
                     </div>
 
-                    {/* Second row: Balance and Account Type */}
+                    {/* Second row: Balance */}
                     <div className="space-y-3">
-                      <div className="flex gap-3 items-start">
-                        <div className="flex-1">
-                          <FloatingInput
-                            type="number"
-                            label="Balance (₱)"
-                            value={account.balance.toString()}
-                            onChange={(e) => updateAccount(index, 'balance', Number(e.target.value))}
-                            min="0"
-                            step="0.01"
-                            className={errors[index]?.balance ? "border-destructive" : ""}
-                          />
-                          {errors[index]?.balance && (
-                            <p className="text-destructive text-sm mt-1">{errors[index].balance}</p>
-                          )}
-                        </div>
-                        
-                        {/* Account Type Pills */}
-                        <div className="flex gap-2 flex-wrap pt-3">
-                          <button
-                            type="button"
-                            onClick={() => handleSalaryAccountSelection(index)}
-                            className={`px-3 py-1.5 text-xs rounded-full border transition-all duration-200 ${
-                              account.forSalary
-                                ? 'bg-primary text-primary-foreground border-primary'
-                                : 'bg-muted border-border text-muted-foreground hover:bg-muted/80'
-                            }`}
-                          >
-                            For Salary
-                          </button>
-                          
-                          <button
-                            type="button"
-                            onClick={() => handleBusinessAccountSelection(index)}
-                            className={`px-3 py-1.5 text-xs rounded-full border transition-all duration-200 ${
-                              account.forBusiness
-                                ? 'bg-primary text-primary-foreground border-primary'
-                                : 'bg-muted border-border text-muted-foreground hover:bg-muted/80'
-                            }`}
-                          >
-                            For Business
-                          </button>
-                        </div>
+                      <div>
+                        <FloatingInput
+                          type="text"
+                          label="Balance (₱)"
+                          value={displayBalances[index] || numberFormatting.formatForInput(account.balance)}
+                          onChange={(e) => updateAccount(index, 'balance', e.target.value)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          className={errors[index]?.balance ? "border-destructive" : ""}
+                        />
+                        {errors[index]?.balance && (
+                          <p className="text-destructive text-sm mt-1">{errors[index].balance}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -303,23 +226,6 @@ export default function OnboardingStep3() {
               ))}
             </div>
 
-            {/* General error messages for required account assignments */}
-            {(generalErrors.salary || generalErrors.business) && (
-              <div className="space-y-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                {generalErrors.salary && (
-                  <p className="text-destructive text-sm flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-destructive rounded-full"></span>
-                    {generalErrors.salary}
-                  </p>
-                )}
-                {generalErrors.business && (
-                  <p className="text-destructive text-sm flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-destructive rounded-full"></span>
-                    {generalErrors.business}
-                  </p>
-                )}
-              </div>
-            )}
 
             {/* Add new account button */}
             <div className="flex justify-center">

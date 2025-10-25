@@ -19,6 +19,8 @@ import { createTransfer } from "@/services/transactions/transfers/mutation";
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { FormError } from "@/components/ui/form-error";
+import { numberFormatting } from "@/lib/utils";
+import { useNumberInput } from "@/hooks/useNumberInput";
 import * as z from "zod";
 import { ScheduleTypeEnum, REPEAT_INTERVALS } from "@/constants/transactionConstants";
 import AccountCreationForm from "./AccountCreationForm";
@@ -91,6 +93,17 @@ const TransferForm: React.FC<TransferFormProps> = ({
     file: initialData?.file || null, // Add file state to formState
   });
   
+  // Number input hooks for amount and transactionCost fields
+  const amountInput = useNumberInput({
+    initialValue: formState.amount,
+    onValueChange: (cleanValue) => handleFieldChange("amount", cleanValue.toString())
+  });
+  
+  const transactionCostInput = useNumberInput({
+    initialValue: formState.transactionCost,
+    onValueChange: (cleanValue) => handleFieldChange("transactionCost", cleanValue.toString())
+  });
+  
   // Track form submission state
   const [formSubmitted, setFormSubmitted] = useState(false);
   
@@ -111,6 +124,10 @@ const TransferForm: React.FC<TransferFormProps> = ({
         repeatInterval: initialData.repeatInterval || "",
         file: initialData.file || null, // Update file state
       });
+      
+      // Update number input hooks
+      amountInput.setDisplayValue(initialData.amount?.toString() || "");
+      transactionCostInput.setDisplayValue(initialData.transactionCost?.toString() || "");
 
       // Store the current initialData reference to prevent re-running on same object
       prevInitialDataRef.current = initialData;
@@ -126,6 +143,10 @@ const TransferForm: React.FC<TransferFormProps> = ({
         repeatInterval: "",
         file: null, // Clear file state
       });
+      
+      // Reset number input hooks
+      amountInput.reset();
+      transactionCostInput.reset();
       if (setDate) setDate(undefined); // Conditionally call setDate
       setShowFromAccountCreation(false);
       setShowToAccountCreation(false);
@@ -205,8 +226,8 @@ const TransferForm: React.FC<TransferFormProps> = ({
     
     try {
       const transferData = {
-        amount: parseFloat(formState.amount),
-        transactionCost: formState.transactionCost && formState.transactionCost.trim() !== '' ? parseFloat(formState.transactionCost) : 0,
+        amount: numberFormatting.cleanForBackend(formState.amount),
+        transactionCost: formState.transactionCost && formState.transactionCost.trim() !== '' ? numberFormatting.cleanForBackend(formState.transactionCost) : 0,
         fromAccountName: formState.fromAccountName,
         toAccountName: formState.toAccountName,
         description: formState.description || '',
@@ -241,6 +262,9 @@ const TransferForm: React.FC<TransferFormProps> = ({
           repeatInterval: "",
           file: null, // Clear file state on success
         });
+        // Reset number input hooks
+        amountInput.reset();
+        transactionCostInput.reset();
         // setFileState(null);
         setFormSubmitted(false);
       }
@@ -295,7 +319,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
       <div className="flex">
         <div className="space-y-2 w-1/2">
           <Label htmlFor="transfer-date" className="text-sm">Date</Label>
-          <Popover>
+          <Popover modal>
             <PopoverTrigger asChild>
               <Button
                 type="button"
@@ -326,9 +350,9 @@ const TransferForm: React.FC<TransferFormProps> = ({
           <Input
             id="transfer-amount"
             type="text" 
-            value={formState.amount}
+            value={amountInput.displayValue}
             placeholder="0.00"
-            onChange={(e) => handleFieldChange("amount", e.target.value)}
+            onChange={(e) => amountInput.handleInputChange(e.target.value)}
             className={`text-sm ${
               (formSubmitted && formErrors.amount)
                 ? "border-red-800 focus-visible:ring-red-800"
@@ -344,9 +368,9 @@ const TransferForm: React.FC<TransferFormProps> = ({
           <Input
             id="transfer-transaction-cost"
             type="text" 
-            value={formState.transactionCost}
+            value={transactionCostInput.displayValue}
             placeholder="0.00"
-            onChange={(e) => handleFieldChange("transactionCost", e.target.value)}
+            onChange={(e) => transactionCostInput.handleInputChange(e.target.value)}
             className={`text-sm ${
               (formSubmitted && formErrors.transactionCost)
                 ? "border-red-800 focus-visible:ring-red-800"

@@ -29,6 +29,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       title: "Users",
       href: "/admin/users",
     },
+    {
+      title: "User Analytics",
+      href: "/admin/analytics",
+    },
   ];
 
   useEffect(() => {

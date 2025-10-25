@@ -28,19 +28,20 @@ interface FetchUsersPageProps {
 export const fetchUsersPage = async (
   api: AxiosInstance,
   { page = 1, searchQuery = "" }: FetchUsersPageProps
-): Promise<{ users: UserData[]; nextPage: number | undefined }> => {
-  const perPage = 2; // Adjusted to match current test scenario of loading 2 users
+): Promise<{ users: UserData[]; nextPage: number | undefined; totalCount?: number }> => {
+  const perPage = 25; // Load 25 users per page for better infinite scrolling experience
   try {
     const response = await api.get("/admin/users", {
       params: { page: page, perPage: perPage, searchQuery: searchQuery },
     });
     const users = response.data.data.users || [];
+    const totalCount = response.data.data.pagination?.totalCount;
     // Check if the number of users returned is exactly 'perPage'.
     // If it's less, it implies this is the last page.
     const hasMore = users.length === perPage;
     const nextPage = hasMore ? page + 1 : undefined;
 
-    return { users, nextPage };
+    return { users, nextPage, totalCount };
   } catch (error) {
     console.error("Error fetching users page:", error);
     throw error;

@@ -146,6 +146,12 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           appliedFilters.searchQuery,
         ],
       });
+      
+      // Invalidate dashboard query to refresh financial summary
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", spaceCode],
+      });
+      
       setDeleteScopeModalOpen(false);
       // Reset transaction state after a delay to prevent visual glitch
       setTimeout(() => {
@@ -364,6 +370,11 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         appliedFilters.searchQuery,
       ],
       refetchType: 'active'
+    });
+    
+    // Invalidate dashboard query to refresh financial summary
+    queryClient.invalidateQueries({
+      queryKey: ["dashboard", spaceCode],
     });
   };
 

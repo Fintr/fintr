@@ -6,6 +6,7 @@ import { getOnboardingData } from '@/services/onboarding/queries';
 import { onboardingBudgetCategoriesAtom, onboardingAccountsDataAtom, onboardingAccountCategoriesAtom, incomeRequirementsAtom } from '@/atoms/budgetAtoms';
 import { toast } from 'sonner';
 import { set } from 'date-fns';
+import { onboardingDataAtom } from '@/atoms/onboardingAtoms';
 
 export const useOnboarding = (step?: string) => {
   const { api } = useAuthApi({
@@ -14,6 +15,7 @@ export const useOnboarding = (step?: string) => {
   const queryClient = useQueryClient();
   const [budgetCategories, setBudgetCategories] = useAtom(onboardingBudgetCategoriesAtom);
   const [accountsData, setAccountsData] = useAtom(onboardingAccountsDataAtom);
+  const [onboardingDataFromAtom, setOnboardingData] = useAtom(onboardingDataAtom);
   const setAccountCategories = useSetAtom(onboardingAccountCategoriesAtom);
   const setIncomeRequirements = useSetAtom(incomeRequirementsAtom);
 
@@ -44,6 +46,10 @@ export const useOnboarding = (step?: string) => {
       if (step === 'budgets' && response && response.data) {
         if (response.data.budgetsData) {
           setBudgetCategories(response.data.budgetsData);
+          setOnboardingData({...onboardingDataFromAtom, incomeData: {
+            income: response.data.incomeData.income,
+          }})
+          console.log('onboardingDataFromAtom', onboardingDataFromAtom)
         }
       }
       // If we're on the accounts step and response contains account data, populate the atoms

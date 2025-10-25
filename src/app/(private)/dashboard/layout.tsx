@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useGetSpaceCode } from "@/hooks/useGetSpaceCode";
 import { useAuthApi } from "@/hooks/useAuthApi";
-import { shouldShowV2Features } from "@/lib/utils";
+import { shouldShowV2Features, formatCurrency } from "@/lib/utils";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Edit, ArrowRight } from "lucide-react";
@@ -117,6 +117,20 @@ export default function Layout({
               </Button>
             )}
           </div>
+          
+          {/* Current Savings Display */}
+          {data?.financialSummary && (
+            <div className="mt-2">
+              <span className="text-md text-primary/70">Savings: </span>
+              <span className={`text-md font-bold ${
+                parseFloat(data.financialSummary.netSavings) >= 0 
+                  ? 'text-teal-600' 
+                  : 'text-red-900'
+              }`}>
+                {formatCurrency(parseFloat(data.financialSummary.netSavings))}
+              </span>
+            </div>
+          )}
         </div>
       </div>
       <div>
@@ -142,9 +156,9 @@ export default function Layout({
                   Insights
                 </Link>
               </TabsTrigger>
-              <TabsTrigger value="database" className="w-full bg-white border border-primary/10">
-                <Link prefetch href="/dashboard/database" className="w-full h-full flex items-center justify-center ">
-                  Database
+              <TabsTrigger value="space_settings" className="w-full bg-white border border-primary/10">
+                <Link prefetch href="/dashboard/space_settings" className="w-full h-full flex items-center justify-center ">
+                  Settings
                 </Link>
               </TabsTrigger>
               
@@ -184,10 +198,11 @@ export default function Layout({
                 </>
               )}
               <TabsTrigger asChild value="insights">
-                <Link prefetch href="/dashboard/insights">Insights</Link>
+                {/* Insights -> Dashboard */}
+                <Link prefetch href="/dashboard/insights">Dashboard</Link>
               </TabsTrigger>
-              <TabsTrigger asChild value="database">
-                <Link prefetch href="/dashboard/database">Database</Link>
+              <TabsTrigger asChild value="space_settings">
+                <Link prefetch href="/dashboard/space_settings">Settings</Link>
               </TabsTrigger>
             </TabsList>
           </div>
