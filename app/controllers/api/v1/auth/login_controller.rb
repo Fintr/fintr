@@ -5,7 +5,7 @@ module Api
     module Auth
       class LoginController < ApiController
         skip_before_action :authorize
-        skip_before_action :ensure_space_access!
+        skip_before_action :current_space
 
         def create
           result = ::Auth::Operations::AuthenticateUser.new.call(login_params)
