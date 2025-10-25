@@ -5,14 +5,15 @@ module Transactions
     queue_as :default
 
     def perform(transaction_id)
-      date = Time.zone.today.in_time_zone("Asia/Manila")
-      Transactions::Operations::CreateRepeatTransactions
+      date = Date.current
+      operation = Transactions::Operations::CreateRepeatTransactions
         .new
         .call(
           transaction_id:,
-          date_start: date + 1.month,
+          date_start: date,
           date_end: date + 1.month
         )
+      raise StandardError, "Duplicate job failed transaction id: #{transaction_id},message: #{operation.failure}" unless operation.success?
     end
   end
 end
