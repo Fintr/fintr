@@ -137,6 +137,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
     }
   }, [isStreaming, isLoading, messages.length, refetchAIUsage]);
 
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
@@ -339,7 +340,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-full h-screen w-screen flex flex-col m-0 rounded-none border-0 p-0 [&>button]:hidden">
+        <DialogContent className="max-w-full h-[100dvh] w-screen flex flex-col m-0 rounded-none border-0 p-0 [&>button]:hidden">
           <div className="relative h-full">
             {/* Backdrop */}
             {showSidebar && (
@@ -375,7 +376,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
             >
-              <DialogHeader className="flex-shrink-0 border-b p-4">
+              <DialogHeader className="flex-shrink-0 border-b p-4 pt-safe-top">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <button
@@ -550,7 +551,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
               </ScrollArea>
               
               {/* Input Area */}
-              <div className="flex-shrink-0 border-t p-4">
+              <div className="flex-shrink-0 border-t p-4 pb-safe-bottom">
                 <div className="flex gap-2">
                   <Input
                     value={inputMessage}

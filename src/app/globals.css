@@ -142,3 +142,109 @@ html, body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Safe area utilities for mobile viewport handling */
+@layer utilities {
+  .pt-safe-top {
+    padding-top: env(safe-area-inset-top);
+    /* Fallback for Samsung Chrome and Safari mobile */
+    padding-top: max(env(safe-area-inset-top), 20px);
+  }
+  
+  .pb-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+    /* Fallback for Samsung Chrome and Safari mobile */
+    padding-bottom: max(env(safe-area-inset-bottom), 20px);
+  }
+  
+  .pl-safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .pr-safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .h-screen-safe {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+  
+  /* Samsung Chrome and Safari mobile specific fixes */
+  .mobile-fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    height: calc(100vh - env(keyboard-inset-height, 0px)) !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    z-index: 9999 !important;
+    overflow: hidden !important;
+  }
+  
+  /* Force viewport units for problematic browsers */
+  .force-viewport {
+    height: 100vh !important;
+    height: 100dvh !important;
+  }
+  
+  /* Samsung Chrome and Safari mobile specific overrides */
+  @supports (-webkit-touch-callout: none) {
+    /* Safari mobile specific */
+    .mobile-fullscreen {
+      height: -webkit-fill-available !important;
+    }
+  }
+  
+  /* Samsung Chrome specific fixes */
+  @media screen and (-webkit-min-device-pixel-ratio: 0) {
+    .mobile-fullscreen {
+      height: 100vh !important;
+      height: calc(100vh - env(keyboard-inset-height, 0px)) !important;
+    }
+  }
+  
+  /* Prevent keyboard from covering input */
+  .keyboard-safe {
+    padding-bottom: env(keyboard-inset-height, 0px);
+    padding-bottom: max(env(keyboard-inset-height, 0px), 20px);
+  }
+  
+  /* Force input to stay visible */
+  .input-container {
+    position: sticky !important;
+    bottom: 0 !important;
+    background: white !important;
+    z-index: 10000 !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
+    border-top: 1px solid #e5e7eb !important;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  /* Mobile-specific input handling */
+  @media (max-width: 768px) {
+    .input-container {
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      width: 100% !important;
+      padding: 16px !important;
+      padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px) !important;
+      background: white !important;
+      z-index: 10001 !important;
+    }
+    
+    .input-container input {
+      font-size: 16px !important; /* Prevents zoom on iOS */
+    }
+  }
+}
