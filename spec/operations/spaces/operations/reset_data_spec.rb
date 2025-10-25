@@ -84,9 +84,6 @@ RSpec.describe Spaces::Operations::ResetData do
         allow(operation).to receive(:find_user).and_return(Dry::Monads::Result::Success.new(user))
         allow(operation).to receive(:delete_data).and_return(Dry::Monads::Result::Failure.new(delete_error: ['failed']))
         allow(operation).to receive(:populate_initial_data).and_return(Dry::Monads::Result::Success.new({}))
-
-        # Mock ActiveRecord::Base.transaction to capture if rollback is attempted
-        allow(ActiveRecord::Base).to receive(:transaction).and_yield
       end
 
       it { is_expected.to be_failure }
@@ -96,7 +93,7 @@ RSpec.describe Spaces::Operations::ResetData do
       end
 
       it 'rolls back the transaction' do
-        expect(ActiveRecord::Base).to receive(:transaction).and_yield # Just checking that transaction is called
+        expect(ActiveRecord::Base).to receive(:transaction).and_call_original
         call_operation
       end
     end
@@ -107,9 +104,6 @@ RSpec.describe Spaces::Operations::ResetData do
         allow(operation).to receive(:find_user).and_return(Dry::Monads::Result::Success.new(user))
         allow(operation).to receive(:delete_data).and_return(Dry::Monads::Result::Success.new({}))
         allow(operation).to receive(:populate_initial_data).and_return(Dry::Monads::Result::Failure.new(populate_error: ['failed']))
-
-        # Mock ActiveRecord::Base.transaction to capture if rollback is attempted
-        allow(ActiveRecord::Base).to receive(:transaction).and_yield
       end
 
       it { is_expected.to be_failure }
@@ -119,7 +113,7 @@ RSpec.describe Spaces::Operations::ResetData do
       end
 
       it 'rolls back the transaction' do
-        expect(ActiveRecord::Base).to receive(:transaction).and_yield # Just checking that transaction is called
+        expect(ActiveRecord::Base).to receive(:transaction).and_call_original
         call_operation
       end
     end

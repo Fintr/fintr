@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
+
 module Spaces
   module Operations
     class ResetData < Dry::Operation
+      include Dry::Operation::Extensions::ActiveRecord
       class Contract < Dry::Validation::Contract
         params do
           required(:space_id).filled(:string)
@@ -19,14 +22,15 @@ module Spaces
 
       def call(params)
         validated_params = step validate(params:)
-        space = step find_space(params: validated_params)
-        user = step find_user(params: validated_params)
-        ActiveRecord::Base.transaction do
+
+        transaction do
+          space = step find_space(params: validated_params)
+          user = step find_user(params: validated_params)
           _ = step delete_data(space:, user:)
           _ = step populate_initial_data(space:, user:)
-        end
 
-        params
+          validated_params
+        end
       end
 
       def find_space(params:)

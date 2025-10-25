@@ -7,7 +7,7 @@ RSpec.describe Spaces::SpaceUser, type: :model do
 
   describe 'associations' do
     it { is_expected.to belong_to(:space).class_name('Spaces::Space') }
-    it { is_expected.to belong_to(:user) }
+    it { is_expected.to belong_to(:user).optional }
   end
 
   describe 'validations' do
@@ -45,13 +45,12 @@ RSpec.describe Spaces::SpaceUser, type: :model do
         expect(space_user.errors[:user_id]).to include('already belongs to a personal space')
       end
 
-      it 'prevents a user from joining a second organization space' do
+      it 'allows a user to join multiple organization spaces' do
         create(:space_user, user: user, space: organization_space) # Join first
         # Create another organization space using the named factory
         another_org_space = create(:organization_space)
         space_user = build(:space_user, user: user, space: another_org_space)
-        expect(space_user).not_to be_valid
-        expect(space_user.errors[:user_id]).to include('already belongs to a organization space')
+        expect(space_user).to be_valid
       end
 
       it 'does not affect different users' do
