@@ -93,7 +93,7 @@ env:
 # Use a different ssh user than root
 #
 ssh:
-  user: root
+  user: ec2-user
   config: true
 
 # Use a persistent storage volume.
