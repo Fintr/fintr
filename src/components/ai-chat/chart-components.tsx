@@ -211,7 +211,7 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
       <div 
         className={`w-full my-2 border border-primary/10 rounded-lg bg-card p-3 ${
           isMobile 
-            ? 'cursor-pointer hover:border-primary/20 transition-CHART_COLORS' 
+            ? 'cursor-pointer hover:border-primary/20 transition-colors' 
             : ''
         }`}
         onClick={isMobile ? () => setIsLightboxOpen(true) : undefined}
