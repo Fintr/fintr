@@ -20,7 +20,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, CHART_COLORS } from '@/lib/utils';
 
 interface ChartComponentProps {
   type: string;
@@ -29,17 +29,12 @@ interface ChartComponentProps {
   description?: string;
 }
 
-const COLORS = [
-  '#0A3D62', '#1E88E5', '#43A047', '#FB8C00', '#E53935',
-  '#8E24AA', '#00ACC1', '#7CB342', '#FF7043', '#5D4037'
-];
-
 const PieChartComponent: React.FC<{ data: Record<string, any>; height?: number }> = ({ data, height = 280 }) => {
   // Convert data to array format for recharts
   const chartData = Object.entries(data).map(([name, value]) => ({
     name,
     value: typeof value === 'object' ? value.value || value.amount || 0 : value,
-    color: value.color || COLORS[Math.floor(Math.random() * COLORS.length)]
+    color: value.color || CHART_COLORS[Math.floor(Math.random() * CHART_COLORS.length)]
   }));
 
   return (

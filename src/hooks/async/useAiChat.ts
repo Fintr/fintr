@@ -103,7 +103,7 @@ export const useAiChat = () => {
   const startPolling = useCallback((sessionId: string, assistantMessageId: string) => {
     let lastContent = '';
     const startTime = Date.now();
-    const timeoutMs = 30000; // 30 seconds timeout
+    const timeoutMs = 180000; // 3 minutes timeout
 
     const poll = async () => {
       // Check if we've exceeded the timeout
@@ -124,14 +124,14 @@ export const useAiChat = () => {
         
         setChatState(prev => ({
           ...prev,
-          error: 'Request timed out after 30 seconds',
+          error: 'Request timed out after 3 minutes',
           isStreaming: false,
           isLoading: false,
           currentStreamingMessage: '',
         }));
         
         updateMessage(assistantMessageId, {
-          content: 'Request timed out after 30 seconds',
+          content: 'Request timed out after 3 minutes',
         });
         
         // Reset typing refs
