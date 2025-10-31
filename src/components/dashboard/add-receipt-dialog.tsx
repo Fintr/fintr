@@ -187,7 +187,37 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
       }
     } catch (error) {
       console.error('❌ AddReceiptDialog - Upload error:', error);
-      toast.error('Failed to upload receipt. Please try again.');
+      const err: any = error;
+      const apiError = err?.error || err;
+      const message: string = apiError?.message || 'Failed to upload receipt';
+      const parseError: string | undefined = apiError?.details?.parseError;
+      const rawResponse: string | undefined = apiError?.details?.rawResponse;
+
+      // If OpenAI parsing failed, surface the raw model response for user clarity
+      if (parseError === 'No valid JSON found in AI response' && rawResponse) {
+        toast.error(`${message}: ${parseError}`, {
+          description: rawResponse,
+          className: '!text-red-900 [&_*]:!text-red-900',
+          duration: 10000,
+        });
+      } else if (rawResponse) {
+        // If backend supplied a rawResponse for other errors, include it
+        toast.error(message, { 
+          description: rawResponse,
+          className: '!text-red-900 [&_*]:!text-red-900',
+          duration: 10000,
+        });
+      } else if (apiError?.details?.message) {
+        toast.error(message, { 
+          description: apiError.details.message,
+          className: '!text-red-900 [&_*]:!text-red-900',
+          duration: 10000,
+        });
+      } else {
+        toast.error(message + '. Please try again.', {
+          className: '!text-red-900',
+        });
+      }
     } finally {
       setIsUploading(false);
     }
