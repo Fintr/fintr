@@ -326,7 +326,7 @@ GEM
       ostruct (>= 0.2)
     ostruct (0.6.3)
     parallel (1.27.0)
-    parallel_tests (5.4.0)
+    parallel_tests (5.5.0)
       parallel
     parser (3.3.9.0)
       ast (~> 2.4.1)
@@ -569,7 +569,7 @@ DEPENDENCIES
   money-rails (~> 1.15)
   neighbor (~> 0.6.0)
   oj (~> 3.16)
-  parallel_tests (~> 5.4)
+  parallel_tests (~> 5.5)
   pg (~> 1.6)
   pry-rails (~> 0.3.11)
   puma (>= 5.0)
