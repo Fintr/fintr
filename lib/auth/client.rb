@@ -27,7 +27,6 @@ module Auth
       jwks_uri = URI("#{domain_url}.well-known/jwks.json")
       Net::HTTP.get_response jwks_uri
     rescue StandardError => e
-      puts("Error fetching JWKS: on #{jwks_uri} #{e.message}")
       raise e
     end
 
@@ -46,7 +45,6 @@ module Auth
 
       Response.new(Token.new(decoded_token), nil)
     rescue JWT::VerificationError, JWT::DecodeError => e
-      puts("Error decoding token: #{e.message}. token: #{token}")
       error = Error.new("Bad credentials: #{e.message}", :unauthorized)
       Response.new(nil, error)
     end
