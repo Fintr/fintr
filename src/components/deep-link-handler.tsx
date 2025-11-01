@@ -49,20 +49,17 @@ export default function DeepLinkHandler() {
               path = event.url;
             }
           } catch (error) {
-            // Silently fail if parsing fails
+            // Invalid URL format, default to dashboard
           }
           
           // Check if this is an OAuth callback
           if (path === '/auth-callback' && queryParams) {
-            // Redirect to the auth-callback page with query params
             router.push(`/auth-callback?${queryParams}`);
             return;
           }
           
-          // Regular deep link navigation
           // Refresh auth state when deep link is received
           checkAuth().then(() => {
-            // Navigate to the path
             router.push(path);
           });
         });
@@ -71,7 +68,7 @@ export default function DeepLinkHandler() {
           listener.remove();
         };
       } catch (error) {
-        // Silently fail if handler setup fails
+        // Silent fail if not in Capacitor environment
       }
     };
 

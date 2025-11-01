@@ -108,7 +108,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
       } catch (error) {
-        console.error('Token refresh failed:', error);
         logout();
       }
     }, (tokens.expires_in - 60) * 1000); // Refresh 1 minute before expiry
@@ -149,11 +148,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       AuthStorage.setAuthData(authData);
       setTokens(response);
       setUser(userProfile);
-      
-      console.log('✅ Login successful - tokens and user set');
-      console.log('📊 State after login - user:', !!userProfile, 'tokens:', !!response.access_token);
-      
-      // Don't redirect here - let the login page handle it based on isAuthenticated state
     } catch (error: any) {
       setError(error.message || 'Login failed');
       throw error;
@@ -195,10 +189,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       AuthStorage.setAuthData(authData);
       setTokens(response);
       setUser(userProfile);
-      
-      console.log('✅ Signup successful - tokens and user set');
-      
-      // Don't redirect here - let the signup page handle it based on isAuthenticated state
     } catch (error: any) {
       setError(error.message || 'Signup failed');
       throw error;
@@ -217,21 +207,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const getAccessToken = async (): Promise<string | null> => {
     try {
-      console.log('🔑 Getting access token...');
-      console.log('📊 Current state - user:', !!user, 'tokens:', !!tokens?.access_token);
-      
       // First try to get token from state
       if (tokens?.access_token) {
-        console.log('📱 Token found in state');
         // Check if token is expired and refresh if needed
         const authData = AuthStorage.getAuthData();
         if (authData) {
           const now = Date.now();
           const isExpired = authData.expires_at <= now;
-          console.log('⏰ Token expiration check - now:', now, 'expires_at:', authData.expires_at, 'isExpired:', isExpired);
           
           if (isExpired) {
-            console.log('🔄 Token expired, attempting refresh...');
             try {
               if (tokens.refresh_token) {
                 const newTokens = await refreshAccessToken(tokens.refresh_token);
@@ -255,13 +239,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 };
                 AuthStorage.setAuthData(updatedAuthData);
                 
-                console.log('✅ Token refreshed successfully');
                 // Check if new access token is also encrypted
                 const newIsEncrypted = newTokens.access_token.includes('..') && newTokens.access_token.split('.').length === 5;
                 return newIsEncrypted ? newTokens.id_token : newTokens.access_token;
               }
             } catch (error) {
-              console.error('❌ Token refresh failed:', error);
               logout();
               return null;
             }
@@ -272,20 +254,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const isEncrypted = tokens.access_token.includes('..') && tokens.access_token.split('.').length === 5;
         
         if (isEncrypted) {
-          console.log('🔒 Access token is encrypted, using ID token for API calls');
-          // Use ID token instead of encrypted access token
           return tokens.id_token;
         }
         
-        console.log('✅ Returning access token from state');
         return tokens.access_token;
       }
 
       // Fallback: try to get token from storage directly
-      console.log('💾 Checking storage for token...');
       const authData = AuthStorage.getAuthData();
       if (authData && AuthStorage.isAuthenticated()) {
-        console.log('✅ Valid token found in storage');
         // Update state with data from storage if state is not populated
         if (!tokens) {
           const loginResponse: LoginResponse = {
@@ -302,10 +279,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return authData.tokens.access_token;
       }
 
-      console.log('❌ No valid token found');
       return null;
     } catch (error) {
-      console.error('❌ Error getting access token:', error);
       return null;
     }
   };
@@ -322,12 +297,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (authData) {
       const now = Date.now();
       const isExpired = authData.expires_at <= now;
-      console.log('🔐 Authentication check - user:', !!user, 'tokens:', !!tokens?.access_token, 'expired:', isExpired);
       return !isExpired;
     }
     
     // Fallback: if we have user and tokens but no authData, assume authenticated
-    console.log('🔐 Authentication check - fallback: user and tokens present');
     return true;
   }, [user, tokens]);
 

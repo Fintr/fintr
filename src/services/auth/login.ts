@@ -64,7 +64,6 @@ export const loginWithCredentials = async (
     // The backend returns the data in a success wrapper under data.value
     return data.data.value as LoginResponse;
   } catch (error) {
-    console.error('Login error:', error);
     throw error;
   }
 };
@@ -94,7 +93,6 @@ export const getUserProfile = async (accessToken: string) => {
 
     return await response.json();
   } catch (error) {
-    console.error('Get user profile error:', error);
     throw error;
   }
 };
@@ -137,7 +135,6 @@ export const signupWithCredentials = async (
     // The backend returns the data in a success wrapper under data.value
     return data.data.value as SignupResponse;
   } catch (error) {
-    console.error('Signup error:', error);
     throw error;
   }
 };
@@ -170,7 +167,6 @@ export const refreshAccessToken = async (refreshToken: string): Promise<LoginRes
     // The backend returns the data in a success wrapper under data.value
     return data.data.value as LoginResponse;
   } catch (error) {
-    console.error('Token refresh error:', error);
     throw error;
   }
 };

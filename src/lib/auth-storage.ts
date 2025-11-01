@@ -82,10 +82,8 @@ export class AuthStorage {
       
       // Also store in our custom format for backward compatibility
       localStorage.setItem(CUSTOM_AUTH_KEY, JSON.stringify(tokens));
-      
-      console.log('✅ Auth data stored in Auth0-compatible format');
     } catch (error) {
-      console.error('Error storing auth data:', error);
+      // Silent fail on storage error
     }
   }
 
@@ -133,7 +131,6 @@ export class AuthStorage {
           
           // Validate that we have the required token fields
           if (!customTokens.id_token || !customTokens.access_token) {
-            console.warn('Custom auth tokens missing required fields:', customTokens);
             return null;
           }
           
@@ -149,7 +146,6 @@ export class AuthStorage {
             return { tokens, user, expires_at, issued_at };
           }
         } catch (error) {
-          console.error('Error parsing custom auth tokens:', error);
           // Clear invalid data
           localStorage.removeItem(CUSTOM_AUTH_KEY);
         }
@@ -157,7 +153,6 @@ export class AuthStorage {
 
       return null;
     } catch (error) {
-      console.error('Error getting auth data:', error);
       return null;
     }
   }
@@ -176,10 +171,8 @@ export class AuthStorage {
       
       // Clear custom key
       localStorage.removeItem(CUSTOM_AUTH_KEY);
-      
-      console.log('✅ Auth data cleared');
     } catch (error) {
-      console.error('Error clearing auth data:', error);
+      // Silent fail on storage error
     }
   }
 
@@ -242,20 +235,17 @@ export class AuthStorage {
     try {
       // Check if token exists and has the correct format
       if (!token || typeof token !== 'string') {
-        console.warn('Invalid JWT token provided:', token);
         return null;
       }
 
       // Check if token has the correct JWT format (3 parts separated by dots)
       const parts = token.split('.');
       if (parts.length !== 3) {
-        console.warn('Invalid JWT format - expected 3 parts, got:', parts.length);
         return null;
       }
 
       const base64Url = parts[1];
       if (!base64Url) {
-        console.warn('JWT payload is missing');
         return null;
       }
 
@@ -268,7 +258,6 @@ export class AuthStorage {
       );
       return JSON.parse(jsonPayload);
     } catch (error) {
-      console.error('Error decoding JWT:', error);
       return null;
     }
   }
@@ -288,7 +277,6 @@ export class AuthStorage {
       
       // Validate old tokens before migration
       if (!customTokens.id_token || !customTokens.access_token) {
-        console.warn('Old tokens missing required fields, clearing:', customTokens);
         localStorage.removeItem(CUSTOM_AUTH_KEY);
         return;
       }
@@ -303,13 +291,10 @@ export class AuthStorage {
         const expires_at = Date.now() + (tokens.expires_in * 1000);
         const issued_at = Date.now() - (tokens.expires_in * 1000);
         this.setAuthData({ tokens, user, expires_at, issued_at });
-        console.log('✅ Migrated from old storage format');
       } else {
-        console.warn('Failed to decode user from old tokens, clearing storage');
         localStorage.removeItem(CUSTOM_AUTH_KEY);
       }
     } catch (error) {
-      console.error('Error migrating storage format:', error);
       // Clear invalid old data
       localStorage.removeItem(CUSTOM_AUTH_KEY);
     }

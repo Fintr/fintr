@@ -46,7 +46,7 @@ export const initiateInAppBrowserGoogleSignIn = async (options?: InAppBrowserOpt
       redirectUri = 'http://localhost:5173/auth-callback';
     }
   }
-  
+
   // Generate state for CSRF protection
   // For Capacitor, we need to encode that this is a Capacitor flow in the state
   const isCapacitor = isCapacitorEnvironment();
@@ -80,7 +80,7 @@ export const initiateInAppBrowserGoogleSignIn = async (options?: InAppBrowserOpt
   if (!authorizationUrl.toString().includes(auth0Domain)) {
     throw new Error(`Invalid authorization URL - expected Auth0 domain: ${auth0Domain}`);
   }
-
+  
   try {
     // Import Capacitor Browser plugin
     const { Browser } = await import('@capacitor/browser');
@@ -95,10 +95,11 @@ export const initiateInAppBrowserGoogleSignIn = async (options?: InAppBrowserOpt
         });
 
         // Open in-app browser with native popup
+        
         await Browser.open({
           url: authorizationUrl.toString(),
           windowName: '_self',
-          presentationStyle: 'popover',
+          presentationStyle: 'popover', // This makes it slide up from bottom on iOS
           toolbarColor: '#ffffff'
         });
       } catch (error) {
@@ -108,8 +109,9 @@ export const initiateInAppBrowserGoogleSignIn = async (options?: InAppBrowserOpt
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     
+    // If it's an import error, provide a more helpful message
     if (errorMessage?.includes('Cannot resolve module')) {
-      console.error('Browser plugin not found. Make sure @capacitor/browser is installed and synced.');
+      throw new Error('Browser plugin not found. Make sure @capacitor/browser is installed and synced.');
     }
     
     throw new Error('Failed to open sign-in browser');
@@ -124,7 +126,7 @@ export const closeInAppBrowser = async () => {
     const { Browser } = await import('@capacitor/browser');
     await Browser.close();
   } catch (error) {
-    // Silently fail if browser can't be closed
+    // Silent fail if browser is already closed
   }
 };
 

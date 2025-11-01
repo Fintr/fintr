@@ -76,7 +76,6 @@ export function verifyState(receivedState: string): boolean {
     return false;
   }
   
-  // Clean up
   sessionStorage.removeItem('auth0_state');
   
   return true;

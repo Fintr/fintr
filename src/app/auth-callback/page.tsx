@@ -162,11 +162,8 @@ export default function AuthCallback() {
         if (isCapacitorFlow) {
           setShowCloseBrowserButton(true);
         } else if (isIOSDevice()) {
-          // On iOS device but not in Capacitor (e.g., Safari)
-          // Show button to open app since direct redirect doesn't work in Safari
           setShowOpenAppButton(true);
         } else {
-          // Regular web redirect
           setTimeout(() => {
             window.location.href = redirectPath;
           }, 1000);
@@ -184,11 +181,10 @@ export default function AuthCallback() {
 
   const handleCloseBrowser = async () => {
     try {
-      // Try to close browser via Capacitor API
       const { Browser } = await import('@capacitor/browser');
       await Browser.close();
     } catch (error) {
-      // Silently fail if browser can't be closed
+      // Silent fail if browser is already closed
     }
   };
 
@@ -197,8 +193,6 @@ export default function AuthCallback() {
     const scheme = 'App://';
     const appUrl = `${scheme}${redirectPath}`;
     
-    // For iOS Safari, we need to use a different method
-    // Create a temporary anchor element to trigger the URL scheme
     const link = document.createElement('a');
     link.href = appUrl;
     link.style.display = 'none';

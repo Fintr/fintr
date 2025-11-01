@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Fintr',
   webDir: 'public',
   server: {
-    url: 'http://localhost:5173',
+    url: process.env.NEXT_PUBLIC_APP_BASE_URL,
     cleartext: true
   },
   ios: {
