@@ -5,7 +5,7 @@ module Api
     module Auth
       class RefreshController < ApiController
         skip_before_action :authorize
-        skip_before_action :current_space
+        skip_before_action :ensure_space_access!
 
         def create
           result = ::Auth::Operations::RefreshToken.new.call(refresh_params)

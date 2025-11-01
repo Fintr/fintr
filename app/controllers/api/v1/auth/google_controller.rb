@@ -5,22 +5,27 @@ module Api
     module Auth
       class GoogleController < ApiController
         skip_before_action :authorize
-        skip_before_action :current_space
+        skip_before_action :ensure_space_access!
 
         def callback
-          result = ::Auth::Operations::ExchangeGoogleCode.new.call(callback_params)
+          # First exchange the code for tokens
+          exchange_result = ::Auth::Operations::ExchangeGoogleCode.new.call(callback_params)
 
-          if result.success?
-            render_success(
-              message: "Google sign-in successful",
-              data: result.value!
-            )
-          else
-            render_unauthorized(
+          unless exchange_result.success?
+            return render_unauthorized(
               message: "Google sign-in failed",
-              details: result.failure
+              details: exchange_result.failure
             )
           end
+
+          tokens = exchange_result.value!
+
+          # For now, let's try to work with the tokens as-is
+          # The frontend will handle the token format
+          render_success(
+            message: "Google sign-in successful",
+            data: tokens
+          )
         end
 
         private

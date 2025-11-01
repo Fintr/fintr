@@ -17,7 +17,29 @@ module Auth
       private
 
       def create_user(params)
-        user = Auth::User.find_or_initialize_by(auth_id: params[:auth_id])
+        # First try to find user by auth_id
+        user = Auth::User.find_by(auth_id: params[:auth_id])
+        
+        # If not found by auth_id, try to find by email (for users who logged in with different methods)
+        if user.nil? && params[:email].present?
+          user = Auth::User.find_by(email: params[:email])
+          
+          if user.present?
+            puts("🔄 Found existing user by email (#{params[:email]}) with auth_id: #{user.auth_id}")
+            puts("🔄 Current request auth_id: #{params[:auth_id]}")
+            puts("🔄 Using existing user instead of creating new one")
+            # Return the existing user without updating auth_id
+            # This allows the same user to authenticate with different methods
+            return Success(user)
+          end
+        end
+        
+        # If still not found, create a new user
+        if user.nil?
+          puts("🆕 Creating new user with auth_id: #{params[:auth_id]}")
+          user = Auth::User.new(auth_id: params[:auth_id])
+        end
+        
         user.assign_attributes(params.slice(*User.clean_attributes))
         return Success(user) unless user.changed?
 

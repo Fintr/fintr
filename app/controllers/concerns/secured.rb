@@ -27,20 +27,7 @@ module Secured
     error = @validation_response.error
     return render json: { message: error.message }, status: error.status if error
 
-    render json: { message: "User not found" }, status: :unauthorized unless cached_current_user
-  end
-
-  def cached_current_user
-    key = Digest::MD5.hexdigest(@validation_response.decoded_token.token.first["sub"])
-    @current_user = Rails.cache.fetch("current_user_#{key}", expires_in: 1.hour) do
-      c_user = current_user
-      c_user.is_a?(Auth::User) ? c_user : nil
-    end
-
-    # Track user activity when user is successfully authenticated
-    track_user_activity if @current_user.present?
-
-    @current_user
+    render json: { message: "User not found" }, status: :unauthorized unless current_user
   end
 
   # NOTE: Cached and invalid? Check again if the token is now valid.
@@ -61,15 +48,24 @@ module Secured
     return nil unless @validation_response&.decoded_token
 
     auth_id = @validation_response.decoded_token.token.first["sub"]
+    email = @validation_response.decoded_token.token.first["email"]
+    full_name = @validation_response.decoded_token.token.first["full_name"]
+    
     data = {
       auth_id:,
-      email: @validation_response.decoded_token.token.first["email"],
-      full_name: @validation_response.decoded_token.token.first["full_name"]
+      email:,
+      full_name:
     }
+    
     result = Auth::Operations::CreateUserAndSpace.new.call(data)
     return render_not_found(details: result.failure) unless result.success?
 
     @current_user = result.value!
+    
+    # Track user activity when user is successfully authenticated
+    track_user_activity if @current_user.present?
+    
+    @current_user
   end
 
   private

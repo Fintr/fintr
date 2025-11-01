@@ -5,7 +5,7 @@ module Api
     module Auth
       class SignupController < ApiController
         skip_before_action :authorize
-        skip_before_action :current_space
+        skip_before_action :ensure_space_access!
 
         def create
           result = ::Auth::Operations::RegisterUser.new.call(signup_params)

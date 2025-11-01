@@ -4,7 +4,7 @@ module Api
   module V1
     module Auth
       class UserController < ApiController
-        skip_before_action :current_space
+        skip_before_action :ensure_space_access!
 
         def index
           method_used = current_user.auth_id.split("|").first

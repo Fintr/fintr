@@ -79,6 +79,23 @@ Rails.application.routes.draw do
           post :reset_data
         end
       end
+
+      # Space management routes
+      resources :spaces, only: [:index, :show, :create] do
+        member do
+          post :join
+          delete :leave
+        end
+
+        resources :users, module: :spaces, only: [:index] do
+          collection do
+            post :grant_access
+          end
+          member do
+            delete :remove
+          end
+        end
+      end
     end
   end
 

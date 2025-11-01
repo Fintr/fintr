@@ -4,7 +4,7 @@ module Api
   module V1
     module Admin
       class UsersController < ApiController
-        skip_before_action :current_space
+        skip_before_action :ensure_space_access!
 
         def index
           query = ::Admin::Queries::UsersQuery.call(params: index_params)
