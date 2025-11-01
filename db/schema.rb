@@ -10,7 +10,8 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_05_052506) do
+
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
@@ -209,15 +210,15 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   end
 
   create_table "import_records", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.jsonb "edited_data", default: {}
-    t.jsonb "import_errors", default: []
     t.uuid "import_id", null: false
-    t.jsonb "original_data", default: {}
-    t.uuid "record_id"
     t.string "record_type"
+    t.uuid "record_id"
     t.integer "row_number", null: false
+    t.jsonb "original_data", default: {}
+    t.jsonb "edited_data", default: {}
     t.string "status", default: "pending", null: false
+    t.jsonb "import_errors", default: []
+    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["import_id", "record_type"], name: "index_import_records_on_import_id_and_record_type"
     t.index ["import_id", "status"], name: "index_import_records_on_import_id_and_status"
@@ -226,18 +227,18 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   end
 
   create_table "imports", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.jsonb "import_errors", default: []
-    t.string "import_location", null: false
-    t.jsonb "metadata", default: {}
-    t.datetime "processed_at"
+    t.uuid "user_id", null: false
     t.uuid "space_id", null: false
     t.string "status", default: "pending", null: false
-    t.integer "total_rows_failed", default: 0
-    t.integer "total_rows_inserted", default: 0
+    t.string "import_location", null: false
     t.integer "total_rows_read", default: 0
+    t.integer "total_rows_inserted", default: 0
+    t.integer "total_rows_failed", default: 0
+    t.jsonb "import_errors", default: []
+    t.jsonb "metadata", default: {}
+    t.datetime "processed_at"
+    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.uuid "user_id", null: false
     t.index ["space_id", "created_at"], name: "index_imports_on_space_id_and_created_at"
     t.index ["space_id"], name: "index_imports_on_space_id"
     t.index ["status"], name: "index_imports_on_status"
@@ -476,10 +477,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
     t.string "photo_url"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.uuid "last_accessed_space_id"
     t.index ["auth_id"], name: "index_users_on_auth_id", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
-    t.index ["last_accessed_space_id"], name: "index_users_on_last_accessed_space_id"
   end
 
   create_table "users_roles", id: false, force: :cascade do |t|
@@ -538,7 +537,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   add_foreign_key "transfers", "transfers", column: "parent_id"
   add_foreign_key "transfers", "users"
   add_foreign_key "user_activities", "users"
-  add_foreign_key "users", "spaces", column: "last_accessed_space_id"
 
   create_view "combined_transactions", sql_definition: <<-SQL
       SELECT 'Transactions::Transfer'::character varying AS transactable_type,
