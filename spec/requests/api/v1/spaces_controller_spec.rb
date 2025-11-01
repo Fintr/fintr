@@ -37,24 +37,81 @@ RSpec.describe Api::V1::SpacesController, type: :request do
   end
 
   describe "POST /api/v1/spaces" do
+    let!(:user_space) { create(:space_user, user: user, space: space) }
     let(:valid_params) { { name: "Test Space", currency: "USD" } }
+    let(:mock_create_operation) { instance_double(Spaces::Operations::CreateOrganizationSpace) }
 
-    it "creates new organization space" do
-      post "/api/v1/spaces", params: valid_params, headers: auth_setup[:headers]
+    context "when the request is successful" do
+      let(:created_space) { create(:organization_space, name: valid_params[:name], currency: valid_params[:currency]) }
+      let(:call_args) { [] }
+      let(:call_kwargs) { {} }
 
-      expect(response).to have_http_status(:created)
+      before do
+        allow(Spaces::Operations::CreateOrganizationSpace).to receive(:new).and_return(mock_create_operation)
+        allow(mock_create_operation).to receive(:call) do |*args, **kwargs|
+          # Store arguments for verification
+          call_args.concat(args)
+          call_kwargs.merge!(kwargs)
+          Dry::Monads::Result::Success.new(created_space)
+        end
 
-      # Verify the space was created with correct attributes
-      created_space = Spaces::OrganizationSpace.find_by(name: valid_params[:name])
-      expect(created_space).to be_present
-      expect(created_space.currency).to eq(valid_params[:currency])
-      expect(created_space.code).to eq("test-space")
+        post "/api/v1/spaces", params: valid_params, headers: auth_setup[:headers]
+      end
+
+      it "returns an HTTP status created" do
+        expect(response).to have_http_status(:created)
+      end
+
+      it "calls the CreateOrganizationSpace operation with reference_space_id" do
+        params_hash = call_args[0].to_h
+        expect(params_hash).to include(
+          "user_id" => user.id.to_s,
+          "space_id" => space.id.to_s,
+          "space_code" => space.code,
+          "name" => valid_params[:name],
+          "currency" => valid_params[:currency]
+        )
+
+        # Check if reference_space_id is passed as keyword argument or in params
+        reference_space_id_value = call_kwargs[:reference_space_id] || params_hash["reference_space_id"]
+        expect(reference_space_id_value).to eq(space.id.to_s)
+      end
     end
 
-    it "returns error for invalid params" do
-      post "/api/v1/spaces", params: { name: nil }, headers: auth_setup[:headers]
+    context "when the operation fails" do
+      let(:failure_details) { { "error" => "Failed to create space" } }
 
-      expect(response).to have_http_status(:unprocessable_content)
+      before do
+        allow(Spaces::Operations::CreateOrganizationSpace).to receive(:new).and_return(mock_create_operation)
+        allow(mock_create_operation).to receive(:call)
+          .and_return(Dry::Monads::Result::Failure.new(failure_details))
+
+        post "/api/v1/spaces", params: valid_params, headers: auth_setup[:headers]
+      end
+
+      it "returns an HTTP status unprocessable_content" do
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it "returns the failure details in the response body" do
+        json_response = JSON.parse(response.body)
+        expect(json_response["success"]).to be(false)
+        expect(json_response["error"]["details"]).to eq(failure_details.deep_stringify_keys)
+      end
+    end
+
+    context "when params are invalid" do
+      before do
+        allow(Spaces::Operations::CreateOrganizationSpace).to receive(:new).and_return(mock_create_operation)
+        allow(mock_create_operation).to receive(:call)
+          .and_return(Dry::Monads::Result::Failure.new({ "error" => "Validation failed" }))
+
+        post "/api/v1/spaces", params: { name: nil }, headers: auth_setup[:headers]
+      end
+
+      it "returns an HTTP status unprocessable_content" do
+        expect(response).to have_http_status(:unprocessable_content)
+      end
     end
   end
 

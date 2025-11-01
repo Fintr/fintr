@@ -34,9 +34,10 @@ module Api
       # POST /api/v1/spaces
       # Creates a new organization space
       def create
-        operation = ::Spaces::Operations::CreateOrganizationSpace.new.call(
-          with_current_params(create_params)
-        )
+        operation = ::Spaces::Operations::CreateOrganizationSpace.new.call({
+          **with_current_params(create_params),
+          reference_space_id: current_space.id.to_s
+        })
         return render_unprocessable_content(details: operation.failure) unless operation.success?
 
         render_created(record: operation.value!)
