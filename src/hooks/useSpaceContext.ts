@@ -69,7 +69,7 @@ export function useSpaceContext(api: AxiosInstance) {
       return { space };
     },
     onSuccess: (data, spaceCode) => {
-      // Invalidate all space-scoped queries
+      // Invalidate all space-scoped queries when workspace is switched
       queryClient.invalidateQueries({ queryKey: ["space-context"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["budgets"] });
@@ -77,6 +77,12 @@ export function useSpaceContext(api: AxiosInstance) {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["transactionCategories"] });
       queryClient.invalidateQueries({ queryKey: ["transactionDrafts"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["spaceUsers"] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
+      queryClient.invalidateQueries({ queryKey: ["ai", "usage"] });
     },
   });
 
