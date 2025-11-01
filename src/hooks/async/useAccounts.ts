@@ -31,6 +31,8 @@ export const useAccounts = () => {
     onSuccess: (newAccount, variables) => {
       // Invalidate and refetch accounts
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      // Invalidate dashboard query to refresh account options
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success(`Account "${variables.name}" created successfully`);
     },
     onError: (error: any) => {
@@ -62,6 +64,8 @@ export const useAccounts = () => {
       // Invalidate and refetch accounts only if the deletion was successful
       if (response?.success === true) {
         queryClient.invalidateQueries({ queryKey: ['accounts'] });
+        // Invalidate dashboard query to refresh account options
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         toast.success(`Account deleted successfully`);
       } else {
         // If backend returns success: false, re-throw to display error from dialog
