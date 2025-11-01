@@ -145,7 +145,11 @@ const UnifiedAuthPage = ({
           </button>
         )}
         <div className="text-center mb-6">
-          <div className="text-3xl font-bold text-blue-600 mb-2">Fintr</div>
+          <img
+            src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
+            alt="Fintr Logo"
+            className="h-12 w-auto mx-auto mb-4"
+          />
           <h2 className="text-2xl font-semibold text-gray-800 mb-2">
             Welcome
           </h2>
@@ -220,7 +224,7 @@ const UnifiedAuthPage = ({
                 type="email"
                 value={loginData.email}
                 onChange={handleLoginChange}
-                placeholder="akositsam@gmail.com"
+                placeholder="Enter your email"
                 className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 required
               />
@@ -324,7 +328,7 @@ const UnifiedAuthPage = ({
                 type="email"
                 value={registerData.email}
                 onChange={handleRegisterChange}
-                placeholder="john.doe@example.com"
+                placeholder="Enter your email"
                 className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 required
               />

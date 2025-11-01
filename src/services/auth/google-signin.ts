@@ -25,14 +25,6 @@ export const initiateGoogleSignIn = (options?: GoogleSignInOptions) => {
   // Use environment variable for redirect URI to ensure consistency
   const redirectUri = options?.redirectUri || `${appBaseUrl || window.location.origin}/auth-callback`;
 
-  // Debug logging
-  console.log('🔍 Google Sign-In Debug Info:');
-  console.log('  - Auth0 Domain:', auth0Domain);
-  console.log('  - Client ID:', clientId);
-  console.log('  - App Base URL:', appBaseUrl);
-  console.log('  - Window Origin:', window.location.origin);
-  console.log('  - Generated Redirect URI:', redirectUri);
-
   // Generate state for CSRF protection
   const state = options?.state || generateRandomState();
   
@@ -81,7 +73,6 @@ export function verifyState(receivedState: string): boolean {
   const storedState = sessionStorage.getItem('auth0_state');
   
   if (!storedState || storedState !== receivedState) {
-    console.error('State mismatch - possible CSRF attack');
     return false;
   }
   

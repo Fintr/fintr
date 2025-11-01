@@ -33,17 +33,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log('🔍 Checking authentication...');
-        
         // Migrate from old storage format if needed
         AuthStorage.migrateFromOldFormat();
         
         // Get auth data from unified storage
         const authData = AuthStorage.getAuthData();
-        console.log('📦 Auth data from storage:', authData ? 'Found' : 'Not found');
         
         if (authData && AuthStorage.isAuthenticated()) {
-          console.log('✅ Valid authentication found');
           // Convert AuthTokens to LoginResponse format for compatibility
           const loginResponse: LoginResponse = {
             access_token: authData.tokens.access_token,
@@ -56,12 +52,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setTokens(loginResponse);
           setUser(authData.user);
         } else {
-          console.log('❌ No valid authentication found');
           setTokens(null);
           setUser(null);
         }
       } catch (error) {
-        console.error('Auth check failed:', error);
         // Clear invalid data
         AuthStorage.clearAuthData();
         setTokens(null);

@@ -20,8 +20,6 @@ export default function DeepLinkHandler() {
         
         // Listen for app URL opens (deep links)
         const listener = await App.addListener('appUrlOpen', (event: { url: string }) => {
-          console.log('🔗 Deep link received:', event.url);
-          
           // Parse the URL scheme (e.g., App://dashboard or App://auth-callback?code=...&state=...)
           let path = '/dashboard';
           let queryParams = '';
@@ -51,27 +49,19 @@ export default function DeepLinkHandler() {
               path = event.url;
             }
           } catch (error) {
-            console.error('Error parsing deep link URL:', error);
+            // Silently fail if parsing fails
           }
-          
-          console.log('📱 Parsed from deep link:');
-          console.log('  - Path:', path);
-          console.log('  - Query params:', queryParams);
           
           // Check if this is an OAuth callback
           if (path === '/auth-callback' && queryParams) {
-            console.log('🔐 OAuth callback detected, redirecting to auth-callback page');
             // Redirect to the auth-callback page with query params
             router.push(`/auth-callback?${queryParams}`);
             return;
           }
           
           // Regular deep link navigation
-          console.log('📱 Regular deep link navigation to:', path);
-          
           // Refresh auth state when deep link is received
           checkAuth().then(() => {
-            console.log('✅ Auth refreshed, navigating to:', path);
             // Navigate to the path
             router.push(path);
           });
@@ -81,7 +71,7 @@ export default function DeepLinkHandler() {
           listener.remove();
         };
       } catch (error) {
-        console.error('Error setting up deep link handler:', error);
+        // Silently fail if handler setup fails
       }
     };
 

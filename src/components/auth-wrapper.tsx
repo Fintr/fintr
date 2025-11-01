@@ -19,9 +19,7 @@ function AuthWrapper({ children }: AuthWrapperProps) {
   const isPublicRoute = publicRoutes.includes(pathname);
   
   useEffect(() => {
-    console.log('🛡️ AuthWrapper - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'isPublicRoute:', isPublicRoute, 'pathname:', pathname);
     if (!isLoading && !isAuthenticated && !isPublicRoute) {
-      console.log('🔄 AuthWrapper - redirecting to login');
       router.push('/login');
     }
   }, [isLoading, isAuthenticated, isPublicRoute, router, pathname]);
