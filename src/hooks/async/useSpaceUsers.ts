@@ -6,7 +6,7 @@ import { SpaceUser, GrantAccessRequest } from '@/types/spaceTypes';
 import { toast } from 'sonner';
 
 export const useSpaceUsers = () => {
-  const { api } = useAuthApi();
+  const { api, isAuthenticated } = useAuthApi();
   const [spaceCode] = useLocalStorage("spaceCode", "");
   const queryClient = useQueryClient();
 
@@ -19,7 +19,7 @@ export const useSpaceUsers = () => {
   } = useQuery({
     queryKey: ['spaceUsers', spaceCode],
     queryFn: () => spacesApi.getSpaceUsers(api, spaceCode),
-    enabled: !!spaceCode,
+    enabled: !!spaceCode && isAuthenticated, // Only run if spaceCode exists and user is authenticated
     staleTime: 30000, // 30 seconds
   });
 
@@ -59,7 +59,7 @@ export const useSpaceUsers = () => {
   };
 
   // Access users from the correct path: response.data.data.users
-  const usersList = users?.data?.data?.users || [];
+  const usersList = (users as any)?.data?.users || [];
   
   return {
     users: usersList,

@@ -9,7 +9,7 @@ import { set } from 'date-fns';
 import { onboardingDataAtom } from '@/atoms/onboardingAtoms';
 
 export const useOnboarding = (step?: string) => {
-  const { api } = useAuthApi({
+  const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
   const queryClient = useQueryClient();
@@ -23,7 +23,7 @@ export const useOnboarding = (step?: string) => {
   // - For 'budgets' step: only if no existing budget categories data
   // - For 'accounts' step: only if no existing accounts data
   // - For other steps: always fetch if step is provided
-  const shouldFetchData = !!api && !!step && (
+  const shouldFetchData = !!api && !!step && isAuthenticated && (
     (step === 'budgets' && budgetCategories.length === 0) ||
     (step === 'accounts' && accountsData.length === 0) ||
     (step !== 'budgets' && step !== 'accounts')

@@ -24,11 +24,11 @@ export default function Layout({
 }: {
   children: React.ReactNode;
 }) {
-  const { api } = useAuthApi({
+  const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
   
-  const { spaceCode } = useGetSpaceCode(api);
+  const { spaceCode } = useGetSpaceCode(api, isAuthenticated);
   const { data, isLoading: isLoadingDashboardData, isError, refetch } = useDashboardData();
   
   const showV2Features = shouldShowV2Features();

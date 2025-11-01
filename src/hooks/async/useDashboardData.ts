@@ -12,7 +12,7 @@ import {
 import { useEffect } from "react";
 
 export const useDashboardData = () => {
-  const { api } = useAuthApi({
+  const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
 
@@ -30,7 +30,7 @@ export const useDashboardData = () => {
       const response = await fetchDashboardData(api);
       return response;
     },
-    enabled: !!spaceCode, // Only run this query if spaceCode is available
+    enabled: !!spaceCode && isAuthenticated, // Only run this query if spaceCode is available and user is authenticated
   });
 
   // Automatically populate atoms when data is successfully fetched

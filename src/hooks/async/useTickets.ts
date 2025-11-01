@@ -21,7 +21,7 @@ export const useTickets = ({
   type?: string;
   searchQuery?: string;
 } = {}) => {
-  const { api } = useAuthApi({
+  const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user",
   });
   
@@ -35,6 +35,7 @@ export const useTickets = ({
       }
       return fetchTicketsPage(api, { page, status, type, searchQuery });
     },
+    enabled: isAuthenticated, // Only run if user is authenticated
     staleTime: 30000, // Consider data fresh for 30 seconds
   });
 };
@@ -44,7 +45,7 @@ export const useTickets = ({
  * For admin users, uses admin endpoint. For regular users, uses user endpoint.
  */
 export const useTicket = (ticketId: string) => {
-  const { api } = useAuthApi({
+  const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user",
   });
 
@@ -58,7 +59,7 @@ export const useTicket = (ticketId: string) => {
       }
       return fetchTicketById(api, ticketId);
     },
-    enabled: !!ticketId,
+    enabled: !!ticketId && isAuthenticated, // Only run if ticketId exists and user is authenticated
     staleTime: 30000,
   });
 };
