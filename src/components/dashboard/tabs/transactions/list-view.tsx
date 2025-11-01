@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { IndexTransaction, CombinedTransactionTypeEnum, TransactionsPage } from "@/types/transactionTypes";
 import { formatCurrency, truncateText } from "@/lib/utils";
 import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Copy, Check, Image } from "lucide-react";
@@ -13,6 +13,11 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { Edit } from "lucide-react";
 import { DeleteButton } from "@/components/dashboard/tabs/transactions/buttons/DeleteButton";
 import EditButton from "@/components/ui/edit-button";
+import ImageLightbox from "@/components/crm/ImageLightbox";
+import { useAuthApi } from "@/hooks/useAuthApi";
+import { fetchTransactionById } from "@/services/transactions/queries";
+import { fetchTransferById } from "@/services/transactions/transfers/queries";
+import { toast } from "sonner";
 
 interface ListViewProps {
   isPending: boolean;
@@ -40,6 +45,10 @@ export function ListView({
   loadMoreRef,
 }: ListViewProps) {
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<Array<{ url: string; filename?: string; contentType?: string; byteSize?: number }>>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const { api } = useAuthApi();
 
   const handleCopyId = async (id: string) => {
     try {
@@ -53,6 +62,38 @@ export function ListView({
       }
     } catch (err) {
       console.error("Failed to copy ID:", err);
+    }
+  };
+
+  const handleImageClick = async (transaction: IndexTransaction) => {
+    if (!api) return;
+
+    try {
+      let transactionData;
+      
+      if (transaction.type === CombinedTransactionTypeEnum.TRANSFER) {
+        transactionData = await fetchTransferById(api, transaction.id);
+      } else {
+        transactionData = await fetchTransactionById(api, transaction.id);
+      }
+
+      if (transactionData?.files && Array.isArray(transactionData.files) && transactionData.files.length > 0) {
+        const images = transactionData.files.map((file: any) => ({
+          url: file.url,
+          filename: file.filename,
+          contentType: file.contentType,
+          byteSize: file.byteSize,
+        }));
+        
+        setLightboxImages(images);
+        setLightboxIndex(0);
+        setLightboxOpen(true);
+      } else {
+        toast.error("No image found for this transaction.");
+      }
+    } catch (error) {
+      console.error("Error fetching transaction image:", error);
+      toast.error("Failed to load transaction image.");
     }
   };
 
@@ -149,7 +190,16 @@ export function ListView({
                           </Popover>
                           {/* Image icon - only show when hasImage is true */}
                           {transaction.hasImage && (
-                            <Image className="h-4 w-4 min-w-4 min-h-4 text-primary" />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleImageClick(transaction);
+                              }}
+                              className="cursor-pointer hover:opacity-70 transition-opacity"
+                              title="View image"
+                            >
+                              <Image className="h-4 w-4 min-w-4 min-h-4 text-primary" />
+                            </button>
                           )}
                         </div>
                         {/* This div contains the amount and type badge */}
@@ -257,6 +307,13 @@ export function ListView({
             No more transactions
           </div>
         )}
+
+      <ImageLightbox
+        images={lightboxImages}
+        isOpen={lightboxOpen}
+        initialIndex={lightboxIndex}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   );
 }

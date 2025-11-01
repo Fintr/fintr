@@ -1,10 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { CustomModal } from "@/components/ui/custom-modal";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ExpenseForm from "@/components/dashboard/forms/ExpenseForm";
@@ -286,17 +281,19 @@ const AddTransactionDialog = ({
   const showV2Features = shouldShowV2Features();
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-lg">Add Transaction</DialogTitle>
-        </DialogHeader>
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as typeof activeTab)}
-          className="w-full"
-        >
-          <div className="px-6">
+    <CustomModal
+      isOpen={isDialogOpen}
+      onClose={() => setDialogOpen(false)}
+      title="Add Transaction"
+      maxWidth="2xl"
+      className="p-0"
+    >
+      <div className="px-6 pb-6">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as typeof activeTab)}
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-3 mb-4 bg-white">
               <TabsTrigger value="expense">Expense</TabsTrigger>
               <TabsTrigger value="income">Income</TabsTrigger>
@@ -315,9 +312,8 @@ const AddTransactionDialog = ({
                 </TabsList>
               </>
             )}
-          </div>
 
-          {/* Expense Form */}
+            {/* Expense Form */}
           <TabsContent value="expense" className="flex-1 flex flex-col pt-4">
             <ExpenseForm
               date={date}
@@ -401,11 +397,9 @@ const AddTransactionDialog = ({
               />
             </TabsContent>
           )}
-        </Tabs>
-
-        {/* Removed general Cancel and Save Transaction buttons */}
-      </DialogContent>
-    </Dialog>
+          </Tabs>
+      </div>
+    </CustomModal>
   );
 };
 

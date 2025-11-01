@@ -1,8 +1,9 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Label } from '../../ui/label';
 import { Upload } from 'lucide-react';
 import { Button } from '../../ui/button';
+import ImageLightbox from '@/components/crm/ImageLightbox';
 
 interface FileUploadFieldProps {
   file: File | null;
@@ -18,6 +19,8 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
   label = "Attach File (Optional)",
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>('');
 
   const handleInternalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onFileChange(e);
@@ -35,6 +38,34 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (file && file.type?.startsWith('image/')) {
+      if ((file as any).isRemoteFile) {
+        const remoteUrl = (file as any).url;
+        setImageUrl(remoteUrl && typeof remoteUrl === 'string' ? remoteUrl : '');
+      } else {
+        try {
+          const url = URL.createObjectURL(file);
+          setImageUrl(url);
+          return () => {
+            URL.revokeObjectURL(url);
+          };
+        } catch (error) {
+          console.error('Error creating object URL:', error);
+          setImageUrl('');
+        }
+      }
+    } else {
+      setImageUrl('');
+    }
+  }, [file]);
+
+  const handleImageClick = () => {
+    if (file && file.type?.startsWith('image/') && imageUrl) {
+      setLightboxOpen(true);
+    }
+  };
+
   return (
     <div className="space-y-2">
       <Label className="text-sm">{label}</Label>
@@ -42,11 +73,19 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
         /* Image Preview */
         <div className="space-y-2">
           <div className="border border-gray-300 rounded-lg p-4">
-            <img 
-              src={file && (file as any).isRemoteFile ? (file as any).url : (file ? URL.createObjectURL(file) : "")}
-              alt="Receipt preview" 
-              className="w-full h-48 object-contain rounded-lg"
-            />
+            {imageUrl ? (
+              <img 
+                src={imageUrl}
+                alt="Receipt preview" 
+                className="w-full h-48 object-contain rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={handleImageClick}
+                title="Click to view full size"
+              />
+            ) : (
+              <div className="w-full h-48 flex items-center justify-center bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-500">Loading image...</p>
+              </div>
+            )}
             <div className="mt-2 flex items-center justify-between">
               <div className="flex items-center">
                 <p className="text-sm text-teal-600">
@@ -90,6 +129,19 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
             onChange={handleInternalFileChange}
           />
         </div>
+      )}
+
+      {file && file.type?.startsWith('image/') && imageUrl && (
+        <ImageLightbox
+          images={[{
+            url: imageUrl,
+            filename: file.name,
+            contentType: file.type,
+          }]}
+          isOpen={lightboxOpen}
+          initialIndex={0}
+          onClose={() => setLightboxOpen(false)}
+        />
       )}
     </div>
   );

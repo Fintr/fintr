@@ -13,20 +13,105 @@ const SheetClose = SheetPrimitive.Close
 
 const SheetPortal = SheetPrimitive.Portal
 
-const SheetOverlay = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Overlay>, React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>>(({ className, ...props }, ref) => (
-  <SheetPrimitive.Overlay
-    className={cn(
-      "fixed inset-0 z-50 bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-    ref={ref}
-  />
-))
+const SheetOverlay = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Overlay>, React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>>(({ className, onPointerDown, onClick, ...props }, ref) => {
+  const [hasLightbox, setHasLightbox] = React.useState(false);
+  const overlayRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const checkLightbox = () => {
+      const lightbox = document.querySelector('.lightbox-container');
+      if (!lightbox) {
+        setHasLightbox(false);
+        return;
+      }
+      
+      const style = window.getComputedStyle(lightbox);
+      const isVisible = style.display !== 'none' && 
+                        style.visibility !== 'hidden' && 
+                        style.opacity !== '0' &&
+                        lightbox.getAttribute('aria-hidden') !== 'true';
+      setHasLightbox(isVisible);
+    };
+
+    checkLightbox();
+
+    const observer = new MutationObserver(checkLightbox);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class', 'aria-hidden'],
+    });
+
+    const interval = setInterval(checkLightbox, 50);
+
+    return () => {
+      observer.disconnect();
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const lightbox = document.querySelector('.lightbox-container');
+    
+    if (lightbox && (lightbox.contains(target) || target.closest('.lightbox-container'))) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    if (hasLightbox) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    if (onPointerDown) {
+      (onPointerDown as (e: React.PointerEvent) => void)(e);
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const lightbox = document.querySelector('.lightbox-container');
+    
+    if (lightbox && (lightbox.contains(target) || target.closest('.lightbox-container'))) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    if (onClick) {
+      (onClick as (e: React.MouseEvent) => void)(e);
+    }
+  };
+
+  return (
+    <SheetPrimitive.Overlay
+      ref={(node) => {
+        overlayRef.current = node as HTMLDivElement;
+        if (typeof ref === 'function') {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
+      }}
+      className={cn(
+        "fixed inset-0 z-[90] bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        hasLightbox && "pointer-events-none",
+        className
+      )}
+      onPointerDown={handlePointerDown}
+      onClick={handleClick}
+      {...props}
+    />
+  );
+})
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+  "fixed z-[100] gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
   {
     variants: {
       side: {
@@ -51,18 +136,25 @@ interface SheetContentProps
     VariantProps<typeof sheetVariants> {}
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
-  ({ side = "right", className, children, ...props }, ref) => (
-    <SheetPortal>
-      <SheetOverlay />
-      <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
-        {children}
-        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </SheetPrimitive.Close>
-      </SheetPrimitive.Content>
-    </SheetPortal>
-  )
+  ({ side = "right", className, children, ...props }, ref) => {
+    const closeButtonPosition = side === "bottom" ? "absolute right-4 top-4" : "absolute right-4 top-4";
+    
+    return (
+      <SheetPortal>
+        <SheetOverlay />
+        <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
+          {children}
+          <SheetPrimitive.Close className={cn(
+            closeButtonPosition,
+            "rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary z-10"
+          )}>
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </SheetPrimitive.Close>
+        </SheetPrimitive.Content>
+      </SheetPortal>
+    );
+  }
 )
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
