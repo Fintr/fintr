@@ -24,8 +24,12 @@ export const useTransactionCategories = () => {
   const createCategoryMutation = useMutation({
     mutationFn: ({ name, categoryType }: { name: string; categoryType: CategoryTypeEnum }) =>
       createTransactionCategory(api, { name, categoryType }),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
+      // Invalidate dashboard query if expense category is created
+      if (variables.categoryType === CategoryTypeEnum.EXPENSE) {
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      }
     },
     onError: (error) => {
       console.error("Error creating category:", error);
@@ -88,6 +92,9 @@ export const useTransactionCategories = () => {
       // Only invalidate and refetch if the backend operation was successful
       if (data?.success === true) {
         queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
+        // Invalidate dashboard query to refresh expense category options
+        // We invalidate for all category deletions since we can't determine the type from the response
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       }
     },
   });

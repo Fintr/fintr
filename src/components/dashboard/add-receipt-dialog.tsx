@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import useAuthApi from '@/hooks/useAuthApi';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { useAIUsage } from '@/hooks/async/useAIUsage';
+import { useDashboardData } from '@/hooks/async/useDashboardData';
 
 interface AddReceiptDialogProps {
   isOpen: boolean;
@@ -30,9 +31,15 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   });
 
   const { data: aiUsage, isLoading: isLoadingUsage } = useAIUsage();
+  const { data: dashboardData, isLoading: isLoadingDashboard } = useDashboardData();
 
   // Check if tokens are available
   const hasTokensAvailable = aiUsage ? aiUsage.remaining > 0 : false;
+
+  // Check if space has accounts and expense categories
+  const hasAccounts = dashboardData?.accountOptions && dashboardData.accountOptions.length > 0;
+  const hasExpenseCategories = dashboardData?.expenseCategoryOptions && dashboardData.expenseCategoryOptions.length > 0;
+  const canUploadReceipt = hasAccounts && hasExpenseCategories;
 
   // Check if device is mobile
   const isMobile = typeof window !== 'undefined' ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) : false;
@@ -285,6 +292,15 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           ) : selectedImage ? (
             /* Image Preview */
             <div className="space-y-4">
+              {!isLoadingDashboard && !canUploadReceipt && (
+                <div className="text-center p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <p className="text-sm text-destructive font-medium mb-1">Missing Required Setup</p>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    {!hasAccounts && <p>• You need to create an account first</p>}
+                    {!hasExpenseCategories && <p>• You need to create an expense category first</p>}
+                  </div>
+                </div>
+              )}
               {imagePreview ? (
                 <div className="relative">
                   <img
@@ -306,6 +322,15 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           ) : (
             /* Initial Options */
             <>
+              {!isLoadingDashboard && !canUploadReceipt && (
+                <div className="text-center p-4 bg-destructive/10 border border-destructive/20 rounded-lg mb-4">
+                  <p className="text-sm text-destructive font-medium mb-1">Missing Required Setup</p>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    {!hasAccounts && <p>• You need to create an account first</p>}
+                    {!hasExpenseCategories && <p>• You need to create an expense category first</p>}
+                  </div>
+                </div>
+              )}
               {!hasTokensAvailable && (
                 <div className="text-center p-4 bg-destructive/10 border border-destructive/20 rounded-lg mb-4">
                   <p className="text-sm text-destructive font-medium mb-1">No tokens available</p>
@@ -319,7 +344,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                   variant="outline"
                   className="h-24 flex flex-col items-center gap-2"
                   onClick={handleTakePhoto}
-                  disabled={!hasTokensAvailable}
+                  disabled={!hasTokensAvailable || !canUploadReceipt}
                 >
                   <Camera className="h-8 w-8" />
                   <span>Take Photo</span>
@@ -329,7 +354,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                   variant="outline"
                   className="h-24 flex flex-col items-center gap-2"
                   onClick={handleFileUpload}
-                  disabled={!hasTokensAvailable}
+                  disabled={!hasTokensAvailable || !canUploadReceipt}
                 >
                   <FileImage className="h-8 w-8" />
                   <span>Upload File</span>
@@ -362,13 +387,14 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                       setSelectedImage(null);
                       setImagePreview(null);
                     }}
+                    disabled={!canUploadReceipt}
                   >
                     Choose Different
                   </Button>
                   
                   <Button
                     onClick={handleSubmit}
-                    disabled={isUploading || !hasTokensAvailable}
+                    disabled={isUploading || !hasTokensAvailable || !canUploadReceipt}
                     className="bg-primary hover:bg-primary/80"
                   >
                     {isUploading ? (

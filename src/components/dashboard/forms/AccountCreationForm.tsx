@@ -9,6 +9,7 @@ import { createAccountAtom, accountValidationErrorsAtom } from "@/atoms/accountA
 import { toast } from "sonner";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { AccountCategory, accountCategoryLabels } from "@/types/accountTypes";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
   horizontal = false 
 }) => {
   const { api } = useAuthApi();
+  const queryClient = useQueryClient();
   const addAccount = useSetAtom(createAccountAtom);
   const [accountValidationErrors, setAccountValidationErrors] = useAtom(accountValidationErrorsAtom);
   const [accountName, setAccountName] = useState('');
@@ -81,6 +83,9 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
       });
 
       toast.success(`"${accountName}" has been added to your accounts`);
+
+      // Invalidate dashboard query to refresh account options
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       // Store the final account name
       const finalAccountName = createdAccountName || accountName;

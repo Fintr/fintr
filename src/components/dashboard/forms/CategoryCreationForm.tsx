@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface CategoryCreationFormProps {
   onSuccess: (name: string) => void;
@@ -23,6 +24,7 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
   horizontal = false
 }) => {
   const { api } = useAuthApi();
+  const queryClient = useQueryClient();
   const addCategory = useSetAtom(createCategoryAtom);
   const [categoryValidationErrors, setCategoryValidationErrors] = useAtom(categoryValidationErrorsAtom);
   const [categoryName, setCategoryName] = useState('');
@@ -44,6 +46,11 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
         categoryData: { name: categoryName, categoryType: categoryType }
       });
       toast.success(`"${categoryName}" has been added.`);
+
+      // Invalidate dashboard query if expense category is created
+      if (categoryType === CategoryTypeEnum.EXPENSE) {
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      }
 
       // Ensure we call onSuccess with the correct category name
       const finalCategoryName = createdCategoryName || categoryName;
