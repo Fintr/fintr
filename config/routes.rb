@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
+require "solid_queue_monitor"
+
 Rails.application.routes.draw do
+  mount SolidQueueMonitor::Engine => "/solid_queue"
   # API routes
   namespace :api do
     namespace :v1 do
@@ -28,10 +31,32 @@ Rails.application.routes.draw do
             get :daily_active_users
           end
         end
+        namespace :ai do
+          resources :ai_interactions, only: %i[index show] do
+            collection do
+              get :stats
+            end
+          end
+        end
       end
 
       namespace :ai do
         resource :usage, only: [:show]
+
+        # RAG endpoints
+        post "/rag/query", to: "rag#query"
+        get "/rag/status/:session_id", to: "rag#status"
+        post "/rag/generate_embeddings", to: "rag#generate_embeddings"
+
+        # Conversations endpoints
+        resources :conversations, only: %i[index show create update destroy]
+
+        # Responses endpoints
+        resources :responses, only: [:create] do
+          collection do
+            post :stream
+          end
+        end
       end
 
       # Use scope to keep the URL prefix without namespace nesting for controllers

@@ -29,6 +29,7 @@ module Transactions
           transaction = params[:transaction]
           _           = step revert_calculated_balance(transaction:) if transaction.balance_state == "calculated"
           _           = step update_transfer_transaction_cost(transaction:) if transaction.transfer
+          _           = step delete_rag_embedding(transaction:)
           _           = step delete_transaction(transaction:)
 
           transaction
@@ -50,6 +51,11 @@ module Transactions
         transfer.transaction_cost = 0
         transfer.save!
         Success(transfer)
+      end
+
+      def delete_rag_embedding(transaction:)
+        transaction.rag_embedding&.destroy!
+        Success(transaction)
       end
 
       def delete_transaction(transaction:)

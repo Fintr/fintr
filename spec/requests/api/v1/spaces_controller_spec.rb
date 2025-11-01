@@ -54,7 +54,7 @@ RSpec.describe Api::V1::SpacesController, type: :request do
     it "returns error for invalid params" do
       post "/api/v1/spaces", params: { name: nil }, headers: auth_setup[:headers]
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
   end
 
@@ -74,7 +74,7 @@ RSpec.describe Api::V1::SpacesController, type: :request do
     it "returns error for invalid access code" do
       post "/api/v1/spaces/#{space.code}/join", params: { access_code: "invalid" }, headers: auth_setup[:headers]
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
   end
 

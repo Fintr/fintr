@@ -22,6 +22,7 @@ module Auth
              source: :space,
              class_name: "Spaces::OrganizationSpace"
     has_many :user_activities, dependent: :destroy
+    has_many :conversations, class_name: "Ai::Conversation", dependent: :destroy
 
     validates :email,
               presence: true,

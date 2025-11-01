@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  postgres-pgvectorscale:
+    image: timescale/timescaledb-ha:pg17
+    container_name: fintr-pgvectorscale-local
+    environment:
+      POSTGRES_DB: fintr_development
+      POSTGRES_USER: fintr_admin
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5433:5432"  # Different port to avoid conflict with local PostgreSQL
+    volumes:
+      - postgres_data_local:/var/lib/postgresql/data
+      - postgres_logs_local:/var/log/postgresql
+      - ./config/postgresql.local.conf:/etc/postgresql/postgresql.conf
+      - ./config/init-pgvector-local.sh:/docker-entrypoint-initdb.d/init-pgvector-local.sh
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fintr_admin -d fintr_development"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '0.5'
+
+volumes:
+  postgres_data_local:
+  postgres_logs_local:

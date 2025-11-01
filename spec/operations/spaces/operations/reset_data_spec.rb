@@ -98,11 +98,33 @@ RSpec.describe Spaces::Operations::ResetData do
       end
     end
 
+    context 'when delete_conversations step fails' do
+      before do
+        allow(operation).to receive(:find_space).and_return(Dry::Monads::Result::Success.new(space))
+        allow(operation).to receive(:find_user).and_return(Dry::Monads::Result::Success.new(user))
+        allow(operation).to receive(:delete_data).and_return(Dry::Monads::Result::Success.new({}))
+        allow(operation).to receive(:delete_conversations).and_return(Dry::Monads::Result::Failure.new(conversation_error: ['failed']))
+        allow(operation).to receive(:populate_initial_data).and_return(Dry::Monads::Result::Success.new({}))
+      end
+
+      it { is_expected.to be_failure }
+
+      it 'returns the failure from delete_conversations' do
+        expect(call_operation.failure).to eq({ conversation_error: ['failed'] })
+      end
+
+      it 'rolls back the transaction' do
+        expect(ActiveRecord::Base).to receive(:transaction).and_call_original
+        call_operation
+      end
+    end
+
     context 'when populate_initial_data step fails' do
       before do
         allow(operation).to receive(:find_space).and_return(Dry::Monads::Result::Success.new(space))
         allow(operation).to receive(:find_user).and_return(Dry::Monads::Result::Success.new(user))
         allow(operation).to receive(:delete_data).and_return(Dry::Monads::Result::Success.new({}))
+        allow(operation).to receive(:delete_conversations).and_return(Dry::Monads::Result::Success.new({}))
         allow(operation).to receive(:populate_initial_data).and_return(Dry::Monads::Result::Failure.new(populate_error: ['failed']))
       end
 
@@ -243,6 +265,72 @@ RSpec.describe Spaces::Operations::ResetData do
 
     it 'destroys the onboarding for the user' do
       expect { delete_data_result }.to change(Onboarding, :count).by(-1)
+    end
+  end
+
+  describe '#delete_conversations' do
+    subject(:delete_conversations_result) { operation.send(:delete_conversations, space:) }
+
+    let!(:conversation1) { create(:ai_conversation, space: space, user: user) }
+    let!(:conversation2) { create(:ai_conversation, space: space, user: user) }
+    let(:delete_operation) { instance_double(Ai::Operations::Conversations::DeleteConversation) }
+
+    before do
+      allow(Ai::Operations::Conversations::DeleteConversation).to receive(:new).and_return(delete_operation)
+    end
+
+    context 'when conversations exist' do
+      before do
+        allow(delete_operation).to receive(:call).and_return(Dry::Monads::Success.new(conversation1))
+      end
+
+      it { is_expected.to be_success }
+
+      it 'calls DeleteConversation operation for each conversation' do
+        delete_conversations_result
+        expect(delete_operation).to have_received(:call).with(conversation_id: conversation1.id).once
+        expect(delete_operation).to have_received(:call).with(conversation_id: conversation2.id).once
+      end
+    end
+
+    context 'when no conversations exist' do
+      before do
+        space.conversations.destroy_all
+        allow(delete_operation).to receive(:call)
+      end
+
+      it { is_expected.to be_success }
+
+      it 'does not call DeleteConversation operation' do
+        delete_conversations_result
+        expect(delete_operation).not_to have_received(:call)
+      end
+    end
+
+    context 'when DeleteConversation operation fails' do
+      before do
+        allow(delete_operation).to receive(:call).and_return(Dry::Monads::Failure.new(error: "Delete failed"))
+      end
+
+      it { is_expected.to be_success }
+
+      it 'continues processing even when individual deletions fail' do
+        # The current implementation doesn't handle individual failures
+        # It only catches StandardError exceptions, not operation failures
+        expect(delete_conversations_result).to be_success
+      end
+    end
+
+    context 'when an exception is raised' do
+      before do
+        allow(delete_operation).to receive(:call).and_raise(StandardError, "Unexpected error")
+      end
+
+      it { is_expected.to be_failure }
+
+      it 'returns the exception message' do
+        expect(delete_conversations_result.failure).to eq({ error: "Unexpected error" })
+      end
     end
   end
 

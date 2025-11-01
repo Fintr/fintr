@@ -27,6 +27,7 @@ module Transactions
             transfer = params[:transfer]
             _        = step revert_calculated_balances(transfer:) if transfer.balance_state == "calculated"
             _        = step delete_transfer_fee_transaction(transfer:)
+            _        = step delete_rag_embedding(transfer:)
             _        = step delete_transfer(transfer:)
             transfer
           end
@@ -67,6 +68,11 @@ module Transactions
             fee_transaction: "failed to delete transfer fee transaction",
             error: e
           )
+        end
+
+        def delete_rag_embedding(transfer:)
+          transfer.rag_embedding&.destroy!
+          Success(transfer)
         end
 
         def delete_transfer(transfer:)

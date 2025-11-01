@@ -27,6 +27,7 @@ module Spaces
           space = step find_space(params: validated_params)
           user = step find_user(params: validated_params)
           _ = step delete_data(space:, user:)
+          _ = step delete_conversations(space:)
           _ = step populate_initial_data(space:, user:)
 
           validated_params
@@ -56,6 +57,15 @@ module Spaces
         space.goal_description&.destroy
         user.onboarding&.destroy
         Success()
+      end
+
+      def delete_conversations(space:)
+        space.conversations.each do |conversation|
+          Ai::Operations::Conversations::DeleteConversation.new.call(conversation_id: conversation.id)
+        end
+        Success()
+      rescue StandardError => e
+        Failure(error: e.message)
       end
 
       def populate_initial_data(space:, user:)

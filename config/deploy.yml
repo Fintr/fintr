@@ -10,10 +10,14 @@ servers:
   web:
     hosts:
       - api.fintr.ai
+    options:
+      network: 'private'
   job:
     hosts:
       - api.fintr.ai
     cmd: bin/jobs
+    options:
+      network: 'private'
 
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
 # Remove this section when using multiple web servers and ensure you terminate SSL at your load balancer.
@@ -25,8 +29,9 @@ proxy:
   app_port: 3000 # The port your application container listens on (default: 80)
   healthcheck:
     path: /up # The path for the health check endpoint in your app (default: /up)
-    interval: 10 # How often to check (default: 1s)
+    interval: 1 # How often to check (default: 1s)
     timeout: 15 # Timeout for the health check request (default: 5s)
+  response_timeout: 30
   # Other options like buffering, logging, response_timeout, etc.
 
 # Credentials for your image host.
@@ -55,6 +60,10 @@ builder:
 
 # Inject ENV variables into containers (secrets come from .kamal/secrets).
 env:
+  clear:
+    DATABASE_HOST: fintr-be-postgres
+    DATABASE_USER: fintr_rails
+    DATABASE_NAME: fintr_production
   secret:
     - RAILS_MASTER_KEY
     - AUTH0_URL
@@ -65,9 +74,7 @@ env:
     - RAILS_ENV
     - PORT
     - USER_AUTH0_ID
-    - DATABASE_USER
     - DATABASE_PASSWORD
-    - DATABASE_HOST
     - DB_BASE_URL
     - SENTRY_DSN
     - OPENAI_API_KEY
@@ -87,6 +94,7 @@ env:
 #
 ssh:
   user: ec2-user
+  config: true
 
 # Use a persistent storage volume.
 #
@@ -106,27 +114,30 @@ ssh:
 #   wait: 2
 
 # Use accessory services (secrets come from .kamal/secrets).
-#
-# accessories:
-#   db:
-#     image: mysql:8.0
-#     host: 192.168.0.2
-#     port: 3306
-#     env:
-#       clear:
-#         MYSQL_ROOT_HOST: '%'
-#       secret:
-#         - MYSQL_ROOT_PASSWORD
-#     files:
-#       - config/mysql/production.cnf:/etc/mysql/my.cnf
-#       - db/production.sql:/docker-entrypoint-initdb.d/setup.sql
-#     directories:
-#       - data:/var/lib/mysql
-#   redis:
-#     image: valkey/valkey:8
-#     host: 192.168.0.2
-#     port: 6379
-#     directories:
-#       - data:/data
-deploy_timeout: 300
-
+accessories:
+  postgres:
+    image: timescale/timescaledb-ha:pg17
+    host: api.fintr.ai
+    env:
+      clear:
+        POSTGRES_DB: fintr_production
+        POSTGRES_USER: fintr_admin
+        POSTGRES_PASSWORD: <%= ENV['DATABASE_PASSWORD'] %>
+        POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      secret:
+        - DATABASE_PASSWORD
+    files:
+      - config/postgresql.conf:/etc/postgresql/postgresql.conf
+      - config/init-pgvectorscale.sh:/docker-entrypoint-initdb.d/init-pgvectorscale.sh
+    directories:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_logs:/var/log/postgresql
+    options:
+      memory: 1g
+      cpus: 1.0
+      restart: unless-stopped
+      network: 'private'
+deploy_timeout: 60
+boot:
+  limit: 1     # Deploy one container at a time
+  wait: 10  

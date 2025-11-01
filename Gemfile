@@ -5,9 +5,10 @@ source "https://rubygems.org"
 gem "rails", "~> 8.0.2"
 gem "pg", "~> 1.6"
 gem "puma", ">= 5.0"
-gem "tzinfo-data", platforms: %i[ windows jruby ]
+gem "tzinfo-data", platforms: %i[ mswin mswin64 mingw x64_mingw jruby ]
 gem "solid_cache"
 gem "solid_queue"
+gem "solid_queue_monitor", "~> 0.3.2"
 gem "solid_cable"
 gem "pry-rails", "~> 0.3.11"
 gem "bootsnap", require: false
@@ -17,6 +18,8 @@ gem "dotenv-rails", "~> 3.1"
 gem "kamal", "~> 2.7"
 gem "aws-sdk-s3", "~> 1.199"
 gem "csv", "~> 3.3"
+gem "neighbor", "~> 0.6.0"
+
 
 # DRY Operations, Validation
 gem "dry-operation", "~> 1.0"
@@ -57,6 +60,12 @@ gem "ruby-vips", "~> 2.2"
 # AI Processing
 gem "ruby-openai", "~> 8.3"
 
+# Documentation
+gem "rdoc", "~> 6.15.0"
+
+# Time-based grouping
+gem "groupdate", "~> 6.5"
+
 # Errors
 gem "sentry-ruby"
 gem "sentry-rails"
@@ -65,7 +74,7 @@ gem "sentry-rails"
 gem "discard", "~> 1.4"
 
 group :development, :test do
-  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+  gem "debug", platforms: %i[ mri mswin mswin64 mingw x64_mingw ], require: "debug/prelude"
   gem "brakeman", require: false
   gem "rubocop-rails-omakase", require: false
   gem "rubocop-performance", require: false

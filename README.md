@@ -38,14 +38,18 @@ Coordinate with Miko (miko@fintr.ai), you should log-in in staging. Then Miko wi
 10. `rails db:seed`. Test it.
 11. Create a PR for approval.
 
-## Changing schema structure
-We recommend changing the schema structure (adding columns, changing the columns of a table) by creating new migrations. Only during the start of the development that we allow for direct changes to the schema files. Once we push the backend to production, let's not change the migration files moving forward. We'll create new migrations and allow those to do the migrations. 
+### Migration
+To migrate, please run `make migrate`. We're using timescaledb for the pgvectorscale capabilities. It's adding up lines in the `schema.rb` that renders the application unable to use so this command will remove those lines from the schemas.
 
-However, if we're in the early stages and if the database is still not yet in production. You can directly change the migration file. For example, `create_transactions`. Do these steps:
-1. Make your change in the migration
-2. `rails db:drop`
-3. Delete `schema.rb`
-4. `rails db:create db:migrate db:seed`
+To remove the lines only, run `bundle exec rails db:clean_timescaledb_schemas`
+
+### Download dump - EC2 # Deprecated
+To download the dump it's a series of steps.
+1. SSH into the server
+2. You have to install postgresql17, `sudo dnf install -y postgresql17`
+3. Run `pg_dump -u postgres -h <server_host> fintr_be_staging > staging.dump`
+4. Go back to local terminal
+5. Run `scp -i <fintr.pem> ec2-user@<ec2-host-address>:/home/ec2-user/staging.dump .`
 
 ## Handling .env files
 Since we're using kamal, handling `.env` files is a little bit more primitive. We have local copies of the `.env.production` and `.env.staging`. Kamal will look at those `.env` files for reference and use those for production. Please coordinate with all other team members if you wish to update `.env.production` and `.env.staging`.

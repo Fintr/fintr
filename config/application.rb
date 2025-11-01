@@ -32,12 +32,20 @@ module FintrBe
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
 
-    config.assume_ssl = true
+    # Enable sessions for Solid Queue Monitor
+    config.session_store :cookie_store, key: "_fintr_session"
+
+    # Only assume SSL in production and staging environments
+    config.assume_ssl = Rails.env.production? || Rails.env.staging?
 
     # Client URL for redirections (Auth0 callbacks)
     config.client_url = ENV.fetch("CLIENT_URL", "http://localhost:3000")
 
     config.middleware.use SnakeCaseParameters
+
+    # Add session middleware for Solid Queue Monitor
+    config.middleware.use ActionDispatch::Cookies
+    config.middleware.use ActionDispatch::Session::CookieStore
 
     # Configure factory file naming pattern
     config.generators do |g|
