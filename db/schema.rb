@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_19_060328) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
 
 
   # These are extensions that must be enabled in order to support this database
@@ -190,12 +190,69 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_19_060328) do
     t.index ["user_id"], name: "index_crm_tickets_on_user_id"
   end
 
+  create_table "entities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "space_id", null: false
+    t.string "full_name", null: false
+    t.string "entity_type", default: "loan", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id", "entity_type", "full_name"], name: "index_entities_on_space_entity_type_full_name", unique: true
+    t.index ["space_id", "entity_type"], name: "index_entities_on_space_id_and_entity_type"
+    t.index ["space_id"], name: "index_entities_on_space_id"
+  end
+
   create_table "goal_descriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.text "description"
     t.uuid "space_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["space_id"], name: "index_goal_descriptions_on_space_id"
+  end
+
+  create_table "loan_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "loan_id", null: false
+    t.uuid "account_id", null: false
+    t.uuid "transaction_id"
+    t.bigint "principal_payment_cents", null: false
+    t.bigint "interest_payment_cents", null: false
+    t.bigint "total_payment_cents", null: false
+    t.string "currency", default: "PHP", null: false
+    t.date "date", null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "date"], name: "index_loan_payments_on_account_id_and_date"
+    t.index ["account_id"], name: "index_loan_payments_on_account_id"
+    t.index ["loan_id", "date"], name: "index_loan_payments_on_loan_id_and_date"
+    t.index ["loan_id"], name: "index_loan_payments_on_loan_id"
+    t.index ["transaction_id"], name: "index_loan_payments_on_transaction_id"
+  end
+
+  create_table "loans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "user_id", null: false
+    t.uuid "space_id", null: false
+    t.uuid "account_id", null: false
+    t.bigint "principal_amount_cents", null: false
+    t.bigint "outstanding_balance_cents", null: false
+    t.string "currency", default: "PHP", null: false
+    t.decimal "interest_rate", precision: 5, scale: 2, null: false
+    t.date "date", null: false
+    t.string "loan_type", null: false
+    t.uuid "entity_id", null: false
+    t.integer "loan_term_months", null: false
+    t.date "maturity_date", null: false
+    t.string "status", default: "active"
+    t.date "paid_off_date"
+    t.text "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_loans_on_account_id"
+    t.index ["entity_id"], name: "index_loans_on_entity_id"
+    t.index ["maturity_date"], name: "index_loans_on_maturity_date"
+    t.index ["space_id", "loan_type"], name: "index_loans_on_space_id_and_loan_type"
+    t.index ["space_id", "status"], name: "index_loans_on_space_id_and_status"
+    t.index ["space_id"], name: "index_loans_on_space_id"
+    t.index ["user_id"], name: "index_loans_on_user_id"
   end
 
   create_table "monthly_financial_summaries", force: :cascade do |t|
@@ -411,7 +468,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_19_060328) do
   add_foreign_key "crm_ticket_responses", "users", column: "responder_id"
   add_foreign_key "crm_tickets", "spaces"
   add_foreign_key "crm_tickets", "users"
+  add_foreign_key "entities", "spaces"
   add_foreign_key "goal_descriptions", "spaces"
+  add_foreign_key "loan_payments", "accounts"
+  add_foreign_key "loan_payments", "loans"
+  add_foreign_key "loan_payments", "transactions"
+  add_foreign_key "loans", "accounts"
+  add_foreign_key "loans", "entities"
+  add_foreign_key "loans", "spaces"
+  add_foreign_key "loans", "users"
   add_foreign_key "monthly_financial_summaries", "spaces"
   add_foreign_key "onboardings", "users"
   add_foreign_key "rag_embeddings", "spaces"

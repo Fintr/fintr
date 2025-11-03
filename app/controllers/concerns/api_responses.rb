@@ -14,10 +14,17 @@ module ApiResponses
     render json: transformed_data, status: status
   end
 
-  def render_created(record:, message: nil)
-    klass = record.class.name.demodulize
-    message ||= "Resource #{klass} created successfully"
-    render_success(data: { id: record.id }, status: :created, message:)
+  def render_created(record: nil, data: nil, message: nil)
+    if record.present?
+      klass = record.class.name.demodulize
+      message ||= "Resource #{klass} created successfully"
+      render_success(data: { id: record.id }, status: :created, message:)
+    elsif data.present?
+      message ||= "Resource created successfully"
+      render_success(data:, status: :created, message:)
+    else
+      render_success(status: :created, message: message || "Resource created successfully")
+    end
   end
 
   # ----- Error Responses -----

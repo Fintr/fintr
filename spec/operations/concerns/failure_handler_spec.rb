@@ -31,11 +31,13 @@ RSpec.describe FailureHandler do
         instance.on_failure(failure)
 
         expect(Rails.logger).to have_received(:error).with(
-          errors: {
-            field_1: 'error 1',
-            field_2: 'error 2'
-          },
-          error: test_error
+          "[#{test_class.name}] #{{
+            errors: {
+              field_1: 'error 1',
+              field_2: 'error 2'
+            },
+            error: test_error
+          }}"
         )
       end
 
@@ -63,11 +65,13 @@ RSpec.describe FailureHandler do
         instance.on_failure(failure)
 
         expect(Rails.logger).to have_received(:error).with(
-          errors: {
-            field_1: 'error 1',
-            field_2: 'error 2'
-          },
-          error: nil
+          "[#{test_class.name}] #{{
+            errors: {
+              field_1: 'error 1',
+              field_2: 'error 2'
+            },
+            error: nil
+          }}"
         )
       end
 
