@@ -5,7 +5,7 @@ module Transactions
     class CalculatePendingBalancesJob < ApplicationJob
       queue_as :default
 
-      def perform(date: Date.current)
+      def perform(date: Utils::Dates.current_date_in_manila)
         parsed_date = date.is_a?(String) ? Date.parse(date) : date
         parsed_date = parsed_date.in_time_zone("Asia/Manila")
         query = Transactions::Transaction.where(balance_state: "pending",

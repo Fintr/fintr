@@ -39,6 +39,20 @@ module Utils
 
         ((normalized_to - normalized_from) / 1.day).round
       end
+
+      def current_date_in_manila
+        # Get the current date in Asia/Manila timezone
+        # This ensures the date is correct regardless of server timezone
+        # Use this when you need the current date based on Manila time
+        current_time_in_manila.to_date
+      end
+
+      def current_time_in_manila
+        # Get the current time in Asia/Manila timezone
+        # This ensures the time is correct regardless of server timezone
+        # Use this when you need the current time (not just date) based on Manila time
+        Time.zone.now.in_time_zone("Asia/Manila")
+      end
     end
   end
 end

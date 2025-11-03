@@ -10,7 +10,10 @@ module Budgets
       query = Spaces::Space.all
 
       query.find_each(batch_size: 100) do |space|
-        Budgets::CreateMonthlyBudgetsJob.perform_later(space_id: space.id, date: Date.current.in_time_zone("Asia/Manila"))
+        Budgets::CreateMonthlyBudgetsJob.perform_later(
+          space_id: space.id,
+          date: Utils::Dates.current_date_in_manila
+        )
       end
     end
   end

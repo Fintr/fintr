@@ -11,8 +11,7 @@ RSpec.describe Transactions::DuplicateJob, type: :job do
     let(:today) { Date.new(2023, 5, 15) }
 
     before do
-      allow(Time.zone).to receive(:today).and_return(today)
-      allow(today).to receive(:in_time_zone).and_return(today)
+      allow(Utils::Dates).to receive(:current_date_in_manila).and_return(today)
       allow(Transactions::Operations::CreateRepeatTransactions).to receive(:new).and_return(operation_instance)
     end
 
