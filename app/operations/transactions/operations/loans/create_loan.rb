@@ -68,8 +68,8 @@ module Transactions
             full_name: params[:entity_name]
           )
           Success(entity)
-        rescue StandardError => e
-          Failure(entity_name: "could not be created", error: e)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(entity_name: "could not be created", error: e, expected: true)
         end
 
         def find_account(params:)
@@ -104,8 +104,8 @@ module Transactions
           loan = Transactions::Loan.new(params)
           loan.save!
           Success(loan)
-        rescue StandardError => e
-          Failure(error: e)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(errors: loan.errors.to_hash, error: e, expected: true)
         end
 
         def update_account_balance(loan:, account:)

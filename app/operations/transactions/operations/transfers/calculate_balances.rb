@@ -34,7 +34,7 @@ module Transactions
         def find_transfer(params:)
           Success(Transactions::Transfer.find(params[:transfer_id]))
         rescue ActiveRecord::RecordNotFound => e
-          Failure(transfer_id: "not found", error: e)
+          Failure(transfer_id: "not found", error: e, expected: true)
         end
 
 

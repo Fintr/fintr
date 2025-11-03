@@ -31,7 +31,7 @@ module Transactions
           )
           Success(category)
         rescue ActiveRecord::RecordInvalid => e
-          Failure(category: "could not create Transfer Fee category", error: e)
+          Failure(category: "could not create Transfer Fee category", error: e, expected: true)
         end
       end
     end

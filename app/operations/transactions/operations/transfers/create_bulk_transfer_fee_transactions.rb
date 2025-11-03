@@ -48,7 +48,7 @@ module Transactions
           transfer = Transactions::Transfer.find(params[:parent_transfer_id])
           Success(transfer)
         rescue ActiveRecord::RecordNotFound => e
-          Failure(parent_transfer_id: "not found", error: e)
+          Failure(parent_transfer_id: "not found", error: e, expected: true)
         end
 
         def find_or_create_transfer_fee_category(parent_transfer:)

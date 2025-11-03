@@ -35,13 +35,13 @@ module Transactions
         def find_transaction(params:)
           Success(Transactions::Transaction.find(params[:transaction_id]))
         rescue ActiveRecord::RecordNotFound => e
-          Failure(transaction_id: "not found", error: e)
+          Failure(transaction_id: "not found", error: e, expected: true)
         end
 
         def find_account(transaction:)
           Success(transaction.account)
         rescue ActiveRecord::RecordNotFound => e
-          Failure(account: "not found", error: e)
+          Failure(account: "not found", error: e, expected: true)
         end
 
         def remove_calculation(transaction:, account:)

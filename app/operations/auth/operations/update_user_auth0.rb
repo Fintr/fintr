@@ -54,8 +54,8 @@ module Auth
           email: params[:email]
         )
         Success(user)
-      rescue ActiveRecord::RecordInvalid
-        Failure(**user.errors)
+      rescue ActiveRecord::RecordInvalid => e
+        Failure(**user.errors, error: e, expected: true)
       end
 
       def update_auth0_user(params:)

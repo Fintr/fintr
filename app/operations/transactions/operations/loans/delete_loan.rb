@@ -110,8 +110,8 @@ module Transactions
         def delete_loan(loan:)
           loan.destroy!
           Success(loan)
-        rescue StandardError => e
-          Failure(error: e.message)
+        rescue ActiveRecord::RecordNotDestroyed => e
+          Failure(errors: loan.errors.to_hash, error: e, expected: true)
         end
       end
     end

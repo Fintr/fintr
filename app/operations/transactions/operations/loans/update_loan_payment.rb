@@ -41,12 +41,12 @@ module Transactions
             payment_date = params[:date] || loan_payment.date
             calculated_interest = step calculate_interest(loan:, payment_date:, exclude_payment_id: loan_payment.id)
             update_params       = step transform_params(params:, loan:, account:, calculated_interest:)
-
-            # Assign new attributes (account, amount, etc.)
+            
+            if account != old_account
+              _ = step reverse_account_balance(loan_payment:, loan:, account: old_account)
+            end
+            
             loan_payment        = step assign_loan_payment_attributes(loan_payment:, params: update_params)
-
-            # Update account balance - this will handle reversing from old account with old amount
-            # and adding to new account with new amount
             _                   = step update_account_balance(loan_payment:, loan:, account:)
             loan_payment        = step save_loan_payment(loan_payment:)
             _                   = step process_loan_payment(loan_payment:)
@@ -130,15 +130,15 @@ module Transactions
         def save_loan_payment(loan_payment:)
           loan_payment.save!
           Success(loan_payment)
-        rescue StandardError => e
-          Failure(error: e.message)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(errors: loan_payment.errors.to_hash, error: e, expected: true)
         end
 
         def process_loan_payment(loan_payment:)
           loan_payment.process_payment
           Success(loan_payment)
-        rescue StandardError => e
-          Failure(error: e.message)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(errors: loan_payment.errors.to_hash, error: e, expected: true)
         end
 
         def update_account_balance(loan_payment:, loan:, account:)
@@ -163,8 +163,8 @@ module Transactions
         def update_loan(loan:)
           loan.recalculate_outstanding_balance!
           Success(loan)
-        rescue StandardError => e
-          Failure(error: e.message)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(errors: loan.errors.to_hash, error: e, expected: true)
         end
       end
     end

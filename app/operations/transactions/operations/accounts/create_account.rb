@@ -61,7 +61,7 @@ module Transactions
           account.save!
           Success(account)
         rescue ActiveRecord::RecordInvalid => e
-          Failure(**account.errors.to_hash)
+          Failure(**account.errors.to_hash, error: e, expected: true)
         end
 
         def create_transaction_params(params:, account:)
