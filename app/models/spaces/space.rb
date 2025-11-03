@@ -15,6 +15,8 @@ module Spaces
     has_many :expense_categories, -> { expense }, class_name: "Transactions::Category"
     has_many :accounts, class_name: "Transactions::Account", dependent: :destroy
     has_many :budgets, class_name: "Budget", dependent: :destroy
+    has_many :loans, class_name: "Transactions::Loan", dependent: :destroy
+    has_many :entities, class_name: "Entities::Entity", dependent: :destroy
     has_many :tickets, class_name: "Crm::Ticket", dependent: :destroy
     has_one  :goal_description, class_name: "GoalDescription", dependent: :destroy
     has_many :conversations, class_name: "Ai::Conversation", dependent: :destroy

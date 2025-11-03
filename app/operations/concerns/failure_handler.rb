@@ -9,7 +9,7 @@ module FailureHandler
       errors_hash = hash.except(:error)
       new_hash = { errors: errors_hash, error: hash[:error] }
       Sentry.capture_exception(hash[:error]) if hash[:error].is_a?(StandardError)
-      Rails.logger.error(new_hash)
+      Rails.logger.error("[#{self.class.name}] #{new_hash}")
     end
   end
 end

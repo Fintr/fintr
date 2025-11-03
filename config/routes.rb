@@ -59,6 +59,9 @@ Rails.application.routes.draw do
         resources :accounts, only: %i[index create update destroy]
         resources :transfers, only: %i[create show update destroy]
         resources :drafts, only: %i[index]
+        resources :loans, only: %i[index show create update destroy] do
+          resources :loan_payments, only: %i[index show create update destroy]
+        end
       end
 
       scope path: "goals", module: "goals" do
@@ -86,6 +89,7 @@ Rails.application.routes.draw do
       end
       resource :onboardings, only: %i[create show]
       resources :budgets, only: %i[index create update destroy]
+      resources :entities, only: %i[index create]
       resources :insights, only: [:index]
       resources :receipts, only: [:create] do
         collection do

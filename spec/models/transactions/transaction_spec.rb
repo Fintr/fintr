@@ -11,6 +11,7 @@ RSpec.describe Transactions::Transaction, type: :model do
     it { is_expected.to belong_to(:parent).class_name("Transactions::Transaction").optional }
     it { is_expected.to belong_to(:effective_parent).class_name("Transactions::Transaction").optional }
     it { is_expected.to belong_to(:transfer).class_name("Transactions::Transfer").optional }
+    it { is_expected.to have_one(:loan_payment).class_name("Transactions::LoanPayment").with_foreign_key(:transaction_id).dependent(:nullify) }
     it { is_expected.to have_many(:children).class_name("Transactions::Transaction").with_foreign_key(:parent_id) }
     it { is_expected.to have_many(:effective_children).class_name("Transactions::Transaction").with_foreign_key(:effective_parent_id) }
   end
