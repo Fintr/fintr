@@ -18,8 +18,9 @@ development:
       work_mem: '4MB'
       maintenance_work_mem: '64MB'
       effective_cache_size: '1GB'
-    # Connection pooling for high concurrency
-    pool: 20
+    # Connection pooling - should match RAILS_MAX_THREADS
+    # Each cache/queue/cable connection also uses this pool
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
     timeout: 5000
   cache:
     <<: *primary_development
@@ -66,8 +67,9 @@ staging:
       work_mem: '256MB'
       maintenance_work_mem: '1GB'
       effective_cache_size: '4GB'
-    # Connection pooling for high concurrency
-    pool: 20
+    # Connection pooling - should match RAILS_MAX_THREADS
+    # Each cache/queue/cable connection also uses this pool
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
     timeout: 5000
   cache:
     <<: *primary_staging
@@ -98,8 +100,9 @@ production:
       work_mem: '256MB'
       maintenance_work_mem: '1GB'
       effective_cache_size: '4GB'
-    # Connection pooling for high concurrency
-    pool: 20
+    # Connection pooling - should match RAILS_MAX_THREADS
+    # Each cache/queue/cable connection also uses this pool
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
     timeout: 5000
   cache:
     <<: *primary_production
