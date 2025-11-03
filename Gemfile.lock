@@ -570,7 +570,7 @@ DEPENDENCIES
   pry-rails (~> 0.3.11)
   puma (>= 5.0)
   rack-cors
-  rails (~> 8.1.1)
+  rails (~> 8.0.2)
   rdoc (= 6.15.1)
   rolify (~> 7.0.0)!
   rspec-rails
