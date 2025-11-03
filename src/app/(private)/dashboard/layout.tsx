@@ -151,11 +151,18 @@ export default function Layout({
               </TabsTrigger>
               
               {/* Bottom Row - Always show 2 tabs */}
+              <TabsTrigger value="loans" className="w-full bg-white border border-primary/10">
+                <Link prefetch href="/dashboard/loans" className="w-full h-full flex items-center justify-center">
+                  Loans
+                </Link>
+              </TabsTrigger>
               <TabsTrigger value="insights" className="w-full bg-white border border-primary/10">
                 <Link prefetch href="/dashboard/insights" className="w-full h-full flex items-center justify-center">
                   Insights
                 </Link>
               </TabsTrigger>
+              
+              {/* Third Row */}
               <TabsTrigger value="space_settings" className="w-full bg-white border border-primary/10">
                 <Link prefetch href="/dashboard/space_settings" className="w-full h-full flex items-center justify-center ">
                   Settings
@@ -186,6 +193,9 @@ export default function Layout({
               </TabsTrigger>
               <TabsTrigger asChild value="budgets">
                 <Link prefetch href="/dashboard/budgets">Budgets</Link>
+              </TabsTrigger>
+              <TabsTrigger asChild value="loans">
+                <Link prefetch href="/dashboard/loans">Loans</Link>
               </TabsTrigger>
               {showV2Features && (
                 <>

@@ -481,6 +481,8 @@ export function SheetsView({
                               size="icon"
                               className="h-8 w-8 text-primary hover:bg-primary/30"
                               onClick={() => onRowEdit(transaction)}
+                              disabled={transaction.hasLoanPayment}
+                              title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead." : "Edit transaction"}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -488,6 +490,8 @@ export function SheetsView({
                               onClick={() =>
                                 onRowDelete(transaction.id)
                               }
+                              disabled={transaction.hasLoanPayment}
+                              title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be deleted. Delete the loan payment instead." : "Delete transaction"}
                             />
                           </div>
                         </td>

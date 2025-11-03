@@ -273,9 +273,15 @@ export function ListView({
                         </div>
                         
                         <div className="flex gap-1 flex-shrink-0">
-                        <EditButton onClick={() => onRowEdit(transaction)} />
+                        <EditButton 
+                          onClick={() => onRowEdit(transaction)}
+                          disabled={transaction.hasLoanPayment}
+                          title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead." : "Edit transaction"}
+                        />
                         <DeleteButton
                           onClick={() => onRowDelete(transaction.id)}
+                          disabled={transaction.hasLoanPayment}
+                          title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be deleted. Delete the loan payment instead." : "Delete transaction"}
                         />
                         </div>
                       </div>

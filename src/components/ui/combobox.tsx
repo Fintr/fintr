@@ -99,18 +99,23 @@ export const ComboBox = ({
   const [searchValue, setSearchValue] = useState(value || "");
   const [options, setOptions] = useState<ComboBoxItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const [open, setOpen] = useState(false);
 
-  // Sync searchValue with the value prop
+  // Initialize searchValue from value prop on mount
   useEffect(() => {
-    // Update searchValue if the external value prop changes,
-    // but only if it's different from the current searchValue to avoid potential loops
-    // and ensure that typing is not interrupted.
     if (value !== undefined && value !== searchValue) {
       setSearchValue(value);
     }
-  }, [value, searchValue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
+  // Sync searchValue with the value prop when combobox closes
+  // This prevents interfering with typing while the combobox is open
+  useEffect(() => {
+    if (!open && value !== undefined && value !== searchValue) {
+      setSearchValue(value);
+    }
+  }, [value, open]);
 
   // For frontend filtering
   const filteredOptions = useMemo(() => {
@@ -126,6 +131,7 @@ export const ComboBox = ({
   // For backend filtering
   useEffect(() => {
     if (filterType !== "backend" || !fetchOptions) return;
+    
     if (showAllOnFocus && open && searchValue.length === 0) {
       setLoading(true);
       fetchOptions('')
@@ -143,10 +149,6 @@ export const ComboBox = ({
       return;
     }
 
-    if (timer) {
-      clearTimeout(timer);
-    }
-
     const newTimer = setTimeout(async () => {
       setLoading(true);
       try {
@@ -160,12 +162,10 @@ export const ComboBox = ({
       }
     }, debounceTime);
 
-    setTimer(newTimer);
-
     return () => {
-      if (newTimer) clearTimeout(newTimer);
+      clearTimeout(newTimer);
     };
-  }, [searchValue, fetchOptions, filterType, minSearchLength, debounceTime, open, showAllOnFocus, timer]);
+  }, [searchValue, fetchOptions, filterType, minSearchLength, debounceTime, open, showAllOnFocus]);
 
   // Handler for value changes
   const handleChange = (value: string) => {
@@ -234,6 +234,9 @@ export const ComboBox = ({
                   "relative flex w-full cursor-default select-none items-center rounded-sm px-1 text-sm outline-none focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
                   itemClassName
                 )}
+                onSelect={() => {
+                  setOpen(false);
+                }}
               >
                 <span className="w-full hover:bg-accent px-2 py-1 rounded-sm">
                   {display}

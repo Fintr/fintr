@@ -38,6 +38,7 @@ import AddTransactionDialog from "../../add-transaction-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateTransactionsCsv } from "@/services/transactions/queries";
+import { toast } from "sonner";
 
 interface TransactionsTabProps {
   // Define any props if needed, but not used in this component
@@ -195,6 +196,23 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   };
 
   const handleCellClick = (id: string, field: string, value: string) => {
+    // Find the transaction to check if it's linked to a loan payment
+    let transaction: IndexTransaction | null = null;
+    if (data?.pages) {
+      for (const page of data.pages) {
+        const found = page.transactions.find(t => t.id === id);
+        if (found) {
+          transaction = found;
+          break;
+        }
+      }
+    }
+
+    if (transaction?.hasLoanPayment) {
+      toast.error("This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.");
+      return;
+    }
+
     if (selectedCell?.id === id && selectedCell?.field === field) {
       setEditingCell({ id, field });
       setEditValue(value);
@@ -211,6 +229,23 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   };
 
   const handleCellDoubleClick = (id: string, field: string, value: string) => {
+    // Find the transaction to check if it's linked to a loan payment
+    let transaction: IndexTransaction | null = null;
+    if (data?.pages) {
+      for (const page of data.pages) {
+        const found = page.transactions.find(t => t.id === id);
+        if (found) {
+          transaction = found;
+          break;
+        }
+      }
+    }
+
+    if (transaction?.hasLoanPayment) {
+      toast.error("This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.");
+      return;
+    }
+
     setSelectedCell({ id, field });
     setEditingCell({ id, field });
     setEditValue(value);
@@ -309,6 +344,25 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const handleSaveEdit = async (id: string, field: string) => {
     if (!editingCell) return;
 
+    // Find the transaction to check if it's linked to a loan payment
+    let transaction: IndexTransaction | null = null;
+    if (data?.pages) {
+      for (const page of data.pages) {
+        const found = page.transactions.find(t => t.id === id);
+        if (found) {
+          transaction = found;
+          break;
+        }
+      }
+    }
+
+    if (transaction?.hasLoanPayment) {
+      toast.error("This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.");
+      setEditingCell(null);
+      setEditValue("");
+      return;
+    }
+
     try {
       let value: string | number = editValue;
 
@@ -352,6 +406,10 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   };
 
   const handleEditRow = (transaction: IndexTransaction) => {
+    if (transaction.hasLoanPayment) {
+      toast.error("This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.");
+      return;
+    }
     setSelectedTransaction(transaction);
     setEditDialogOpen(true);
   };
@@ -394,6 +452,11 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           break;
         }
       }
+    }
+
+    if (transaction?.hasLoanPayment) {
+      toast.error("This transaction is linked to a loan payment and cannot be deleted. Delete the loan payment instead.");
+      return;
     }
 
     setTransactionToDelete(transaction);

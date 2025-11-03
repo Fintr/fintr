@@ -206,10 +206,26 @@ const AddTransactionDialog = ({
       exact: false // Allow partial matches for any transactions query
     });
     
+    // Also invalidate loans query if we're on the loan tab
+    if (activeTab === "loan") {
+      queryClient.invalidateQueries({ 
+        queryKey: ["loans"],
+        refetchType: 'active',
+      });
+      // Invalidate accounts when loan is created/updated since it affects account balances
+      queryClient.invalidateQueries({ 
+        queryKey: ["accounts"],
+        refetchType: 'active',
+      });
+    }
+    
     // Invalidate dashboard query to refresh financial summary
     queryClient.invalidateQueries({
       queryKey: ["dashboard"],
     });
+    
+    // Call the callback if provided
+    onAddTransaction(response);
     
     setDialogOpen(false);
   };
@@ -294,16 +310,16 @@ const AddTransactionDialog = ({
             onValueChange={(value) => setActiveTab(value as typeof activeTab)}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-3 mb-4 bg-white">
+            <TabsList className="grid w-full grid-cols-4 mb-4 bg-white">
               <TabsTrigger value="expense">Expense</TabsTrigger>
               <TabsTrigger value="income">Income</TabsTrigger>
               <TabsTrigger value="transfer">Transfer</TabsTrigger>
+              <TabsTrigger value="loan">Loan</TabsTrigger>
             </TabsList>
 
             {showV2Features && (
               <>
                 <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="loan">Loan</TabsTrigger>
                   <TabsTrigger value="investment">Investment</TabsTrigger>
                 </TabsList>
 
@@ -363,16 +379,14 @@ const AddTransactionDialog = ({
           </TabsContent>
 
           {/* Loan Form */}
-          {showV2Features && (
-            <TabsContent value="loan" className="space-y-4">
-              <LoanForm
-                date={date}
-                setDate={setDate}
-                onSubmitSuccess={onTransactionSuccess}
-                onCancel={() => setDialogOpen(false)}
-              />
-            </TabsContent>
-          )}
+          <TabsContent value="loan" className="space-y-4">
+            <LoanForm
+              date={date}
+              setDate={setDate}
+              onSubmitSuccess={onTransactionSuccess}
+              onCancel={() => setDialogOpen(false)}
+            />
+          </TabsContent>
 
           {/* Investment Form */}
           {showV2Features && (

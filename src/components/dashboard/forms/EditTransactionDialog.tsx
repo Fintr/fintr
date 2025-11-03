@@ -54,6 +54,13 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     const fetchTransactionDetails = async () => {
       if (!transaction?.id || !api || !isOpen) return; // Only fetch if dialog is open, transaction exists, and api is ready
 
+      // Prevent editing of loan payment transactions
+      if (transaction.hasLoanPayment) {
+        toast.error("This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.");
+        onClose();
+        return;
+      }
+
       setIsLoading(true);
       try {
         let data;

@@ -7,13 +7,17 @@ interface EditButtonProps {
   className?: string;
   size?: "sm" | "default" | "lg" | "icon";
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  disabled?: boolean;
+  title?: string;
 }
 
 const EditButton = ({ 
   onClick, 
   className = "h-8 w-8 text-primary hover:bg-primary/30",
   size = "icon",
-  variant = "ghost"
+  variant = "ghost",
+  disabled,
+  title
 }: EditButtonProps) => {
   return (
     <Button 
@@ -21,6 +25,8 @@ const EditButton = ({
       size={size} 
       className={className}
       onClick={onClick}
+      disabled={disabled}
+      title={title}
     >
       <Edit className="h-4 w-4" />
     </Button>
