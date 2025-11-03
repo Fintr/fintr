@@ -57,8 +57,8 @@ module Transactions
         def delete_loan_payment(loan_payment:)
           loan_payment.destroy!
           Success(loan_payment)
-        rescue StandardError => e
-          Failure(error: e.message)
+        rescue ActiveRecord::RecordNotDestroyed => e
+          Failure(errors: loan_payment.errors.to_hash, error: e, expected: true)
         end
 
         def reverse_account_balance(loan_payment:, loan:, account:)
@@ -83,8 +83,8 @@ module Transactions
         def update_loan(loan:)
           loan.recalculate_outstanding_balance!
           Success(loan)
-        rescue StandardError => e
-          Failure(error: e.message)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(errors: loan.errors.to_hash, error: e, expected: true)
         end
       end
     end

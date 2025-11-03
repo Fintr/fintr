@@ -118,8 +118,8 @@ module Transactions
           interest_transaction.save!
 
           Success(interest_transaction)
-        rescue StandardError => e
-          Failure(interest_transaction: interest_transaction&.errors&.to_hash, error: e)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(interest_transaction: interest_transaction&.errors&.to_hash, error: e, expected: true)
         end
 
         def delete_interest_transaction(interest_transaction:)

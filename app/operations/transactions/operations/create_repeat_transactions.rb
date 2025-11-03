@@ -60,7 +60,7 @@ module Transactions
         transaction = params[:transaction] || Transaction.find(params[:transaction_id])
         Success(transaction)
       rescue ActiveRecord::RecordNotFound => e
-        Failure(transaction_id: "not found", error: e)
+        Failure(transaction_id: "not found", error: e, expected: true)
       end
 
       def fetch_dates(params:, transaction:)

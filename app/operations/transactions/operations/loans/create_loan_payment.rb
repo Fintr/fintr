@@ -114,15 +114,15 @@ module Transactions
           loan_payment = Transactions::LoanPayment.new(params)
           loan_payment.save!
           Success(loan_payment)
-        rescue StandardError => e
-          Failure(error: e.message)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(errors: loan_payment.errors.to_hash, error: e, expected: true)
         end
 
         def process_loan_payment(loan_payment:)
           loan_payment.process_payment
           Success(loan_payment)
-        rescue StandardError => e
-          Failure(error: e.message)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(errors: loan_payment.errors.to_hash, error: e, expected: true)
         end
 
         def update_account_balance(loan_payment:, loan:, account:)

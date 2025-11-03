@@ -64,7 +64,7 @@ module Transactions
             Failure(transfer_id: "not found")
           end
         rescue ActiveRecord::RecordNotFound => e
-          Failure(transfer_id: "not found", error: e)
+          Failure(transfer_id: "not found", error: e, expected: true)
         end
 
         def add_default_values(params:)

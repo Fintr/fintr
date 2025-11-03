@@ -37,7 +37,8 @@ module Entities
         entity.save!
         Success(entity)
       rescue ActiveRecord::RecordInvalid => e
-        Failure(errors: entity.errors.to_hash, error: e)
+        # This is an expected failure - user provided invalid data
+        Failure(errors: entity.errors.to_hash, error: e, expected: true)
       end
     end
   end

@@ -53,7 +53,7 @@ module Ai
           space = Spaces::Space.find(params[:space_id])
           Success(space)
         rescue ActiveRecord::RecordNotFound => e
-          Failure(space_error: "Space not found", error: e)
+          Failure(space_error: "Space not found", error: e, expected: true)
         end
 
         def fetch_space_categories(space:)

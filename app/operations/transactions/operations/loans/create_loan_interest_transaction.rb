@@ -96,15 +96,15 @@ module Transactions
 
           transaction.update!(amount_currency: currency, balance_currency: currency)
           Success(transaction)
-        rescue StandardError => e
-          Failure(error: e.message)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(errors: transaction.errors.to_hash, error: e, expected: true)
         end
 
         def link_to_loan_payment(loan_payment:, transaction:)
           loan_payment.update!(transaction_id: transaction.id)
           Success(transaction)
-        rescue StandardError => e
-          Failure(error: e.message)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(errors: loan_payment.errors.to_hash, error: e, expected: true)
         end
       end
     end

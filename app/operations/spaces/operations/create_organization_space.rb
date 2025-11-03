@@ -57,14 +57,14 @@ module Spaces
         space.save!
         Success(space)
       rescue ActiveRecord::RecordInvalid => e
-        Failure(errors: e.record.errors.full_messages)
+        Failure(errors: e.record.errors.full_messages, error: e, expected: true)
       end
 
       def join_user_to_space(params, space, user)
         space_user = Spaces::SpaceUser.create!(user: user, space: space)
         Success(space_user)
       rescue ActiveRecord::RecordInvalid => e
-        Failure(errors: e.record.errors.full_messages)
+        Failure(errors: e.record.errors.full_messages, error: e, expected: true)
       end
 
       def assign_admin_role(space, user)
@@ -75,6 +75,8 @@ module Spaces
       def create_default_categories(space)
         space.create_default_transaction_categories
         Success()
+      rescue ActiveRecord::RecordInvalid => e
+        Failure(errors: e.record.errors.full_messages, error: e, expected: true)
       end
 
       def generate_space_code(name)
@@ -88,6 +90,8 @@ module Spaces
         end
 
         code
+      rescue ActiveRecord::RecordInvalid => e
+        Failure(errors: e.record.errors.full_messages, error: e, expected: true)
       end
     end
   end

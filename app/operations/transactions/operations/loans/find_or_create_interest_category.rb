@@ -38,7 +38,7 @@ module Transactions
           )
           Success(category)
         rescue ActiveRecord::RecordInvalid => e
-          Failure(category: "could not create #{category_name} category", error: e)
+          Failure(category: "could not create #{category_name} category", error: e, expected: true)
         end
       end
     end

@@ -23,8 +23,8 @@ module Auth
 
         user.save!
         Success(user)
-      rescue ActiveRecord::RecordInvalid
-        Failure(errors: user.errors)
+      rescue ActiveRecord::RecordInvalid => e
+        Failure(errors: user.errors, error: e, expected: true)
       end
 
       def create_space_attributes(user)
@@ -49,8 +49,8 @@ module Auth
         space.create_default_transaction_categories
 
         Success(space)
-      rescue ActiveRecord::RecordInvalid
-        Failure(errors: space.errors)
+      rescue ActiveRecord::RecordInvalid => e
+        Failure(errors: space.errors, error: e, expected: true)
       end
 
       def join_own_space(user, space)
@@ -59,8 +59,8 @@ module Auth
 
         space_user.save!
         Success(space_user)
-      rescue ActiveRecord::RecordInvalid
-        Failure(errors: space_user.errors)
+      rescue ActiveRecord::RecordInvalid => e
+        Failure(errors: space_user.errors, error: e, expected: true)
       end
 
       def assign_admin_role_to_user(user, space)

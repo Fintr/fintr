@@ -149,8 +149,8 @@ module Transactions
         transaction.save!
 
         Success(transaction)
-      rescue StandardError => e
-        Failure(**transaction.errors.to_hash, error: e)
+      rescue ActiveRecord::RecordInvalid => e
+        Failure(**transaction.errors.to_hash, error: e, expected: true)
       end
 
       def calculate_balance(transaction:, skip_calculation:, params:)
@@ -163,8 +163,8 @@ module Transactions
         schedule = step Transactions::Operations::Schedules::CreateSchedule.new.call(params)
         transaction.update!(schedule:)
         Success(transaction)
-      rescue StandardError => e
-        Failure(error: e, schedule: "Failed to update schedule")
+      rescue ActiveRecord::RecordInvalid => e
+        Failure(error: e, schedule: "Failed to update schedule", expected: true)
       end
 
       # Note: Creates repeat transactions until today

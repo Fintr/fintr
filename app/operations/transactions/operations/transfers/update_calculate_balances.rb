@@ -59,7 +59,7 @@ module Transactions
             to_account: to_account
           })
         rescue ActiveRecord::RecordNotFound => e
-          Failure(account: "previous account not found", error: e)
+          Failure(account: "previous account not found", error: e, expected: true)
         end
 
         def find_current_accounts(transfer:)
@@ -70,7 +70,7 @@ module Transactions
             to_account: to_account
           })
         rescue ActiveRecord::RecordNotFound => e
-          Failure(account: "current account not found", error: e)
+          Failure(account: "current account not found", error: e, expected: true)
         end
 
         def update_balances(from:, transfer:, from_account:, to_account:)
