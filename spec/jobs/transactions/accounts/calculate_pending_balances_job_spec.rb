@@ -10,7 +10,7 @@ RSpec.describe Transactions::Accounts::CalculatePendingBalancesJob, type: :job d
     let(:today) { Date.new(2023, 5, 15) }
 
     before do
-      allow(Time.zone).to receive(:today).and_return(today)
+      allow(Utils::Dates).to receive(:current_date_in_manila).and_return(today)
       allow(Transactions::Operations::Accounts::CalculateBalance).to receive(:new).and_return(operation_instance)
       allow(operation_instance).to receive(:call)
     end

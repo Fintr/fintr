@@ -11,8 +11,7 @@ module Transactions
 
       Rails.logger.info("Found #{query.count} transactions with schedule")
 
-      date = date.to_date if date.is_a?(String)
-      date ||= Time.zone.now.in_time_zone("Asia/Manila")
+      date = Utils::Dates.current_time_in_manila
 
       query.find_each(batch_size: 100) do |transaction|
         schedule = IceCube::Schedule.from_hash(transaction.schedule)

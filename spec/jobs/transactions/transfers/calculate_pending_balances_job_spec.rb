@@ -14,7 +14,7 @@ RSpec.describe Transactions::Transfers::CalculatePendingBalancesJob, type: :job 
     let(:to_account) { create(:account, space:) }
 
     before do
-      allow(Time.zone).to receive(:today).and_return(today)
+      allow(Utils::Dates).to receive(:current_date_in_manila).and_return(today)
       allow(Transactions::Operations::Transfers::CalculateBalances).to receive(:new).and_return(operation_instance)
     end
 
