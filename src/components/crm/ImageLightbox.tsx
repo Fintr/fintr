@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,13 +17,15 @@ interface ImageLightboxProps {
   isOpen: boolean;
   initialIndex: number;
   onClose: () => void;
+  openedFromModal?: boolean;
 }
 
 export default function ImageLightbox({
   images,
   isOpen,
   initialIndex,
-  onClose
+  onClose,
+  openedFromModal = false
 }: ImageLightboxProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [scale, setScale] = useState(1);
@@ -35,6 +37,7 @@ export default function ImageLightbox({
   const [isMobile, setIsMobile] = useState(false);
   const [lastTouchDistance, setLastTouchDistance] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const historyPushedRef = useRef(false);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -157,6 +160,14 @@ export default function ImageLightbox({
     resetZoom();
   }, [currentIndex]);
 
+  const navigateNext = useCallback(() => {
+    setCurrentIndex((prev) => (prev + 1) % images.length);
+  }, [images.length]);
+
+  const navigatePrevious = useCallback(() => {
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+  }, [images.length]);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -176,6 +187,21 @@ export default function ImageLightbox({
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen) {
+      historyPushedRef.current = false;
+      return;
+    }
+
+    const handleCustomClose = () => {
+      onClose();
+    };
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (historyPushedRef.current) {
+        onClose();
+      }
+    };
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isOpen) return;
       
@@ -207,8 +233,11 @@ export default function ImageLightbox({
       }
     };
 
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('lightbox-close', handleCustomClose);
+    window.addEventListener('popstate', handlePopState);
+    
     if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
       // Prevent mobile bounce scrolling
       document.body.style.position = 'fixed';
@@ -216,22 +245,32 @@ export default function ImageLightbox({
       document.body.style.height = '100%';
     }
 
+    if (openedFromModal && isMobile) {
+      setTimeout(() => {
+        if (isOpen) {
+          window.history.pushState({ modalOpen: true, lightboxOpen: true }, "");
+          historyPushedRef.current = true;
+        }
+      }, 0);
+    }
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('lightbox-close', handleCustomClose);
+      window.removeEventListener('popstate', handlePopState);
       document.body.style.overflow = 'unset';
       document.body.style.position = 'unset';
       document.body.style.width = 'unset';
       document.body.style.height = 'unset';
+      
+      if (openedFromModal && isMobile && historyPushedRef.current) {
+        historyPushedRef.current = false;
+        if (window.history.state?.lightboxOpen) {
+          window.history.back();
+        }
+      }
     };
-  }, [isOpen, currentIndex]);
-
-  const navigateNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % images.length);
-  };
-
-  const navigatePrevious = () => {
-    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
+  }, [isOpen, currentIndex, openedFromModal, isMobile, onClose, navigateNext, navigatePrevious]);
 
   const handleDownload = async () => {
     const currentImage = images[currentIndex];
@@ -365,7 +404,8 @@ export default function ImageLightbox({
 
   const lightboxContent = (
     <div 
-      className="lightbox-container fixed inset-0 z-[9999] bg-black bg-opacity-95 flex" 
+      className="lightbox-container fixed inset-0 z-[9999] bg-black bg-opacity-95 flex"
+      aria-hidden={!isOpen}
       style={{ 
         height: '100dvh',
         width: '100vw',

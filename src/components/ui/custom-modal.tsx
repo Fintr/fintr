@@ -56,14 +56,33 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       return;
     }
 
+    const checkLightboxOpen = () => {
+      const lightbox = document.querySelector(".lightbox-container");
+      if (!lightbox) return false;
+      const style = window.getComputedStyle(lightbox);
+      return style.display !== "none" && 
+             style.visibility !== "hidden" &&
+             lightbox.getAttribute("aria-hidden") !== "true";
+    };
+
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        const isLightboxOpen = checkLightboxOpen();
+        if (isLightboxOpen) {
+          const event = new CustomEvent("lightbox-close");
+          document.dispatchEvent(event);
+        } else {
+          onClose();
+        }
       }
     };
 
     const handlePopState = (e: PopStateEvent) => {
-      if (historyPushedRef.current) {
+      const isLightboxOpen = checkLightboxOpen();
+      if (isLightboxOpen) {
+        const event = new CustomEvent("lightbox-close");
+        document.dispatchEvent(event);
+      } else if (historyPushedRef.current) {
         onClose();
       }
     };
@@ -99,8 +118,8 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
     if (isMobile) {
       setTimeout(() => {
-        if (isOpen) {
-          window.history.pushState({ modalOpen: true }, "");
+        if (isOpen && !checkLightboxOpen()) {
+          window.history.pushState({ modalOpen: true, lightboxOpen: false }, "");
           historyPushedRef.current = true;
         }
       }, 0);
