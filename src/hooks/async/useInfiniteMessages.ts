@@ -18,6 +18,11 @@ export const useInfiniteMessages = ({
   const [hasUserScrolled, setHasUserScrolled] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
 
+  // Reset state when conversation changes
+  useEffect(() => {
+    setHasUserScrolled(false);
+    setHasInitialized(false);
+  }, [conversationId]);
 
   // Debug when hasUserScrolled changes
   useEffect(() => {
@@ -40,7 +45,6 @@ export const useInfiniteMessages = ({
   } = useInfiniteQuery({
     queryKey: ["messages", conversationId],
     queryFn: ({ pageParam = 1, queryKey }) => {
-      if (pageParam === 2) { setHasInitialized(true); }
       return fetchMessagesPage(api, { pageParam, queryKey })
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
@@ -50,6 +54,13 @@ export const useInfiniteMessages = ({
     staleTime: 30000, // 30 seconds
     cacheTime: 300000, // 5 minutes
   });
+
+  // Mark as initialized after first page is fetched
+  useEffect(() => {
+    if (!hasInitialized && data && data.pages.length > 0) {
+      setHasInitialized(true);
+    }
+  }, [hasInitialized, data]);
 
 
   useEffect(() => {

@@ -104,33 +104,38 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   }, [paginatedMessages, messages]);
 
 
-  // Auto-scroll to bottom only on initial load or when user is at bottom
+  // Auto-scroll to bottom only once on initial load when messages are available
   useEffect(() => {
+    if (!isInitialLoad || allMessages.length === 0) return;
+
     const scrollToBottom = () => {
       if (scrollAreaRef.current) {
-        // Try to find the scroll container
         const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
         if (scrollContainer) {
-          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+          scrollContainer.scrollTo({
+            top: scrollContainer.scrollHeight,
+            behavior: 'smooth'
+          });
         } else {
-          // Alternative: scroll the ScrollArea itself
-          scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+          scrollAreaRef.current.scrollTo({
+            top: scrollAreaRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
         }
         
-        // Enable infinite scroll after programmatic scroll
-        console.log("Programmatic scroll completed, enabling infinite scroll");
         setTimeout(() => {
           setHasUserScrolled(true);
         }, 1000);
       }
     };
 
-    // Only auto-scroll on initial load or if user hasn't manually scrolled
-    if (isInitialLoad || !hasUserManuallyScrolled) {
-      const timeoutId = setTimeout(scrollToBottom, 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [allMessages, currentStreamingMessage, isInitialLoad, hasUserManuallyScrolled]);
+    const timeoutId = setTimeout(() => {
+      scrollToBottom();
+      setIsInitialLoad(false);
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isInitialLoad, allMessages.length, setHasUserScrolled]);
 
   // Reset scroll state when conversation changes
   useEffect(() => {
@@ -147,16 +152,13 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
         const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
         if (scrollContainer) {
           const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-          const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10; // 10px threshold
+          const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
           
-          // If user scrolled away from bottom, mark as user scrolled
+          // If user scrolled away from bottom, mark as manually scrolled
+          // This prevents auto-scroll from happening again
           if (!isAtBottom) {
             setHasUserManuallyScrolled(true);
             setIsInitialLoad(false);
-          }
-          // If user scrolled back to bottom, allow auto-scroll again
-          else if (isAtBottom && hasUserManuallyScrolled) {
-            setHasUserManuallyScrolled(false);
           }
         }
       }
@@ -167,7 +169,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
       scrollContainer.addEventListener('scroll', handleScroll);
       return () => scrollContainer.removeEventListener('scroll', handleScroll);
     }
-  }, [hasUserManuallyScrolled]);
+  }, []);
 
 
   // Refetch AI usage when streaming completes
