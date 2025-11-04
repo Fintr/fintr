@@ -70,8 +70,14 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
     const handleTouchMove = (e: TouchEvent) => {
       const target = e.target as HTMLElement;
-      const modal = document.querySelector('[data-modal-content]');
       
+      // Check if the touch is inside a select dropdown (portaled outside modal)
+      const selectContent = target.closest('[data-slot="select-content"]');
+      if (selectContent) {
+        return;
+      }
+      
+      const modal = document.querySelector('[data-modal-content]');
       if (modal && !modal.contains(target)) {
         e.preventDefault();
       }
@@ -193,7 +199,13 @@ export const CustomModal: React.FC<CustomModalProps> = ({
             </Button>
           </div>
         )}
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div 
+          className="flex-1 overflow-y-auto min-h-0"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            touchAction: "pan-y",
+          } as React.CSSProperties}
+        >
           {children}
         </div>
       </div>

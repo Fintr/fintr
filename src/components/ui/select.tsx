@@ -67,6 +67,11 @@ function SelectContent({
           className
         )}
         position={position}
+        style={{
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-y",
+          overscrollBehavior: "contain",
+        } as React.CSSProperties}
         {...props}
       >
         <SelectScrollUpButton />
