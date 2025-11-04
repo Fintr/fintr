@@ -31,7 +31,7 @@ module Api
         private
 
         def callback_params
-          params.permit(:code, :state).to_h
+          params.permit(:code, :state, :redirect_uri).to_h
         end
       end
     end

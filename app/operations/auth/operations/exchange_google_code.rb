@@ -9,11 +9,12 @@ module Auth
       def call(params)
         code = params[:code]
         state = params[:state]
+        redirect_uri = params[:redirect_uri]
 
         return Failure("Authorization code is required") if code.blank?
         return Failure("State parameter is required") if state.blank?
 
-        result = exchange_code_for_tokens(code)
+        result = exchange_code_for_tokens(code, redirect_uri)
 
         return Failure(result.failure) unless result.success?
 
@@ -22,41 +23,36 @@ module Auth
 
       private
 
-      def exchange_code_for_tokens(code)
+      def exchange_code_for_tokens(code, provided_redirect_uri = nil)
         begin
           auth0_domain = ENV["AUTH0_DOMAIN"]
           client_id = ENV["AUTH0_CLIENT_ID"]
           client_secret = ENV["AUTH0_CLIENT_SECRET"]
-          app_base_url = ENV["NEXT_PUBLIC_APP_BASE_URL"] || ENV["CLIENT_URL"]
-          redirect_uri = "#{app_base_url}/auth-callback"
 
-          # Validate required environment variables
+          # Validate required environment variables (always needed)
           if auth0_domain.blank?
-            Rails.logger.error "AUTH0_DOMAIN environment variable is not set"
             return Failure("Auth0 domain not configured")
           end
 
           if client_id.blank?
-            Rails.logger.error "AUTH0_CLIENT_ID environment variable is not set"
             return Failure("Auth0 client ID not configured")
           end
 
           if client_secret.blank?
-            Rails.logger.error "AUTH0_CLIENT_SECRET environment variable is not set"
             return Failure("Auth0 client secret not configured")
           end
 
-          if app_base_url.blank?
-            Rails.logger.error "NEXT_PUBLIC_APP_BASE_URL and CLIENT_URL environment variables are not set"
-            return Failure("App base URL not configured")
+          # Use provided redirect_uri if available (must match what was used in authorization request)
+          # Otherwise fall back to constructing from app_base_url
+          if provided_redirect_uri.present?
+            redirect_uri = provided_redirect_uri
+          else
+            app_base_url = ENV["NEXT_PUBLIC_APP_BASE_URL"] || ENV["CLIENT_URL"]
+            if app_base_url.blank?
+              return Failure("App base URL not configured (required when redirect_uri is not provided)")
+            end
+            redirect_uri = "#{app_base_url}/auth-callback"
           end
-
-          Rails.logger.info "🔍 Google Token Exchange Debug:"
-          Rails.logger.info "  - Auth0 Domain: #{auth0_domain}"
-          Rails.logger.info "  - Client ID: #{client_id}"
-          Rails.logger.info "  - App Base URL: #{app_base_url}"
-          Rails.logger.info "  - Redirect URI: #{redirect_uri}"
-          Rails.logger.info "  - Code: #{code[0..10]}..." if code
 
           uri = URI("https://#{auth0_domain}/oauth/token")
           http = Net::HTTP.new(uri.host, uri.port)
@@ -90,10 +86,6 @@ module Auth
           response = http.request(request)
           data = JSON.parse(response.body)
 
-          Rails.logger.info "🔍 Auth0 Response:"
-          Rails.logger.info "  - Status Code: #{response.code}"
-          Rails.logger.info "  - Response Body: #{data}"
-
           if response.code == '200'
             tokens = {
               access_token: data["access_token"],
@@ -104,34 +96,11 @@ module Auth
               scope: data["scope"]
             }
             
-            Rails.logger.info "🔍 Tokens to return:"
-            Rails.logger.info "  - Access Token: #{tokens[:access_token]&.first(20)}..."
-            Rails.logger.info "  - ID Token: #{tokens[:id_token]&.first(20)}..."
-            Rails.logger.info "  - Refresh Token: #{tokens[:refresh_token]&.first(20)}..."
-            Rails.logger.info "  - Expires In: #{tokens[:expires_in]}"
-            Rails.logger.info "  - Token Type: #{tokens[:token_type]}"
-            Rails.logger.info "  - Scope: #{tokens[:scope]}"
-            
-            # Check token format
-            if tokens[:access_token]&.include?('..')
-              Rails.logger.warn "⚠️  Access token appears to be encrypted (JWE format)"
-            else
-              Rails.logger.info "✅ Access token appears to be regular JWT"
-            end
-            
-            if tokens[:id_token]&.include?('..')
-              Rails.logger.warn "⚠️  ID token appears to be encrypted (JWE format)"
-            else
-              Rails.logger.info "✅ ID token appears to be regular JWT"
-            end
-            
             Success(tokens)
           else
-            Rails.logger.error "Auth0 token exchange failed: #{data}"
             Failure(data["error_description"] || data["error"] || "Token exchange failed")
           end
         rescue StandardError => e
-          Rails.logger.error "Auth0 token exchange failed: #{e.message}"
           Failure("Token exchange failed: #{e.message}")
         end
       end
