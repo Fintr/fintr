@@ -14,6 +14,7 @@ interface AuthContextType {
   signup: (credentials: SignupCredentials) => Promise<void>;
   logout: () => void;
   getAccessToken: () => Promise<string | null>;
+  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,42 +30,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [tokens, setTokens] = useState<LoginResponse | null>(null);
   const router = useRouter();
 
-  // Check for existing authentication on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Migrate from old storage format if needed
-        AuthStorage.migrateFromOldFormat();
-        
-        // Get auth data from unified storage
-        const authData = AuthStorage.getAuthData();
-        
-        if (authData && AuthStorage.isAuthenticated()) {
-          // Convert AuthTokens to LoginResponse format for compatibility
-          const loginResponse: LoginResponse = {
-            access_token: authData.tokens.access_token,
-            id_token: authData.tokens.id_token,
-            refresh_token: authData.tokens.refresh_token,
-            expires_in: authData.tokens.expires_in,
-            token_type: authData.tokens.token_type,
-            scope: authData.tokens.scope,
-          };
-          setTokens(loginResponse);
-          setUser(authData.user);
-        } else {
-          setTokens(null);
-          setUser(null);
-        }
-      } catch (error) {
-        // Clear invalid data
-        AuthStorage.clearAuthData();
+  // Check for existing authentication
+  const checkAuth = async () => {
+    try {
+      setIsLoading(true);
+      // Migrate from old storage format if needed
+      AuthStorage.migrateFromOldFormat();
+      
+      // Get auth data from unified storage
+      const authData = AuthStorage.getAuthData();
+      
+      if (authData && AuthStorage.isAuthenticated()) {
+        // Convert AuthTokens to LoginResponse format for compatibility
+        const loginResponse: LoginResponse = {
+          access_token: authData.tokens.access_token,
+          id_token: authData.tokens.id_token,
+          refresh_token: authData.tokens.refresh_token,
+          expires_in: authData.tokens.expires_in,
+          token_type: authData.tokens.token_type,
+          scope: authData.tokens.scope,
+        };
+        setTokens(loginResponse);
+        setUser(authData.user);
+        console.log('✅ checkAuth: Auth state refreshed from storage');
+        console.log('User:', authData.user?.email || authData.user?.sub);
+      } else {
         setTokens(null);
         setUser(null);
-      } finally {
-        setIsLoading(false);
+        console.log('⚠️ checkAuth: No valid auth data found in storage');
       }
-    };
+    } catch (error) {
+      console.error('❌ checkAuth error:', error);
+      // Clear invalid data
+      AuthStorage.clearAuthData();
+      setTokens(null);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  // Check for existing authentication on mount
+  useEffect(() => {
     checkAuth();
   }, []);
 
@@ -313,6 +320,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signup,
     logout,
     getAccessToken,
+    checkAuth,
   };
 
   return (

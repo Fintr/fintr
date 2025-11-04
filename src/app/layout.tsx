@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, League_Spartan } from "next/font/google";
 import "./globals.css";
 import Providers from "@/lib/providers";
 import { PerformanceMonitor } from "@/components/performance-monitor";
+import DeepLinkHandler from "@/components/deep-link-handler";
 
 const leagueSpartan = League_Spartan({
   variable: "--font-league-spartan",
@@ -36,7 +37,10 @@ export default function RootLayout({
         className={`${leagueSpartan.variable} antialiased ${leagueSpartan.className}`}
       >
         <PerformanceMonitor>
-          <Providers>{children}</Providers>
+          <Providers>
+            <DeepLinkHandler />
+            {children}
+          </Providers>
         </PerformanceMonitor>
       </body>
     </html>

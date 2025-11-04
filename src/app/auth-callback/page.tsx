@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
@@ -31,18 +31,57 @@ export default function AuthCallback() {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showOpenAppButton, setShowOpenAppButton] = useState<boolean>(false);
   const [showCloseBrowserButton, setShowCloseBrowserButton] = useState<boolean>(false);
+  const [isCapacitorFlow, setIsCapacitorFlow] = useState<boolean>(false);
+  
+  // Use refs to prevent duplicate processing across re-renders
+  const isProcessingRef = useRef(false);
+  const hasProcessedRef = useRef(false);
 
   useEffect(() => {
     const handleCallback = async () => {
+      // Prevent duplicate calls
+      if (isProcessingRef.current || hasProcessedRef.current) {
+        console.log('⚠️ Auth callback already processing or completed - skipping duplicate call');
+        return;
+      }
+
+      isProcessingRef.current = true;
+      console.log('\n=== Auth Callback Handler Started ===');
+      console.log('Current URL:', window.location.href);
+      console.log('URL Search Params:', Object.fromEntries(searchParams.entries()));
+      console.log('Search params entries:', Array.from(searchParams.entries()));
+      
       try {
+        // If we're in a Capacitor environment and came from a custom URL scheme,
+        // close the browser immediately (it should have already closed automatically,
+        // but this ensures it's closed)
+        if (isCapacitorEnvironment()) {
+          console.log('Capacitor environment detected - attempting to close browser');
+          try {
+            const { Browser } = await import('@capacitor/browser');
+            await Browser.close();
+            console.log('Browser closed successfully');
+          } catch (error) {
+            console.log('Browser might already be closed (this is OK)');
+          }
+        }
+
         // Get parameters from URL
         const code = searchParams.get('code');
         const state = searchParams.get('state');
         const error = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
+        
+        console.log('Extracted params:');
+        console.log('  - Code:', code ? 'Present' : 'Missing');
+        console.log('  - State:', state || 'Missing');
+        console.log('  - Error:', error || 'None');
 
         // Check for errors from Auth0
         if (error) {
+          console.error('\n❌ Auth0 Error:', error);
+          console.error('Error Description:', errorDescription);
+          console.error('===================================\n');
           setStatus('error');
           setErrorMessage(errorDescription || error || 'Authentication failed');
           setTimeout(() => router.push('/auth'), 3000);
@@ -51,6 +90,10 @@ export default function AuthCallback() {
 
         // Validate required parameters
         if (!code || !state) {
+          console.error('\n❌ Missing authorization parameters');
+          console.error('Code:', code ? 'Present' : 'Missing');
+          console.error('State:', state ? 'Present' : 'Missing');
+          console.error('===================================\n');
           setStatus('error');
           setErrorMessage('Missing authorization parameters');
           setTimeout(() => router.push('/auth'), 3000);
@@ -60,18 +103,25 @@ export default function AuthCallback() {
         // Decode state parameter
         // State format: randomState|isCapacitor
         let decodedState = state;
-        let isCapacitorFlow = false;
+        let capacitorFlow = false;
         
         if (state.includes('|')) {
           const [randomState, flag] = state.split('|');
           decodedState = randomState;
-          isCapacitorFlow = flag === 'true';
+          capacitorFlow = flag === 'true';
+          console.log('Decoded state - Capacitor flow:', capacitorFlow);
+        } else {
+          console.log('State does not contain Capacitor flag');
         }
+        
+        setIsCapacitorFlow(capacitorFlow);
         
         // Verify state to prevent CSRF (only for web, not Capacitor)
         // For Capacitor, Auth0 already validates the state on its side
         const isCapacitorCallback = typeof window !== 'undefined' && (window as any).Capacitor !== undefined;
-        const isCapacitorContext = isCapacitorCallback || isCapacitorFlow;
+        const isCapacitorContext = isCapacitorCallback || capacitorFlow;
+        
+        console.log('Capacitor context:', isCapacitorContext);
         
         if (!isCapacitorContext && !verifyState(decodedState)) {
           setStatus('error');
@@ -83,52 +133,165 @@ export default function AuthCallback() {
         // Exchange code for tokens via backend
         const backendUrl = process.env.NEXT_PUBLIC_BE_URL;
         if (!backendUrl) {
+          console.error('❌ Backend URL is not configured');
           throw new Error('Backend URL is not configured');
         }
 
+        // Get the redirect URI that was used in the authorization request
+        // This must match exactly what Auth0 expects for token exchange
+        let redirectUri = 'http://localhost:5173/auth-callback'; // Default fallback
+        
+        if (isCapacitorContext || capacitorFlow) {
+          // For Capacitor, we used fintrapp://auth-callback
+          redirectUri = 'fintrapp://auth-callback';
+        } else if (typeof window !== 'undefined') {
+          // Try to get from sessionStorage (stored during auth initiation)
+          const storedRedirectUri = sessionStorage.getItem('auth0_redirect_uri');
+          if (storedRedirectUri) {
+            redirectUri = storedRedirectUri;
+          } else {
+            // Fallback to constructing from current origin
+            redirectUri = `${window.location.origin}/auth-callback`;
+          }
+        }
+        
+        console.log('\n=== Exchanging Code for Tokens ===');
+        console.log('Backend URL:', backendUrl);
+        console.log('Redirect URI (must match Auth0):', redirectUri);
+        console.log('Calling:', `${backendUrl}/api/v1/auth/google/callback`);
+        
         const response = await fetch(`${backendUrl}/api/v1/auth/google/callback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ code, state }),
+          body: JSON.stringify({ 
+            code, 
+            state,
+            redirect_uri: redirectUri // Send redirect URI to backend
+          }),
         });
+        
+        console.log('Response status:', response.status);
 
         const data = await response.json();
 
         if (!response.ok) {
+          console.error('❌ Token exchange failed');
+          console.error('Response:', JSON.stringify(data, null, 2));
+          console.error('================================\n');
           throw new Error(data.details || data.message || 'Token exchange failed');
         }
 
+        console.log('✅ Token exchange successful');
+        console.log('Response structure:', JSON.stringify(data, null, 2));
+
         // Extract tokens from response
-        const tokens = data.data.value || data.data;
+        // Backend returns: { success: true, message: "...", data: { access_token, id_token, ... } }
+        const tokens = data.data?.value || data.data || data;
+        
+        console.log('\n=== Token Extraction ===');
+        console.log('Tokens structure:', {
+          hasAccessToken: !!tokens.access_token,
+          hasIdToken: !!tokens.id_token,
+          hasRefreshToken: !!tokens.refresh_token,
+          expiresIn: tokens.expires_in,
+          tokenType: tokens.token_type,
+          scope: tokens.scope,
+        });
+        
+        // Validate tokens are present
+        if (!tokens.access_token || !tokens.id_token) {
+          console.error('❌ Missing required tokens in response');
+          console.error('Available keys:', Object.keys(tokens));
+          throw new Error('Invalid token response from backend - missing access_token or id_token');
+        }
 
         // Try to decode user profile from ID token
         let userProfile = null;
+        let decodeError = null;
         
         try {
+          console.log('Attempting to decode ID token...');
           userProfile = AuthStorage.decodeJWT(tokens.id_token);
-        } catch (error) {
-          // If ID token is encrypted, try to get user info from Auth0's userinfo endpoint
+          
+          if (userProfile) {
+            console.log('✅ Successfully decoded user profile from ID token');
+            console.log('User:', userProfile.email || userProfile.sub);
+          } else {
+            console.log('⚠️ ID token decode returned null - token might be encrypted');
+            decodeError = 'ID token decode returned null';
+          }
+        } catch (error: any) {
+          console.warn('⚠️ Failed to decode ID token:', error.message);
+          decodeError = error.message;
+        }
+        
+        // If ID token decode failed, try to get user info from Auth0's userinfo endpoint
+        if (!userProfile) {
+          console.log('\n=== Fetching User Info from Auth0 ===');
+          console.log('Auth0 Domain:', process.env.NEXT_PUBLIC_AUTH0_DOMAIN);
+          console.log('Access Token (first 20 chars):', tokens.access_token?.substring(0, 20) + '...');
+          
           try {
-            const userInfoResponse = await fetch(`https://${process.env.NEXT_PUBLIC_AUTH0_DOMAIN}/userinfo`, {
+            const auth0Domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
+            if (!auth0Domain) {
+              throw new Error('Auth0 domain is not configured');
+            }
+            
+            const userInfoUrl = `https://${auth0Domain}/userinfo`;
+            console.log('UserInfo URL:', userInfoUrl);
+            
+            const userInfoResponse = await fetch(userInfoUrl, {
+              method: 'GET',
               headers: {
-                'Authorization': `Bearer ${tokens.access_token}`
-              }
+                'Authorization': `Bearer ${tokens.access_token}`,
+                'Content-Type': 'application/json',
+              },
             });
             
-            if (userInfoResponse.ok) {
-              userProfile = await userInfoResponse.json();
-            } else {
-              throw new Error('Failed to get user info from Auth0');
+            console.log('UserInfo Response Status:', userInfoResponse.status);
+            console.log('UserInfo Response Status Text:', userInfoResponse.statusText);
+            
+            if (!userInfoResponse.ok) {
+              const errorText = await userInfoResponse.text();
+              console.error('❌ UserInfo API Error Response:', errorText);
+              
+              let errorMessage = `Failed to get user info from Auth0 (${userInfoResponse.status})`;
+              try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.error_description || errorJson.error || errorMessage;
+              } catch (e) {
+                errorMessage += `: ${errorText}`;
+              }
+              
+              throw new Error(errorMessage);
             }
-          } catch (userInfoError) {
-            throw new Error('Failed to get user profile');
+            
+            userProfile = await userInfoResponse.json();
+            console.log('✅ Successfully fetched user profile from Auth0');
+            console.log('User:', userProfile.email || userProfile.sub);
+            
+          } catch (userInfoError: any) {
+            console.error('❌ UserInfo fetch failed:', userInfoError);
+            console.error('Error message:', userInfoError.message);
+            console.error('Error stack:', userInfoError.stack);
+            
+            // Provide more detailed error message
+            let errorMsg = 'Failed to get user profile';
+            if (decodeError) {
+              errorMsg += ` (ID token decode failed: ${decodeError})`;
+            }
+            if (userInfoError.message) {
+              errorMsg += ` (UserInfo fetch failed: ${userInfoError.message})`;
+            }
+            
+            throw new Error(errorMsg);
           }
         }
         
         if (!userProfile) {
-          throw new Error('Failed to get user profile');
+          throw new Error('Failed to get user profile - both ID token decode and UserInfo fetch failed');
         }
 
         // Store authentication data
@@ -149,18 +312,49 @@ export default function AuthCallback() {
         };
 
         AuthStorage.setAuthData(authData);
+        
+        // Verify tokens are stored
+        const storedAuthData = AuthStorage.getAuthData();
+        console.log('✅ Auth data stored successfully');
+        console.log('Stored user:', storedAuthData?.user?.email || storedAuthData?.user?.sub);
+        console.log('Has access token:', !!storedAuthData?.tokens?.access_token);
+        console.log('Has ID token:', !!storedAuthData?.tokens?.id_token);
+        console.log('User profile:', userProfile.email || userProfile.sub);
 
         // Success!
+        hasProcessedRef.current = true;
         setStatus('success');
 
         // For Capacitor, always redirect to dashboard since sessionStorage doesn't work
         // For web, use the stored redirect path
-        const redirectPath = isCapacitorFlow ? '/dashboard' : getOriginalRedirectPath();
+        const redirectPath = capacitorFlow ? '/dashboard' : getOriginalRedirectPath();
         
-        // For Capacitor flow, tokens are already stored above
-        // Show button to close browser and return to app
-        if (isCapacitorFlow) {
-          setShowCloseBrowserButton(true);
+        console.log('\n=== Redirecting ===');
+        console.log('Capacitor Flow:', capacitorFlow);
+        console.log('Is Capacitor Callback:', isCapacitorCallback);
+        console.log('Redirect Path:', redirectPath);
+        
+        // For Capacitor flow, redirect to app using custom URL scheme
+        // This will close the browser and open the app
+        if (capacitorFlow || isCapacitorCallback) {
+          console.log('Using Capacitor redirect flow');
+          // Small delay to ensure token storage is complete
+          setTimeout(async () => {
+            try {
+              console.log('Closing browser...');
+              // Close the browser
+              const { Browser } = await import('@capacitor/browser');
+              await Browser.close();
+              console.log('Browser closed');
+            } catch (error) {
+              console.log('Browser might already be closed (this is OK)');
+            }
+            
+            console.log('Redirecting to: fintrapp://auth-callback-success');
+            // Redirect to app using custom URL scheme
+            // This will be caught by the deep link handler
+            window.location.href = 'fintrapp://auth-callback-success';
+          }, 500);
         } else if (isIOSDevice()) {
           setShowOpenAppButton(true);
         } else {
@@ -170,10 +364,18 @@ export default function AuthCallback() {
         }
 
       } catch (error: any) {
+        hasProcessedRef.current = true;
+        console.error('\n❌ Auth Callback Error:', error.message || error);
+        console.error('Error stack:', error.stack);
+        console.error('==============================\n');
         setStatus('error');
         setErrorMessage(error.message || 'An error occurred during authentication');
         setTimeout(() => router.push('/auth'), 3000);
+      } finally {
+        isProcessingRef.current = false;
       }
+      
+      console.log('=== Auth Callback Handler Complete ===\n');
     };
 
     handleCallback();
@@ -233,7 +435,7 @@ export default function AuthCallback() {
                 <h2 className="text-xl font-semibold text-primary mb-2">
                   Success!
                 </h2>
-                {showCloseBrowserButton ? (
+                {(showCloseBrowserButton || isCapacitorFlow) ? (
                   <>
                     <p className="text-muted-foreground mb-4">
                       You've been signed in with Google! Tap the button below to return to the app.

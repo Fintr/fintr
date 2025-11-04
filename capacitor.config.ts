@@ -3,13 +3,16 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.fintr.app',
   appName: 'Fintr',
-  webDir: 'public',
+  webDir: 'out',
+  // Server configuration for development
+  // For iOS Simulator: use 'localhost'
+  // For physical iOS device: use your Mac's IP address (find with: ifconfig | grep "inet ")
   server: {
-    url: process.env.NEXT_PUBLIC_APP_BASE_URL,
-    cleartext: true
+    url: process.env.CAPACITOR_SERVER_URL || 'http://localhost:5173',
+    cleartext: true, // Allow HTTP (required for localhost)
   },
   ios: {
-    scheme: 'App',
+    scheme: 'fintrapp',
     contentInset: 'automatic'
   },
   plugins: {
