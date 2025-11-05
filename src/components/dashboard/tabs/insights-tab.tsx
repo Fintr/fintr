@@ -192,6 +192,33 @@ const InsightsTab = () => {
   // Fetch insights data from API
   const { data: insightsData, isLoading, isError, refetch } = useInsightsData(getInsightsParams);
 
+  // Calculate Y-axis domain for financial trends chart with padding
+  const yAxisDomain = useMemo(() => {
+    const data = insightsData?.monthlySpending || monthlyFinancialData;
+    if (!data || data.length === 0) {
+      return ['auto', 'auto'];
+    }
+    
+    // Collect all values from income, expenses, and savings
+    const allValues = data.flatMap(item => [
+      item.income || 0,
+      item.expenses || 0,
+      item.savings || 0
+    ]);
+    
+    const minValue = Math.min(...allValues);
+    const maxValue = Math.max(...allValues);
+    
+    // Add 15% padding on both sides to ensure all dots are visible
+    const range = maxValue - minValue;
+    const padding = range * 0.15 || Math.abs(maxValue) * 0.15 || 1000;
+    
+    const domainMin = minValue - padding;
+    const domainMax = maxValue + padding;
+    
+    return [domainMin, domainMax];
+  }, [insightsData?.monthlySpending]);
+
   // Process expense breakdown data to show top 5 categories and group others
   const processedExpenseBreakdown = useMemo(() => {
     const data = insightsData?.expenseBreakdown || categoryExpenseData;
@@ -822,11 +849,11 @@ const InsightsTab = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsLineChart
                   data={insightsData?.monthlySpending || monthlyFinancialData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  margin={{ top: 15, right: 30, left: 20, bottom: 15 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="month" stroke="#888888" />
-                  <YAxis stroke="#888888" />
+                  <YAxis stroke="#888888" domain={yAxisDomain} />
                   <RechartsTooltip
                     formatter={(value: number) => formatCurrency(value)}
                     labelFormatter={(label) => `Month: ${label}`}
