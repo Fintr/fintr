@@ -4,12 +4,9 @@ const config: CapacitorConfig = {
   appId: 'com.fintr.app',
   appName: 'Fintr',
   webDir: 'out',
-  // Server configuration for development
-  // For iOS Simulator: use 'localhost'
-  // For physical iOS device: use your Mac's IP address (find with: ifconfig | grep "inet ")
   server: {
-    url: process.env.CAPACITOR_SERVER_URL || 'http://localhost:5173',
-    cleartext: true, // Allow HTTP (required for localhost)
+    url: 'https://staging.fintr.ai',
+    cleartext: false, // HTTPS, so cleartext should be false
   },
   ios: {
     scheme: 'fintrapp',

@@ -8,12 +8,16 @@
     "start": "next start",
     "lint": "next lint",
     "build:ios": "next build && npx cap sync ios",
+    "build:android": "next build && npx cap sync android",
     "ios": "npx cap run ios",
-    "ios:simulator": "npx cap run ios --target='iPhone 15'"
+    "ios:simulator": "npx cap run ios --target='iPhone 15'",
+    "android": "npx cap run android",
+    "android:open": "npx cap open android"
   },
   "dependencies": {
     "@ariakit/react": "^0.4.17",
     "@auth0/auth0-react": "^2.3.0",
+    "@capacitor/android": "7.4.4",
     "@capacitor/app": "^7.1.0",
     "@capacitor/browser": "^7.0.2",
     "@capacitor/cli": "^7.4.3",
