@@ -14,9 +14,12 @@ RSpec.describe Spaces::Space, type: :model do
     it { is_expected.to have_many(:expense_categories).class_name('Transactions::Category') }
     it { is_expected.to have_many(:accounts).class_name('Transactions::Account').dependent(:destroy) }
     it { is_expected.to have_many(:budgets).class_name('Budget').dependent(:destroy) }
+    it { is_expected.to have_many(:loans).class_name('Transactions::Loan').dependent(:destroy) }
+    it { is_expected.to have_many(:entities).class_name('Entities::Entity').dependent(:destroy) }
     it { is_expected.to have_many(:tickets).class_name('Crm::Ticket').dependent(:destroy) }
     it { is_expected.to have_one(:goal_description).class_name('GoalDescription').dependent(:destroy) }
     it { is_expected.to have_many(:conversations).class_name('Ai::Conversation').dependent(:destroy) }
+    it { is_expected.to have_many(:imports).class_name('Imports::Import').dependent(:destroy) }
 
     # Note: monthly_totals association exists in model but table doesn't exist in current schema
     # Skipping association test to avoid database errors
@@ -33,6 +36,12 @@ RSpec.describe Spaces::Space, type: :model do
     it { is_expected.to validate_inclusion_of(:type).in_array(%w[Spaces::PersonalSpace Spaces::OrganizationSpace]) }
   end
 
+  describe 'constants' do
+    it 'defines SPACE_TOKEN_LIMIT constant' do
+      expect(Spaces::Space::SPACE_TOKEN_LIMIT).to eq(30)
+    end
+  end
+
   describe 'instance methods' do
     let(:space) { create(:space) }
 
@@ -40,6 +49,64 @@ RSpec.describe Spaces::Space, type: :model do
       it 'delegates to Transactions::Category.create_default_categories' do
         expect(Transactions::Category).to receive(:create_default_categories).with(space)
         space.create_default_transaction_categories
+      end
+    end
+
+    describe '#can_ai?' do
+      let(:mock_usage_query) { instance_double(Ai::Queries::Usages::UsageInPeriod) }
+
+      context 'when usage query succeeds and tokens are below limit' do
+        let(:usages) { double("usages", sum: 20) } # rubocop:disable RSpec/VerifiedDoubles
+
+        before do
+          allow(Ai::Queries::Usages::UsageInPeriod).to receive(:new).and_return(mock_usage_query)
+          allow(mock_usage_query).to receive(:call).with(params: { space_id: space.id })
+            .and_return(Dry::Monads::Result::Success.new(usages))
+        end
+
+        it 'returns true' do
+          expect(space.can_ai?).to be(true)
+        end
+      end
+
+      context 'when usage query succeeds and tokens are at limit' do
+        let(:usages) { double("usages", sum: 30) } # rubocop:disable RSpec/VerifiedDoubles
+
+        before do
+          allow(Ai::Queries::Usages::UsageInPeriod).to receive(:new).and_return(mock_usage_query)
+          allow(mock_usage_query).to receive(:call).with(params: { space_id: space.id })
+            .and_return(Dry::Monads::Result::Success.new(usages))
+        end
+
+        it 'returns false' do
+          expect(space.can_ai?).to be(false)
+        end
+      end
+
+      context 'when usage query succeeds and tokens exceed limit' do
+        let(:usages) { double("usages", sum: 35) } # rubocop:disable RSpec/VerifiedDoubles
+
+        before do
+          allow(Ai::Queries::Usages::UsageInPeriod).to receive(:new).and_return(mock_usage_query)
+          allow(mock_usage_query).to receive(:call).with(params: { space_id: space.id })
+            .and_return(Dry::Monads::Result::Success.new(usages))
+        end
+
+        it 'returns false' do
+          expect(space.can_ai?).to be(false)
+        end
+      end
+
+      context 'when usage query fails' do
+        before do
+          allow(Ai::Queries::Usages::UsageInPeriod).to receive(:new).and_return(mock_usage_query)
+          allow(mock_usage_query).to receive(:call).with(params: { space_id: space.id })
+            .and_return(Dry::Monads::Result::Failure.new('Query failed'))
+        end
+
+        it 'returns false' do
+          expect(space.can_ai?).to be(false)
+        end
       end
     end
   end
@@ -108,6 +175,21 @@ RSpec.describe Spaces::Space, type: :model do
         association = space.class.reflect_on_association(:conversations)
         expect(association.options[:dependent]).to eq(:destroy)
       end
+
+      it 'has dependent destroy set for loans association' do
+        association = space.class.reflect_on_association(:loans)
+        expect(association.options[:dependent]).to eq(:destroy)
+      end
+
+      it 'has dependent destroy set for entities association' do
+        association = space.class.reflect_on_association(:entities)
+        expect(association.options[:dependent]).to eq(:destroy)
+      end
+
+      it 'has dependent destroy set for imports association' do
+        association = space.class.reflect_on_association(:imports)
+        expect(association.options[:dependent]).to eq(:destroy)
+      end
     end
 
     describe 'filtered categories' do
@@ -151,6 +233,31 @@ RSpec.describe Spaces::Space, type: :model do
         conversation = create(:ai_conversation, space: space)
         expect(conversation).to be_persisted
         expect(space.conversations).to include(conversation)
+      end
+
+      it 'can create associated loans' do
+        account = create(:account, space: space)
+        loan = create(:loan, space: space, account: account)
+        expect(loan).to be_persisted
+        expect(space.loans).to include(loan)
+      end
+
+      it 'can create associated entities' do
+        entity = create(:entity, space: space)
+        expect(entity).to be_persisted
+        expect(space.entities).to include(entity)
+      end
+
+      it 'can create associated imports' do
+        user = create(:user)
+        import = Imports::Import.create!(
+          user: user,
+          space: space,
+          import_location: 'settings',
+          status: 'pending'
+        )
+        expect(import).to be_persisted
+        expect(space.imports).to include(import)
       end
     end
   end

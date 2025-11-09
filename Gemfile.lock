@@ -200,6 +200,8 @@ GEM
       multipart-post (~> 2.0)
     faraday-net_http (3.4.1)
       net-http (>= 0.5.0)
+    fast_excel (0.5.0)
+      ffi (> 1.9, < 2)
     ffi (1.17.2-aarch64-linux-gnu)
     ffi (1.17.2-aarch64-linux-musl)
     ffi (1.17.2-arm-linux-gnu)
@@ -463,6 +465,7 @@ GEM
     ruby-vips (2.2.5)
       ffi (~> 1.12)
       logger
+    rubyzip (2.4.1)
     scenic (1.9.0)
       activerecord (>= 4.0.0)
       railties (>= 4.0.0)
@@ -527,6 +530,8 @@ GEM
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
+    xsv (1.3.2)
+      rubyzip (>= 1.3, < 3)
     zache (0.15.0)
     zeitwerk (2.7.3)
 
@@ -556,6 +561,7 @@ DEPENDENCIES
   dry-operation (~> 1.0)
   dry-validation (~> 1.11)
   factory_bot_rails
+  fast_excel (~> 0.5)
   groupdate (~> 6.5)
   ice_cube (~> 0.17.0)
   jwt (~> 2.7)
@@ -592,6 +598,7 @@ DEPENDENCIES
   thruster
   timecop (~> 0.9.10)
   tzinfo-data
+  xsv (~> 1.1)
 
 BUNDLED WITH
    2.6.2

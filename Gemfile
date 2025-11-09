@@ -66,6 +66,10 @@ gem "rdoc", "6.15.1"
 # Time-based grouping
 gem "groupdate", "~> 6.5"
 
+# Excel processing
+gem "fast_excel", "~> 0.5"
+gem "xsv", "~> 1.1"
+
 # Errors
 gem "sentry-ruby"
 gem "sentry-rails"

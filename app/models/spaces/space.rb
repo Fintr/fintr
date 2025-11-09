@@ -20,6 +20,7 @@ module Spaces
     has_many :tickets, class_name: "Crm::Ticket", dependent: :destroy
     has_one  :goal_description, class_name: "GoalDescription", dependent: :destroy
     has_many :conversations, class_name: "Ai::Conversation", dependent: :destroy
+    has_many :imports, class_name: "Imports::Import", dependent: :destroy
 
     validates :name, presence: true
     validates :code, presence: true, uniqueness: true

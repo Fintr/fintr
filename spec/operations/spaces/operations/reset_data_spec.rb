@@ -233,6 +233,7 @@ RSpec.describe Spaces::Operations::ResetData do
     let!(:budget) { create(:budget, space: space) }
     let!(:goal_description) { create(:goal_description, space: space) }
     let!(:onboarding) { create(:onboarding, user: user) }
+    let!(:import) { create(:import, space: space, user: user) }
 
     before do
       # Create categories with unique names to avoid validation conflicts
@@ -265,6 +266,10 @@ RSpec.describe Spaces::Operations::ResetData do
 
     it 'destroys the onboarding for the user' do
       expect { delete_data_result }.to change(Onboarding, :count).by(-1)
+    end
+
+    it 'destroys all imports for the space' do
+      expect { delete_data_result }.to change(space.imports, :count).by(-1)
     end
   end
 

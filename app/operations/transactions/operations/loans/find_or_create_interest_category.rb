@@ -44,4 +44,3 @@ module Transactions
     end
   end
 end
-

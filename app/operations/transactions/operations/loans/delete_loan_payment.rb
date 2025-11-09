@@ -30,12 +30,12 @@ module Transactions
             loan_payment    = step find_loan_payment(params:)
             loan            = loan_payment.loan
             account         = loan_payment.account
-            
+
             _               = step reverse_account_balance(loan_payment:, loan:, account:)
             _               = step delete_interest_transaction(loan_payment:)
             _               = step delete_loan_payment(loan_payment:)
             _               = step update_loan(loan:)
-            
+
             loan_payment
           end
           result
@@ -90,4 +90,3 @@ module Transactions
     end
   end
 end
-

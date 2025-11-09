@@ -7,4 +7,3 @@ FactoryBot.define do
     entity_type { "loan" }
   end
 end
-

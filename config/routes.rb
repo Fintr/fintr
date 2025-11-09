@@ -103,6 +103,20 @@ Rails.application.routes.draw do
         end
       end
 
+      namespace :imports do
+        resources :imports, only: [:index, :show, :create] do
+          member do
+            post :revert
+          end
+          resources :import_records, only: [:index, :show, :update] do
+            member do
+              post :import
+            end
+          end
+        end
+        resource :sample_template, only: [:show]
+      end
+
       # Space management routes
       resources :spaces, only: [:index, :show, :create] do
         member do

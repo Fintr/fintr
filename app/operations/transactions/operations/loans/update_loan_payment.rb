@@ -41,11 +41,11 @@ module Transactions
             payment_date = params[:date] || loan_payment.date
             calculated_interest = step calculate_interest(loan:, payment_date:, exclude_payment_id: loan_payment.id)
             update_params       = step transform_params(params:, loan:, account:, calculated_interest:)
-            
+
             if account != old_account
               _ = step reverse_account_balance(loan_payment:, loan:, account: old_account)
             end
-            
+
             loan_payment        = step assign_loan_payment_attributes(loan_payment:, params: update_params)
             _                   = step update_account_balance(loan_payment:, loan:, account:)
             loan_payment        = step save_loan_payment(loan_payment:)

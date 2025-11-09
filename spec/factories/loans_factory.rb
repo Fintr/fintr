@@ -17,4 +17,3 @@ FactoryBot.define do
     currency { "PHP" }
   end
 end
-
