@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import AuthPage from "@/components/auth/auth-page";
+import UnifiedAuthPage from "@/components/auth/unified-auth-page";
 import AuthToggle from "@/components/auth/auth-toggle";
 
 const Auth = () => {
@@ -17,7 +17,7 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-background py-12">
       <div className="container mx-auto px-4">
-        <AuthPage
+        <UnifiedAuthPage
           onBack={handleBack}
           isLogin={activeTab === "login"}
           authToggle={

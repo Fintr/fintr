@@ -12,7 +12,7 @@ interface HeroSectionProps {
 const HeroSection = ({
   title = "Save More. Spend Smarter. Afford The Life You Want.",
   subtitle = "Your personal finance assistant. Just take a photo of your receipt, Fintr will do the rest. Ask money questions, Fintr responds with answers tailored for you.",
-  logoSrc = "/fintr-logo.png",
+  logoSrc = "https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png",
 }: HeroSectionProps) => {
   return (
     <section className="relative w-full py-16 md:py-24 lg:py-32 bg-background overflow-hidden">

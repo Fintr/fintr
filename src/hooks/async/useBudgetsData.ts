@@ -13,7 +13,7 @@ import { BudgetsPage, CreateBudgetPayload } from "@/types/budgetTypes";
 export const useBudgetsData = (budgetDateFilter: string) => {
   const queryClient = useQueryClient();
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const { api } = useAuthApi({
+  const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:budgets",
   });
   const { data, isLoading, isError, refetch } = useQuery({
@@ -22,7 +22,7 @@ export const useBudgetsData = (budgetDateFilter: string) => {
       fetchBudgetsPage(api, {
         queryKey: ["budgets", spaceCode, budgetDateFilter],
       }),
-    enabled: !!spaceCode,
+    enabled: !!spaceCode && isAuthenticated, // Only run if spaceCode exists and user is authenticated
   });
 
   const updateBudgetMutation = useMutation(

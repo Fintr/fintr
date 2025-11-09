@@ -6,7 +6,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { isAdminAtom } from "@/atoms/dashboardAtoms";
 import { onboardingStepAtom } from "@/atoms/onboardingAtoms";
 
-export function useGetSpaceCode(api: AxiosInstance) {
+export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = true) {
   const isClient = typeof window !== 'undefined';
   const [spaceCode, setSpaceCode] = useLocalStorage("spaceCode", "");
   const setIsAdmin = useSetAtom(isAdminAtom);
@@ -36,7 +36,7 @@ export function useGetSpaceCode(api: AxiosInstance) {
       }
       return response.data;
     },
-    enabled: isClient, // Only run if on client and required data is not already set
+    enabled: isClient && isAuthenticated, // Only run if on client and user is authenticated
     staleTime: 5 * 60 * 1000, // Data considered fresh for 5 minutes
     cacheTime: 10 * 60 * 1000, // Data stays in cache for 10 minutes
   });

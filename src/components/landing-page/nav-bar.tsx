@@ -3,8 +3,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Send, X, Search, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { shouldShowV2Features } from "@/lib/utils";
 
 interface NavbarProps {
@@ -30,7 +31,8 @@ const Navbar = ({}: NavbarProps) => {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { loginWithRedirect } = useAuth0();
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
   const showV2Features = shouldShowV2Features();
 
   const toggleChatbot = () => {
@@ -293,12 +295,21 @@ const Navbar = ({}: NavbarProps) => {
                 </a>
               ))}
             </nav>
-            <Button
-              className="bg-primary hover:bg-primary/80 text-white rounded-md px-6 py-2"
-              onClick={() => loginWithRedirect()}
-            >
-              Log In / Sign Up
-            </Button>
+            {isAuthenticated ? (
+              <Button
+                className="bg-primary hover:bg-primary/80 text-white rounded-md px-6 py-2"
+                onClick={() => router.push('/dashboard')}
+              >
+                Go to Dashboard
+              </Button>
+            ) : (
+              <Button
+                className="bg-primary hover:bg-primary/80 text-white rounded-md px-6 py-2"
+                onClick={() => router.push('/auth')}
+              >
+                Log In / Sign Up
+              </Button>
+            )}
           </div>
         </div>
       </div>

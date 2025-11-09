@@ -91,7 +91,7 @@ const MobileAppSection = ({
                   <div className="p-4 flex-1 flex flex-col">
                     <div className="flex items-center justify-center mb-4 mt-2">
                       <img
-                        src="https://raw.githubusercontent.com/paoloparaiso/Fintr/989e1801f94417a722a0b7e6eb4b1b56b05b9616/Fintr_Logo.png"
+                        src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
                         alt="Fintr Logo"
                         className="h-10"
                       />

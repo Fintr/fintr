@@ -4,7 +4,7 @@ import { fetchTransactionDrafts } from '@/services/transactions/queries';
 import { useLocalStorage } from '../useLocalStorage';
 
 export const useTransactionDrafts = () => {
-  const { api } = useAuthApi({
+  const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
 
@@ -17,7 +17,7 @@ export const useTransactionDrafts = () => {
       console.log('Fetched drafts from API:', drafts);
       return drafts;
     },
-    enabled: !!api && !!spaceCode,
+    enabled: !!api && !!spaceCode && isAuthenticated, // Only run if api exists, spaceCode exists, and user is authenticated
     staleTime: 30000, // Consider data fresh for 30 seconds
     retry: 2,
   });

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useSpacePermissions } from "@/hooks/useSpacePermissions";
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Settings, Users, BarChart, PieChart } from "lucide-react";
 
 export default function SpaceTestPage() {
-  const { user, logout } = useAuth0();
+  const { user, logout } = useAuth();
   const { api } = useAuthApi();
   const { spaces, currentSpace, switchSpace, isLoading, isSwitching } = useSpaceContext(api);
   const { canManageUsers, canManageSettings, canViewAnalytics, canManageBudgets } = useSpacePermissions();

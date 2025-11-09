@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, User, Settings, LogOut } from 'lucide-react';
 import Link from "next/link";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { SpaceSwitcher } from "@/components/space/space-switcher";
 
 interface NavItem {
@@ -27,7 +27,7 @@ const NavDrawer: React.FC<NavDrawerProps> = ({
   isMobile = true,
   showSpaceSwitcher = true 
 }) => {
-  const { user } = useAuth0();
+  const { user } = useAuth();
 
   return (
     <>

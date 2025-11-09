@@ -1,11 +1,12 @@
-import { useAuth0 } from '@auth0/auth0-react';
 import { useCallback, useMemo } from 'react';
 import { createAuthenticatedClient } from '@/lib/api';
 import { AxiosInstance } from 'axios';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
 /**
  * Custom hook that provides an authenticated Axios instance using Auth0 tokens
+ * This hook is compatible with the web app's useAuthApi interface
  * @param options Optional configuration options
  * @param options.scope Custom scopes to request (defaults to 'openid profile email')
  */
@@ -19,40 +20,28 @@ export const useAuthApi = (options?: {
   error: Error | null;
 } => {
   const {
-    getAccessTokenSilently,
-    loginWithRedirect,
+    getAccessToken,
     isAuthenticated,
     isLoading,
     error,
-  } = useAuth0();
+  } = useAuth();
   const router = useRouter();
 
-  // Create a function to get tokens with error handling
+  // Create a function to get tokens with error handling (compatible with web app)
   const getToken = useCallback(async (): Promise<string> => {
-    const params = {
-      audience: process.env.NEXT_PUBLIC_BE_URL,
-      scope: 'openid profile email read:current_user read:users read:transactions offline_access',
-      // Important NOTE: for the Safari / Mobile apps to work and not infinitely reload, the scope has to be the same as the one set in the Auth0Provider. 
-    }
-    
     try {
-      const token = await getAccessTokenSilently({
-        authorizationParams: params,
-      });
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error('No access token available');
+      }
       return token;
     } catch (e: any) {
       console.error('Error getting access token:', e);
-      // If consent is required, redirect to the consent page
-      if (e.error === 'consent_required') {
-        router.push('/consent');
-      } else if (e.error === 'login_required') {
-        console.log('login_required');
-        await loginWithRedirect();
-      }
+      // Redirect to login on token error
+      router.push('/login');
       throw e;
-      // return '';
     }
-  }, [getAccessTokenSilently, loginWithRedirect, router, options?.scope]);
+  }, [getAccessToken, router]);
 
   // Create an authenticated API client
   const api = useMemo(() => createAuthenticatedClient(getToken), [getToken]);

@@ -1,7 +1,7 @@
 /**
  * Enum representing transaction category types
  */
-import { CategoryTypeEnum } from "../types/categoryTypes";
+import { CategoryTypeEnum } from "./categoryTypes";
 /**
  * Interface for creating a new transaction category
  */

@@ -15,7 +15,7 @@ interface UseInsightsDataParams {
 }
 
 export const useInsightsData = (params: UseInsightsDataParams = {}) => {
-  const { api } = useAuthApi({
+  const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
   
@@ -24,7 +24,7 @@ export const useInsightsData = (params: UseInsightsDataParams = {}) => {
   const { data, error, isLoading, isError, isSuccess, refetch } = useQuery({
     queryKey: ["insights", spaceCode, params],
     queryFn: () => fetchInsights(api, params),
-    enabled: !!spaceCode,
+    enabled: !!spaceCode && isAuthenticated, // Only run if spaceCode exists and user is authenticated
     retry: 2, // Retry failed requests twice
     staleTime: 30000, // Consider data fresh for 30 seconds
   });

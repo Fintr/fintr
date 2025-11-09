@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { Bell, Settings, Camera, Plus, Menu, User as UserIcon, Target, Headphones, MessageSquare } from "lucide-react";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
@@ -40,7 +40,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
   const isOnDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
   const showAddButtons = !hideActionButtons && isOnDashboard;
 
-  const { logout, user } = useAuth0();
+  const { logout, user } = useAuth();
 
 
   const [notifications, setNotifications] = useState<NotificationProps[]>(
@@ -101,11 +101,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
       localStorage.removeItem('spaceCode');
     }
     
-    logout({
-      logoutParams: {
-        returnTo: process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin
-      }
-    });
+    logout();
   };
 
   const navItems: NavItem[] = [
@@ -123,7 +119,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
 
   return (
     <>
-      <header className="fixed w-full bg-background z-20 border-b border-gray-200">
+      <header className="fixed top-5 w-full bg-background z-20 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           {/* Mobile: Logo left, Notifications + Hamburger right */}
           <div className="flex md:hidden flex-row items-center justify-between h-14 w-full gap-2">
