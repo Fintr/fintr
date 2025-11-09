@@ -26,8 +26,8 @@ module Auth
       def exchange_code_for_tokens(code, provided_redirect_uri = nil)
         begin
           auth0_domain = ENV["M2M_AUTH0_DOMAIN"]
-          client_id = ENV["AUTH0_CLIENT_ID"]
-          client_secret = ENV["AUTH0_CLIENT_SECRET"]
+          client_id = ENV["M2M_AUTH0_CLIENT_ID"]
+          client_secret = ENV["M2M_AUTH0_CLIENT_SECRET"]
 
           # Validate required environment variables (always needed)
           if auth0_domain.blank?
