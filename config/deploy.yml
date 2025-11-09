@@ -93,7 +93,9 @@ env:
 # Use a different ssh user than root
 #
 ssh:
+
   user: root
+
   config: true
 
 # Use a persistent storage volume.

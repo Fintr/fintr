@@ -48,7 +48,9 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
       end
 
       it "uses Asia/Manila timezone for date conversion" do
+
         expected_date = Utils::Dates.current_date_in_manila
+
 
         expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
           space_id: space1.id,
@@ -67,7 +69,9 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
       end
 
       it "still uses Asia/Manila timezone for date conversion" do
+
         expected_date = Utils::Dates.current_date_in_manila
+
 
         expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
           space_id: space1.id,
@@ -86,7 +90,9 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
       end
 
       it "still uses Asia/Manila timezone for date conversion" do
+
         expected_date = Utils::Dates.current_date_in_manila
+
 
         expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
           space_id: space1.id,
@@ -105,7 +111,9 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
       end
 
       it "still uses Asia/Manila timezone for date conversion" do
+
         expected_date = Utils::Dates.current_date_in_manila
+
 
         expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
           space_id: space1.id,
@@ -124,7 +132,9 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
       end
 
       it "uses Asia/Manila timezone regardless of system timezone" do
+
         expected_date = Utils::Dates.current_date_in_manila
+
 
         expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
           space_id: space1.id,
@@ -137,7 +147,9 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
       it "works consistently across different system timezones" do
         test_timezones.each do |tz|
           Time.use_zone(tz) do
+
             expected_date = Utils::Dates.current_date_in_manila
+
 
             expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
               space_id: space1.id,
@@ -149,6 +161,7 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
         end
       end
     end
+
 
     context "when it is early morning in Manila (after midnight boundary)" do
       around do |example|
@@ -174,6 +187,7 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
       end
     end
 
+
     context "when date is at month boundary with leap year" do
       around do |example|
         # Set to end of month in leap year
@@ -182,7 +196,9 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
       end
 
       it "uses Asia/Manila timezone regardless of system timezone" do
+
         expected_date = Utils::Dates.current_date_in_manila
+
 
         expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
           space_id: space1.id,
@@ -195,7 +211,9 @@ RSpec.describe Budgets::CreateSpaceMonthlyBudgetsJob, type: :job do
       it "works consistently across different system timezones in leap year" do
         test_timezones.each do |tz|
           Time.use_zone(tz) do
+
             expected_date = Utils::Dates.current_date_in_manila
+
 
             expect(Budgets::CreateMonthlyBudgetsJob).to receive(:perform_later).with(
               space_id: space1.id,

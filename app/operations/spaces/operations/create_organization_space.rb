@@ -34,6 +34,7 @@ module Spaces
           _               = step assign_admin_role(space, user)
           _               = step copy_categories(space, reference_space)
           _               = step copy_accounts(space, reference_space)
+
           space
         end
       end

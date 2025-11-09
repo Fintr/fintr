@@ -8,6 +8,12 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       namespace :auth do
+        # Public routes (no authentication required)
+        post "/login", to: "login#create"
+        post "/signup", to: "signup#create"
+        post "/refresh", to: "refresh#create"
+        post "/google/callback", to: "google#callback"
+        
         # Private routes
         get "/private", to: "private#private"
         get "/private_scoped", to: "private#private_scoped"

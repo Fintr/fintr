@@ -10,9 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
-
-
+ActiveRecord::Schema[8.1].define(version: 2025_10_28_072846) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -37,38 +35,38 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   create_enum "schedule_type", ["one_time", "repeat", "installment"]
 
   create_table "accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "space_id", null: false
-    t.string "name", null: false
+    t.enum "account_category", null: false, enum_type: "account_category"
     t.bigint "balance_cents", default: 0, null: false
     t.string "balance_currency", default: "PHP", null: false
-    t.enum "account_category", null: false, enum_type: "account_category"
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
     t.datetime "discarded_at"
+    t.string "name", null: false
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
     t.index ["discarded_at"], name: "index_accounts_on_discarded_at"
     t.index ["space_id", "name"], name: "index_accounts_on_space_id_and_name_where_not_discarded", unique: true, where: "(discarded_at IS NULL)"
     t.index ["space_id"], name: "index_accounts_on_space_id"
   end
 
   create_table "active_storage_attachments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "name", null: false
-    t.string "record_type", null: false
-    t.uuid "record_id", null: false
     t.uuid "blob_id", null: false
     t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.uuid "record_id", null: false
+    t.string "record_type", null: false
     t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
     t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
   end
 
   create_table "active_storage_blobs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "key", null: false
-    t.string "filename", null: false
-    t.string "content_type"
-    t.text "metadata"
-    t.string "service_name", null: false
     t.bigint "byte_size", null: false
     t.string "checksum"
+    t.string "content_type"
     t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "key", null: false
+    t.text "metadata"
+    t.string "service_name", null: false
     t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
   end
 
@@ -79,11 +77,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "ai_conversation_messages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "conversation_id", null: false
     t.text "content", null: false
-    t.integer "openai_role", default: 0, null: false
-    t.jsonb "metadata", default: {}
+    t.uuid "conversation_id", null: false
     t.datetime "created_at", null: false
+    t.jsonb "metadata", default: {}
+    t.integer "openai_role", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["conversation_id", "created_at"], name: "idx_on_conversation_id_created_at_c02dfcf735"
     t.index ["conversation_id"], name: "index_ai_conversation_messages_on_conversation_id"
@@ -91,13 +89,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "ai_conversations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "user_id", null: false
-    t.uuid "space_id", null: false
-    t.string "title", null: false
+    t.datetime "created_at", null: false
     t.datetime "last_message_at"
     t.string "openai_conversation_id", null: false
-    t.datetime "created_at", null: false
+    t.uuid "space_id", null: false
+    t.string "title", null: false
     t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
     t.index ["last_message_at"], name: "index_ai_conversations_on_last_message_at"
     t.index ["openai_conversation_id"], name: "index_ai_conversations_on_openai_conversation_id", unique: true
     t.index ["space_id", "created_at"], name: "index_ai_conversations_on_space_id_and_created_at"
@@ -107,19 +105,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "ai_interactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "user_id", null: false
-    t.uuid "space_id", null: false
-    t.string "session_id", null: false
-    t.text "request", null: false
+    t.datetime "created_at", null: false
     t.text "enhanced_prompt"
-    t.text "response"
-    t.integer "tokens_used", default: 0
-    t.string "status", default: "pending"
     t.text "error"
     t.jsonb "metadata", default: {}
+    t.text "request", null: false
+    t.text "response"
+    t.string "session_id", null: false
+    t.uuid "space_id", null: false
+    t.string "status", default: "pending"
     t.decimal "time_seconds", precision: 6, scale: 2, default: "0.0"
-    t.datetime "created_at", null: false
+    t.integer "tokens_used", default: 0
     t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
     t.index ["session_id"], name: "index_ai_interactions_on_session_id"
     t.index ["space_id", "created_at"], name: "index_ai_interactions_on_space_id_and_created_at"
     t.index ["space_id"], name: "index_ai_interactions_on_space_id"
@@ -129,28 +127,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "ai_usages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "user_id", null: false
-    t.uuid "space_id", null: false
     t.enum "ai_type", default: "pure_ai_ocr", null: false, enum_type: "ai_usages_ai_type"
-    t.enum "status", default: "pending", null: false, enum_type: "ai_usages_ai_status"
-    t.integer "tokens_used", default: 1, null: false
-    t.decimal "time_seconds", precision: 6, scale: 2, default: "0.0", null: false
-    t.jsonb "result", default: {}, null: false
     t.datetime "created_at", null: false
+    t.jsonb "result", default: {}, null: false
+    t.uuid "space_id", null: false
+    t.enum "status", default: "pending", null: false, enum_type: "ai_usages_ai_status"
+    t.decimal "time_seconds", precision: 6, scale: 2, default: "0.0", null: false
+    t.integer "tokens_used", default: 1, null: false
     t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
     t.index ["space_id"], name: "index_ai_usages_on_space_id"
     t.index ["user_id"], name: "index_ai_usages_on_user_id"
   end
 
   create_table "budgets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "space_id", null: false
-    t.uuid "category_id", null: false
     t.bigint "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "PHP", null: false
+    t.uuid "category_id", null: false
+    t.datetime "created_at", null: false
+    t.date "date", null: false
+    t.uuid "space_id", null: false
     t.bigint "spent_cents", default: 0, null: false
     t.string "spent_currency", default: "PHP", null: false
-    t.date "date", null: false
-    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["amount_cents", "amount_currency"], name: "index_budgets_on_amount_cents_and_amount_currency"
     t.index ["category_id"], name: "index_budgets_on_category_id"
@@ -160,11 +158,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "crm_ticket_responses", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "ticket_id", null: false
-    t.uuid "responder_id"
-    t.text "message", null: false
-    t.enum "response_type", default: "user_reply", null: false, enum_type: "crm_ticket_response_type"
     t.datetime "created_at", null: false
+    t.text "message", null: false
+    t.uuid "responder_id"
+    t.enum "response_type", default: "user_reply", null: false, enum_type: "crm_ticket_response_type"
+    t.uuid "ticket_id", null: false
     t.datetime "updated_at", null: false
     t.index ["created_at"], name: "index_crm_ticket_responses_on_created_at"
     t.index ["responder_id"], name: "index_crm_ticket_responses_on_responder_id"
@@ -173,15 +171,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "crm_tickets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "title", null: false
-    t.text "description", default: "", null: false
-    t.enum "ticket_type", default: "bug_report", null: false, enum_type: "crm_ticket_type"
-    t.enum "priority", default: "low", null: false, enum_type: "crm_priority"
-    t.enum "status", default: "open", null: false, enum_type: "crm_ticket_status"
-    t.uuid "user_id", null: false
-    t.uuid "space_id", null: false
     t.datetime "created_at", null: false
+    t.text "description", default: "", null: false
+    t.enum "priority", default: "low", null: false, enum_type: "crm_priority"
+    t.uuid "space_id", null: false
+    t.enum "status", default: "open", null: false, enum_type: "crm_ticket_status"
+    t.enum "ticket_type", default: "bug_report", null: false, enum_type: "crm_ticket_type"
+    t.string "title", null: false
     t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
     t.index ["created_at"], name: "index_crm_tickets_on_created_at"
     t.index ["priority"], name: "index_crm_tickets_on_priority"
     t.index ["space_id"], name: "index_crm_tickets_on_space_id"
@@ -191,10 +189,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "entities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "space_id", null: false
-    t.string "full_name", null: false
-    t.string "entity_type", default: "loan", null: false
     t.datetime "created_at", null: false
+    t.string "entity_type", default: "loan", null: false
+    t.string "full_name", null: false
+    t.uuid "space_id", null: false
     t.datetime "updated_at", null: false
     t.index ["space_id", "entity_type", "full_name"], name: "index_entities_on_space_entity_type_full_name", unique: true
     t.index ["space_id", "entity_type"], name: "index_entities_on_space_id_and_entity_type"
@@ -202,24 +200,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "goal_descriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
     t.text "description"
     t.uuid "space_id", null: false
-    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["space_id"], name: "index_goal_descriptions_on_space_id"
   end
 
   create_table "loan_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "loan_id", null: false
     t.uuid "account_id", null: false
-    t.uuid "transaction_id"
-    t.bigint "principal_payment_cents", null: false
-    t.bigint "interest_payment_cents", null: false
-    t.bigint "total_payment_cents", null: false
+    t.datetime "created_at", null: false
     t.string "currency", default: "PHP", null: false
     t.date "date", null: false
+    t.bigint "interest_payment_cents", null: false
+    t.uuid "loan_id", null: false
     t.text "notes"
-    t.datetime "created_at", null: false
+    t.bigint "principal_payment_cents", null: false
+    t.bigint "total_payment_cents", null: false
+    t.uuid "transaction_id"
     t.datetime "updated_at", null: false
     t.index ["account_id", "date"], name: "index_loan_payments_on_account_id_and_date"
     t.index ["account_id"], name: "index_loan_payments_on_account_id"
@@ -229,23 +227,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "loans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "user_id", null: false
-    t.uuid "space_id", null: false
     t.uuid "account_id", null: false
-    t.bigint "principal_amount_cents", null: false
-    t.bigint "outstanding_balance_cents", null: false
-    t.string "currency", default: "PHP", null: false
-    t.decimal "interest_rate", precision: 5, scale: 2, null: false
-    t.date "date", null: false
-    t.string "loan_type", null: false
-    t.uuid "entity_id", null: false
-    t.integer "loan_term_months", null: false
-    t.date "maturity_date", null: false
-    t.string "status", default: "active"
-    t.date "paid_off_date"
-    t.text "description"
     t.datetime "created_at", null: false
+    t.string "currency", default: "PHP", null: false
+    t.date "date", null: false
+    t.text "description"
+    t.uuid "entity_id", null: false
+    t.decimal "interest_rate", precision: 5, scale: 2, null: false
+    t.integer "loan_term_months", null: false
+    t.string "loan_type", null: false
+    t.date "maturity_date", null: false
+    t.bigint "outstanding_balance_cents", null: false
+    t.date "paid_off_date"
+    t.bigint "principal_amount_cents", null: false
+    t.uuid "space_id", null: false
+    t.string "status", default: "active"
     t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
     t.index ["account_id"], name: "index_loans_on_account_id"
     t.index ["entity_id"], name: "index_loans_on_entity_id"
     t.index ["maturity_date"], name: "index_loans_on_maturity_date"
@@ -256,37 +254,37 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "monthly_financial_summaries", force: :cascade do |t|
-    t.uuid "space_id", null: false
-    t.integer "year", null: false
-    t.integer "month", null: false
-    t.decimal "total_income", precision: 15, scale: 2, default: "0.0", null: false
-    t.decimal "total_expenses", precision: 15, scale: 2, default: "0.0", null: false
-    t.decimal "net_savings", precision: 15, scale: 2, default: "0.0", null: false
     t.datetime "calculated_at", null: false
     t.datetime "created_at", null: false
+    t.integer "month", null: false
+    t.decimal "net_savings", precision: 15, scale: 2, default: "0.0", null: false
+    t.uuid "space_id", null: false
+    t.decimal "total_expenses", precision: 15, scale: 2, default: "0.0", null: false
+    t.decimal "total_income", precision: 15, scale: 2, default: "0.0", null: false
     t.datetime "updated_at", null: false
+    t.integer "year", null: false
     t.index ["space_id", "year", "month"], name: "index_monthly_financial_summaries_on_space_year_month", unique: true
     t.index ["space_id"], name: "index_monthly_financial_summaries_on_space_id"
     t.index ["year", "month"], name: "index_monthly_financial_summaries_on_year_month"
   end
 
   create_table "onboardings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "user_id", null: false
-    t.enum "step", default: "income", null: false, enum_type: "onboarding_step_enum"
-    t.jsonb "data", default: {}
     t.datetime "created_at", null: false
+    t.jsonb "data", default: {}
+    t.enum "step", default: "income", null: false, enum_type: "onboarding_step_enum"
     t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
     t.index ["user_id"], name: "index_onboardings_on_user_id"
   end
 
   create_table "rag_embeddings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "space_id", null: false
-    t.string "embeddable_type", null: false
-    t.uuid "embeddable_id", null: false
     t.text "content", null: false
+    t.datetime "created_at", null: false
+    t.uuid "embeddable_id", null: false
+    t.string "embeddable_type", null: false
     t.vector "embedding", limit: 1536, null: false
     t.jsonb "metadata", default: {}
-    t.datetime "created_at", null: false
+    t.uuid "space_id", null: false
     t.datetime "updated_at", null: false
     t.index ["embeddable_type", "embeddable_id"], name: "index_rag_embeddings_on_embeddable_type_and_embeddable_id", unique: true
     t.index ["embedding"], name: "rag_embeddings_embedding_hnsw_idx", opclass: :vector_cosine_ops, using: :hnsw
@@ -294,25 +292,25 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "roles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "name"
-    t.string "resource_type"
-    t.uuid "resource_id"
     t.datetime "created_at", null: false
+    t.string "name"
+    t.uuid "resource_id"
+    t.string "resource_type"
     t.datetime "updated_at", null: false
     t.index ["name", "resource_type", "resource_id"], name: "index_roles_on_name_and_resource_type_and_resource_id"
     t.index ["resource_type", "resource_id"], name: "index_roles_on_resource"
   end
 
   create_table "space_users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "space_id", null: false
-    t.uuid "user_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.uuid "invited_by_id"
     t.string "access_code"
-    t.string "invitation_status", default: "active"
+    t.datetime "created_at", null: false
     t.datetime "invitation_expires_at"
+    t.string "invitation_status", default: "active"
     t.datetime "invitation_used_at"
+    t.uuid "invited_by_id"
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id"
     t.index ["access_code"], name: "index_space_users_on_access_code", unique: true
     t.index ["invitation_expires_at"], name: "index_space_users_on_invitation_expires_at"
     t.index ["invitation_status"], name: "index_space_users_on_invitation_status"
@@ -324,11 +322,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "spaces", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "name", null: false
     t.string "code", null: false
-    t.string "currency", default: "PHP", null: false
-    t.string "type", null: false
     t.datetime "created_at", null: false
+    t.string "currency", default: "PHP", null: false
+    t.string "name", null: false
+    t.string "type", null: false
     t.datetime "updated_at", null: false
     t.index ["code"], name: "index_spaces_on_code", unique: true
     t.index ["currency"], name: "index_spaces_on_currency"
@@ -336,29 +334,29 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "user_id", null: false
-    t.uuid "parent_id"
-    t.uuid "effective_parent_id"
-    t.datetime "date", null: false
+    t.uuid "account_id", null: false
     t.bigint "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "PHP", null: false
     t.bigint "balance_cents", default: 0, null: false
     t.string "balance_currency", default: "PHP", null: false
-    t.string "description"
-    t.string "type", null: false
-    t.enum "schedule_type", null: false, enum_type: "schedule_type"
-    t.enum "repeat_interval", enum_type: "repeat_interval"
     t.enum "balance_state", null: false, enum_type: "balance_state"
-    t.integer "repeat_count"
-    t.integer "installment_period"
-    t.integer "installment_count"
-    t.jsonb "schedule", default: {}
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.uuid "space_id"
     t.uuid "category_id", null: false
-    t.uuid "account_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "date", null: false
+    t.string "description"
+    t.uuid "effective_parent_id"
+    t.integer "installment_count"
+    t.integer "installment_period"
+    t.uuid "parent_id"
+    t.integer "repeat_count"
+    t.enum "repeat_interval", enum_type: "repeat_interval"
+    t.jsonb "schedule", default: {}
+    t.enum "schedule_type", null: false, enum_type: "schedule_type"
+    t.uuid "space_id"
     t.uuid "transfer_id"
+    t.string "type", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
     t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["date", "type", "amount_currency", "amount_cents"], name: "idx_on_date_type_amount_currency_amount_cents_5ec151a267"
@@ -373,35 +371,35 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "transactions_categories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "space_id", null: false
-    t.string "name", null: false
     t.enum "category_type", null: false, enum_type: "category_type_enum"
     t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.uuid "space_id", null: false
     t.datetime "updated_at", null: false
     t.index ["space_id", "category_type", "name"], name: "index_tx_categories_on_space_type_name", unique: true
     t.index ["space_id"], name: "index_transactions_categories_on_space_id"
   end
 
   create_table "transfers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "user_id", null: false
-    t.uuid "space_id", null: false
-    t.uuid "from_account_id", null: false
-    t.uuid "to_account_id", null: false
-    t.uuid "parent_id"
-    t.uuid "effective_parent_id"
     t.bigint "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "PHP", null: false
-    t.bigint "transaction_cost_cents", default: 0, null: false
-    t.string "transaction_cost_currency", default: "PHP", null: false
-    t.datetime "date", null: false
-    t.string "description"
-    t.jsonb "schedule", default: {}
-    t.enum "schedule_type", null: false, enum_type: "schedule_type"
-    t.enum "repeat_interval", enum_type: "repeat_interval"
-    t.integer "repeat_count"
     t.enum "balance_state", default: "pending", null: false, enum_type: "balance_state"
     t.datetime "created_at", null: false
+    t.datetime "date", null: false
+    t.string "description"
+    t.uuid "effective_parent_id"
+    t.uuid "from_account_id", null: false
+    t.uuid "parent_id"
+    t.integer "repeat_count"
+    t.enum "repeat_interval", enum_type: "repeat_interval"
+    t.jsonb "schedule", default: {}
+    t.enum "schedule_type", null: false, enum_type: "schedule_type"
+    t.uuid "space_id", null: false
+    t.uuid "to_account_id", null: false
+    t.bigint "transaction_cost_cents", default: 0, null: false
+    t.string "transaction_cost_currency", default: "PHP", null: false
     t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
     t.index ["effective_parent_id", "date"], name: "index_transfers_on_effective_parent_id_and_date"
     t.index ["effective_parent_id"], name: "index_transfers_on_effective_parent_id"
     t.index ["from_account_id", "date"], name: "index_transfers_on_from_account_id_and_date"
@@ -418,15 +416,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
   end
 
   create_table "user_activities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "user_id", null: false
     t.date "activity_date", null: false
-    t.integer "login_count", default: 0, null: false
     t.integer "api_request_count", default: 0, null: false
-    t.integer "transaction_created_count", default: 0, null: false
-    t.integer "dashboard_viewed_count", default: 0, null: false
-    t.integer "total_requests", default: 0, null: false
     t.datetime "created_at", null: false
+    t.integer "dashboard_viewed_count", default: 0, null: false
+    t.integer "login_count", default: 0, null: false
+    t.integer "total_requests", default: 0, null: false
+    t.integer "transaction_created_count", default: 0, null: false
     t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
     t.index ["activity_date"], name: "index_user_activities_on_activity_date"
     t.index ["total_requests"], name: "index_user_activities_on_total_requests"
     t.index ["user_id", "activity_date"], name: "index_user_activities_on_user_id_and_activity_date", unique: true
@@ -435,18 +433,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_072846) do
 
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "auth_id", null: false
-    t.string "full_name"
-    t.string "email"
-    t.string "photo_url"
     t.datetime "created_at", null: false
+    t.string "email"
+    t.string "full_name"
+    t.string "photo_url"
     t.datetime "updated_at", null: false
     t.index ["auth_id"], name: "index_users_on_auth_id", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
   create_table "users_roles", id: false, force: :cascade do |t|
-    t.uuid "user_id"
     t.uuid "role_id"
+    t.uuid "user_id"
     t.index ["role_id"], name: "index_users_roles_on_role_id"
     t.index ["user_id", "role_id"], name: "index_users_roles_on_user_id_and_role_id"
     t.index ["user_id"], name: "index_users_roles_on_user_id"
