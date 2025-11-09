@@ -35,5 +35,3 @@ module Loans
     end
   end
 end
-
-

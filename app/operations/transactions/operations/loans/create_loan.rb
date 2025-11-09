@@ -116,13 +116,13 @@ module Transactions
           # borrowed = money coming in (increase balance)
           # lent = money going out (decrease balance)
           balance_change = case loan.loan_type
-                          when "borrowed"
+          when "borrowed"
                             loan.principal_amount  # Add principal to account
-                          when "lent"
+          when "lent"
                             -loan.principal_amount  # Subtract principal from account
-                          else
+          else
                             Money.from_amount(0, loan.currency || "PHP")
-                          end
+          end
 
           old_balance = account.balance.amount
           new_balance = old_balance + balance_change.amount
@@ -155,5 +155,3 @@ module Transactions
     end
   end
 end
-
-

@@ -12,6 +12,7 @@ module Transactions
           required(:space_id).value(:string)
           optional(:transfer_id).value(:string)
           optional(:skip_calculation).maybe(:bool)
+          optional(:skip_embedding).value(:bool)
 
           required(:amount).value(:decimal)
           required(:date).value(:date)
@@ -72,6 +73,7 @@ module Transactions
       def call(params)
         params             = step validate(params:)
 
+        skip_embedding     = params[:skip_embedding]
         transaction = transaction do
           category           = step find_category(params:)
           account            = step find_account(params:)
@@ -89,7 +91,7 @@ module Transactions
         transaction          = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
         _                    = step remove_draft(params:)
         _                    = step update_monthly_summary(transaction:)
-        _                    = step generate_embedding_async(transaction:)
+        _                    = step generate_embedding_async(transaction:, skip_embedding:)
         transaction.reload
       end
 
@@ -127,6 +129,7 @@ module Transactions
         params.delete(:category_name)
         params.delete(:account_name)
         params.delete(:skip_calculation)
+        params.delete(:skip_embedding)
 
         Success(params)
       end
@@ -216,7 +219,9 @@ module Transactions
         Success()
       end
 
-      def generate_embedding_async(transaction:)
+      def generate_embedding_async(transaction:, skip_embedding:)
+        return Success(transaction) if skip_embedding
+
         Ai::Embeddings::GenerateEmbeddingJob.perform_later(
           embeddable_id: transaction.id,
           embeddable_type: transaction.class.name,

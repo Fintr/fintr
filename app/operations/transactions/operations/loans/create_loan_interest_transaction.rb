@@ -40,8 +40,8 @@ module Transactions
             transaction_params   = step prepare_transaction_params(params:, category:)
             interest_transaction = step create_transaction(params: transaction_params)
             _                    = step update_currency_if_needed(
-                                          transaction: interest_transaction, 
-                                          loan_payment: params[:loan_payment], 
+                                          transaction: interest_transaction,
+                                          loan_payment: params[:loan_payment],
                                           loan: params[:loan]
                                         )
             _                    = step link_to_loan_payment(loan_payment: params[:loan_payment], transaction: interest_transaction)
@@ -110,4 +110,3 @@ module Transactions
     end
   end
 end
-

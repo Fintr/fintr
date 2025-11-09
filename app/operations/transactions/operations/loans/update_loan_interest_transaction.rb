@@ -30,7 +30,7 @@ module Transactions
           loan_payment          = params[:loan_payment]
           loan                  = params[:loan]
           interest_amount       = params[:interest_amount]
-          
+
           interest_transaction  = step find_interest_transaction(loan_payment:)
           action                = step determine_action(interest_amount:, interest_transaction:)
           result                = step execute_action(
@@ -40,7 +40,7 @@ module Transactions
                                   loan: loan,
                                   interest_amount: interest_amount
                                 )
-          
+
           result
         end
 
@@ -59,7 +59,7 @@ module Transactions
           else
             action = :update
           end
-          
+
           Success(action)
         end
 
@@ -100,9 +100,9 @@ module Transactions
           entity_name = loan.entity.display_name
           description = if loan.loan_type == "borrowed"
                          "Interest expense from #{entity_name}"
-                       else
+          else
                          "Interest income from #{entity_name}"
-                       end
+          end
 
           interest_transaction.assign_attributes(
             account_id: loan_payment.account_id,
@@ -131,4 +131,3 @@ module Transactions
     end
   end
 end
-

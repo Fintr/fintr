@@ -10,7 +10,8 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_10_28_072846) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -205,6 +206,43 @@ ActiveRecord::Schema[8.1].define(version: 2025_10_28_072846) do
     t.uuid "space_id", null: false
     t.datetime "updated_at", null: false
     t.index ["space_id"], name: "index_goal_descriptions_on_space_id"
+  end
+
+  create_table "import_records", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "edited_data", default: {}
+    t.jsonb "import_errors", default: []
+    t.uuid "import_id", null: false
+    t.jsonb "original_data", default: {}
+    t.uuid "record_id"
+    t.string "record_type"
+    t.integer "row_number", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["import_id", "record_type"], name: "index_import_records_on_import_id_and_record_type"
+    t.index ["import_id", "status"], name: "index_import_records_on_import_id_and_status"
+    t.index ["import_id"], name: "index_import_records_on_import_id"
+    t.index ["record_type", "record_id"], name: "index_import_records_on_record_type_and_record_id"
+  end
+
+  create_table "imports", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "import_errors", default: []
+    t.string "import_location", null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "processed_at"
+    t.uuid "space_id", null: false
+    t.string "status", default: "pending", null: false
+    t.integer "total_rows_failed", default: 0
+    t.integer "total_rows_inserted", default: 0
+    t.integer "total_rows_read", default: 0
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["space_id", "created_at"], name: "index_imports_on_space_id_and_created_at"
+    t.index ["space_id"], name: "index_imports_on_space_id"
+    t.index ["status"], name: "index_imports_on_status"
+    t.index ["user_id", "created_at"], name: "index_imports_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_imports_on_user_id"
   end
 
   create_table "loan_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -468,6 +506,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_10_28_072846) do
   add_foreign_key "crm_tickets", "users"
   add_foreign_key "entities", "spaces"
   add_foreign_key "goal_descriptions", "spaces"
+  add_foreign_key "import_records", "imports"
+  add_foreign_key "imports", "spaces"
+  add_foreign_key "imports", "users"
   add_foreign_key "loan_payments", "accounts"
   add_foreign_key "loan_payments", "loans"
   add_foreign_key "loan_payments", "transactions"

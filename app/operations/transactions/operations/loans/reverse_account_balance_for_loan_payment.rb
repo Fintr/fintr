@@ -33,7 +33,7 @@ module Transactions
           loan_payment = params[:loan_payment]
           loan = params[:loan]
           account = params[:account]
-          
+
           account.reload
 
           balance_reversal = case loan.loan_type
@@ -59,4 +59,3 @@ module Transactions
     end
   end
 end
-

@@ -43,4 +43,3 @@ module Entities
     end
   end
 end
-
