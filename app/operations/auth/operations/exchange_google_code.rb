@@ -25,7 +25,7 @@ module Auth
 
       def exchange_code_for_tokens(code, provided_redirect_uri = nil)
         begin
-          auth0_domain = ENV["AUTH0_DOMAIN"]
+          auth0_domain = ENV["M2M_AUTH0_DOMAIN"]
           client_id = ENV["AUTH0_CLIENT_ID"]
           client_secret = ENV["AUTH0_CLIENT_SECRET"]
 

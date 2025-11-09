@@ -30,9 +30,9 @@ module Auth
 
       def create_auth0_user(email:, password:, full_name:)
         begin
-          auth0_domain = ENV["AUTH0_DOMAIN"]
-          client_id = ENV["AUTH0_CLIENT_ID"]
-          client_secret = ENV["AUTH0_CLIENT_SECRET"]
+          auth0_domain = ENV["M2M_AUTH0_DOMAIN"]
+          client_id = ENV["M2M_AUTH0_CLIENT_ID"]
+          client_secret = ENV["M2M_AUTH0_CLIENT_SECRET"]
           audience = ENV["AUTH0_AUDIENCE"]
           connection = ENV["AUTH0_CONNECTION"] || "Username-Password-Authentication"
 
