@@ -134,7 +134,6 @@ accessories:
     options:
       memory: 1g
       cpus: 0.5
-      restart: unless-stopped
       network: 'private'
 deploy_timeout: 60
 boot:
