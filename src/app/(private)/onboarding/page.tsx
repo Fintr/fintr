@@ -31,6 +31,9 @@ export default function OnboardingIndex() {
           case 'accounts':
             router.push('/onboarding/step3');
             break;
+          case 'import':
+            router.push('/onboarding/step4');
+            break;
           default:
             // Default to step 1 if no step is set
             router.push('/onboarding/step1');

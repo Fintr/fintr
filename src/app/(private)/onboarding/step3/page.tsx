@@ -70,8 +70,8 @@ export default function OnboardingStep3() {
           accounts: processedAccountsData,
         });
         
-        // Navigate to completion or dashboard on success
-        router.push('/onboarding/completed');
+        // Navigate to step 4 (import) on success
+        router.push('/onboarding/step4');
       } catch (error) {
         console.error('Error saving step 3 data:', error);
         toast.error('Error saving accounts. Please try again.');
