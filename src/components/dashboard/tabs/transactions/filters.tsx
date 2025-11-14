@@ -16,7 +16,12 @@ import {
 } from "@/components/ui/select";
 import ComboBox from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { useState, useEffect } from "react";
+import { useAtom } from "jotai";
 import { ChevronDown, ChevronUp, Filter, X } from "lucide-react";
 import {
   getCurrentMonthDates,
@@ -26,6 +31,13 @@ import {
   getMonthDateRange,
 } from "@/utils/dateUtils";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
+import {
+  dateFilterStartDateAtom,
+  dateFilterEndDateAtom,
+  dateFilterMonthYearAtom,
+  dateFilterTypeAtom,
+  monthYearToDateRange,
+} from "@/atoms/dateFilterAtoms";
 
 export interface FilterTypes {
   selectedMonth: string;
@@ -50,7 +62,7 @@ interface FiltersProps {
   defaultCollapsed?: boolean;
 }
 export function Filters({
-  transactionFilterType,
+  transactionFilterType: _transactionFilterType,
   applyFilters,
 }: FiltersProps) {
   const { data: dashboardData } = useDashboardData();
@@ -60,31 +72,154 @@ export function Filters({
     .toLocaleString("default", { month: "long" })
     .toLowerCase();
   const currentMonthNumber = new Date().getMonth() + 1;
-  const { firstDay, lastDay } = getCurrentMonthDates();
-  const initialFilters = {
-    selectedMonth: currentMonth,
-    selectedYear: currentYear,
-    startMonth: currentMonth,
-    startYear: currentYear,
-    endMonth: currentMonth,
-    endYear: currentYear,
-    selectedCategory: "",
-    appliedCategory: "",
-    queryStartDate: firstDay,
-    queryEndDate: lastDay,
-    appliedMinAmount: "",
-    appliedMaxAmount: "",
-    searchQuery: "",
-  };
-  const [filters, setFilters] = useState(initialFilters);
+  
+  // Use shared date filter atoms
+  const [startDate, setStartDate] = useAtom(dateFilterStartDateAtom);
+  const [endDate, setEndDate] = useAtom(dateFilterEndDateAtom);
+  const [monthYear] = useAtom(dateFilterMonthYearAtom);
+  const [filterType] = useAtom(dateFilterTypeAtom);
+  
+  // Local state for filter type selector (single month vs custom)
+  const [filterTypeSelector, setFilterTypeSelector] = useState<"single" | "custom">(() => {
+    // Default to "single" if it's a single month, otherwise "custom"
+    return filterType === "single" ? "single" : "custom";
+  });
+  
+  // Local state for custom date range picker
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined } | undefined>(() => {
+    if (startDate && endDate) {
+      return {
+        from: new Date(startDate),
+        to: new Date(endDate),
+      };
+    }
+    return undefined;
+  });
+  
+  // Sync dateRange with atoms when they change externally
+  useEffect(() => {
+    if (startDate && endDate) {
+      setDateRange({
+        from: new Date(startDate),
+        to: new Date(endDate),
+      });
+    }
+  }, [startDate, endDate]);
+  
+  // Update filter type selector when filterType changes
+  useEffect(() => {
+    if (filterType === "single") {
+      setFilterTypeSelector("single");
+    } else {
+      setFilterTypeSelector("custom");
+    }
+  }, [filterType]);
+  
+  // Local state for non-date filters
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [appliedMinAmount, setAppliedMinAmount] = useState("");
+  const [appliedMaxAmount, setAppliedMaxAmount] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Sync local month/year state with atoms
+  const [filters, setFilters] = useState({
+    selectedMonth: monthYear.selectedMonth,
+    selectedYear: monthYear.selectedYear,
+    startMonth: monthYear.startMonth,
+    startYear: monthYear.startYear,
+    endMonth: monthYear.endMonth,
+    endYear: monthYear.endYear,
+  });
+  
+  // Update local state when atoms change
+  useEffect(() => {
+    setFilters({
+      selectedMonth: monthYear.selectedMonth,
+      selectedYear: monthYear.selectedYear,
+      startMonth: monthYear.startMonth,
+      startYear: monthYear.startYear,
+      endMonth: monthYear.endMonth,
+      endYear: monthYear.endYear,
+    });
+  }, [monthYear]);
+  
   function handleFilterChange(key: keyof typeof filters, value: string) {
     if (filters[key] === value) return;
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    const updatedFilters = { ...filters, [key]: value };
+    setFilters(updatedFilters);
+    // Don't update date atoms immediately - wait for Apply Filters button
+  }
+  
+  // Handle custom date range selection
+  const handleDateRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
+    if (range) {
+      const updatedRange: { from: Date | undefined; to: Date | undefined } = {
+        from: range.from,
+        to: range.to,
+      };
+      setDateRange(updatedRange);
+      // Don't update date atoms immediately - wait for Apply Filters button
+    } else {
+      setDateRange(undefined);
+    }
+  }
+  
+  // Handle filter type selector change
+  const handleFilterTypeChange = (value: "single" | "custom") => {
+    setFilterTypeSelector(value);
+    if (value === "single") {
+      // Reset local state to current month when switching to single
+      const { firstDay, lastDay } = getCurrentMonthDates();
+      const currentMonthNum = new Date().getMonth() + 1;
+      const currentYearNum = new Date().getFullYear();
+      const monthName = monthNames[currentMonthNum - 1].value;
+      setFilters({
+        selectedMonth: monthName,
+        selectedYear: currentYearNum.toString(),
+        startMonth: monthName,
+        startYear: currentYearNum.toString(),
+        endMonth: monthName,
+        endYear: currentYearNum.toString(),
+      });
+      setDateRange({
+        from: new Date(firstDay),
+        to: new Date(lastDay),
+      });
+    } else {
+      // When switching to custom, initialize date range picker with current dates
+      if (startDate && endDate) {
+        setDateRange({
+          from: new Date(startDate),
+          to: new Date(endDate),
+        });
+      }
+    }
+    // Don't update date atoms immediately - wait for Apply Filters button
   }
 
   function resetFilters() {
     const { firstDay, lastDay } = getCurrentMonthDates();
-
+    
+    // Reset date atoms
+    setStartDate(firstDay);
+    setEndDate(lastDay);
+    
+    // Reset filter type selector to single
+    setFilterTypeSelector("single");
+    
+    // Reset date range picker
+    setDateRange({
+      from: new Date(firstDay),
+      to: new Date(lastDay),
+    });
+    
+    // Reset local filters
+    setSelectedCategory("all");
+    setAppliedMinAmount("");
+    setAppliedMaxAmount("");
+    setSearchQuery("");
+    
+    // Apply reset filters
     const resetFiltersData = {
       selectedMonth: currentMonth,
       selectedYear: currentYear,
@@ -101,7 +236,6 @@ export function Filters({
       searchQuery: "",
     };
 
-    setFilters(resetFiltersData);
     applyFilters(resetFiltersData);
   }
 
@@ -144,9 +278,26 @@ export function Filters({
       </CardHeader>
         <CardContent className="px-4">
           <div className="flex flex-col md:flex-row gap-4">
-            {transactionFilterType === "single" ? (
+            {/* Filter Type Selector */}
+            <div className="space-y-2 md:flex-1">
+              <Label>Filter Type</Label>
+              <Select
+                value={filterTypeSelector}
+                onValueChange={(value) => handleFilterTypeChange(value as "single" | "custom")}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select filter type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single">Single Month</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {filterTypeSelector === "single" ? (
               <>
-                <div className="space-y-2 md:w-1/4">
+                <div className="space-y-2 md:w-auto md:flex-shrink-0">
                   <Label>Month</Label>
                   <Select
                     defaultValue={filters.selectedMonth}
@@ -155,7 +306,7 @@ export function Filters({
                       handleFilterChange("selectedMonth", value)
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full md:w-auto md:min-w-[150px]">
                       <SelectValue placeholder="Select month" />
                     </SelectTrigger>
                     <SelectContent>
@@ -178,7 +329,7 @@ export function Filters({
                   </Select>
                 </div>
 
-                <div className="space-y-2 md:w-1/4">
+                <div className="space-y-2 md:w-auto md:flex-shrink-0">
                   <Label>Year</Label>
                   <Select
                     defaultValue={filters.selectedYear}
@@ -187,7 +338,7 @@ export function Filters({
                       handleFilterChange("selectedYear", value)
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full md:w-auto md:min-w-[100px]">
                       <SelectValue placeholder="Select year" />
                     </SelectTrigger>
                     <SelectContent>
@@ -201,114 +352,43 @@ export function Filters({
                 </div>
               </>
             ) : (
-              <>
-                <div className="space-y-2 md:w-1/4">
-                  <Label>Start Month & Year</Label>
-                  <div className="flex space-x-2">
-                    <Select
-                      defaultValue={filters.startMonth}
-                      value={filters.startMonth}
-                      onValueChange={(value) =>
-                        handleFilterChange("startMonth", value)
-                      }
+              <div className="space-y-2 md:w-auto md:flex-shrink-0">
+                <Label>Date Range</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full md:w-auto md:min-w-[250px] justify-start text-left font-normal text-sm"
                     >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Start Month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {monthNames
-                          .filter(
-                            (month, index) =>
-                              parseInt(filters.startYear) !==
-                                new Date().getFullYear() ||
-                              index < currentMonthNumber
-                          )
-                          .map((month, idx) => (
-                            <SelectItem
-                              key={`${month.value}-${idx}`}
-                              value={month.value}
-                            >
-                              {month.label}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      defaultValue={filters.startYear}
-                      value={filters.startYear}
-                      onValueChange={(value) =>
-                        handleFilterChange("startYear", value)
-                      }
-                    >
-                      <SelectTrigger className="w-24">
-                        <SelectValue placeholder="Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {yearOptions.map((year, idx) => (
-                          <SelectItem key={`${year}-${idx}`} value={year}>
-                            {year}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2 md:w-1/4">
-                  <Label>End Month & Year</Label>
-                  <div className="flex space-x-2">
-                    <Select
-                      defaultValue={filters.endMonth}
-                      value={filters.endMonth}
-                      onValueChange={(value) =>
-                        handleFilterChange("endMonth", value)
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="End Month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {monthNames
-                          .filter(
-                            (month, index) =>
-                              parseInt(filters.endYear) !==
-                                new Date().getFullYear() ||
-                              index < currentMonthNumber
-                          )
-                          .map((month, idx) => (
-                            <SelectItem
-                              key={`${month.value}-${idx}`}
-                              value={month.value}
-                            >
-                              {month.label}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      defaultValue={filters.endYear}
-                      value={filters.endYear}
-                      onValueChange={(value) =>
-                        handleFilterChange("endYear", value)
-                      }
-                    >
-                      <SelectTrigger className="w-24">
-                        <SelectValue placeholder="Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {yearOptions.map((year, idx) => (
-                          <SelectItem key={`${year}-${idx}`} value={year}>
-                            {year}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "MMM d, yyyy")} -{" "}
+                            {format(dateRange.to, "MMM d, yyyy")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "MMM d, yyyy")
+                        )
+                      ) : (
+                        <span>Pick a date range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={handleDateRangeSelect}
+                      initialFocus
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             )}
 
-            <div className="space-y-2 md:w-1/4">
+            <div className="space-y-2 md:flex-1">
               <Label>Categories</Label>
               <div className="relative">
                 <ComboBox
@@ -317,15 +397,13 @@ export function Filters({
                   placeholder="Select categories"
                   className="w-full"
                   showAllOnFocus={true}
-                  value={filters.selectedCategory}
-                  onChange={(value) =>
-                    handleFilterChange("selectedCategory", value)
-                  }
+                  value={selectedCategory}
+                  onChange={setSelectedCategory}
                 />
               </div>
             </div>
 
-            <div className="space-y-2 md:w-1/4">
+            <div className="space-y-2 md:flex-1">
               <Label>Amount Range</Label>
               <div className="flex items-center gap-2">
                 <div className="relative w-full">
@@ -335,10 +413,8 @@ export function Filters({
                   <Input
                     type="number"
                     placeholder="Min"
-                    value={filters.appliedMinAmount}
-                    onChange={(e) =>
-                      handleFilterChange("appliedMinAmount", e.target.value)
-                    }
+                    value={appliedMinAmount}
+                    onChange={(e) => setAppliedMinAmount(e.target.value)}
                     className="w-full pl-7"
                   />
                 </div>
@@ -350,10 +426,8 @@ export function Filters({
                   <Input
                     type="number"
                     placeholder="Max"
-                    value={filters.appliedMaxAmount}
-                    onChange={(e) =>
-                      handleFilterChange("appliedMaxAmount", e.target.value)
-                    }
+                    value={appliedMaxAmount}
+                    onChange={(e) => setAppliedMaxAmount(e.target.value)}
                     className="w-full pl-7"
                   />
                 </div>
@@ -364,37 +438,51 @@ export function Filters({
               <Button
                 className={` hover:bg-primary/80 flex-1 flex items-center gap-1`}
                 onClick={() => {
-                  // Calculate the proper date range based on selected months and years
+                  // Calculate dates based on current filter selection
                   let queryStartDate: string;
                   let queryEndDate: string;
 
-                  if (transactionFilterType === "single") {
+                  if (filterTypeSelector === "single") {
                     // For single month filter, use selectedMonth and selectedYear
-                    const monthNumber = getMonthNumber(filters.selectedMonth);
-                    const year = parseInt(filters.selectedYear);
-                    const dateRange = getMonthDateRange(year, monthNumber);
-                    queryStartDate = dateRange.startDate;
-                    queryEndDate = dateRange.endDate;
+                    const { startDate: newStartDate, endDate: newEndDate } = monthYearToDateRange(
+                      filters.selectedMonth,
+                      filters.selectedYear,
+                      filters.selectedMonth,
+                      filters.selectedYear
+                    );
+                    queryStartDate = newStartDate;
+                    queryEndDate = newEndDate;
                   } else {
-                    // For range filter, use startMonth/Year and endMonth/Year
-                    const startMonthNumber = getMonthNumber(filters.startMonth);
-                    const startYear = parseInt(filters.startYear);
-                    const endMonthNumber = getMonthNumber(filters.endMonth);
-                    const endYear = parseInt(filters.endYear);
-                    
-                    const startDateRange = getMonthDateRange(startYear, startMonthNumber);
-                    const endDateRange = getMonthDateRange(endYear, endMonthNumber);
-                    
-                    queryStartDate = startDateRange.startDate;
-                    queryEndDate = endDateRange.endDate;
+                    // For custom range filter, use dateRange picker
+                    if (dateRange?.from && dateRange?.to) {
+                      queryStartDate = format(dateRange.from, "yyyy-MM-dd");
+                      queryEndDate = format(dateRange.to, "yyyy-MM-dd");
+                    } else if (dateRange?.from) {
+                      // If only from is selected, use the same date for both
+                      queryStartDate = format(dateRange.from, "yyyy-MM-dd");
+                      queryEndDate = format(dateRange.from, "yyyy-MM-dd");
+                    } else {
+                      // Fallback to current dates if nothing is selected
+                      const { firstDay, lastDay } = getCurrentMonthDates();
+                      queryStartDate = firstDay;
+                      queryEndDate = lastDay;
+                    }
                   }
+
+                  // Update date atoms
+                  setStartDate(queryStartDate);
+                  setEndDate(queryEndDate);
 
                   // Create the updated filters object with calculated dates
                   const updatedFilters = {
                     ...filters,
                     queryStartDate,
                     queryEndDate,
-                    appliedCategory: filters.selectedCategory,
+                    selectedCategory,
+                    appliedCategory: selectedCategory,
+                    appliedMinAmount,
+                    appliedMaxAmount,
+                    searchQuery,
                   };
 
                   applyFilters(updatedFilters);

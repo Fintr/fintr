@@ -7,7 +7,7 @@ import { BudgetIndexInputType, BudgetsPage, Budget, BudgetCategory } from '@/typ
  * @param api - The authenticated Axios instance.
  * @param options - Query options object with pageParam and queryKey.
  * @param options.pageParam - The page number to fetch (default: 1)
- * @param options.queryKey - Query key array containing [queryName, spaceCode, date]
+ * @param options.queryKey - Query key array containing [queryName, spaceCode, startDate, endDate]
  * @returns A promise resolving to a BudgetsPage containing budgets and pagination info
  */
 export const fetchBudgetsPage = async (
@@ -21,7 +21,8 @@ export const fetchBudgetsPage = async (
   }
 ): Promise<BudgetsPage> => {
   // Extract parameters from queryKey
-  const [_key, spaceCode, date] = queryKey as [
+  const [_key, spaceCode, startDate, endDate] = queryKey as [
+    string,
     string,
     string,
     string
@@ -32,14 +33,15 @@ export const fetchBudgetsPage = async (
     return { budgets: [], summary: null, nextPage: null, totalPages: null, totalCount: null };
   }
 
-  if (!date) {
-    console.error('Date is required for fetching budgets');
+  if (!startDate || !endDate) {
+    console.error('Start date and end date are required for fetching budgets');
     return { budgets: [], summary: null, nextPage: null, totalPages: null, totalCount: null };
   }
 
   const input: BudgetIndexInputType = {
     spaceCode,
-    date,
+    start_date: startDate,
+    end_date: endDate,
     page: pageParam,
   };
 
@@ -48,22 +50,42 @@ export const fetchBudgetsPage = async (
       params: input,
     });
     
-    // Parse API response
-    const budgets = response?.data?.data?.value?.budgets || [];
-    const summary = response?.data?.data?.value?.summary || null;
-    const totalPages = response?.data?.data?.pagination?.totalPages || 1;
-    const totalCount = response?.data?.data?.pagination?.totalCount || 0;
-    const currentPage = input.page;
-
-    // Determine next page number
-    const nextPage = currentPage && currentPage < totalPages ? currentPage + 1 : null;
+    // Parse API response - new structure: response.data.data.budgets and response.data.data.summary
+    const budgets = response?.data?.data?.budgets || [];
+    const summary = response?.data?.data?.summary || null;
+    
+    // This endpoint doesn't support pagination anymore, so set pagination fields to null
+    const totalPages = null;
+    const totalCount = null;
+    const nextPage = null;
 
     if (!Array.isArray(budgets)) {
       console.error('Invalid budget data structure received:', response?.data);
       return { budgets: [], summary: null, nextPage: null, totalPages: null, totalCount: null };
     }
 
-    return { budgets, summary, nextPage, totalPages, totalCount };
+    // Transform budgets to ensure totalSpent is a number (API returns it as string)
+    const transformedBudgets = budgets.map((budget: any) => ({
+      ...budget,
+      total_spent: typeof budget.totalSpent === 'string' 
+        ? parseFloat(budget.totalSpent) || 0 
+        : budget.totalSpent || 0,
+      // Map camelCase keys back to snake_case for consistency with existing code
+      category_name: budget.categoryName || budget.category_name,
+      amount_currency: budget.amountCurrency || budget.amount_currency,
+    }));
+
+    // Transform summary keys from camelCase to snake_case for consistency
+    const transformedSummary = summary ? {
+      total_budget: summary.totalBudget ?? summary.total_budget ?? 0,
+      total_spent: summary.totalSpent ?? summary.total_spent ?? 0,
+      total_spent_percentage: typeof summary.totalSpentPercentage === 'string'
+        ? parseFloat(summary.totalSpentPercentage)
+        : summary.totalSpentPercentage ?? summary.total_spent_percentage ?? null,
+      remaining: summary.remaining ?? 0,
+    } : null;
+
+    return { budgets: transformedBudgets, summary: transformedSummary, nextPage, totalPages, totalCount };
   } catch (error) {
     console.error("Error fetching budgets page:", error);
     throw error;

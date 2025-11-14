@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -39,6 +39,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateTransactionsCsv } from "@/services/transactions/queries";
 import { toast } from "sonner";
+import { useAtom } from "jotai";
+import { dateFilterTypeAtom, dateFilterStartDateAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom } from "@/atoms/dateFilterAtoms";
 
 interface TransactionsTabProps {
   // Define any props if needed, but not used in this component
@@ -53,10 +55,30 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     .toLowerCase();
   const currentYear = new Date().getFullYear().toString();
 
+  // Get filter type and dates from shared atoms (automatically determined by date range)
+  const [filterType] = useAtom(dateFilterTypeAtom);
+  const [startDate] = useAtom(dateFilterStartDateAtom);
+  const [endDate] = useAtom(dateFilterEndDateAtom);
+  const [monthYear] = useAtom(dateFilterMonthYearAtom);
+  
+  // Format the description to show selected month/year
+  const getDescription = () => {
+    if (filterType === "range") {
+      const startMonth = monthYear.startMonth.charAt(0).toUpperCase() + monthYear.startMonth.slice(1);
+      const endMonth = monthYear.endMonth.charAt(0).toUpperCase() + monthYear.endMonth.slice(1);
+      return `Manage and filter your transaction history for ${startMonth} ${monthYear.startYear} - ${endMonth} ${monthYear.endYear}`;
+    } else {
+      const month = monthYear.selectedMonth.charAt(0).toUpperCase() + monthYear.selectedMonth.slice(1);
+      return `Manage and filter your transaction history for ${month} ${monthYear.selectedYear}`;
+    }
+  };
+
   // Default to list view
   const [viewMode, setViewMode] = useState("list");
   const [showFilters, setShowFilters] = useState(false);
-  const initialFilters = {
+  
+  // Initialize appliedFilters with date filter atoms
+  const [appliedFilters, setAppliedFilters] = useState<FilterTypes>(() => ({
     selectedMonth: currentMonth,
     selectedYear: currentYear,
     startMonth: currentMonth,
@@ -65,13 +87,21 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     endYear: currentYear,
     selectedCategory: "",
     appliedCategory: "",
-    queryStartDate: firstDay,
-    queryEndDate: lastDay,
+    queryStartDate: startDate,
+    queryEndDate: endDate,
     appliedMinAmount: "",
     appliedMaxAmount: "",
     searchQuery: "",
-  }
-  const [appliedFilters, setAppliedFilters] = useState(initialFilters)
+  }))
+  
+  // Sync appliedFilters with date filter atoms when they change
+  useEffect(() => {
+    setAppliedFilters(prev => ({
+      ...prev,
+      queryStartDate: startDate,
+      queryEndDate: endDate,
+    }));
+  }, [startDate, endDate]);
   const [searchInput, setSearchInput] = useState("");
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
@@ -512,7 +542,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           <div>
             <CardTitle>All Transactions</CardTitle>
             <CardDescription>
-              Manage and filter your transaction history
+              {getDescription()}
             </CardDescription>
           </div>
           <Button
@@ -556,7 +586,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         <CardContent className="px-0">
           {showFilters && (
             <Filters
-              transactionFilterType="range"
+              transactionFilterType={filterType as "single" | "range"}
               applyFilters={applyFilters}
               isCollapsible={true}
               defaultCollapsed={false}
