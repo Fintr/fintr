@@ -33,7 +33,9 @@ export interface BudgetSummary {
 // Input parameters for fetching budgets
 export interface BudgetIndexInputType {
   spaceCode: string;
-  date: string; // Format: YYYY-MM-DD
+  date?: string; // Format: YYYY-MM-DD (optional, for backward compatibility)
+  start_date?: string; // Format: YYYY-MM-DD
+  end_date?: string; // Format: YYYY-MM-DD
   page?: number;
 }
 

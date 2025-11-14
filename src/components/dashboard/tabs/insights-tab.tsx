@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Card,
   CardHeader,
@@ -20,7 +19,6 @@ import { Progress } from "@/components/ui/progress";
 import {
   MessageSquare,
   Target,
-  Calendar,
   Send,
   LineChart,
   PieChart,
@@ -28,7 +26,6 @@ import {
   Filter,
 } from "lucide-react";
 import { useInsightsData } from "@/hooks/async/useInsightsData";
-import { useDashboardData } from "@/hooks/async/useDashboardData";
 import {
   LineChart as RechartsLineChart,
   Line,
@@ -45,10 +42,23 @@ import {
   Bar,
 } from "recharts";
 import { formatCurrency, getColor, getColorByIndex, shouldShowV2Features } from "@/lib/utils";
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
+import { useAtom } from "jotai";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ScoreTag from "@/components/ui/score-tag";
 import AccountBreakdownComponent from "@/components/dashboard/account-breakdown";
+import {
+  dateFilterStartDateAtom,
+  dateFilterEndDateAtom,
+  dateFilterMonthYearAtom,
+  dateFilterTypeAtom,
+  monthYearToDateRange,
+} from "@/atoms/dateFilterAtoms";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { getCurrentMonthDates } from "@/utils/dateUtils";
 
 interface InsightsTabProps {
   filteredTransactions?: any[];
@@ -89,8 +99,6 @@ const InsightsTab = () => {
     .toLowerCase();
   const currentYear = new Date().getFullYear().toString();
 
-  // Fetch dashboard data for category options
-  const { data: dashboardData, isLoading: dashboardLoading } = useDashboardData();
 
   // Generate dynamic year options for the select dropdowns
   const generateYearOptions = () => {
@@ -104,27 +112,85 @@ const InsightsTab = () => {
   };
   const yearOptions = generateYearOptions();
 
-  // Local state for insights tab
-  const [filterType, setFilterType] = useState("single");
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [startMonth, setStartMonth] = useState(currentMonth);
-  const [startYear, setStartYear] = useState(currentYear);
-  const [endMonth, setEndMonth] = useState(currentMonth);
-  const [endYear, setEndYear] = useState(currentYear);
+  // Use shared date filter atoms
+  const [monthYear] = useAtom(dateFilterMonthYearAtom);
+  const [filterType] = useAtom(dateFilterTypeAtom);
+  const [startDate, setStartDate] = useAtom(dateFilterStartDateAtom);
+  const [endDate, setEndDate] = useAtom(dateFilterEndDateAtom);
   const [selectedCategory, setSelectedCategory] = useState("all");
-
-  // Fetch insights data from API
-  const { data: insightsData, isLoading, isError, refetch } = useInsightsData({
-    filterType,
-    selectedMonth,
-    selectedYear,
-    startMonth,
-    startYear,
-    endMonth,
-    endYear,
-    selectedCategory,
+  
+  // Local state for filter type selector (single month vs custom)
+  const [filterTypeSelector, setFilterTypeSelector] = useState<"single" | "custom">(() => {
+    return filterType === "single" ? "single" : "custom";
   });
+  
+  // Local state for custom date range picker
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined } | undefined>(() => {
+    if (startDate && endDate) {
+      return {
+        from: new Date(startDate),
+        to: new Date(endDate),
+      };
+    }
+    return undefined;
+  });
+  
+  // Local state synced with atoms
+  const [selectedMonth, setSelectedMonth] = useState(monthYear.selectedMonth);
+  const [selectedYear, setSelectedYear] = useState(monthYear.selectedYear);
+  
+  // Sync local state with atoms
+  useEffect(() => {
+    setSelectedMonth(monthYear.selectedMonth);
+    setSelectedYear(monthYear.selectedYear);
+    if (startDate && endDate) {
+      setDateRange({
+        from: new Date(startDate),
+        to: new Date(endDate),
+      });
+    }
+  }, [monthYear, startDate, endDate]);
+  
+  // Update filter type selector when filterType changes
+  useEffect(() => {
+    if (filterType === "single") {
+      setFilterTypeSelector("single");
+    } else {
+      setFilterTypeSelector("custom");
+    }
+  }, [filterType]);
+
+  // Calculate month/year values for API call based on applied filters (from atoms)
+  const getInsightsParams = useMemo(() => {
+    // Use the applied filter type from atoms
+    if (filterType === "single") {
+      return {
+        filterType: "single",
+        selectedMonth: monthYear.selectedMonth,
+        selectedYear: monthYear.selectedYear,
+        startMonth: monthYear.selectedMonth,
+        startYear: monthYear.selectedYear,
+        endMonth: monthYear.selectedMonth,
+        endYear: monthYear.selectedYear,
+        selectedCategory: "all",
+      };
+    } else {
+      // For range, use monthYear from atoms
+      return {
+        filterType: "range",
+        selectedMonth: monthYear.startMonth,
+        selectedYear: monthYear.startYear,
+        startMonth: monthYear.startMonth,
+        startYear: monthYear.startYear,
+        endMonth: monthYear.endMonth,
+        endYear: monthYear.endYear,
+        selectedCategory: "all",
+      };
+    }
+  }, [filterType, monthYear]);
+  
+  // Fetch insights data from API
+  const { data: insightsData, isLoading, isError, refetch } = useInsightsData(getInsightsParams);
 
   // Process expense breakdown data to show top 5 categories and group others
   const processedExpenseBreakdown = useMemo(() => {
@@ -174,8 +240,84 @@ const InsightsTab = () => {
     return result;
   }, [insightsData?.expenseBreakdown]);
 
-  // Handle filter application
+  // Handle custom date range selection
+  const handleDateRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
+    if (range) {
+      const updatedRange: { from: Date | undefined; to: Date | undefined } = {
+        from: range.from,
+        to: range.to,
+      };
+      setDateRange(updatedRange);
+      // Don't update date atoms immediately - wait for Apply Filters button
+    } else {
+      setDateRange(undefined);
+    }
+  };
+  
+  // Handle filter type selector change
+  const handleFilterTypeChange = (value: "single" | "custom") => {
+    setFilterTypeSelector(value);
+    if (value === "single") {
+      // Reset local state to current month when switching to single
+      const { firstDay, lastDay } = getCurrentMonthDates();
+      const currentMonthNum = new Date().getMonth() + 1;
+      const currentYearNum = new Date().getFullYear();
+      const monthNames = [
+        "january", "february", "march", "april", "may", "june",
+        "july", "august", "september", "october", "november", "december"
+      ];
+      const monthName = monthNames[currentMonthNum - 1];
+      setSelectedMonth(monthName);
+      setSelectedYear(currentYearNum.toString());
+      setDateRange({
+        from: new Date(firstDay),
+        to: new Date(lastDay),
+      });
+    } else {
+      // When switching to custom, initialize date range picker with current dates
+      if (startDate && endDate) {
+        setDateRange({
+          from: new Date(startDate),
+          to: new Date(endDate),
+        });
+      }
+    }
+  };
+  
+  // Handle filter application - update date atoms first
   const handleApplyFilters = () => {
+    let queryStartDate: string;
+    let queryEndDate: string;
+    
+    if (filterTypeSelector === "single") {
+      const dateRange = monthYearToDateRange(
+        selectedMonth,
+        selectedYear,
+        selectedMonth,
+        selectedYear
+      );
+      queryStartDate = dateRange.startDate;
+      queryEndDate = dateRange.endDate;
+    } else {
+      // For custom range filter, use dateRange picker
+      if (dateRange?.from && dateRange?.to) {
+        queryStartDate = format(dateRange.from, "yyyy-MM-dd");
+        queryEndDate = format(dateRange.to, "yyyy-MM-dd");
+      } else if (dateRange?.from) {
+        // If only from is selected, use the same date for both
+        queryStartDate = format(dateRange.from, "yyyy-MM-dd");
+        queryEndDate = format(dateRange.from, "yyyy-MM-dd");
+      } else {
+        // Fallback to current dates if nothing is selected
+        const { firstDay, lastDay } = getCurrentMonthDates();
+        queryStartDate = firstDay;
+        queryEndDate = lastDay;
+      }
+    }
+    
+    // Update atoms
+    setStartDate(queryStartDate);
+    setEndDate(queryEndDate);
     refetch();
   };
 
@@ -212,84 +354,39 @@ const InsightsTab = () => {
               <CardDescription>Customize your dashboard view</CardDescription>
             </CardHeader>
             <CardContent className="px-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="space-y-2 md:w-1/4">
-                  <Label>View Type</Label>
-                  <Select
-                    defaultValue="single"
-                    onValueChange={(value) => setFilterType(value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select view type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="single">Single Month</SelectItem>
-                      <SelectItem value="range">Month Range</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="flex flex-col md:flex-row gap-4 items-start">
+                <div className="flex flex-col md:flex-row gap-4 flex-1">
+                  {/* Filter Type Selector */}
+                  <div className="space-y-2 md:w-auto md:min-w-[180px]">
+                    <Label>Filter Type</Label>
+                    <Select
+                      value={filterTypeSelector}
+                      onValueChange={(value) => handleFilterTypeChange(value as "single" | "custom")}
+                    >
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue placeholder="Select filter type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="single">Single Month</SelectItem>
+                        <SelectItem value="custom">Custom Range</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {filterType === "single" ? (
-                  <>
-                    <div className="space-y-2 md:w-1/4">
-                      <Label>Month</Label>
-                      <Select
-                        defaultValue={selectedMonth}
-                        value={selectedMonth}
-                        onValueChange={setSelectedMonth}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select month" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="january">January</SelectItem>
-                          <SelectItem value="february">February</SelectItem>
-                          <SelectItem value="march">March</SelectItem>
-                          <SelectItem value="april">April</SelectItem>
-                          <SelectItem value="may">May</SelectItem>
-                          <SelectItem value="june">June</SelectItem>
-                          <SelectItem value="july">July</SelectItem>
-                          <SelectItem value="august">August</SelectItem>
-                          <SelectItem value="september">September</SelectItem>
-                          <SelectItem value="october">October</SelectItem>
-                          <SelectItem value="november">November</SelectItem>
-                          <SelectItem value="december">December</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2 md:w-1/4">
-                      <Label>Year</Label>
-                      <Select
-                        defaultValue={selectedYear}
-                        value={selectedYear}
-                        onValueChange={setSelectedYear}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {yearOptions.map((year) => (
-                            <SelectItem key={year.value} value={year.value}>
-                              {year.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="space-y-2 md:w-1/4">
-                      <Label>Start Month & Year</Label>
-                      <div className="flex space-x-2">
+                  {filterTypeSelector === "single" ? (
+                    <>
+                      <div className="space-y-2 md:w-auto md:min-w-[160px]">
+                        <Label>Month</Label>
                         <Select
-                          defaultValue={startMonth}
-                          value={startMonth}
-                          onValueChange={setStartMonth}
+                          defaultValue={selectedMonth}
+                          value={selectedMonth}
+                          onValueChange={(value) => {
+                            setSelectedMonth(value);
+                            // Don't update date atoms immediately - wait for Apply Filters button
+                          }}
                         >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Start Month" />
+                          <SelectTrigger className="w-full md:w-[160px]">
+                            <SelectValue placeholder="Select month" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="january">January</SelectItem>
@@ -306,13 +403,20 @@ const InsightsTab = () => {
                             <SelectItem value="december">December</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      <div className="space-y-2 md:w-auto md:min-w-[120px]">
+                        <Label>Year</Label>
                         <Select
-                          defaultValue={startYear}
-                          value={startYear}
-                          onValueChange={setStartYear}
+                          defaultValue={selectedYear}
+                          value={selectedYear}
+                          onValueChange={(value) => {
+                            setSelectedYear(value);
+                            // Don't update date atoms immediately - wait for Apply Filters button
+                          }}
                         >
-                          <SelectTrigger className="w-24">
-                            <SelectValue placeholder="Year" />
+                          <SelectTrigger className="w-full md:w-[120px]">
+                            <SelectValue placeholder="Select year" />
                           </SelectTrigger>
                           <SelectContent>
                             {yearOptions.map((year) => (
@@ -323,80 +427,48 @@ const InsightsTab = () => {
                           </SelectContent>
                         </Select>
                       </div>
+                    </>
+                  ) : (
+                    <div className="space-y-2 md:w-auto md:min-w-[280px]">
+                      <Label>Date Range</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full md:w-[280px] justify-start text-left font-normal text-sm"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateRange?.from ? (
+                              dateRange.to ? (
+                                <>
+                                  {format(dateRange.from, "MMM d, yyyy")} -{" "}
+                                  {format(dateRange.to, "MMM d, yyyy")}
+                                </>
+                              ) : (
+                                format(dateRange.from, "MMM d, yyyy")
+                              )
+                            ) : (
+                              <span>Pick a date range</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="range"
+                            selected={dateRange}
+                            onSelect={handleDateRangeSelect}
+                            initialFocus
+                            numberOfMonths={2}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
-
-                    <div className="space-y-2 md:w-1/4">
-                      <Label>End Month & Year</Label>
-                      <div className="flex space-x-2">
-                        <Select
-                          defaultValue={endMonth}
-                          value={endMonth}
-                          onValueChange={setEndMonth}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="End Month" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="january">January</SelectItem>
-                            <SelectItem value="february">February</SelectItem>
-                            <SelectItem value="march">March</SelectItem>
-                            <SelectItem value="april">April</SelectItem>
-                            <SelectItem value="may">May</SelectItem>
-                            <SelectItem value="june">June</SelectItem>
-                            <SelectItem value="july">July</SelectItem>
-                            <SelectItem value="august">August</SelectItem>
-                            <SelectItem value="september">September</SelectItem>
-                            <SelectItem value="october">October</SelectItem>
-                            <SelectItem value="november">November</SelectItem>
-                            <SelectItem value="december">December</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          defaultValue={endYear}
-                          value={endYear}
-                          onValueChange={setEndYear}
-                        >
-                          <SelectTrigger className="w-24">
-                            <SelectValue placeholder="Year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {yearOptions.map((year) => (
-                              <SelectItem key={year.value} value={year.value}>
-                                {year.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <div className="space-y-2 md:w-1/4">
-                  <Label>Category</Label>
-                  <Select
-                    defaultValue="all"
-                    value={selectedCategory}
-                    onValueChange={setSelectedCategory}
-                    disabled={dashboardLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={dashboardLoading ? "Loading categories..." : "Select category"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {dashboardData?.categoryOptions?.map((category) => (
-                        <SelectItem key={category.value} value={category.value}>
-                          {category.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  )}
                 </div>
 
-                <div className="md:self-end">
+                <div className="md:self-end md:ml-auto">
                   <Button
-                    className="bg-primary hover:bg-primary/80 w-full"
+                    className="bg-primary hover:bg-primary/80 w-full md:w-auto"
                     onClick={handleApplyFilters}
                     disabled={isLoading}
                   >
@@ -628,7 +700,7 @@ const InsightsTab = () => {
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
                     <div className="flex items-start">
                       <div className="bg-blue-600 text-white p-2 rounded-full mr-3">
-                        <Calendar className="h-5 w-5" />
+                        <CalendarIcon className="h-5 w-5" />
                       </div>
                       <div>
                         <h4 className="font-medium text-blue-800 mb-1">
