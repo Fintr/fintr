@@ -56,6 +56,47 @@ RSpec.describe 'Api::V1::Budgets', type: :request do
       end
     end
 
+    context 'when the request is successful with start_date and end_date' do
+      let(:mock_operation_instance) { instance_double(Budgets::Operations::PrepareMonthlyReport) }
+      let(:start_date_param) { Date.new(2024, 7, 1).to_s }
+      let(:end_date_param) { Date.new(2024, 7, 31).to_s }
+      let(:expected_operation_params) do
+        hash_including(
+          space_code: space.code,
+          start_date: start_date_param,
+          end_date: end_date_param
+        )
+      end
+
+      before do
+        allow(Budgets::Operations::PrepareMonthlyReport).to receive(:new).and_return(mock_operation_instance)
+        allow(mock_operation_instance).to receive(:call)
+          .with(expected_operation_params)
+          .and_return(Dry::Monads::Result::Success.new(report_data))
+
+        get api_v1_budgets_path,
+            params: {
+              space_code: space.code,
+              start_date: start_date_param,
+              end_date: end_date_param
+            },
+            headers: headers
+      end
+
+      it 'returns an HTTP status_ok' do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'calls the PrepareMonthlyReport operation with correct parameters' do
+        expect(mock_operation_instance).to have_received(:call).with(expected_operation_params).once
+      end
+
+      it 'returns the report data in the response body' do
+        json_response = JSON.parse(response.body)
+        expect(json_response['data']).to eq(report_data.deep_stringify_keys)
+      end
+    end
+
     context 'when the PrepareMonthlyReport operation fails' do
       let(:mock_operation_instance) { instance_double(Budgets::Operations::PrepareMonthlyReport) }
       let(:failure_details_from_operation) { { "base" => ["Something went wrong with the report"] } } # This is what the operation returns
