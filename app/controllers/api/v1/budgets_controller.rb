@@ -35,7 +35,7 @@ module Api
       private
 
       def index_params
-        params.permit(:space_code, :date)
+        params.permit(:space_code, :date, :start_date, :end_date)
       end
 
       def create_params

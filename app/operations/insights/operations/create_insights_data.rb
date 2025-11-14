@@ -56,7 +56,8 @@ module Insights
       def find_budgets(params:)
         Budgets::Queries::MonthlyBudgets.call(params: {
             space_code: params[:space_code],
-            date: params[:start_date]
+            start_date: params[:start_date],
+            end_date: params[:end_date]
           }
         )
       end
