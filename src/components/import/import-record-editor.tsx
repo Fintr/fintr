@@ -327,8 +327,8 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
           <X className="h-4 w-4 mr-2" />
           Cancel
         </Button>
-        <Button onClick={handleSave} variant="outline" size="sm" disabled={updateMutation.isPending}>
-          {updateMutation.isPending ? (
+        <Button onClick={handleSave} variant="outline" size="sm" disabled={updateMutation.isLoading}>
+          {updateMutation.isLoading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Saving...
@@ -340,8 +340,8 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
             </>
           )}
         </Button>
-        <Button onClick={handleImport} size="sm" disabled={importMutation.isPending || updateMutation.isPending}>
-          {importMutation.isPending ? (
+        <Button onClick={handleImport} size="sm" disabled={importMutation.isLoading || updateMutation.isLoading}>
+          {importMutation.isLoading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Importing...
