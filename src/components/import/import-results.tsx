@@ -49,7 +49,7 @@ export const ImportResults: React.FC<ImportResultsProps> = ({ importId, onRevert
 
   const handleRevertClick = () => {
     // Prevent opening dialog if revert is already in progress
-    if (revertMutation.isPending || isReverting) {
+    if (revertMutation.isLoading || isReverting) {
       return;
     }
     setIsRevertDialogOpen(true);
@@ -58,7 +58,7 @@ export const ImportResults: React.FC<ImportResultsProps> = ({ importId, onRevert
 
   const handleRevertConfirm = async () => {
     // Prevent double submission
-    if (revertMutation.isPending || isReverting) {
+    if (revertMutation.isLoading || isReverting) {
       return;
     }
 
@@ -81,7 +81,7 @@ export const ImportResults: React.FC<ImportResultsProps> = ({ importId, onRevert
 
   const handleRevertCancel = () => {
     // Prevent closing during revert operation
-    if (revertMutation.isPending || isReverting) {
+    if (revertMutation.isLoading || isReverting) {
       return;
     }
     setIsRevertDialogOpen(false);
@@ -211,9 +211,9 @@ export const ImportResults: React.FC<ImportResultsProps> = ({ importId, onRevert
               <Button
                 onClick={handleRevertClick}
                 variant="outline"
-                disabled={revertMutation.isPending}
+                disabled={revertMutation.isLoading}
               >
-                {revertMutation.isPending ? (
+                {revertMutation.isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Reverting...
@@ -235,7 +235,7 @@ export const ImportResults: React.FC<ImportResultsProps> = ({ importId, onRevert
         open={isRevertDialogOpen} 
         onOpenChange={(open) => {
           // Prevent closing dialog during revert operation
-          if (!open && (revertMutation.isPending || isReverting)) {
+          if (!open && (revertMutation.isLoading || isReverting)) {
             return;
           }
           if (!open) {
@@ -269,16 +269,16 @@ export const ImportResults: React.FC<ImportResultsProps> = ({ importId, onRevert
             <Button 
               variant="outline" 
               onClick={handleRevertCancel} 
-              disabled={revertMutation.isPending || isReverting}
+              disabled={revertMutation.isLoading || isReverting}
             >
               Cancel
             </Button>
             <Button
               onClick={handleRevertConfirm}
               variant="destructive"
-              disabled={revertMutation.isPending || isReverting}
+              disabled={revertMutation.isLoading || isReverting}
             >
-              {(revertMutation.isPending || isReverting) ? (
+              {(revertMutation.isLoading || isReverting) ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Reverting...
