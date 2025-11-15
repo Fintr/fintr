@@ -41,7 +41,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   
   // Use shared date filter atoms
   const [startDate, setStartDate] = useAtom(dateFilterStartDateAtom);
-  const [endDate] = useAtom(dateFilterEndDateAtom);
+  const [endDate, setEndDate] = useAtom(dateFilterEndDateAtom);
   const [monthYear] = useAtom(dateFilterMonthYearAtom);
   
   const yearOptions = getYearOptions();

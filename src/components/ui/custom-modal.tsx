@@ -34,6 +34,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   const [mounted, setMounted] = React.useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const historyPushedRef = React.useRef(false);
+  const viewportHeightRef = React.useRef<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -53,7 +54,13 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       historyPushedRef.current = false;
+      viewportHeightRef.current = null;
       return;
+    }
+
+    // Capture viewport height when modal opens to prevent keyboard resize animations
+    if (viewportHeightRef.current === null) {
+      viewportHeightRef.current = window.innerHeight;
     }
 
     const checkLightboxOpen = () => {
@@ -195,12 +202,17 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           "relative z-[101] bg-background shadow-lg",
           "w-full",
           isMobile 
-            ? "h-full max-h-[100dvh] rounded-none" 
+            ? "h-full rounded-none" 
             : cn("rounded-lg", maxWidthClasses[maxWidth], "max-h-[90vh]"),
           "overflow-hidden flex flex-col",
-          "transition-all duration-200",
+          "transition-opacity duration-200",
           className
         )}
+        style={
+          isMobile && viewportHeightRef.current
+            ? { maxHeight: `${viewportHeightRef.current}px` }
+            : undefined
+        }
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >

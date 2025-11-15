@@ -88,7 +88,7 @@ export const useImports = (spaceId?: string, status?: string, page: number = 1, 
   };
 };
 
-export const useImportRecords = (importId: string, status?: string) => {
+export const useImportRecords = (importId: string, status?: 'failed' | 'success' | 'edited') => {
   const { api } = useAuthApi();
 
   const {
