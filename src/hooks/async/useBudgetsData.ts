@@ -44,7 +44,7 @@ export const useBudgetsData = (startDate: string, endDate: string) => {
     mutationFn: (payload: CreateBudgetPayload) => createBudget(api, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["budgets", spaceCode, budgetDateFilter],
+        queryKey: ["budgets", spaceCode, startDate, endDate],
         refetchType: "active",
       });
     },
@@ -57,7 +57,7 @@ export const useBudgetsData = (startDate: string, endDate: string) => {
     mutationFn: (budgetId: string) => deleteBudget(api, budgetId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["budgets", spaceCode, budgetDateFilter],
+        queryKey: ["budgets", spaceCode, startDate, endDate],
         refetchType: "active",
       });
     },

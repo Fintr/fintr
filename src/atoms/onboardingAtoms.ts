@@ -1,6 +1,6 @@
 import { atom } from 'jotai';
 
-export type OnboardingStep = 'income' | 'budgets' | 'accounts' | 'completed';
+export type OnboardingStep = 'income' | 'budgets' | 'accounts' | 'import' | 'completed';
 
 export interface OnboardingData {
   step: OnboardingStep;
