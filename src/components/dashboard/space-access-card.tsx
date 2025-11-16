@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -30,12 +30,24 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useSpaceUsers } from "@/hooks/async/useSpaceUsers";
 import { useSpacePermissions } from "@/hooks/useSpacePermissions";
-import { Users, UserPlus, Trash2, Mail, Shield, User } from "lucide-react";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { useAuthApi } from "@/hooks/useAuthApi";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSetAtom } from "jotai";
+import { Users, UserPlus, Trash2, Mail, Shield, User, Edit2, Save, X } from "lucide-react";
 import { SpaceUser } from "@/types/spaceTypes";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { spacesApi } from "@/services/spaces/api";
+import { toast } from "sonner";
+import { currentSpaceAtom, availableSpacesAtom } from "@/atoms/spaceAtoms";
 
 const SpaceAccessCard = () => {
+  const { api } = useAuthApi();
+  const { currentSpace } = useSpaceContext(api);
   const { canManageUsers } = useSpacePermissions();
+  const queryClient = useQueryClient();
+  const setCurrentSpace = useSetAtom(currentSpaceAtom);
+  const setAvailableSpaces = useSetAtom(availableSpacesAtom);
   const {
     users,
     isLoading,
@@ -46,10 +58,68 @@ const SpaceAccessCard = () => {
     isRemovingUser,
   } = useSpaceUsers();
 
-
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "member">("member");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isEditingSpaceName, setIsEditingSpaceName] = useState(false);
+  const [spaceName, setSpaceName] = useState(currentSpace?.name || "");
+
+  // Update space name mutation
+  const updateSpaceMutation = useMutation({
+    mutationFn: async (name: string) => {
+      if (!currentSpace?.id) throw new Error("No space selected");
+      const response = await spacesApi.updateSpace(api, currentSpace.id, name);
+      return response.data.data.space;
+    },
+    onSuccess: (updatedSpace) => {
+      toast.success("Space name updated successfully");
+      setIsEditingSpaceName(false);
+      setSpaceName(updatedSpace.name);
+      
+      // Update atoms immediately for instant UI update
+      if (currentSpace?.id === updatedSpace.id) {
+        setCurrentSpace(updatedSpace);
+      }
+      
+      // Update the space in availableSpacesAtom
+      setAvailableSpaces((prevSpaces) =>
+        prevSpaces.map((space) =>
+          space.id === updatedSpace.id ? updatedSpace : space
+        )
+      );
+      
+      // Invalidate all relevant queries to ensure data consistency
+      queryClient.invalidateQueries({ queryKey: ["spaces"] });
+      queryClient.invalidateQueries({ 
+        queryKey: ["space-context", currentSpace?.code] 
+      });
+      // Also invalidate without code to catch all space-context queries
+      queryClient.invalidateQueries({ queryKey: ["space-context"] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to update space name");
+    },
+  });
+
+  const handleUpdateSpaceName = async () => {
+    if (!spaceName.trim()) {
+      toast.error("Space name cannot be empty");
+      return;
+    }
+    await updateSpaceMutation.mutateAsync(spaceName.trim());
+  };
+
+  const handleCancelEdit = () => {
+    setSpaceName(currentSpace?.name || "");
+    setIsEditingSpaceName(false);
+  };
+
+  // Update spaceName when currentSpace changes
+  useEffect(() => {
+    if (currentSpace?.name && !isEditingSpaceName) {
+      setSpaceName(currentSpace.name);
+    }
+  }, [currentSpace?.name, isEditingSpaceName]);
 
   const handleGrantAccess = async () => {
     if (!email.trim()) return;
@@ -92,6 +162,66 @@ const SpaceAccessCard = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Space Name Section */}
+        <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">Space Name</h4>
+            {!isEditingSpaceName && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditingSpaceName(true)}
+              >
+                <Edit2 className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            )}
+          </div>
+          
+          {isEditingSpaceName ? (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="space-name">Name</Label>
+                <Input
+                  id="space-name"
+                  value={spaceName}
+                  onChange={(e) => setSpaceName(e.target.value)}
+                  placeholder="Enter space name"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleUpdateSpaceName}
+                  disabled={!spaceName.trim() || updateSpaceMutation.isLoading}
+                  size="sm"
+                >
+                  {updateSpaceMutation.isLoading ? (
+                    <LoadingSpinner size="small" />
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleCancelEdit}
+                  size="sm"
+                  disabled={updateSpaceMutation.isLoading}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm font-medium text-gray-700">
+              {currentSpace?.name || "Loading..."}
+            </div>
+          )}
+        </div>
+
         {/* Add User Form */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
