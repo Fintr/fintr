@@ -91,7 +91,7 @@ export function GrantAccessDialog({ open, onOpenChange }: GrantAccessDialogProps
         <DialogHeader>
           <DialogTitle>Grant Access to Space</DialogTitle>
           <DialogDescription>
-            Grant team members access to collaborate in this organization space.
+            Grant team members access to collaborate in this space.
           </DialogDescription>
         </DialogHeader>
         

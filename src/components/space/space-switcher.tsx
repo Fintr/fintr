@@ -63,7 +63,7 @@ export function SpaceSwitcher({ showSpaceSwitcher = true, isMobile = true }: Spa
               </div>
               <div className="flex items-center justify-between w-full">
                 <div className="text-xs text-gray-500">{currentSpace?.userRole || 'member'}</div>
-                {canManageUsers && currentSpace?.isOrganization && (
+                {canManageUsers && (
                   <button
                     onClick={() => setShowGrantAccessDialog(true)}
                     className="text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1"
