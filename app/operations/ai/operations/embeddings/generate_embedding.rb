@@ -109,10 +109,8 @@ module Ai
           end
         end
 
-
         def on_failure(result)
           raise StandardError, "Ai::Operations::Embeddings::GenerateEmbedding failed: #{result.inspect}"
-
         end
       end
     end

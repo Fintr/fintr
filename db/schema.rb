@@ -209,15 +209,15 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   end
 
   create_table "import_records", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.jsonb "edited_data", default: {}
-    t.jsonb "import_errors", default: []
     t.uuid "import_id", null: false
-    t.jsonb "original_data", default: {}
-    t.uuid "record_id"
     t.string "record_type"
+    t.uuid "record_id"
     t.integer "row_number", null: false
+    t.jsonb "original_data", default: {}
+    t.jsonb "edited_data", default: {}
     t.string "status", default: "pending", null: false
+    t.jsonb "import_errors", default: []
+    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["import_id", "record_type"], name: "index_import_records_on_import_id_and_record_type"
     t.index ["import_id", "status"], name: "index_import_records_on_import_id_and_status"
@@ -226,11 +226,72 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   end
 
   create_table "imports", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.jsonb "import_errors", default: []
+    t.uuid "user_id", null: false
+    t.uuid "space_id", null: false
+    t.string "status", default: "pending", null: false
     t.string "import_location", null: false
+    t.integer "total_rows_read", default: 0
+    t.integer "total_rows_inserted", default: 0
+    t.integer "total_rows_failed", default: 0
+    t.jsonb "import_errors", default: []
     t.jsonb "metadata", default: {}
     t.datetime "processed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id", "created_at"], name: "index_imports_on_space_id_and_created_at"
+    t.index ["space_id"], name: "index_imports_on_space_id"
+    t.index ["status"], name: "index_imports_on_status"
+    t.index ["user_id", "created_at"], name: "index_imports_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_imports_on_user_id"
+  end
+
+  create_table "loan_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "loan_id", null: false
+    t.uuid "account_id", null: false
+    t.uuid "transaction_id"
+    t.bigint "principal_payment_cents", null: false
+    t.bigint "interest_payment_cents", null: false
+    t.bigint "total_payment_cents", null: false
+    t.string "currency", default: "PHP", null: false
+    t.date "date", null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "date"], name: "index_loan_payments_on_account_id_and_date"
+    t.index ["account_id"], name: "index_loan_payments_on_account_id"
+    t.index ["loan_id", "date"], name: "index_loan_payments_on_loan_id_and_date"
+    t.index ["loan_id"], name: "index_loan_payments_on_loan_id"
+    t.index ["transaction_id"], name: "index_loan_payments_on_transaction_id"
+  end
+
+  create_table "loans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "user_id", null: false
+    t.uuid "space_id", null: false
+    t.uuid "account_id", null: false
+    t.bigint "principal_amount_cents", null: false
+    t.bigint "outstanding_balance_cents", null: false
+    t.string "currency", default: "PHP", null: false
+    t.decimal "interest_rate", precision: 5, scale: 2, null: false
+    t.date "date", null: false
+    t.string "loan_type", null: false
+    t.uuid "entity_id", null: false
+    t.integer "loan_term_months", null: false
+    t.date "maturity_date", null: false
+    t.string "status", default: "active"
+    t.date "paid_off_date"
+    t.text "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_loans_on_account_id"
+    t.index ["entity_id"], name: "index_loans_on_entity_id"
+    t.index ["maturity_date"], name: "index_loans_on_maturity_date"
+    t.index ["space_id", "loan_type"], name: "index_loans_on_space_id_and_loan_type"
+    t.index ["space_id", "status"], name: "index_loans_on_space_id_and_status"
+    t.index ["space_id"], name: "index_loans_on_space_id"
+    t.index ["user_id"], name: "index_loans_on_user_id"
+  end
+
+  create_table "monthly_financial_summaries", force: :cascade do |t|
     t.uuid "space_id", null: false
     t.string "status", default: "pending", null: false
     t.integer "total_rows_failed", default: 0
