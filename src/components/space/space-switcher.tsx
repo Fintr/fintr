@@ -58,7 +58,7 @@ export function SpaceSwitcher({ showSpaceSwitcher = true, isMobile = true }: Spa
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-sm truncate">
-                  {currentSpace?.isPersonal ? "Personal Space" : currentSpace?.name || 'Loading...'}
+                  {currentSpace?.name || 'Loading...'}
                 </span>
               </div>
               <div className="flex items-center justify-between w-full">
@@ -91,7 +91,7 @@ export function SpaceSwitcher({ showSpaceSwitcher = true, isMobile = true }: Spa
               >
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full" />
-                  <span className="text-sm">Personal Space</span>
+                  <span className="text-sm">{personalSpace.name}</span>
                 </div>
                 <Check className="h-3 w-3 text-green-600" />
               </button>

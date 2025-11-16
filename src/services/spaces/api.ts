@@ -50,5 +50,12 @@ export const spacesApi = {
   // Remove user from space (admin only)
   removeUser: (api: AxiosInstance, spaceCode: string, userId: string) =>
     api.delete<{ success: boolean; message: string }>(`/spaces/${spaceCode}/users/${userId}/remove`),
+
+  // Update space name (admin only)
+  updateSpace: (api: AxiosInstance, spaceId: string, name: string) =>
+    api.patch<{ success: boolean; message: string; data: { space: Space } }>(
+      `/spaces/${spaceId}`,
+      { name }
+    ),
 };
 
