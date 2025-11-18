@@ -5,16 +5,16 @@ module Api
     class SpacesController < ApiController
       skip_before_action :ensure_space_access!, only: [:index, :show, :create, :join]
 
-        # GET /api/v1/spaces
-        # Returns all spaces accessible to the current user
-        def index
-          spaces = current_user.spaces
-          render_success(
-            data: {
-              spaces: ::Spaces::Serializers::SpaceSerializer.render_as_hash(spaces, current_user: current_user)
-            }
-          )
-        end
+      # GET /api/v1/spaces
+      # Returns all spaces accessible to the current user (both personal and organization spaces)
+      def index
+        spaces = current_user.spaces
+        render_success(
+          data: {
+            spaces: ::Spaces::Serializers::SpaceSerializer.render_as_hash(spaces, current_user: current_user)
+          }
+        )
+      end
 
       # GET /api/v1/spaces/:id
       # Returns detailed information about a specific space
@@ -65,6 +65,21 @@ module Api
         render_success(message: "Successfully left the space")
       end
 
+      # PATCH /api/v1/spaces/:id
+      # Updates a space (admin only)
+      def update
+        operation = ::Spaces::Operations::UpdateSpace.new.call(
+          with_current_params(update_params).merge(space_id: params[:id])
+        )
+        return render_unprocessable_content(details: operation.failure) unless operation.success?
+
+        render_success(
+          data: {
+            space: ::Spaces::Serializers::SpaceSerializer.render_as_hash(operation.value!, current_user: current_user)
+          }
+        )
+      end
+
       private
 
       def create_params
@@ -77,6 +92,10 @@ module Api
 
       def leave_params
         params.permit(:code)
+      end
+
+      def update_params
+        params.permit(:name)
       end
     end
   end

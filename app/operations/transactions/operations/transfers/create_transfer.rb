@@ -107,6 +107,9 @@ module Transactions
           Success(transfer)
         rescue ActiveRecord::RecordInvalid => e
           Failure(transfer: transfer.errors.to_hash, error: e, expected: true)
+        rescue StandardError => e
+          error_hash = transfer.respond_to?(:errors) ? transfer.errors.to_hash : { error: e.message }
+          Failure(transfer: error_hash, error: e, expected: false)
         end
 
         def create_transfer_fee_transaction(transfer:, params:)
@@ -143,6 +146,8 @@ module Transactions
           Success(transfer)
         rescue ActiveRecord::RecordInvalid => e
           Failure(error: e, expected: true)
+        rescue StandardError => e
+          Failure(error: e, expected: false)
         end
 
         def create_past_transfers(transfer:)

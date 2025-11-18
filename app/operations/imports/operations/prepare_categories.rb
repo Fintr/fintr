@@ -4,7 +4,7 @@ require "dry/operation/extensions/active_record"
 module Imports
   module Operations
     class PrepareCategories < Dry::Operation
-      include FailureHandler
+      include ::FailureHandler
       include Dry::Operation::Extensions::ActiveRecord
 
       def call(params)
@@ -45,10 +45,10 @@ module Imports
           new_categories: new_categories
         )
 
-        Success(
+        {
           category_map: category_map,
           new_categories: new_categories
-        )
+        }
       end
 
       private
@@ -82,11 +82,13 @@ module Imports
           }
         end
 
+        # Eagerly load the relation to execute the query immediately
+        # This prevents transaction errors when iterating over the result later
         Transactions::Category.where(
           category_conditions.map { |c| "(space_id = ? AND name = ? AND category_type = ?)" }
             .join(" OR "),
           *category_conditions.flat_map { |c| [c[:space_id], c[:name], c[:category_type]] }
-        )
+        ).to_a
       end
 
       def create_missing_categories(space_id:, unique_categories:, existing_categories:)
@@ -115,13 +117,14 @@ module Imports
           )
 
           # Reload to get the created categories with IDs
+          # Eagerly load to execute query immediately and avoid transaction errors
           missing_names = missing.map { |c| c[:name] }
           missing_types = missing.map { |c| c[:category_type] }
           Transactions::Category.where(
             space_id: space_id,
             name: missing_names,
             category_type: missing_types
-          )
+          ).to_a
         rescue ActiveRecord::StatementInvalid, PG::Error => e
           Rails.logger.error("Failed to bulk create categories: #{e.message}\n#{e.backtrace.join("\n")}")
           # Fallback: create categories one by one with race condition handling
@@ -174,11 +177,17 @@ module Imports
       def create_category_import_records(import:, new_categories:)
         return if new_categories.empty?
 
-        import_records_to_create = new_categories.map do |category|
+        # Ensure all categories have IDs before creating import records
+        # If any category doesn't have an ID, skip creating import records for it
+        categories_with_ids = new_categories.select(&:id)
+        return if categories_with_ids.empty?
+
+        import_records_to_create = categories_with_ids.map do |category|
           Imports::ImportRecord.new(
             import: import,
             record_type: category.class.name,
             record_id: category.id,
+            row_number: 0, # Categories created during preparation are not tied to a specific row
             status: "success"
           )
         end

@@ -42,7 +42,7 @@ RSpec.describe Spaces::SpaceUser, type: :model do
         another_personal_space = create(:personal_space)
         space_user = build(:space_user, user: user, space: another_personal_space)
         expect(space_user).not_to be_valid
-        expect(space_user.errors[:user_id]).to include('already belongs to a personal space')
+        expect(space_user.errors[:user_id]).to include('already owns a personal space')
       end
 
       it 'allows a user to join multiple organization spaces' do

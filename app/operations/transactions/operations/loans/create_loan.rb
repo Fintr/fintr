@@ -70,6 +70,8 @@ module Transactions
           Success(entity)
         rescue ActiveRecord::RecordInvalid => e
           Failure(entity_name: "could not be created", error: e, expected: true)
+        rescue StandardError => e
+          Failure(entity_name: "could not be created", error: e, expected: true)
         end
 
         def find_account(params:)
@@ -106,6 +108,8 @@ module Transactions
           Success(loan)
         rescue ActiveRecord::RecordInvalid => e
           Failure(errors: loan.errors.to_hash, error: e, expected: true)
+        rescue StandardError => e
+          Failure(error: e, expected: true)
         end
 
         def update_account_balance(loan:, account:)

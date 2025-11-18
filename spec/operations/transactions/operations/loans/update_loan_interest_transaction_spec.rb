@@ -353,7 +353,7 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanInterestTransaction do
 
       context 'when update fails' do
         before do
-          allow_any_instance_of(Transactions::Transaction).to receive(:save!).and_raise(StandardError.new("Database error"))
+          allow_any_instance_of(Transactions::Transaction).to receive(:save!).and_raise(ActiveRecord::ActiveRecordError.new("Database error"))
         end
 
         it 'returns a failure result' do
@@ -782,7 +782,7 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanInterestTransaction do
 
     context 'when update fails' do
       before do
-        allow(interest_transaction).to receive(:save!).and_raise(StandardError.new("Database error"))
+        allow(interest_transaction).to receive(:save!).and_raise(ActiveRecord::ActiveRecordError.new("Database error"))
       end
 
       it 'returns a failure result' do

@@ -57,10 +57,10 @@ module Imports
           end
         end
 
-        Success(
+        {
           validated_rows: validated_rows,
           failed_records: failed_records
-        )
+        }
       end
 
       private

@@ -107,11 +107,13 @@ RSpec.describe Imports::Operations::PrepareCategories do
           rows_data: rows_data,
           import: fresh_import
         }
+
         result = operation.call(fresh_params)
         expect(result).to be_success
         value = result.value!
         value = value.value! if value.is_a?(Dry::Monads::Result::Success)
         expect(value[:new_categories].length).to eq(2)
+        # Verify import records were created
         expect(Imports::ImportRecord.where(import: fresh_import).count).to eq(2)
       end
 
@@ -124,6 +126,22 @@ RSpec.describe Imports::Operations::PrepareCategories do
           import_location: 'settings',
           status: 'pending'
         )
+
+        # Pre-create the categories that would be created by the operation
+        # This simulates calling the operation once, then calling it again
+        create(
+          :category,
+          space: fresh_space,
+          name: 'Groceries',
+          category_type: 'expense'
+        )
+        create(
+          :category,
+          space: fresh_space,
+          name: 'Salary',
+          category_type: 'income'
+        )
+
         fresh_rows_data = [
           {
             data: [
@@ -152,22 +170,18 @@ RSpec.describe Imports::Operations::PrepareCategories do
           import: fresh_import
         }
 
-        # First call creates categories
-        first_result = operation.call(fresh_params)
-        expect(first_result).to be_success
-        first_value = first_result.value!
-        first_value = first_value.value! if first_value.is_a?(Dry::Monads::Result::Success)
-        first_count = first_value[:new_categories].length
-        expect(first_count).to eq(2)
+        # Call operation - should not create new categories since they already exist
+        result = operation.call(fresh_params)
+        expect(result).to be_success
+        value = result.value!
+        value = value.value! if value.is_a?(Dry::Monads::Result::Success)
+        count = value[:new_categories].length
 
-        # Second call should not create new categories
-        second_result = operation.call(fresh_params)
-        expect(second_result).to be_success
-        second_value = second_result.value!
-        second_value = second_value.value! if second_value.is_a?(Dry::Monads::Result::Success)
-        second_count = second_value[:new_categories].length
+        expect(count).to eq(0)
 
-        expect(second_count).to eq(0)
+        # Verify categories still exist and weren't duplicated
+        expect(Transactions::Category.where(space: fresh_space, name: 'Groceries', category_type: 'expense').count).to eq(1)
+        expect(Transactions::Category.where(space: fresh_space, name: 'Salary', category_type: 'income').count).to eq(1)
       end
 
       it 'builds correct category map' do
@@ -786,6 +800,8 @@ RSpec.describe Imports::Operations::PrepareCategories do
               category_type: 'income'
             )
           ]
+
+          # Call the method and verify it creates import records
           expect do
             operation.send(
               :create_category_import_records,
@@ -818,12 +834,14 @@ RSpec.describe Imports::Operations::PrepareCategories do
               category_type: 'income'
             )
           ]
+
           operation.send(
             :create_category_import_records,
             import: fresh_import,
             new_categories: fresh_categories
           )
 
+          # Verify import records were created with correct attributes
           import_records = Imports::ImportRecord.where(import: fresh_import, record_type: 'Transactions::Category').order(:created_at).last(2)
           expect(import_records.map(&:import)).to all(eq(fresh_import))
           expect(import_records.map(&:status)).to all(eq('success'))

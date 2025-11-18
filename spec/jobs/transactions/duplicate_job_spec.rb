@@ -16,6 +16,8 @@ RSpec.describe Transactions::DuplicateJob, type: :job do
     end
 
     it 'calls CreateRepeatTransactions with the correct parameters' do
+      allow(operation_instance).to receive(:call).and_return(Dry::Monads::Success(nil))
+
       job.perform(transaction_id)
 
       expect(operation_instance).to have_received(:call).with(

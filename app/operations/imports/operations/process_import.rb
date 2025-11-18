@@ -15,7 +15,7 @@ module Imports
       include Dry::Operation::Extensions::ActiveRecord
 
       def validate(params:)
-        contract = Contract.new.call(**params)
+        contract = Contract.new.call(params)
         return Failure(contract.errors.to_h) unless contract.success?
 
         Success(contract.to_h)
@@ -28,56 +28,42 @@ module Imports
         # Use update_columns to avoid transaction issues
         import.update_columns(status: "processing")
 
+        result = process_import_with_error_handling(import:)
+        if result.failure?
+          return result
+        end
+
+        _ = step add_embeddings(import:)
+        import.reload
+      rescue StandardError => e
+        # Ensure import status is updated to failed even if transaction rolls back
+        # Use update_columns to bypass validations and callbacks
+        import.reload
+        error_message = "Failed to upload the file: #{e.message}"
+        import.update_columns(
+          status: "failed",
+          import_errors: [error_message]
+        )
+        # Return failure instead of raising - ensure it's the final return value
+        Failure(error: error_message)
+      end
+
+      private
+
+      def process_import_with_error_handling(import:)
         begin
           import_account = step get_or_create_import_account(space_id: import.space_id)
 
-          # Call read_excel_file and handle the result properly
-          read_result = read_excel_file(import:)
+          # Call read_excel_file using step to properly handle failures
+          rows_data_result = step read_excel_file(import:)
 
-          # Check if it's a Failure monad
-          if read_result.failure?
-            # The error should already be set in the import record by read_excel_file
-            # Just return the failure
-            return read_result
-          end
-
-          # Unwrap the Success monad to get the actual data
-          rows_data_result = read_result.value!
-
-          # Ensure rows_data is valid before proceeding
-          # Check if it's nil, not an array, or empty
-          if rows_data_result.nil?
-            error_message = "File could not be read. Please ensure you're uploading a valid Excel (.xlsx) file."
-            import.reload
-            import.update_columns(
-              status: "failed",
-              import_errors: [error_message]
-            )
-            return Failure(error: error_message)
-          end
-
-          unless rows_data_result.is_a?(Array)
-            error_message = "File format error: The file data is invalid. Please ensure you're uploading a valid Excel (.xlsx) file."
-            Rails.logger.error("rows_data_result is not an array. Class: #{rows_data_result.class}, Value: #{rows_data_result.inspect}")
-            import.reload
-            import.update_columns(
-              status: "failed",
-              import_errors: [error_message]
-            )
-            return Failure(error: error_message)
-          end
-
-          unless rows_data_result.any?
-            error_message = "No data found in file. Please ensure the file contains at least one data row."
-            import.reload
-            import.update_columns(
-              status: "failed",
-              import_errors: [error_message]
-            )
-            return Failure(error: error_message)
-          end
+          # Defensive validation - ensure rows_data is valid before proceeding
+          # These checks should not be needed if read_excel_file works correctly,
+          # but we keep them for defensive programming
+          _ = step validate_rows_data(import:, rows_data: rows_data_result)
 
           _ = step process_rows(import:, rows_data: rows_data_result, import_account:)
+          Success(true)
         rescue StandardError => e
           # Ensure import status is updated to failed
           import.reload
@@ -90,28 +76,48 @@ module Imports
             status: "failed",
             import_errors: [error_message]
           )
-          # Re-raise to let the job handle it
-          raise
+          # Return failure instead of raising
+          Failure(error: error_message)
         end
-
-        _ = step add_embeddings(import:)
-        import.reload
-      rescue StandardError => e
-        # Ensure import status is updated to failed even if transaction rolls back
-        # Use update_columns to bypass validations and callbacks
-        import.reload
-        import.update_columns(
-          status: "failed",
-          import_errors: ["Failed to upload the file: #{e.message}"]
-        )
-        # Re-raise to let the job handle it
-        raise
       end
-
-      private
 
       def get_or_create_import_account(space_id:)
         Imports::Operations::Accounts::FindOrCreateImportAccount.new.call(space_id:)
+      end
+
+      def validate_rows_data(import:, rows_data:)
+        if rows_data.nil?
+          error_message = "File could not be read. Please ensure you're uploading a valid Excel (.xlsx) file."
+          import.reload
+          import.update_columns(
+            status: "failed",
+            import_errors: [error_message]
+          )
+          return Failure(error: error_message)
+        end
+
+        unless rows_data.is_a?(Array)
+          error_message = "File format error: The file data is invalid. Please ensure you're uploading a valid Excel (.xlsx) file."
+          Rails.logger.error("rows_data is not an array. Class: #{rows_data.class}, Value: #{rows_data.inspect}")
+          import.reload
+          import.update_columns(
+            status: "failed",
+            import_errors: [error_message]
+          )
+          return Failure(error: error_message)
+        end
+
+        unless rows_data.any?
+          error_message = "No data found in file. Please ensure the file contains at least one data row."
+          import.reload
+          import.update_columns(
+            status: "failed",
+            import_errors: [error_message]
+          )
+          return Failure(error: error_message)
+        end
+
+        Success(true)
       end
 
       def read_excel_file(import:)
@@ -328,37 +334,28 @@ module Imports
       end
 
       def prepare_categories(space_id:, rows_data:, import:)
-        result = PrepareCategories.new.call(
+        PrepareCategories.new.call(
           space_id: space_id,
           rows_data: rows_data,
           import: import
         )
-        return result unless result.success?
-
-        result.value!
       end
 
       def validate_and_prepare_rows(import:, rows_data:, category_map:, import_account:)
-        result = ValidateAndPrepareRows.new.call(
+        ValidateAndPrepareRows.new.call(
           import: import,
           rows_data: rows_data,
           category_map: category_map,
           import_account: import_account
         )
-        return result unless result.success?
-
-        result.value!
       end
 
       def bulk_import_transactions(import:, validated_rows:, import_account:)
-        result = BulkImportTransactions.new.call(
+        BulkImportTransactions.new.call(
           import: import,
           validated_rows: validated_rows,
           import_account: import_account
         )
-        return result unless result.success?
-
-        result.value!
       end
 
       def add_embeddings(import:)

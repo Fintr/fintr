@@ -7,13 +7,18 @@ module Transactions
     def perform(transaction_id)
       date = Utils::Dates.current_date_in_manila
       operation = Transactions::Operations::CreateRepeatTransactions
-        .new
-        .call(
-          transaction_id:,
-          date_start: date + 1.month,
-          date_end: date + 1.month
+                    .new
+                    .call(
+                      transaction_id:,
+                      date_start: date + 1.month,
+                      date_end: date + 1.month
+                    )
+
+      unless operation.success?
+        Rails.logger.error(
+          "Duplicate job failed transaction id: #{transaction_id}, message: #{operation.failure}"
         )
-      raise StandardError, "Duplicate job failed transaction id: #{transaction_id},message: #{operation.failure}" unless operation.success?
+      end
     end
   end
 end
