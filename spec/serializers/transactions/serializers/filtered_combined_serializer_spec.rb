@@ -12,7 +12,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
   # Attached files helper
   let(:has_image) { false }
   let(:files) { OpenStruct.new(attached?: has_image) }
-  let(:transactable) { OpenStruct.new(files: files) }
+  let(:loan_payment) { nil }
+  let(:transactable) { OpenStruct.new(files: files, loan_payment: loan_payment) }
 
   let(:record_id) { SecureRandom.uuid }
   let(:record_date) { Date.new(2024, 7, 1) }
@@ -173,7 +174,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       :balance,
       :type,
       :in_series,
-      :has_image
+      :has_image,
+      :has_loan_payment
     ]
     # Re-initialize record for this specific test to ensure all fields are present
     # This is because the :type field tests redefine 'record' with only transactable_type
@@ -299,6 +301,63 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
 
       it 'returns false' do
         expect(serialized_hash[:has_image]).to be(false)
+      end
+    end
+  end
+
+  context 'when has_loan_payment field' do
+    let(:record) do
+      OpenStruct.new(
+        transactable_id: record_id,
+        date: record_date,
+        description: record_description,
+        to_account_name: record_to_account_name,
+        from_account_name: record_from_account_name,
+        category_name: record_category_name,
+        value: new_mock_money.call(record_amount),
+        balance: new_mock_money.call(record_balance),
+        transactable_type: "Transactions::Income",
+        in_series?: false,
+        transactable: transactable
+      )
+    end
+
+    context 'when loan_payment is present' do
+      let(:loan_payment) { OpenStruct.new(id: 1) }
+
+      it 'returns true' do
+        expect(serialized_hash[:has_loan_payment]).to be(true)
+      end
+    end
+
+    context 'when loan_payment is not present' do
+      let(:loan_payment) { nil }
+
+      it 'returns false' do
+        expect(serialized_hash[:has_loan_payment]).to be(false)
+      end
+    end
+
+    context 'when transactable does not respond to loan_payment' do
+      let(:transactable_without_loan_payment) { OpenStruct.new(files: files) }
+      let(:record) do
+        OpenStruct.new(
+          transactable_id: record_id,
+          date: record_date,
+          description: record_description,
+          to_account_name: record_to_account_name,
+          from_account_name: record_from_account_name,
+          category_name: record_category_name,
+          value: new_mock_money.call(record_amount),
+          balance: new_mock_money.call(record_balance),
+          transactable_type: "Transactions::Income",
+          in_series?: false,
+          transactable: transactable_without_loan_payment
+        )
+      end
+
+      it 'returns false' do
+        expect(serialized_hash[:has_loan_payment]).to be(false)
       end
     end
   end

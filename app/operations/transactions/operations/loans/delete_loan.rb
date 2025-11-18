@@ -112,6 +112,8 @@ module Transactions
           Success(loan)
         rescue ActiveRecord::RecordNotDestroyed => e
           Failure(errors: loan.errors.to_hash, error: e, expected: true)
+        rescue StandardError => e
+          Failure(error: e.message)
         end
       end
     end

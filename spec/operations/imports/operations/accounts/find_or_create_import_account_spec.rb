@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require "rails_helper"
-require_relative "../../../../../app/operations/imports/operations/accounts/get_or_create_import_account"
-
 RSpec.describe Imports::Operations::Accounts::FindOrCreateImportAccount, type: :operation do
   include Dry::Monads[:result]
 

@@ -77,13 +77,13 @@ module Budgets
 
         # Create a subquery for transaction totals per category
         # This aggregates transactions separately to avoid multiplying budget rows
-        transaction_totals_subquery = "SELECT 
+        transaction_totals_subquery = "SELECT
           transactions.category_id,
           COALESCE(SUM(transactions.amount_cents), 0) / 100 as total_spent
         FROM transactions
         INNER JOIN spaces ON spaces.id = transactions.space_id
-        WHERE transactions.balance_state = 'calculated' 
-          AND transactions.date >= '#{start_date}' 
+        WHERE transactions.balance_state = 'calculated'
+          AND transactions.date >= '#{start_date}'
           AND transactions.date <= '#{end_date}'
           AND spaces.id = '#{@space.id}'
         GROUP BY transactions.category_id"

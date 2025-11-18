@@ -73,5 +73,3 @@ RSpec.describe Entities::Serializers::EntitySerializer do
     end
   end
 end
-
-

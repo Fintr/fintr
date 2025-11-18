@@ -427,7 +427,7 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
           relation_double = instance_double(ActiveRecord::Relation)
           allow(Transactions::LoanPayment).to receive(:joins).and_return(relation_double)
           allow(relation_double).to receive(:find_by).and_return(loan_payment)
-          allow(loan_payment).to receive(:save!).and_raise(StandardError.new('Save failed'))
+          allow(loan_payment).to receive(:save!).and_raise(ActiveRecord::ActiveRecordError.new('Save failed'))
         end
 
         it { is_expected.to be_failure }
@@ -442,7 +442,7 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
           relation_double = instance_double(ActiveRecord::Relation)
           allow(Transactions::LoanPayment).to receive(:joins).and_return(relation_double)
           allow(relation_double).to receive(:find_by).and_return(loan_payment)
-          allow(loan_payment).to receive(:process_payment).and_raise(StandardError.new('Process failed'))
+          allow(loan_payment).to receive(:process_payment).and_raise(ActiveRecord::ActiveRecordError.new('Process failed'))
         end
 
         it { is_expected.to be_failure }
@@ -471,7 +471,7 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
           allow(Transactions::LoanPayment).to receive(:joins).and_return(relation_double)
           allow(relation_double).to receive(:find_by).and_return(loan_payment)
           allow(loan_payment).to receive(:loan).and_return(loan_instance)
-          allow(loan_instance).to receive(:recalculate_outstanding_balance!).and_raise(StandardError.new('Recalculate failed'))
+          allow(loan_instance).to receive(:recalculate_outstanding_balance!).and_raise(ActiveRecord::ActiveRecordError.new('Recalculate failed'))
         end
 
         it { is_expected.to be_failure }

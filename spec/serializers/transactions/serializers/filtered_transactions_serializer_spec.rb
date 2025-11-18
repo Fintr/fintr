@@ -26,7 +26,8 @@ RSpec.describe Transactions::Serializers::FilteredTransactionsSerializer do
       category_name: record_category_name,
       value: new_mock_money.call(record_amount), # Simulates Money object for value
       balance: new_mock_money.call(record_balance), # Simulates Money object for balance
-      type: "Transactions::Expense" # Note: serializer uses 'type' field directly
+      type: "Transactions::Expense", # Note: serializer uses 'type' field directly
+      loan_payment: nil
     )
   end
 
@@ -58,9 +59,51 @@ RSpec.describe Transactions::Serializers::FilteredTransactionsSerializer do
     expect(serialized_hash[:balance]).to eq(record_balance)
   end
 
+  describe ':has_loan_payment field' do
+    context 'when loan_payment is present' do
+      let(:transaction_record) do
+        OpenStruct.new(
+          id: record_id,
+          date: record_date,
+          description: record_description,
+          account_name: record_account_name,
+          category_name: record_category_name,
+          value: new_mock_money.call(record_amount),
+          balance: new_mock_money.call(record_balance),
+          type: "Transactions::Expense",
+          loan_payment: OpenStruct.new(id: SecureRandom.uuid)
+        )
+      end
+
+      it 'returns true' do
+        expect(serialized_hash[:has_loan_payment]).to be true
+      end
+    end
+
+    context 'when loan_payment is nil' do
+      let(:transaction_record) do
+        OpenStruct.new(
+          id: record_id,
+          date: record_date,
+          description: record_description,
+          account_name: record_account_name,
+          category_name: record_category_name,
+          value: new_mock_money.call(record_amount),
+          balance: new_mock_money.call(record_balance),
+          type: "Transactions::Expense",
+          loan_payment: nil
+        )
+      end
+
+      it 'returns false' do
+        expect(serialized_hash[:has_loan_payment]).to be false
+      end
+    end
+  end
+
   describe ':type field' do
     context 'when transaction.type is Transactions::Income' do
-      let(:transaction_record) { OpenStruct.new(type: "Transactions::Income", value: new_mock_money.call(0), balance: new_mock_money.call(0)) }
+      let(:transaction_record) { OpenStruct.new(type: "Transactions::Income", value: new_mock_money.call(0), balance: new_mock_money.call(0), loan_payment: nil) }
 
       it 'returns "income"' do
         expect(serialized_hash[:type]).to eq("income")
@@ -68,7 +111,7 @@ RSpec.describe Transactions::Serializers::FilteredTransactionsSerializer do
     end
 
     context 'when transaction.type is Transactions::Expense' do
-      let(:transaction_record) { OpenStruct.new(type: "Transactions::Expense", value: new_mock_money.call(0), balance: new_mock_money.call(0)) }
+      let(:transaction_record) { OpenStruct.new(type: "Transactions::Expense", value: new_mock_money.call(0), balance: new_mock_money.call(0), loan_payment: nil) }
 
       it 'returns "expense"' do
         expect(serialized_hash[:type]).to eq("expense")
@@ -76,7 +119,7 @@ RSpec.describe Transactions::Serializers::FilteredTransactionsSerializer do
     end
 
     context 'when transaction.type is Transactions::Transfer' do
-      let(:transaction_record) { OpenStruct.new(type: "Transactions::Transfer", value: new_mock_money.call(0), balance: new_mock_money.call(0)) }
+      let(:transaction_record) { OpenStruct.new(type: "Transactions::Transfer", value: new_mock_money.call(0), balance: new_mock_money.call(0), loan_payment: nil) }
 
       it 'returns "transfer"' do
         expect(serialized_hash[:type]).to eq("transfer")
@@ -84,7 +127,7 @@ RSpec.describe Transactions::Serializers::FilteredTransactionsSerializer do
     end
 
     context 'when transaction.type is something else' do
-      let(:transaction_record) { OpenStruct.new(type: "Unknown::Type", value: new_mock_money.call(0), balance: new_mock_money.call(0)) }
+      let(:transaction_record) { OpenStruct.new(type: "Unknown::Type", value: new_mock_money.call(0), balance: new_mock_money.call(0), loan_payment: nil) }
 
       it 'returns nil' do # Based on the serializer logic, if none of the conditions match, it will be nil
         expect(serialized_hash[:type]).to be_nil
@@ -101,7 +144,8 @@ RSpec.describe Transactions::Serializers::FilteredTransactionsSerializer do
       :category_name,
       :amount,
       :balance,
-      :type
+      :type,
+      :has_loan_payment
     ]
     # Re-initialize record for this specific test to ensure all fields are present
     local_record = OpenStruct.new(
@@ -112,7 +156,8 @@ RSpec.describe Transactions::Serializers::FilteredTransactionsSerializer do
       category_name: record_category_name,
       value: new_mock_money.call(record_amount),
       balance: new_mock_money.call(record_balance),
-      type: "Transactions::Expense"
+      type: "Transactions::Expense",
+      loan_payment: nil
     )
     expect(described_class.render_as_hash(local_record).keys).to match_array(expected_keys)
   end
@@ -129,7 +174,8 @@ RSpec.describe Transactions::Serializers::FilteredTransactionsSerializer do
         category_name: nil,
         value: new_mock_money.call(nil), # Amount can be nil if value.amount is nil
         balance: new_mock_money.call(nil), # Balance can be nil if balance.amount is nil
-        type: "Transactions::Income"
+        type: "Transactions::Income",
+        loan_payment: nil
       )
     end
 
@@ -169,7 +215,8 @@ RSpec.describe Transactions::Serializers::FilteredTransactionsSerializer do
         date: record_date,
         value: nil, # value object itself is nil
         balance: nil, # balance object itself is nil
-        type: "Transactions::Transfer"
+        type: "Transactions::Transfer",
+        loan_payment: nil
       )
     end
 

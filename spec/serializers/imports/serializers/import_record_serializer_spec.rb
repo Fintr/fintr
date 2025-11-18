@@ -253,5 +253,3 @@ RSpec.describe Imports::Serializers::ImportRecordSerializer do
     end
   end
 end
-
-

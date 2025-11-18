@@ -321,5 +321,3 @@ RSpec.describe Transactions::Operations::Loans::ReverseAccountBalanceForLoanPaym
     end
   end
 end
-
-

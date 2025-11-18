@@ -32,7 +32,7 @@ module Imports
         validated_rows = params[:validated_rows]
         import_account = params[:import_account]
 
-        return Success(import_records: []) if validated_rows.empty?
+        return { import_records: [] } if validated_rows.empty?
 
         # Prepare transactions for bulk import
         transactions_to_create = prepare_transactions(
@@ -161,7 +161,7 @@ module Imports
           end
         end
 
-        Success(import_records: import_records)
+        { import_records: }
       end
 
       private

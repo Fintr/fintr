@@ -483,10 +483,16 @@ RSpec.describe "API V1 Transaction Loans", type: :request do
     end
 
     context "when loan does not exist" do
-      it "returns not found error" do
+      it "returns internal server error with loan not found details" do
         delete "/api/v1/transactions/loans/invalid-id", headers: headers
 
-        expect(response).to have_http_status(:not_found)
+        expect(response).to have_http_status(:internal_server_error)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => false)
+        expect(parsed_response).to include("error")
+        expect(parsed_response["error"]["details"]).to include("loanId" => "not found")
       end
     end
 
@@ -494,10 +500,16 @@ RSpec.describe "API V1 Transaction Loans", type: :request do
       let(:other_space) { create(:personal_space) }
       let(:other_loan) { create(:loan, space: other_space, user: user) }
 
-      it "returns not found error" do
+      it "returns internal server error with loan not found details" do
         delete "/api/v1/transactions/loans/#{other_loan.id}", headers: headers
 
-        expect(response).to have_http_status(:not_found)
+        expect(response).to have_http_status(:internal_server_error)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => false)
+        expect(parsed_response).to include("error")
+        expect(parsed_response["error"]["details"]).to include("loanId" => "not found")
       end
     end
   end

@@ -69,4 +69,3 @@ module Spaces
     end
   end
 end
-

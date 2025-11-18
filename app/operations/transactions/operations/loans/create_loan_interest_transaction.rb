@@ -67,9 +67,9 @@ module Transactions
           entity_name = loan.entity.display_name
           description = if loan.loan_type == "borrowed"
                           "Interest expense from #{entity_name}"
-                        else
+          else
                           "Interest income from #{entity_name}"
-                        end
+          end
 
           transaction_params = {
             user_id: loan.user_id.to_s,

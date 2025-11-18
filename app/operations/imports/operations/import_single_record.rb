@@ -53,7 +53,6 @@ module Imports
         import_record      = params[:import_record]
 
         transaction do
-          raise StandardError, "test"
           row_data         = step extract_row_data(import_record:)
           _                = step validate_row_data(row_data:)
           import_account   = step get_or_create_import_account(space_id: import_record.import.space_id)
@@ -98,6 +97,9 @@ module Imports
 
       def validate_row_data(row_data:)
         # Data should already have symbol keys from extract_row_data
+        # Return early failure if row_data is empty (import_data was not a hash)
+        return Failure(error: "Validation failed", errors: { base: ["Import data must be a hash"] }) if row_data.empty?
+
         contract = RowDataContract.new.call(**row_data)
         return Failure(error: "Validation failed", errors: contract.errors.to_h) unless contract.success?
 

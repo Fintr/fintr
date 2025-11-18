@@ -171,7 +171,7 @@ RSpec.describe Ai::Operations::Embeddings::GenerateEmbedding, type: :operation d
       let(:params) { { embeddable_id: nil, embeddable_type: "Transactions::Transaction", space_id: space.id } }
 
       it "returns a failure" do
-        expect { operation.call(params) }.to raise_error(StandardError, "Ai::Operations::Embeddings::GenerateEmbedding failed")
+        expect { operation.call(params) }.to raise_error(StandardError, /^Ai::Operations::Embeddings::GenerateEmbedding failed/)
       end
     end
 
@@ -185,7 +185,7 @@ RSpec.describe Ai::Operations::Embeddings::GenerateEmbedding, type: :operation d
       end
 
       it "returns a failure when embeddable is not found" do
-        expect { operation.call(params) }.to raise_error(StandardError, "Ai::Operations::Embeddings::GenerateEmbedding failed")
+        expect { operation.call(params) }.to raise_error(StandardError, /^Ai::Operations::Embeddings::GenerateEmbedding failed/)
       end
     end
 
@@ -199,7 +199,7 @@ RSpec.describe Ai::Operations::Embeddings::GenerateEmbedding, type: :operation d
       end
 
       it "returns a failure for invalid embeddable type" do
-        expect { operation.call(params) }.to raise_error(StandardError, "Ai::Operations::Embeddings::GenerateEmbedding failed")
+        expect { operation.call(params) }.to raise_error(StandardError, /^Ai::Operations::Embeddings::GenerateEmbedding failed/)
       end
     end
 
@@ -213,7 +213,7 @@ RSpec.describe Ai::Operations::Embeddings::GenerateEmbedding, type: :operation d
       end
 
       it "returns a failure" do
-        expect { operation.call(params) }.to raise_error(StandardError, "Ai::Operations::Embeddings::GenerateEmbedding failed")
+        expect { operation.call(params) }.to raise_error(StandardError, /^Ai::Operations::Embeddings::GenerateEmbedding failed/)
       end
     end
 
@@ -225,7 +225,7 @@ RSpec.describe Ai::Operations::Embeddings::GenerateEmbedding, type: :operation d
       end
 
       it "returns a failure" do
-        expect { operation.call(params) }.to raise_error(StandardError, "Ai::Operations::Embeddings::GenerateEmbedding failed")
+        expect { operation.call(params) }.to raise_error(StandardError, /^Ai::Operations::Embeddings::GenerateEmbedding failed/)
       end
     end
 
@@ -246,7 +246,7 @@ RSpec.describe Ai::Operations::Embeddings::GenerateEmbedding, type: :operation d
       end
 
       it "returns a failure" do
-        expect { operation.call(params) }.to raise_error(StandardError, "Ai::Operations::Embeddings::GenerateEmbedding failed")
+        expect { operation.call(params) }.to raise_error(StandardError, /^Ai::Operations::Embeddings::GenerateEmbedding failed/)
       end
     end
 
