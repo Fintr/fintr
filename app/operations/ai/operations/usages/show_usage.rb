@@ -54,7 +54,7 @@ module Ai
 
         def show_usage(space:, user:, is_admin:, usages:, usage_period:)
           tokens_used = usages.sum(:tokens_used)
-          limit = is_admin ? 1_000 :Spaces::Space::SPACE_TOKEN_LIMIT
+          limit = is_admin ? 1_000 : space.current_token_limit
           usage = {
             used: tokens_used,
             limit:,

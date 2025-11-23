@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_21_073244) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
@@ -31,6 +31,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   create_enum "crm_ticket_response_type", ["user_reply", "admin_response", "system_update"]
   create_enum "crm_ticket_status", ["open", "in_progress", "resolved", "dismissed"]
   create_enum "crm_ticket_type", ["bug_report", "feature_request", "general_feedback", "help_request", "billing_issue", "account_issue", "other"]
+  create_enum "finance_payment_status", ["pending", "succeeded", "failed", "refunded"]
+  create_enum "finance_space_subscription_status", ["requires_action", "pending", "active", "inactive"]
   create_enum "onboarding_step_enum", ["income", "budgets", "accounts", "completed"]
   create_enum "repeat_interval", ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
   create_enum "schedule_type", ["one_time", "repeat", "installment"]
@@ -200,6 +202,66 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
     t.index ["space_id"], name: "index_entities_on_space_id"
   end
 
+  create_table "finance_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.string "amount_currency", default: "PHP", null: false
+    t.datetime "created_at", null: false
+    t.datetime "failed_at"
+    t.text "failure_reason"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "paid_at"
+    t.string "payment_method_id"
+    t.string "payment_method_type"
+    t.uuid "space_subscription_id", null: false
+    t.enum "status", default: "pending", null: false, enum_type: "finance_payment_status"
+    t.datetime "updated_at", null: false
+    t.string "xendit_action_id", null: false
+    t.string "xendit_cycle_id"
+    t.jsonb "xendit_data", default: {}, null: false
+    t.string "xendit_reference_id"
+    t.index ["paid_at"], name: "index_finance_payments_on_paid_at"
+    t.index ["space_subscription_id"], name: "index_finance_payments_on_space_subscription_id"
+    t.index ["status"], name: "index_finance_payments_on_status"
+    t.index ["xendit_action_id"], name: "index_finance_payments_on_xendit_action_id", unique: true
+    t.index ["xendit_cycle_id"], name: "index_finance_payments_on_xendit_cycle_id"
+  end
+
+  create_table "finance_space_subscriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "current_cycle_count", default: 0, null: false
+    t.datetime "ended_at"
+    t.jsonb "metadata", default: {}, null: false
+    t.uuid "space_id", null: false
+    t.datetime "started_at"
+    t.enum "status", default: "pending", null: false, enum_type: "finance_space_subscription_status"
+    t.uuid "subscription_plan_id", null: false
+    t.integer "total_cycles"
+    t.datetime "updated_at", null: false
+    t.string "xendit_customer_id"
+    t.string "xendit_plan_id"
+    t.string "xendit_schedule_id"
+    t.index ["space_id", "status"], name: "index_finance_space_subscriptions_on_space_id_and_status", unique: true, where: "(status = 'active'::finance_space_subscription_status)"
+    t.index ["space_id"], name: "index_finance_space_subscriptions_on_space_id"
+    t.index ["status"], name: "index_finance_space_subscriptions_on_status"
+    t.index ["subscription_plan_id"], name: "index_finance_space_subscriptions_on_subscription_plan_id"
+    t.index ["xendit_plan_id"], name: "index_finance_space_subscriptions_on_xendit_plan_id"
+  end
+
+  create_table "finance_subscription_plans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "interval", default: "month", null: false
+    t.string "name", null: false
+    t.bigint "price_cents", default: 0, null: false
+    t.string "price_currency", default: "PHP", null: false
+    t.string "slug", null: false
+    t.integer "token_limit", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_finance_subscription_plans_on_active"
+    t.index ["slug"], name: "index_finance_subscription_plans_on_slug", unique: true
+  end
+
   create_table "goal_descriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "description"
@@ -209,15 +271,15 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   end
 
   create_table "import_records", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "import_id", null: false
-    t.string "record_type"
-    t.uuid "record_id"
-    t.integer "row_number", null: false
-    t.jsonb "original_data", default: {}
-    t.jsonb "edited_data", default: {}
-    t.string "status", default: "pending", null: false
-    t.jsonb "import_errors", default: []
     t.datetime "created_at", null: false
+    t.jsonb "edited_data", default: {}
+    t.jsonb "import_errors", default: []
+    t.uuid "import_id", null: false
+    t.jsonb "original_data", default: {}
+    t.uuid "record_id"
+    t.string "record_type"
+    t.integer "row_number", null: false
+    t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.index ["import_id", "record_type"], name: "index_import_records_on_import_id_and_record_type"
     t.index ["import_id", "status"], name: "index_import_records_on_import_id_and_status"
@@ -226,69 +288,23 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   end
 
   create_table "imports", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "user_id", null: false
-    t.uuid "space_id", null: false
-    t.string "status", default: "pending", null: false
-    t.string "import_location", null: false
-    t.integer "total_rows_read", default: 0
-    t.integer "total_rows_inserted", default: 0
-    t.integer "total_rows_failed", default: 0
+    t.datetime "created_at", null: false
     t.jsonb "import_errors", default: []
+    t.string "import_location", null: false
     t.jsonb "metadata", default: {}
     t.datetime "processed_at"
-    t.datetime "created_at", null: false
+    t.uuid "space_id", null: false
+    t.string "status", default: "pending", null: false
+    t.integer "total_rows_failed", default: 0
+    t.integer "total_rows_inserted", default: 0
+    t.integer "total_rows_read", default: 0
     t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
     t.index ["space_id", "created_at"], name: "index_imports_on_space_id_and_created_at"
     t.index ["space_id"], name: "index_imports_on_space_id"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id", "created_at"], name: "index_imports_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_imports_on_user_id"
-  end
-
-  create_table "loan_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "loan_id", null: false
-    t.uuid "account_id", null: false
-    t.uuid "transaction_id"
-    t.bigint "principal_payment_cents", null: false
-    t.bigint "interest_payment_cents", null: false
-    t.bigint "total_payment_cents", null: false
-    t.string "currency", default: "PHP", null: false
-    t.date "date", null: false
-    t.text "notes"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "date"], name: "index_loan_payments_on_account_id_and_date"
-    t.index ["account_id"], name: "index_loan_payments_on_account_id"
-    t.index ["loan_id", "date"], name: "index_loan_payments_on_loan_id_and_date"
-    t.index ["loan_id"], name: "index_loan_payments_on_loan_id"
-    t.index ["transaction_id"], name: "index_loan_payments_on_transaction_id"
-  end
-
-  create_table "loans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "user_id", null: false
-    t.uuid "space_id", null: false
-    t.uuid "account_id", null: false
-    t.bigint "principal_amount_cents", null: false
-    t.bigint "outstanding_balance_cents", null: false
-    t.string "currency", default: "PHP", null: false
-    t.decimal "interest_rate", precision: 5, scale: 2, null: false
-    t.date "date", null: false
-    t.string "loan_type", null: false
-    t.uuid "entity_id", null: false
-    t.integer "loan_term_months", null: false
-    t.date "maturity_date", null: false
-    t.string "status", default: "active"
-    t.date "paid_off_date"
-    t.text "description"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id"], name: "index_loans_on_account_id"
-    t.index ["entity_id"], name: "index_loans_on_entity_id"
-    t.index ["maturity_date"], name: "index_loans_on_maturity_date"
-    t.index ["space_id", "loan_type"], name: "index_loans_on_space_id_and_loan_type"
-    t.index ["space_id", "status"], name: "index_loans_on_space_id_and_status"
-    t.index ["space_id"], name: "index_loans_on_space_id"
-    t.index ["user_id"], name: "index_loans_on_user_id"
   end
 
   create_table "loan_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -551,6 +567,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   add_foreign_key "crm_tickets", "spaces"
   add_foreign_key "crm_tickets", "users"
   add_foreign_key "entities", "spaces"
+  add_foreign_key "finance_payments", "finance_space_subscriptions", column: "space_subscription_id"
+  add_foreign_key "finance_space_subscriptions", "finance_subscription_plans", column: "subscription_plan_id"
+  add_foreign_key "finance_space_subscriptions", "spaces"
   add_foreign_key "goal_descriptions", "spaces"
   add_foreign_key "import_records", "imports"
   add_foreign_key "imports", "spaces"

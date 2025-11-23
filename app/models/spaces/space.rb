@@ -21,6 +21,7 @@ module Spaces
     has_one  :goal_description, class_name: "GoalDescription", dependent: :destroy
     has_many :conversations, class_name: "Ai::Conversation", dependent: :destroy
     has_many :imports, class_name: "Imports::Import", dependent: :destroy
+    has_one  :space_subscription, class_name: "Finance::SpaceSubscription", dependent: :destroy
 
     validates :name, presence: true
     validates :code, presence: true, uniqueness: true
@@ -36,9 +37,17 @@ module Spaces
       return false unless usages.success?
 
       tokens_used = usages.value!.sum(:tokens_used)
-      return false if tokens_used >= Spaces::Space::SPACE_TOKEN_LIMIT
+      token_limit = current_token_limit
+      return false if tokens_used >= token_limit
 
       true
+    end
+
+    def current_token_limit
+      active_subscription = space_subscription&.active? ? space_subscription : nil
+      return active_subscription.token_limit if active_subscription
+
+      SPACE_TOKEN_LIMIT
     end
   end
 end
