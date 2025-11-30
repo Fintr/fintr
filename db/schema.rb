@@ -291,21 +291,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
     t.index ["user_id"], name: "index_loans_on_user_id"
   end
 
-  create_table "monthly_financial_summaries", force: :cascade do |t|
-    t.uuid "space_id", null: false
-    t.string "status", default: "pending", null: false
-    t.integer "total_rows_failed", default: 0
-    t.integer "total_rows_inserted", default: 0
-    t.integer "total_rows_read", default: 0
-    t.datetime "updated_at", null: false
-    t.uuid "user_id", null: false
-    t.index ["space_id", "created_at"], name: "index_imports_on_space_id_and_created_at"
-    t.index ["space_id"], name: "index_imports_on_space_id"
-    t.index ["status"], name: "index_imports_on_status"
-    t.index ["user_id", "created_at"], name: "index_imports_on_user_id_and_created_at"
-    t.index ["user_id"], name: "index_imports_on_user_id"
-  end
-
   create_table "loan_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "account_id", null: false
     t.datetime "created_at", null: false
