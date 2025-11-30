@@ -21,9 +21,9 @@ module Auth
         begin
           # Use direct HTTP request to Auth0's token endpoint
           # Use the same client credentials as the login endpoint (not M2M)
-          auth0_domain = ENV["M2M_AUTH0_DOMAIN"]
-          client_id = ENV["M2M_AUTH0_CLIENT_ID"]
-          client_secret = ENV["M2M_AUTH0_CLIENT_SECRET"]
+          auth0_domain = ENV["AUTH0_DOMAIN"]
+          client_id = ENV["AUTH0_CLIENT_ID"]
+          client_secret = ENV["AUTH0_CLIENT_SECRET"]
           audience = ENV["AUTH0_AUDIENCE"]
 
           uri = URI("https://#{auth0_domain}/oauth/token")
