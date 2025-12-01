@@ -31,23 +31,17 @@ module Secured
   end
 
   def cached_current_user
-    @current_user = current_user
+    key = Digest::MD5.hexdigest(@validation_response.decoded_token.token.first["sub"])
+    @current_user = Rails.cache.fetch("current_user_#{key}", expires_in: 1.hour) do
+      c_user = current_user
+      c_user.is_a?(Auth::User) ? c_user : nil
+    end
+
+    # Track user activity when user is successfully authenticated
     track_user_activity if @current_user.present?
+
     @current_user
   end
-
-  # def cached_current_user
-  #   key = Digest::MD5.hexdigest(@validation_response.decoded_token.token.first["sub"])
-  #   @current_user = Rails.cache.fetch("current_user_#{key}", expires_in: 1.hour) do
-  #     c_user = current_user
-  #     c_user.is_a?(Auth::User) ? c_user : nil
-  #   end
-
-  #   # Track user activity when user is successfully authenticated
-  #   track_user_activity if @current_user.present?
-
-  #   @current_user
-  # end
 
   # NOTE: Cached and invalid? Check again if the token is now valid.
   def validation_response(token)
