@@ -27,6 +27,9 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   
   // Hide navigation completely during onboarding
   const isOnOnboardingPage = pathname.startsWith('/onboarding');
+  
+  // Hide navigation for standalone subscription create page
+  const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
 
   const { spaceCode } = useGetSpaceCode(api);
 
@@ -56,10 +59,14 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="min-h-screen bg-background text-primary">
-      {!isOnOnboardingPage && (
+      {!isOnOnboardingPage && !isStandalonePage && (
         <DashboardNavigation hideActionButtons={hideActionButtons} isAdmin={isAdmin} />
       )}
-      <div className={isOnOnboardingPage ? "min-h-screen" : "pt-[76px] p-0 md:p-8 md:pt-[108px]  max-w-7xl mx-auto"}>
+      <div className={
+        isOnOnboardingPage || isStandalonePage 
+          ? "min-h-screen" 
+          : "pt-[56px] p-0 md:p-8 md:pt-[88px]  max-w-7xl mx-auto"
+      }>
         {children}
       </div>
     </div>

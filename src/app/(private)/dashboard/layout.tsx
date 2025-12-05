@@ -18,12 +18,17 @@ import {
 } from "@/services/goals/mutations";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/ui/loading-screen";
+import { usePathname } from "next/navigation";
 
 export default function Layout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  
+  // Skip dashboard layout elements for standalone subscription create page
+  const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
   const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
@@ -64,6 +69,11 @@ export default function Layout({
       });
     },
   });
+
+  // For standalone pages, just return children without dashboard layout
+  if (isStandalonePage) {
+    return <>{children}</>;
+  }
 
   // Only show loading spinner if spaceCode is not available OR dashboard data is loading
   if (!spaceCode || isLoadingDashboardData) {
