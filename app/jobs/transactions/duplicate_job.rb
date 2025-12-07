@@ -4,8 +4,13 @@ module Transactions
   class DuplicateJob < ApplicationJob
     queue_as :default
 
-    def perform(transaction_id)
-      date = Utils::Dates.current_date_in_manila
+    def perform(transaction_id, date_string = nil)
+      date = if date_string.present?
+               Date.parse(date_string).in_time_zone("Asia/Manila")
+             else
+               Utils::Dates.current_date_in_manila
+             end
+
       operation = Transactions::Operations::CreateRepeatTransactions
                     .new
                     .call(

@@ -50,5 +50,62 @@ RSpec.describe Transactions::DuplicateJob, type: :job do
         expect { job.perform(transaction_id) }.not_to raise_error
       end
     end
+
+    context 'when date_string is provided' do
+      let(:date_string) { '2023-04-10' }
+      let(:parsed_date) { Date.parse(date_string).in_time_zone("Asia/Manila") }
+
+      before do
+        allow(operation_instance).to receive(:call).and_return(Dry::Monads::Success(nil))
+      end
+
+      it 'uses the provided date instead of current date' do
+        job.perform(transaction_id, date_string)
+
+        expect(operation_instance).to have_received(:call).with(
+          transaction_id: transaction_id,
+          date_start: parsed_date + 1.month,
+          date_end: parsed_date + 1.month
+        )
+      end
+
+      it 'does not call current_date_in_manila when date_string is provided' do
+        job.perform(transaction_id, date_string)
+
+        expect(Utils::Dates).not_to have_received(:current_date_in_manila)
+      end
+    end
+
+    context 'when date_string is nil' do
+      before do
+        allow(operation_instance).to receive(:call).and_return(Dry::Monads::Success(nil))
+      end
+
+      it 'uses current_date_in_manila as fallback' do
+        job.perform(transaction_id, nil)
+
+        expect(operation_instance).to have_received(:call).with(
+          transaction_id: transaction_id,
+          date_start: today + 1.month,
+          date_end: today + 1.month
+        )
+      end
+    end
+
+    context 'when date_string is empty string' do
+      before do
+        allow(operation_instance).to receive(:call).and_return(Dry::Monads::Success(nil))
+      end
+
+      it 'uses current_date_in_manila as fallback' do
+        job.perform(transaction_id, "")
+
+        expect(operation_instance).to have_received(:call).with(
+          transaction_id: transaction_id,
+          date_start: today + 1.month,
+          date_end: today + 1.month
+        )
+      end
+    end
   end
 end

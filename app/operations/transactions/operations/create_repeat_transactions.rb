@@ -106,9 +106,12 @@ module Transactions
           new_transaction
         end
 
-        account = parent_transaction.account
-        account.assign_attributes(balance: account_balance)
-        account.save!
+        # Only update account balance if we're creating new transactions
+        if records.any?
+          account = parent_transaction.account
+          account.assign_attributes(balance: account_balance)
+          account.save!
+        end
 
         Transaction.bulk_import(
           records,
