@@ -9,6 +9,11 @@ RSpec.describe Finance::Operations::Customers::CreateCustomer, :vcr, type: :oper
   let(:surname) { "Doe" }
   let(:reference_id) { "cust-b6951e95-964b-4eea-a402-66f060b87e23" }
 
+  before do
+    # Mock ENV variable for Xendit client initialization
+    allow(ENV).to receive(:fetch).with("XENDIT_API_KEY").and_return("test_xendit_api_key")
+  end
+
   let(:valid_params) do
     {
       email:,
