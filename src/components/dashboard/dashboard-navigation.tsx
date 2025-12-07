@@ -119,7 +119,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
 
   return (
     <>
-      <header className="fixed top-5 w-full bg-background z-20 border-b border-gray-200">
+      <header className="fixed w-full bg-background z-20 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           {/* Mobile: Logo left, Notifications + Hamburger right */}
           <div className="flex md:hidden flex-row items-center justify-between h-14 w-full gap-2">
