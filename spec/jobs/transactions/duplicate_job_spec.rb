@@ -44,16 +44,28 @@ RSpec.describe Transactions::DuplicateJob, type: :job do
 
       before do
         allow(operation_instance).to receive(:call).and_return(operation_result)
+        allow(Rails.logger).to receive(:error)
       end
 
-      it 'completes without raising errors' do
-        expect { job.perform(transaction_id) }.not_to raise_error
+      it 'raises an error' do
+        expect { job.perform(transaction_id) }.to raise_error(
+          StandardError,
+          "Duplicate job failed transaction id: #{transaction_id}, message: #{operation_result.failure}"
+        )
+      end
+
+      it 'logs the error before raising' do
+        expect(Rails.logger).to receive(:error).with(
+          "Duplicate job failed transaction id: #{transaction_id}, message: #{operation_result.failure}"
+        )
+
+        expect { job.perform(transaction_id) }.to raise_error(StandardError)
       end
     end
 
     context 'when date_string is provided' do
       let(:date_string) { '2023-04-10' }
-      let(:parsed_date) { Date.parse(date_string).in_time_zone("Asia/Manila") }
+      let(:parsed_date) { Date.parse(date_string) }
 
       before do
         allow(operation_instance).to receive(:call).and_return(Dry::Monads::Success(nil))

@@ -27,10 +27,10 @@ module Transactions
 
         query.find_each(batch_size: 100) do |transaction|
           schedule = IceCube::Schedule.from_hash(transaction.schedule)
-          occurs = schedule.occurring_between?(
-            date_to_check.at_beginning_of_day,
-            date_to_check.at_end_of_day
-          )
+          # Use occurs_on? for more reliable single-date checking
+          # This method is specifically designed to check if a schedule occurs on a specific date
+          occurs = schedule.occurs_on?(date_to_check.to_date)
+
           next unless occurs
 
           Rails.logger.info(

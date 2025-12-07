@@ -20,6 +20,7 @@ gem "aws-sdk-s3", "~> 1.199"
 gem "csv", "~> 3.3"
 gem "neighbor", "~> 0.6.0"
 gem "image_processing", "~> 1.2"
+gem "openssl", "~> 3.3.2"
 
 
 # DRY Operations, Validation

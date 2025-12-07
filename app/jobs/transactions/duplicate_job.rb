@@ -6,10 +6,10 @@ module Transactions
 
     def perform(transaction_id, date_string = nil)
       date = if date_string.present?
-               Date.parse(date_string).in_time_zone("Asia/Manila")
-             else
+               Date.parse(date_string)
+      else
                Utils::Dates.current_date_in_manila
-             end
+      end
 
       operation = Transactions::Operations::CreateRepeatTransactions
                     .new
@@ -20,9 +20,9 @@ module Transactions
                     )
 
       unless operation.success?
-        Rails.logger.error(
-          "Duplicate job failed transaction id: #{transaction_id}, message: #{operation.failure}"
-        )
+        error_message = "Duplicate job failed transaction id: #{transaction_id}, message: #{operation.failure}"
+        Rails.logger.error(error_message)
+        raise StandardError, error_message
       end
     end
   end
