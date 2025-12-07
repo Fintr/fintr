@@ -1,0 +1,64 @@
+{
+  "created": "2025-11-30T09:45:40.720Z",
+  "business_id": "680827830b93ed4afed7bdcc",
+  "event": "payment_session.completed",
+  "api_version": "v1",
+  "data": {
+    "payment_session_id": "ps-692c1235a6e5f2d96830948b",
+    "created": "2025-11-30T09:45:25.426Z",
+    "updated": "2025-11-30T09:45:40.515Z",
+    "status": "COMPLETED",
+    "reference_id": "upg-1efae29e-3df4-41ca-9c90-1aab0b7891b6|c599bac8566434f1",
+    "currency": "PHP",
+    "amount": 250,
+    "country": "PH",
+    "expires_at": "2025-11-30T10:15:24.836Z",
+    "session_type": "PAY",
+    "mode": "PAYMENT_LINK",
+    "locale": "en",
+    "business_id": "680827830b93ed4afed7bdcc",
+    "customer_id": "cust-0863a1e0-80ae-4773-b181-f7af5407eeae",
+    "capture_method": "AUTOMATIC",
+    "cancel_return_url": "https://staging.fintr.ai/dashboard/subscriptions?upgrade_failed=true",
+    "metadata": {
+      "type": "subscription_upgrade_proration",
+      "subscription_id": "1efae29e-3df4-41ca-9c90-1aab0b7891b6",
+      "prorated_amount_cents": "25000"
+    },
+    "payment_request_id": "pr-f9ee58e4-bd74-4ebb-ba7d-4c1c4195dfb3",
+    "payment_id": "py-77dd5855-5f59-460f-97d3-2d03e8af41e0",
+    "payment_link_url": "https://dev.xen.to/r7qS4fw3"
+  },
+  "xendit": {
+    "created": "2025-11-30T09:45:40.720Z",
+    "business_id": "680827830b93ed4afed7bdcc",
+    "event": "payment_session.completed",
+    "api_version": "v1",
+    "data": {
+      "payment_session_id": "ps-692c1235a6e5f2d96830948b",
+      "created": "2025-11-30T09:45:25.426Z",
+      "updated": "2025-11-30T09:45:40.515Z",
+      "status": "COMPLETED",
+      "reference_id": "upg-1efae29e-3df4-41ca-9c90-1aab0b7891b6|c599bac8566434f1",
+      "currency": "PHP",
+      "amount": 250,
+      "country": "PH",
+      "expires_at": "2025-11-30T10:15:24.836Z",
+      "session_type": "PAY",
+      "mode": "PAYMENT_LINK",
+      "locale": "en",
+      "business_id": "680827830b93ed4afed7bdcc",
+      "customer_id": "cust-0863a1e0-80ae-4773-b181-f7af5407eeae",
+      "capture_method": "AUTOMATIC",
+      "cancel_return_url": "https://staging.fintr.ai/dashboard/subscriptions?upgrade_failed=true",
+      "metadata": {
+        "type": "subscription_upgrade_proration",
+        "subscription_id": "1efae29e-3df4-41ca-9c90-1aab0b7891b6",
+        "prorated_amount_cents": "25000"
+      },
+      "payment_request_id": "pr-f9ee58e4-bd74-4ebb-ba7d-4c1c4195dfb3",
+      "payment_id": "py-77dd5855-5f59-460f-97d3-2d03e8af41e0",
+      "payment_link_url": "https://dev.xen.to/r7qS4fw3"
+    }
+  }
+}

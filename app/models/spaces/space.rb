@@ -2,7 +2,7 @@
 
 module Spaces
   class Space < ApplicationRecord
-    SPACE_TOKEN_LIMIT = 30
+    FREE_TOKENS = 30
 
     has_many :transactions, class_name: "Transactions::Transaction", dependent: :destroy
     has_many :incomes, class_name: "Transactions::Income", dependent: :destroy
@@ -21,7 +21,8 @@ module Spaces
     has_one  :goal_description, class_name: "GoalDescription", dependent: :destroy
     has_many :conversations, class_name: "Ai::Conversation", dependent: :destroy
     has_many :imports, class_name: "Imports::Import", dependent: :destroy
-    has_one  :space_subscription, class_name: "Finance::SpaceSubscription", dependent: :destroy
+    has_many :space_subscriptions, class_name: "Finance::SpaceSubscription", dependent: :destroy
+    has_many :payment_methods, class_name: "Finance::PaymentMethod", dependent: :destroy
 
     validates :name, presence: true
     validates :code, presence: true, uniqueness: true
@@ -44,10 +45,18 @@ module Spaces
     end
 
     def current_token_limit
-      active_subscription = space_subscription&.active? ? space_subscription : nil
-      return active_subscription.token_limit if active_subscription
+      # Get all billing cycles that are active at the current time and paid
+      # This includes cycles from active subscriptions, grace periods, and prorated cycles
+      active_cycles = Finance::BillingCycle
+                      .joins(:space_subscription)
+                      .where(space_subscription: { space_id: id })
+                      .active
+                      .paid
 
-      SPACE_TOKEN_LIMIT
+      # Sum tokens from all active paid cycles
+      total_tokens = active_cycles.sum(:tokens_allocated)
+
+      FREE_TOKENS + total_tokens
     end
   end
 end

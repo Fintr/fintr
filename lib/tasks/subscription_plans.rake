@@ -41,7 +41,7 @@ namespace :subscription_plans do
     plans.each do |plan_attrs|
       plan = Finance::SubscriptionPlan.find_or_initialize_by(slug: plan_attrs[:slug])
       plan.assign_attributes(plan_attrs)
-      
+
       if plan.save
         action = plan.persisted? ? "Updated" : "Created"
         price_formatted = (plan.price_cents / 100.0).to_i
@@ -53,5 +53,38 @@ namespace :subscription_plans do
 
     puts "Subscription plans task completed."
   end
-end
 
+  desc "Create subscription plans with error scenarios for testing"
+  task add_errors: :environment do
+    puts "Creating subscription plans with error scenarios..."
+
+    error_plans = [
+      {
+        name: "GCash Insufficient Balance Test",
+        slug: "gcash-insufficient-balance",
+        token_limit: 50,
+        price_cents: 2_010_200, # 20,102 PHP - triggers insufficient balance error for GCash
+        price_currency: "PHP",
+        interval: "month",
+        active: true,
+        description: "Test plan that triggers GCash insufficient balance error when payment is attempted. Amount: ₱20,102"
+      }
+    ]
+
+    error_plans.each do |plan_attrs|
+      plan = Finance::SubscriptionPlan.find_or_initialize_by(slug: plan_attrs[:slug])
+      plan.assign_attributes(plan_attrs)
+
+      if plan.save
+        action = plan.persisted? ? "Updated" : "Created"
+        price_formatted = (plan.price_cents / 100.0).to_i
+        puts "  ✓ #{action} #{plan.name} plan (#{plan.slug}) - ₱#{price_formatted} - #{plan.token_limit} credits"
+        puts "    This plan will trigger GCash insufficient balance error when payment is attempted."
+      else
+        puts "  ✗ Failed to save #{plan_attrs[:name]} plan: #{plan.errors.full_messages.join(', ')}"
+      end
+    end
+
+    puts "Error scenario subscription plans task completed."
+  end
+end

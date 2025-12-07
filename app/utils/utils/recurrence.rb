@@ -32,10 +32,10 @@ module Utils
         end
       end
 
-      def usage_period(record:, reference_date: Date.current, to_string: false)
+      def usage_period(record:, reference_date: Date.current, column: :created_at, to_string: false)
         raise ArgumentError, "Record must be an AR record" unless record.is_a?(ActiveRecord::Base)
 
-        schedule = schedule(repeat_interval: "every_month", date: record.created_at)
+        schedule = schedule(repeat_interval: "every_month", date: record.public_send(column))
         occurrence = schedule.occurrences(reference_date).last || reference_date
         period = occurrence.beginning_of_day..(occurrence + 1.month - 1.day).end_of_day
 

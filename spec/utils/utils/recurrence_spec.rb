@@ -201,6 +201,47 @@ RSpec.describe Utils::Recurrence do
         }.to raise_error(ArgumentError, 'Record must be an AR record')
       end
     end
+
+    context 'with custom column parameter' do
+      let(:created_at) { Date.new(2025, 9, 20) }
+      let(:updated_at) { Date.new(2025, 8, 15) }
+      let(:reference_date) { Date.new(2025, 10, 10) }
+
+      before do
+        record.update!(created_at: created_at, updated_at: updated_at)
+      end
+
+      it 'uses the specified column instead of created_at' do
+        period = described_class.usage_period(
+          record: record,
+          reference_date: reference_date,
+          column: :updated_at
+        )
+
+        # With updated_at (Aug 15), schedule has occurrences: Aug 15, Sep 15, Oct 15
+        # Reference date Oct 10 is before Oct 15, so last occurrence is Sep 15
+        # Period is Sep 15 - Oct 14
+        expected_start = Date.new(2025, 9, 15)
+        expected_end = Date.new(2025, 10, 14)
+        expect(period.begin.to_date).to eq(expected_start)
+        expect(period.end.to_date).to eq(expected_end)
+      end
+
+      it 'defaults to created_at when column is not specified' do
+        period = described_class.usage_period(
+          record: record,
+          reference_date: reference_date
+        )
+
+        # With created_at (Sep 20), schedule has occurrences: Sep 20, Oct 20
+        # Reference date Oct 10 is before Oct 20, so last occurrence is Sep 20
+        # Period is Sep 20 - Oct 19
+        expected_start = Date.new(2025, 9, 20)
+        expected_end = Date.new(2025, 10, 19)
+        expect(period.begin.to_date).to eq(expected_start)
+        expect(period.end.to_date).to eq(expected_end)
+      end
+    end
   end
 
   describe '.schedule' do

@@ -1,0 +1,125 @@
+{
+  "created": "2025-11-29T12:45:47.428Z",
+  "business_id": "680827830b93ed4afed7bdcc",
+  "event": "recurring.cycle.retrying",
+  "api_version": "v1",
+  "data": {
+    "id": "recy_8e8bb2d5-4d5d-4cd1-8391-d287ceb471fc",
+    "created": "2025-11-29T11:58:17.658Z",
+    "updated": "2025-11-29T12:45:46.189Z",
+    "type": "SCHEDULED",
+    "reference_id": "sub-af150dfb-1ec6-4d36-8ac0-b5486d1530de",
+    "plan_id": "repl_62b39edd-4402-4ae4-b94b-949610bec260",
+    "customer_id": "cust-7cc4632e-2ac2-48ca-99b2-cb3bf231d5db",
+    "recurring_action": "PAYMENT",
+    "attempt_count": 2,
+    "cycle_number": 2,
+    "attempt_details": [
+      {
+        "created": "2025-11-29T12:43:34.346Z",
+        "action_id": null,
+        "status": "PENDING",
+        "failure_code": null,
+        "type": "PAYMENT_LINK",
+        "attempt_number": 1,
+        "action_number": 1,
+        "next_retry_timestamp": null,
+        "payment_link": {
+          "invoice_id": "692aea76b22799b020603bf6",
+          "payment_link_url": "https://dev.xen.to/WLvVrCxq"
+        }
+      },
+      {
+        "created": "2025-11-29T12:45:46.189Z",
+        "action_id": "pr-2b3d59fd-39ba-4504-aa72-8a9a5bfb12a2",
+        "status": "FAILED",
+        "failure_code": "ACCOUNT_NOT_ACTIVATED",
+        "type": "RETRY",
+        "attempt_number": 2,
+        "action_number": 1,
+        "next_retry_timestamp": null,
+        "payment_link": null
+      },
+      {
+        "created": "2025-11-29T12:43:33.286Z",
+        "action_id": "pr-b4a286ba-065b-4a90-8ae8-159a50e09196",
+        "status": "FAILED",
+        "failure_code": "USER_DECLINED_PAYMENT",
+        "type": "INITIAL",
+        "attempt_number": 1,
+        "action_number": 1,
+        "next_retry_timestamp": "2025-11-30T12:43:34.328Z",
+        "payment_link": null
+      }
+    ],
+    "status": "RETRYING",
+    "scheduled_timestamp": "2025-12-28T11:58:03.000Z",
+    "currency": "PHP",
+    "amount": 20111,
+    "forced_attempt_count": 0,
+    "metadata": null
+  },
+  "xendit": {
+    "created": "2025-11-29T12:45:47.428Z",
+    "business_id": "680827830b93ed4afed7bdcc",
+    "event": "recurring.cycle.retrying",
+    "api_version": "v1",
+    "data": {
+      "id": "recy_8e8bb2d5-4d5d-4cd1-8391-d287ceb471fc",
+      "created": "2025-11-29T11:58:17.658Z",
+      "updated": "2025-11-29T12:45:46.189Z",
+      "type": "SCHEDULED",
+      "reference_id": "sub-af150dfb-1ec6-4d36-8ac0-b5486d1530de",
+      "plan_id": "repl_62b39edd-4402-4ae4-b94b-949610bec260",
+      "customer_id": "cust-7cc4632e-2ac2-48ca-99b2-cb3bf231d5db",
+      "recurring_action": "PAYMENT",
+      "attempt_count": 2,
+      "cycle_number": 2,
+      "attempt_details": [
+        {
+          "created": "2025-11-29T12:43:34.346Z",
+          "action_id": null,
+          "status": "PENDING",
+          "failure_code": null,
+          "type": "PAYMENT_LINK",
+          "attempt_number": 1,
+          "action_number": 1,
+          "next_retry_timestamp": null,
+          "payment_link": {
+            "invoice_id": "692aea76b22799b020603bf6",
+            "payment_link_url": "https://dev.xen.to/WLvVrCxq"
+          }
+        },
+        {
+          "created": "2025-11-29T12:45:46.189Z",
+          "action_id": "pr-2b3d59fd-39ba-4504-aa72-8a9a5bfb12a2",
+          "status": "FAILED",
+          "failure_code": "ACCOUNT_NOT_ACTIVATED",
+          "type": "RETRY",
+          "attempt_number": 2,
+          "action_number": 1,
+          "next_retry_timestamp": null,
+          "payment_link": null
+        },
+        {
+          "created": "2025-11-29T12:43:33.286Z",
+          "action_id": "pr-b4a286ba-065b-4a90-8ae8-159a50e09196",
+          "status": "FAILED",
+          "failure_code": "USER_DECLINED_PAYMENT",
+          "type": "INITIAL",
+          "attempt_number": 1,
+          "action_number": 1,
+          "next_retry_timestamp": "2025-11-30T12:43:34.328Z",
+          "payment_link": null
+        }
+      ],
+      "status": "RETRYING",
+      "scheduled_timestamp": "2025-12-28T11:58:03.000Z",
+      "currency": "PHP",
+      "amount": 20111,
+      "forced_attempt_count": 0,
+      "metadata": null
+    }
+  }
+}
+

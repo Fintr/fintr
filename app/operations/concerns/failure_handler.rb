@@ -24,6 +24,30 @@
 # Or use helper methods:
 #   return expected_failure(account_name: "not found")
 #   return unexpected_failure({ operation: "failed" }, error: e)
+
+# Custom exception for operation failures without underlying exceptions
+class OperationFailure < StandardError
+  attr_reader :errors_hash, :operation_class, :is_expected
+
+  def initialize(errors_hash:, operation_class:, is_expected:, backtrace: nil)
+    @errors_hash = errors_hash
+    @operation_class = operation_class
+    @is_expected = is_expected
+    message = "Operation Failure: #{operation_class}"
+    super(message)
+
+    # Set the backtrace to show where the operation failed
+    # If backtrace is provided, use it; otherwise capture from caller
+    # Skip 2 frames: this initialize method and on_failure method
+    if backtrace
+      set_backtrace(backtrace)
+    else
+      captured_backtrace = caller(2..-1) # Skip initialize and on_failure
+      set_backtrace(captured_backtrace) if captured_backtrace.any?
+    end
+  end
+end
+
 module FailureHandler
   extend ActiveSupport::Concern
 
@@ -39,7 +63,8 @@ module FailureHandler
 
       # Report ALL failures to Sentry with appropriate tags
       if error.is_a?(StandardError)
-        Sentry.capture_exception(error) do |scope|
+        level = is_expected ? :warning : :error
+        Sentry.capture_exception(error, level: level) do |scope|
           scope.set_tags(
             operation: self.class.name,
             failure_type: failure_type,
@@ -50,14 +75,23 @@ module FailureHandler
             is_expected: is_expected,
             operation_class: self.class.name
           })
-          scope.level = is_expected ? :warning : :error
         end
       elsif errors_hash.present?
         # Report failures without exceptions (validation errors, not found, etc.)
-        Sentry.capture_message(
-          "Operation Failure: #{self.class.name}",
-          level: is_expected ? :warning : :error
-        ) do |scope|
+        # Create a custom exception to track these as exceptions in Sentry
+        # Capture backtrace from caller to show where the failure occurred
+        # Skip 1 frame (this on_failure method) to get the actual call path
+        failure_backtrace = caller(1..-1)
+
+        operation_failure = OperationFailure.new(
+          errors_hash: errors_hash,
+          operation_class: self.class.name,
+          is_expected: is_expected,
+          backtrace: failure_backtrace
+        )
+
+        level = is_expected ? :warning : :error
+        Sentry.capture_exception(operation_failure, level: level) do |scope|
           scope.set_tags(
             operation: self.class.name,
             failure_type: failure_type,

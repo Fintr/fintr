@@ -1,0 +1,63 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.xendit.co/customers
+    body:
+      encoding: UTF-8
+      string: '{"reference_id":"space-60a8c861-5607-484f-a030-276755a9c643-26110a8e-ad20-4031-a0f3-67c6a4312dc1","email":"owner@example.com","type":"INDIVIDUAL","given_names":"John","surname":"Smith","metadata":{}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.xendit.co
+      Authorization:
+      - "<XENDIT_API_KEY>"
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 400
+      message: Bad Request
+    headers:
+      Date:
+      - Mon, 24 Nov 2025 05:58:42 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '302'
+      Connection:
+      - keep-alive
+      Etag:
+      - W/"12e-Qi6pBi1Dpkw3wK1SIkPnUsR0VkY"
+      Rate-Limit-Limit:
+      - '60'
+      Rate-Limit-Remaining:
+      - '58'
+      Rate-Limit-Reset:
+      - '59.771'
+      Request-Id:
+      - 6923f412000000002fc001235a0677de
+      Vary:
+      - Origin
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - __cf_bm=NvfuB10X6rC3EKuSaXCdzl3aGwBtBzS5pJ1P0bZdWOo-1763963922.2105165-1.0.1.1-4OSPaHtKYJb38MTrcIhKRP0R6OHAGThlSp3w6CAvM6VYj3ZYJ2YVPWJCKDICalj3mJv2a6ZKDcISSrbjAV3YzbFP_ONQZyvCaO1a1_fifit7WMKD63lYp9mW7lgGvGRo;
+        HttpOnly; Secure; Path=/; Domain=xendit.co; Expires=Mon, 24 Nov 2025 06:28:42
+        GMT
+      Cf-Ray:
+      - 9a36ad11c9da8696-HKG
+    body:
+      encoding: UTF-8
+      string: '{"error_code":"API_VALIDATION_ERROR","message":"There was an error
+        with the format submitted to the server.","errors":[{"message":"\"body.individual_detail\"
+        is required","path":["body","individual_detail"],"type":"any.required","context":{"label":"body.individual_detail","key":"individual_detail"}}]}'
+  recorded_at: Mon, 24 Nov 2025 05:58:42 GMT
+recorded_with: VCR 6.2.0

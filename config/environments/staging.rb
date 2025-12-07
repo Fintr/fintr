@@ -31,9 +31,12 @@ Rails.application.configure do
   config.active_storage.service = :amazon
 
   # Mount Action Cable outside main process or domain.
-  # config.action_cable.mount_path = nil
-  # config.action_cable.url = "wss://example.com/cable"
-  # config.action_cable.allowed_request_origins = [ "http://example.com", /http:\/\/example.*/ ]
+  config.action_cable.allowed_request_origins = [
+    "https://staging.fintr.ai",
+    /https:\/\/.*\.fintr\.ai/
+  ]
+
+  config.action_cable.disable_request_forgery_protection = true
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   config.assume_ssl = true

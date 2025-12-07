@@ -9,9 +9,13 @@ class CreateFinancePayments < ActiveRecord::Migration[8.1]
                     type: :uuid,
                     null: false,
                     foreign_key: { to_table: :finance_space_subscriptions }
-      t.string :xendit_action_id, null: false
-      t.string :xendit_cycle_id
-      t.string :xendit_reference_id
+      t.references :biling_cycle,
+                    type: :uuid,
+                    null: false,
+                    foreign_key: { to_table: :finance_billing_cycles }
+
+      t.string :xendit_cycle_id, null: false
+      t.string :xendit_reference_id, null: false
       t.bigint :amount_cents, null: false
       t.string :amount_currency, null: false, default: "PHP"
       t.enum :status, enum_type: :finance_payment_status, null: false, default: "pending"
@@ -26,8 +30,7 @@ class CreateFinancePayments < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :finance_payments, :xendit_action_id, unique: true
-    add_index :finance_payments, :xendit_cycle_id
+    add_index :finance_payments, :xendit_cycle_id, unique: true
     add_index :finance_payments, :status
     add_index :finance_payments, :paid_at
   end

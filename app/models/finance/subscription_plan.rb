@@ -27,4 +27,3 @@ module Finance
     end
   end
 end
-

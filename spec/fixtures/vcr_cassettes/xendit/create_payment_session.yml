@@ -1,0 +1,56 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.xendit.co/sessions
+    body:
+      encoding: UTF-8
+      string: '{"reference_id":"session-d2e00bb9-1b97-47a3-9a06-9cd429ab5237","customer_id":"cust-test-123","session_type":"PAY","currency":"PHP","amount":14900,"country":"PH","mode":"PAYMENT_LINK","success_redirect_url":"https://example.com/success","failure_redirect_url":"https://example.com/failure","cancel_return_url":"https://example.com/failure","metadata":{}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.xendit.co
+      Authorization:
+      - "<XENDIT_API_KEY>"
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 401
+      message: Unauthorized
+    headers:
+      Date:
+      - Fri, 05 Dec 2025 07:08:51 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '256'
+      Connection:
+      - keep-alive
+      Request-Id:
+      - 69328503000000005b0a076e8ab5c433
+      Vary:
+      - Origin
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=wq50cHybuHRopgurYLAPcGCaxAcUSHmPVzTFqIAHRbo-1764918531.6585987-1.0.1.1-2eysuHVRq9yQyifFTd2_YuR54kNjdqWLNtAsWW0f5OvDgUJe_Jq.rEzMxHu9V.QzonFVpDJxVGO4ap9DLdWcEXPRVCmlvM721esifYVhP0TGn4dIankuCEf7SRj8xqXL;
+        HttpOnly; Secure; Path=/; Domain=xendit.co; Expires=Fri, 05 Dec 2025 07:38:51
+        GMT
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 9a91b6f6de11e692-HKG
+    body:
+      encoding: UTF-8
+      string: '{"message": "The API key provided is invalid. Please make sure to use
+        the secret/public API key that you can obtain from the Xendit Dashboard. See
+        https://developers.xendit.co/api-reference/#authentication for more details",
+        "error_code":"INVALID_API_KEY"}'
+  recorded_at: Fri, 05 Dec 2025 07:08:51 GMT
+recorded_with: VCR 6.2.0

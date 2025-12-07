@@ -53,7 +53,3 @@ plans.each do |plan_attrs|
 end
 
 puts "Subscription plans seeded successfully."
-
-
-
-

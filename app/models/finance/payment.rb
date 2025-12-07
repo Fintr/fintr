@@ -5,6 +5,9 @@ module Finance
     self.table_name = "finance_payments"
 
     belongs_to :space_subscription, class_name: "Finance::SpaceSubscription"
+    belongs_to :billing_cycle,
+               class_name: "Finance::BillingCycle",
+               foreign_key: "biling_cycle_id"
 
     enum :status, {
       pending: "pending",
@@ -15,7 +18,7 @@ module Finance
 
     monetize :amount_cents, with_model_currency: :amount_currency
 
-    validates :xendit_action_id, presence: true, uniqueness: true
+    validates :xendit_cycle_id, presence: true, uniqueness: true
     validates :amount_cents, presence: true, numericality: { greater_than: 0 }
     validates :amount_currency, presence: true
     validates :status, presence: true
@@ -27,22 +30,6 @@ module Finance
     scope :by_date_range, ->(start_date, end_date) { where(paid_at: start_date..end_date) }
     scope :recent, -> { order(paid_at: :desc, created_at: :desc) }
 
-    def succeeded?
-      status == "succeeded"
-    end
-
-    def failed?
-      status == "failed"
-    end
-
-    def pending?
-      status == "pending"
-    end
-
-    def refunded?
-      status == "refunded"
-    end
-
     def space
       space_subscription.space
     end
@@ -50,9 +37,12 @@ module Finance
     def subscription_plan
       space_subscription.subscription_plan
     end
+
+    def mark_as_paid!(paid_at: Time.zone.now)
+      update!(
+        status: "succeeded",
+        paid_at:
+      )
+    end
   end
 end
-
-
-
-

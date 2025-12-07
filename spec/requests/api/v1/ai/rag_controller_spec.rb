@@ -8,11 +8,8 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
   let(:auth_setup) { setup_authentication(user: user, space: space, auth_id: user.auth_id) }
 
   before do
-    # Mock the controller's set_space method to avoid authentication issues
-    allow_any_instance_of(described_class).to receive(:set_space) do |instance|
-      instance.instance_variable_set(:@space, space)
-    end
-    allow_any_instance_of(described_class).to receive(:current_user).and_return(user)
+    # Create space user association for authentication
+    create(:space_user, user: user, space: space)
   end
 
   describe "POST /api/v1/ai/rag/query" do
@@ -21,11 +18,26 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
     let(:conversation) { create(:ai_conversation, user: user, space: space) }
 
     context "with valid parameters" do
-      it "returns session_id and processing status" do
+      let(:created_conversation) { create(:ai_conversation, user: user, space: space) }
+
+      before do
+        # Mock CreateConversation operation
+        create_conversation_operation = instance_double(::Ai::Operations::Conversations::CreateConversation)
+        allow(::Ai::Operations::Conversations::CreateConversation).to receive(:new).and_return(create_conversation_operation)
+        allow(create_conversation_operation).to receive(:call).and_return(
+          Dry::Monads::Success(created_conversation)
+        )
+
+        # Mock CreateUsage operation to yield the block when successful
         create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
         allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
-        allow(create_usage_operation).to receive(:call).and_yield.and_return(Dry::Monads::Success(true))
+        allow(create_usage_operation).to receive(:call) do |&block|
+          block.call if block
+          Dry::Monads::Success(true)
+        end
+      end
 
+      it "returns session_id and processing status" do
         allow(Rails.cache).to receive(:write)
         allow(Ai::AiChatJob).to receive(:perform_later)
 
@@ -38,14 +50,10 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
         response_data = JSON.parse(response.body)
         expect(response_data["session_id"]).to be_present
         expect(response_data["status"]).to eq("processing")
-        expect(response_data["conversation_id"]).to be_present
+        expect(response_data["conversation_id"]).to eq(created_conversation.id)
       end
 
       it "stores initial state in Rails cache" do
-        create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
-        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
-        allow(create_usage_operation).to receive(:call).and_yield.and_return(Dry::Monads::Success(true))
-
         expect(Rails.cache).to receive(:write).with(
           match(/ai_chat_[a-f0-9-]{36}/),
           hash_including(
@@ -53,7 +61,7 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
             content: "",
             query: query,
             space_id: space.id,
-            conversation_id: match(/[a-f0-9-]{36}/),
+            conversation_id: created_conversation.id,
             created_at: be_a(Time)
           ),
           expires_in: 10.minutes
@@ -65,10 +73,6 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
       end
 
       it "starts background processing with Ai::AiChatJob" do
-        create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
-        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
-        allow(create_usage_operation).to receive(:call).and_yield.and_return(Dry::Monads::Success(true))
-
         allow(Rails.cache).to receive(:write)
 
         expect(Ai::AiChatJob).to receive(:perform_later).with(
@@ -76,7 +80,7 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
           query,
           space.id,
           user.id,
-          match(/[a-f0-9-]{36}/) # conversation_id
+          created_conversation.id
         )
 
         post "/api/v1/ai/rag/query",
@@ -89,26 +93,36 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
       let(:conversation_params) { { query: query, conversation_id: conversation.id } }
 
       before do
-        allow(user.conversations).to receive(:find_by).with(id: conversation.id, space_id: space.id).and_return(conversation)
+        # Ensure conversation is persisted and associated with user and space
+        conversation.reload
+
+        # Mock CreateUsage operation to yield the block when successful
+        create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
+        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
+        allow(create_usage_operation).to receive(:call) do |&block|
+          block.call if block
+          Dry::Monads::Success(true)
+        end
       end
 
       it "uses existing conversation" do
-        create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
-        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
-        allow(create_usage_operation).to receive(:call).and_yield.and_return(Dry::Monads::Success(true))
-
         allow(Rails.cache).to receive(:write)
         allow(Ai::AiChatJob).to receive(:perform_later)
 
-        expect(conversation).to receive(:add_user_message).with(query)
-
-        post "/api/v1/ai/rag/query",
-             params: conversation_params,
-             headers: auth_setup[:headers]
+        expect do
+          post "/api/v1/ai/rag/query",
+               params: conversation_params,
+               headers: auth_setup[:headers]
+        end.to change(Ai::ConversationMessage, :count).by(1)
 
         expect(response).to have_http_status(:ok)
         response_data = JSON.parse(response.body)
         expect(response_data["conversation_id"]).to eq(conversation.id)
+
+        # Verify the message was created with the correct content
+        message = conversation.conversation_messages.last
+        expect(message.content).to eq(query)
+        expect(message.openai_role).to eq("user")
       end
     end
 
@@ -116,7 +130,9 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
       before do
         create_conversation_operation = instance_double(::Ai::Operations::Conversations::CreateConversation)
         allow(::Ai::Operations::Conversations::CreateConversation).to receive(:new).and_return(create_conversation_operation)
-        allow(create_conversation_operation).to receive(:call).and_return(Dry::Monads::Failure("Failed to create conversation"))
+        allow(create_conversation_operation).to receive(:call).and_return(
+          Dry::Monads::Failure("Failed to create conversation")
+        )
       end
 
       it "returns unprocessable content error" do
@@ -148,7 +164,6 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
 
       before do
         allow(Rails.cache).to receive(:fetch).with("current_space_nonexistent", expires_in: 15.minutes).and_return(nil)
-        allow_any_instance_of(described_class).to receive(:set_space).and_raise(ActiveRecord::RecordNotFound)
       end
 
       it "returns forbidden error" do
@@ -161,10 +176,22 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
     end
 
     context "when CreateUsage operation fails" do
+      let(:created_conversation) { create(:ai_conversation, user: user, space: space) }
+
       before do
+        # Mock CreateConversation operation to succeed
+        create_conversation_operation = instance_double(::Ai::Operations::Conversations::CreateConversation)
+        allow(::Ai::Operations::Conversations::CreateConversation).to receive(:new).and_return(create_conversation_operation)
+        allow(create_conversation_operation).to receive(:call).and_return(
+          Dry::Monads::Success(created_conversation)
+        )
+
+        # Mock CreateUsage operation to fail
         create_usage_operation = instance_double(::Ai::Operations::Usages::CreateUsage)
         allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage_operation)
-        allow(create_usage_operation).to receive(:call).and_return(Dry::Monads::Failure("Space token limit reached"))
+        allow(create_usage_operation).to receive(:call).and_return(
+          Dry::Monads::Failure("Space token limit reached")
+        )
       end
 
       it "returns internal server error with failure details" do

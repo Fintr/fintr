@@ -1,0 +1,52 @@
+{
+  "created": "2025-11-26T04:50:03.042Z",
+  "business_id": "680827830b93ed4afed7bdcc",
+  "event": "recurring.cycle.created",
+  "api_version": "v1",
+  "data": {
+    "id": "recy_8594c21f-dda6-4482-8d66-966e1095c7e1",
+    "created": "2025-11-26T04:50:02.692Z",
+    "updated": "2025-11-26T04:50:02.692Z",
+    "type": "SCHEDULED",
+    "reference_id": "sub-0886a8fa-6ca5-42ad-8b92-6f5d66d8ec76",
+    "plan_id": "repl_87d12b89-0cfc-4567-b52e-0698674a3f5d",
+    "customer_id": "cust-68238678-c654-45f1-a224-217bbd308ec1",
+    "recurring_action": "PAYMENT",
+    "attempt_count": 0,
+    "cycle_number": 2,
+    "attempt_details": [],
+    "status": "SCHEDULED",
+    "scheduled_timestamp": "2025-12-26T04:49:51.000Z",
+    "currency": "PHP",
+    "amount": 250,
+    "forced_attempt_count": 0,
+    "metadata": null
+  },
+  "xendit": {
+    "created": "2025-11-26T04:50:03.042Z",
+    "business_id": "680827830b93ed4afed7bdcc",
+    "event": "recurring.cycle.created",
+    "api_version": "v1",
+    "data": {
+      "id": "recy_8594c21f-dda6-4482-8d66-966e1095c7e1",
+      "created": "2025-11-26T04:50:02.692Z",
+      "updated": "2025-11-26T04:50:02.692Z",
+      "type": "SCHEDULED",
+      "reference_id": "sub-0886a8fa-6ca5-42ad-8b92-6f5d66d8ec76",
+      "plan_id": "repl_87d12b89-0cfc-4567-b52e-0698674a3f5d",
+      "customer_id": "cust-68238678-c654-45f1-a224-217bbd308ec1",
+      "recurring_action": "PAYMENT",
+      "attempt_count": 0,
+      "cycle_number": 2,
+      "attempt_details": [],
+      "status": "SCHEDULED",
+      "scheduled_timestamp": "2025-12-26T04:49:51.000Z",
+      "currency": "PHP",
+      "amount": 250,
+      "forced_attempt_count": 0,
+      "metadata": null
+    }
+  }
+}
+
+
