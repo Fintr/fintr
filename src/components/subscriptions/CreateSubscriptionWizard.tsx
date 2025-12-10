@@ -63,7 +63,7 @@ const CreateSubscriptionWizard: React.FC<CreateSubscriptionWizardProps> = ({
         subscriptionPlanId: selectedPlan.id,
       });
     } catch (error: any) {
-      toast.error(error?.message || "Failed to create subscription");
+      toast.error(error?.message || "Failed to subscribe");
     }
   };
 
@@ -83,7 +83,7 @@ const CreateSubscriptionWizard: React.FC<CreateSubscriptionWizardProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Subscription</DialogTitle>
+          <DialogTitle>Subscribe</DialogTitle>
           <DialogDescription>
             Choose a plan to get started
           </DialogDescription>
@@ -217,7 +217,7 @@ const CreateSubscriptionWizard: React.FC<CreateSubscriptionWizardProps> = ({
                   </>
                 ) : (
                   <>
-                    Create Subscription
+                    Subscribe
                     <Check className="h-4 w-4 ml-2" />
                   </>
                 )}

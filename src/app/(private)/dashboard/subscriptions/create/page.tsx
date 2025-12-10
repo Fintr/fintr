@@ -82,7 +82,7 @@ const CreateSubscriptionPage = () => {
     } catch (error: any) {
       setIsRedirecting(false);
       setRedirectUrl(null);
-      toast.error(error?.message || "Failed to create subscription");
+      toast.error(error?.message || "Failed to subscribe");
     }
   };
 
@@ -138,7 +138,7 @@ const CreateSubscriptionPage = () => {
               Back to Settings
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold text-primary">Create Subscription</h1>
+          <h1 className="text-3xl font-bold text-primary">Subscribe</h1>
           <p className="text-primary mt-2">
             Choose a plan to get started
           </p>
@@ -310,7 +310,7 @@ const CreateSubscriptionPage = () => {
                   </>
                 ) : (
                   <>
-                    Create Subscription
+                    Subscribe
                     <Check className="h-4 w-4 ml-2" />
                   </>
                 )}

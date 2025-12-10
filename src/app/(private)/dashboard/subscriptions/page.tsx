@@ -220,8 +220,8 @@ const SubscriptionsPage = () => {
             <Button asChild className="w-full sm:w-auto flex items-center justify-center min-h-[40px]">
               <Link href="/dashboard/subscriptions/create" className="flex items-center justify-center w-full">
                 <Plus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Create Subscription</span>
-                <span className="sm:hidden">Create</span>
+                <span className="hidden sm:inline">Subscribe</span>
+                <span className="sm:hidden">Subscribe</span>
               </Link>
             </Button>
           )}
@@ -906,8 +906,8 @@ const SubscriptionsPage = () => {
               <Link href="/dashboard/subscriptions/create" className="block">
                 <Button className="w-full sm:w-auto" size="sm">
                   <Plus className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Create Subscription</span>
-                  <span className="sm:hidden">Create</span>
+                  <span className="hidden sm:inline">Subscribe</span>
+                  <span className="sm:hidden">Subscribe</span>
                 </Button>
               </Link>
             </CardContent>

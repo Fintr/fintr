@@ -1052,7 +1052,7 @@ const SpaceSettingsTab = () => {
                       <Link href="/dashboard/subscriptions/create">
                         <Button>
                           <Plus className="h-4 w-4 mr-2" />
-                          Create Subscription
+                          Subscribe
                         </Button>
                       </Link>
                     </CardContent>
@@ -1808,7 +1808,7 @@ const SpaceSettingsTab = () => {
                   <Link href="/dashboard/subscriptions/create">
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
-                      Create Subscription
+                      Subscribe
                     </Button>
                   </Link>
                 </CardContent>
