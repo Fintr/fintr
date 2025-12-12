@@ -25,6 +25,11 @@ Fintr is a personal finance application with heavy integration with AI. Fintr wi
 10. Run `psql -U fintr_admin -d postgres`
 11. Run `ALTER USER fintr_rails WITH SUPERUSER;`
 12. Run `rails db:create db:migrate db:seed` in project root
+13. Run these commands normally
+```
+rails s
+in another terminal: bin/jobs start
+```
 
 ## How to get included in the seed
 
