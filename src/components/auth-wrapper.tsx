@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import LoadingScreen from '@/components/ui/loading-screen';
+import { AuthStorage } from '@/lib/auth-storage';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
@@ -20,7 +21,15 @@ function AuthWrapper({ children }: AuthWrapperProps) {
   
   useEffect(() => {
     console.log('🛡️ AuthWrapper - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'isPublicRoute:', isPublicRoute, 'pathname:', pathname);
-    if (!isLoading && !isAuthenticated && !isPublicRoute) {
+    
+    // Check storage directly as a fallback to prevent brief redirect flash
+    // This is especially important right after auth callback when context might not be updated yet
+    const authData = AuthStorage.getAuthData();
+    const isAuthenticatedInStorage = authData && AuthStorage.isAuthenticated();
+    
+    // Only redirect if both context and storage indicate not authenticated
+    // This prevents the brief flash of login page during auth callback redirect
+    if (!isLoading && !isAuthenticated && !isAuthenticatedInStorage && !isPublicRoute) {
       console.log('🔄 AuthWrapper - redirecting to login');
       router.push('/login');
     }
@@ -30,8 +39,12 @@ function AuthWrapper({ children }: AuthWrapperProps) {
     return <LoadingScreen />;
   }
   
-  // If not authenticated and not on a public route, show loading while redirecting
-  if (!isAuthenticated && !isPublicRoute) {
+  // Check storage directly as fallback to prevent redirect flash
+  const authData = AuthStorage.getAuthData();
+  const isAuthenticatedInStorage = authData && AuthStorage.isAuthenticated();
+  
+  // If not authenticated (in both context and storage) and not on a public route, show loading while redirecting
+  if (!isAuthenticated && !isAuthenticatedInStorage && !isPublicRoute) {
     return <LoadingScreen />;
   }
   

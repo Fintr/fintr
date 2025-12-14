@@ -26,7 +26,7 @@ const isCapacitorEnvironment = (): boolean => {
 export default function AuthCallback() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, checkAuth } = useAuth();
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showOpenAppButton, setShowOpenAppButton] = useState<boolean>(false);
@@ -321,13 +321,25 @@ export default function AuthCallback() {
         console.log('Has ID token:', !!storedAuthData?.tokens?.id_token);
         console.log('User profile:', userProfile.email || userProfile.sub);
 
+        // Refresh auth context state before redirecting to prevent brief login page flash
+        // This ensures AuthWrapper sees the user as authenticated immediately
+        console.log('🔄 Refreshing auth context state...');
+        await checkAuth();
+        console.log('✅ Auth context state refreshed');
+
         // Success!
         hasProcessedRef.current = true;
         setStatus('success');
 
         // For Capacitor, always redirect to dashboard since sessionStorage doesn't work
-        // For web, use the stored redirect path
-        const redirectPath = capacitorFlow ? '/dashboard' : getOriginalRedirectPath();
+        // For web, use the stored redirect path (but never redirect to auth pages)
+        let redirectPath = capacitorFlow ? '/dashboard' : getOriginalRedirectPath();
+        
+        // Ensure we never redirect to auth pages after successful authentication
+        const authPages = ['/login', '/auth', '/auth-callback', '/consent'];
+        if (authPages.includes(redirectPath)) {
+          redirectPath = '/dashboard';
+        }
         
         console.log('\n=== Redirecting ===');
         console.log('Capacitor Flow:', capacitorFlow);
@@ -358,9 +370,10 @@ export default function AuthCallback() {
         } else if (isIOSDevice()) {
           setShowOpenAppButton(true);
         } else {
-          setTimeout(() => {
-            window.location.href = redirectPath;
-          }, 1000);
+          // Use router.push instead of window.location.href to avoid full page reload
+          // This prevents the brief flash of login page
+          // No delay needed since auth state is already refreshed
+          router.push(redirectPath);
         }
 
       } catch (error: any) {
@@ -379,7 +392,7 @@ export default function AuthCallback() {
     };
 
     handleCallback();
-  }, [searchParams, router, isAuthenticated]);
+  }, [searchParams, router, isAuthenticated, checkAuth]);
 
   const handleCloseBrowser = async () => {
     try {
