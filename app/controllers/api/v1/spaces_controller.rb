@@ -8,7 +8,8 @@ module Api
       # GET /api/v1/spaces
       # Returns all spaces accessible to the current user (both personal and organization spaces)
       def index
-        spaces = current_user.spaces
+        # Eager load associations to prevent N+1 queries
+        spaces = current_user.spaces.includes(:space_users, :users)
         render_success(
           data: {
             spaces: ::Spaces::Serializers::SpaceSerializer.render_as_hash(spaces, current_user: current_user)

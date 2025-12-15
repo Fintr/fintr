@@ -127,7 +127,9 @@ accessories:
       secret:
         - DATABASE_PASSWORD
     files:
-      - config/postgresql.conf:/etc/postgresql/postgresql.conf
+      # Mount postgresql.conf to the data directory where PostgreSQL expects it
+      # PostgreSQL automatically reads postgresql.conf from its data directory
+      - config/postgresql.conf:/var/lib/postgresql/data/postgresql.conf
       - config/init-pgvectorscale.sh:/docker-entrypoint-initdb.d/init-pgvectorscale.sh
     directories:
       - postgres_data:/var/lib/postgresql/data

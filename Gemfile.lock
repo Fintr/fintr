@@ -402,7 +402,7 @@ GEM
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
     rake (13.3.1)
-    rdoc (6.15.1)
+    rdoc (6.17.0)
       erb
       psych (>= 4.0.0)
       tsort
@@ -586,7 +586,7 @@ DEPENDENCIES
   puma (>= 5.0)
   rack-cors
   rails (~> 8.1.1)
-  rdoc (= 6.15.1)
+  rdoc (= 6.17.0)
   rolify (~> 7.0.0)!
   rspec-rails
   rtesseract (~> 3.1)
