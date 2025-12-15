@@ -65,3 +65,58 @@ To download the dump it's a series of steps.
 ## Handling .env files
 Since we're using kamal, handling `.env` files is a little bit more primitive. We have local copies of the `.env.production` and `.env.staging`. Kamal will look at those `.env` files for reference and use those for production. Please coordinate with all other team members if you wish to update `.env.production` and `.env.staging`.
 
+## Sentry MCP Integration
+
+This project has Sentry MCP (Model Context Protocol) configured, allowing AI assistants to interact with Sentry for error tracking and issue analysis.
+
+### Quick Setup
+
+Run the setup script to configure Sentry MCP:
+
+```bash
+./bin/setup-sentry-mcp.sh
+```
+
+The script will:
+- Install Node.js 25.2.1 (via mise if available)
+- Ensure the wrapper script is executable
+- Guide you through adding your `SENTRY_ACCESS_TOKEN` to `.env`
+- Provide instructions for configuring Cursor MCP settings
+
+### Manual Setup
+
+If you prefer to set up manually:
+
+1. **Install Node.js v20+** (required for Sentry MCP server, project uses 25.2.1)
+   - If using `mise`: Add `nodejs 25.2.1` to `.tool-versions` and run `mise install`
+   - Or install from [nodejs.org](https://nodejs.org/)
+
+2. **Add Sentry Access Token** to your `.env` file:
+   ```
+   SENTRY_ACCESS_TOKEN=your-sentry-access-token-here
+   ```
+   Get your token from: https://sentry.io/settings/account/api/auth-tokens/
+   Required scopes: `org:read`, `project:read`, `project:write`, `team:read`, `team:write`, `event:read`, `event:write`
+
+3. **Configure Cursor MCP** by adding to `~/.cursor/mcp.json`:
+   ```json
+   {
+     "mcpServers": {
+       "sentry-fintr": {
+         "command": "/path/to/fintr-be/bin/sentry-mcp-wrapper.sh",
+         "cwd": "/path/to/fintr-be"
+       }
+     }
+   }
+   ```
+
+4. **Restart Cursor** to load the MCP server
+
+### Usage
+
+After setup, you can ask the AI assistant:
+- "Show me unresolved issues from the last week"
+- "What errors occurred today?"
+- "Analyze issue PROJECT-123"
+- "Count of database failures this week"
+
