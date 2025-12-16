@@ -108,91 +108,201 @@ echo "   Accessory: $ACCESSORY_NAME"
 echo "   Local dump path: $LOCAL_DUMP_PATH"
 echo ""
 
-# Step 1: Create dump directly to local file
-# We'll dump to stdout from a container and save it locally
-# Since kamal accessory exec creates a new container, we need to connect
-# to the postgres service by its hostname on the network
-echo "📋 Step 1: Creating database dump..."
-echo "   Dumping database to local file..."
+# Step 1: Create dump using direct Docker commands via SSH
+# Get SSH host and user from deploy config
+SSH_HOST=$(grep -A 5 "^servers:" "$CONFIG_FILE" | grep -E "^\s+- " | head -1 | sed 's/.*-\s*//' | tr -d '"' | tr -d ' ' || echo "")
+SSH_USER=$(grep -A 2 "^ssh:" "$CONFIG_FILE" | grep "user:" | sed 's/.*user:\s*//' | tr -d '"' | tr -d ' ' || echo "ec2-user")
 
-# Dump directly to stdout and save locally
-# Try from postgres container first, then fallback to app container
-echo "   Attempting dump from postgres container..."
+if [ -z "$SSH_HOST" ]; then
+  echo "❌ Could not determine SSH host from config file"
+  exit 1
+fi
 
+# Check for SSH key (common location based on user's alias)
+SSH_KEY="${HOME}/.ssh/aws-fintr-sg.pem"
+SSH_OPTS=""
+if [ -f "$SSH_KEY" ]; then
+  SSH_OPTS="-i $SSH_KEY"
+  echo "   🔑 Using SSH key: $SSH_KEY"
+fi
+
+echo "📋 Step 1: Creating database dump on remote server..."
+echo "   SSH Host: $SSH_HOST"
+echo "   SSH User: $SSH_USER"
+echo ""
+
+# Test SSH connection first
+echo "   🔌 Testing SSH connection..."
+if ! ssh $SSH_OPTS -o ConnectTimeout=10 -o BatchMode=yes "${SSH_USER}@${SSH_HOST}" "echo 'SSH connection successful'" 2>&1; then
+  echo ""
+  echo "   ❌ SSH connection failed!"
+  echo ""
+  echo "   Troubleshooting:"
+  echo "   1. Check if you can connect manually:"
+  echo "      ssh $SSH_OPTS ${SSH_USER}@${SSH_HOST}"
+  echo ""
+  echo "   2. If you need to add your SSH key to the agent:"
+  echo "      ssh-add ~/.ssh/aws-fintr-sg.pem"
+  echo ""
+  echo "   3. Check your SSH config (~/.ssh/config) for the host"
+  echo ""
+  exit 1
+fi
+echo "   ✅ SSH connection successful"
+echo ""
+
+# Paths on remote server
+CONTAINER_DUMP_PATH="/tmp/${DUMP_FILENAME}"
+SERVER_DUMP_DIR="~/dumps"
+SERVER_DUMP_PATH="${SERVER_DUMP_DIR}/${DUMP_FILENAME}"
+
+# Step 1a: Find postgres container
+echo "   🔍 Finding postgres container..."
+echo "   Running: ssh $SSH_OPTS ${SSH_USER}@${SSH_HOST} 'docker ps --format \"{{.Names}}\"'"
+echo ""
+
+# First, list all containers for debugging
+ALL_CONTAINERS=$(ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker ps --format '{{.Names}}'" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "   ❌ Failed to list containers on remote server"
+  echo "   Error output:"
+  echo "$ALL_CONTAINERS" | sed 's/^/      /'
+  exit 1
+fi
+
+echo "   Available containers:"
+echo "$ALL_CONTAINERS" | sed 's/^/      /'
+echo ""
+
+# Find postgres container
+POSTGRES_CONTAINER=$(echo "$ALL_CONTAINERS" | grep -i postgres | head -1 || echo "")
+
+if [ -z "$POSTGRES_CONTAINER" ]; then
+  echo "   ❌ Could not find postgres container"
+  echo "   Looked for containers with 'postgres' in the name"
+  exit 1
+fi
+
+echo "   ✅ Found postgres container: $POSTGRES_CONTAINER"
+echo ""
+
+# Step 1b: Create dump inside container
+echo "   📥 Creating dump inside container..."
+echo "   Container: $POSTGRES_CONTAINER"
+echo "   Database: $DB_NAME"
+echo "   User: $DB_USER"
+echo ""
+
+DUMP_CMD="PGPASSWORD=\"\${POSTGRES_PASSWORD}\" pg_dump -h localhost -p 5432 -U \"$DB_USER\" -d \"$DB_NAME\" --no-owner --no-privileges --clean --if-exists -f \"$CONTAINER_DUMP_PATH\""
+
+if ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER sh -c '$DUMP_CMD'" 2>&1; then
+  echo "   ✅ Dump created inside container"
+else
+  echo "   ❌ Failed to create dump inside container"
+  exit 1
+fi
+
+# Verify dump file exists in container
+echo "   🔍 Verifying dump file in container..."
+if ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER test -f \"$CONTAINER_DUMP_PATH\"" 2>/dev/null; then
+  CONTAINER_SIZE=$(ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER sh -c 'stat -c%s \"$CONTAINER_DUMP_PATH\" 2>/dev/null || echo 0'" 2>/dev/null | tr -d ' ')
+  if [ "$CONTAINER_SIZE" = "0" ] || [ -z "$CONTAINER_SIZE" ]; then
+    echo "   ❌ Dump file is empty in container!"
+    exit 1
+  fi
+  echo "   ✅ Dump file size in container: $(numfmt --to=iec-i --suffix=B "$CONTAINER_SIZE" 2>/dev/null || echo "${CONTAINER_SIZE} bytes")"
+else
+  echo "   ❌ Dump file not found in container!"
+  exit 1
+fi
+
+echo ""
+
+# Step 1c: Copy from container to server filesystem
+echo "   📋 Copying dump from container to server..."
+ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "mkdir -p $SERVER_DUMP_DIR" 2>/dev/null || true
+
+if ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker cp $POSTGRES_CONTAINER:$CONTAINER_DUMP_PATH $SERVER_DUMP_PATH" 2>&1; then
+  echo "   ✅ Dump copied to server: $SERVER_DUMP_PATH"
+  
+  # Verify file on server
+  SERVER_SIZE=$(ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "stat -c%s $SERVER_DUMP_PATH 2>/dev/null || echo 0" 2>/dev/null | tr -d ' ')
+  if [ "$SERVER_SIZE" = "0" ] || [ -z "$SERVER_SIZE" ]; then
+    echo "   ❌ Dump file is empty on server!"
+    exit 1
+  fi
+  echo "   ✅ Server dump file size: $(numfmt --to=iec-i --suffix=B "$SERVER_SIZE" 2>/dev/null || echo "${SERVER_SIZE} bytes")"
+else
+  echo "   ❌ Failed to copy dump from container to server"
+  exit 1
+fi
+
+# Clean up container dump file
+echo "   🧹 Cleaning up dump file in container..."
+ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER rm -f \"$CONTAINER_DUMP_PATH\"" 2>/dev/null || true
+
+echo ""
+
+# Step 1d: Download from server to local using scp
+echo "   📥 Downloading dump file from server to local..."
+if scp $SSH_OPTS "${SSH_USER}@${SSH_HOST}:${SERVER_DUMP_PATH}" "$LOCAL_DUMP_PATH" 2>&1; then
+  echo "   ✅ Dump file downloaded successfully"
+else
+  echo "   ❌ Failed to download dump file via scp"
+  echo "   You can try downloading manually:"
+  echo "   scp $SSH_OPTS ${SSH_USER}@${SSH_HOST}:${SERVER_DUMP_PATH} $LOCAL_DUMP_PATH"
+  exit 1
+fi
+
+# Clean up server dump file
+echo "   🧹 Cleaning up dump file on server..."
+ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "rm -f $SERVER_DUMP_PATH" 2>/dev/null || true
+
+# Verify local file
+if [ ! -f "$LOCAL_DUMP_PATH" ] || [ ! -s "$LOCAL_DUMP_PATH" ]; then
+  echo "   ❌ Local dump file is missing or empty!"
+  exit 1
+fi
+
+LOCAL_SIZE=$(stat -f%z "$LOCAL_DUMP_PATH" 2>/dev/null || stat -c%s "$LOCAL_DUMP_PATH" 2>/dev/null || echo "0")
+echo "   ✅ Local dump file size: $(du -h "$LOCAL_DUMP_PATH" | cut -f1)"
+
+# Verify the dump file contains actual SQL
+echo "   🔍 Verifying dump file content..."
+if grep -q "Launching command\|INFO \[" "$LOCAL_DUMP_PATH" 2>/dev/null; then
+  echo "   ❌ ERROR: Dump file contains logging output instead of SQL!"
+  echo "   First 10 lines:"
+  head -10 "$LOCAL_DUMP_PATH" | sed 's/^/      /'
+  rm -f "$LOCAL_DUMP_PATH"
+  exit 1
+fi
+
+# Check for SQL statements
+SQL_STATEMENTS=$(grep -cE "^(CREATE|INSERT|COPY|ALTER|DROP|SET|SELECT)" "$LOCAL_DUMP_PATH" 2>/dev/null || echo "0")
+if [ "$SQL_STATEMENTS" = "0" ]; then
+  echo "   ⚠️  Warning: No SQL statements found in dump file"
+  echo "   First 20 lines of dump:"
+  head -20 "$LOCAL_DUMP_PATH" | sed 's/^/      /'
+  echo ""
+  echo "   This might indicate the dump is empty or corrupted"
+else
+  echo "   ✅ Dump file contains $SQL_STATEMENTS SQL statements"
+fi
+
+echo ""
+
+# Step 1c: Clean up remote dump file
+echo "🧹 Step 1c: Cleaning up remote dump file..."
 if kamal accessory exec "$ACCESSORY_NAME" \
   -c "$CONFIG_FILE" \
-  -- sh -c "PGPASSWORD=\"\${POSTGRES_PASSWORD}\" pg_dump -h \"$DB_HOST\" -p 5432 -U \"$DB_USER\" -d \"$DB_NAME\" --no-owner --no-privileges --clean --if-exists" > "$LOCAL_DUMP_PATH" 2>&1; then
-  # Check if file was created and has content
-  if [ -s "$LOCAL_DUMP_PATH" ]; then
-    # Check if it's actually an error message (pg_dump errors go to stderr, but we redirected)
-    if grep -q "pg_dump: error" "$LOCAL_DUMP_PATH" 2>/dev/null; then
-      echo "   ❌ pg_dump error detected, trying app container instead..."
-      rm -f "$LOCAL_DUMP_PATH"
-      # Fallback: try from app container (which has network access to postgres)
-      echo "   Attempting dump from app container..."
-      if kamal app exec \
-        -c "$CONFIG_FILE" \
-        -- sh -c "PGPASSWORD=\"\${DATABASE_PASSWORD}\" pg_dump -h \"$DB_HOST\" -p 5432 -U \"$DB_USER\" -d \"$DB_NAME\" --no-owner --no-privileges --clean --if-exists" > "$LOCAL_DUMP_PATH" 2>&1; then
-        if [ -s "$LOCAL_DUMP_PATH" ] && ! grep -q "pg_dump: error" "$LOCAL_DUMP_PATH" 2>/dev/null; then
-          echo "✅ Database dump created successfully (from app container)"
-        else
-          echo "❌ Dump failed from app container too"
-          cat "$LOCAL_DUMP_PATH"
-          rm -f "$LOCAL_DUMP_PATH"
-          exit 1
-        fi
-      else
-        echo "❌ Failed to execute pg_dump from app container"
-        if [ -f "$LOCAL_DUMP_PATH" ]; then
-          cat "$LOCAL_DUMP_PATH"
-          rm -f "$LOCAL_DUMP_PATH"
-        fi
-        exit 1
-      fi
-    else
-      echo "✅ Database dump created successfully (from postgres container)"
-    fi
-  else
-    echo "❌ Warning: Dump file is empty!"
-    rm -f "$LOCAL_DUMP_PATH"
-    exit 1
-  fi
+  -- rm -f "$REMOTE_DUMP_PATH" 2>&1 | grep -v "Launching\|INFO\|Finished\|App Host" > /dev/null; then
+  echo "   ✅ Remote dump file cleaned up"
 else
-  echo "   ❌ Failed from postgres container, trying app container..."
-  # Fallback: try from app container
-  if kamal app exec \
-    -c "$CONFIG_FILE" \
-    -- sh -c "PGPASSWORD=\"\${DATABASE_PASSWORD}\" pg_dump -h \"$DB_HOST\" -p 5432 -U \"$DB_USER\" -d \"$DB_NAME\" --no-owner --no-privileges --clean --if-exists" > "$LOCAL_DUMP_PATH" 2>&1; then
-    if [ -s "$LOCAL_DUMP_PATH" ] && ! grep -q "pg_dump: error" "$LOCAL_DUMP_PATH" 2>/dev/null; then
-      echo "✅ Database dump created successfully (from app container)"
-    else
-      echo "❌ Failed to create database dump from both containers"
-      if [ -f "$LOCAL_DUMP_PATH" ]; then
-        echo "   Error output:"
-        cat "$LOCAL_DUMP_PATH"
-        rm -f "$LOCAL_DUMP_PATH"
-      fi
-      echo ""
-      echo "   Troubleshooting steps:"
-      echo "   1. Verify postgres container is running:"
-      echo "      kamal accessory details $ACCESSORY_NAME -c $CONFIG_FILE"
-      echo ""
-      echo "   2. Test database connection from postgres container:"
-      echo "      kamal accessory exec $ACCESSORY_NAME -c $CONFIG_FILE -- psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c 'SELECT version();'"
-      echo ""
-      echo "   3. Test database connection from app container:"
-      echo "      kamal app exec -c $CONFIG_FILE -- psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c 'SELECT version();'"
-      exit 1
-    fi
-  else
-    echo "❌ Failed to execute pg_dump"
-    if [ -f "$LOCAL_DUMP_PATH" ]; then
-      cat "$LOCAL_DUMP_PATH"
-      rm -f "$LOCAL_DUMP_PATH"
-    fi
-    exit 1
-  fi
+  echo "   ⚠️  Warning: Could not clean up remote dump file"
+  echo "   You may want to remove it manually: $REMOTE_DUMP_PATH"
 fi
+
+echo ""
 
 echo ""
 echo "🎉 Database dump download completed!"
@@ -280,6 +390,31 @@ if ! docker exec "$LOCAL_CONTAINER" pg_isready -U "$LOCAL_DB_USER" -d "$LOCAL_DB
   exit 0
 fi
 
+# Verify dump file exists and has content
+if [ ! -f "$LOCAL_DUMP_PATH" ]; then
+  echo "   ❌ Dump file not found: $LOCAL_DUMP_PATH"
+  exit 1
+fi
+
+DUMP_SIZE=$(stat -f%z "$LOCAL_DUMP_PATH" 2>/dev/null || stat -c%s "$LOCAL_DUMP_PATH" 2>/dev/null || echo "0")
+if [ "$DUMP_SIZE" = "0" ]; then
+  echo "   ❌ Dump file is empty: $LOCAL_DUMP_PATH"
+  exit 1
+fi
+
+echo "   📄 Dump file size: $(du -h "$LOCAL_DUMP_PATH" | cut -f1)"
+echo "   Checking dump file content..."
+# Check if dump has actual SQL statements (not just comments/headers)
+SQL_STATEMENTS=$(grep -c "CREATE\|INSERT\|COPY\|ALTER" "$LOCAL_DUMP_PATH" 2>/dev/null || echo "0")
+if [ "$SQL_STATEMENTS" = "0" ]; then
+  echo "   ⚠️  Warning: Dump file may not contain SQL statements"
+  echo "   First 20 lines of dump:"
+  head -20 "$LOCAL_DUMP_PATH" | sed 's/^/      /'
+else
+  echo "   ✅ Dump file contains $SQL_STATEMENTS SQL statements"
+fi
+echo ""
+
 # Drop and recreate database (to ensure clean import)
 echo "   🗑️  Dropping existing database (if exists)..."
 # Terminate all connections to the database first
@@ -319,52 +454,171 @@ fi
 # Import the dump
 echo "   📥 Importing dump file..."
 echo "   (This may take a while depending on database size...)"
-IMPORT_OUTPUT=$(docker exec -i "$LOCAL_CONTAINER" \
+echo ""
+
+# Prepare log file
+IMPORT_LOG="$LOCAL_DUMP_DIR/import_${TIMESTAMP}.log"
+touch "$IMPORT_LOG"
+
+# Import and show output in real-time while saving to log
+echo "   📋 Import output:"
+echo "   ──────────────────────────────────────────────────────────────"
+
+# Use tee to both display and save output
+# We need to capture the exit code from docker exec, not tee
+set +e  # Temporarily disable exit on error to capture exit code
+docker exec -i "$LOCAL_CONTAINER" \
   psql -U "$LOCAL_DB_USER" -d "$LOCAL_DB_NAME" \
-  < "$LOCAL_DUMP_PATH" 2>&1)
-IMPORT_EXIT_CODE=$?
+  < "$LOCAL_DUMP_PATH" 2>&1 | tee "$IMPORT_LOG"
+IMPORT_EXIT_CODE=${PIPESTATUS[0]}
+set -e  # Re-enable exit on error
+
+echo "   ──────────────────────────────────────────────────────────────"
+echo ""
+
+# Read the saved output for analysis
+IMPORT_OUTPUT=$(cat "$IMPORT_LOG" 2>/dev/null || echo "")
 
 if [ $IMPORT_EXIT_CODE -eq 0 ]; then
   echo "   ✅ Database import completed successfully!"
-elif echo "$IMPORT_OUTPUT" | grep -q "ERROR"; then
-  # Check if errors are just about existing objects (which is fine with --clean)
-  ERROR_COUNT=$(echo "$IMPORT_OUTPUT" | grep -c "ERROR" || echo "0")
-  if [ "$ERROR_COUNT" -lt 10 ]; then
-    echo "   ⚠️  Import completed with minor errors (may be expected)"
-    echo "   Error count: $ERROR_COUNT"
-  else
-    echo "   ⚠️  Import completed with errors"
-    echo "   Error count: $ERROR_COUNT"
-    echo "   First few errors:"
-    echo "$IMPORT_OUTPUT" | grep "ERROR" | head -5 | sed 's/^/      /'
-  fi
 else
-  echo "   ✅ Database import completed!"
+  echo "   ⚠️  Import completed with exit code: $IMPORT_EXIT_CODE"
 fi
 
-# Verify import
+# Check for errors in output
+ERROR_COUNT=$(echo "$IMPORT_OUTPUT" | grep -ci "ERROR" || echo "0")
+WARNING_COUNT=$(echo "$IMPORT_OUTPUT" | grep -ci "WARNING" || echo "0")
+
+if [ "$ERROR_COUNT" -gt 0 ]; then
+  echo "   ⚠️  Found $ERROR_COUNT error(s) during import"
+  echo "   Showing all errors:"
+  echo "$IMPORT_OUTPUT" | grep -i "ERROR" | sed 's/^/      /'
+  echo ""
+  echo "   Full import log saved to: $IMPORT_LOG"
+fi
+
+if [ "$WARNING_COUNT" -gt 0 ]; then
+  echo "   ℹ️  Found $WARNING_COUNT warning(s) during import"
+  if [ "$WARNING_COUNT" -le 20 ]; then
+    echo "   Showing warnings:"
+    echo "$IMPORT_OUTPUT" | grep -i "WARNING" | sed 's/^/      /'
+  else
+    echo "   Showing first 20 warnings:"
+    echo "$IMPORT_OUTPUT" | grep -i "WARNING" | head -20 | sed 's/^/      /'
+    echo "   ... and $((WARNING_COUNT - 20)) more (see log file)"
+  fi
+fi
+
+# Verify import - check for tables and data
+echo ""
 echo "   🔍 Verifying import..."
+
+# Count tables across all schemas
 TABLE_COUNT=$(docker exec "$LOCAL_CONTAINER" \
   psql -U "$LOCAL_DB_USER" -d "$LOCAL_DB_NAME" -t -c \
-  "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema');" \
+  "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_toast');" \
   2>/dev/null | tr -d ' ' || echo "0")
 
-if [ "$TABLE_COUNT" != "0" ] && [ -n "$TABLE_COUNT" ]; then
-  echo "   ✅ Import verified: $TABLE_COUNT tables found"
+if [ "$TABLE_COUNT" = "0" ] || [ -z "$TABLE_COUNT" ]; then
+  echo "   ❌ No tables found in database!"
+  echo "   This suggests the import may have failed."
+  echo "   Check the import log: $IMPORT_LOG"
+  echo ""
+  echo "   Attempting to show what's in the database..."
+  docker exec "$LOCAL_CONTAINER" \
+    psql -U "$LOCAL_DB_USER" -d "$LOCAL_DB_NAME" -c \
+    "\dn" 2>&1 || true
+  exit 1
+fi
+
+echo "   ✅ Found $TABLE_COUNT tables"
+
+# Check for data in key tables
+echo "   📊 Checking for data in key tables..."
+DATA_FOUND=false
+
+# Check common tables that should have data
+TABLES_TO_CHECK=(
+  "auth.users"
+  "spaces.spaces"
+  "transactions.transactions"
+  "public.spaces"
+  "public.transactions"
+  "public.accounts"
+)
+
+for table in "${TABLES_TO_CHECK[@]}"; do
+  # Try to get row count (handle schema.table and just table)
+  if [[ "$table" == *"."* ]]; then
+    SCHEMA=$(echo "$table" | cut -d'.' -f1)
+    TABLE_NAME=$(echo "$table" | cut -d'.' -f2)
+    ROW_COUNT=$(docker exec "$LOCAL_CONTAINER" \
+      psql -U "$LOCAL_DB_USER" -d "$LOCAL_DB_NAME" -t -c \
+      "SELECT COUNT(*) FROM \"$SCHEMA\".\"$TABLE_NAME\";" \
+      2>/dev/null | tr -d ' ' || echo "0")
+  else
+    ROW_COUNT=$(docker exec "$LOCAL_CONTAINER" \
+      psql -U "$LOCAL_DB_USER" -d "$LOCAL_DB_NAME" -t -c \
+      "SELECT COUNT(*) FROM \"$table\";" \
+      2>/dev/null | tr -d ' ' || echo "0")
+  fi
+  
+  if [ "$ROW_COUNT" != "0" ] && [ -n "$ROW_COUNT" ] && [ "$ROW_COUNT" != "ERROR" ]; then
+    echo "      ✅ $table: $ROW_COUNT rows"
+    DATA_FOUND=true
+  fi
+done
+
+if [ "$DATA_FOUND" = false ]; then
+  echo "   ⚠️  No data found in key tables!"
+  echo "   The import may have only created the schema without data."
+  echo ""
+  echo "   Checking all schemas..."
+  docker exec "$LOCAL_CONTAINER" \
+    psql -U "$LOCAL_DB_USER" -d "$LOCAL_DB_NAME" -c \
+    "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast', 'pg_temp_1', 'pg_toast_temp_1');" \
+    2>&1 || true
+  
+  echo ""
+  echo "   Checking table counts per schema..."
+  docker exec "$LOCAL_CONTAINER" \
+    psql -U "$LOCAL_DB_USER" -d "$LOCAL_DB_NAME" -c \
+    "SELECT table_schema, COUNT(*) as table_count FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_toast') GROUP BY table_schema ORDER BY table_schema;" \
+    2>&1 || true
 else
-  echo "   ⚠️  Could not verify import (this may be normal)"
+  echo "   ✅ Data found in database!"
 fi
 
 echo ""
-echo "🎉 All done! Database imported to local Docker instance."
+if [ "$DATA_FOUND" = true ]; then
+  echo "🎉 All done! Database imported to local Docker instance."
+else
+  echo "⚠️  Import completed, but no data was found in key tables."
+  echo "   This might be normal if:"
+  echo "   - The source database was empty"
+  echo "   - The dump only contains schema (no data)"
+  echo "   - Data is in different schemas/tables"
+  echo ""
+  echo "   Troubleshooting:"
+  echo "   1. Check the import log: $IMPORT_LOG"
+  echo "   2. Verify the dump file has data: grep -c 'INSERT\\|COPY' $LOCAL_DUMP_PATH"
+  echo "   3. Check all schemas: docker exec $LOCAL_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -c '\\dn'"
+  echo "   4. You may need to run migrations: rails db:migrate"
+fi
+
 echo ""
 echo "📋 Summary:"
 echo "   Dump file: $LOCAL_DUMP_PATH"
+echo "   Import log: $IMPORT_LOG"
 echo "   Local database: $LOCAL_DB_NAME"
 echo "   Container: $LOCAL_CONTAINER"
 echo "   Port: $LOCAL_DB_PORT"
+echo "   Tables found: $TABLE_COUNT"
 echo ""
 echo "💡 To connect to the local database:"
 echo "   docker exec -it $LOCAL_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME"
 echo "   Or via Rails: rails db"
+echo ""
+echo "💡 If you need to run migrations after import:"
+echo "   rails db:migrate"
 echo ""
