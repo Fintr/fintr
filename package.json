@@ -9,7 +9,9 @@
     "lint": "next lint",
     "build:ios": "next build && npx cap sync ios",
     "ios": "npx cap run ios",
-    "ios:simulator": "npx cap run ios --target='iPhone 15'"
+    "ios:simulator": "npx cap run ios --target='iPhone 15'",
+    "build:android:staging": "./build-android-staging.sh",
+    "android:open": "npx cap open android"
   },
   "dependencies": {
     "@ariakit/react": "^0.4.17",
