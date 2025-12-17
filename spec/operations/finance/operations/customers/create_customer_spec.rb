@@ -4,6 +4,14 @@ require "rails_helper"
 
 RSpec.describe Finance::Operations::Customers::CreateCustomer, :vcr, type: :operation do
   let(:operation) { described_class.new }
+  let(:valid_params) do
+    {
+      email:,
+      given_names:,
+      surname:,
+      reference_id:
+    }
+  end
   let(:email) { "test@example.com" }
   let(:given_names) { "John" }
   let(:surname) { "Doe" }
@@ -14,14 +22,6 @@ RSpec.describe Finance::Operations::Customers::CreateCustomer, :vcr, type: :oper
     allow(ENV).to receive(:fetch).with("XENDIT_API_KEY").and_return("test_xendit_api_key")
   end
 
-  let(:valid_params) do
-    {
-      email:,
-      given_names:,
-      surname:,
-      reference_id:
-    }
-  end
 
   describe "#validate" do
     context "with valid parameters" do

@@ -14,9 +14,9 @@ module Transactions
       end_date = Utils::Dates.current_time_in_manila
       start_date = if start_date_string.present?
                      Date.parse(start_date_string).in_time_zone("Asia/Manila")
-                   else
+      else
                      end_date
-                   end
+      end
 
       Rails.logger.info("Processing dates from #{start_date.to_date} to #{end_date.to_date}")
 
