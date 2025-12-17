@@ -32,6 +32,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { monthNames, getYearOptions, getCurrentMonthDates } from "@/utils/dateUtils";
+import { useAuthApi } from "@/hooks/useAuthApi";
 
 interface BudgetsTabProps {}
 
@@ -39,6 +40,10 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   // Budget state
   const [showFilters, setShowFilters] = useState(false);
   
+  const { api } = useAuthApi({
+    scope: "openid profile email read:current_user read:transactions",
+  });
+
   // Use shared date filter atoms
   const [startDate, setStartDate] = useAtom(dateFilterStartDateAtom);
   const [endDate, setEndDate] = useAtom(dateFilterEndDateAtom);
@@ -279,6 +284,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
           <NewBudgetDialog
             budgetsData={budgetsData}
             createBudgetMutation={createBudgetMutation}
+            api={api}
           />
         </div>
       </CardHeader>
