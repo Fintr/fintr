@@ -5,6 +5,14 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +32,7 @@ import {
   PieChart,
   BarChart3,
   Filter,
+  Eye,
 } from "lucide-react";
 import { useInsightsData } from "@/hooks/async/useInsightsData";
 import {
@@ -40,6 +49,7 @@ import {
   Cell,
   BarChart as RechartsBarChart,
   Bar,
+  ReferenceLine,
 } from "recharts";
 import { formatCurrency, getColor, getColorByIndex, shouldShowV2Features } from "@/lib/utils";
 import { useMemo, useEffect, useState } from "react";
@@ -191,6 +201,30 @@ const InsightsTab = () => {
   
   // Fetch insights data from API
   const { data: insightsData, isLoading, isError, refetch } = useInsightsData(getInsightsParams);
+
+  // Calculate Y-axis domain for bar chart with padding
+  const barChartYAxisDomain = useMemo(() => {
+    const data = insightsData?.monthlySpending || monthlyFinancialData;
+    if (!data || data.length === 0) {
+      return [0, 100000]; // Default range
+    }
+    
+    // Find max and min values across all data points (income, expenses, savings)
+    const allValues = data.flatMap(item => [
+      item.income || 0,
+      Math.abs(item.expenses) || 0, // expenses shown as positive
+      item.savings || 0
+    ]);
+    
+    const maxValue = Math.max(...allValues);
+    const minValue = Math.min(...data.map(item => item.savings || 0)); // Check if savings go negative
+    
+    // Add 20% padding to the top, and 10% to bottom if there are negative values
+    const domainMax = maxValue * 1.2;
+    const domainMin = minValue < 0 ? minValue * 1.1 : 0;
+    
+    return [domainMin, domainMax];
+  }, [insightsData?.monthlySpending]);
 
   // Calculate Y-axis domain for financial trends chart with padding
   const yAxisDomain = useMemo(() => {
@@ -841,24 +875,67 @@ const InsightsTab = () => {
               Financial Trends
             </CardTitle>
             <CardDescription>
-              Your income and expenses over time
+              Track your income (blue), expenses (red), and net savings (green) over time
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsLineChart
-                  data={insightsData?.monthlySpending || monthlyFinancialData}
+                  data={(insightsData?.monthlySpending || monthlyFinancialData).map(item => ({
+                    ...item,
+                    expensesPositive: Math.abs(item.expenses), // Show expenses as positive for better visibility
+                  }))}
                   margin={{ top: 15, right: 30, left: 20, bottom: 15 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="month" stroke="#888888" />
-                  <YAxis stroke="#888888" domain={yAxisDomain} />
-                  <RechartsTooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                    labelFormatter={(label) => `Month: ${label}`}
+                  <XAxis 
+                    dataKey="month" 
+                    stroke="#888888"
+                    style={{ fontSize: '14px' }}
                   />
-                  <Legend />
+                  <YAxis 
+                    stroke="#888888"
+                    domain={barChartYAxisDomain}
+                    tickFormatter={(value) => {
+                      // Handle millions
+                      if (Math.abs(value) >= 1000000) {
+                        return `₱${(value / 1000000).toFixed(1)}M`;
+                      }
+                      // Handle thousands
+                      if (Math.abs(value) >= 1000) {
+                        return `₱${(value / 1000).toFixed(0)}K`;
+                      }
+                      // Handle small numbers
+                      if (Math.abs(value) < 1000 && value !== 0) {
+                        return `₱${value.toFixed(0)}`;
+                      }
+                      return '₱0';
+                    }}
+                    style={{ fontSize: '12px' }}
+                  />
+                  <RechartsTooltip
+                    formatter={(value: number, name: string) => {
+                      return [formatCurrency(value), name];
+                    }}
+                    labelFormatter={(label) => `Month: ${label}`}
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '12px'
+                    }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '20px' }}
+                  />
+                  <ReferenceLine 
+                    y={0} 
+                    stroke="#888888" 
+                    strokeDasharray="3 3"
+                    strokeWidth={1.5}
+                    label={{ value: '₱0', position: 'left', fill: '#888888', fontSize: 12 }}
+                  />
                   <Line
                     type="monotone"
                     dataKey="income"
@@ -870,7 +947,7 @@ const InsightsTab = () => {
                   />
                   <Line
                     type="monotone"
-                    dataKey="expenses"
+                    dataKey="expensesPositive"
                     stroke="oklch(39.6% 0.141 25.723)"
                     strokeWidth={2}
                     dot={{ r: 4 }}
@@ -888,6 +965,52 @@ const InsightsTab = () => {
                   />
                 </RechartsLineChart>
               </ResponsiveContainer>
+            </div>
+            
+            {/* View Details Button */}
+            <div className="mt-6 pt-4 border-t flex justify-center">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Eye className="h-4 w-4" />
+                    View Monthly Details
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="!max-w-[90vw] w-[90vw] max-h-[90vh] overflow-y-auto p-8">
+                  <DialogHeader>
+                    <DialogTitle className="text-3xl font-bold">Monthly Financial Breakdown</DialogTitle>
+                    <DialogDescription className="text-lg mt-2">
+                      Detailed view of your income, expenses, and savings for each month
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-6">
+                    {(insightsData?.monthlySpending || monthlyFinancialData).map((item, idx) => (
+                      <div key={idx} className="border rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-shadow">
+                        <div className="text-xl font-bold text-center mb-4 pb-3 border-b">{item.month}</div>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm text-muted-foreground font-medium flex-shrink-0">Earned:</span>
+                            <span className="font-bold text-green-600 text-base whitespace-nowrap text-right">{formatCurrency(item.income)}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm text-muted-foreground font-medium flex-shrink-0">Spent:</span>
+                            <span className="font-bold text-red-900 text-base whitespace-nowrap text-right">{formatCurrency(Math.abs(item.expenses))}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 pt-2 border-t">
+                            <span className="text-sm text-muted-foreground font-medium flex-shrink-0 flex items-center gap-1.5">
+                              Left over:
+                              {item.savings < 0 && <span className="text-base">⚠️</span>}
+                            </span>
+                            <span className={`font-bold text-base whitespace-nowrap text-right ${item.savings < 0 ? 'text-red-900' : 'text-gray-900'}`}>
+                              {formatCurrency(item.savings)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardContent>
         </Card>
