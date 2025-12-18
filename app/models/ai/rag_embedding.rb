@@ -21,11 +21,12 @@ module Ai
     has_neighbors :embedding
 
     # pgvectorscale specific methods for high-performance operations
-    def self.nearest_neighbors_optimized(query_vector, limit: 10, threshold: 0.7)
+    def self.nearest_neighbors_optimized(query_vector, limit: 50, threshold: 0.65)
       # Use neighbor gem's built-in method which handles vector operations safely
       # Get more results than needed and filter in Ruby to avoid SQL injection issues
       results = nearest_neighbors(:embedding, query_vector, distance: "cosine")
                   .limit(limit) # Get extra results to account for threshold filtering
+                  .select { |result| result.neighbor_distance <= threshold }
       # Return only the requested number of results
       results
     end

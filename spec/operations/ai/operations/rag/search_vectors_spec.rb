@@ -141,10 +141,10 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
     let(:search_results) { [rag_embedding] }
 
       before do
-        # Mock OpenAI client
-        openai_client = instance_double(OpenAI::Client)
-        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:embeddings).and_return(openai_response)
+        # Mock GenerateQueryEmbedding operation
+        generate_operation = instance_double(Ai::Operations::Embeddings::GenerateQueryEmbedding)
+        allow(Ai::Operations::Embeddings::GenerateQueryEmbedding).to receive(:new).and_return(generate_operation)
+        allow(generate_operation).to receive(:call).and_return(Dry::Monads::Result::Success.new(embedding_vector))
 
         # Mock vector search results
         allow(Ai::RagEmbedding).to receive(:nearest_neighbors_optimized).and_return(search_results)
@@ -177,19 +177,14 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
         )
       end
 
-      it "calls OpenAI with correct parameters" do
-        openai_client = instance_double(OpenAI::Client)
-        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:embeddings).and_return(openai_response)
+      it "calls GenerateQueryEmbedding operation with correct parameters" do
+        generate_operation = instance_double(Ai::Operations::Embeddings::GenerateQueryEmbedding)
+        allow(Ai::Operations::Embeddings::GenerateQueryEmbedding).to receive(:new).and_return(generate_operation)
+        allow(generate_operation).to receive(:call).and_return(Dry::Monads::Result::Success.new(embedding_vector))
 
         operation.call(params)
 
-        expect(openai_client).to have_received(:embeddings).with(
-          parameters: {
-            model: "text-embedding-ada-002",
-            input: "Find my grocery expenses"
-          }
-        )
+        expect(generate_operation).to have_received(:call).with(query: "Find my grocery expenses")
       end
     end
 
@@ -233,9 +228,11 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
 
     context "when generate_query_embedding fails" do
       before do
-        openai_client = instance_double(OpenAI::Client)
-        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:embeddings).and_raise(StandardError.new("API error"))
+        generate_operation = instance_double(Ai::Operations::Embeddings::GenerateQueryEmbedding)
+        allow(Ai::Operations::Embeddings::GenerateQueryEmbedding).to receive(:new).and_return(generate_operation)
+        allow(generate_operation).to receive(:call).and_return(
+          Dry::Monads::Result::Failure.new({ embedding_error: "Failed to generate query embedding: API error" })
+        )
       end
 
       it "returns a failure" do
@@ -275,72 +272,27 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
 
   describe "private methods" do
     describe "#generate_query_embedding" do
-      it "generates embedding vector successfully" do
-        openai_client = instance_double(OpenAI::Client)
-        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:embeddings).and_return(openai_response)
+      it "calls GenerateQueryEmbedding operation with correct parameters" do
+        generate_operation = instance_double(Ai::Operations::Embeddings::GenerateQueryEmbedding)
+        allow(Ai::Operations::Embeddings::GenerateQueryEmbedding).to receive(:new).and_return(generate_operation)
+        allow(generate_operation).to receive(:call).and_return(Dry::Monads::Result::Success.new(embedding_vector))
 
         result = operation.send(:generate_query_embedding, params: params)
+
         expect(result).to be_success
         expect(result.value!).to eq(embedding_vector)
+        expect(generate_operation).to have_received(:call).with(query: "Find my grocery expenses")
       end
 
-      it "calls OpenAI with correct parameters" do
-        openai_client = instance_double(OpenAI::Client)
-        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:embeddings).and_return(openai_response)
-
-        operation.send(:generate_query_embedding, params: params)
-
-        expect(openai_client).to have_received(:embeddings).with(
-          parameters: {
-            model: "text-embedding-ada-002",
-            input: "Find my grocery expenses"
-          }
-        )
-      end
-
-      it "returns failure when OpenAI API fails" do
-        openai_client = instance_double(OpenAI::Client)
-        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:embeddings).and_raise(StandardError.new("API error"))
+      it "returns failure when GenerateQueryEmbedding operation fails" do
+        generate_operation = instance_double(Ai::Operations::Embeddings::GenerateQueryEmbedding)
+        allow(Ai::Operations::Embeddings::GenerateQueryEmbedding).to receive(:new).and_return(generate_operation)
+        allow(generate_operation).to receive(:call).and_return(Dry::Monads::Result::Failure.new({ embedding_error: "API error" }))
 
         result = operation.send(:generate_query_embedding, params: params)
+
         expect(result).to be_failure
         expect(result.failure).to have_key(:embedding_error)
-        expect(result.failure[:embedding_error]).to include("Failed to generate query embedding")
-      end
-
-      it "handles malformed OpenAI response" do
-        openai_client = instance_double(OpenAI::Client)
-        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:embeddings).and_return({ "data" => [] })
-
-        result = operation.send(:generate_query_embedding, params: params)
-        expect(result).to be_failure
-        expect(result.failure).to have_key(:embedding_error)
-      end
-
-      it "handles empty embedding vector" do
-        openai_client = instance_double(OpenAI::Client)
-        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:embeddings).and_return({ "data" => [{ "embedding" => [] }] })
-
-        result = operation.send(:generate_query_embedding, params: params)
-        expect(result).to be_failure
-        expect(result.failure).to have_key(:embedding_error)
-        expect(result.failure[:embedding_error]).to include("Invalid embedding response from OpenAI")
-      end
-
-      it "handles nil embedding vector" do
-        openai_client = instance_double(OpenAI::Client)
-        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:embeddings).and_return({ "data" => [{ "embedding" => nil }] })
-
-        result = operation.send(:generate_query_embedding, params: params)
-        expect(result).to be_failure
-        expect(result.failure).to have_key(:embedding_error)
-        expect(result.failure[:embedding_error]).to include("Invalid embedding response from OpenAI")
       end
     end
 
