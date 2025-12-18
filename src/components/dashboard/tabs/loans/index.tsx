@@ -315,7 +315,7 @@ const LoansTab = ({}: LoansTabProps) => {
 
         {isError && (
           <div className="text-center py-12">
-            <p className="text-red-600 mb-4">Error loading loans</p>
+            <p className="text-red-900 mb-4">Error loading loans</p>
             <Button onClick={() => refetch()} variant="outline">
               Retry
             </Button>

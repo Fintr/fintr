@@ -411,7 +411,7 @@ const SpaceSettingsTab = () => {
         <CardContent>
           <div className="flex items-center justify-center p-8">
             <div className="text-center">
-              <p className="bg-red-800 mb-4">Failed to load categories. Please try again.</p>
+              <p className="text-red-900 mb-4">Failed to load categories. Please try again.</p>
               <Button onClick={() => window.location.reload()}>
                 Retry
               </Button>

@@ -426,7 +426,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
           </CardHeader>
           <CardContent className="px-4">
             {isError ? (
-              <div className="py-4 text-center bg-red-800">
+              <div className="py-4 text-center text-red-900">
                 Error loading budget data. Please try again.
               </div>
             ) : (

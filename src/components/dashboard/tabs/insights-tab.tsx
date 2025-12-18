@@ -521,7 +521,7 @@ const InsightsTab = () => {
                 <LoadingSpinner size="medium" />
               </div>
             ) : isError ? (
-              <div className="text-center py-8 bg-red-800">
+              <div className="text-center py-8 text-red-900">
                 Error loading insights. Please try again.
               </div>
             ) : (
