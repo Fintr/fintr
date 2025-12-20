@@ -330,7 +330,7 @@ export const fetchInsights = async (
       monthlySpending: apiData.monthlySpending?.map(item => ({
         month: new Date(item.month_year).toLocaleString('default', { month: 'short' }),
         income: item.total_income,
-        expenses: item.total_expense, // Keep expenses as positive values
+        expenses: -Math.abs(item.total_expense), // Convert to negative for chart visualization
         savings: item.net_amount,
       })) || [],
       accountBreakdown: {

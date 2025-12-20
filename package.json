@@ -12,6 +12,7 @@
     "ios": "npx cap run ios",
     "ios:simulator": "npx cap run ios --target='iPhone 15'",
     "android": "npx cap run android",
+    "build:android:staging": "./build-android-staging.sh",
     "android:open": "npx cap open android"
   },
   "dependencies": {

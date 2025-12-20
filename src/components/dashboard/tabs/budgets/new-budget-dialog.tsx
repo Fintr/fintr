@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Budget, BudgetsPage } from "@/types/budgetTypes";
+import { CategoryTypeEnum } from "@/types/categoryTypes";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,8 @@ import { ComboBox } from "@/components/ui/combobox";
 import { OptionType } from "@/types/generalTypes";
 import { useAtomValue } from "jotai";
 import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
+import { createTransactionCategory } from "@/services/transactions/categories/mutation";
+import { AxiosInstance } from "axios";
 
 const formSchema = z.object({
   category: z.string().min(1, { message: "Category cannot be empty." }),
@@ -48,11 +51,13 @@ interface FieldErrors {
 export function NewBudgetDialog({
   budgetsData,
   createBudgetMutation,
+  api,  
 }: {
   budgetsData?: BudgetsPage;
   createBudgetMutation: ReturnType<
     typeof useBudgetsData
   >["createBudgetMutation"];
+  api: AxiosInstance;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [customExpenseCategories, setCustomExpenseCategories] = useState<
@@ -101,42 +106,54 @@ export function NewBudgetDialog({
     return fieldErrors;
   };
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true);
-    setFieldErrors({}); // Clear previous errors
+async function onSubmit(values: z.infer<typeof formSchema>) {
+  setIsSubmitting(true);
+  setFieldErrors({}); // Clear previous errors
+  
+  try {
+    // Step 1: Check if category exists in the current options
+    const categoryExists = expenseCategoryOptions.find(
+      (cat) => cat.value === values.category
+    );
     
-    // Auto-supply today's date
+    // Step 2: If category doesn't exist, create it first
+    if (!categoryExists && !customExpenseCategories.includes(values.category)) {
+      console.log(`Creating new expense category: ${values.category}`);
+      
+      await createTransactionCategory(api, {
+        name: values.category,
+        categoryType: CategoryTypeEnum.EXPENSE // Budgets only work with expense categories
+      });
+      
+      // Add to local custom categories list for UI
+      setCustomExpenseCategories((prev) => [...prev, values.category]);
+    }
+    
+    // Step 3: Now create the budget (category is guaranteed to exist)
     const today = new Date().toISOString().split("T")[0];
     
-    createBudgetMutation.mutate(
-      {
-        categoryName: values.category,
-        amount: values.amount,
-        date: today,
-      },
-      {
-        onSuccess: () => {
-          // Add to custom categories if it's not in expense options and not already custom
-          if (
-            !expenseCategoryOptions.find((pc) => pc.value === values.category) &&
-            !customExpenseCategories.includes(values.category)
-          ) {
-            setCustomExpenseCategories((prev) => [...prev, values.category]);
-          }
-          form.reset();
-          setDialogOpen(false); // Only close on success
-          setIsSubmitting(false);
-        },
-        onError: (error) => {
-          console.error('Budget creation error:', error);
-          const errors = extractFieldErrors(error);
-          setFieldErrors(errors);
-          setIsSubmitting(false);
-          // Don't close dialog on error - let user fix and retry
-        },
-      }
-    );
+    await createBudgetMutation.mutateAsync({
+      categoryName: values.category,
+      amount: values.amount,
+      date: today,
+    });
+    
+    // Step 4: Success! Reset form and close dialog
+    form.reset();
+    setDialogOpen(false);
+    setIsSubmitting(false);
+    
+  } catch (error) {
+    console.error('Error in budget creation flow:', error);
+    
+    // Extract and display field-specific errors
+    const errors = extractFieldErrors(error);
+    setFieldErrors(errors);
+    setIsSubmitting(false);
+    
+    // Don't close dialog on error - let user fix and retry
   }
+}
 
   const getCategoryErrorMessage = () => {
     if (fieldErrors.category && fieldErrors.category.length > 0) {

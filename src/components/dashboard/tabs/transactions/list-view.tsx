@@ -105,7 +105,7 @@ export function ListView({
         </div>
       )}
       {isError && error && (
-        <div className="bg-red-800 text-center py-4">Error: {error.message}</div>
+        <div className="text-red-900 text-center py-4">Error: {error.message}</div>
       )}
       {isSuccess && data && (
         <>

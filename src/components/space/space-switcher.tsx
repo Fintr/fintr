@@ -29,7 +29,7 @@ export function SpaceSwitcher({ showSpaceSwitcher = true, isMobile = true }: Spa
     }
   };
 
-  const personalSpace = spaces?.find(space => space.isPersonal);
+  const personalSpaces = spaces?.filter(space => space.isPersonal) || [];
   const organizationSpaces = spaces?.filter(space => space.isOrganization) || [];
 
   if (!showSpaceSwitcher) {
@@ -50,7 +50,7 @@ export function SpaceSwitcher({ showSpaceSwitcher = true, isMobile = true }: Spa
             <ChevronDown className={`h-3 w-3 transition-transform ${showSpaceList ? 'rotate-180' : ''}`} />
           </Button>
         </div>
-        
+
         {/* Current Space Display */}
         <div className="p-2 rounded-lg bg-gray-50">
           <div className="flex items-center gap-2">
@@ -83,20 +83,23 @@ export function SpaceSwitcher({ showSpaceSwitcher = true, isMobile = true }: Spa
         {/* Space List */}
         {showSpaceList && (
           <div className="mt-2 space-y-1">
-            {/* Personal Space */}
-            {personalSpace && personalSpace.code !== currentSpace?.code && (
-              <button
-                onClick={() => handleSpaceSwitch(personalSpace.code)}
-                className="flex items-center justify-between w-full p-2 text-left rounded hover:bg-gray-100 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full" />
-                  <span className="text-sm">{personalSpace.name}</span>
-                </div>
-                <Check className="h-3 w-3 text-green-600" />
-              </button>
-            )}
-            
+            {/* Personal Spaces */}
+            {personalSpaces
+              .filter(space => space.code !== currentSpace?.code)
+              .map((space) => (
+                <button
+                  key={space.code}
+                  onClick={() => handleSpaceSwitch(space.code)}
+                  className="flex items-center justify-between w-full p-2 text-left rounded hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span className="text-sm">{space.name}</span>
+                  </div>
+                  <Check className="h-3 w-3 text-green-600" />
+                </button>
+              ))
+            }
             {/* Organization Spaces */}
             {organizationSpaces
               .filter(space => space.code !== currentSpace?.code)
@@ -116,7 +119,7 @@ export function SpaceSwitcher({ showSpaceSwitcher = true, isMobile = true }: Spa
                   <Check className="h-3 w-3 text-green-600" />
                 </button>
               ))}
-            
+
             {/* Create Organization Space */}
             <button
               onClick={() => setShowCreateDialog(true)}
@@ -130,15 +133,15 @@ export function SpaceSwitcher({ showSpaceSwitcher = true, isMobile = true }: Spa
       </div>
 
       {/* Create Space Dialog */}
-      <CreateSpaceDialog 
-        open={showCreateDialog} 
-        onOpenChange={setShowCreateDialog} 
+      <CreateSpaceDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
       />
 
       {/* Grant Access Dialog */}
-      <GrantAccessDialog 
-        open={showGrantAccessDialog} 
-        onOpenChange={setShowGrantAccessDialog} 
+      <GrantAccessDialog
+        open={showGrantAccessDialog}
+        onOpenChange={setShowGrantAccessDialog}
       />
     </>
   );
