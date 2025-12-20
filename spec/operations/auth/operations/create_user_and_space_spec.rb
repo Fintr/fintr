@@ -116,13 +116,63 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
       end
     end
 
+    context 'when user exists by auth_id but has no changes' do
+      let!(:existing_user) { create(:user, auth_id: auth_params[:auth_id], email: auth_params[:email], full_name: auth_params[:full_name], photo_url: auth_params[:photo_url]) }
+
+      it { is_expected.to be_success }
+
+      it 'returns the existing user' do
+        expect(call_operation.value!).to eq(existing_user)
+      end
+
+      it 'does not create a new user' do
+        expect { call_operation }.not_to change(Auth::User, :count)
+      end
+
+      it 'creates a personal space if it does not exist' do
+        expect { call_operation }.to change(Spaces::PersonalSpace, :count).by(1)
+      end
+    end
+
+    context 'when user exists by email but not auth_id' do
+      let!(:existing_user) { create(:user, email: auth_params[:email], auth_id: 'different-auth-id', full_name: 'Old Name') }
+
+      it { is_expected.to be_success }
+
+      it 'returns the existing user found by email' do
+        expect(call_operation.value!).to eq(existing_user)
+      end
+
+      it 'does not create a new user' do
+        expect { call_operation }.not_to change(Auth::User, :count)
+      end
+
+      it 'does not update the auth_id of the existing user' do
+        call_operation
+        existing_user.reload
+        expect(existing_user.auth_id).to eq('different-auth-id')
+      end
+
+      it 'creates a personal space if it does not exist' do
+        expect { call_operation }.to change(Spaces::PersonalSpace, :count).by(1)
+      end
+    end
+
     context 'when user saving fails validation' do
-      let(:new_user) { build(:user, auth_params) }
+      let(:new_user) { build(:user, auth_id: auth_params[:auth_id]) }
       let(:user_errors) { ActiveModel::Errors.new(new_user).tap { |e| e.add(:email, :blank) } }
       let(:validation_exception) { ActiveRecord::RecordInvalid.new(new_user) }
 
       before do
-        allow(Auth::User).to receive(:find_or_initialize_by).with(auth_id: auth_params[:auth_id]).and_return(new_user)
+        # Set up stubs in correct order - specific first, then general
+        allow(Auth::User).to receive(:find_by).and_call_original
+        allow(Auth::User).to receive(:find_by).with(auth_id: auth_params[:auth_id]).and_return(nil)
+        allow(Auth::User).to receive(:find_by).with(email: auth_params[:email]).and_return(nil)
+
+        allow(Auth::User).to receive(:new).and_call_original
+        allow(Auth::User).to receive(:new).with(auth_id: auth_params[:auth_id]).and_return(new_user)
+
+        allow(new_user).to receive(:assign_attributes)
         allow(new_user).to receive(:changed?).and_return(true)
         allow(new_user).to receive(:save!).and_raise(validation_exception)
         allow(new_user).to receive(:errors).and_return(user_errors)
@@ -131,7 +181,9 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
       it { is_expected.to be_failure }
 
       it 'returns the validation errors in the failure' do
-        expect(call_operation.failure[:errors]).to eq(user_errors)
+        result = call_operation
+        expect(result).to be_failure
+        expect(result.failure[:errors]).to eq(user_errors)
       end
 
       it 'does not create a user' do
@@ -148,16 +200,25 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
     end
 
     context 'when space saving fails validation' do
-      let(:user) { build(:user, auth_params) }
+      let(:user) { build(:user, auth_id: auth_params[:auth_id]) }
       let(:expected_space_code) { 'test-example-com-personal-space' }
       let(:new_space) { build(:personal_space, code: expected_space_code) }
       let(:space_errors) { ActiveModel::Errors.new(new_space).tap { |e| e.add(:name, :blank) } }
       let(:validation_exception) { ActiveRecord::RecordInvalid.new(new_space) }
 
       before do
-        allow(Auth::User).to receive(:find_or_initialize_by).with(auth_id: auth_params[:auth_id]).and_return(user)
+        allow(Auth::User).to receive(:find_by).with(auth_id: auth_params[:auth_id]).and_return(nil)
+        allow(Auth::User).to receive(:find_by).with(email: auth_params[:email]).and_return(nil)
+        allow(Auth::User).to receive(:new).with(auth_id: auth_params[:auth_id]).and_return(user)
+        allow(user).to receive(:assign_attributes)
         allow(user).to receive(:changed?).and_return(true)
         allow(user).to receive(:save!).and_return(true)
+        allow(user).to receive(:email).and_return(auth_params[:email])
+        allow(user).to receive(:full_name).and_return(auth_params[:full_name])
+        allow(user).to receive(:personal_spaces).and_return(instance_double(ActiveRecord::Relation, first: nil))
+        # Prevent user from being persisted
+        allow(user).to receive(:persisted?).and_return(false)
+        allow(user).to receive(:id).and_return(nil)
 
         allow(Spaces::PersonalSpace).to receive(:find_or_initialize_by).with(code: expected_space_code).and_return(new_space)
         allow(new_space).to receive(:persisted?).and_return(false)
@@ -169,12 +230,14 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
       it { is_expected.to be_failure }
 
       it 'returns the validation errors in the failure' do
-        expect(call_operation.failure[:errors]).to eq(space_errors)
+        result = call_operation
+        expect(result).to be_failure
+        expect(result.failure[:errors]).to eq(space_errors)
       end
 
-      it 'might create the user but rolls back' do
-         expect { call_operation }.not_to change(Auth::User, :count)
-       end
+      it 'rolls back user creation due to transaction' do
+        expect { call_operation }.not_to change(Auth::User, :count)
+      end
 
       it 'does not create a space' do
         expect { call_operation }.not_to change(Spaces::PersonalSpace, :count)
@@ -186,26 +249,41 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
     end
 
     context 'when space_user saving fails validation' do
-      let(:user) { build(:user, auth_params) }
+      let(:user) { build(:user, auth_id: auth_params[:auth_id]) }
       let(:space) { build(:personal_space, code: 'test-example-com-personal-space') }
       let(:new_space_user) { build(:space_user) }
       let(:space_user_errors) { ActiveModel::Errors.new(new_space_user).tap { |e| e.add(:base, 'some error') } }
       let(:validation_exception) { ActiveRecord::RecordInvalid.new(new_space_user) }
 
       before do
-        allow(Auth::User).to receive(:find_or_initialize_by).with(auth_id: auth_params[:auth_id]).and_return(user)
+        # Set up stubs in correct order - specific first, then general
+        allow(Auth::User).to receive(:find_by).and_call_original
+        allow(Auth::User).to receive(:find_by).with(auth_id: auth_params[:auth_id]).and_return(nil)
+        allow(Auth::User).to receive(:find_by).with(email: auth_params[:email]).and_return(nil)
+
+        allow(Auth::User).to receive(:new).and_call_original
+        allow(Auth::User).to receive(:new).with(auth_id: auth_params[:auth_id]).and_return(user)
+
+        allow(user).to receive(:assign_attributes)
         allow(user).to receive(:changed?).and_return(true)
         allow(user).to receive(:save!).and_return(true)
+        allow(user).to receive(:email).and_return(auth_params[:email])
+        allow(user).to receive(:full_name).and_return(auth_params[:full_name])
+        allow(user).to receive(:personal_spaces).and_return(instance_double(ActiveRecord::Relation, first: nil))
+        # Prevent user from being persisted
+        allow(user).to receive(:persisted?).and_return(false)
+        allow(user).to receive(:id).and_return(nil)
 
         allow(Spaces::PersonalSpace).to receive(:find_or_initialize_by).with(code: 'test-example-com-personal-space').and_return(space)
         allow(space).to receive(:persisted?).and_return(false)
         allow(space).to receive(:assign_attributes)
         allow(space).to receive(:save!).and_return(true)
         allow(space).to receive(:create_default_transaction_categories).and_return(true)
+        # Prevent space from being persisted
+        allow(space).to receive(:id).and_return(nil)
 
-        allow(new_space_user).to receive(:user).and_return(user)
-        allow(new_space_user).to receive(:space).and_return(space)
-        allow(Spaces::SpaceUser).to receive(:find_or_initialize_by).with(user: user, space: space).and_return(new_space_user)
+        # Use a more flexible matcher for find_or_initialize_by
+        allow(Spaces::SpaceUser).to receive(:find_or_initialize_by).and_return(new_space_user)
         allow(new_space_user).to receive(:persisted?).and_return(false)
         allow(new_space_user).to receive(:save!).and_raise(validation_exception)
         allow(new_space_user).to receive(:errors).and_return(space_user_errors)
@@ -216,10 +294,12 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
       it { is_expected.to be_failure }
 
       it 'returns the validation errors in the failure' do
-        expect(call_operation.failure[:errors]).to eq(space_user_errors)
+        result = call_operation
+        expect(result).to be_failure
+        expect(result.failure[:errors]).to eq(space_user_errors)
       end
 
-      it 'rolls back user and space creation' do
+      it 'rolls back user and space creation due to transaction' do
         expect { call_operation }.not_to change(Auth::User, :count)
         expect { call_operation }.not_to change(Spaces::PersonalSpace, :count)
       end

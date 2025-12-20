@@ -291,55 +291,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
     t.index ["user_id"], name: "index_loans_on_user_id"
   end
 
-<<<<<<< HEAD
-  create_table "loan_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "account_id", null: false
-    t.datetime "created_at", null: false
-    t.string "currency", default: "PHP", null: false
-    t.date "date", null: false
-    t.bigint "interest_payment_cents", null: false
-    t.uuid "loan_id", null: false
-    t.text "notes"
-    t.bigint "principal_payment_cents", null: false
-    t.bigint "total_payment_cents", null: false
-    t.uuid "transaction_id"
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "date"], name: "index_loan_payments_on_account_id_and_date"
-    t.index ["account_id"], name: "index_loan_payments_on_account_id"
-    t.index ["loan_id", "date"], name: "index_loan_payments_on_loan_id_and_date"
-    t.index ["loan_id"], name: "index_loan_payments_on_loan_id"
-    t.index ["transaction_id"], name: "index_loan_payments_on_transaction_id"
-  end
-
-  create_table "loans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "account_id", null: false
-    t.datetime "created_at", null: false
-    t.string "currency", default: "PHP", null: false
-    t.date "date", null: false
-    t.text "description"
-    t.uuid "entity_id", null: false
-    t.decimal "interest_rate", precision: 5, scale: 2, null: false
-    t.integer "loan_term_months", null: false
-    t.string "loan_type", null: false
-    t.date "maturity_date", null: false
-    t.bigint "outstanding_balance_cents", null: false
-    t.date "paid_off_date"
-    t.bigint "principal_amount_cents", null: false
-    t.uuid "space_id", null: false
-    t.string "status", default: "active"
-    t.datetime "updated_at", null: false
-    t.uuid "user_id", null: false
-    t.index ["account_id"], name: "index_loans_on_account_id"
-    t.index ["entity_id"], name: "index_loans_on_entity_id"
-    t.index ["maturity_date"], name: "index_loans_on_maturity_date"
-    t.index ["space_id", "loan_type"], name: "index_loans_on_space_id_and_loan_type"
-    t.index ["space_id", "status"], name: "index_loans_on_space_id_and_status"
-    t.index ["space_id"], name: "index_loans_on_space_id"
-    t.index ["user_id"], name: "index_loans_on_user_id"
-  end
-
-=======
->>>>>>> feat/ios-be-updates
   create_table "monthly_financial_summaries", force: :cascade do |t|
     t.datetime "calculated_at", null: false
     t.datetime "created_at", null: false

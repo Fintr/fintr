@@ -1,0 +1,140 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.xendit.co/customers
+    body:
+      encoding: UTF-8
+      string: '{"individual_detail":{"given_names":"Space","surname":"Owner"},"reference_id":"space-8577655a-3736-4132-81e0-757f540955ef-6730e818-c5df-49da-8b9c-c9c43856679b","email":"d6761ca72d67@example.com","type":"INDIVIDUAL","metadata":{}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.xendit.co
+      Authorization:
+      - "<XENDIT_API_KEY>"
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 24 Nov 2025 06:42:07 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Etag:
+      - W/"2d7-I6v1afzfAm52yNHviHLx+OnFQ3A"
+      Rate-Limit-Limit:
+      - '60'
+      Rate-Limit-Remaining:
+      - '59'
+      Rate-Limit-Reset:
+      - '60'
+      Request-Id:
+      - 6923fe3f000000005c3043895c68d3c3
+      Vary:
+      - Origin
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - __cf_bm=toXSHFtj73ZbSIBKQnZeqNzCQEqSbwP19JGGnEUOANc-1763966526.9949598-1.0.1.1-QFGkzLFhmnMABjqhuC0BIn58d9k4QcCBNI0wbnl_AkKETkuxZG8i0OPru7_oDQ8GgPZE42IPCDdmcCR6FH8_qeP2QyX5gU0X9r4Y2.sZFqUqngQbGDyBZ6iC5QAhGaMY;
+        HttpOnly; Secure; Path=/; Domain=xendit.co; Expires=Mon, 24 Nov 2025 07:12:07
+        GMT
+      Cf-Ray:
+      - 9a36eca9be4406a5-HKG
+    body:
+      encoding: ASCII-8BIT
+      string: '{"type":"INDIVIDUAL","date_of_registration":null,"email":"d6761ca72d67@example.com","mobile_number":null,"phone_number":null,"created":"2025-11-24T06:42:07.065Z","updated":"2025-11-24T06:42:07.065Z","description":null,"hashed_phone_number":null,"domicile_of_registration":null,"kyc_documents":[],"id":"cust-ae4e7837-0bbb-4f09-8d04-5e3a96081889","reference_id":"space-8577655a-3736-4132-81e0-757f540955ef-6730e818-c5df-49da-8b9c-c9c43856679b","metadata":{},"individual_detail":{"given_names":"Space","given_names_non_roman":null,"surname":"Owner","surname_non_roman":null,"nationality":null,"date_of_birth":null,"place_of_birth":null,"gender":null,"employment":null},"business_detail":null,"addresses":[],"identity_accounts":[]}'
+  recorded_at: Mon, 24 Nov 2025 06:42:07 GMT
+- request:
+    method: post
+    uri: https://api.xendit.co/recurring/plans
+    body:
+      encoding: UTF-8
+      string: '{"reference_id":"sub-8577655a-3736-4132-81e0-757f540955ef-f0839c09-72b9-4f68-b5fb-650ecb47c8a1","customer_id":"cust-ae4e7837-0bbb-4f09-8d04-5e3a96081889","recurring_action":"PAYMENT","currency":"PHP","amount":14900,"schedule":{"reference_id":"schedule-fed97808-a790-4401-8041-a4ce37ddc0fd","interval":"MONTH","interval_count":1,"total_recurrence":12,"anchor_date":"2025-11-24T06:42:07Z","retry_interval":"DAY","retry_interval_count":1,"total_retry":3,"failed_attempt_notifications":[1,3]},"notification_config":{"locale":"en","recurring_created":["EMAIL"],"recurring_succeeded":["EMAIL"],"recurring_failed":["EMAIL"]},"failed_cycle_action":"STOP","immediate_action_type":"FULL_AMOUNT"}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.xendit.co
+      Authorization:
+      - "<XENDIT_API_KEY>"
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 202
+      message: Accepted
+    headers:
+      Date:
+      - Mon, 24 Nov 2025 06:42:07 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '1406'
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - 'block-all-mixed-content;default-src ''self'';base-uri ''self'';font-src ''self''
+        https: data:;frame-ancestors ''self'';img-src ''self'' data:;object-src ''none'';script-src
+        ''self'';script-src-attr ''none'';style-src ''self'' https: ''unsafe-inline'';upgrade-insecure-requests'
+      Etag:
+      - W/"57e-FmAHnd/JNX3iqJcbhVdkRIULo1w"
+      Rate-Limit-Limit:
+      - '60'
+      Rate-Limit-Remaining:
+      - '59'
+      Rate-Limit-Reset:
+      - '60'
+      Referrer-Policy:
+      - no-referrer
+      Request-Id:
+      - 6923fe3f000000005926a016cb969d4b
+      Strict-Transport-Security:
+      - max-age=15552000; includeSubDomains
+      Vary:
+      - Accept-Encoding
+      - Origin
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - __cf_bm=WObppLkiUzmgkCdRkbdeYYZiIDTx5VObFjEn3PqXsfY-1763966527.2244768-1.0.1.1-E3bx9QgqRdnHRqHPNrPMtfr4tGiQJvEgjpATIyj6qcKbAHocLnK7DA6a87f2uQYAIYI394J0HJBpmxLNv8u3nazx3hv6xo7T9358894YPvmYfxSBd2QN_gZtWw9dbwul;
+        HttpOnly; Secure; Path=/; Domain=xendit.co; Expires=Mon, 24 Nov 2025 07:12:07
+        GMT
+      Cf-Ray:
+      - 9a36ecab2e9d0540-HKG
+    body:
+      encoding: UTF-8
+      string: '{"id":"repl_14625fa6-9c3f-4986-8563-63e398c7fb08","reference_id":"sub-8577655a-3736-4132-81e0-757f540955ef-f0839c09-72b9-4f68-b5fb-650ecb47c8a1","customer_id":"cust-ae4e7837-0bbb-4f09-8d04-5e3a96081889","recurring_action":"PAYMENT","failed_cycle_action":"STOP","recurring_cycle_count":0,"currency":"PHP","amount":14900,"status":"REQUIRES_ACTION","created":"2025-11-24T06:42:07.527Z","updated":"2025-11-24T06:42:07.527Z","schedule_id":"resc_da4e54e1-cb8a-40eb-86b4-c4d2cd8429bc","payment_methods":[],"schedule":{"id":"resc_da4e54e1-cb8a-40eb-86b4-c4d2cd8429bc","reference_id":"schedule-fed97808-a790-4401-8041-a4ce37ddc0fd","business_id":"680827830b93ed4afed7bdcc","interval":"MONTH","interval_count":1,"total_recurrence":12,"anchor_date":"2025-11-24T06:42:07Z","retry_interval":"DAY","retry_interval_count":1,"total_retry":3,"failed_attempt_notifications":[1,3],"created":"2025-11-24T06:42:07.522Z","updated":"2025-11-24T06:42:07.522Z"},"immediate_action_type":"FULL_AMOUNT","notification_config":{"locale":"en","recurring_created":["EMAIL"],"recurring_succeeded":["EMAIL"],"recurring_failed":["EMAIL"]},"metadata":null,"description":null,"actions":[{"url":"https://linking-dev.xendit.co/pali_8c8d8f54-8047-441d-a4e0-96ed7324b080","action":"AUTH","method":"GET","url_type":"WEB"}],"success_return_url":null,"failure_return_url":null,"items":null,"payment_link_for_failed_attempt":false,"failure_code":null}'
+  recorded_at: Mon, 24 Nov 2025 06:42:07 GMT
+recorded_with: VCR 6.2.0

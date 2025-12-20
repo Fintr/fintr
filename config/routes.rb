@@ -139,8 +139,30 @@ Rails.application.routes.draw do
           end
         end
       end
+
+      # Finance routes
+      namespace :finance do
+        resources :subscriptions, only: %i[index create update] do
+          collection do
+            get :current_subscriptions
+            post :simulate_cycle_payment
+            post :force_attempt_cycle
+          end
+          member do
+            post :cancel
+          end
+        end
+      end
     end
   end
 
   get "up" => "rails/health#show", as: :rails_health_check
+
+  # Action Cable mount point
+  mount ActionCable.server => "/cable"
+
+  # Webhook endpoints (external API callbacks - no authentication required)
+  namespace :webhooks do
+    post "/xendit", to: "xendit#create"
+  end
 end

@@ -65,7 +65,7 @@ Rails.application.configure do
   config.active_record.migration_error = :page_load
 
   # Highlight code that triggered database queries in logs.
-  config.active_record.verbose_query_logs = true
+  config.active_record.verbose_query_logs = false
 
   # Append comments with runtime information tags to SQL queries in logs.
   config.active_record.query_log_tags_enabled = true
@@ -81,8 +81,16 @@ Rails.application.configure do
   # Annotate rendered view with file names.
   config.action_view.annotate_rendered_view_with_filenames = true
 
-  # Uncomment if you wish to allow Action Cable access from any origin.
-  # config.action_cable.disable_request_forgery_protection = true
+  # Allow Action Cable access from frontend origin
+  config.action_cable.allowed_request_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://staging.fintr.ai",
+    /https:\/\/.*\.fintr\.ai/
+  ]
+
+  # Allow Action Cable to accept connections from frontend
+  config.action_cable.disable_request_forgery_protection = true
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
@@ -95,4 +103,5 @@ Rails.application.configure do
   # Note: Rails handles streaming automatically, no manual buffer configuration needed
 
   config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
+  config.hosts << "69b3026ed944.ngrok-free.app"
 end

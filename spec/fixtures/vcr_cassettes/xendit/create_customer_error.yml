@@ -1,0 +1,56 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.xendit.co/customers
+    body:
+      encoding: UTF-8
+      string: '{"reference_id":"cust-05094e4a-9655-4955-bc3c-1d15edb928a9","email":"invalid","type":"INDIVIDUAL","metadata":{}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.xendit.co
+      Authorization:
+      - "<XENDIT_API_KEY>"
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 401
+      message: Unauthorized
+    headers:
+      Date:
+      - Mon, 24 Nov 2025 05:59:45 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '256'
+      Connection:
+      - keep-alive
+      Request-Id:
+      - 6923f45100000000671994ac08975ada
+      Vary:
+      - Origin
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - __cf_bm=MIdMoLnmMlojoPJrh9i3E6y1A4GQg22pQ4wFzBYDU_E-1763963985.0042555-1.0.1.1-u3byHekvnzLpuUGhnRwNMM46OFSWBUaoun77olZCwFm9E5fTV5vimi_OcM3cyc0KVA3AIIE4CIH8M5cJhQZ3A1E.rMhBHjsXhbfEpkeDseQvGWw8zJ9bqkzD9Ut.eBeh;
+        HttpOnly; Secure; Path=/; Domain=xendit.co; Expires=Mon, 24 Nov 2025 06:29:45
+        GMT
+      Cf-Ray:
+      - 9a36ae9a49d4c5e8-HKG
+    body:
+      encoding: UTF-8
+      string: '{"message": "The API key provided is invalid. Please make sure to use
+        the secret/public API key that you can obtain from the Xendit Dashboard. See
+        https://developers.xendit.co/api-reference/#authentication for more details",
+        "error_code":"INVALID_API_KEY"}'
+  recorded_at: Mon, 24 Nov 2025 05:59:45 GMT
+recorded_with: VCR 6.2.0

@@ -1,0 +1,123 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.xendit.co/customers
+    body:
+      encoding: UTF-8
+      string: '{"reference_id":"cust-6566caec-2792-4ad0-aebe-ee753ec3cff0","email":"test-8a4b4e34@example.com","type":"INDIVIDUAL","given_names":"Test","surname":"User","metadata":{}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.xendit.co
+      Authorization:
+      - "<XENDIT_API_KEY>"
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 400
+      message: Bad Request
+    headers:
+      Date:
+      - Mon, 24 Nov 2025 05:59:37 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '302'
+      Connection:
+      - keep-alive
+      Etag:
+      - W/"12e-Qi6pBi1Dpkw3wK1SIkPnUsR0VkY"
+      Rate-Limit-Limit:
+      - '60'
+      Rate-Limit-Remaining:
+      - '46'
+      Rate-Limit-Reset:
+      - '5.046'
+      Request-Id:
+      - 6923f44800000000418e420ec830c3e9
+      Vary:
+      - Origin
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - __cf_bm=TQr.I_18Fra21Avfok7kVGJHiYEK7PaYj24rhvP2_mk-1763963976.9354515-1.0.1.1-KZ.A.qB8j6BBN7TMUm9nZUU.8k6VqUZpSrxEqfvuvd71pMkr9ODnZjSo87hnS3NmLMizK6pRz9moMRzZgvGvHacNt8sQkgkVPnQwe5wwN617LwL4WzxHZ.d_4J71_Y1i;
+        HttpOnly; Secure; Path=/; Domain=xendit.co; Expires=Mon, 24 Nov 2025 06:29:37
+        GMT
+      Cf-Ray:
+      - 9a36ae67d841037d-HKG
+    body:
+      encoding: UTF-8
+      string: '{"error_code":"API_VALIDATION_ERROR","message":"There was an error
+        with the format submitted to the server.","errors":[{"message":"\"body.individual_detail\"
+        is required","path":["body","individual_detail"],"type":"any.required","context":{"label":"body.individual_detail","key":"individual_detail"}}]}'
+  recorded_at: Mon, 24 Nov 2025 05:59:36 GMT
+- request:
+    method: post
+    uri: https://api.xendit.co/customers
+    body:
+      encoding: UTF-8
+      string: '{"reference_id":"space-5c0a1998-8f26-4427-b4ed-1e7b90e4710e-b3c95a3f-f237-4041-8d0b-752326fd68cc","email":"415b9ef8ec41@example.com","type":"INDIVIDUAL","given_names":"Space","surname":"Owner","metadata":{}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.xendit.co
+      Authorization:
+      - "<XENDIT_API_KEY>"
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 400
+      message: Bad Request
+    headers:
+      Date:
+      - Mon, 24 Nov 2025 05:59:37 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '302'
+      Connection:
+      - keep-alive
+      Etag:
+      - W/"12e-Qi6pBi1Dpkw3wK1SIkPnUsR0VkY"
+      Rate-Limit-Limit:
+      - '60'
+      Rate-Limit-Remaining:
+      - '45'
+      Rate-Limit-Reset:
+      - '4.882'
+      Request-Id:
+      - 6923f449000000004a6d20bbfaaef51e
+      Vary:
+      - Origin
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - __cf_bm=AvUgjHIbzqfGDK2xdrGiI_hso3nBrY4_elel2bhv5DY-1763963977.1017113-1.0.1.1-Zs.gicMb1JHCPRZa7_tWpz3G9iYhXtBJ.a1FDZtsc8odjvxdeiSj0ey4ZwChKXJFY5X7VTuodCPMDtOVi9vuBosmNk738.UMu3zZd_KmA9Yo3JRXqgXHwmyq5Yyu47Ni;
+        HttpOnly; Secure; Path=/; Domain=xendit.co; Expires=Mon, 24 Nov 2025 06:29:37
+        GMT
+      Cf-Ray:
+      - 9a36ae68ee4703e7-HKG
+    body:
+      encoding: UTF-8
+      string: '{"error_code":"API_VALIDATION_ERROR","message":"There was an error
+        with the format submitted to the server.","errors":[{"message":"\"body.individual_detail\"
+        is required","path":["body","individual_detail"],"type":"any.required","context":{"label":"body.individual_detail","key":"individual_detail"}}]}'
+  recorded_at: Mon, 24 Nov 2025 05:59:37 GMT
+recorded_with: VCR 6.2.0

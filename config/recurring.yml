@@ -41,6 +41,10 @@ staging:
     class: Budgets::CreateSpaceMonthlyBudgetsJob
     queue: default
     schedule: "45 0 1 * * Asia/Manila"
+  update_subscription_cycle_counts:
+    class: Finance::ReconcileSubscriptionCycleCountsJob
+    queue: default
+    schedule: "*/10 * * * * Asia/Manila"
 
 production:
   check_duplicate_today:
@@ -63,3 +67,7 @@ production:
     class: Budgets::CreateSpaceMonthlyBudgetsJob
     queue: default
     schedule: "45 0 1 * * Asia/Manila"
+  update_subscription_cycle_counts:
+    class: Finance::ReconcileSubscriptionCycleCountsJob
+    queue: default
+    schedule: "*/10 * * * * Asia/Manila"

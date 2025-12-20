@@ -2,6 +2,7 @@
 
 require "jwt"
 require "net/http"
+require "openssl"
 module Auth
   class Client
     def self.domain_url
@@ -25,9 +26,41 @@ module Auth
 
     def self.get_jwks
       jwks_uri = URI("#{domain_url}.well-known/jwks.json")
-      Net::HTTP.get_response jwks_uri
+
+      http = Net::HTTP.new(jwks_uri.host, jwks_uri.port)
+      configure_ssl(http:, uri: jwks_uri)
+
+      request = Net::HTTP::Get.new(jwks_uri)
+      http.request(request)
     rescue StandardError => e
       raise e
+    end
+
+    def self.configure_ssl(http:, uri:)
+      return unless uri.scheme == "https"
+
+      http.use_ssl = true
+
+      # In development, be more lenient with SSL verification
+      if Rails.env.development?
+        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      else
+        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+        ca_file = find_certificate_file
+        http.ca_file = ca_file if ca_file && File.exist?(ca_file)
+      end
+    end
+
+    def self.find_certificate_file
+      # Try Homebrew certificate location first (most up-to-date)
+      homebrew_cert = "/opt/homebrew/etc/ca-certificates/cert.pem"
+      return homebrew_cert if File.exist?(homebrew_cert)
+
+      # Fall back to system default
+      default_cert = OpenSSL::X509::DEFAULT_CERT_FILE
+      return default_cert if File.exist?(default_cert)
+
+      nil
     end
 
     # Token Validation

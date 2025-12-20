@@ -10,6 +10,7 @@ gem "solid_cache"
 gem "solid_queue"
 gem "solid_queue_monitor", "~> 0.3.2"
 gem "solid_cable"
+gem "openssl", "~> 3.3.2"
 gem "pry-rails", "~> 0.3.11"
 gem "bootsnap", require: false
 gem "thruster", require: false
@@ -91,4 +92,6 @@ group :development, :test do
   gem "simplecov", "~> 0.22.0"
   gem "parallel_tests", "~> 5.5"
   gem "timecop", "~> 0.9.10"
+  gem "vcr", "~> 6.2"
+  gem "webmock", "~> 3.18"
 end

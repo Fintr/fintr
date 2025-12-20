@@ -1,0 +1,75 @@
+{
+  "created": "2025-11-27T02:32:30.649Z",
+  "business_id": "680827830b93ed4afed7bdcc",
+  "event": "recurring.cycle.succeeded",
+  "api_version": "v1",
+  "data": {
+    "id": "recy_f53310f4-f522-4173-b92b-7254fca5e19a",
+    "created": "2025-11-27T02:32:29.166Z",
+    "updated": "2025-11-27T02:32:29.172Z",
+    "type": "IMMEDIATE",
+    "reference_id": "sub-408ffa80-35ab-447a-aa59-4346167b8305",
+    "plan_id": "repl_978b8060-6c03-4dc7-83ac-c6f83f965446",
+    "customer_id": "cust-c8beeb00-0852-431b-9404-9900a79be766",
+    "recurring_action": "PAYMENT",
+    "attempt_count": 1,
+    "cycle_number": 1,
+    "attempt_details": [
+      {
+        "created": "2025-11-27T02:32:29.183Z",
+        "action_id": "pr-35506fbc-7019-4430-b9d5-444d00461301",
+        "status": "SUCCEEDED",
+        "failure_code": null,
+        "type": "INITIAL",
+        "attempt_number": 1,
+        "action_number": 1,
+        "next_retry_timestamp": null,
+        "payment_link": null
+      }
+    ],
+    "status": "SUCCEEDED",
+    "scheduled_timestamp": "2025-11-27T02:32:29.165Z",
+    "currency": "PHP",
+    "amount": 399,
+    "forced_attempt_count": 0,
+    "metadata": null
+  },
+  "xendit": {
+    "created": "2025-11-27T02:32:30.649Z",
+    "business_id": "680827830b93ed4afed7bdcc",
+    "event": "recurring.cycle.succeeded",
+    "api_version": "v1",
+    "data": {
+      "id": "recy_f53310f4-f522-4173-b92b-7254fca5e19a",
+      "created": "2025-11-27T02:32:29.166Z",
+      "updated": "2025-11-27T02:32:29.172Z",
+      "type": "IMMEDIATE",
+      "reference_id": "sub-408ffa80-35ab-447a-aa59-4346167b8305",
+      "plan_id": "repl_978b8060-6c03-4dc7-83ac-c6f83f965446",
+      "customer_id": "cust-c8beeb00-0852-431b-9404-9900a79be766",
+      "recurring_action": "PAYMENT",
+      "attempt_count": 1,
+      "cycle_number": 1,
+      "attempt_details": [
+        {
+          "created": "2025-11-27T02:32:29.183Z",
+          "action_id": "pr-35506fbc-7019-4430-b9d5-444d00461301",
+          "status": "SUCCEEDED",
+          "failure_code": null,
+          "type": "INITIAL",
+          "attempt_number": 1,
+          "action_number": 1,
+          "next_retry_timestamp": null,
+          "payment_link": null
+        }
+      ],
+      "status": "SUCCEEDED",
+      "scheduled_timestamp": "2025-11-27T02:32:29.165Z",
+      "currency": "PHP",
+      "amount": 399,
+      "forced_attempt_count": 0,
+      "metadata": null
+    }
+  }
+}
+

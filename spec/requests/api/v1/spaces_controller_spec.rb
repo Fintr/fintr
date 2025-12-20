@@ -72,9 +72,8 @@ RSpec.describe Api::V1::SpacesController, type: :request do
           "currency" => valid_params[:currency]
         )
 
-        # Check if reference_space_id is passed as keyword argument or in params
-        reference_space_id_value = call_kwargs[:reference_space_id] || params_hash["reference_space_id"]
-        expect(reference_space_id_value).to eq(space.id.to_s)
+        # reference_space_id is passed as a symbol key in the hash
+        expect(params_hash[:reference_space_id] || params_hash["reference_space_id"]).to eq(space.id.to_s)
       end
     end
 

@@ -1,0 +1,54 @@
+---
+http_interactions:
+- request:
+    method: patch
+    uri: https://api.xendit.co/recurring/plans/plan-test-123/schedules/schedule-test-123
+    body:
+      encoding: UTF-8
+      string: '{"interval":"YEAR","interval_count":1}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.xendit.co
+      Authorization:
+      - "<XENDIT_API_KEY>"
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 404
+      message: Not Found
+    headers:
+      Date:
+      - Fri, 05 Dec 2025 07:08:51 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Request-Id:
+      - 693285030000000057880f4918324936
+      Vary:
+      - Origin
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=sJwPGxgCSPNXJ4QQ6lFxaFWMzjBCMPQhR0bwd3kQgnc-1764918531.2848876-1.0.1.1-9cPK9IULiMw8mWF_64w6Nr6Bc1eYWzWopaLKhqX22pGSn9e4Xzay0H6AWEUsPVxI045yIi5GC9HuhX1J3Tf9GR17ny6ANFA07zyzMBrAYnE0LC3BAQe_UO6TjQkj7WLw;
+        HttpOnly; Secure; Path=/; Domain=xendit.co; Expires=Fri, 05 Dec 2025 07:38:51
+        GMT
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 9a91b6f48c65dd8c-HKG
+    body:
+      encoding: ASCII-8BIT
+      string: '{"error_code":"NOT_FOUND","message":"The requested resource was not
+        found"}'
+  recorded_at: Fri, 05 Dec 2025 07:08:51 GMT
+recorded_with: VCR 6.2.0

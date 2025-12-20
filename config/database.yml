@@ -89,17 +89,26 @@ staging:
     database: fintr_staging_cache
     url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_cache" %>
     migrations_paths: db/cache_migrate
+    # Cache database needs fewer connections
+    pool: <%= ENV.fetch("CACHE_POOL_SIZE") { 2 } %>
+    timeout: 5000
   queue:
     <<: *primary_staging
     database: fintr_staging_queue
     url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_queue" %>
     migrations_paths: db/queue_migrate
+    # Queue database needs fewer connections (Solid Queue manages its own)
+    pool: <%= ENV.fetch("QUEUE_POOL_SIZE") { 3 } %>
+    timeout: 5000
   cable:
     <<: *primary_staging
     database: fintr_staging_cable
     url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_cable" %>
     migrations_paths: db/cable_migrate
-    
+    # Cable database needs fewer connections
+    pool: <%= ENV.fetch("CABLE_POOL_SIZE") { 2 } %>
+    timeout: 5000
+
 production:
   primary: &primary_production
     <<: *default
@@ -124,15 +133,24 @@ production:
     database: fintr_production_cache
     url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'api.fintr.ai'}:5432/fintr_production_cache" %>
     migrations_paths: db/cache_migrate
+    # Cache database needs fewer connections
+    pool: <%= ENV.fetch("CACHE_POOL_SIZE") { 2 } %>
+    timeout: 5000
   queue:
     <<: *primary_production
     database: fintr_production_queue
     url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'api.fintr.ai'}:5432/fintr_production_queue" %>
     migrations_paths: db/queue_migrate
+    # Queue database needs fewer connections (Solid Queue manages its own)
+    pool: <%= ENV.fetch("QUEUE_POOL_SIZE") { 3 } %>
+    timeout: 5000
   cable:
     <<: *primary_production
     database: fintr_production_cable
     url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'api.fintr.ai'}:5432/fintr_production_cable" %>
     migrations_paths: db/cable_migrate
+    # Cable database needs fewer connections
+    pool: <%= ENV.fetch("CABLE_POOL_SIZE") { 2 } %>
+    timeout: 5000
 
 

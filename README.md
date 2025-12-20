@@ -18,7 +18,18 @@ Fintr is a personal finance application with heavy integration with AI. Fintr wi
 3. Get the .env credentials from `miko@fintr.ai`.
 4. `bundle install`
 5. `brew install vips`
-6. `rails db:create db:migrate db:seed`
+6. Install docker and docker compose for mac or windows.
+7. Run `docker-compose -f docker-compose.local.yml up -d`
+8. Run `docker ps` and get the container_id of the app.
+9. Run `docker exec -it <container_id> bash`
+10. Run `psql -U fintr_admin -d postgres`
+11. Run `ALTER USER fintr_rails WITH SUPERUSER;`
+12. Run `rails db:create db:migrate db:seed` in project root
+13. Run these commands normally
+```
+rails s
+in another terminal: bin/jobs start
+```
 
 ## How to get included in the seed
 
