@@ -4,8 +4,13 @@ module Transactions
   class DuplicateJob < ApplicationJob
     queue_as :default
 
-    def perform(transaction_id)
-      date = Utils::Dates.current_date_in_manila
+    def perform(transaction_id, date_string = nil)
+      date = if date_string.present?
+               Date.parse(date_string)
+      else
+               Utils::Dates.current_date_in_manila
+      end
+
       operation = Transactions::Operations::CreateRepeatTransactions
                     .new
                     .call(
@@ -15,9 +20,9 @@ module Transactions
                     )
 
       unless operation.success?
-        Rails.logger.error(
-          "Duplicate job failed transaction id: #{transaction_id}, message: #{operation.failure}"
-        )
+        error_message = "Duplicate job failed transaction id: #{transaction_id}, message: #{operation.failure}"
+        Rails.logger.error(error_message)
+        raise StandardError, error_message
       end
     end
   end

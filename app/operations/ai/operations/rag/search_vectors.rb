@@ -33,24 +33,9 @@ module Ai
         private
 
         def generate_query_embedding(params:)
-          client = OpenAI::Client.new(access_token: ENV["OPENAI_API_KEY"])
-
-          response = client.embeddings(
-            parameters: {
-              model: "text-embedding-ada-002",
-              input: params[:query]
-            }
+          Ai::Operations::Embeddings::GenerateQueryEmbedding.new.call(
+            query: params[:query]
           )
-
-          embedding_vector = response.dig("data", 0, "embedding")
-
-          if embedding_vector.nil? || embedding_vector.empty?
-            return Failure(embedding_error: "Invalid embedding response from OpenAI")
-          end
-
-          Success(embedding_vector)
-        rescue StandardError => e
-          Failure(embedding_error: "Failed to generate query embedding: #{e.message}")
         end
 
         def perform_vector_search(query_embedding:, params:)
@@ -69,8 +54,8 @@ module Ai
           # Use pgvectorscale optimized search for high-performance operations
           results = scope.nearest_neighbors_optimized(
             query_embedding,
-            limit: params[:limit] || 10,
-            threshold: params[:threshold] || 0.7
+            limit: params[:limit],
+            threshold: params[:threshold]
           )
 
           Success(results)

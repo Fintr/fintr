@@ -19,6 +19,8 @@ gem "kamal", "~> 2.8"
 gem "aws-sdk-s3", "~> 1.202"
 gem "csv", "~> 3.3"
 gem "neighbor", "~> 0.6.0"
+gem "image_processing", "~> 1.2"
+gem "openssl", "~> 3.3.2"
 
 
 # DRY Operations, Validation
@@ -61,7 +63,7 @@ gem "ruby-vips", "~> 2.2"
 gem "ruby-openai", "~> 8.3"
 
 # Documentation
-gem "rdoc", "6.15.1"
+gem "rdoc", "6.17.0"
 
 # Time-based grouping
 gem "groupdate", "~> 6.5"
