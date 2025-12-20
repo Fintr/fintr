@@ -58,7 +58,9 @@ module Ai
             metrics = (metrics + ["count"]).uniq
 
             grouped_data = step apply_grouping(query, group_fields, metrics)
-            Success(grouped_data)
+            # Sort and limit grouped data based on requirements
+            sorted_and_limited = step sort_and_limit_grouped_data(grouped_data, requirements:)
+            Success(sorted_and_limited)
           else
             transactions = step apply_sorting_and_limit(query, requirements)
             serialized_transactions = transactions.map do |transaction|
@@ -324,6 +326,39 @@ module Ai
           Success(formatted_data)
         rescue StandardError => e
           Failure(data_retrieval_error: "Failed to format grouped data: #{e.message}")
+        end
+
+        def sort_and_limit_grouped_data(grouped_data, requirements:)
+          return Success([]) if grouped_data.empty?
+
+          sorting = requirements[:sorting] || {}
+          limit = requirements[:limit] || 50
+
+          # Sort the grouped data
+          sorted_data = case sorting[:field]
+          when "amount"
+            direction = sorting[:direction] || :desc
+            grouped_data.sort_by do |item|
+              amount_cents = item.dig(:sum, :amount_cents) || 0
+              direction == :desc ? -amount_cents : amount_cents
+            end
+          when "count"
+            direction = sorting[:direction] || :desc
+            grouped_data.sort_by do |item|
+              count = item[:count] || 0
+              direction == :desc ? -count : count
+            end
+          else
+            # Default: sort by amount descending
+            grouped_data.sort_by do |item|
+              amount_cents = item.dig(:sum, :amount_cents) || 0
+              -amount_cents
+            end
+          end
+
+          Success(sorted_data)
+        rescue StandardError => e
+          Failure(data_retrieval_error: "Failed to sort and limit grouped data: #{e.message}")
         end
 
         def apply_sorting_and_limit(query, requirements)

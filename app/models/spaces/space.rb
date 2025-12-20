@@ -32,6 +32,9 @@ module Spaces
     end
 
     def can_ai?
+      # If any user in the space has admin role, allow unlimited AI usage
+      return true if users.any? { |user| user.has_role?(:admin) }
+
       usages = Ai::Queries::Usages::UsageInPeriod.new.call(params: { space_id: id })
       return false unless usages.success?
 

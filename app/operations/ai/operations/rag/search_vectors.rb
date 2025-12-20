@@ -12,6 +12,7 @@ module Ai
             required(:threshold).value(:float)
             optional(:embeddable_type).maybe(:string)
             optional(:filters).maybe(:hash)
+            optional(:sort_by_amount).maybe(:bool)
           end
         end
 
@@ -67,11 +68,11 @@ module Ai
           return scope if filters.nil?
 
           if filters[:embeddable_type].present?
-            scope = scope.where(embeddable_type: filters[:embeddable_type])
+            scope = scope.where(embeddable_type: type_hash[filters[:embeddable_type]])
           end
 
           if filters[:transaction_type].present?
-            scope = scope.where("metadata->>'transaction_type' = ?", filters[:transaction_type])
+            scope = scope.where("metadata->>'transaction_type' = ?", type_hash[filters[:transaction_type]])
           end
 
           if filters[:category].present?
@@ -93,6 +94,14 @@ module Ai
           scope
         end
 
+        def type_hash
+          @type_hash ||= {
+            "expense" => "Transactions::Expense",
+            "income" => "Transactions::Income",
+            "transfer" => "Transactions::Transfer"
+          }
+        end
+
         def format_results(results:, params:)
           formatted_results = results.map do |embedding|
             {
@@ -106,6 +115,11 @@ module Ai
             }
           end
 
+          # Sort by amount if requested (for "biggest expense" type queries)
+          if params[:sort_by_amount]
+            formatted_results = sort_by_amount(formatted_results)
+          end
+
           Success({
             query: params[:query],
             results: formatted_results,
@@ -114,6 +128,43 @@ module Ai
           })
         rescue StandardError => e
           Failure(embedding_error: "Failed to format results: #{e.message}")
+        end
+
+        def sort_by_amount(results)
+          results.sort_by do |result|
+            # Extract amount from metadata - try different possible keys
+            amount_cents = extract_amount_from_metadata(result[:metadata])
+            # Sort descending (highest first), so negate the value
+            -amount_cents
+          end
+        end
+
+        def extract_amount_from_metadata(metadata)
+          return 0 unless metadata.is_a?(Hash)
+
+          # Normalize keys to symbols for consistent access
+          normalized_metadata = metadata.deep_symbolize_keys
+
+          # Try to get amount_display first (handles negative for expenses correctly)
+          # Then fall back to amount, then amount_cents
+          amount_value = normalized_metadata[:amount_display] ||
+                        normalized_metadata["amount_display"] ||
+                        normalized_metadata[:amount] ||
+                        normalized_metadata["amount"] ||
+                        normalized_metadata[:amount_cents] ||
+                        normalized_metadata["amount_cents"] ||
+                        0
+
+          # Convert to numeric if it's a string
+          if amount_value.is_a?(String)
+            # Remove currency symbols and parse
+            numeric_value = amount_value.gsub(/[^\d.-]/, "").to_f
+            amount_value = numeric_value
+          end
+
+          # For expenses, we want to sort by absolute value (biggest expenses first)
+          # amount_display is already negative for expenses, so we'll use absolute value
+          amount_value.to_f.abs
         end
       end
     end

@@ -47,6 +47,25 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
       expect(result).to be_success
     end
 
+    it "succeeds with sort_by_amount parameter" do
+      extended_params = params.merge(sort_by_amount: true)
+      result = operation.validate(params: extended_params)
+      expect(result).to be_success
+    end
+
+    it "succeeds with sort_by_amount set to false" do
+      extended_params = params.merge(sort_by_amount: false)
+      result = operation.validate(params: extended_params)
+      expect(result).to be_success
+    end
+
+    it "fails with invalid sort_by_amount type" do
+      params[:sort_by_amount] = 123
+      result = operation.validate(params: params)
+      expect(result).to be_failure
+      expect(result.failure).to have_key(:sort_by_amount)
+    end
+
     it "fails without query" do
       params.delete(:query)
       result = operation.validate(params: params)
@@ -203,7 +222,7 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
       let(:filtered_params) do
         params.merge(
           filters: {
-            transaction_type: "Transactions::Expense",
+            transaction_type: "expense",
             category: "Food",
             account: "Cash"
           }
@@ -335,7 +354,7 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
       end
 
       it "applies additional filters when provided" do
-        filtered_params = params.merge(filters: { transaction_type: "Transactions::Expense" })
+        filtered_params = params.merge(filters: { transaction_type: "expense" })
         result = operation.send(:perform_vector_search, query_embedding: query_embedding, params: filtered_params)
         expect(result).to be_success
       end
@@ -362,14 +381,14 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
     describe "#apply_filters" do
       let(:scope) { Ai::RagEmbedding.for_space(space.id) }
 
-      it "applies embeddable_type filter" do
-        filters = { embeddable_type: "Transactions::Transaction" }
+      it "applies embeddable_type filter using type_hash" do
+        filters = { embeddable_type: "expense" }
         result = operation.send(:apply_filters, scope, filters)
         expect(result).to be_a(ActiveRecord::Relation)
       end
 
-      it "applies transaction_type filter" do
-        filters = { transaction_type: "Transactions::Expense" }
+      it "applies transaction_type filter using type_hash" do
+        filters = { transaction_type: "expense" }
         result = operation.send(:apply_filters, scope, filters)
         expect(result).to be_a(ActiveRecord::Relation)
       end
@@ -400,8 +419,8 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
 
       it "applies multiple filters" do
         filters = {
-          embeddable_type: "Transactions::Transaction",
-          transaction_type: "Transactions::Expense",
+          embeddable_type: "expense",
+          transaction_type: "income",
           category: "Food",
           account: "Cash",
           date_from: "2024-01-01",
@@ -511,6 +530,138 @@ RSpec.describe Ai::Operations::Rag::SearchVectors, type: :operation do
         formatted_data = result.value!
         expect(formatted_data[:results].length).to eq(2)
         expect(formatted_data[:total_count]).to eq(2)
+      end
+
+      it "sorts results by amount when sort_by_amount is true" do
+        # Create multiple embeddings with different amounts
+        transaction2 = create(:expense_transaction, space: space, account: account, category: category, amount_cents: 5000)
+        transaction3 = create(:expense_transaction, space: space, account: account, category: category, amount_cents: 10000)
+
+        rag_embedding2 = create(:ai_rag_embedding,
+                                space: space,
+                                embeddable: transaction2,
+                                content: "Small expense",
+                                embedding: embedding_vector,
+                                metadata: { amount_display: -50.00 })
+        rag_embedding3 = create(:ai_rag_embedding,
+                                space: space,
+                                embeddable: transaction3,
+                                content: "Large expense",
+                                embedding: embedding_vector,
+                                metadata: { amount_display: -100.00 })
+
+        rag_embedding.define_singleton_method(:neighbor_distance) { 0.2 }
+        rag_embedding2.define_singleton_method(:neighbor_distance) { 0.2 }
+        rag_embedding3.define_singleton_method(:neighbor_distance) { 0.2 }
+
+        multiple_results = [rag_embedding, rag_embedding2, rag_embedding3]
+        params_with_sort = params.merge(sort_by_amount: true)
+        result = operation.send(:format_results, results: multiple_results, params: params_with_sort)
+
+        expect(result).to be_success
+        formatted_data = result.value!
+        # Results should be sorted by amount descending (largest first)
+        amounts = formatted_data[:results].map { |r| r[:metadata]["amount_display"] || r[:metadata][:amount_display] }.compact
+        expect(amounts).to eq([-100.00, -50.00])
+      end
+    end
+
+    describe "#type_hash" do
+      it "returns correct type mappings" do
+        type_hash = operation.send(:type_hash)
+        expect(type_hash).to eq({
+          'expense' => 'Transactions::Expense',
+          'income' => 'Transactions::Income',
+          'transfer' => 'Transactions::Transfer'
+        })
+      end
+
+      it "memoizes the type hash" do
+        type_hash1 = operation.send(:type_hash)
+        type_hash2 = operation.send(:type_hash)
+        expect(type_hash1).to be(type_hash2)
+      end
+    end
+
+    describe "#sort_by_amount" do
+      let(:results) do
+        [
+          { metadata: { amount_display: -30.00 } },
+          { metadata: { amount_display: -100.00 } },
+          { metadata: { amount_display: -50.00 } }
+        ]
+      end
+
+      it "sorts results by amount in descending order" do
+        sorted = operation.send(:sort_by_amount, results)
+        amounts = sorted.map { |r| r[:metadata][:amount_display] }
+        expect(amounts).to eq([-100.00, -50.00, -30.00])
+      end
+
+      it "handles results without amount metadata" do
+        results_without_amount = [
+          { metadata: { amount_display: -50.00 } },
+          { metadata: {} },
+          { metadata: { amount_display: -100.00 } }
+        ]
+        sorted = operation.send(:sort_by_amount, results_without_amount)
+        # Results without amount should be sorted to the end
+        expect(sorted.first[:metadata][:amount_display]).to eq(-100.00)
+      end
+    end
+
+    describe "#extract_amount_from_metadata" do
+      it "extracts amount_display from metadata" do
+        metadata = { amount_display: -50.00 }
+        amount = operation.send(:extract_amount_from_metadata, metadata)
+        expect(amount).to eq(50.00)
+      end
+
+      it "extracts amount from metadata when amount_display is not present" do
+        metadata = { amount: 75.50 }
+        amount = operation.send(:extract_amount_from_metadata, metadata)
+        expect(amount).to eq(75.50)
+      end
+
+      it "extracts amount_cents from metadata when other keys are not present" do
+        metadata = { amount_cents: 5000 }
+        amount = operation.send(:extract_amount_from_metadata, metadata)
+        expect(amount).to eq(5000.0)
+      end
+
+      it "handles string amounts with currency symbols" do
+        metadata = { amount_display: "$-100.50" }
+        amount = operation.send(:extract_amount_from_metadata, metadata)
+        expect(amount).to eq(100.50)
+      end
+
+      it "handles string amounts" do
+        metadata = { amount: "50.25" }
+        amount = operation.send(:extract_amount_from_metadata, metadata)
+        expect(amount).to eq(50.25)
+      end
+
+      it "returns 0 for non-hash metadata" do
+        amount = operation.send(:extract_amount_from_metadata, "not a hash")
+        expect(amount).to eq(0)
+      end
+
+      it "returns 0 when no amount keys are present" do
+        metadata = { category: "Food" }
+        amount = operation.send(:extract_amount_from_metadata, metadata)
+        expect(amount).to eq(0)
+      end
+
+      it "handles metadata with string keys" do
+        metadata = { "amount_display" => -75.00 }
+        amount = operation.send(:extract_amount_from_metadata, metadata)
+        expect(amount).to eq(75.00)
+      end
+
+      it "uses absolute value for sorting" do
+        metadata = { amount_display: -100.00 }
+        amount = operation.send(:extract_amount_from_metadata, metadata)
+        expect(amount).to eq(100.00)
       end
     end
   end
