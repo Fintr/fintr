@@ -73,7 +73,7 @@ module Ai
           Ai::Operations::Rag::SearchVectors.new.call(
             query: params[:query],
             space_id: params[:space_id],
-            limit: 10,
+            limit: 50,
             threshold: 0.7,
             embeddable_type: nil,
             filters: nil
@@ -117,13 +117,13 @@ module Ai
             CHART GENERATION:
             When your response would benefit from visual representation, include charts using this format:
 
-         *****[chart-type]-chart*****
-         {
-           "Category1": { "value": 1000, "color": "#008080" },
-           "Category2": { "value": 500, "color": "#FF6F61" },
-           "Category3": { "value": 300, "color": "#CC5500" }
-         }
-         *****[chart-type]-chart-end*****
+            *****[chart-type]-chart*****
+            {
+              "Category1": { "value": 1000, "color": "#008080" },
+              "Category2": { "value": 500, "color": "#FF6F61" },
+              "Category3": { "value": 300, "color": "#CC5500" }
+            }
+            *****[chart-type]-chart-end*****
 
             Supported chart types: pie, bar, line, area
 

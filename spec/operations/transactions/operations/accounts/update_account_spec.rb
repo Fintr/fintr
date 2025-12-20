@@ -131,7 +131,7 @@ RSpec.describe Transactions::Operations::Accounts::UpdateAccount do
       it { is_expected.to be_failure }
 
       it 'returns a failure with account errors' do
-        expect(call_operation.failure).to eq(mock_account_errors)
+        expect(call_operation.failure.except(:error, :expected)).to eq(mock_account_errors)
       end
     end
   end

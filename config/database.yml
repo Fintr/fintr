@@ -1,9 +1,20 @@
 # Database configuration for all environments
+#
+# Connection Pool Sizing:
+# - Each Puma worker process has its own connection pool
+# - Pool size should be: RAILS_MAX_THREADS + 2 (for background jobs, migrations, etc.)
+# - With multiple workers (WEB_CONCURRENCY), total connections = pool_size * WEB_CONCURRENCY
+# - Each database (primary, cache, queue, cable) needs its own pool
+# - Example: 2 workers, 5 threads each = 2 * (5+2) = 14 connections per database
+# - Total: 14 * 4 databases = 56 connections minimum
+# - PostgreSQL max_connections should be set to accommodate this
 
 default: &default
   adapter: postgresql
   encoding: unicode
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  # Pool size = threads + 2 (for background jobs, console, migrations)
+  # This ensures we have enough connections even when background jobs run
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i + 2 %>
 
 development:
   primary: &primary_development
@@ -18,9 +29,11 @@ development:
       work_mem: '4MB'
       maintenance_work_mem: '64MB'
       effective_cache_size: '1GB'
-    # Connection pooling for high concurrency
-    pool: 20
+    # Connection pooling - RAILS_MAX_THREADS + 2 for overhead
+    # Each cache/queue/cable connection also uses this pool
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i + 2 %>
     timeout: 5000
+    checkout_timeout: 5
   cache:
     <<: *primary_development
     database: fintr_development_cache
@@ -66,9 +79,11 @@ staging:
       work_mem: '256MB'
       maintenance_work_mem: '1GB'
       effective_cache_size: '4GB'
-    # Connection pooling for high concurrency
-    pool: 20
+    # Connection pooling - RAILS_MAX_THREADS + 2 for overhead
+    # Each cache/queue/cable connection also uses this pool
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i + 2 %>
     timeout: 5000
+    checkout_timeout: 5
   cache:
     <<: *primary_staging
     database: fintr_staging_cache
@@ -98,9 +113,12 @@ production:
       work_mem: '256MB'
       maintenance_work_mem: '1GB'
       effective_cache_size: '4GB'
-    # Connection pooling for high concurrency
-    pool: 20
+    # Connection pooling - RAILS_MAX_THREADS + 2 for overhead
+    # Each cache/queue/cable connection also uses this pool
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i + 2 %>
     timeout: 5000
+    # Connection checkout timeout - how long to wait for a connection
+    checkout_timeout: 5
   cache:
     <<: *primary_production
     database: fintr_production_cache

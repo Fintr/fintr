@@ -33,7 +33,7 @@ module Transactions
           account = Transactions::Account.find(params[:account_id])
           Success(account)
         rescue ActiveRecord::RecordNotFound => e
-          Failure(account_id: "not found", error: e)
+          Failure(account_id: "not found", error: e, expected: true)
         end
 
         def calculate_balance_from_transactions(account:)

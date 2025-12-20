@@ -84,7 +84,7 @@ module Transactions
           account = Transactions::Account.kept.find_by!(name: account_name, space_id: params[:space_id])
           Success(account)
         rescue ActiveRecord::RecordNotFound => e
-          Failure(account_name: "'#{account_name}' not found", error: e)
+          Failure(account_name: "'#{account_name}' not found", error: e, expected: true)
         end
 
         def transform_params(params:, from_account:, to_account:)
@@ -105,8 +105,11 @@ module Transactions
           transfer = Transactions::Transfer.new(params.except(:file))
           transfer.save!
           Success(transfer)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(transfer: transfer.errors.to_hash, error: e, expected: true)
         rescue StandardError => e
-          Failure(transfer: transfer.errors.to_hash, error: e)
+          error_hash = transfer.respond_to?(:errors) ? transfer.errors.to_hash : { error: e.message }
+          Failure(transfer: error_hash, error: e, expected: false)
         end
 
         def create_transfer_fee_transaction(transfer:, params:)
@@ -141,8 +144,10 @@ module Transactions
           transfer.assign_attributes(schedule:)
           transfer.save!
           Success(transfer)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(error: e, expected: true)
         rescue StandardError => e
-          Failure(error: e)
+          Failure(error: e, expected: false)
         end
 
         def create_past_transfers(transfer:)

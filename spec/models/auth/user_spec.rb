@@ -6,6 +6,7 @@ RSpec.describe Auth::User, type: :model do
   describe 'associations' do
     it { is_expected.to have_one(:onboarding).class_name("Onboarding").dependent(:destroy) }
     it { is_expected.to have_many(:transactions).class_name("Transactions::Transaction").dependent(:destroy) }
+    it { is_expected.to have_many(:loans).class_name("Transactions::Loan").dependent(:destroy) }
     it { is_expected.to have_many(:tickets).class_name("Crm::Ticket").dependent(:destroy) }
     it { is_expected.to have_many(:space_users).class_name("Spaces::SpaceUser").dependent(:destroy) }
     it { is_expected.to have_many(:spaces).class_name("Spaces::Space").through(:space_users) }

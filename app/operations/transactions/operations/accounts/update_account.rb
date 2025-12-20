@@ -41,8 +41,8 @@ module Transactions
         def update_account(account:, params:)
           account.update!(name: params[:name])
           Success(account)
-        rescue ActiveRecord::RecordInvalid
-          Failure(**account.errors.to_hash)
+        rescue ActiveRecord::RecordInvalid => e
+          Failure(**account.errors.to_hash, error: e, expected: true)
         end
       end
     end

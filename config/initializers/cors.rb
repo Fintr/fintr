@@ -13,7 +13,7 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
     # Format in .env: CORS_ORIGINS=http://localhost:5173,http://localhost:3000
     origins ENV.fetch("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",").map(&:strip)
 
-    resource "/api/*",
+    resource "*",
       headers: %w[Authorization X-Space-Code Content-Type Accept Cache-Control Connection Pragma Expires X-Accel-Buffering],
       methods: [:get, :post, :put, :patch, :delete, :options, :head],
       expose: %w[Authorization X-Space-Code Content-Disposition Content-Type Cache-Control Connection],

@@ -45,7 +45,7 @@ module Transactions
         def find_account(id:)
           Success(Transactions::Account.find(id))
         rescue ActiveRecord::RecordNotFound => e
-          Failure(account: "not found", error: e)
+          Failure(account: "not found", error: e, expected: true)
         end
 
         def update_balance(from:, transaction:, account:)

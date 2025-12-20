@@ -27,6 +27,10 @@ module Transactions
           "transfer"
         end
       end
+
+      field :has_loan_payment do |transaction|
+        transaction.loan_payment.present?
+      end
     end
   end
 end

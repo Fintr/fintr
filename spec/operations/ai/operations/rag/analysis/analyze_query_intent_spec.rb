@@ -63,29 +63,31 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
 
     let(:openai_response) do
       {
-        "choices" => [
+        "output" => [
           {
-            "message" => {
-              "content" => '{
-                "query_type": "spending_analysis",
-                "data_sources": ["transactions"],
-                "aggregations": {
-                  "group_by": ["category"],
-                  "metrics": ["sum", "count"]
-                },
-                "filters": {
-                  "transaction_type": ["expense"]
-                },
-                "time_range": {
-                  "period": "this_month"
-                },
-                "sorting": {
-                  "field": "amount",
-                  "direction": "desc"
-                },
-                "limit": 1
-              }'
-            }
+            "content" => [
+              {
+                "text" => '{
+                  "query_type": "spending_analysis",
+                  "data_sources": ["transactions"],
+                  "aggregations": {
+                    "group_by": ["category"],
+                    "metrics": ["sum", "count"]
+                  },
+                  "filters": {
+                    "transaction_type": ["expense"]
+                  },
+                  "time_range": {
+                    "period": "this_month"
+                  },
+                  "sorting": {
+                    "field": "amount",
+                    "direction": "desc"
+                  },
+                  "limit": 1
+                }'
+              }
+            ]
           }
         ]
       }
@@ -95,7 +97,9 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       # Mock OpenAI client
       openai_client = instance_double(OpenAI::Client)
       allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-      allow(openai_client).to receive(:chat).and_return(openai_response)
+      allow(openai_client).to receive(:responses).and_return(
+        instance_double(OpenAI::Responses, create: openai_response)
+      )
     end
 
     context "when all steps succeed" do
@@ -153,8 +157,10 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
     context "when analyze_query_intent fails" do
       before do
         openai_client = instance_double(OpenAI::Client)
+        responses_double = instance_double(OpenAI::Responses)
         allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:chat).and_raise(StandardError.new("API error"))
+        allow(openai_client).to receive(:responses).and_return(responses_double)
+        allow(responses_double).to receive(:create).and_raise(StandardError.new("API error"))
       end
 
       it "returns a failure" do
@@ -168,11 +174,13 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
     context "when OpenAI returns invalid JSON" do
       let(:openai_response) do
         {
-          "choices" => [
+          "output" => [
             {
-              "message" => {
-                "content" => "Invalid JSON response"
-              }
+              "content" => [
+                {
+                  "text" => "Invalid JSON response"
+                }
+              ]
             }
           ]
         }
@@ -201,11 +209,13 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
 
       let(:openai_response) do
         {
-          "choices" => [
+          "output" => [
             {
-              "message" => {
-                "content" => '{"query_type": "spending_analysis"}'
-              }
+              "content" => [
+                {
+                  "text" => '{"query_type": "spending_analysis"}'
+                }
+              ]
             }
           ]
         }
@@ -214,7 +224,9 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       before do
         openai_client = instance_double(OpenAI::Client)
         allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:chat).and_return(openai_response)
+        allow(openai_client).to receive(:responses).and_return(
+          instance_double(OpenAI::Responses, create: openai_response)
+        )
       end
 
       it "returns success with parsed analysis and raw response" do
@@ -229,28 +241,31 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
 
       it "calls OpenAI with correct parameters" do
         openai_client = instance_double(OpenAI::Client)
+        responses_double = instance_double(OpenAI::Responses)
         allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:chat).and_return(openai_response)
+        allow(openai_client).to receive(:responses).and_return(responses_double)
+        allow(responses_double).to receive(:create).and_return(openai_response)
 
         operation.send(:analyze_query_intent, params: params)
 
-        expect(openai_client).to have_received(:chat).with(
+        expect(responses_double).to have_received(:create).with(
           parameters: hash_including(
             model: "gpt-3.5-turbo",
-            messages: array_including(
-              hash_including(role: "system"),
-              hash_including(role: "user", content: query)
-            ),
+            conversation: { id: nil },
+            input: query,
             temperature: 0.1,
-            max_tokens: 1000
+            max_output_tokens: 1000,
+            instructions: be_a(String)
           )
         )
       end
 
       it "returns failure when OpenAI API fails" do
         openai_client = instance_double(OpenAI::Client)
+        responses_double = instance_double(OpenAI::Responses)
         allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:chat).and_raise(StandardError.new("API error"))
+        allow(openai_client).to receive(:responses).and_return(responses_double)
+        allow(responses_double).to receive(:create).and_raise(StandardError.new("API error"))
 
         result = operation.send(:analyze_query_intent, params: params)
         expect(result).to be_failure

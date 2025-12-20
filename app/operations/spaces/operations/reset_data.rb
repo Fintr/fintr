@@ -56,6 +56,7 @@ module Spaces
         space.accounts.destroy_all
         space.goal_description&.destroy
         user.onboarding&.destroy
+        space.imports.destroy_all
         Success()
       end
 

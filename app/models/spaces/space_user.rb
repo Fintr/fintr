@@ -53,14 +53,20 @@ module Spaces
     def user_can_only_have_one_of_each_space_type
       return unless user && space&.type == "Spaces::PersonalSpace"
 
-      # Only prevent multiple personal spaces, allow multiple organization spaces
+      # Allow joining personal spaces via invitation (invited_by is present)
+      # Only prevent owning multiple personal spaces (direct membership without invitation)
+      return if invited_by_id.present?
+
+      # Only prevent multiple direct memberships to personal spaces
+      # Allow multiple organization spaces and joining personal spaces via invitation
       existing_personal_space = SpaceUser
                                   .joins(:space)
                                   .where.not(id: id)
+                                  .where(invited_by_id: nil)
                                   .exists?(user_id: user_id, spaces: { type: "Spaces::PersonalSpace" })
 
       if existing_personal_space
-        errors.add(:user_id, "already belongs to a personal space")
+        errors.add(:user_id, "already owns a personal space")
       end
     end
 

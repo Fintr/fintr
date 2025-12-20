@@ -76,7 +76,7 @@ module Spaces
 
         Success(space_user)
       rescue ActiveRecord::RecordInvalid => e
-        Failure(errors: e.record.errors.full_messages)
+        Failure(errors: e.record.errors.full_messages, error: e, expected: true)
       end
 
       def assign_role(params, target_user)

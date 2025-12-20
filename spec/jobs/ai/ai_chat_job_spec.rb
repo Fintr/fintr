@@ -56,6 +56,7 @@ RSpec.describe Ai::AiChatJob, type: :job do
         allow(mock_rag_operation).to receive(:call).and_return(Dry::Monads::Result::Success.new(rag_data))
         allow(Ai::Interaction).to receive(:create_from_chat_session).and_return(mock_interaction)
         allow(Ai::Conversation).to receive(:find).with(conversation_id).and_return(conversation)
+        allow(conversation).to receive(:openai_conversation_id).and_return(nil)
         allow(conversation).to receive(:add_assistant_message)
         allow(job).to receive(:stream_llm_response_to_cache).and_return("AI response content")
         allow(mock_interaction).to receive(:update_with_response)
@@ -198,7 +199,8 @@ RSpec.describe Ai::AiChatJob, type: :job do
       it "processes the RAG query successfully" do
         expect(mock_rag_operation).to receive(:call).with(
           query: query,
-          space_id: space_id
+          space_id: space_id,
+          openai_conversation_id: nil
         )
 
         job.perform(session_id, query, space_id, user_id)
@@ -232,7 +234,9 @@ RSpec.describe Ai::AiChatJob, type: :job do
       it "streams LLM response to cache" do
         expect(job).to receive(:stream_llm_response_to_cache).with(
           session_id,
-          "Enhanced prompt with context"
+          "Enhanced prompt with context",
+          nil,
+          user_query: query
         )
 
         job.perform(session_id, query, space_id, user_id)

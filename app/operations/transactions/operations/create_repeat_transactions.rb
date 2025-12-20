@@ -60,7 +60,7 @@ module Transactions
         transaction = params[:transaction] || Transaction.find(params[:transaction_id])
         Success(transaction)
       rescue ActiveRecord::RecordNotFound => e
-        Failure(transaction_id: "not found", error: e)
+        Failure(transaction_id: "not found", error: e, expected: true)
       end
 
       def fetch_dates(params:, transaction:)
@@ -106,9 +106,12 @@ module Transactions
           new_transaction
         end
 
-        account = parent_transaction.account
-        account.assign_attributes(balance: account_balance)
-        account.save!
+        # Only update account balance if we're creating new transactions
+        if records.any?
+          account = parent_transaction.account
+          account.assign_attributes(balance: account_balance)
+          account.save!
+        end
 
         Transaction.bulk_import(
           records,

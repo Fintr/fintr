@@ -51,8 +51,8 @@ module Budgets
         result = Budget.bulk_import(records, validate: true, all_or_none: true)
         puts "Result: #{result.inspect}"
         Success(result.results)
-      rescue ActiveRecord::RecordInvalid
-        Failure(budgets: result.failed_instances)
+      rescue ActiveRecord::RecordInvalid => e
+        Failure(budgets: result.failed_instances, error: e, expected: true)
       end
     end
   end

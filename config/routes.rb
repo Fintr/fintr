@@ -65,6 +65,9 @@ Rails.application.routes.draw do
         resources :accounts, only: %i[index create update destroy]
         resources :transfers, only: %i[create show update destroy]
         resources :drafts, only: %i[index]
+        resources :loans, only: %i[index show create update destroy] do
+          resources :loan_payments, only: %i[index show create update destroy]
+        end
       end
 
       scope path: "goals", module: "goals" do
@@ -92,6 +95,7 @@ Rails.application.routes.draw do
       end
       resource :onboardings, only: %i[create show]
       resources :budgets, only: %i[index create update destroy]
+      resources :entities, only: %i[index create]
       resources :insights, only: [:index]
       resources :receipts, only: [:create] do
         collection do
@@ -105,8 +109,22 @@ Rails.application.routes.draw do
         end
       end
 
+      namespace :imports do
+        resources :imports, only: [:index, :show, :create] do
+          member do
+            post :revert
+          end
+          resources :import_records, only: [:index, :show, :update] do
+            member do
+              post :import
+            end
+          end
+        end
+        resource :sample_template, only: [:show]
+      end
+
       # Space management routes
-      resources :spaces, only: [:index, :show, :create] do
+      resources :spaces, only: [:index, :show, :create, :update] do
         member do
           post :join
           delete :leave

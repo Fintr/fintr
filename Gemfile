@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 
-gem "rails", "~> 8.0.2"
+gem "rails", "~> 8.1.1"
 gem "pg", "~> 1.6"
 gem "puma", ">= 5.0"
 gem "tzinfo-data", platforms: %i[ mswin mswin64 mingw x64_mingw jruby ]
@@ -19,6 +19,8 @@ gem "kamal", "~> 2.7"
 gem "aws-sdk-s3", "~> 1.199"
 gem "csv", "~> 3.3"
 gem "neighbor", "~> 0.6.0"
+gem "image_processing", "~> 1.2"
+gem "openssl", "~> 3.3.2"
 
 
 # DRY Operations, Validation
@@ -61,10 +63,14 @@ gem "ruby-vips", "~> 2.2"
 gem "ruby-openai", "~> 8.3"
 
 # Documentation
-gem "rdoc", "~> 6.15.0"
+gem "rdoc", "6.17.0"
 
 # Time-based grouping
 gem "groupdate", "~> 6.5"
+
+# Excel processing
+gem "fast_excel", "~> 0.5"
+gem "xsv", "~> 1.1"
 
 # Errors
 gem "sentry-ruby"

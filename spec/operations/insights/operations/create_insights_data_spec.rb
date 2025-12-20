@@ -91,7 +91,8 @@ RSpec.describe Insights::Operations::CreateInsightsData do
         call_operation
         expect(Budgets::Queries::MonthlyBudgets).to have_received(:call).with(params: {
           space_code: valid_params[:space_code],
-          date: valid_params[:start_date]
+          start_date: valid_params[:start_date],
+          end_date: valid_params[:end_date]
         })
       end
 

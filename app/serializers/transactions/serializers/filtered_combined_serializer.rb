@@ -38,6 +38,10 @@ module Transactions
       field :has_image do |record|
         record.transactable.files.attached?
       end
+
+      field :has_loan_payment do |record|
+        record.transactable.respond_to?(:loan_payment) && record.transactable.loan_payment.present?
+      end
     end
   end
 end

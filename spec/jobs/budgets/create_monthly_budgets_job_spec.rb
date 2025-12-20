@@ -16,15 +16,23 @@ RSpec.describe Budgets::CreateMonthlyBudgetsJob, type: :job do
 
     context "with valid parameters" do
       it "calls the CreateMonthlyBudget operation" do
-        mock_operation = instance_double(Budgets::Operations::CreateMonthlyBudget, call: instance_double('Result')) # rubocop:disable RSpec/VerifiedDoubleReference
+        success_result = Dry::Monads::Success.new({})
+        mock_operation = instance_double(Budgets::Operations::CreateMonthlyBudget)
         allow(Budgets::Operations::CreateMonthlyBudget).to receive(:new).and_return(mock_operation)
+        allow(mock_operation).to receive(:call).and_return(success_result)
 
         job.perform(space_id:, date:)
 
         expect(Budgets::Operations::CreateMonthlyBudget).to have_received(:new)
+        expect(mock_operation).to have_received(:call).with(space_id:, date:)
       end
 
       it "logs the job start" do
+        success_result = Dry::Monads::Success.new({})
+        mock_operation = instance_double(Budgets::Operations::CreateMonthlyBudget)
+        allow(Budgets::Operations::CreateMonthlyBudget).to receive(:new).and_return(mock_operation)
+        allow(mock_operation).to receive(:call).and_return(success_result)
+
         expect(Rails.logger).to receive(:info).with(
           "Starting CreateMonthlyBudgetJob for space #{space_id} and date #{date}"
         )
@@ -37,8 +45,10 @@ RSpec.describe Budgets::CreateMonthlyBudgetsJob, type: :job do
       let(:date) { Date.new(2024, 1, 15) }
 
       it "passes the date directly to the operation" do
+        success_result = Dry::Monads::Success.new({})
         mock_operation = instance_double(Budgets::Operations::CreateMonthlyBudget)
         allow(Budgets::Operations::CreateMonthlyBudget).to receive(:new).and_return(mock_operation)
+        allow(mock_operation).to receive(:call).and_return(success_result)
 
         expect(mock_operation).to receive(:call).with(space_id:, date:)
 
@@ -56,8 +66,10 @@ RSpec.describe Budgets::CreateMonthlyBudgetsJob, type: :job do
       let(:date) { Date.new(2024, 1, 15) }
 
       it "handles timezone context correctly" do
+        success_result = Dry::Monads::Success.new({})
         mock_operation = instance_double(Budgets::Operations::CreateMonthlyBudget)
         allow(Budgets::Operations::CreateMonthlyBudget).to receive(:new).and_return(mock_operation)
+        allow(mock_operation).to receive(:call).and_return(success_result)
 
         expect(mock_operation).to receive(:call).with(space_id:, date:)
 
@@ -75,8 +87,10 @@ RSpec.describe Budgets::CreateMonthlyBudgetsJob, type: :job do
       let(:date) { Date.new(2024, 1, 15) }
 
       it "handles UTC timezone correctly" do
+        success_result = Dry::Monads::Success.new({})
         mock_operation = instance_double(Budgets::Operations::CreateMonthlyBudget)
         allow(Budgets::Operations::CreateMonthlyBudget).to receive(:new).and_return(mock_operation)
+        allow(mock_operation).to receive(:call).and_return(success_result)
 
         expect(mock_operation).to receive(:call).with(space_id:, date:)
 
@@ -94,8 +108,10 @@ RSpec.describe Budgets::CreateMonthlyBudgetsJob, type: :job do
       let(:date) { Date.new(2024, 1, 15) }
 
       it "handles Eastern timezone correctly" do
+        success_result = Dry::Monads::Success.new({})
         mock_operation = instance_double(Budgets::Operations::CreateMonthlyBudget)
         allow(Budgets::Operations::CreateMonthlyBudget).to receive(:new).and_return(mock_operation)
+        allow(mock_operation).to receive(:call).and_return(success_result)
 
         expect(mock_operation).to receive(:call).with(space_id:, date:)
 
@@ -113,8 +129,10 @@ RSpec.describe Budgets::CreateMonthlyBudgetsJob, type: :job do
       let(:date) { Date.new(2024, 1, 15) }
 
       it "handles London timezone correctly" do
+        success_result = Dry::Monads::Success.new({})
         mock_operation = instance_double(Budgets::Operations::CreateMonthlyBudget)
         allow(Budgets::Operations::CreateMonthlyBudget).to receive(:new).and_return(mock_operation)
+        allow(mock_operation).to receive(:call).and_return(success_result)
 
         expect(mock_operation).to receive(:call).with(space_id:, date:)
 

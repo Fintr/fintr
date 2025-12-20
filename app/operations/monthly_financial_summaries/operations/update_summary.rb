@@ -38,7 +38,7 @@ module MonthlyFinancialSummaries
 
         Success(summary)
       rescue ActiveRecord::RecordNotFound => e
-        Failure(space_id: "Space not found", error: e.message)
+        Failure(space_id: "Space not found", error: e, expected: true)
       end
 
       def recalculate_summary(summary:)

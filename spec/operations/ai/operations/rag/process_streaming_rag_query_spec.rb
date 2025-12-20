@@ -139,7 +139,8 @@ RSpec.describe Ai::Operations::Rag::ProcessStreamingRagQuery, type: :operation d
 
       expect(analyze_intent_double).to have_received(:call).with(
         query: query,
-        space_id: space_id
+        space_id: space_id,
+        openai_conversation_id: nil
       )
     end
 
