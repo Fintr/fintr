@@ -206,7 +206,7 @@ export default function CRMRequestsPage() {
       ) : isError ? (
         <Card className="py-4">
           <CardContent className="p-4 text-center">
-            <p className="bg-red-800 mb-4">Failed to load tickets. Please try again.</p>
+            <p className="text-red-900 mb-4">Failed to load tickets. Please try again.</p>
             <Button onClick={() => refetch()} variant="outline">
               Retry
             </Button>

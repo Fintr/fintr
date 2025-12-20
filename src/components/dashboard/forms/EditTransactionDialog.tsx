@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { CustomModal } from "@/components/ui/custom-modal";
 import ExpenseForm from "./ExpenseForm";
 import IncomeForm from "./IncomeForm";
 import TransferForm from "./TransferForm";
@@ -59,6 +53,13 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   useEffect(() => {
     const fetchTransactionDetails = async () => {
       if (!transaction?.id || !api || !isOpen) return; // Only fetch if dialog is open, transaction exists, and api is ready
+
+      // Prevent editing of loan payment transactions
+      if (transaction.hasLoanPayment) {
+        toast.error("This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.");
+        onClose();
+        return;
+      }
 
       setIsLoading(true);
       try {
@@ -374,17 +375,20 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-2xl overflow-y-auto max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>{getDialogTitle()}</DialogTitle>
-            <DialogDescription>
-              {getDialogDescription()}
-            </DialogDescription>
-          </DialogHeader>
+      <CustomModal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={getDialogTitle()}
+        maxWidth="2xl"
+        className="p-0"
+      >
+        <div className="px-6 pb-6 pt-4">
+          <p className="text-sm text-muted-foreground mb-4">
+            {getDialogDescription()}
+          </p>
           {renderForm()}
-        </DialogContent>
-      </Dialog>
+        </div>
+      </CustomModal>
 
       {/* Update Scope Modal */}
       <ScopeModal

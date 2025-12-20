@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Card,
   CardHeader,
@@ -6,6 +5,14 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,15 +27,14 @@ import { Progress } from "@/components/ui/progress";
 import {
   MessageSquare,
   Target,
-  Calendar,
   Send,
   LineChart,
   PieChart,
   BarChart3,
   Filter,
+  Eye,
 } from "lucide-react";
 import { useInsightsData } from "@/hooks/async/useInsightsData";
-import { useDashboardData } from "@/hooks/async/useDashboardData";
 import {
   LineChart as RechartsLineChart,
   Line,
@@ -43,12 +49,26 @@ import {
   Cell,
   BarChart as RechartsBarChart,
   Bar,
+  ReferenceLine,
 } from "recharts";
 import { formatCurrency, getColor, getColorByIndex, shouldShowV2Features } from "@/lib/utils";
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
+import { useAtom } from "jotai";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ScoreTag from "@/components/ui/score-tag";
 import AccountBreakdownComponent from "@/components/dashboard/account-breakdown";
+import {
+  dateFilterStartDateAtom,
+  dateFilterEndDateAtom,
+  dateFilterMonthYearAtom,
+  dateFilterTypeAtom,
+  monthYearToDateRange,
+} from "@/atoms/dateFilterAtoms";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { getCurrentMonthDates } from "@/utils/dateUtils";
 
 interface InsightsTabProps {
   filteredTransactions?: any[];
@@ -89,8 +109,6 @@ const InsightsTab = () => {
     .toLowerCase();
   const currentYear = new Date().getFullYear().toString();
 
-  // Fetch dashboard data for category options
-  const { data: dashboardData, isLoading: dashboardLoading } = useDashboardData();
 
   // Generate dynamic year options for the select dropdowns
   const generateYearOptions = () => {
@@ -104,27 +122,136 @@ const InsightsTab = () => {
   };
   const yearOptions = generateYearOptions();
 
-  // Local state for insights tab
-  const [filterType, setFilterType] = useState("single");
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [startMonth, setStartMonth] = useState(currentMonth);
-  const [startYear, setStartYear] = useState(currentYear);
-  const [endMonth, setEndMonth] = useState(currentMonth);
-  const [endYear, setEndYear] = useState(currentYear);
+  // Use shared date filter atoms
+  const [monthYear] = useAtom(dateFilterMonthYearAtom);
+  const [filterType] = useAtom(dateFilterTypeAtom);
+  const [startDate, setStartDate] = useAtom(dateFilterStartDateAtom);
+  const [endDate, setEndDate] = useAtom(dateFilterEndDateAtom);
   const [selectedCategory, setSelectedCategory] = useState("all");
-
-  // Fetch insights data from API
-  const { data: insightsData, isLoading, isError, refetch } = useInsightsData({
-    filterType,
-    selectedMonth,
-    selectedYear,
-    startMonth,
-    startYear,
-    endMonth,
-    endYear,
-    selectedCategory,
+  
+  // Local state for filter type selector (single month vs custom)
+  const [filterTypeSelector, setFilterTypeSelector] = useState<"single" | "custom">(() => {
+    return filterType === "single" ? "single" : "custom";
   });
+  
+  // Local state for custom date range picker
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined } | undefined>(() => {
+    if (startDate && endDate) {
+      return {
+        from: new Date(startDate),
+        to: new Date(endDate),
+      };
+    }
+    return undefined;
+  });
+  
+  // Local state synced with atoms
+  const [selectedMonth, setSelectedMonth] = useState(monthYear.selectedMonth);
+  const [selectedYear, setSelectedYear] = useState(monthYear.selectedYear);
+  
+  // Sync local state with atoms
+  useEffect(() => {
+    setSelectedMonth(monthYear.selectedMonth);
+    setSelectedYear(monthYear.selectedYear);
+    if (startDate && endDate) {
+      setDateRange({
+        from: new Date(startDate),
+        to: new Date(endDate),
+      });
+    }
+  }, [monthYear, startDate, endDate]);
+  
+  // Update filter type selector when filterType changes
+  useEffect(() => {
+    if (filterType === "single") {
+      setFilterTypeSelector("single");
+    } else {
+      setFilterTypeSelector("custom");
+    }
+  }, [filterType]);
+
+  // Calculate month/year values for API call based on applied filters (from atoms)
+  const getInsightsParams = useMemo(() => {
+    // Use the applied filter type from atoms
+    if (filterType === "single") {
+      return {
+        filterType: "single",
+        selectedMonth: monthYear.selectedMonth,
+        selectedYear: monthYear.selectedYear,
+        startMonth: monthYear.selectedMonth,
+        startYear: monthYear.selectedYear,
+        endMonth: monthYear.selectedMonth,
+        endYear: monthYear.selectedYear,
+        selectedCategory: "all",
+      };
+    } else {
+      // For range, use monthYear from atoms
+      return {
+        filterType: "range",
+        selectedMonth: monthYear.startMonth,
+        selectedYear: monthYear.startYear,
+        startMonth: monthYear.startMonth,
+        startYear: monthYear.startYear,
+        endMonth: monthYear.endMonth,
+        endYear: monthYear.endYear,
+        selectedCategory: "all",
+      };
+    }
+  }, [filterType, monthYear]);
+  
+  // Fetch insights data from API
+  const { data: insightsData, isLoading, isError, refetch } = useInsightsData(getInsightsParams);
+
+  // Calculate Y-axis domain for bar chart with padding
+  const barChartYAxisDomain = useMemo(() => {
+    const data = insightsData?.monthlySpending || monthlyFinancialData;
+    if (!data || data.length === 0) {
+      return [0, 100000]; // Default range
+    }
+    
+    // Find max and min values across all data points (income, expenses, savings)
+    const allValues = data.flatMap(item => [
+      item.income || 0,
+      Math.abs(item.expenses) || 0, // expenses shown as positive
+      item.savings || 0
+    ]);
+    
+    const maxValue = Math.max(...allValues);
+    const minValue = Math.min(...data.map(item => item.savings || 0)); // Check if savings go negative
+    
+    // Add 20% padding to the top, and 10% to bottom if there are negative values
+    const domainMax = maxValue * 1.2;
+    const domainMin = minValue < 0 ? minValue * 1.1 : 0;
+    
+    return [domainMin, domainMax];
+  }, [insightsData?.monthlySpending]);
+
+  // Calculate Y-axis domain for financial trends chart with padding
+  const yAxisDomain = useMemo(() => {
+    const data = insightsData?.monthlySpending || monthlyFinancialData;
+    if (!data || data.length === 0) {
+      return ['auto', 'auto'];
+    }
+    
+    // Collect all values from income, expenses, and savings
+    const allValues = data.flatMap(item => [
+      item.income || 0,
+      item.expenses || 0,
+      item.savings || 0
+    ]);
+    
+    const minValue = Math.min(...allValues);
+    const maxValue = Math.max(...allValues);
+    
+    // Add 15% padding on both sides to ensure all dots are visible
+    const range = maxValue - minValue;
+    const padding = range * 0.15 || Math.abs(maxValue) * 0.15 || 1000;
+    
+    const domainMin = minValue - padding;
+    const domainMax = maxValue + padding;
+    
+    return [domainMin, domainMax];
+  }, [insightsData?.monthlySpending]);
 
   // Process expense breakdown data to show top 5 categories and group others
   const processedExpenseBreakdown = useMemo(() => {
@@ -174,8 +301,84 @@ const InsightsTab = () => {
     return result;
   }, [insightsData?.expenseBreakdown]);
 
-  // Handle filter application
+  // Handle custom date range selection
+  const handleDateRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
+    if (range) {
+      const updatedRange: { from: Date | undefined; to: Date | undefined } = {
+        from: range.from,
+        to: range.to,
+      };
+      setDateRange(updatedRange);
+      // Don't update date atoms immediately - wait for Apply Filters button
+    } else {
+      setDateRange(undefined);
+    }
+  };
+  
+  // Handle filter type selector change
+  const handleFilterTypeChange = (value: "single" | "custom") => {
+    setFilterTypeSelector(value);
+    if (value === "single") {
+      // Reset local state to current month when switching to single
+      const { firstDay, lastDay } = getCurrentMonthDates();
+      const currentMonthNum = new Date().getMonth() + 1;
+      const currentYearNum = new Date().getFullYear();
+      const monthNames = [
+        "january", "february", "march", "april", "may", "june",
+        "july", "august", "september", "october", "november", "december"
+      ];
+      const monthName = monthNames[currentMonthNum - 1];
+      setSelectedMonth(monthName);
+      setSelectedYear(currentYearNum.toString());
+      setDateRange({
+        from: new Date(firstDay),
+        to: new Date(lastDay),
+      });
+    } else {
+      // When switching to custom, initialize date range picker with current dates
+      if (startDate && endDate) {
+        setDateRange({
+          from: new Date(startDate),
+          to: new Date(endDate),
+        });
+      }
+    }
+  };
+  
+  // Handle filter application - update date atoms first
   const handleApplyFilters = () => {
+    let queryStartDate: string;
+    let queryEndDate: string;
+    
+    if (filterTypeSelector === "single") {
+      const dateRange = monthYearToDateRange(
+        selectedMonth,
+        selectedYear,
+        selectedMonth,
+        selectedYear
+      );
+      queryStartDate = dateRange.startDate;
+      queryEndDate = dateRange.endDate;
+    } else {
+      // For custom range filter, use dateRange picker
+      if (dateRange?.from && dateRange?.to) {
+        queryStartDate = format(dateRange.from, "yyyy-MM-dd");
+        queryEndDate = format(dateRange.to, "yyyy-MM-dd");
+      } else if (dateRange?.from) {
+        // If only from is selected, use the same date for both
+        queryStartDate = format(dateRange.from, "yyyy-MM-dd");
+        queryEndDate = format(dateRange.from, "yyyy-MM-dd");
+      } else {
+        // Fallback to current dates if nothing is selected
+        const { firstDay, lastDay } = getCurrentMonthDates();
+        queryStartDate = firstDay;
+        queryEndDate = lastDay;
+      }
+    }
+    
+    // Update atoms
+    setStartDate(queryStartDate);
+    setEndDate(queryEndDate);
     refetch();
   };
 
@@ -212,84 +415,39 @@ const InsightsTab = () => {
               <CardDescription>Customize your dashboard view</CardDescription>
             </CardHeader>
             <CardContent className="px-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="space-y-2 md:w-1/4">
-                  <Label>View Type</Label>
-                  <Select
-                    defaultValue="single"
-                    onValueChange={(value) => setFilterType(value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select view type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="single">Single Month</SelectItem>
-                      <SelectItem value="range">Month Range</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="flex flex-col md:flex-row gap-4 items-start">
+                <div className="flex flex-col md:flex-row gap-4 flex-1">
+                  {/* Filter Type Selector */}
+                  <div className="space-y-2 md:w-auto md:min-w-[180px]">
+                    <Label>Filter Type</Label>
+                    <Select
+                      value={filterTypeSelector}
+                      onValueChange={(value) => handleFilterTypeChange(value as "single" | "custom")}
+                    >
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue placeholder="Select filter type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="single">Single Month</SelectItem>
+                        <SelectItem value="custom">Custom Range</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {filterType === "single" ? (
-                  <>
-                    <div className="space-y-2 md:w-1/4">
-                      <Label>Month</Label>
-                      <Select
-                        defaultValue={selectedMonth}
-                        value={selectedMonth}
-                        onValueChange={setSelectedMonth}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select month" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="january">January</SelectItem>
-                          <SelectItem value="february">February</SelectItem>
-                          <SelectItem value="march">March</SelectItem>
-                          <SelectItem value="april">April</SelectItem>
-                          <SelectItem value="may">May</SelectItem>
-                          <SelectItem value="june">June</SelectItem>
-                          <SelectItem value="july">July</SelectItem>
-                          <SelectItem value="august">August</SelectItem>
-                          <SelectItem value="september">September</SelectItem>
-                          <SelectItem value="october">October</SelectItem>
-                          <SelectItem value="november">November</SelectItem>
-                          <SelectItem value="december">December</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2 md:w-1/4">
-                      <Label>Year</Label>
-                      <Select
-                        defaultValue={selectedYear}
-                        value={selectedYear}
-                        onValueChange={setSelectedYear}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {yearOptions.map((year) => (
-                            <SelectItem key={year.value} value={year.value}>
-                              {year.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="space-y-2 md:w-1/4">
-                      <Label>Start Month & Year</Label>
-                      <div className="flex space-x-2">
+                  {filterTypeSelector === "single" ? (
+                    <>
+                      <div className="space-y-2 md:w-auto md:min-w-[160px]">
+                        <Label>Month</Label>
                         <Select
-                          defaultValue={startMonth}
-                          value={startMonth}
-                          onValueChange={setStartMonth}
+                          defaultValue={selectedMonth}
+                          value={selectedMonth}
+                          onValueChange={(value) => {
+                            setSelectedMonth(value);
+                            // Don't update date atoms immediately - wait for Apply Filters button
+                          }}
                         >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Start Month" />
+                          <SelectTrigger className="w-full md:w-[160px]">
+                            <SelectValue placeholder="Select month" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="january">January</SelectItem>
@@ -306,13 +464,20 @@ const InsightsTab = () => {
                             <SelectItem value="december">December</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      <div className="space-y-2 md:w-auto md:min-w-[120px]">
+                        <Label>Year</Label>
                         <Select
-                          defaultValue={startYear}
-                          value={startYear}
-                          onValueChange={setStartYear}
+                          defaultValue={selectedYear}
+                          value={selectedYear}
+                          onValueChange={(value) => {
+                            setSelectedYear(value);
+                            // Don't update date atoms immediately - wait for Apply Filters button
+                          }}
                         >
-                          <SelectTrigger className="w-24">
-                            <SelectValue placeholder="Year" />
+                          <SelectTrigger className="w-full md:w-[120px]">
+                            <SelectValue placeholder="Select year" />
                           </SelectTrigger>
                           <SelectContent>
                             {yearOptions.map((year) => (
@@ -323,80 +488,48 @@ const InsightsTab = () => {
                           </SelectContent>
                         </Select>
                       </div>
+                    </>
+                  ) : (
+                    <div className="space-y-2 md:w-auto md:min-w-[280px]">
+                      <Label>Date Range</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full md:w-[280px] justify-start text-left font-normal text-sm"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateRange?.from ? (
+                              dateRange.to ? (
+                                <>
+                                  {format(dateRange.from, "MMM d, yyyy")} -{" "}
+                                  {format(dateRange.to, "MMM d, yyyy")}
+                                </>
+                              ) : (
+                                format(dateRange.from, "MMM d, yyyy")
+                              )
+                            ) : (
+                              <span>Pick a date range</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="range"
+                            selected={dateRange}
+                            onSelect={handleDateRangeSelect}
+                            initialFocus
+                            numberOfMonths={2}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
-
-                    <div className="space-y-2 md:w-1/4">
-                      <Label>End Month & Year</Label>
-                      <div className="flex space-x-2">
-                        <Select
-                          defaultValue={endMonth}
-                          value={endMonth}
-                          onValueChange={setEndMonth}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="End Month" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="january">January</SelectItem>
-                            <SelectItem value="february">February</SelectItem>
-                            <SelectItem value="march">March</SelectItem>
-                            <SelectItem value="april">April</SelectItem>
-                            <SelectItem value="may">May</SelectItem>
-                            <SelectItem value="june">June</SelectItem>
-                            <SelectItem value="july">July</SelectItem>
-                            <SelectItem value="august">August</SelectItem>
-                            <SelectItem value="september">September</SelectItem>
-                            <SelectItem value="october">October</SelectItem>
-                            <SelectItem value="november">November</SelectItem>
-                            <SelectItem value="december">December</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          defaultValue={endYear}
-                          value={endYear}
-                          onValueChange={setEndYear}
-                        >
-                          <SelectTrigger className="w-24">
-                            <SelectValue placeholder="Year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {yearOptions.map((year) => (
-                              <SelectItem key={year.value} value={year.value}>
-                                {year.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <div className="space-y-2 md:w-1/4">
-                  <Label>Category</Label>
-                  <Select
-                    defaultValue="all"
-                    value={selectedCategory}
-                    onValueChange={setSelectedCategory}
-                    disabled={dashboardLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={dashboardLoading ? "Loading categories..." : "Select category"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {dashboardData?.categoryOptions?.map((category) => (
-                        <SelectItem key={category.value} value={category.value}>
-                          {category.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  )}
                 </div>
 
-                <div className="md:self-end">
+                <div className="md:self-end md:ml-auto">
                   <Button
-                    className="bg-primary hover:bg-primary/80 w-full"
+                    className="bg-primary hover:bg-primary/80 w-full md:w-auto"
                     onClick={handleApplyFilters}
                     disabled={isLoading}
                   >
@@ -422,7 +555,7 @@ const InsightsTab = () => {
                 <LoadingSpinner size="medium" />
               </div>
             ) : isError ? (
-              <div className="text-center py-8 bg-red-800">
+              <div className="text-center py-8 text-red-900">
                 Error loading insights. Please try again.
               </div>
             ) : (
@@ -628,7 +761,7 @@ const InsightsTab = () => {
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
                     <div className="flex items-start">
                       <div className="bg-blue-600 text-white p-2 rounded-full mr-3">
-                        <Calendar className="h-5 w-5" />
+                        <CalendarIcon className="h-5 w-5" />
                       </div>
                       <div>
                         <h4 className="font-medium text-blue-800 mb-1">
@@ -742,24 +875,67 @@ const InsightsTab = () => {
               Financial Trends
             </CardTitle>
             <CardDescription>
-              Your income and expenses over time
+              Track your income (blue), expenses (red), and net savings (green) over time
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsLineChart
-                  data={insightsData?.monthlySpending || monthlyFinancialData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  data={(insightsData?.monthlySpending || monthlyFinancialData).map(item => ({
+                    ...item,
+                    expensesPositive: Math.abs(item.expenses), // Show expenses as positive for better visibility
+                  }))}
+                  margin={{ top: 15, right: 30, left: 20, bottom: 15 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="month" stroke="#888888" />
-                  <YAxis stroke="#888888" />
-                  <RechartsTooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                    labelFormatter={(label) => `Month: ${label}`}
+                  <XAxis 
+                    dataKey="month" 
+                    stroke="#888888"
+                    style={{ fontSize: '14px' }}
                   />
-                  <Legend />
+                  <YAxis 
+                    stroke="#888888"
+                    domain={barChartYAxisDomain}
+                    tickFormatter={(value) => {
+                      // Handle millions
+                      if (Math.abs(value) >= 1000000) {
+                        return `₱${(value / 1000000).toFixed(1)}M`;
+                      }
+                      // Handle thousands
+                      if (Math.abs(value) >= 1000) {
+                        return `₱${(value / 1000).toFixed(0)}K`;
+                      }
+                      // Handle small numbers
+                      if (Math.abs(value) < 1000 && value !== 0) {
+                        return `₱${value.toFixed(0)}`;
+                      }
+                      return '₱0';
+                    }}
+                    style={{ fontSize: '12px' }}
+                  />
+                  <RechartsTooltip
+                    formatter={(value: number, name: string) => {
+                      return [formatCurrency(value), name];
+                    }}
+                    labelFormatter={(label) => `Month: ${label}`}
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '12px'
+                    }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '20px' }}
+                  />
+                  <ReferenceLine 
+                    y={0} 
+                    stroke="#888888" 
+                    strokeDasharray="3 3"
+                    strokeWidth={1.5}
+                    label={{ value: '₱0', position: 'left', fill: '#888888', fontSize: 12 }}
+                  />
                   <Line
                     type="monotone"
                     dataKey="income"
@@ -771,7 +947,7 @@ const InsightsTab = () => {
                   />
                   <Line
                     type="monotone"
-                    dataKey="expenses"
+                    dataKey="expensesPositive"
                     stroke="oklch(39.6% 0.141 25.723)"
                     strokeWidth={2}
                     dot={{ r: 4 }}
@@ -789,6 +965,52 @@ const InsightsTab = () => {
                   />
                 </RechartsLineChart>
               </ResponsiveContainer>
+            </div>
+            
+            {/* View Details Button */}
+            <div className="mt-6 pt-4 border-t flex justify-center">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Eye className="h-4 w-4" />
+                    View Monthly Details
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="!max-w-[90vw] w-[90vw] max-h-[90vh] overflow-y-auto p-8">
+                  <DialogHeader>
+                    <DialogTitle className="text-3xl font-bold">Monthly Financial Breakdown</DialogTitle>
+                    <DialogDescription className="text-lg mt-2">
+                      Detailed view of your income, expenses, and savings for each month
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-6">
+                    {(insightsData?.monthlySpending || monthlyFinancialData).map((item, idx) => (
+                      <div key={idx} className="border rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-shadow">
+                        <div className="text-xl font-bold text-center mb-4 pb-3 border-b">{item.month}</div>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm text-muted-foreground font-medium flex-shrink-0">Earned:</span>
+                            <span className="font-bold text-green-600 text-base whitespace-nowrap text-right">{formatCurrency(item.income)}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm text-muted-foreground font-medium flex-shrink-0">Spent:</span>
+                            <span className="font-bold text-red-900 text-base whitespace-nowrap text-right">{formatCurrency(Math.abs(item.expenses))}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 pt-2 border-t">
+                            <span className="text-sm text-muted-foreground font-medium flex-shrink-0 flex items-center gap-1.5">
+                              Left over:
+                              {item.savings < 0 && <span className="text-base">⚠️</span>}
+                            </span>
+                            <span className={`font-bold text-base whitespace-nowrap text-right ${item.savings < 0 ? 'text-red-900' : 'text-gray-900'}`}>
+                              {formatCurrency(item.savings)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardContent>
         </Card>

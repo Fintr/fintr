@@ -11,6 +11,7 @@ export interface IndexTransaction {
   type: CombinedTransactionTypeEnum;
   inSeries: boolean;
   hasImage: boolean;
+  hasLoanPayment?: boolean;
 }
 
 export interface TransactionIndexInputType {

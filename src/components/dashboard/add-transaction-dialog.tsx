@@ -1,10 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { CustomModal } from "@/components/ui/custom-modal";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ExpenseForm from "@/components/dashboard/forms/ExpenseForm";
@@ -211,10 +206,26 @@ const AddTransactionDialog = ({
       exact: false // Allow partial matches for any transactions query
     });
     
+    // Also invalidate loans query if we're on the loan tab
+    if (activeTab === "loan") {
+      queryClient.invalidateQueries({ 
+        queryKey: ["loans"],
+        refetchType: 'active',
+      });
+      // Invalidate accounts when loan is created/updated since it affects account balances
+      queryClient.invalidateQueries({ 
+        queryKey: ["accounts"],
+        refetchType: 'active',
+      });
+    }
+    
     // Invalidate dashboard query to refresh financial summary
     queryClient.invalidateQueries({
       queryKey: ["dashboard"],
     });
+    
+    // Call the callback if provided
+    onAddTransaction(response);
     
     setDialogOpen(false);
   };
@@ -286,27 +297,29 @@ const AddTransactionDialog = ({
   const showV2Features = shouldShowV2Features();
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-lg">Add Transaction</DialogTitle>
-        </DialogHeader>
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as typeof activeTab)}
-          className="w-full"
-        >
-          <div className="px-6">
-            <TabsList className="grid w-full grid-cols-3 mb-4 bg-white">
+    <CustomModal
+      isOpen={isDialogOpen}
+      onClose={() => setDialogOpen(false)}
+      title="Add Transaction"
+      maxWidth="2xl"
+      className="p-0"
+    >
+      <div className="px-6 pb-6">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as typeof activeTab)}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-4 mb-4 bg-white">
               <TabsTrigger value="expense">Expense</TabsTrigger>
               <TabsTrigger value="income">Income</TabsTrigger>
               <TabsTrigger value="transfer">Transfer</TabsTrigger>
+              <TabsTrigger value="loan">Loan</TabsTrigger>
             </TabsList>
 
             {showV2Features && (
               <>
                 <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="loan">Loan</TabsTrigger>
                   <TabsTrigger value="investment">Investment</TabsTrigger>
                 </TabsList>
 
@@ -315,9 +328,8 @@ const AddTransactionDialog = ({
                 </TabsList>
               </>
             )}
-          </div>
 
-          {/* Expense Form */}
+            {/* Expense Form */}
           <TabsContent value="expense" className="flex-1 flex flex-col pt-4">
             <ExpenseForm
               date={date}
@@ -367,16 +379,14 @@ const AddTransactionDialog = ({
           </TabsContent>
 
           {/* Loan Form */}
-          {showV2Features && (
-            <TabsContent value="loan" className="space-y-4">
-              <LoanForm
-                date={date}
-                setDate={setDate}
-                onSubmitSuccess={onTransactionSuccess}
-                onCancel={() => setDialogOpen(false)}
-              />
-            </TabsContent>
-          )}
+          <TabsContent value="loan" className="space-y-4">
+            <LoanForm
+              date={date}
+              setDate={setDate}
+              onSubmitSuccess={onTransactionSuccess}
+              onCancel={() => setDialogOpen(false)}
+            />
+          </TabsContent>
 
           {/* Investment Form */}
           {showV2Features && (
@@ -401,11 +411,9 @@ const AddTransactionDialog = ({
               />
             </TabsContent>
           )}
-        </Tabs>
-
-        {/* Removed general Cancel and Save Transaction buttons */}
-      </DialogContent>
-    </Dialog>
+          </Tabs>
+      </div>
+    </CustomModal>
   );
 };
 

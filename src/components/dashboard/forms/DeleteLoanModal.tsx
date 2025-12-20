@@ -1,0 +1,139 @@
+import React, { useState, useCallback } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Loan } from "@/services/loans/queries";
+import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
+
+interface DeleteLoanModalProps {
+  loan: Loan;
+  onDelete: (loanId: string) => Promise<any>;
+  isLoading?: boolean;
+}
+
+const DeleteLoanModal: React.FC<DeleteLoanModalProps> = ({
+  loan,
+  onDelete,
+  isLoading = false,
+}) => {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleTriggerClick = useCallback(() => {
+    setInternalIsOpen(true);
+    setErrorMessage(null);
+  }, []);
+
+  const handleDelete = useCallback(async () => {
+    setIsDeleting(true);
+    setErrorMessage(null);
+    
+    try {
+      const response = await onDelete(loan.id);
+
+      if (response?.success === true) {
+        toast.success(`Loan "${loan.entityName || 'Loan'}" has been deleted`);
+        setInternalIsOpen(false);
+        setErrorMessage(null);
+      } else {
+        const backendMessage = response?.error?.details?.loan_id || response?.error?.message || "Failed to delete loan.";
+        setErrorMessage(backendMessage);
+      }
+    } catch (error: any) {
+      const errorMessageText = error?.response?.data?.error?.message || "An unexpected error occurred. Please try again.";
+      setErrorMessage(errorMessageText);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [loan.id, loan.entityName, onDelete]);
+
+  const handleCancel = useCallback(() => {
+    setErrorMessage(null);
+    setInternalIsOpen(false);
+  }, []);
+
+  const handleOpenChangeFromDialog = useCallback((openStateFromDialog: boolean) => {
+    setInternalIsOpen(openStateFromDialog);
+    if (!openStateFromDialog) {
+      setErrorMessage(null);
+    }
+  }, []);
+
+  const loanDisplayName = loan.entityName || 'Loan';
+  const loanAmount = typeof loan.principalAmount === 'string' 
+    ? parseFloat(loan.principalAmount) 
+    : loan.principalAmount;
+  const loanCurrency = loan.principalAmountCurrency || 'PHP';
+
+  return (
+    <Dialog open={internalIsOpen} onOpenChange={handleOpenChangeFromDialog}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 w-6 p-0 text-red-900 hover:text-red-900 hover:bg-red-50"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleTriggerClick();
+          }}
+          disabled={isDeleting}
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Delete Loan</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="text-sm text-gray-600">
+            Are you sure you want to delete the loan with{" "}
+            <span className="font-semibold text-gray-900">"{loanDisplayName}"</span>?
+            <br />
+            <br />
+            This will also delete all associated loan payments and reverse the account balance adjustments.
+            <br />
+            <br />
+            <span className="font-medium">Principal Amount: {loanAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {loanCurrency}</span>
+          </div>
+
+          {errorMessage && (
+            <div className="text-sm text-red-900 bg-red-100/50 p-3 rounded-md border border-red-300">
+              <strong>Error:</strong> {errorMessage}
+            </div>
+          )}          
+
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Loan"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default DeleteLoanModal;
+

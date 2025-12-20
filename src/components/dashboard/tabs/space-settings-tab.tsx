@@ -23,8 +23,11 @@ import AccountList from "../account-list";
 import AddAccountForm, { NewAccountData } from "../add-account-form";
 import CategoryFormDialog from "../category-form-dialog";
 import DeleteCategoryDialog from "../delete-category-dialog";
+import { ImportWizard } from "@/components/import/import-wizard";
+import { ImportResults } from "@/components/import/import-results";
 import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { useAccounts } from "@/hooks/async/useAccounts";
+import { useImports } from "@/hooks/async/useImport";
 import { getColor, shouldShowV2Features } from "@/lib/utils";
 import { TransactionCategory } from "@/types/transactionCategoryTypes";
 import { Account } from "@/types/accountTypes";
@@ -48,6 +51,9 @@ const SpaceSettingsTab = () => {
   const [activeSubTab, setActiveSubTab] = useState("expense");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryToggleType>("expense");
+  const [selectedImportId, setSelectedImportId] = useState<string | null>(null);
+  const [showImportWizard, setShowImportWizard] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const showV2Features = shouldShowV2Features();
 
   // Fetch transaction categories from API
@@ -67,6 +73,9 @@ const SpaceSettingsTab = () => {
     isLoading: accountsLoading,
     isError: accountsError
   } = useAccounts();
+
+  // Fetch imports with pagination
+  const { imports, isLoading: importsLoading, pagination, refetch: refetchImports } = useImports(undefined, undefined, currentPage, 10);
 
   // Default settings states
   const [defaultAccount, setDefaultAccount] = useState("BPI Savings");
@@ -402,7 +411,7 @@ const SpaceSettingsTab = () => {
         <CardContent>
           <div className="flex items-center justify-center p-8">
             <div className="text-center">
-              <p className="bg-red-800 mb-4">Failed to load categories. Please try again.</p>
+              <p className="text-red-900 mb-4">Failed to load categories. Please try again.</p>
               <Button onClick={() => window.location.reload()}>
                 Retry
               </Button>
@@ -437,6 +446,13 @@ const SpaceSettingsTab = () => {
             onClick={() => setActiveMainTab("accounts")}
           >
             <Users className="h-4 w-4 mr-2" /> Accounts
+          </Button>
+          <Button
+            variant={activeMainTab === "import" ? "default" : "outline"}
+            className={activeMainTab === "import" ? "bg-primary" : "bg-white"}
+            onClick={() => setActiveMainTab("import")}
+          >
+            <Download className="h-4 w-4 mr-2" /> Import
           </Button>
         </div>
 
@@ -561,6 +577,256 @@ const SpaceSettingsTab = () => {
               </div>
             </div>
           </>
+        )}
+
+        {/* Import & Export Tab Content */}
+        {activeMainTab === "import" && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-xl font-medium mb-4">
+                Import
+              </h3>
+              <p className="text-gray-500 mb-4">
+                Import your transaction data from Excel files or view your import history
+              </p>
+            </div>
+
+            {showImportWizard ? (
+              <div className="space-y-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowImportWizard(false);
+                    setSelectedImportId(null);
+                  }}
+                >
+                  ← Back to Imports
+                </Button>
+                <ImportWizard
+                  context="settings"
+                  onImportComplete={(importId) => {
+                    setShowImportWizard(false);
+                    setSelectedImportId(importId);
+                    refetchImports();
+                  }}
+                />
+              </div>
+            ) : selectedImportId ? (
+              <div className="space-y-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedImportId(null);
+                    refetchImports();
+                  }}
+                >
+                  ← Back to Imports
+                </Button>
+                <ImportResults
+                  importId={selectedImportId}
+                  onRevert={() => {
+                    setSelectedImportId(null);
+                    refetchImports();
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-medium">Import History</h4>
+                  <Button
+                    onClick={() => setShowImportWizard(true)}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    New Import
+                  </Button>
+                </div>
+
+                {importsLoading ? (
+                  <div className="text-center py-8">
+                    <LoadingSpinner size="medium" />
+                    <p className="text-sm text-muted-foreground mt-2">Loading imports...</p>
+                  </div>
+                ) : imports.length === 0 ? (
+                  <div className="text-center py-8 border rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      No imports yet. Start by creating a new import.
+                    </p>
+                    <Button
+                      onClick={() => setShowImportWizard(true)}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Start Import
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      {imports.map((importItem: any) => (
+                        <div
+                          key={importItem.id}
+                          className="border rounded-lg p-4 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+                          onClick={() => setSelectedImportId(importItem.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className="font-medium text-primary">
+                                  Import #{importItem.id.slice(0, 8)}
+                                </div>
+                                <div className={`text-xs px-2 py-0.5 rounded font-medium ${
+                                  importItem.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                  importItem.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                  'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                  {importItem.status}
+                                </div>
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {new Date(importItem.createdAt).toLocaleString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                {importItem.totalRowsInserted} imported{importItem.totalRowsFailed > 0 ? `, ${importItem.totalRowsFailed} failed` : ''}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Pagination Controls */}
+                    {pagination && pagination.totalPages > 1 && (
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t">
+                        <div className="text-sm text-muted-foreground">
+                          Showing page {pagination.currentPage || currentPage} of {pagination.totalPages || 1} ({pagination.totalCount || 0} total imports)
+                        </div>
+                        
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(1)}
+                            disabled={(pagination.currentPage || currentPage) === 1}
+                            className="hidden sm:flex"
+                          >
+                            First
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={(pagination.currentPage || currentPage) === 1}
+                          >
+                            Previous
+                          </Button>
+                          
+                          <div className="flex items-center gap-1 mx-2">
+                            {(() => {
+                              const totalPages = pagination.totalPages || 1;
+                              const current = pagination.currentPage || currentPage;
+                              const pages = [];
+                              
+                              if (totalPages < 1) return null;
+                              
+                              if (current > 3) {
+                                pages.push(
+                                  <Button
+                                    key={1}
+                                    variant={1 === current ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setCurrentPage(1)}
+                                    className="w-8 h-8 p-0"
+                                  >
+                                    1
+                                  </Button>
+                                );
+                                
+                                if (current > 4) {
+                                  pages.push(
+                                    <span key="ellipsis1" className="px-2 text-gray-500">
+                                      ...
+                                    </span>
+                                  );
+                                }
+                              }
+                              
+                              const start = Math.max(1, current - 1);
+                              const end = Math.min(totalPages, current + 1);
+                              
+                              for (let i = start; i <= end; i++) {
+                                pages.push(
+                                  <Button
+                                    key={i}
+                                    variant={i === current ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setCurrentPage(i)}
+                                    className="w-8 h-8 p-0"
+                                  >
+                                    {i}
+                                  </Button>
+                                );
+                              }
+                              
+                              if (current < totalPages - 2) {
+                                if (current < totalPages - 3) {
+                                  pages.push(
+                                    <span key="ellipsis2" className="px-2 text-gray-500">
+                                      ...
+                                    </span>
+                                  );
+                                }
+                                pages.push(
+                                  <Button
+                                    key={totalPages}
+                                    variant={totalPages === current ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setCurrentPage(totalPages)}
+                                    className="w-8 h-8 p-0"
+                                  >
+                                    {totalPages}
+                                  </Button>
+                                );
+                              }
+                              
+                              return pages;
+                            })()}
+                          </div>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages || 1, prev + 1))}
+                            disabled={(pagination.currentPage || currentPage) >= (pagination.totalPages || 1)}
+                          >
+                            Next
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(pagination.totalPages || 1)}
+                            disabled={(pagination.currentPage || currentPage) >= (pagination.totalPages || 1)}
+                            className="hidden sm:flex"
+                          >
+                            Last
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
