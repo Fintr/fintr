@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,38 +104,52 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   }, [paginatedMessages, messages]);
 
 
+  // Helper function to scroll to bottom smoothly
+  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTo({
+          top: scrollContainer.scrollHeight,
+          behavior
+        });
+      } else {
+        scrollAreaRef.current.scrollTo({
+          top: scrollAreaRef.current.scrollHeight,
+          behavior
+        });
+      }
+    }
+  }, []);
+
+  // Check if user is near the bottom of the scroll area
+  const isNearBottom = useCallback(() => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+        const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+        // Consider "near bottom" if within 150px from bottom
+        return distanceFromBottom < 150;
+      }
+    }
+    return true; // Default to true if we can't determine
+  }, []);
+
   // Auto-scroll to bottom only once on initial load when messages are available
   useEffect(() => {
     if (!isInitialLoad || allMessages.length === 0) return;
 
-    const scrollToBottom = () => {
-      if (scrollAreaRef.current) {
-        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-        if (scrollContainer) {
-          scrollContainer.scrollTo({
-            top: scrollContainer.scrollHeight,
-            behavior: 'smooth'
-          });
-        } else {
-          scrollAreaRef.current.scrollTo({
-            top: scrollAreaRef.current.scrollHeight,
-            behavior: 'smooth'
-          });
-        }
-        
-        setTimeout(() => {
-          setHasUserScrolled(true);
-        }, 1000);
-      }
-    };
-
     const timeoutId = setTimeout(() => {
-      scrollToBottom();
+      scrollToBottom('smooth');
       setIsInitialLoad(false);
+      setTimeout(() => {
+        setHasUserScrolled(true);
+      }, 1000);
     }, 100);
     
     return () => clearTimeout(timeoutId);
-  }, [isInitialLoad, allMessages.length, setHasUserScrolled]);
+  }, [isInitialLoad, allMessages.length, setHasUserScrolled, scrollToBottom]);
 
   // Reset scroll state when conversation changes
   useEffect(() => {
@@ -155,10 +169,13 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
           const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
           
           // If user scrolled away from bottom, mark as manually scrolled
-          // This prevents auto-scroll from happening again
+          // But allow auto-scroll if they scroll back near the bottom
           if (!isAtBottom) {
             setHasUserManuallyScrolled(true);
             setIsInitialLoad(false);
+          } else {
+            // User scrolled back to bottom, allow auto-scroll again
+            setHasUserManuallyScrolled(false);
           }
         }
       }
@@ -170,6 +187,57 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
       return () => scrollContainer.removeEventListener('scroll', handleScroll);
     }
   }, []);
+
+  // Track last message count to detect new messages
+  const lastMessageCountRef = useRef(0);
+  
+  // Auto-scroll when new messages are added (user sends message or AI responds)
+  useEffect(() => {
+    if (allMessages.length === 0) {
+      lastMessageCountRef.current = 0;
+      return;
+    }
+    
+    // Only auto-scroll if a new message was added
+    const hasNewMessage = allMessages.length > lastMessageCountRef.current;
+    lastMessageCountRef.current = allMessages.length;
+    
+    if (hasNewMessage) {
+      // Only auto-scroll if user is near the bottom (hasn't scrolled up to read)
+      if (!hasUserManuallyScrolled || isNearBottom()) {
+        // Use a small delay to ensure DOM has updated
+        const timeoutId = setTimeout(() => {
+          scrollToBottom('smooth');
+        }, 100);
+        
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [allMessages.length, hasUserManuallyScrolled, isNearBottom, scrollToBottom]);
+
+  // Auto-scroll when streaming content updates (more frequent during streaming)
+  useEffect(() => {
+    if (!isStreaming || !currentStreamingMessage) return;
+    
+    // Only auto-scroll if user is near the bottom
+    if (!hasUserManuallyScrolled || isNearBottom()) {
+      // Use a throttled scroll to avoid too many scroll calls
+      let scrollTimeout: NodeJS.Timeout;
+      
+      const performScroll = () => {
+        scrollToBottom('smooth');
+      };
+      
+      // Throttle scroll updates to every 100ms during streaming
+      scrollTimeout = setTimeout(performScroll, 100);
+      
+      return () => {
+        if (scrollTimeout) {
+          clearTimeout(scrollTimeout);
+        }
+      };
+    }
+  }, [currentStreamingMessage, isStreaming, hasUserManuallyScrolled, isNearBottom, scrollToBottom]);
 
 
   // Refetch AI usage when streaming completes
@@ -197,6 +265,12 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
     await sendMessage(message, {
       conversation_id: currentConversationId || undefined
     });
+
+    // Auto-scroll after sending message (wait for message to be added to DOM)
+    setTimeout(() => {
+      scrollToBottom('smooth');
+      setHasUserManuallyScrolled(false); // Reset scroll state so we follow new messages
+    }, 150);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -537,6 +611,27 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                     
                     {/* All messages (deduplicated and sorted) */}
                     {allMessages.map(renderMessage)}
+                    
+                    {/* Show "thinking" indicator when waiting for AI response (before streaming starts) */}
+                    {isLoading && !currentStreamingMessage && (
+                      <div className="flex gap-3 p-4 justify-start">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center">
+                          <Bot className="h-4 w-4" />
+                        </div>
+                        <div className="flex flex-col w-full items-start">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-medium">Fintr AI</span>
+                            <span className="text-xs text-muted-foreground">thinking...</span>
+                          </div>
+                          <div className="rounded-lg px-4 py-3 bg-muted">
+                            <div className="flex items-center gap-2">
+                              <LoadingSpinner size="small" />
+                              <span className="text-sm text-muted-foreground">Processing your request...</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
                 
