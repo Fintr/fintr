@@ -144,7 +144,7 @@ module Ai
                     ]
                   }
                 ],
-                temperature: 0.1, # Low temperature for consistent extraction
+                temperature: 0.0, # Low temperature for consistent extraction
                 max_tokens: 300   # Keep response concise
               }
             )

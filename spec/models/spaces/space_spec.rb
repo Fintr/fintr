@@ -59,6 +59,43 @@ RSpec.describe Spaces::Space, type: :model do
     describe '#can_ai?' do
       let(:mock_usage_query) { instance_double(Ai::Queries::Usages::UsageInPeriod) }
 
+      context 'when a user with admin role exists in the space' do
+        let(:admin_user) { create(:user) }
+
+        before do
+          create(:space_user, user: admin_user, space: space)
+          admin_user.add_role(:admin)
+        end
+
+        it 'returns true without checking token usage' do
+          expect(space.can_ai?).to be(true)
+        end
+
+        it 'does not call the usage query' do
+          expect(Ai::Queries::Usages::UsageInPeriod).not_to receive(:new)
+
+          space.can_ai?
+        end
+      end
+
+      context 'when no user with admin role exists in the space' do
+        let(:regular_user) { create(:user) }
+
+        before do
+          create(:space_user, user: regular_user, space: space)
+        end
+
+        it 'checks token usage' do
+          allow(Ai::Queries::Usages::UsageInPeriod).to receive(:new).and_return(mock_usage_query)
+          allow(mock_usage_query).to receive(:call).with(params: { space_id: space.id })
+            .and_return(Dry::Monads::Result::Success.new(double("usages", sum: 20))) # rubocop:disable RSpec/VerifiedDoubles
+
+          expect(Ai::Queries::Usages::UsageInPeriod).to receive(:new)
+
+          space.can_ai?
+        end
+      end
+
       context 'when usage query succeeds and tokens are below limit' do
         let(:usages) { double("usages", sum: 20) } # rubocop:disable RSpec/VerifiedDoubles
 

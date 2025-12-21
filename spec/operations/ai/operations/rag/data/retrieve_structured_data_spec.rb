@@ -601,6 +601,102 @@ RSpec.describe Ai::Operations::Rag::Data::RetrieveStructuredData, type: :operati
       end
     end
 
+    describe "#sort_and_limit_grouped_data" do
+      let(:grouped_data) do
+        [
+          { group: ["Food"], sum: { amount_cents: 5000 }, count: 2 },
+          { group: ["Transport"], sum: { amount_cents: 10000 }, count: 1 },
+          { group: ["Entertainment"], sum: { amount_cents: 3000 }, count: 3 }
+        ]
+      end
+
+      it "returns empty array when grouped_data is empty" do
+        result = operation.send(:sort_and_limit_grouped_data, [], requirements: {})
+        expect(result).to be_success
+        expect(result.value!).to eq([])
+      end
+
+      it "sorts by amount descending by default" do
+        requirements = {}
+        result = operation.send(:sort_and_limit_grouped_data, grouped_data, requirements: requirements)
+        expect(result).to be_success
+        sorted_data = result.value!
+        expect(sorted_data.first[:group]).to eq(["Transport"])
+        expect(sorted_data.last[:group]).to eq(["Entertainment"])
+      end
+
+      it "sorts by amount descending when specified" do
+        requirements = { sorting: { field: "amount", direction: :desc } }
+        result = operation.send(:sort_and_limit_grouped_data, grouped_data, requirements: requirements)
+        expect(result).to be_success
+        sorted_data = result.value!
+        expect(sorted_data.first[:group]).to eq(["Transport"])
+        expect(sorted_data.last[:group]).to eq(["Entertainment"])
+      end
+
+      it "sorts by amount ascending when specified" do
+        requirements = { sorting: { field: "amount", direction: :asc } }
+        result = operation.send(:sort_and_limit_grouped_data, grouped_data, requirements: requirements)
+        expect(result).to be_success
+        sorted_data = result.value!
+        expect(sorted_data.first[:group]).to eq(["Entertainment"])
+        expect(sorted_data.last[:group]).to eq(["Transport"])
+      end
+
+      it "sorts by count descending when specified" do
+        requirements = { sorting: { field: "count", direction: :desc } }
+        result = operation.send(:sort_and_limit_grouped_data, grouped_data, requirements: requirements)
+        expect(result).to be_success
+        sorted_data = result.value!
+        expect(sorted_data.first[:group]).to eq(["Entertainment"])
+        expect(sorted_data.last[:group]).to eq(["Transport"])
+      end
+
+      it "sorts by count ascending when specified" do
+        requirements = { sorting: { field: "count", direction: :asc } }
+        result = operation.send(:sort_and_limit_grouped_data, grouped_data, requirements: requirements)
+        expect(result).to be_success
+        sorted_data = result.value!
+        expect(sorted_data.first[:group]).to eq(["Transport"])
+        expect(sorted_data.last[:group]).to eq(["Entertainment"])
+      end
+
+      it "handles items without sum amount_cents gracefully" do
+        grouped_data_without_sum = [
+          { group: ["Food"], count: 2 },
+          { group: ["Transport"], sum: { amount_cents: 10000 }, count: 1 }
+        ]
+        requirements = { sorting: { field: "amount", direction: :desc } }
+        result = operation.send(:sort_and_limit_grouped_data, grouped_data_without_sum, requirements: requirements)
+        expect(result).to be_success
+        expect(result.value!).to be_an(Array)
+      end
+
+      it "handles items without count gracefully" do
+        grouped_data_without_count = [
+          { group: ["Food"], sum: { amount_cents: 5000 } },
+          { group: ["Transport"], sum: { amount_cents: 10000 }, count: 1 }
+        ]
+        requirements = { sorting: { field: "count", direction: :desc } }
+        result = operation.send(:sort_and_limit_grouped_data, grouped_data_without_count, requirements: requirements)
+        expect(result).to be_success
+        expect(result.value!).to be_an(Array)
+      end
+
+      context "when an error occurs" do
+        before do
+          allow(grouped_data).to receive(:sort_by).and_raise(StandardError.new("Sort error"))
+        end
+
+        it "returns a failure with error message" do
+          result = operation.send(:sort_and_limit_grouped_data, grouped_data, requirements: {})
+          expect(result).to be_failure
+          expect(result.failure).to have_key(:data_retrieval_error)
+          expect(result.failure[:data_retrieval_error]).to include("Failed to sort and limit grouped data")
+        end
+      end
+    end
+
     describe "#apply_sorting_and_limit" do
       let(:query) { space.transactions }
       let(:requirements) { { sorting: { field: "amount", direction: :desc }, limit: 5 } }

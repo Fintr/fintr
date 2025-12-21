@@ -8,8 +8,10 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
   let(:user) { create(:user) }
   let(:space) { create(:personal_space) }
   let!(:space_user) { create(:space_user, user: user, space: space) }
+  let(:category1) { create(:category, space: space, name: "Food & Groceries", category_type: "expense") }
+  let(:category2) { create(:category, space: space, name: "Transportation", category_type: "expense") }
   let(:query) { "What's my biggest expense this month?" }
-  let(:space_id) { space.id }
+  let(:space_id) { space.id.to_s }
 
   describe "Contract" do
     let(:params) do
@@ -94,6 +96,8 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
     end
 
     before do
+      category1
+      category2
       # Mock OpenAI client
       openai_client = instance_double(OpenAI::Client)
       allow(OpenAI::Client).to receive(:new).and_return(openai_client)
@@ -196,6 +200,50 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
         expect(response[:requirements][:time_range][:period]).to eq("this_month")
       end
     end
+
+    context "when OpenAI returns invalid categories" do
+      let(:openai_response) do
+        {
+          "output" => [
+            {
+              "content" => [
+                {
+                  "text" => '{
+                    "query_type": "spending_analysis",
+                    "data_sources": ["transactions"],
+                    "aggregations": {
+                      "group_by": ["category"],
+                      "metrics": ["sum", "count"]
+                    },
+                    "filters": {
+                      "transaction_type": ["expense"],
+                      "categories": ["Invalid Category", "Coffee"]
+                    },
+                    "time_range": {
+                      "period": "this_month"
+                    },
+                    "sorting": {
+                      "field": "amount",
+                      "direction": "desc"
+                    },
+                    "limit": 1
+                  }'
+                }
+              ]
+            }
+          ]
+        }
+      end
+
+      it "validates and filters categories" do
+        result = operation.call(params)
+        expect(result).to be_success
+
+        response = result.value!
+        expect(response[:parsed_analysis][:filters]).not_to have_key(:categories)
+        expect(response[:parsed_analysis][:filters][:descriptions]).to include("Invalid Category", "Coffee")
+      end
+    end
   end
 
   describe "private methods" do
@@ -222,6 +270,8 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       end
 
       before do
+        category1
+        category2
         openai_client = instance_double(OpenAI::Client)
         allow(OpenAI::Client).to receive(:new).and_return(openai_client)
         allow(openai_client).to receive(:responses).and_return(
@@ -240,6 +290,8 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       end
 
       it "calls OpenAI with correct parameters" do
+        category1
+        category2
         openai_client = instance_double(OpenAI::Client)
         responses_double = instance_double(OpenAI::Responses)
         allow(OpenAI::Client).to receive(:new).and_return(openai_client)
@@ -261,6 +313,8 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       end
 
       it "returns failure when OpenAI API fails" do
+        category1
+        category2
         openai_client = instance_double(OpenAI::Client)
         responses_double = instance_double(OpenAI::Responses)
         allow(OpenAI::Client).to receive(:new).and_return(openai_client)
@@ -305,8 +359,13 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
     end
 
     describe "#build_analysis_prompt" do
+      before do
+        category1
+        category2
+      end
+
       it "returns a prompt with current date context" do
-        prompt = operation.send(:build_analysis_prompt)
+        prompt = operation.send(:build_analysis_prompt, space_id: space_id)
 
         expect(prompt).to include("CURRENT DATE CONTEXT:")
         expect(prompt).to include(Date.current.strftime("%B %d, %Y"))
@@ -314,8 +373,24 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
         expect(prompt).to include(Date.current.strftime("%B"))
       end
 
+      it "includes available expense categories" do
+        prompt = operation.send(:build_analysis_prompt, space_id: space_id)
+
+        expect(prompt).to include("AVAILABLE EXPENSE CATEGORIES:")
+        expect(prompt).to include("Food & Groceries")
+        expect(prompt).to include("Transportation")
+      end
+
+      it "includes category validation rules" do
+        prompt = operation.send(:build_analysis_prompt, space_id: space_id)
+
+        expect(prompt).to include("CRITICAL CATEGORY RULES:")
+        expect(prompt).to include("ONLY use category names from the AVAILABLE EXPENSE CATEGORIES list")
+        expect(prompt).to include("descriptions")
+      end
+
       it "includes smart date inference rules" do
-        prompt = operation.send(:build_analysis_prompt)
+        prompt = operation.send(:build_analysis_prompt, space_id: space_id)
 
         expect(prompt).to include("SMART DATE INFERENCE:")
         expect(prompt).to include("most recent occurrence")
@@ -324,7 +399,7 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       end
 
       it "includes JSON response format instructions" do
-        prompt = operation.send(:build_analysis_prompt)
+        prompt = operation.send(:build_analysis_prompt, space_id: space_id)
 
         expect(prompt).to include("query_type")
         expect(prompt).to include("data_sources")
@@ -336,12 +411,20 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       end
 
       it "includes examples" do
-        prompt = operation.send(:build_analysis_prompt)
+        prompt = operation.send(:build_analysis_prompt, space_id: space_id)
 
         expect(prompt).to include("Examples:")
-        expect(prompt).to include("What's my biggest spend")
+        expect(prompt).to include("What's my biggest expense?")
         expect(prompt).to include("How much did I spend on coffee")
         expect(prompt).to include("Show my top 5 merchants")
+      end
+
+      it "handles space with no categories" do
+        empty_space = create(:personal_space)
+        prompt = operation.send(:build_analysis_prompt, space_id: empty_space.id.to_s)
+
+        expect(prompt).to include("AVAILABLE EXPENSE CATEGORIES:")
+        expect(prompt).to include("No expense categories found")
       end
     end
 
@@ -455,6 +538,186 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
         current_date = Date.current
         expect(result[:time_range][:start_date]).to eq(current_date.beginning_of_month.strftime("%Y-%m-%d"))
         expect(result[:time_range][:end_date]).to eq(current_date.end_of_month.strftime("%Y-%m-%d"))
+      end
+    end
+
+    describe "#validate_categories" do
+      before do
+        category1
+        category2
+      end
+
+      context "when all categories are valid" do
+        let(:analysis) do
+          {
+            query_type: "spending_analysis",
+            filters: {
+              categories: ["Food & Groceries", "Transportation"]
+            }
+          }
+        end
+
+        it "returns success with unchanged analysis" do
+          result = operation.send(:validate_categories, analysis: analysis, space_id: space_id)
+          expect(result).to be_success
+          expect(result.value![:filters][:categories]).to eq(["Food & Groceries", "Transportation"])
+        end
+      end
+
+      context "when some categories are invalid" do
+        let(:analysis) do
+          {
+            query_type: "spending_analysis",
+            filters: {
+              categories: ["Food & Groceries", "Invalid Category", "Coffee"]
+            }
+          }
+        end
+
+        it "removes invalid categories" do
+          result = operation.send(:validate_categories, analysis: analysis, space_id: space_id)
+          expect(result).to be_success
+          expect(result.value![:filters][:categories]).to eq(["Food & Groceries"])
+        end
+
+        it "moves invalid categories to descriptions" do
+          result = operation.send(:validate_categories, analysis: analysis, space_id: space_id)
+          expect(result).to be_success
+          expect(result.value![:filters][:descriptions]).to include("Invalid Category", "Coffee")
+        end
+
+        it "logs a warning about invalid categories" do
+          expect(Rails.logger).to receive(:warn).with(match(/Invalid categories detected/))
+          operation.send(:validate_categories, analysis: analysis, space_id: space_id)
+        end
+      end
+
+      context "when all categories are invalid" do
+        let(:analysis) do
+          {
+            query_type: "spending_analysis",
+            filters: {
+              categories: ["Invalid Category 1", "Invalid Category 2"]
+            }
+          }
+        end
+
+        it "removes categories filter" do
+          result = operation.send(:validate_categories, analysis: analysis, space_id: space_id)
+          expect(result).to be_success
+          expect(result.value![:filters]).not_to have_key(:categories)
+        end
+
+        it "moves all invalid categories to descriptions" do
+          result = operation.send(:validate_categories, analysis: analysis, space_id: space_id)
+          expect(result).to be_success
+          expect(result.value![:filters][:descriptions]).to include("Invalid Category 1", "Invalid Category 2")
+        end
+      end
+
+      context "when categories filter is case-insensitive" do
+        let(:analysis) do
+          {
+            query_type: "spending_analysis",
+            filters: {
+              categories: ["food & groceries", "TRANSPORTATION"]
+            }
+          }
+        end
+
+        it "matches categories case-insensitively" do
+          result = operation.send(:validate_categories, analysis: analysis, space_id: space_id)
+          expect(result).to be_success
+          expect(result.value![:filters][:categories]).to include("food & groceries", "TRANSPORTATION")
+        end
+      end
+
+      context "when no categories filter exists" do
+        let(:analysis) do
+          {
+            query_type: "spending_analysis",
+            filters: {
+              transaction_type: ["expense"]
+            }
+          }
+        end
+
+        it "returns success with unchanged analysis" do
+          result = operation.send(:validate_categories, analysis: analysis, space_id: space_id)
+          expect(result).to be_success
+          expect(result.value!).to eq(analysis)
+        end
+      end
+
+      context "when validation fails" do
+        let(:analysis) do
+          {
+            query_type: "spending_analysis",
+            filters: {
+              categories: ["Food & Groceries"]
+            }
+          }
+        end
+
+        before do
+          allow(Spaces::Space).to receive(:find_by).and_raise(StandardError.new("Database error"))
+        end
+
+        it "returns success with original analysis" do
+          expect(Rails.logger).to receive(:error).with(match(/Failed to fetch expense categories/))
+          result = operation.send(:validate_categories, analysis: analysis, space_id: space_id)
+          expect(result).to be_success
+          expect(result.value!).to eq(analysis)
+        end
+      end
+    end
+
+    describe "#fetch_expense_categories" do
+      before do
+        category1
+        category2
+      end
+
+      it "returns expense categories for the space" do
+        result = operation.send(:fetch_expense_categories, space_id: space_id)
+        expect(result).to include("Food & Groceries", "Transportation")
+      end
+
+      it "returns categories in ascending order" do
+        result = operation.send(:fetch_expense_categories, space_id: space_id)
+        expect(result).to eq(["Food & Groceries", "Transportation"])
+      end
+
+      it "returns empty array when space is not found" do
+        result = operation.send(:fetch_expense_categories, space_id: "999")
+        expect(result).to eq([])
+      end
+
+      it "returns empty array when space has no categories" do
+        empty_space = create(:personal_space)
+        result = operation.send(:fetch_expense_categories, space_id: empty_space.id.to_s)
+        expect(result).to eq([])
+      end
+
+      it "handles errors gracefully" do
+        allow(Spaces::Space).to receive(:find_by).and_raise(StandardError.new("Database error"))
+        expect(Rails.logger).to receive(:error).with(match(/Failed to fetch expense categories/))
+        result = operation.send(:fetch_expense_categories, space_id: space_id)
+        expect(result).to eq([])
+      end
+    end
+
+    describe "#format_categories_list" do
+      it "formats categories as a list" do
+        categories = ["Food & Groceries", "Transportation"]
+        result = operation.send(:format_categories_list, categories)
+        expect(result).to include("- Food & Groceries")
+        expect(result).to include("- Transportation")
+      end
+
+      it "returns message when categories are empty" do
+        result = operation.send(:format_categories_list, [])
+        expect(result).to eq("- No expense categories found")
       end
     end
   end

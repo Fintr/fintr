@@ -480,6 +480,15 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
         expect(result.value!).to eq("{\"total_amount\": \"50.00\", \"category\": \"Food\", \"confidence\": \"high\"}")
       end
 
+      it "calls OpenAI API with temperature 0.0" do
+        expect(mock_openai_client).to receive(:chat) do |params|
+          expect(params[:parameters][:temperature]).to eq(0.0)
+          mock_response
+        end
+
+        operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
+      end
+
       context "when OpenAI API returns no content" do
         before do
           allow(mock_openai_client).to receive(:chat).and_return({ "choices" => [{ "message" => { "content" => nil } }] })
