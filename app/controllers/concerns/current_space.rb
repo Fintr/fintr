@@ -66,25 +66,13 @@ module CurrentSpace
   end
 
   def ensure_space_admin!
-<<<<<<< HEAD
-    return if current_user.has_role?(:admin, current_space)
-
-
-=======
     return if current_user&.has_role?(:admin, current_space)
->>>>>>> feat/ios-be-updates
 
     render_forbidden(message: "Admin access required for this action.")
   end
 
   def ensure_space_member!
-<<<<<<< HEAD
-    return if current_user.has_role?(:admin, current_space) || current_user.has_role?(:member, current_space)
-
-
-=======
     return if current_user&.has_role?(:admin, current_space) || current_user&.has_role?(:member, current_space)
->>>>>>> feat/ios-be-updates
 
     render_forbidden(message: "You must be a member of this space to perform this action.")
   end
