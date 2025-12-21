@@ -57,7 +57,7 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11(@types/react-dom@19.1.5(@types/react@19.1.4))(@types/react@19.1.4)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@rails/actioncable':
-        specifier: ^7.2.300
+        specifier: ^7.1.0
         version: 7.2.300
       '@supabase/supabase-js':
         specifier: ^2.49.5

@@ -57,3 +57,4 @@ export const disconnectActionCable = (): void => {
 export const getConsumer = (): Consumer | null => {
   return consumer;
 };
+
