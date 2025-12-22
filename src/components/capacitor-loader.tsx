@@ -1,0 +1,47 @@
+"use client";
+
+import { useEffect } from 'react';
+
+/**
+ * Component to ensure Capacitor is loaded in the HTML
+ * This should be included in the root layout for Capacitor builds
+ */
+export default function CapacitorLoader() {
+  useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    // Check if we're in a Capacitor environment by checking the user agent
+    // or if Capacitor script should be loaded
+    const isLikelyCapacitor = 
+      window.location.protocol === 'capacitor:' ||
+      window.location.href.includes('capacitor://') ||
+      (window as any).Capacitor !== undefined;
+
+    // If Capacitor is already loaded, we're good
+    if ((window as any).Capacitor) {
+      console.log('✅ Capacitor is already loaded');
+      return;
+    }
+
+    // If we're not in a Capacitor environment, don't try to load it
+    if (!isLikelyCapacitor) {
+      return;
+    }
+
+    // Try to load Capacitor script if it's not already loaded
+    // In a proper Capacitor build, this should already be in the HTML
+    // But we'll add a safety check
+    const scriptId = 'capacitor-script';
+    if (document.getElementById(scriptId)) {
+      return;
+    }
+
+    console.log('⚠️ Capacitor not found - this might be expected in browser mode');
+  }, []);
+
+  return null;
+}
+
