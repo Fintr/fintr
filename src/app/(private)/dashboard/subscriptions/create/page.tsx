@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useSubscriptionPlans, useCreateSubscription } from "@/hooks/async/useSubscriptions";
 import { SubscriptionPlan } from "@/services/finance/subscriptions/queries";
 import { formatCurrency } from "@/lib/utils";
+import { buildSubscriptionRedirectUrl } from "@/lib/capacitor";
 import { Check, ChevronLeft, ChevronRight, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -54,11 +55,10 @@ const CreateSubscriptionPage = () => {
     }
 
     try {
-      const baseUrl = window.location.origin;
       const result = await createSubscription({
         subscriptionPlanId: selectedPlan.id,
-        successReturnUrl: `${baseUrl}/dashboard/subscriptions?success=true`,
-        failureReturnUrl: `${baseUrl}/dashboard/subscriptions?failure=true`,
+        successReturnUrl: buildSubscriptionRedirectUrl('/dashboard/subscriptions?success=true'),
+        failureReturnUrl: buildSubscriptionRedirectUrl('/dashboard/subscriptions?failure=true'),
       });
 
       // If we have an action URL, redirect immediately to Xendit
