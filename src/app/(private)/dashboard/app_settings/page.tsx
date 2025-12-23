@@ -37,10 +37,26 @@ export default function AppSettingsPage() {
   const isAdmin = useAtomValue(isAdminAtom);
 
   const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("spaceCode");
+    try {
+      // Clear all local storage items related to auth and space
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("spaceCode");
+        // Clear any other auth-related items
+        localStorage.removeItem("authData");
+        localStorage.removeItem("tokens");
+        localStorage.removeItem("user");
+      }
+      // Call logout which clears auth storage and redirects
+      // This is client-side only and doesn't require backend
+      logout();
+    } catch (error) {
+      // Even if something fails, try to clear and redirect
+      console.error("Error during logout:", error);
+      if (typeof window !== "undefined") {
+        localStorage.clear();
+        window.location.href = "/login";
+      }
     }
-    logout();
   };
 
   const settingsSections: SettingsSection[] = [
