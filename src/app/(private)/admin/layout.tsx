@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useAtomValue } from "jotai";
 import { isAdminAtom } from "@/atoms/dashboardAtoms";
 import { toast } from "sonner";
+import BottomNavigation from "@/components/dashboard/bottom-navigation";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -111,9 +112,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           ))}
         </nav>
       </aside>
-      <main className="flex-1 overflow-auto p-4 md:p-8">
+      <main className="flex-1 overflow-auto p-4 md:p-8 pb-20 md:pb-8">
         {children}
       </main>
+      {/* Bottom Navigation for Mobile */}
+      <BottomNavigation />
     </div>
   );
 } 

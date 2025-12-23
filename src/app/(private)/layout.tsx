@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import DashboardNavigation from "@/components/dashboard/dashboard-navigation";
+import BottomNavigation from "@/components/dashboard/bottom-navigation";
+import MobileStickyHeader from "@/components/dashboard/mobile-sticky-header";
 import { useAtomValue } from 'jotai';
 import { isAdminAtom } from '@/atoms/dashboardAtoms';
 import { onboardingStepAtom, isOnboardingCompletedAtom } from '@/atoms/onboardingAtoms';
@@ -30,6 +32,9 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   
   // Hide navigation for standalone subscription create page
   const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
+  
+  // Show mobile sticky header in private layout only for non-dashboard pages (CRM, Admin)
+  const isDashboardPage = pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/subscriptions/create');
 
   const { spaceCode } = useGetSpaceCode(api);
 
@@ -60,15 +65,29 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="min-h-screen bg-background text-primary">
       {!isOnOnboardingPage && !isStandalonePage && (
-        <DashboardNavigation hideActionButtons={hideActionButtons} isAdmin={isAdmin} />
+        <>
+          <DashboardNavigation hideActionButtons={hideActionButtons} isAdmin={isAdmin} />
+          {/* Mobile Sticky Header - Show only on CRM and Admin pages (not dashboard pages) */}
+          {!isDashboardPage && (
+            <>
+              <MobileStickyHeader />
+              {/* Spacer for fixed header on mobile */}
+              <div className="h-[44px] md:h-0" />
+            </>
+          )}
+        </>
       )}
       <div className={
         isOnOnboardingPage || isStandalonePage 
           ? "min-h-screen" 
-          : "pt-[56px] p-0 md:p-8 md:pt-[88px]  max-w-7xl mx-auto"
+          : "p-0 md:p-8 md:pt-[88px] max-w-7xl mx-auto"
       }>
         {children}
       </div>
+      {/* Bottom Navigation for Mobile - Show on CRM and Admin pages */}
+      {!isOnOnboardingPage && !isStandalonePage && (
+        <BottomNavigation />
+      )}
     </div>
   );
 };

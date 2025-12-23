@@ -68,8 +68,13 @@ interface CategoryItem {
   [key: string]: any; // For any additional properties
 }
 
-const SpaceSettingsTab = () => {
-  const [activeMainTab, setActiveMainTab] = useState("categories");
+interface SpaceSettingsTabProps {
+  initialTab?: "categories" | "accounts" | "import" | "subscriptions";
+  hideTabs?: boolean;
+}
+
+const SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: SpaceSettingsTabProps) => {
+  const [activeMainTab, setActiveMainTab] = useState(initialTab);
   const [activeSubTab, setActiveSubTab] = useState("expense");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryToggleType>("expense");
@@ -605,36 +610,38 @@ const SpaceSettingsTab = () => {
       </CardHeader>
       <CardContent className="px-0">
         {/* Main Navigation Buttons */}
-        <div className="flex space-x-2 mb-6 overflow-x-auto">
-          <Button
-            variant={activeMainTab === "categories" ? "default" : "outline"}
-            className={activeMainTab === "categories" ? "bg-primary" : "bg-white"}
-            onClick={() => setActiveMainTab("categories")}
-          >
-            <Folder className="h-4 w-4 mr-2" /> Categories
-          </Button>
-          <Button
-            variant={activeMainTab === "accounts" ? "default" : "outline"}
-            className={activeMainTab === "accounts" ? "bg-primary" : "bg-white"}
-            onClick={() => setActiveMainTab("accounts")}
-          >
-            <Users className="h-4 w-4 mr-2" /> Accounts
-          </Button>
-          <Button
-            variant={activeMainTab === "import" ? "default" : "outline"}
-            className={activeMainTab === "import" ? "bg-primary" : "bg-white"}
-            onClick={() => setActiveMainTab("import")}
-          >
-            <Download className="h-4 w-4 mr-2" /> Import
-          </Button>
-          <Button
-            variant={activeMainTab === "subscriptions" ? "default" : "outline"}
-            className={activeMainTab === "subscriptions" ? "bg-primary" : "bg-white"}
-            onClick={() => setActiveMainTab("subscriptions")}
-          >
-            <CreditCard className="h-4 w-4 mr-2" /> Subscriptions
-          </Button>
-        </div>
+        {!hideTabs && (
+          <div className="flex space-x-2 mb-6 overflow-x-auto">
+            <Button
+              variant={activeMainTab === "categories" ? "default" : "outline"}
+              className={activeMainTab === "categories" ? "bg-primary" : "bg-white"}
+              onClick={() => setActiveMainTab("categories")}
+            >
+              <Folder className="h-4 w-4 mr-2" /> Categories
+            </Button>
+            <Button
+              variant={activeMainTab === "accounts" ? "default" : "outline"}
+              className={activeMainTab === "accounts" ? "bg-primary" : "bg-white"}
+              onClick={() => setActiveMainTab("accounts")}
+            >
+              <Users className="h-4 w-4 mr-2" /> Accounts
+            </Button>
+            <Button
+              variant={activeMainTab === "import" ? "default" : "outline"}
+              className={activeMainTab === "import" ? "bg-primary" : "bg-white"}
+              onClick={() => setActiveMainTab("import")}
+            >
+              <Download className="h-4 w-4 mr-2" /> Import
+            </Button>
+            <Button
+              variant={activeMainTab === "subscriptions" ? "default" : "outline"}
+              className={activeMainTab === "subscriptions" ? "bg-primary" : "bg-white"}
+              onClick={() => setActiveMainTab("subscriptions")}
+            >
+              <CreditCard className="h-4 w-4 mr-2" /> Subscriptions
+            </Button>
+          </div>
+        )}
 
         {/* Categories Tab Content */}
         {activeMainTab === "categories" && (
