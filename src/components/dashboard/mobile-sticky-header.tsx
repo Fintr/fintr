@@ -27,6 +27,18 @@ const getPageTitle = (pathname: string): string => {
   if (pathname.startsWith("/dashboard/insights")) {
     return "Dashboard";
   }
+  if (pathname.startsWith("/dashboard/space_settings/categories")) {
+    return "Category Management";
+  }
+  if (pathname.startsWith("/dashboard/space_settings/accounts")) {
+    return "Account Management";
+  }
+  if (pathname.startsWith("/dashboard/space_settings/import")) {
+    return "Import & Export";
+  }
+  if (pathname.startsWith("/dashboard/space_settings/subscriptions")) {
+    return "Subscription Management";
+  }
   if (pathname.startsWith("/dashboard/space_settings")) {
     return "Space Settings";
   }

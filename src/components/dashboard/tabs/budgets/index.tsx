@@ -262,7 +262,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   };
 
   return (
-    <Card className="border-0 shadow-none bg-transparent">
+    <Card className="border-0 shadow-none bg-transparent py-0 md:py-4">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Monthly Budget</CardTitle>

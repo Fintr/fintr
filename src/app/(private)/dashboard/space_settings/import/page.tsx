@@ -8,24 +8,8 @@ export default function ImportPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-background p-4 pb-24 md:pb-4">
+    <div className="min-h-screen bg-background px-2 pb-24 md:pb-4">
       <div className="max-w-7xl mx-auto">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.push("/dashboard/space_settings")}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-            Import & Export
-          </h1>
-          <p className="text-primary/70 text-sm md:text-base">
-            Import your transaction data from Excel files or view your import history
-          </p>
-        </div>
         <SpaceSettingsTab initialTab="import" hideTabs={true} />
       </div>
     </div>

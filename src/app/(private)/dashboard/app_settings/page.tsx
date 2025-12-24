@@ -132,7 +132,7 @@ export default function AppSettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background p-4 pb-24 md:pb-4">
+    <div className="min-h-screen bg-background p-2 pb-24 md:pb-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
