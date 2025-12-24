@@ -20,6 +20,9 @@ import { SheetsView } from "./sheets-view";
 import { CalendarView } from "./calendar-view";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useInfiniteTransactions } from "@/hooks/async/useInfiniteTransactions";
+import { formatCurrency } from "@/lib/utils";
+import { ArrowUpRight, ArrowDownLeft, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { Filters, FilterTypes } from "./filters";
 import { DownloadButton } from "./buttons/DownloadButton";
 import { DeleteButton } from "./buttons/DeleteButton";
@@ -49,6 +52,7 @@ interface TransactionsTabProps {
 const TransactionsTab = ({ }: TransactionsTabProps) => {
   const showV2Features = shouldShowV2Features();
   const [spaceCode] = useLocalStorage("spaceCode", "");
+  const { data: dashboardData } = useDashboardData();
   const { firstDay, lastDay } = getCurrentMonthDates();
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
@@ -535,13 +539,74 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     }
   };
 
+  // Get financial summary data
+  const financialSummary = dashboardData?.financialSummary;
+  const netSavings = financialSummary?.netSavings ? parseFloat(financialSummary.netSavings) : 0;
+  const totalIncome = financialSummary?.totalIncome ? parseFloat(financialSummary.totalIncome) : 0;
+  const totalExpenses = financialSummary?.totalExpenses ? parseFloat(financialSummary.totalExpenses) : 0;
+
   return (
     <>
-      <Card className="border-0 shadow-none bg-transparent">
+      {/* Mobile Financial Summary Cards */}
+      <div className="px-2 md:px-0 md:hidden mb-4 space-y-4">
+        {/* Savings Card */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 p-6 shadow-lg">
+          {/* Decorative shapes */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-600/20 rounded-full blur-2xl" />
+          
+          <div className="relative z-10">
+            <p className="text-gray-400 text-md mb-2">Savings</p>
+            <div className="flex items-center justify-between">
+              <p className="text-white text-3xl font-bold">
+                {formatCurrency(netSavings)}
+              </p>
+              <Link href="/dashboard/space_settings/accounts">
+                <button className="bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors">
+                  <ArrowRight className="h-5 w-5 text-white" />
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Income & Expenses Card */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 p-6 shadow-lg">
+          {/* Decorative shape */}
+          <div className="absolute top-0 left-0 w-20 h-20 bg-purple-600/20 rounded-full blur-2xl" />
+          
+          <div className="relative z-10 grid grid-cols-2 gap-4">
+            {/* Income Section */}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 mb-1">
+                <ArrowUpRight className="h-4 w-4 text-blue-400" />
+                <p className="text-gray-400 text-md">Income</p>
+              </div>
+              <p className="text-white text-2xl font-bold">
+                {formatCurrency(totalIncome)}
+              </p>
+            </div>
+
+            {/* Expenses Section */}
+            <div className="flex flex-col border-l border-gray-700 pl-4">
+              <div className="flex items-center gap-2 mb-1">
+                <ArrowDownLeft className="h-4 w-4 text-blue-400" />
+                <p className="text-gray-400 text-md">Expenses</p>
+              </div>
+              <p className="text-white text-2xl font-bold">
+                {formatCurrency(totalExpenses)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-2 md:px-0">
+        <Card className="border-0 shadow-none bg-transparent px-0 py-0">
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <div>
-            <CardTitle>All Transactions</CardTitle>
-            <CardDescription>
+            <CardTitle className="hidden md:block">All Transactions</CardTitle>
+            <CardDescription className="px-0 md:px-2">
               {getDescription()}
             </CardDescription>
           </div>
@@ -609,8 +674,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
                 onBlur={handleSearchBlur}
               />
             </div>
-            <div className="flex items-center justify-between w-full md:w-automd:justify-start">
-              <h3 className="text-lg font-medium mr-2">Transactions</h3>
+            <div className="flex items-center justify-end w-full md:w-automd:justify-start">
               <DownloadButton onClick={handleDownloadTransactions} />
             </div>
           </div>
@@ -655,6 +719,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           ) : null}
         </CardContent>
       </Card>
+      </div>
       
       <EditTransactionDialog
         transaction={selectedTransaction}

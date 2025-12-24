@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useSubscriptionPlans, useCreateSubscription } from "@/hooks/async/useSubscriptions";
 import { SubscriptionPlan } from "@/services/finance/subscriptions/queries";
 import { formatCurrency } from "@/lib/utils";
+import { buildSubscriptionRedirectUrl, openUrl } from "@/lib/capacitor";
 import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -38,7 +39,10 @@ const CreateSubscriptionWizard: React.FC<CreateSubscriptionWizardProps> = ({
   useEffect(() => {
     if (subscriptionData?.actionUrl) {
       // Redirect to Xendit action URL if needed
-      window.open(subscriptionData.actionUrl, "_blank");
+      openUrl(subscriptionData.actionUrl, {
+        inNewTab: false,
+        title: 'Complete Payment'
+      });
     }
     if (subscriptionData?.subscription) {
       toast.success("Subscription created successfully!");
@@ -61,6 +65,8 @@ const CreateSubscriptionWizard: React.FC<CreateSubscriptionWizardProps> = ({
     try {
       await createSubscription({
         subscriptionPlanId: selectedPlan.id,
+        successReturnUrl: buildSubscriptionRedirectUrl('/dashboard/subscriptions?success=true'),
+        failureReturnUrl: buildSubscriptionRedirectUrl('/dashboard/subscriptions?failure=true'),
       });
     } catch (error: any) {
       toast.error(error?.message || "Failed to subscribe");

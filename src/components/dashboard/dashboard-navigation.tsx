@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Bell, Settings, Camera, Plus, Menu, User as UserIcon, Target, Headphones, MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePathname } from "next/navigation";
@@ -32,9 +32,20 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isDesktopNavOpen, setIsDesktopNavOpen] = useState(false);
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const pathname = usePathname();
   const showV2Features = shouldShowV2Features();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      setIsScrolled(scrollPosition > 20);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
   
   // Show add buttons only on dashboard pages
   const isOnDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
@@ -119,84 +130,10 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
 
   return (
     <>
-      <header className="fixed w-full bg-background z-20 border-b border-gray-200">
+      <header className={`fixed w-full bg-background z-20 transition-all duration-300 ease-in-out ${
+        isScrolled ? "border-b border-gray-200 shadow-sm" : "border-b border-transparent"
+      }`}>
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-          {/* Mobile: Logo left, Notifications + Hamburger right */}
-          <div className="flex md:hidden flex-row items-center justify-between h-14 w-full gap-2">
-            <div className="flex items-center">
-              <Link href="/dashboard" aria-label="Go to Dashboard">
-                <img
-                  src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
-                  alt="Fintr Logo"
-                  className="h-8 w-auto"
-                />
-              </Link>
-            </div>
-            <div className="flex flex-row items-center gap-2">
-              <Button
-                onClick={() => setIsAiChatOpen(true)}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-primary hover:bg-gray-100 p-0 border border-primary rounded-full"
-                aria-label="AI Chat"
-              >
-                <MessageSquare className="h-5 w-5" />
-                <span className="sr-only">AI Chat</span>
-              </Button>
-              {showAddButtons && (
-                <>
-                  <Button
-                    onClick={() => setIsAddReceiptOpen(true)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-primary hover:bg-gray-100 p-0 border border-primary rounded-full"
-                    aria-label="Add Receipt"
-                  >
-                    <Camera className="h-5 w-5" />
-                    <span className="sr-only">Receipt</span>
-                  </Button>
-                  <Button
-                    onClick={() => setIsAddTransactionOpen(true)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-primary hover:bg-gray-100 p-0 border border-primary rounded-full"
-                    aria-label="Add Transaction"
-                  >
-                    <Plus className="h-5 w-5" />
-                    <span className="sr-only">Transaction</span>
-                  </Button>
-                </>
-              )}
-              {
-                showV2Features && (
-                  <div className="relative flex items-center">
-                    <button
-                      className="text-primary hover:text-primary/80 relative"
-                      onClick={toggleNotifications}
-                    >
-                      <Bell className="h-5 w-5" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-900/80 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </button>
-                    {showNotifications && (
-                      <NotificationsPopup
-                        notifications={notifications}
-                        onClose={() => setShowNotifications(false)}
-                        onMarkAllAsRead={handleMarkAllAsRead}
-                      />
-                    )}
-                  </div>
-                )
-              }
-              <Button variant="ghost" size="icon" className="p-2" onClick={() => setIsMobileNavOpen(true)}>
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Open menu</span>
-              </Button>
-            </div>
-          </div>
           {/* Desktop: Logo left, Add Receipt, Add Transaction, Notifications, Avatar right */}
           <div className="hidden md:flex flex-row items-center justify-between h-16 w-full gap-2">
             <div className="flex items-center md:mr-4">

@@ -11,8 +11,15 @@ export default function DeepLinkHandler() {
 
   useEffect(() => {
     const handleDeepLink = async () => {
-      // Check if we're in Capacitor
-      if (typeof window === 'undefined' || !(window as any).Capacitor) {
+      // Wait for Capacitor to be ready before checking
+      if (typeof window === 'undefined') {
+        return;
+      }
+      
+      // Give Capacitor time to initialize
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (!(window as any).Capacitor) {
         return;
       }
 

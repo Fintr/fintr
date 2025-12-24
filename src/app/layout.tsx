@@ -4,6 +4,7 @@ import "./globals.css";
 import Providers from "@/lib/providers";
 import { PerformanceMonitor } from "@/components/performance-monitor";
 import DeepLinkHandler from "@/components/deep-link-handler";
+import CapacitorLoader from "@/components/capacitor-loader";
 
 const leagueSpartan = League_Spartan({
   variable: "--font-league-spartan",
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body
         className={`${leagueSpartan.variable} antialiased ${leagueSpartan.className}`}
       >
+        <CapacitorLoader />
         <PerformanceMonitor>
           <Providers>
             <DeepLinkHandler />

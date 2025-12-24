@@ -68,8 +68,13 @@ interface CategoryItem {
   [key: string]: any; // For any additional properties
 }
 
-const SpaceSettingsTab = () => {
-  const [activeMainTab, setActiveMainTab] = useState("categories");
+interface SpaceSettingsTabProps {
+  initialTab?: "categories" | "accounts" | "import" | "subscriptions";
+  hideTabs?: boolean;
+}
+
+const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: SpaceSettingsTabProps) => {
+  const [activeMainTab, setActiveMainTab] = useState(initialTab);
   const [activeSubTab, setActiveSubTab] = useState("expense");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryToggleType>("expense");
@@ -594,52 +599,85 @@ const SpaceSettingsTab = () => {
     );
   }
 
+  // Get the title based on active tab
+  const getHeaderTitle = () => {
+    switch (activeMainTab) {
+      case "categories":
+        return "Categories";
+      case "accounts":
+        return "Accounts";
+      case "import":
+        return "Import";
+      case "subscriptions":
+        return "Subscriptions";
+      default:
+        return "Settings & Configurations";
+    }
+  };
+
+  const getHeaderDescription = () => {
+    switch (activeMainTab) {
+      case "categories":
+        return "Manage your categories for expenses, income, goals, investments, and accounts";
+      case "accounts":
+        return "Manage your financial accounts, track balances, and organize your money";
+      case "import":
+        return "Import your transaction data from Excel files or view your import history";
+      case "subscriptions":
+        return "Manage your subscription plan and payment methods";
+      default:
+        return "Manage your financial data settings and preferences";
+    }
+  };
+
   return (
     <>
-    <Card className="border-0 shadow-none bg-background">
-      <CardHeader className="px-0">
-        <CardTitle>Settings & Configurations</CardTitle>
+    <Card className="border-0 shadow-none bg-background py-0 md:py-4">
+      <CardHeader className="px-0 hidden md:block">
+        <CardTitle>{getHeaderTitle()}</CardTitle>
         <CardDescription>
-          Manage your financial data settings and preferences
+          {getHeaderDescription()}
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0">
         {/* Main Navigation Buttons */}
-        <div className="flex space-x-2 mb-6 overflow-x-auto">
-          <Button
-            variant={activeMainTab === "categories" ? "default" : "outline"}
-            className={activeMainTab === "categories" ? "bg-primary" : "bg-white"}
-            onClick={() => setActiveMainTab("categories")}
-          >
-            <Folder className="h-4 w-4 mr-2" /> Categories
-          </Button>
-          <Button
-            variant={activeMainTab === "accounts" ? "default" : "outline"}
-            className={activeMainTab === "accounts" ? "bg-primary" : "bg-white"}
-            onClick={() => setActiveMainTab("accounts")}
-          >
-            <Users className="h-4 w-4 mr-2" /> Accounts
-          </Button>
-          <Button
-            variant={activeMainTab === "import" ? "default" : "outline"}
-            className={activeMainTab === "import" ? "bg-primary" : "bg-white"}
-            onClick={() => setActiveMainTab("import")}
-          >
-            <Download className="h-4 w-4 mr-2" /> Import
-          </Button>
-          <Button
-            variant={activeMainTab === "subscriptions" ? "default" : "outline"}
-            className={activeMainTab === "subscriptions" ? "bg-primary" : "bg-white"}
-            onClick={() => setActiveMainTab("subscriptions")}
-          >
-            <CreditCard className="h-4 w-4 mr-2" /> Subscriptions
-          </Button>
-        </div>
+        {!hideTabs && (
+          <div className="flex space-x-2 mb-6 overflow-x-auto">
+            <Button
+              variant={activeMainTab === "categories" ? "default" : "outline"}
+              className={activeMainTab === "categories" ? "bg-primary" : "bg-white"}
+              onClick={() => setActiveMainTab("categories")}
+            >
+              <Folder className="h-4 w-4 mr-2" /> Categories
+            </Button>
+            <Button
+              variant={activeMainTab === "accounts" ? "default" : "outline"}
+              className={activeMainTab === "accounts" ? "bg-primary" : "bg-white"}
+              onClick={() => setActiveMainTab("accounts")}
+            >
+              <Users className="h-4 w-4 mr-2" /> Accounts
+            </Button>
+            <Button
+              variant={activeMainTab === "import" ? "default" : "outline"}
+              className={activeMainTab === "import" ? "bg-primary" : "bg-white"}
+              onClick={() => setActiveMainTab("import")}
+            >
+              <Download className="h-4 w-4 mr-2" /> Import
+            </Button>
+            <Button
+              variant={activeMainTab === "subscriptions" ? "default" : "outline"}
+              className={activeMainTab === "subscriptions" ? "bg-primary" : "bg-white"}
+              onClick={() => setActiveMainTab("subscriptions")}
+            >
+              <CreditCard className="h-4 w-4 mr-2" /> Subscriptions
+            </Button>
+          </div>
+        )}
 
         {/* Categories Tab Content */}
         {activeMainTab === "categories" && (
           <>
-            <h3 className="text-xl font-medium mb-4">
+            <h3 className="hidden md:block text-2xl font-bold mb-4 text-primary">
               Category Management
             </h3>
             <p className="text-gray-500 mb-4">
@@ -725,7 +763,7 @@ const SpaceSettingsTab = () => {
         {/* Accounts Tab Content */}
         {activeMainTab === "accounts" && (
           <>
-            <h3 className="text-xl font-medium mb-4">
+            <h3 className="hidden md:block text-2xl font-bold mb-4 text-primary">
               Account Management
             </h3>
             <p className="text-gray-500 mb-4">
@@ -763,8 +801,8 @@ const SpaceSettingsTab = () => {
         {activeMainTab === "import" && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-medium mb-4">
-                Import
+              <h3 className="hidden md:block text-2xl font-bold mb-4 text-primary">
+                Import & Export
               </h3>
               <p className="text-gray-500 mb-4">
                 Import your transaction data from Excel files or view your import history
@@ -1014,7 +1052,7 @@ const SpaceSettingsTab = () => {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h3 className="text-xl font-medium mb-4">
+                <h3 className="hidden md:block text-2xl font-bold mb-4 text-primary">
                   Subscription Management
                 </h3>
                 <p className="text-gray-500 mb-4">

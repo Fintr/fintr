@@ -385,7 +385,7 @@ const InsightsTab = () => {
   const showV2Features = shouldShowV2Features();
 
   return (
-    <Card className="col-span-3 border-0 shadow-none bg-background">
+    <Card className="col-span-3 border-0 shadow-none bg-background py-0 md:py-4">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Monthly Overview</CardTitle>
