@@ -103,5 +103,5 @@ Rails.application.configure do
   # Note: Rails handles streaming automatically, no manual buffer configuration needed
 
   config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
-  config.hosts << "69b3026ed944.ngrok-free.app"
+  config.hosts << "ab6e0a82a011.ngrok-free.app"
 end

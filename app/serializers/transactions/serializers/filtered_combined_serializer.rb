@@ -42,6 +42,10 @@ module Transactions
       field :has_loan_payment do |record|
         record.transactable.respond_to?(:loan_payment) && record.transactable.loan_payment.present?
       end
+
+      field :calculated do |record|
+        record.transactable.respond_to?(:balance_state) && record.transactable.balance_state == "calculated"
+      end
     end
   end
 end

@@ -23,10 +23,6 @@ namespace :finance do
     Finance::SpaceSubscription.delete_all
     puts "  ✓ Deleted #{space_subscriptions_count} space subscription(s)"
 
-    payment_methods_count = Finance::PaymentMethod.count
-    Finance::PaymentMethod.delete_all
-    puts "  ✓ Deleted #{payment_methods_count} payment method(s)"
-
     puts "Finance cleanup completed."
   end
 end
