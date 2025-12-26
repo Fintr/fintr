@@ -12,6 +12,7 @@ export interface IndexTransaction {
   inSeries: boolean;
   hasImage: boolean;
   hasLoanPayment?: boolean;
+  calculated?: boolean;
 }
 
 export interface TransactionIndexInputType {

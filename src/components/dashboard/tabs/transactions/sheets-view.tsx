@@ -14,6 +14,11 @@ import { useAuthApi } from "@/hooks/useAuthApi";
 import { fetchTransactionById } from "@/services/transactions/queries";
 import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import { toast } from "sonner";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface SheetsViewProps {
     isPending: boolean;
@@ -48,6 +53,7 @@ export function SheetsView({
     hasNextPage,
 }: SheetsViewProps) {
     const tableRef = useRef<HTMLTableElement>(null);
+    const [hoveredCalculatedId, setHoveredCalculatedId] = useState<string | null>(null);
     const editInputRef = useRef<HTMLInputElement>(null);
     const [editingCell, setEditingCell] = useState<{
         id: string;
@@ -149,11 +155,43 @@ export function SheetsView({
                     return uniqueTransactions.map((transaction: IndexTransaction, index) => (
                       <tr
                         key={transaction.id}
-                        className={
+                        className={`relative ${
                           index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                        }
+                        }`}
                         data-transaction-id={transaction.id}
                       >
+                        {/* Calculated indicator - triangle in upper right corner */}
+                        {transaction.calculated && (
+                          <Popover
+                            open={hoveredCalculatedId === transaction.id}
+                            onOpenChange={(open) => {
+                              if (!open) {
+                                setHoveredCalculatedId(null);
+                              }
+                            }}
+                          >
+                            <PopoverTrigger asChild>
+                              <div
+                                className="absolute top-0 right-0 w-0 h-0 border-l-[5px] border-l-transparent border-t-[5px] border-t-primary cursor-pointer hover:border-t-primary/90 transition-colors z-10"
+                                role="button"
+                                tabIndex={0}
+                                onMouseEnter={() => setHoveredCalculatedId(transaction.id)}
+                                onMouseLeave={() => setHoveredCalculatedId(null)}
+                              />
+                            </PopoverTrigger>
+                            <PopoverContent
+                              side="top"
+                              align="end"
+                              sideOffset={6}
+                              className="w-auto p-1.5 bg-black/80 text-white text-xs border-0 shadow-lg"
+                              onOpenAutoFocus={(e) => e.preventDefault()}
+                              onMouseEnter={() => setHoveredCalculatedId(transaction.id)}
+                              onMouseLeave={() => setHoveredCalculatedId(null)}
+                            >
+                              Calculated
+                            </PopoverContent>
+                          </Popover>
+                        )}
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                           {editingCell?.id === transaction.id &&
                           editingCell?.field === "date" ? (
@@ -475,7 +513,7 @@ export function SheetsView({
                           )}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex space-x-2">
+                          <div className="flex space-x-2 items-center">
                             <Button
                               variant="ghost"
                               size="icon"

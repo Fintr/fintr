@@ -48,6 +48,7 @@ export function ListView({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<Array<{ url: string; filename?: string; contentType?: string; byteSize?: number }>>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [hoveredCalculatedId, setHoveredCalculatedId] = useState<string | null>(null);
   const { api } = useAuthApi();
 
   const handleCopyId = async (id: string) => {
@@ -146,7 +147,39 @@ export function ListView({
                       <div className="flex-grow border-t border-gray-300" />
                     </div>
                   )}
-                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors min-h-[60px]">
+                  <div className="relative flex items-center justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors min-h-[60px]">
+                    {/* Calculated indicator - triangle in upper right corner */}
+                    {transaction.calculated && (
+                      <Popover
+                        open={hoveredCalculatedId === transaction.id}
+                        onOpenChange={(open) => {
+                          if (!open) {
+                            setHoveredCalculatedId(null);
+                          }
+                        }}
+                      >
+                        <PopoverTrigger asChild>
+                          <div
+                            className="absolute top-0 right-0 w-0 h-0 border-l-[5px] border-l-transparent border-t-[5px] border-t-primary cursor-pointer hover:border-t-primary/90 transition-colors z-10"
+                            role="button"
+                            tabIndex={0}
+                            onMouseEnter={() => setHoveredCalculatedId(transaction.id)}
+                            onMouseLeave={() => setHoveredCalculatedId(null)}
+                          />
+                        </PopoverTrigger>
+                        <PopoverContent
+                          side="top"
+                          align="end"
+                          sideOffset={6}
+                          className="w-auto p-1.5 bg-black/80 text-white text-xs border-0 shadow-lg"
+                          onOpenAutoFocus={(e) => e.preventDefault()}
+                          onMouseEnter={() => setHoveredCalculatedId(transaction.id)}
+                          onMouseLeave={() => setHoveredCalculatedId(null)}
+                        >
+                          Calculated
+                        </PopoverContent>
+                      </Popover>
+                    )}
                     {/* Color indicator */}
                       <div
                       className={`w-1 h-12 rounded mr-3 flex-shrink-0 ${
@@ -272,17 +305,17 @@ export function ListView({
                           )}
                         </div>
                         
-                        <div className="flex gap-1 flex-shrink-0">
-                        <EditButton 
-                          onClick={() => onRowEdit(transaction)}
-                          disabled={transaction.hasLoanPayment}
-                          title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead." : "Edit transaction"}
-                        />
-                        <DeleteButton
-                          onClick={() => onRowDelete(transaction.id)}
-                          disabled={transaction.hasLoanPayment}
-                          title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be deleted. Delete the loan payment instead." : "Delete transaction"}
-                        />
+                        <div className="flex gap-1 flex-shrink-0 items-center">
+                          <EditButton 
+                            onClick={() => onRowEdit(transaction)}
+                            disabled={transaction.hasLoanPayment}
+                            title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead." : "Edit transaction"}
+                          />
+                          <DeleteButton
+                            onClick={() => onRowDelete(transaction.id)}
+                            disabled={transaction.hasLoanPayment}
+                            title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be deleted. Delete the loan payment instead." : "Delete transaction"}
+                          />
                         </div>
                       </div>
                     </div>
