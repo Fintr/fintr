@@ -550,7 +550,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       {/* Mobile Financial Summary Cards */}
       <div className="px-2 md:px-0 md:hidden mb-4 space-y-4">
         {/* Savings Card */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 p-6 shadow-lg">
+        <div className="relative overflow-hidden rounded-2xl bg-primary p-6 shadow-lg">
           {/* Decorative shapes */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-600/20 rounded-full blur-2xl" />
@@ -571,7 +571,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         </div>
 
         {/* Income & Expenses Card */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 p-6 shadow-lg">
+        <div className="relative overflow-hidden rounded-2xl bg-primary p-6 shadow-lg">
           {/* Decorative shape */}
           <div className="absolute top-0 left-0 w-20 h-20 bg-purple-600/20 rounded-full blur-2xl" />
           
