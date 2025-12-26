@@ -92,6 +92,6 @@ group :development, :test do
   gem "simplecov", "~> 0.22.0"
   gem "parallel_tests", "~> 5.5"
   gem "timecop", "~> 0.9.10"
-  gem "vcr", "~> 6.2"
+  gem "vcr", "~> 6.3"
   gem "webmock", "~> 3.18"
 end
