@@ -175,6 +175,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Store fileId separately for handling draft files
   const [fileId, setFileId] = useState<string | null>(null);
   
+  // Flag to prevent form submission when deleting draft
+  const [isDeletingDraft, setIsDeletingDraft] = useState(false);
+  
   // Draft functionality
   const [showDrafts, setShowDrafts] = useState(false);
   const { data: drafts = [], refetch: refetchDrafts } = useTransactionDrafts();
@@ -306,6 +309,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent form submission if we're deleting a draft
+    if (isDeletingDraft) {
+      return;
+    }
     
     // Mark form as submitted to show validation errors
     setFormSubmitted(true);
@@ -492,8 +500,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   };
 
   // Handle delete draft
-  const handleDeleteDraft = async () => {
+  const handleDeleteDraft = async (e?: React.MouseEvent) => {
+    // Prevent form submission
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (!draftId) return;
+    
+    // Set flag to prevent form submission
+    setIsDeletingDraft(true);
     
     try {
       await deleteTransaction(api, { id: draftId, deleteScope: DeleteScopeEnum.THIS_ONLY });
@@ -521,9 +538,19 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       
       // Invalidate drafts query
       handleDraftsInvalidate();
+      
+      // Close the form after deleting the draft
+      // Use setTimeout to ensure the delete operation completes before closing
+      setTimeout(() => {
+        setIsDeletingDraft(false);
+        if (onCancel) {
+          onCancel();
+        }
+      }, 100);
     } catch (error) {
       console.error('Error deleting draft:', error);
       toast.error('Failed to delete draft');
+      setIsDeletingDraft(false);
     }
   };
 
@@ -584,6 +611,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             
             {draftId && (
               <Button
+                type="button"
                 variant="destructive"
                 onClick={handleDeleteDraft}
                 className="bg-destructive text-white hover:text-white"
