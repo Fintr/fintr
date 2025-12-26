@@ -19,3 +19,4 @@ RSpec.describe ApplicationCable::Channel, type: :channel do
     end
   end
 end
+

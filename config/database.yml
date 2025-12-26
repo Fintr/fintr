@@ -97,8 +97,8 @@ staging:
     database: fintr_staging_queue
     url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_queue" %>
     migrations_paths: db/queue_migrate
-    # Queue database needs fewer connections (Solid Queue manages its own)
-    pool: <%= ENV.fetch("QUEUE_POOL_SIZE") { 3 } %>
+    # Queue database pool must be >= total threads across all workers (3 + 2 = 5)
+    pool: <%= ENV.fetch("QUEUE_POOL_SIZE") { 6 } %>
     timeout: 5000
   cable:
     <<: *primary_staging
@@ -141,8 +141,8 @@ production:
     database: fintr_production_queue
     url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'api.fintr.ai'}:5432/fintr_production_queue" %>
     migrations_paths: db/queue_migrate
-    # Queue database needs fewer connections (Solid Queue manages its own)
-    pool: <%= ENV.fetch("QUEUE_POOL_SIZE") { 3 } %>
+    # Queue database pool must be >= total threads across all workers (3 + 2 = 5)
+    pool: <%= ENV.fetch("QUEUE_POOL_SIZE") { 6 } %>
     timeout: 5000
   cable:
     <<: *primary_production
