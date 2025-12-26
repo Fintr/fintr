@@ -19,6 +19,7 @@ export default function BottomNavigation() {
   const [isAddReceiptOpen, setIsAddReceiptOpen] = useState(false);
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
 
   // Determine active tab based on pathname
   const getActiveValue = () => {
@@ -44,6 +45,23 @@ export default function BottomNavigation() {
   };
 
   const activeValue = getActiveValue();
+
+  const handleReceiptSuccess = (suggestedTransactionPayload: any, receiptImage: File, draftId?: string) => {
+    const prefilledData = {
+      type: 'expense' as const,
+      amount: suggestedTransactionPayload?.amount,
+      description: suggestedTransactionPayload?.description,
+      categoryName: suggestedTransactionPayload?.categoryName,
+      accountName: suggestedTransactionPayload?.accountName,
+      date: suggestedTransactionPayload?.date,
+      scheduleType: suggestedTransactionPayload?.scheduleType,
+      receiptImage: receiptImage,
+      draftId: draftId,
+    };
+    
+    setPrefilledTransactionData(prefilledData);
+    setIsAddTransactionOpen(true);
+  };
 
   return (
     <>
@@ -200,11 +218,16 @@ export default function BottomNavigation() {
 
       <AddTransactionDialog
         isOpen={isAddTransactionOpen}
-        onClose={() => setIsAddTransactionOpen(false)}
+        onClose={() => {
+          setIsAddTransactionOpen(false);
+          setPrefilledTransactionData(null);
+        }}
+        prefilledData={prefilledTransactionData}
       />
       <AddReceiptDialog
         isOpen={isAddReceiptOpen}
         onClose={() => setIsAddReceiptOpen(false)}
+        onReceiptSuccess={handleReceiptSuccess}
       />
       <EnhancedAiChatModal
         isOpen={isAiChatOpen}
