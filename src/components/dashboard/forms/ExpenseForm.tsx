@@ -200,9 +200,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     // Only proceed if initialData is provided and is a different object reference
     if (initialData && (initialData !== prevInitialDataRef.current)) {
       
+      const initialAmount = initialData.amount?.toString() || "";
+      
       // Update form state with all initialData values
       setFormState({
-        amount: initialData.amount?.toString() || "",
+        amount: initialAmount,
         description: initialData.description || "",
         categoryName: initialData.categoryName || "",
         accountName: initialData.accountName || "",
@@ -212,8 +214,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         file: initialData.file || null,
       });
       
-      // Update number input hook
-      amountInput.setDisplayValue(initialData.amount?.toString() || "");
+      // Update number input hook with formatted value
+      if (initialAmount) {
+        const formattedAmount = numberFormatting.formatForInput(initialAmount);
+        amountInput.setDisplayValue(formattedAmount);
+      } else {
+        amountInput.setDisplayValue("");
+      }
       
       
       // Update schedule type state
@@ -439,8 +446,10 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       console.log('No files found in draft');
     }
 
+    const draftAmount = typeof draft.amount === 'number' ? draft.amount.toString() : String(draft.amount || "");
+    
     const newFormState = {
-      amount: typeof draft.amount === 'number' ? draft.amount.toString() : String(draft.amount || ""),
+      amount: draftAmount,
       description: draft.description || "",
       categoryName: draft.categoryName || "",
       accountName: draft.accountName || "",
@@ -452,6 +461,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     
     console.log('Setting new form state:', newFormState);
     setFormState(newFormState);
+    
+    // Update the amount input display value to reflect the draft amount
+    if (draftAmount) {
+      const formattedAmount = numberFormatting.formatForInput(draftAmount);
+      amountInput.setDisplayValue(formattedAmount);
+    }
     
     // Set file ID for submission
     setFileId(draftFileId);
