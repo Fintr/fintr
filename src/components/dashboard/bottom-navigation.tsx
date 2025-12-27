@@ -210,7 +210,7 @@ export default function BottomNavigation() {
                 activeValue === "space_settings" ? "text-white" : "text-white/70"
               }`}
             >
-              Settings
+              Menu
             </span>
           </Link>
         </div>

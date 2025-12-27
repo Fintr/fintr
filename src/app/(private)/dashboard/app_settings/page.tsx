@@ -10,6 +10,7 @@ import {
   MessageSquare,
   ArrowLeft,
   LogOut,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,7 +62,19 @@ export default function AppSettingsPage() {
 
   const settingsSections: SettingsSection[] = [
     {
-      title: "Category Management",
+      title: "Menu",
+      cards: [
+        {
+          title: "Loans",
+          icon: FileText,
+          href: "/dashboard/loans",
+          color: "text-primary",
+          bgColor: "bg-primary/10",
+        },
+      ],
+    },
+    {
+      title: "Settings",
       cards: [
         {
           title: "Categories",
@@ -84,11 +97,6 @@ export default function AppSettingsPage() {
           color: "text-primary",
           bgColor: "bg-primary/10",
         },
-      ],
-    },
-    {
-      title: "Subscriptions",
-      cards: [
         {
           title: "Manage Subscription",
           icon: CreditCard,
@@ -96,17 +104,12 @@ export default function AppSettingsPage() {
           color: "text-primary",
           bgColor: "bg-primary/10",
         },
-      ],
-    },
-    {
-      title: "Settings",
-      cards: [
         {
           title: "Dashboard Settings",
           icon: Settings,
           href: "/dashboard/settings",
-          color: "text-orange-600",
-          bgColor: "bg-orange-50",
+          color: "text-primary",
+          bgColor: "bg-primary/10",
         },
       ],
     },
@@ -117,15 +120,15 @@ export default function AppSettingsPage() {
           title: "Support",
           icon: MessageSquare,
           href: "/crm/requests",
-          color: "text-blue-600",
-          bgColor: "bg-blue-50",
+          color: "text-primary",
+          bgColor: "bg-primary/10",
         },
         ...(isAdmin ? [{
           title: "Admin",
           icon: Users,
           href: "/admin",
-          color: "text-blue-600",
-          bgColor: "bg-blue-50",
+          color: "text-primary",
+          bgColor: "bg-primary/10",
         } as SettingsCard] : []),
       ],
     },
@@ -150,14 +153,14 @@ export default function AppSettingsPage() {
           <SpaceSwitcher showSpaceSwitcher={true} isMobile={false} />
         </div>
 
-        {/* Settings Sections */}
+        {/* Menu Sections */}
         <div className="space-y-8">
           {settingsSections.map((section) => (
             <div key={section.title}>
               <h2 className="text-lg font-semibold text-primary mb-4">
                 {section.title}
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <div className="grid grid-cols-3 gap-3 md:gap-4">
                 {section.cards.map((card) => {
                   const Icon = card.icon;
                   return (
