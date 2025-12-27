@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
 import AuthWrapper from "@/components/auth-wrapper";
 import DeepLinkHandler from "@/components/deep-link-handler";
+import SessionExpirationModal from "@/components/session-expiration-modal";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(() => new QueryClient({
@@ -26,6 +27,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <DeepLinkHandler />
+        <SessionExpirationModal />
         <Toaster />
         <AuthWrapper>
           {children}
