@@ -16,8 +16,8 @@ gem "bootsnap", require: false
 gem "thruster", require: false
 gem "rack-cors"
 gem "dotenv-rails", "~> 3.1"
-gem "kamal", "~> 2.8"
-gem "aws-sdk-s3", "~> 1.202"
+gem "kamal", "~> 2.10"
+gem "aws-sdk-s3", "~> 1.208"
 gem "csv", "~> 3.3"
 gem "neighbor", "~> 0.6.0"
 gem "image_processing", "~> 1.2"
@@ -92,6 +92,6 @@ group :development, :test do
   gem "simplecov", "~> 0.22.0"
   gem "parallel_tests", "~> 5.5"
   gem "timecop", "~> 0.9.10"
-  gem "vcr", "~> 6.2"
+  gem "vcr", "~> 6.3"
   gem "webmock", "~> 3.18"
 end
