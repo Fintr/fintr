@@ -12,7 +12,14 @@ const handleResponseError = (error: AxiosError) => {
   
   if (errorMessage.includes('Bad credentials: Signature has expired')) {
     console.error('Session expired: Signature has expired');
-    triggerSessionExpiration();
+    // Only trigger if we're not already on a public route
+    if (typeof window !== 'undefined') {
+      const publicRoutes = ['/login', '/auth', '/auth-callback'];
+      const currentPath = window.location.pathname;
+      if (!publicRoutes.some(route => currentPath.startsWith(route))) {
+        triggerSessionExpiration();
+      }
+    }
     return Promise.reject(error);
   }
 
