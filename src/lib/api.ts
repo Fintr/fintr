@@ -1,9 +1,20 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import { triggerSessionExpiration } from './session-expiration-handler';
 
 // Shared response error handler
 const handleResponseError = (error: AxiosError) => {
   const status = error.response?.status;
   console.error("API Response Error:", status, error.config?.url, error.message);
+
+  // Check for session expiration error
+  const responseData = error.response?.data as { message?: string } | undefined;
+  const errorMessage = responseData?.message || '';
+  
+  if (errorMessage.includes('Bad credentials: Signature has expired')) {
+    console.error('Session expired: Signature has expired');
+    triggerSessionExpiration();
+    return Promise.reject(error);
+  }
 
   if (status === 401) {
     console.error('Authentication error: Unauthorized');
