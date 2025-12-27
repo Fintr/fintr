@@ -66,7 +66,24 @@ module Auth
         success = response["name"] == user_updates[:name] ||
                   response["email"] == user_updates[:email]
         success ? Success(response) : Failure(errors: response)
+      rescue Auth0::Unauthorized => e
+        # Token might be expired - reset the M2M client and retry once
+        Rails.logger.warn "[UpdateUserAuth0] Auth0 Unauthorized error, resetting M2M client: #{e.message}"
+        Auth::M2mClient.reset!
+
+        # Retry with fresh token
+        begin
+          new_client = Auth::M2mClient.client
+          response = new_client.patch_user(auth_id, user_updates)
+          success = response["name"] == user_updates[:name] ||
+                    response["email"] == user_updates[:email]
+          success ? Success(response) : Failure(errors: response)
+        rescue StandardError => retry_error
+          Rails.logger.error "[UpdateUserAuth0] Retry failed: #{retry_error.message}"
+          Failure(errors: "Auth0 update failed after retry: #{retry_error.message}")
+        end
       rescue StandardError => e
+        Rails.logger.error "[UpdateUserAuth0] Auth0 API error: #{e.class} - #{e.message}"
         Failure(errors: e.message)
       end
 
