@@ -102,6 +102,7 @@ interface ExpenseFormProps {
   initialData?: UpdateTransactionType & { draftId?: string };
   isEditMode?: boolean;
   onFileUpdate?: (file: File | null) => void; // New prop for file updates
+  onDelete?: () => void; // New prop for delete action
 }
 
 // Main Expense Form using @tanstack/react-form
@@ -117,6 +118,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   initialData,
   isEditMode = false,
   onFileUpdate,
+  onDelete,
 }) => {
   // Get options from atoms
   const categoryOptions = useAtomValue(expenseCategoryOptionsAtom);
@@ -846,17 +848,31 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
       </div>
       {/* Submit/Cancel Buttons */}
-      <div className="flex justify-end gap-2 mt-4">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-sm">
-          Cancel
-        </Button>
-        <Button 
-          type="submit" 
-          className="bg-primary hover:bg-primary/80 text-sm" 
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (isEditMode ? "Updating Expense..." : "Adding Expense...") : (isEditMode ? "Update Expense" : "Add Expense")}
-        </Button>
+      <div className="flex justify-between gap-2 mt-4">
+        <div>
+          {isEditMode && onDelete && (
+            <DeleteButton
+              onClick={(e) => {
+                e.preventDefault();
+                onDelete();
+              }}
+              disabled={isSubmitting}
+              title="Delete transaction"
+            />
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-sm">
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            className="bg-primary hover:bg-primary/80 text-sm" 
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (isEditMode ? "Updating Expense..." : "Adding Expense...") : (isEditMode ? "Update Expense" : "Add Expense")}
+          </Button>
+        </div>
       </div>
     </form>
   );

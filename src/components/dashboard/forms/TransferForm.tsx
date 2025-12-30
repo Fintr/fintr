@@ -27,6 +27,7 @@ import AccountCreationForm from "./AccountCreationForm";
 import { updateTransfer, UpdateTransferType } from "@/services/transactions/transfers/mutation";
 import ExpandableTextarea from "@/components/ui/expandable-textarea";
 import FileUploadField from "./FileUploadField";
+import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
 
 // Transfer form schema using Zod
 const transferFormSchema = z.object({
@@ -66,6 +67,7 @@ interface TransferFormProps {
   initialData?: UpdateTransferType;
   isEditMode?: boolean;
   onFileUpdate?: (file: File | null) => void; // New prop for file updates
+  onDelete?: () => void; // New prop for delete action
 }
 
 const TransferForm: React.FC<TransferFormProps> = ({
@@ -77,6 +79,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
   initialData,
   isEditMode = false,
   onFileUpdate,
+  onDelete,
 }) => {
   const { api } = useAuthApi();
   const accountOptions = useAtomValue(accountOptionsAtom);
@@ -549,27 +552,41 @@ const TransferForm: React.FC<TransferFormProps> = ({
       />
 
       {/* Action buttons */}
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel} className="text-sm">
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          className="bg-primary hover:bg-primary/80 text-sm"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <>
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {isEditMode ? "Updating..." : "Adding..."}
-            </>
-          ) : (
-            isEditMode ? "Update Transfer" : "Add Transfer"
+      <div className="flex justify-between gap-2">
+        <div>
+          {isEditMode && onDelete && (
+            <DeleteButton
+              onClick={(e) => {
+                e.preventDefault();
+                onDelete();
+              }}
+              disabled={isSubmitting}
+              title="Delete transaction"
+            />
           )}
-        </Button>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={onCancel} className="text-sm">
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            className="bg-primary hover:bg-primary/80 text-sm"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {isEditMode ? "Updating..." : "Adding..."}
+              </>
+            ) : (
+              isEditMode ? "Update Transfer" : "Add Transfer"
+            )}
+          </Button>
+        </div>
       </div>
     </form>
   );

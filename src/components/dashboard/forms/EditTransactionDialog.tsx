@@ -3,14 +3,15 @@ import { CustomModal } from "@/components/ui/custom-modal";
 import ExpenseForm from "./ExpenseForm";
 import IncomeForm from "./IncomeForm";
 import TransferForm from "./TransferForm";
-import ScopeModal, { UpdateScope, Scope } from "./ScopeModal";
+import ScopeModal, { UpdateScope, Scope, DeleteScope } from "./ScopeModal";
 import { IndexTransaction, CombinedTransactionTypeEnum, TransferUpdateTransactionType, UpdateTransactionType } from "@/types/transactionTypes";
 import { UpdateTransferType, updateTransfer } from "@/services/transactions/transfers/mutation";
-import { updateTransaction } from "@/services/transactions/mutation";
+import { updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
+import { deleteTransfer } from "@/services/transactions/transfers/mutation";
 import { fetchTransactionById } from "@/services/transactions/queries";
 import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import { useAuthApi } from "@/hooks/useAuthApi";
-import { ScheduleTypeEnum, UpdateScopeEnum } from "@/constants/transactionConstants";
+import { ScheduleTypeEnum, UpdateScopeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { createDisplayFileFromAttachment } from "@/utils/fileUtils";
@@ -49,6 +50,10 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   const [pendingFormData, setPendingFormData] = useState<any>(null);
   const [hasScheduleChanges, setHasScheduleChanges] = useState(false);
   const [dataKey, setDataKey] = useState<number>(0); // Add a key to force re-render
+  
+  // Delete scope modal state
+  const [showDeleteScopeModal, setShowDeleteScopeModal] = useState(false);
+  const [deleteScope, setDeleteScope] = useState<DeleteScope>(DeleteScopeEnum.THIS_ONLY);
 
   useEffect(() => {
     const fetchTransactionDetails = async () => {
@@ -121,6 +126,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       setHasScheduleChanges(false);
       setFileAttachments([]);
       setDataKey(0); // Reset dataKey when closing
+      setShowDeleteScopeModal(false);
+      setDeleteScope(DeleteScopeEnum.THIS_ONLY);
     }
   }, [transaction?.id, isOpen, api]); // Simplified dependencies for better control
 
@@ -231,6 +238,43 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     setHasScheduleChanges(false);
   };
 
+  // Handle delete action
+  const handleDelete = () => {
+    if (!transaction) return;
+    setShowDeleteScopeModal(true);
+    setDeleteScope(DeleteScopeEnum.THIS_ONLY);
+  };
+
+  const handleDeleteConfirm = async (scope: Scope) => {
+    if (!transaction) return;
+    
+    try {
+      if (transaction.type === CombinedTransactionTypeEnum.TRANSFER) {
+        await deleteTransfer(api, { id: transaction.id, deleteScope: scope as DeleteScope });
+        toast.success("Transfer deleted successfully");
+      } else {
+        await deleteTransaction(api, { id: transaction.id, deleteScope: scope as DeleteScope });
+        toast.success("Transaction deleted successfully");
+      }
+      
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      toast.error("Failed to delete transaction. Please try again.");
+    } finally {
+      setShowDeleteScopeModal(false);
+    }
+  };
+
+  const handleDeleteScopeChange = (scope: Scope) => {
+    setDeleteScope(scope as DeleteScope);
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteScopeModal(false);
+  };
+
   // Handle file updates from child forms
   const handleFileUpdate = (updatedFile: File | null) => {
     setFullTransactionData(prev => {
@@ -323,6 +367,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             onCancel={onClose}
             isEditMode={true}
             onFileUpdate={handleFileUpdate} // Pass the new handler
+            onDelete={handleDelete} // Pass the delete handler
           />
         );
       case CombinedTransactionTypeEnum.INCOME:
@@ -337,6 +382,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             onCancel={onClose}
             isEditMode={true}
             onFileUpdate={handleFileUpdate} // Pass the new handler
+            onDelete={handleDelete} // Pass the delete handler
           />
         );
       case CombinedTransactionTypeEnum.TRANSFER:
@@ -366,6 +412,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             onCancel={onClose}
             isEditMode={true}
             onFileUpdate={handleFileUpdate} // Pass the new handler
+            onDelete={handleDelete} // Pass the delete handler
           />
         );
       default:
@@ -400,6 +447,18 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         selectedScope={updateScope}
         onScopeChange={handleUpdateScopeChange}
         hasScheduleChanges={hasScheduleChanges}
+        transactionType={transaction?.type}
+        inSeries={fullTransactionData?.scheduleType === ScheduleTypeEnum.REPEAT || fullTransactionData?.scheduleType === ScheduleTypeEnum.INSTALLMENT}
+      />
+      
+      {/* Delete Scope Modal */}
+      <ScopeModal
+        isOpen={showDeleteScopeModal}
+        operationType="delete"
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        selectedScope={deleteScope}
+        onScopeChange={handleDeleteScopeChange}
         transactionType={transaction?.type}
         inSeries={fullTransactionData?.scheduleType === ScheduleTypeEnum.REPEAT || fullTransactionData?.scheduleType === ScheduleTypeEnum.INSTALLMENT}
       />

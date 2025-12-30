@@ -10,9 +10,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import { Edit } from "lucide-react";
-import { DeleteButton } from "@/components/dashboard/tabs/transactions/buttons/DeleteButton";
-import EditButton from "@/components/ui/edit-button";
 import ImageLightbox from "@/components/crm/ImageLightbox";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { fetchTransactionById } from "@/services/transactions/queries";
@@ -147,7 +144,14 @@ export function ListView({
                       <div className="flex-grow border-t border-gray-300" />
                     </div>
                   )}
-                  <div className="relative flex items-center justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors min-h-[60px]">
+                  <div 
+                    className="relative flex items-center justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors min-h-[60px] cursor-pointer"
+                    onClick={() => {
+                      if (!transaction.hasLoanPayment) {
+                        onRowEdit(transaction);
+                      }
+                    }}
+                  >
                     {/* Calculated indicator - triangle in upper right corner */}
                     {transaction.calculated && (
                       <Popover
@@ -205,7 +209,10 @@ export function ListView({
                                 variant="ghost"
                                 size="sm"
                                 className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600"
-                                onClick={() => handleCopyId(transaction.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopyId(transaction.id);
+                                }}
                                 title={copiedId === transaction.id ? "Copied!" : `Click to copy ID: ${transaction.id}`}
                               >
                                 {copiedId === transaction.id ? (
@@ -267,13 +274,13 @@ export function ListView({
                       </div>
                       
                       <div className="flex items-center justify-between mt-1">
-                        <div className="flex items-center gap-4 text-xs text-gray-600">
-                          <span className="flex-1">{new Date(transaction.date).toLocaleDateString()}</span>
-                          <span className="hidden md:block truncate" title={transaction.categoryName}>{transaction.categoryName}</span>
-                          <span className="md:hidden truncate" title={transaction.categoryName}>{truncateText(transaction.categoryName, 10, false)}</span>
+                        <div className="flex items-center text-xs text-gray-600 flex-1 min-w-0 overflow-hidden">
+                          <span className="flex-shrink-0 whitespace-nowrap">{new Date(transaction.date).toLocaleDateString()}</span>
+                          <span className="hidden md:block truncate ml-4" title={transaction.categoryName}>{transaction.categoryName}</span>
+                          <span className="md:hidden truncate ml-2 md:ml-4 min-w-0" title={transaction.categoryName}>{transaction.categoryName}</span>
                           {(transaction.fromAccountName || transaction.toAccountName) && (
                             <>
-                              <span className="hidden md:block truncate" title={
+                              <span className="hidden md:block truncate ml-4" title={
                                 transaction.fromAccountName && transaction.toAccountName 
                                   ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
                                   : transaction.fromAccountName 
@@ -287,7 +294,7 @@ export function ListView({
                                   : `${transaction.toAccountName}`
                                 }
                               </span>
-                              <span className="md:hidden truncate" title={
+                              <span className="md:hidden truncate ml-2 md:ml-4 min-w-0" title={
                                 transaction.fromAccountName && transaction.toAccountName 
                                   ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
                                   : transaction.fromAccountName 
@@ -295,27 +302,14 @@ export function ListView({
                                   : `${transaction.toAccountName}`
                               }>
                                 {transaction.fromAccountName && transaction.toAccountName 
-                                  ? `${truncateText(transaction.fromAccountName, 10, false)} → ${truncateText(transaction.toAccountName, 10, false)}`
+                                  ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
                                   : transaction.fromAccountName 
-                                  ? `${truncateText(transaction.fromAccountName, 10, false)}`
-                                  : `${truncateText(transaction.toAccountName, 10, false)}`
+                                  ? `${transaction.fromAccountName}`
+                                  : `${transaction.toAccountName}`
                                 }
                               </span>
                             </>
                           )}
-                        </div>
-                        
-                        <div className="flex gap-1 flex-shrink-0 items-center">
-                          <EditButton 
-                            onClick={() => onRowEdit(transaction)}
-                            disabled={transaction.hasLoanPayment}
-                            title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead." : "Edit transaction"}
-                          />
-                          <DeleteButton
-                            onClick={() => onRowDelete(transaction.id)}
-                            disabled={transaction.hasLoanPayment}
-                            title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be deleted. Delete the loan payment instead." : "Delete transaction"}
-                          />
                         </div>
                       </div>
                     </div>

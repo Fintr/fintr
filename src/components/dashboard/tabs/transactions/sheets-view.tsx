@@ -7,8 +7,6 @@ import { formatCurrency, truncateText } from "@/lib/utils";
 import { InfiniteData } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import { Edit } from "lucide-react";
-import { DeleteButton } from "@/components/dashboard/tabs/transactions/buttons/DeleteButton";
 import ImageLightbox from "@/components/crm/ImageLightbox";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { fetchTransactionById } from "@/services/transactions/queries";
@@ -121,15 +119,12 @@ export function SheetsView({
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Amount
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
                 </tr>
               </thead>
               <tbody>
                 {isPending && (
                   <tr>
-                    <td colSpan={5} className="text-center p-4">
+                    <td colSpan={4} className="text-center p-4">
                       <LoadingSpinner size="medium" />
                     </td>
                   </tr>
@@ -137,7 +132,7 @@ export function SheetsView({
                 {isError && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={4}
                       className="text-center p-4 bg-red-800"
                     >
                       Error: {error?.message}
@@ -512,26 +507,14 @@ export function SheetsView({
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex space-x-2 items-center">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-primary hover:bg-primary/30"
-                              onClick={() => onRowEdit(transaction)}
-                              disabled={transaction.hasLoanPayment}
-                              title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead." : "Edit transaction"}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <DeleteButton
-                              onClick={() =>
-                                onRowDelete(transaction.id)
-                              }
-                              disabled={transaction.hasLoanPayment}
-                              title={transaction.hasLoanPayment ? "This transaction is linked to a loan payment and cannot be deleted. Delete the loan payment instead." : "Delete transaction"}
-                            />
-                          </div>
+                        <td 
+                          className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 cursor-pointer hover:bg-gray-100"
+                          onClick={() => {
+                            if (!transaction.hasLoanPayment) {
+                              onRowEdit(transaction);
+                            }
+                          }}
+                        >
                         </td>
                       </tr>
                     ));

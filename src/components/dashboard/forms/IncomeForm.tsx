@@ -31,6 +31,7 @@ import { UpdateTransactionType } from "@/types/transactionTypes";
 import ExpandableTextarea from '@/components/ui/expandable-textarea';
 import FileUploadField from "./FileUploadField";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
+import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
 
 // Income form schema using Zod
 const incomeFormSchema = z.object({
@@ -73,6 +74,7 @@ interface IncomeFormProps {
   initialData?: UpdateTransactionType;
   isEditMode?: boolean;
   onFileUpdate?: (file: File | null) => void; // New prop for file updates
+  onDelete?: () => void; // New prop for delete action
 }
 
 // Main Income Form
@@ -88,6 +90,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   initialData,
   isEditMode = false,
   onFileUpdate,
+  onDelete,
 }) => {
   const categoryOptions = useAtomValue(incomeCategoryOptionsAtom);
   const accountOptions = useAtomValue(accountOptionsAtom);
@@ -617,17 +620,31 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       </div>
       
       {/* Submit/Cancel Buttons */}
-      <div className="flex justify-end gap-2 mt-4">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-sm">
-          Cancel
-        </Button>
-        <Button 
-          type="submit" 
-          className="bg-primary hover:bg-primary/80 text-sm" 
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (isEditMode ? "Updating Income..." : "Adding Income...") : (isEditMode ? "Update Income" : "Add Income")}
-        </Button>
+      <div className="flex justify-between gap-2 mt-4">
+        <div>
+          {isEditMode && onDelete && (
+            <DeleteButton
+              onClick={(e) => {
+                e.preventDefault();
+                onDelete();
+              }}
+              disabled={isSubmitting}
+              title="Delete transaction"
+            />
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-sm">
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            className="bg-primary hover:bg-primary/80 text-sm" 
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (isEditMode ? "Updating Income..." : "Adding Income...") : (isEditMode ? "Update Income" : "Add Income")}
+          </Button>
+        </div>
       </div>
     </form>
   );
