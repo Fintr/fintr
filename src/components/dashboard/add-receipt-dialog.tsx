@@ -185,21 +185,16 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
       if (onReceiptSuccess) {
         // Check if the response contains suggestedTransactionPayload
         if (response?.data?.suggestedTransactionPayload) {
-          toast.success('Receipt processed successfully! Opening expense form...');
-          
           // Call the callback with the suggested data, receipt image, and draftId
           onReceiptSuccess(response.data.suggestedTransactionPayload, selectedImage, response.data.draftId);
         } else {
           // Even if there's no suggested payload, still open the transaction dialog with the receipt image
-          toast.success('Receipt uploaded successfully! Opening expense form...');
-          
           // Call the callback with empty/default values, but include the receipt image and draftId
           onReceiptSuccess({}, selectedImage, response.data?.draftId);
         }
         handleCancel();
       } else {
         // Fallback: if no callback is provided, just show success message
-        toast.success('Receipt uploaded successfully!');
         handleCancel();
       }
     } catch (error) {
