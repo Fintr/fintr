@@ -1,0 +1,63 @@
+Take Control of Your Finances with Fintr
+
+Fintr is your AI-powered personal finance companion that makes tracking expenses, managing budgets, and achieving financial goals effortless. Built for individuals and families who want to save more, spend smarter, and afford the life they want.
+
+KEY FEATURES:
+
+AI-Powered Receipt Scanning
+Capture receipts with your camera and let Fintr's advanced AI automatically extract transaction details. Using GPT-4 Vision technology, Fintr recognizes amounts, merchants, dates, and categories - even from poor quality or handwritten receipts. No more manual data entry - just snap, review, and save.
+
+Smart Transaction Tracking
+Easily log income and expenses with automatic categorization. Set up recurring transactions, track spending across custom categories, and see exactly where your money goes. Support for multiple accounts and currencies.
+
+Financial Insights & Analytics
+Get a comprehensive view of your financial health with detailed analytics:
+- Financial health scores with personalized ratings
+- Expense breakdowns by category, account, and time period
+- Weekly and monthly spending trends
+- Account balance breakdowns
+- Interactive charts and visualizations
+
+AI Finance Assistant
+Ask Fintr anything about your finances in natural language. Our AI assistant uses RAG (Retrieval-Augmented Generation) to analyze your actual financial data and provide personalized insights:
+- "What's my biggest expense this month?"
+- "How much did I spend on groceries last week?"
+- "Show me my spending trends"
+- "What category do I spend most on?"
+
+Multi-Account Management
+Manage multiple accounts in one place. Track balances, see account breakdowns, and get a complete picture of your finances across all your accounts.
+
+Budget Tracking
+Set monthly budgets for different spending categories. Track your progress with visual indicators, get alerts when approaching limits, and compare actual spending to budgeted amounts.
+
+Loan Management
+Track both borrowed and lent loans with detailed calculations:
+- Calculate interest payments and principal reduction
+- View amortization schedules
+- Track loan payments
+- Monitor outstanding balances
+- Visualize payoff timelines
+
+Subscription Management
+Manage your app subscription plans, track billing cycles, and monitor usage.
+
+Secure & Private
+Your financial data is encrypted and stored securely. We take your privacy seriously - your data stays yours.
+
+WHY CHOOSE FINTR:
+
+- AI-powered receipt scanning saves hours of manual entry
+- Natural language AI assistant answers your finance questions
+- Comprehensive insights help you understand your spending
+- Multi-account support for complete financial overview
+- Loan tracking with interest calculations
+- Budget tracking with visual progress indicators
+- Goal setting to keep you motivated
+- Simple, intuitive interface - no learning curve
+- Secure and private - your data is protected
+
+Perfect for individuals, families, and anyone serious about taking control of their finances. Whether you're tracking daily expenses, managing loans, or working toward savings goals, Fintr makes it simple and smart.
+
+Start tracking today and watch your savings grow. Download Fintr and take the first step toward financial freedom.
+
