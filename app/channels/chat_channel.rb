@@ -21,4 +21,3 @@ class ChatChannel < ApplicationCable::Channel
     Rails.logger.info "[ChatChannel] 👋 Unsubscribed from chat channel"
   end
 end
-

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'net/http'
-require 'json'
+require "net/http"
+require "json"
 
 module Auth
   module Operations
@@ -41,7 +41,7 @@ module Auth
           http.use_ssl = true
 
           request = Net::HTTP::Post.new(uri)
-          request['Content-Type'] = 'application/json'
+          request["Content-Type"] = "application/json"
 
           request.body = {
             client_id: client_id,
@@ -57,7 +57,7 @@ module Auth
           response = http.request(request)
           data = JSON.parse(response.body)
 
-          if response.code == '200'
+          if response.code == "200"
             login_result = auto_login(
               email:,
               password:,
@@ -89,22 +89,22 @@ module Auth
         http.use_ssl = true
 
         request = Net::HTTP::Post.new(uri)
-        request['Content-Type'] = 'application/json'
+        request["Content-Type"] = "application/json"
 
         request.body = {
-          grant_type: 'password',
+          grant_type: "password",
           username: email,
           password: password,
           client_id: client_id,
           client_secret: client_secret,
           audience: audience,
-          scope: 'openid profile email read:current_user read:users read:transactions offline_access'
+          scope: "openid profile email read:current_user read:users read:transactions offline_access"
         }.to_json
 
         response = http.request(request)
         data = JSON.parse(response.body)
 
-        if response.code == '200'
+        if response.code == "200"
           Success({
             access_token: data["access_token"],
             id_token: data["id_token"],
@@ -124,4 +124,3 @@ module Auth
     end
   end
 end
-

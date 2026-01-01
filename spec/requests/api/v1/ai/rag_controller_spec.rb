@@ -42,6 +42,7 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
         end
       end
 
+      it "creates a new conversation and returns processing status" do
         allow(Ai::AiChatJob).to receive(:perform_later)
 
         post "/api/v1/ai/rag/query",

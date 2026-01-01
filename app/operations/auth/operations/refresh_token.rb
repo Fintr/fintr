@@ -9,7 +9,7 @@ module Auth
         return Failure("Refresh token is required") if refresh_token.blank?
 
         result = refresh_auth0_token(refresh_token)
-        
+
         return result if result.failure?
 
         Success(result.value!)
@@ -31,21 +31,21 @@ module Auth
           http.use_ssl = true
 
           request = Net::HTTP::Post.new(uri)
-          request['Content-Type'] = 'application/json'
-          
+          request["Content-Type"] = "application/json"
+
           request.body = {
-            grant_type: 'refresh_token',
+            grant_type: "refresh_token",
             refresh_token: refresh_token,
             client_id: client_id,
             client_secret: client_secret,
             audience: audience,
-            scope: 'openid profile email read:current_user read:users read:transactions offline_access'
+            scope: "openid profile email read:current_user read:users read:transactions offline_access"
           }.to_json
 
           response = http.request(request)
           data = JSON.parse(response.body)
 
-          if response.code == '200'
+          if response.code == "200"
             Success({
               access_token: data["access_token"],
               id_token: data["id_token"],
