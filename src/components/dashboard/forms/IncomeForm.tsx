@@ -379,7 +379,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const maxDate = endOfMonth(currentDate);
   
   return (
-    <form ref={formRef} onSubmit={handleSubmit}>
+    <form ref={formRef} onSubmit={handleSubmit} data-tutorial-target="income-form">
       <div className="space-y-4">
         {/* Date Picker */}
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
@@ -428,6 +428,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           <div className="col-span-2 flex justify-end gap-2 mt-2">
             <button
               type="button"
+              data-tutorial-target="deduct-taxes"
               onClick={() => setDeductTaxes(!deductTaxes)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
                 deductTaxes 
@@ -439,6 +440,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             </button>
             <button
               type="button"
+              data-tutorial-target="deduct-contributions"
               onClick={() => setDeductContributions(!deductContributions)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
                 deductContributions 

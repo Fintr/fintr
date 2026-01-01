@@ -541,7 +541,7 @@ const InsightsTab = () => {
           </Card>
         )}
 
-        <Card className="mb-6 border border-primary/10">
+        <Card className="mb-6 border border-primary/10" data-tutorial-target="dashboard-summary">
           <CardHeader className="px-4">
             {/* Insights Summary */}
             <CardTitle>Dashboard Summary</CardTitle>
@@ -594,7 +594,7 @@ const InsightsTab = () => {
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 md:gap-6">
-          <Card className="border-0">
+          <Card className="border-0" data-tutorial-target="financial-health-score">
             <CardHeader className="px-4">
               <CardTitle>Financial Health Score</CardTitle>
               <CardDescription>
@@ -795,7 +795,7 @@ const InsightsTab = () => {
               </CardContent>
             </Card>
           ) : (
-            <Card className="col-span-2 border-0">
+            <Card className="col-span-2 border-0" data-tutorial-target="expense-breakdown">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <PieChart className="h-5 w-5 text-primary" />

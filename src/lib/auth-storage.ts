@@ -20,6 +20,8 @@ export interface AuthUser {
   email: string;
   name: string;
   picture?: string;
+  desktop_tutorial?: string | null;
+  mobile_tutorial?: string | null;
   [key: string]: any;
 }
 

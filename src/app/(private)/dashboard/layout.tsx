@@ -165,7 +165,7 @@ export default function Layout({
                     <Link prefetch href="/dashboard/budgets">Budgets</Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="loans">
-                    <Link prefetch href="/dashboard/loans">Loans</Link>
+                    <Link prefetch href="/dashboard/loans" data-tutorial-target="dashboard-loan-tab">Loans</Link>
                   </TabsTrigger>
                   {showV2Features && (
                     <>
@@ -179,7 +179,7 @@ export default function Layout({
                   )}
                   <TabsTrigger asChild value="insights">
                     {/* Insights -> Dashboard */}
-                    <Link prefetch href="/dashboard/insights">Dashboard</Link>
+                    <Link prefetch href="/dashboard/insights" data-tutorial-target="dashboard-tab">Dashboard</Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="space_settings">
                     <Link prefetch href="/dashboard/space_settings">Settings</Link>

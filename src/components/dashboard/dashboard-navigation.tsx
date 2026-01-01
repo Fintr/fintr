@@ -161,6 +161,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
                     onClick={() => setIsAddReceiptOpen(true)}
                     variant="outline"
                     className="border-primary text-primary hover:bg-primary hover:text-white"
+                    data-tutorial-target="add-receipt-button"
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     Add Receipt
@@ -168,6 +169,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
                   <Button
                     onClick={() => setIsAddTransactionOpen(true)}
                     className="bg-primary hover:bg-primary/80"
+                    data-tutorial-target="add-transaction-button"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Transaction

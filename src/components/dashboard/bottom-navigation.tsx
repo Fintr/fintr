@@ -121,6 +121,7 @@ export default function BottomNavigation() {
                   className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 p-0 shadow-lg border-2 border-white/30 transition-all"
                   size="icon"
                   aria-label="Add Options"
+                  data-tutorial-target="mobile-add-button"
                 >
                   <Plus className="h-7 w-7 text-white stroke-[2.5]" />
                 </Button>
@@ -128,8 +129,9 @@ export default function BottomNavigation() {
               <PopoverContent
                 side="top"
                 align="center"
-                className="w-56 p-2 mb-2 z-[60]"
+                className="w-56 p-2 mb-2 z-[10010]"
                 sideOffset={12}
+                style={{ zIndex: 10010 }}
               >
                 <div className="flex flex-col gap-1">
                   <Button
@@ -150,6 +152,7 @@ export default function BottomNavigation() {
                       setIsAddTransactionOpen(true);
                       setIsMenuOpen(false);
                     }}
+                    data-tutorial-target="mobile-add-transaction"
                   >
                     <Plus className="h-5 w-5 text-primary" />
                     <span className="text-sm font-medium">Add Transaction</span>
@@ -161,6 +164,7 @@ export default function BottomNavigation() {
                       setIsAddReceiptOpen(true);
                       setIsMenuOpen(false);
                     }}
+                    data-tutorial-target="mobile-add-receipt"
                   >
                     <Camera className="h-5 w-5 text-primary" />
                     <span className="text-sm font-medium">Add Receipt</span>
@@ -174,6 +178,7 @@ export default function BottomNavigation() {
           <Link
             href="/dashboard/insights"
             prefetch
+            data-tutorial-target="mobile-dashboard-button"
             className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2 min-w-0 ${
               activeValue === "insights" ? "text-white" : "text-white/70"
             }`}
@@ -196,6 +201,7 @@ export default function BottomNavigation() {
           <Link
             href="/dashboard/app_settings"
             prefetch
+            data-tutorial-target="mobile-menu-button"
             className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2 min-w-0 ${
               activeValue === "space_settings" ? "text-white" : "text-white/70"
             }`}

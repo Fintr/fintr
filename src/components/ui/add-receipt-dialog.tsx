@@ -5,35 +5,26 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useAtomValue } from "jotai";
+import { isTutorialActiveAtom } from "@/atoms/tutorialAtoms";
 
-interface CustomModalProps {
+interface AddReceiptDialogProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
   title?: string;
   className?: string;
-  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl";
-  closeButtonDataTarget?: string;
 }
 
-const maxWidthClasses = {
-  sm: "max-w-sm",
-  md: "max-w-md",
-  lg: "max-w-lg",
-  xl: "max-w-xl",
-  "2xl": "max-w-2xl",
-};
-
-export const CustomModal: React.FC<CustomModalProps> = ({
+export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
   isOpen,
   onClose,
   children,
   title,
   className,
-  maxWidth = "2xl",
-  closeButtonDataTarget = "close-modal-button",
 }) => {
-  const [mounted, setMounted] = React.useState(false);
+  const isTutorialActive = useAtomValue(isTutorialActiveAtom);
+  const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const historyPushedRef = React.useRef(false);
   const viewportHeightRef = React.useRef<number | null>(null);
@@ -75,6 +66,12 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (isTutorialActive) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        
         const isLightboxOpen = checkLightboxOpen();
         if (isLightboxOpen) {
           const event = new CustomEvent("lightbox-close");
@@ -86,6 +83,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     };
 
     const handlePopState = (e: PopStateEvent) => {
+      if (isTutorialActive) {
+        return;
+      }
+      
       const isLightboxOpen = checkLightboxOpen();
       if (isLightboxOpen) {
         const event = new CustomEvent("lightbox-close");
@@ -103,7 +104,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         return;
       }
       
-      const modal = document.querySelector('[data-modal-content]');
+      const modal = document.querySelector('[data-add-receipt-dialog-content]');
       if (modal && !modal.contains(target)) {
         e.preventDefault();
       }
@@ -152,21 +153,36 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         }
       }
     };
-  }, [isOpen, onClose, isMobile]);
+  }, [isOpen, onClose, isMobile, isTutorialActive]);
 
   if (!isOpen || !mounted) return null;
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    const lightbox = document.querySelector(".lightbox-container");
+  const isJoyrideElement = (target: EventTarget | null): boolean => {
+    if (!target || !(target instanceof Element)) return false;
     
-    if (lightbox && (lightbox.contains(target) || target.closest(".lightbox-container"))) {
-      return;
+    let element: Element | null = target;
+    while (element && element !== document.body) {
+      const classList = Array.from(element.classList || []);
+      const hasJoyrideClass = classList.some(className => 
+        className.includes('react-joyride') || 
+        className.includes('__floater') || 
+        className.includes('__tooltip')
+      );
+      
+      if (hasJoyrideClass) {
+        return true;
+      }
+      
+      const style = window.getComputedStyle(element);
+      const zIndex = parseInt(style.zIndex, 10);
+      if (!isNaN(zIndex) && zIndex >= 10000) {
+        return true;
+      }
+      
+      element = element.parentElement;
     }
-
-    if (target === e.currentTarget) {
-      return;
-    }
+    
+    return false;
   };
 
   const modalContent = (
@@ -175,15 +191,27 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         "fixed inset-0 z-[100] flex items-center justify-center",
         isMobile ? "p-0" : "p-4"
       )}
-      onClick={handleOverlayClick}
-      onPointerDown={handleOverlayClick}
+      onPointerDown={(e) => {
+        if (isTutorialActive && !isJoyrideElement(e.target)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+      style={isTutorialActive ? { pointerEvents: 'none' } : undefined}
     >
       <div
         className={cn(
           "fixed inset-0 bg-black/50 z-[100]",
-          "transition-opacity duration-200"
+          "transition-opacity duration-200",
+          isTutorialActive ? "pointer-events-none" : "cursor-pointer"
         )}
         onClick={(e) => {
+          if (isTutorialActive) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          
           const target = e.target as HTMLElement;
           const lightbox = document.querySelector(".lightbox-container");
           
@@ -191,30 +219,40 @@ export const CustomModal: React.FC<CustomModalProps> = ({
             return;
           }
 
+          // Close dialog when clicking directly on the overlay
           if (e.target === e.currentTarget) {
-            return;
+            onClose();
           }
         }}
       />
       <div
-        data-modal-content
+        data-add-receipt-dialog-content
         className={cn(
-          "relative z-[101] bg-background shadow-lg",
-          "w-full",
-          isMobile 
-            ? "h-full rounded-none" 
-            : cn("rounded-lg", maxWidthClasses[maxWidth], "max-h-[90vh]"),
+          "relative z-[101] bg-background shadow-lg text-primary",
+          "w-full max-w-md",
+          isMobile ? "rounded-none" : "rounded-lg",
           "overflow-hidden flex flex-col",
           "transition-opacity duration-200",
           className
         )}
-        style={
-          isMobile && viewportHeightRef.current
+        style={{
+          ...(isMobile && viewportHeightRef.current
             ? { maxHeight: `${viewportHeightRef.current}px` }
-            : undefined
-        }
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
+            : {}),
+          ...(isTutorialActive ? { pointerEvents: 'auto' } : {})
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (isTutorialActive && !isJoyrideElement(e.target)) {
+            e.stopPropagation();
+          }
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          if (isTutorialActive && !isJoyrideElement(e.target)) {
+            e.stopPropagation();
+          }
+        }}
       >
         {title && (
           <div className="px-6 pt-6 pb-4 flex items-center justify-between flex-shrink-0">
@@ -225,14 +263,14 @@ export const CustomModal: React.FC<CustomModalProps> = ({
               size="icon"
               onClick={onClose}
               className="h-6 w-6"
-              data-tutorial-target={closeButtonDataTarget}
+              data-tutorial-target="close-add-receipt-modal"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
         )}
         <div 
-          className="flex-1 overflow-y-auto min-h-0"
+          className="overflow-y-auto"
           style={{
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",

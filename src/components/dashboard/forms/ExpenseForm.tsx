@@ -869,6 +869,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             type="submit" 
             className="bg-primary hover:bg-primary/80 text-sm" 
             disabled={isSubmitting}
+            data-tutorial-target="add-expense-button"
           >
             {isSubmitting ? (isEditMode ? "Updating Expense..." : "Adding Expense...") : (isEditMode ? "Update Expense" : "Add Expense")}
           </Button>

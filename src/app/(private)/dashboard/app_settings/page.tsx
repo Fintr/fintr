@@ -168,6 +168,7 @@ export default function AppSettingsPage() {
                       key={card.title}
                       href={card.href}
                       className="block"
+                      {...(card.title === "Loans" ? { "data-tutorial-target": "loan-menu-item" } : {})}
                     >
                       <div
                         className={`
