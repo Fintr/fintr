@@ -13,7 +13,7 @@ module Auth
       # Accept both API audience and client ID for audience validation
       # This allows tokens from both API and SPA clients (like Google OAuth)
       valid_audiences = [ENV["AUTH0_AUDIENCE"], ENV["AUTH0_CLIENT_ID"]].compact
-      
+
       JWT.decode(token, nil, true, {
                   algorithm: "RS256",
                   iss: domain_url,

@@ -81,4 +81,3 @@ module ApplicationCable
     end
   end
 end
-

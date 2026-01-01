@@ -10,12 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_30_082714) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
-  enable_extension "timescaledb"
   enable_extension "timescaledb_toolkit"
   enable_extension "vector"
   enable_extension "vectorscale"
@@ -31,6 +30,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   create_enum "crm_ticket_response_type", ["user_reply", "admin_response", "system_update"]
   create_enum "crm_ticket_status", ["open", "in_progress", "resolved", "dismissed"]
   create_enum "crm_ticket_type", ["bug_report", "feature_request", "general_feedback", "help_request", "billing_issue", "account_issue", "other"]
+  create_enum "finance_billing_cycle_status", ["pending", "paid", "failed"]
+  create_enum "finance_payment_status", ["pending", "succeeded", "failed", "refunded"]
+  create_enum "finance_space_subscription_status", ["requires_action", "pending", "active", "inactive"]
   create_enum "onboarding_step_enum", ["income", "budgets", "accounts", "completed"]
   create_enum "repeat_interval", ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
   create_enum "schedule_type", ["one_time", "repeat", "installment"]
@@ -200,6 +202,93 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
     t.index ["space_id"], name: "index_entities_on_space_id"
   end
 
+  create_table "finance_billing_cycles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "action_url"
+    t.datetime "created_at", null: false
+    t.decimal "cycle_number", precision: 10, scale: 1, default: "0.0", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "paid_at"
+    t.datetime "scheduled_timestamp"
+    t.uuid "space_subscription_id", null: false
+    t.tstzrange "span", null: false
+    t.enum "status", default: "pending", null: false, enum_type: "finance_billing_cycle_status"
+    t.integer "tokens_allocated", null: false
+    t.datetime "updated_at", null: false
+    t.string "xendit_cycle_id", null: false
+    t.index ["space_subscription_id", "cycle_number"], name: "index_finance_billing_cycles_on_subscription_and_cycle", unique: true
+    t.index ["space_subscription_id", "status"], name: "index_finance_billing_cycles_on_subscription_and_status"
+    t.index ["space_subscription_id"], name: "index_finance_billing_cycles_on_space_subscription_id"
+    t.index ["span"], name: "index_finance_billing_cycles_on_span", using: :gist
+    t.index ["xendit_cycle_id"], name: "index_finance_billing_cycles_on_xendit_cycle_id", unique: true, where: "(xendit_cycle_id IS NOT NULL)"
+  end
+
+  create_table "finance_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.string "amount_currency", default: "PHP", null: false
+    t.uuid "biling_cycle_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "failed_at"
+    t.text "failure_reason"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "paid_at"
+    t.string "payment_method_id"
+    t.string "payment_method_type"
+    t.uuid "space_subscription_id", null: false
+    t.enum "status", default: "pending", null: false, enum_type: "finance_payment_status"
+    t.datetime "updated_at", null: false
+    t.string "xendit_cycle_id", null: false
+    t.jsonb "xendit_data", default: {}, null: false
+    t.string "xendit_reference_id", null: false
+    t.index ["biling_cycle_id"], name: "index_finance_payments_on_biling_cycle_id"
+    t.index ["paid_at"], name: "index_finance_payments_on_paid_at"
+    t.index ["space_subscription_id"], name: "index_finance_payments_on_space_subscription_id"
+    t.index ["status"], name: "index_finance_payments_on_status"
+    t.index ["xendit_cycle_id"], name: "index_finance_payments_on_xendit_cycle_id", unique: true
+  end
+
+  create_table "finance_space_subscriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "cancelled_at"
+    t.datetime "created_at", null: false
+    t.integer "current_cycle_count", default: 0, null: false
+    t.datetime "ended_at"
+    t.jsonb "metadata", default: {}, null: false
+    t.uuid "space_id", null: false
+    t.datetime "started_at"
+    t.enum "status", default: "pending", null: false, enum_type: "finance_space_subscription_status"
+    t.uuid "subscription_plan_id", null: false
+    t.integer "total_cycles"
+    t.datetime "updated_at", null: false
+    t.string "xendit_customer_id"
+    t.string "xendit_customer_reference_id"
+    t.string "xendit_plan_id"
+    t.string "xendit_reference_id"
+    t.string "xendit_schedule_id"
+    t.string "xendit_schedule_reference_id"
+    t.index ["cancelled_at"], name: "index_finance_space_subscriptions_on_cancelled_at", where: "(cancelled_at IS NOT NULL)"
+    t.index ["space_id", "status"], name: "index_finance_space_subscriptions_on_space_id_and_status", unique: true, where: "(status = 'active'::finance_space_subscription_status)"
+    t.index ["space_id"], name: "index_finance_space_subscriptions_on_space_id"
+    t.index ["status"], name: "index_finance_space_subscriptions_on_status"
+    t.index ["subscription_plan_id"], name: "index_finance_space_subscriptions_on_subscription_plan_id"
+    t.index ["xendit_customer_reference_id"], name: "idx_on_xendit_customer_reference_id_0de02014c6"
+    t.index ["xendit_plan_id"], name: "index_finance_space_subscriptions_on_xendit_plan_id"
+    t.index ["xendit_reference_id"], name: "index_finance_space_subscriptions_on_xendit_reference_id"
+  end
+
+  create_table "finance_subscription_plans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "interval", default: "month", null: false
+    t.string "name", null: false
+    t.bigint "price_cents", default: 0, null: false
+    t.string "price_currency", default: "PHP", null: false
+    t.string "slug", null: false
+    t.integer "token_limit", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_finance_subscription_plans_on_active"
+    t.index ["slug"], name: "index_finance_subscription_plans_on_slug", unique: true
+  end
+
   create_table "goal_descriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "description"
@@ -366,9 +455,13 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
     t.string "name", null: false
     t.string "type", null: false
     t.datetime "updated_at", null: false
+    t.string "xendit_customer_id"
+    t.string "xendit_customer_reference_id"
     t.index ["code"], name: "index_spaces_on_code", unique: true
     t.index ["currency"], name: "index_spaces_on_currency"
     t.index ["type"], name: "index_spaces_on_type"
+    t.index ["xendit_customer_id"], name: "index_spaces_on_xendit_customer_id"
+    t.index ["xendit_customer_reference_id"], name: "index_spaces_on_xendit_customer_reference_id"
   end
 
   create_table "transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -472,8 +565,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "auth_id", null: false
     t.datetime "created_at", null: false
+    t.datetime "desktop_tutorial"
     t.string "email"
     t.string "full_name"
+    t.datetime "mobile_tutorial"
     t.string "photo_url"
     t.datetime "updated_at", null: false
     t.index ["auth_id"], name: "index_users_on_auth_id", unique: true
@@ -505,6 +600,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_052506) do
   add_foreign_key "crm_tickets", "spaces"
   add_foreign_key "crm_tickets", "users"
   add_foreign_key "entities", "spaces"
+  add_foreign_key "finance_billing_cycles", "finance_space_subscriptions", column: "space_subscription_id"
+  add_foreign_key "finance_payments", "finance_billing_cycles", column: "biling_cycle_id"
+  add_foreign_key "finance_payments", "finance_space_subscriptions", column: "space_subscription_id"
+  add_foreign_key "finance_space_subscriptions", "finance_subscription_plans", column: "subscription_plan_id"
+  add_foreign_key "finance_space_subscriptions", "spaces"
   add_foreign_key "goal_descriptions", "spaces"
   add_foreign_key "import_records", "imports"
   add_foreign_key "imports", "spaces"

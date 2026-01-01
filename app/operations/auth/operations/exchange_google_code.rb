@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'net/http'
-require 'json'
+require "net/http"
+require "json"
 
 module Auth
   module Operations
@@ -59,10 +59,10 @@ module Auth
           http.use_ssl = true
 
           request = Net::HTTP::Post.new(uri)
-          request['Content-Type'] = 'application/json'
+          request["Content-Type"] = "application/json"
 
           request_body = {
-            grant_type: 'authorization_code',
+            grant_type: "authorization_code",
             client_id: client_id,
             client_secret: client_secret,
             code: code,
@@ -75,18 +75,18 @@ module Auth
           end
 
           # Request specific scopes to get regular JWT tokens
-          request_body[:scope] = 'openid profile email read:current_user read:users read:transactions offline_access'
-          
+          request_body[:scope] = "openid profile email read:current_user read:users read:transactions offline_access"
+
           # Add additional parameters to ensure JWT format
-          request_body[:response_mode] = 'query'
-          request_body[:response_type] = 'code'
+          request_body[:response_mode] = "query"
+          request_body[:response_type] = "code"
 
           request.body = request_body.to_json
 
           response = http.request(request)
           data = JSON.parse(response.body)
 
-          if response.code == '200'
+          if response.code == "200"
             tokens = {
               access_token: data["access_token"],
               id_token: data["id_token"],
@@ -95,7 +95,7 @@ module Auth
               token_type: data["token_type"],
               scope: data["scope"]
             }
-            
+
             Success(tokens)
           else
             Failure(data["error_description"] || data["error"] || "Token exchange failed")
@@ -107,4 +107,3 @@ module Auth
     end
   end
 end
-
