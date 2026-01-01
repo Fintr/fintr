@@ -13,6 +13,7 @@ import { usePathname } from 'next/navigation';
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/ui/loading-screen";
+import TutorialOverlay from "@/components/tutorial/TutorialOverlay";
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const { api, isLoading: isApiLoading } = useAuthApi({
@@ -88,6 +89,8 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
       {!isOnOnboardingPage && !isStandalonePage && (
         <BottomNavigation />
       )}
+      {/* Tutorial Overlay */}
+      <TutorialOverlay />
     </div>
   );
 };

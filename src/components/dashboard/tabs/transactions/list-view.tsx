@@ -145,7 +145,7 @@ export function ListView({
                     </div>
                   )}
                   <div 
-                    className="relative flex items-center justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors min-h-[60px] cursor-pointer"
+                    className="transaction-item relative flex items-center justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors min-h-[60px] cursor-pointer"
                     onClick={() => {
                       if (!transaction.hasLoanPayment) {
                         onRowEdit(transaction);

@@ -303,6 +303,7 @@ const AddTransactionDialog = ({
       title="Add Transaction"
       maxWidth="2xl"
       className="p-0"
+      closeButtonDataTarget="transaction-close"
     >
       <div className="px-6 pb-6">
           <Tabs
@@ -311,10 +312,10 @@ const AddTransactionDialog = ({
             className="w-full"
           >
             <TabsList className="grid w-full grid-cols-4 mb-4 bg-white">
-              <TabsTrigger value="expense">Expense</TabsTrigger>
-              <TabsTrigger value="income">Income</TabsTrigger>
-              <TabsTrigger value="transfer">Transfer</TabsTrigger>
-              <TabsTrigger value="loan">Loan</TabsTrigger>
+              <TabsTrigger value="expense" data-tutorial-target="expense-tab">Expense</TabsTrigger>
+              <TabsTrigger value="income" data-tutorial-target="income-tab">Income</TabsTrigger>
+              <TabsTrigger value="transfer" data-tutorial-target="transfer-tab">Transfer</TabsTrigger>
+              <TabsTrigger value="loan" data-tutorial-target="loan-tab">Loan</TabsTrigger>
             </TabsList>
 
             {showV2Features && (

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AddReceiptDialog as CustomDialog } from '@/components/ui/add-receipt-dialog';
 import { Button } from '@/components/ui/button';
-import { Camera, FileImage, Loader2, Upload, X } from 'lucide-react';
+import { Camera, FileImage, Loader2, Upload } from 'lucide-react';
 import { uploadReceipt } from '@/services/receipts/mutation';
 import { toast } from 'sonner';
 import useAuthApi from '@/hooks/useAuthApi';
@@ -243,25 +243,28 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleCancel}>
-      <DialogContent className="max-w-md">
-        <DialogHeader className="-mx-4 md:mx-0">
-          <DialogTitle className="text-primary">Add Receipt</DialogTitle>
-          {isLoadingUsage ? (
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span className="font-medium">Loading token usage...</span>
-            </div>
-          ) : aiUsage ? (
-            <div className="self-center flex flex-col items-center justify-between text-sm bg-primary/5 w-fit p-2 rounded-md border-primary/50 border text-primary">
+    <CustomDialog 
+      isOpen={isOpen}
+      onClose={handleCancel}
+      title="Add Receipt"
+    >
+      <div className="px-6 pb-6 space-y-4">
+        {isLoadingUsage ? (
+          <div className="flex items-center justify-center text-sm text-muted-foreground">
+            <span className="font-medium">Loading token usage...</span>
+          </div>
+        ) : aiUsage ? (
+          <div className="flex items-center justify-center">
+            <div className="flex flex-col items-center justify-between text-sm bg-primary/5 w-fit p-2 rounded-md border-primary/50 border text-primary">
               <span className={`font-medium ${!hasTokensAvailable ? 'text-destructive' : ''}`}>
                 <strong>{aiUsage.remaining}</strong> tokens left
               </span>
               <span className="text-xs">{aiUsage.usagePeriod}</span>
             </div>
-          ) : null}
-        </DialogHeader>
+          </div>
+        ) : null}
         
-        <div className="space-y-4 -mx-4 md:mx-0 text-primary">
+        <div className="space-y-4 text-primary">
           {isCameraActive ? (
             /* Camera View */
             <div className="space-y-4">
@@ -282,7 +285,6 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                   onClick={stopCamera}
                   className="flex-1"
                 >
-                  <X className="h-4 w-4 mr-2" />
                   Cancel
                 </Button>
                 <Button
@@ -326,7 +328,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             </div>
           ) : (
             /* Initial Options */
-            <>
+            <div data-tutorial-target="add-receipt-modal">
               {!isLoadingDashboard && !canUploadReceipt && (
                 <div className="text-center p-4 bg-destructive/10 border border-destructive/20 rounded-lg mb-4">
                   <p className="text-sm text-destructive font-medium mb-1">Missing Required Setup</p>
@@ -350,6 +352,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                   className="h-24 flex flex-col items-center gap-2"
                   onClick={handleTakePhoto}
                   disabled={!hasTokensAvailable || !canUploadReceipt}
+                  data-tutorial-target="take-photo"
                 >
                   <Camera className="h-8 w-8" />
                   <span>Take Photo</span>
@@ -360,12 +363,13 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                   className="h-24 flex flex-col items-center gap-2"
                   onClick={handleFileUpload}
                   disabled={!hasTokensAvailable || !canUploadReceipt}
+                  data-tutorial-target="upload-file"
                 >
                   <FileImage className="h-8 w-8" />
                   <span>Upload File</span>
                 </Button>
               </div>
-            </>
+            </div>
           )}
           
           {/* Hidden file input */}
@@ -419,8 +423,8 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </CustomDialog>
   );
 };
 
