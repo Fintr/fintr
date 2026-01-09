@@ -9,7 +9,7 @@ module Transactions
 
     has_many :loan_payments, dependent: :destroy
     has_many_attached :files
-    has_one :rag_embedding, class_name: "Ai::RagEmbedding", as: :embeddable
+    has_one :rag_embedding, class_name: "Ai::RagEmbedding", as: :embeddable, dependent: :destroy
 
     monetize :principal_amount_cents, with_model_currency: :currency
     monetize :outstanding_balance_cents, with_model_currency: :currency
