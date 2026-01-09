@@ -9,6 +9,7 @@ import React,
          useCallback,
          ReactNode,
        } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthContext';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { completeTutorial } from '@/services/auth/user/tutorial';
@@ -61,6 +62,7 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     scope: "openid profile email read:current_user",
   });
   const queryClient = useQueryClient();
+  const pathname = usePathname();
   
   const desktopTutorialCompleted = useAtomValue(desktopTutorialCompletedAtom);
   const mobileTutorialCompleted = useAtomValue(mobileTutorialCompletedAtom);
@@ -119,6 +121,9 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     // Don't start tutorial if we're currently completing it (prevents restart after completion)
     if (isCompletingTutorial) return;
 
+    // Don't start tutorial on onboarding pages
+    if (pathname?.startsWith('/onboarding')) return;
+
     const detectedPlatform = detectPlatform();
     const completed = isTutorialCompleted(detectedPlatform);
 
@@ -129,7 +134,7 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
         setIsActive(true);
       }, 500);
     }
-  }, [user, detectPlatform, isTutorialCompleted, isActive, desktopTutorialCompleted, mobileTutorialCompleted, tutorialDataLoaded, isCompletingTutorial]);
+  }, [user, detectPlatform, isTutorialCompleted, isActive, desktopTutorialCompleted, mobileTutorialCompleted, tutorialDataLoaded, isCompletingTutorial, pathname]);
 
   const startTutorial = useCallback((platform: TutorialPlatform) => {
     setPlatform(platform);

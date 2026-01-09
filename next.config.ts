@@ -15,7 +15,6 @@ const nextConfig: NextConfig = {
     ],
   },
   // Optimize build for memory efficiency
-  swcMinify: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === "production" ? {
       exclude: ["error", "warn"],
