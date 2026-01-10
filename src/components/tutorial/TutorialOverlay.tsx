@@ -5,6 +5,7 @@ import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { useSetAtom } from 'jotai';
 import { isTutorialActiveAtom } from '@/atoms/tutorialAtoms';
+import { usePathname } from 'next/navigation';
 
 const TutorialOverlay: React.FC = () => {
   const {
@@ -15,7 +16,11 @@ const TutorialOverlay: React.FC = () => {
     skipTutorial,
   } = useTutorial();
 
+  const pathname = usePathname();
   const setIsTutorialActive = useSetAtom(isTutorialActiveAtom);
+  
+  // Don't run tutorial on onboarding pages
+  const isOnOnboardingPage = pathname?.startsWith('/onboarding');
 
   const [run, setRun] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
@@ -123,12 +128,13 @@ const TutorialOverlay: React.FC = () => {
       document.body.removeAttribute('data-tutorial-active');
       setIsTutorialActive(false);
     };
-  }, [isActive, platform, getConfig, setIsTutorialActive]);
+  }, [isActive, platform, getConfig, setIsTutorialActive, isOnOnboardingPage]);
 
 
   // Ensure popover content and modal have appropriate z-index
   useEffect(() => {
-    if (!isActive) return;
+    // Don't run tutorial on onboarding pages
+    if (isOnOnboardingPage || !isActive) return;
 
     const ensureElementsAccessible = () => {
       // Ensure popover content has high z-index
@@ -152,11 +158,12 @@ const TutorialOverlay: React.FC = () => {
 
     const interval = setInterval(ensureElementsAccessible, 100);
     return () => clearInterval(interval);
-  }, [isActive]);
+  }, [isActive, isOnOnboardingPage]);
 
   // Watch for popover menu opening after clicking "+" button
   useEffect(() => {
-    if (!isActive || !run || steps.length === 0) return;
+    // Don't run tutorial on onboarding pages
+    if (isOnOnboardingPage || !isActive || !run || steps.length === 0) return;
 
     // Check if we're on step 1 (waiting for the menu to appear)
     const config = getConfig();
@@ -178,7 +185,7 @@ const TutorialOverlay: React.FC = () => {
       const interval = setInterval(checkForPopover, 200);
       return () => clearInterval(interval);
     }
-  }, [isActive, run, stepIndex, steps.length, getConfig]);
+  }, [isActive, run, stepIndex, steps.length, getConfig, isOnOnboardingPage]);
 
   // Handle clicking buttons that open menus (action: 'open-menu')
   const handleCreateTransactionButtonClick = useCallback((currentStep: any, config: any) => {
@@ -635,7 +642,8 @@ const TutorialOverlay: React.FC = () => {
     handleTutorialError,
   ]);
 
-  if (!isActive || !platform || steps.length === 0) {
+  // Don't render tutorial overlay on onboarding pages
+  if (isOnOnboardingPage || !isActive || !platform || steps.length === 0) {
     return null;
   }
 

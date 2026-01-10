@@ -121,8 +121,15 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     // Don't start tutorial if we're currently completing it (prevents restart after completion)
     if (isCompletingTutorial) return;
 
-    // Don't start tutorial on onboarding pages
-    if (pathname?.startsWith('/onboarding')) return;
+    // Don't start tutorial on onboarding pages - check this first and stop if already active
+    if (pathname?.startsWith('/onboarding')) {
+      // If tutorial is already active, stop it immediately
+      if (isActive) {
+        setIsActive(false);
+        setPlatform(null);
+      }
+      return;
+    }
 
     const detectedPlatform = detectPlatform();
     const completed = isTutorialCompleted(detectedPlatform);

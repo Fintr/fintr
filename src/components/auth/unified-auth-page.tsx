@@ -10,6 +10,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { smartInAppBrowserGoogleSignIn } from "@/services/auth/modal-google-signin";
+import { initiateAppleSignIn } from "@/services/auth/apple-signin";
 
 interface UnifiedAuthPageProps {
   onBack?: () => void;
@@ -131,6 +132,28 @@ const UnifiedAuthPage = ({
     }
   };
 
+  const handleAppleSignIn = async () => {
+    console.log('\n=== User Clicked Apple Sign-In ===');
+    console.log('Timestamp:', new Date().toISOString());
+    
+    try {
+      setIsLoading(true);
+      console.log('Initiating Apple sign-in flow...');
+      
+      // Initiate Apple Sign-In via Auth0
+      initiateAppleSignIn();
+      
+      console.log('✅ Apple sign-in initiated successfully');
+      // Note: User will be redirected, so no need to setIsLoading(false)
+    } catch (error: any) {
+      console.error('\n❌ Apple sign-in error:', error.message || error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.error('==================================\n');
+      toast.error(error.message || "Apple sign-in failed");
+      setIsLoading(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -168,7 +191,23 @@ const UnifiedAuthPage = ({
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4 space-y-3">
+        <Button
+          onClick={handleAppleSignIn}
+          disabled={isLoading}
+          className="w-full flex items-center justify-center space-x-3 bg-black hover:bg-gray-900 text-white rounded-md py-2.5 px-4 font-medium"
+        >
+          {isLoading ? (
+            <LoadingSpinner size="small" className="mr-2" />
+          ) : (
+            <>
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+              </svg>
+              <span>Continue with Apple</span>
+            </>
+          )}
+        </Button>
         <Button
           onClick={handleGoogleSignIn}
           disabled={isLoading}
