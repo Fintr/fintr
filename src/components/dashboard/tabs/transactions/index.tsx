@@ -106,6 +106,20 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       queryEndDate: endDate,
     }));
   }, [startDate, endDate]);
+  
+  // Check if any filters are active (beyond default date range)
+  const hasActiveFilters = () => {
+    const { firstDay, lastDay } = getCurrentMonthDates();
+    const isDefaultDateRange = appliedFilters.queryStartDate === firstDay && appliedFilters.queryEndDate === lastDay;
+    
+    return (
+      !isDefaultDateRange ||
+      (appliedFilters.appliedCategory && appliedFilters.appliedCategory !== "" && appliedFilters.appliedCategory !== "all") ||
+      appliedFilters.appliedMinAmount !== "" ||
+      appliedFilters.appliedMaxAmount !== "" ||
+      appliedFilters.searchQuery !== ""
+    );
+  };
   const [searchInput, setSearchInput] = useState("");
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
@@ -602,24 +616,29 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       </div>
 
       <div className="px-2 md:px-0">
-        <Card className="border-0 shadow-none bg-transparent px-0 py-0">
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <Card className="border-0 shadow-none bg-transparent px-0 py-0 overflow-visible">
+        <CardHeader className="flex flex-row items-center justify-between gap-4 overflow-visible">
           <div>
             <CardTitle className="hidden md:block">All Transactions</CardTitle>
             <CardDescription className="px-0 md:px-2">
               {getDescription()}
             </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 bg-white"
-          >
-            <Filter className="h-4 w-4" />
-            <div className="hidden md:flex">
-              {showFilters ? "Hide" : "Show"} Filters
-            </div>
-          </Button>
+          <div className="relative">
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 bg-white"
+            >
+              <Filter className="h-4 w-4" />
+              <div className="hidden md:flex">
+                {showFilters ? "Hide" : "Show"} Filters
+              </div>
+            </Button>
+            {hasActiveFilters() && (
+              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white z-50" />
+            )}
+          </div>
           {shouldShowV2Features() && (
             <div className="flex items-center space-x-2">
               <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:gap-2">

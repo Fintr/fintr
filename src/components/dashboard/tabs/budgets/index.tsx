@@ -78,6 +78,14 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   const [appliedStartDate, setAppliedStartDate] = useState<string>(startDate);
   const [appliedEndDate, setAppliedEndDate] = useState<string>(endDate);
   
+  // Check if any filters are active (beyond default date range)
+  const hasActiveFilters = () => {
+    const { firstDay, lastDay } = getCurrentMonthDates();
+    const isDefaultDateRange = appliedStartDate === firstDay && appliedEndDate === lastDay;
+    
+    return !isDefaultDateRange;
+  };
+  
   // Sync local state with atoms - only when filter type is single or on initial mount
   useEffect(() => {
     setSelectedMonth(monthYear.selectedMonth);
@@ -262,25 +270,30 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   };
 
   return (
-    <Card className="border-0 shadow-none bg-transparent py-0 md:py-4">
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="border-0 shadow-none bg-transparent py-0 md:py-4 overflow-visible">
+      <CardHeader className="flex flex-row items-center justify-between overflow-visible">
         <div>
           <CardTitle>Monthly Budget</CardTitle>
           <CardDescription>
             Track your spending against budget limits for {formattedDate}
           </CardDescription>
         </div>
-        <div className="flex items-end flex-col md:flex-row gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 bg-white text-primary"
-          >
-            <Filter className="h-4 w-4" />
-            <div className="hidden md:flex">
-              {showFilters ? "Hide" : "Show"} Filters
-            </div>
-          </Button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 bg-white text-primary"
+            >
+              <Filter className="h-4 w-4" />
+              <div className="hidden md:flex">
+                {showFilters ? "Hide" : "Show"} Filters
+              </div>
+            </Button>
+            {hasActiveFilters() && (
+              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white z-50" />
+            )}
+          </div>
           <NewBudgetDialog
             budgetsData={budgetsData}
             createBudgetMutation={createBudgetMutation}

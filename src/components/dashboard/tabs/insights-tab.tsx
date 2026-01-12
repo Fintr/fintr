@@ -149,6 +149,14 @@ const InsightsTab = () => {
   const [selectedMonth, setSelectedMonth] = useState(monthYear.selectedMonth);
   const [selectedYear, setSelectedYear] = useState(monthYear.selectedYear);
   
+  // Check if any filters are active (beyond default date range)
+  const hasActiveFilters = () => {
+    const { firstDay, lastDay } = getCurrentMonthDates();
+    const isDefaultDateRange = startDate === firstDay && endDate === lastDay;
+    
+    return !isDefaultDateRange;
+  };
+  
   // Sync local state with atoms
   useEffect(() => {
     setSelectedMonth(monthYear.selectedMonth);
@@ -385,8 +393,8 @@ const InsightsTab = () => {
   const showV2Features = shouldShowV2Features();
 
   return (
-    <Card className="col-span-3 border-0 shadow-none bg-background py-0 md:py-4">
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="col-span-3 border-0 shadow-none bg-background py-0 md:py-4 overflow-visible">
+      <CardHeader className="flex flex-row items-center justify-between overflow-visible pt-2">
         <div>
           <CardTitle>Monthly Overview</CardTitle>
           <CardDescription>
@@ -395,16 +403,23 @@ const InsightsTab = () => {
             {selectedYear}
           </CardDescription>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 bg-white text-primary"
-        >
-          <Filter className="h-4 w-4" />
-          <div className="hidden md:flex">
-            {showFilters ? "Hide" : "Show"} Filters
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 bg-white text-primary"
+            >
+              <Filter className="h-4 w-4" />
+              <div className="hidden md:flex">
+                {showFilters ? "Hide" : "Show"} Filters
+              </div>
+            </Button>
+            {hasActiveFilters() && (
+              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white z-50" />
+            )}
           </div>
-        </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Insights Filters */}
