@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AddReceiptDialog as CustomDialog } from '@/components/ui/add-receipt-dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, FileImage, Loader2, Upload } from 'lucide-react';
