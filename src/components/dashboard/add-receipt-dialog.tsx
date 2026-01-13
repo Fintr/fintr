@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 import React, { useState, useRef, useCallback } from 'react';
 import { AddReceiptDialog as CustomDialog } from '@/components/ui/add-receipt-dialog';
-=======
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
->>>>>>> 3f4bab6f5750c13a48bf3e680d83bdb0c448c049
 import { Button } from '@/components/ui/button';
 import { Camera, FileImage, Loader2, Upload } from 'lucide-react';
 import { uploadReceipt } from '@/services/receipts/mutation';
