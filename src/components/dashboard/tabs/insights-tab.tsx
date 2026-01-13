@@ -392,15 +392,25 @@ const InsightsTab = () => {
 
   const showV2Features = shouldShowV2Features();
 
+  // Format the description to show selected month/year or date range
+  const getDescription = () => {
+    if (filterType === "range") {
+      const startMonth = monthYear.startMonth.charAt(0).toUpperCase() + monthYear.startMonth.slice(1);
+      const endMonth = monthYear.endMonth.charAt(0).toUpperCase() + monthYear.endMonth.slice(1);
+      return `Your financial activity for ${startMonth} ${monthYear.startYear} - ${endMonth} ${monthYear.endYear}`;
+    } else {
+      const month = monthYear.selectedMonth.charAt(0).toUpperCase() + monthYear.selectedMonth.slice(1);
+      return `Your financial activity for ${month} ${monthYear.selectedYear}`;
+    }
+  };
+
   return (
     <Card className="col-span-3 border-0 shadow-none bg-background py-0 md:py-4 overflow-visible">
       <CardHeader className="flex flex-row items-center justify-between overflow-visible pt-2">
         <div>
           <CardTitle>Monthly Overview</CardTitle>
           <CardDescription>
-            Your financial activity for{" "}
-            {selectedMonth.charAt(0).toUpperCase() + selectedMonth.slice(1)}{" "}
-            {selectedYear}
+            {getDescription()}
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">

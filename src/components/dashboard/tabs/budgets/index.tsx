@@ -19,7 +19,7 @@ import { EditBudgetDialog } from "./edit-budget-dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { DeleteButton } from "../transactions/buttons/DeleteButton";
 import { useAtom } from "jotai";
-import { dateFilterStartDateAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom, monthYearToDateRange } from "@/atoms/dateFilterAtoms";
+import { dateFilterStartDateAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom, dateFilterTypeAtom, monthYearToDateRange } from "@/atoms/dateFilterAtoms";
 import {
   Select,
   SelectContent,
@@ -48,6 +48,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   const [startDate, setStartDate] = useAtom(dateFilterStartDateAtom);
   const [endDate, setEndDate] = useAtom(dateFilterEndDateAtom);
   const [monthYear] = useAtom(dateFilterMonthYearAtom);
+  const [filterType] = useAtom(dateFilterTypeAtom);
   
   const yearOptions = getYearOptions();
   const currentYear = new Date().getFullYear().toString();
@@ -57,7 +58,9 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   const currentMonthNumber = new Date().getMonth() + 1;
   
   // Local state for filter type selector (single month vs custom)
-  const [filterTypeSelector, setFilterTypeSelector] = useState<"single" | "custom">("single");
+  const [filterTypeSelector, setFilterTypeSelector] = useState<"single" | "custom">(() => {
+    return filterType === "single" ? "single" : "custom";
+  });
   
   // Local state for custom date range picker
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined } | undefined>(() => {
@@ -86,21 +89,29 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     return !isDefaultDateRange;
   };
   
-  // Sync local state with atoms - only when filter type is single or on initial mount
+  // Sync local state with atoms
   useEffect(() => {
     setSelectedMonth(monthYear.selectedMonth);
     setSelectedYear(monthYear.selectedYear);
     setAppliedStartDate(startDate);
     setAppliedEndDate(endDate);
-    // Only sync dateRange from atoms if we're in single month mode
-    // In custom mode, let the user control the date range picker
-    if (filterTypeSelector === "single" && startDate && endDate) {
+    // Sync dateRange from atoms
+    if (startDate && endDate) {
       setDateRange({
         from: new Date(startDate),
         to: new Date(endDate),
       });
     }
-  }, [monthYear, startDate, endDate, filterTypeSelector]);
+  }, [monthYear, startDate, endDate]);
+  
+  // Update filter type selector when filterType changes
+  useEffect(() => {
+    if (filterType === "single") {
+      setFilterTypeSelector("single");
+    } else {
+      setFilterTypeSelector("custom");
+    }
+  }, [filterType]);
   
   // Format the selected month/year for display
   const getFormattedDate = () => {
