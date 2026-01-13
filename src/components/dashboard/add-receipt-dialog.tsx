@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import React, { useState, useRef, useCallback } from 'react';
 import { AddReceiptDialog as CustomDialog } from '@/components/ui/add-receipt-dialog';
+=======
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+>>>>>>> 3f4bab6f5750c13a48bf3e680d83bdb0c448c049
 import { Button } from '@/components/ui/button';
 import { Camera, FileImage, Loader2, Upload } from 'lucide-react';
 import { uploadReceipt } from '@/services/receipts/mutation';
@@ -21,10 +26,12 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   const [isUploading, setIsUploading] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const historyPushedRef = useRef(false);
 
   const { api } = useAuthApi({
     scope: "openid profile email read:users read:current_user read:ai_usage",
@@ -42,7 +49,18 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   const canUploadReceipt = hasAccounts && hasExpenseCategories;
 
   // Check if device is mobile
-  const isMobile = typeof window !== 'undefined' ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) : false;
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -241,6 +259,42 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     stopCamera();
     onClose();
   };
+
+  // Handle browser history for mobile back button support
+  useEffect(() => {
+    if (!isOpen) {
+      historyPushedRef.current = false;
+      return;
+    }
+
+    const handlePopState = () => {
+      if (historyPushedRef.current) {
+        handleCancel();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    if (isMobile) {
+      setTimeout(() => {
+        if (isOpen) {
+          window.history.pushState({ modalOpen: true }, '');
+          historyPushedRef.current = true;
+        }
+      }, 0);
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      
+      if (isMobile && historyPushedRef.current) {
+        historyPushedRef.current = false;
+        if (window.history.state?.modalOpen) {
+          window.history.back();
+        }
+      }
+    };
+  }, [isOpen, isMobile]);
 
   return (
     <CustomDialog 

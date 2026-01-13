@@ -45,6 +45,9 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [hasUserManuallyScrolled, setHasUserManuallyScrolled] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  const historyPushedRef = useRef(false);
   
   const { 
     messages, 
@@ -70,6 +73,20 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
   
   // Infinite scroll for messages
   const { 
@@ -246,6 +263,42 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
       refetchAIUsage();
     }
   }, [isStreaming, isLoading, messages.length, refetchAIUsage]);
+
+  // Handle browser history for mobile back button support
+  useEffect(() => {
+    if (!isOpen) {
+      historyPushedRef.current = false;
+      return;
+    }
+
+    const handlePopState = () => {
+      if (historyPushedRef.current) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    if (isMobile) {
+      setTimeout(() => {
+        if (isOpen) {
+          window.history.pushState({ modalOpen: true }, '');
+          historyPushedRef.current = true;
+        }
+      }, 0);
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      
+      if (isMobile && historyPushedRef.current) {
+        historyPushedRef.current = false;
+        if (window.history.state?.modalOpen) {
+          window.history.back();
+        }
+      }
+    };
+  }, [isOpen, isMobile, onClose]);
 
 
   const handleSendMessage = async () => {
