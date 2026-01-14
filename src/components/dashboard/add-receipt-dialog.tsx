@@ -26,7 +26,6 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const historyPushedRef = useRef(false);
 
   const { api } = useAuthApi({
     scope: "openid profile email read:users read:current_user read:ai_usage",
@@ -255,41 +254,6 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     onClose();
   };
 
-  // Handle browser history for mobile back button support
-  useEffect(() => {
-    if (!isOpen) {
-      historyPushedRef.current = false;
-      return;
-    }
-
-    const handlePopState = () => {
-      if (historyPushedRef.current) {
-        handleCancel();
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    if (isMobile) {
-      setTimeout(() => {
-        if (isOpen) {
-          window.history.pushState({ modalOpen: true }, '');
-          historyPushedRef.current = true;
-        }
-      }, 0);
-    }
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      
-      if (isMobile && historyPushedRef.current) {
-        historyPushedRef.current = false;
-        if (window.history.state?.modalOpen) {
-          window.history.back();
-        }
-      }
-    };
-  }, [isOpen, isMobile]);
 
   return (
     <CustomDialog 

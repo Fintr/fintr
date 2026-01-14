@@ -279,19 +279,17 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
 
     window.addEventListener('popstate', handlePopState);
 
-    if (isMobile) {
-      setTimeout(() => {
-        if (isOpen) {
-          window.history.pushState({ modalOpen: true }, '');
-          historyPushedRef.current = true;
-        }
-      }, 0);
-    }
+    setTimeout(() => {
+      if (isOpen) {
+        window.history.pushState({ modalOpen: true }, '');
+        historyPushedRef.current = true;
+      }
+    }, 0);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
       
-      if (isMobile && historyPushedRef.current) {
+      if (historyPushedRef.current) {
         historyPushedRef.current = false;
         if (window.history.state?.modalOpen) {
           window.history.back();

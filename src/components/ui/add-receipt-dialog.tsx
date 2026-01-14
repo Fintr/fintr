@@ -124,14 +124,12 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
     body.style.overflow = "hidden";
     html.style.overflow = "hidden";
 
-    if (isMobile) {
-      setTimeout(() => {
-        if (isOpen && !checkLightboxOpen()) {
-          window.history.pushState({ modalOpen: true, lightboxOpen: false }, "");
-          historyPushedRef.current = true;
-        }
-      }, 0);
-    }
+    setTimeout(() => {
+      if (isOpen && !checkLightboxOpen()) {
+        window.history.pushState({ modalOpen: true, lightboxOpen: false }, "");
+        historyPushedRef.current = true;
+      }
+    }, 0);
 
     return () => {
       document.removeEventListener("keydown", handleEscape);
@@ -146,7 +144,7 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
       
       window.scrollTo(0, scrollY);
       
-      if (isMobile && historyPushedRef.current) {
+      if (historyPushedRef.current) {
         historyPushedRef.current = false;
         if (window.history.state?.modalOpen) {
           window.history.back();
