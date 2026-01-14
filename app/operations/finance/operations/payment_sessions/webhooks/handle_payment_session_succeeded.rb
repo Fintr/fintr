@@ -50,7 +50,7 @@ module Finance
               pending_change      = step extract_pending_plan_change(subscription:)
               _                   = step validate_pending_change(pending_change:, payment_session_id: params[:id])
               new_plan            = step find_new_plan(pending_change:)
-              
+
               # Handle "no_current_cycle" case differently
               if pending_change["no_current_cycle"] == true
                 result = step apply_plan_change_without_cycle(
@@ -473,4 +473,3 @@ module Finance
     end
   end
 end
-

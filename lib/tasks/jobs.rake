@@ -56,4 +56,3 @@ namespace :jobs do
     puts "Check status with: rails jobs:status"
   end
 end
-

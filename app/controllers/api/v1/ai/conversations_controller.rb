@@ -4,8 +4,6 @@ module Api
   module V1
     module Ai
       class ConversationsController < ApiController
-
-
         def index
           conversations = current_user.conversations
                                     .for_space(with_current_params[:space_id])

@@ -13,7 +13,7 @@ Rails.application.routes.draw do
         post "/signup", to: "signup#create"
         post "/refresh", to: "refresh#create"
         post "/google/callback", to: "google#callback"
-        
+
         # Private routes
         get "/private", to: "private#private"
         get "/private_scoped", to: "private#private_scoped"
@@ -21,6 +21,8 @@ Rails.application.routes.draw do
         get "/user", to: "user#index"
         patch "/user", to: "user#update"
         post "/user/reset_password", to: "user#reset_password"
+
+        post "/tutorial/complete", to: "tutorial#complete"
       end
 
       namespace :admin do

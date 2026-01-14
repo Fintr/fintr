@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'net/http'
-require 'json'
+require "net/http"
+require "json"
 
 module Auth
   module Operations
@@ -11,10 +11,10 @@ module Auth
         if encrypted_token?(tokens[:access_token])
           Rails.logger.info "🔓 Detected encrypted tokens, attempting to decrypt..."
           result = decrypt_tokens(tokens)
-          return result
+          result
         else
           Rails.logger.info "✅ Tokens are already in JWT format"
-          return Success(tokens)
+          Success(tokens)
         end
       end
 
@@ -23,7 +23,7 @@ module Auth
       def encrypted_token?(token)
         return false unless token
         # JWE tokens have 5 parts separated by dots: header..encrypted_key..iv..ciphertext..tag
-        token.split('.').length == 5
+        token.split(".").length == 5
       end
 
       def decrypt_tokens(tokens)
@@ -32,7 +32,7 @@ module Auth
           # This is a workaround for the encrypted token issue
           Rails.logger.warn "⚠️  Encrypted tokens detected - this requires Auth0 configuration changes"
           Rails.logger.warn "⚠️  Please check your Auth0 application settings to disable token encryption"
-          
+
           # Return the tokens as-is for now, but log the issue
           Rails.logger.error "❌ Cannot process encrypted tokens with current setup"
           Failure("Encrypted tokens not supported - please configure Auth0 to return JWT tokens")

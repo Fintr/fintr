@@ -52,6 +52,7 @@ module Spaces
         space.budgets.destroy_all
         space.transactions.destroy_all
         space.transfers.destroy_all
+        space.loans.destroy_all
         space.categories.destroy_all
         space.accounts.destroy_all
         space.goal_description&.destroy
