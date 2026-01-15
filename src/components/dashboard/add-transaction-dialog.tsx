@@ -15,6 +15,7 @@ import {
 } from "@/types/transactionTypes";
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
 import { shouldShowV2Features } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface AddTransactionDialogProps {
   onAddTransaction?: (transaction: any) => void;
@@ -47,6 +48,7 @@ const AddTransactionDialog = ({
   const [activeTab, setActiveTab] = useState(initialTransactionType || "expense");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const tabsListRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Use controlled or internal open state
   const isDialogOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -227,7 +229,15 @@ const AddTransactionDialog = ({
     // Call the callback if provided
     onAddTransaction(response);
     
-    setDialogOpen(false);
+    // Redirect to loans page if a loan was created
+    if (activeTab === "loan") {
+      setDialogOpen(false);
+      setTimeout(() => {
+        router.push("/dashboard/loans");
+      }, 100);
+    } else {
+      setDialogOpen(false);
+    }
   };
 
   const onTransactionError = () => {
