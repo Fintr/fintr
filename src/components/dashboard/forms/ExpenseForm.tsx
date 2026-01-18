@@ -92,6 +92,7 @@ interface ExpenseFormProps {
   // Keep props for managing the UI state outside the form if necessary
   date: Date | undefined;
   setDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
+  suggestedDate?: Date; // AI-suggested date to display as a clickable suggestion
   onAddCustomCategory?: (categoryName: string) => void;
   onAddCustomAccount?: (accountName: string) => void;
   onSubmitSuccess?: (data: any) => void; // Renamed for clarity
@@ -109,6 +110,7 @@ interface ExpenseFormProps {
 const ExpenseForm: React.FC<ExpenseFormProps> = ({
   date,
   setDate,
+  suggestedDate,
   onAddCustomCategory,
   onAddCustomAccount,
   onSubmitSuccess,
@@ -234,10 +236,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       // Update draftId
       setDraftId(initialData.draftId);
 
-      // Update date when initialData changes
-      if (initialData.date) {
-        setDate(new Date(initialData.date));
-      }
+      // Note: We no longer set the date from initialData
+      // The parent component always sets date to today, and suggestedDate prop shows AI suggestions
 
       // Store the current initialData reference to prevent re-running on same object
       prevInitialDataRef.current = initialData;
@@ -656,6 +656,15 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 />
               </PopoverContent>
             </Popover>
+            {suggestedDate && date && suggestedDate.toDateString() !== date.toDateString() && (
+              <button
+                type="button"
+                onClick={() => setDate(suggestedDate)}
+                className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer border border-primary/30"
+              >
+                Use AI date: {format(suggestedDate, "MMM d, yyyy")}
+              </button>
+            )}
           </div>
 
           {/* Amount Field */}

@@ -60,7 +60,8 @@ const AddTransactionDialog = ({
     if (prefilledData?.type === 'expense') {
       return {
         id: '',
-        date: prefilledData.date || new Date().toISOString().split('T')[0],
+        // Note: date is not included here - parent component always sets date to today
+        // and passes suggestedDate separately for the suggestion pill
         amount: prefilledData.amount || 0,
         description: prefilledData.description || '',
         categoryName: prefilledData.categoryName || '',
@@ -76,24 +77,29 @@ const AddTransactionDialog = ({
     return undefined;
   }, [prefilledData]);
 
+  // Store AI-suggested date separately (don't automatically apply it)
+  const suggestedDate = useMemo(() => {
+    if (prefilledData?.date) {
+      const suggested = new Date(prefilledData.date);
+      const today = new Date();
+      // Only return if it's different from today
+      if (suggested.toDateString() !== today.toDateString()) {
+        return suggested;
+      }
+    }
+    return undefined;
+  }, [prefilledData?.date]);
+
   // Set initial tab and data based on prefilledData
+  // Always use today's date, never the AI-suggested date
   useEffect(() => {
     if (prefilledData?.type) {
       setActiveTab(prefilledData.type);
     }
-    if (prefilledData?.date) {
-      setDate(new Date(prefilledData.date));
-    } else if (isDialogOpen) {
+    if (isDialogOpen) {
       setDate(new Date());
     }
   }, [prefilledData, isDialogOpen]);
-
-  // Reset date to current date when dialog opens (if no prefilled date)
-  useEffect(() => {
-    if (isDialogOpen && !prefilledData?.date) {
-      setDate(new Date());
-    }
-  }, [isDialogOpen, prefilledData?.date]);
 
   // Ensure TabsList scrolls to left-most on dialog open
   useEffect(() => {
@@ -345,6 +351,7 @@ const AddTransactionDialog = ({
             <ExpenseForm
               date={date}
               setDate={setDate}
+              suggestedDate={suggestedDate}
               onAddCustomCategory={(category) => {
                 setCustomExpenseCategories([
                   ...customExpenseCategories,
