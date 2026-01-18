@@ -379,10 +379,10 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const maxDate = endOfMonth(currentDate);
   
   return (
-    <form ref={formRef} onSubmit={handleSubmit} data-tutorial-target="income-form">
+    <form ref={formRef} onSubmit={handleSubmit}>
       <div className="space-y-4">
-        {/* Date Picker */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+        {/* Income Form Essential Fields - Tutorial Target */}
+        <div data-tutorial-target="income-form" className="grid grid-cols-2 gap-x-4 gap-y-1">
           <div className="space-y-2">
             <Label htmlFor="date" className="text-sm">Date</Label>
             <Popover modal>
