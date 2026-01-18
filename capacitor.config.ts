@@ -20,7 +20,7 @@ const config: CapacitorConfig = {
   ...(serverConfig && { server: serverConfig }),
   ios: {
     scheme: 'fintrapp',
-    contentInset: 'automatic'
+    contentInset: 'never'
   },
   plugins: {
     SplashScreen: {

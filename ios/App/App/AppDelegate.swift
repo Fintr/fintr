@@ -9,9 +9,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     private var hasAdjustedWebView = false
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Set the app background color to match web app's off-white background
+        if let window = UIApplication.shared.windows.first {
+            // oklch(98.20% 0.004 91.45) converted to RGB: #FAF9F8
+            window.backgroundColor = UIColor(red: 0.98, green: 0.976, blue: 0.973, alpha: 1.0)
+        }
+        
         // Adjust webview safe area after launch
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.adjustWebViewSafeArea()
         }
         return true
@@ -33,8 +38,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-        // Adjust webview safe area after app becomes active
-        adjustWebViewSafeArea()
+        if !hasAdjustedWebView {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.adjustWebViewSafeArea()
+            }
+        }
     }
     
     private func adjustWebViewSafeArea() {
@@ -44,18 +52,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return
         }
         
-        // Wait a bit for webview to be ready
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.setupWebViewPadding(for: rootViewController)
         }
     }
     
     private func setupWebViewPadding(for viewController: CAPBridgeViewController) {
-        // Find the webview by searching the view hierarchy
-        // Capacitor uses WKWebView, so we'll search for it
         var webView: UIView? = nil
         
-        // Recursive function to find WKWebView in the view hierarchy
         func findWebView(in view: UIView) -> UIView? {
             if view.isKind(of: WKWebView.self) {
                 return view
@@ -72,19 +76,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         guard let webView = webView else {
             if !hasAdjustedWebView {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     self.setupWebViewPadding(for: viewController)
                 }
             }
             return
         }
         
-        // Ensure webview has been added to the view hierarchy and has valid dimensions
         guard webView.superview != nil,
               webView.frame.width > 0,
               webView.frame.height > 0 else {
             if !hasAdjustedWebView {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     self.setupWebViewPadding(for: viewController)
                 }
             }
@@ -105,8 +108,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             topPadding = UIApplication.shared.statusBarFrame.size.height
         }
 
-        // Only adjust if we have safe area insets (devices with bezels/notches)
+        // Only adjust if we have safe area insets (devices with notches/dynamic island)
         if topPadding > 0 || leftPadding > 0 || rightPadding > 0 {
+            // Position webview with top padding but let it extend to screen bottom
             webView.frame.origin = CGPoint(x: leftPadding, y: topPadding)
             webView.frame.size = CGSize(
                 width: UIScreen.main.bounds.width - leftPadding - rightPadding,
@@ -114,7 +118,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             )
             hasAdjustedWebView = true
             
-            // Also listen for orientation changes
             NotificationCenter.default.addObserver(
                 self,
                 selector: #selector(handleOrientationChange),
@@ -130,6 +133,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return
         }
         
+        hasAdjustedWebView = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.setupWebViewPadding(for: rootViewController)
         }
