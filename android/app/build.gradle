@@ -33,7 +33,9 @@ android {
                 
                 // Keystore file path is relative to the android directory
                 def keystoreFile = keystoreProperties['storeFile']
-                storeFile = file(keystoreFile.startsWith('/') ? keystoreFile : "app/${keystoreFile}")
+                storeFile = keystoreFile.startsWith('/') 
+                    ? file(keystoreFile) 
+                    : rootProject.file(keystoreFile.startsWith('app/') ? keystoreFile : "app/${keystoreFile}")
                 storePassword = keystoreProperties['storePassword']
                 keyAlias = keystoreProperties['keyAlias']
                 keyPassword = keystoreProperties['keyPassword']

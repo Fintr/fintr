@@ -15,6 +15,10 @@ interface AddReceiptDialogProps {
   onReceiptSuccess?: (suggestedTransactionPayload: any, receiptImage: File, draftId?: string) => void;
 }
 
+// Global flag to prevent dialog close during file selection
+// This is checked by the dialog wrapper's handlePopState
+let globalFileSelectionInProgress = false;
+
 const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, onReceiptSuccess }) => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -67,8 +71,10 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     setIsCameraActive(false);
   }, [stream]);
 
-  // Helper function to update file selection state (both state and ref)
+  // Helper function to update file selection state (state, ref, and global flag)
   const setFileSelectionInProgress = useCallback((value: boolean) => {
+    console.log('[AddReceiptDialog] setFileSelectionInProgress:', value);
+    globalFileSelectionInProgress = value;
     isFileSelectionInProgressRef.current = value;
     setIsFileSelectionInProgress(value);
   }, []);
@@ -242,8 +248,12 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     if (isMobile) {
       // On mobile, use the native camera via file input
       console.log('[AddReceiptDialog] handleTakePhoto (mobile) called');
-      setFileSelectionInProgress(true);
-      console.log('[AddReceiptDialog] Set file selection in progress (mobile)', {
+      
+      // CRITICAL: Set the flag SYNCHRONOUSLY before any async operations
+      // Use both ref and state to ensure immediate blocking
+      isFileSelectionInProgressRef.current = true;
+      setIsFileSelectionInProgress(true);
+      console.log('[AddReceiptDialog] Set file selection in progress (mobile camera)', {
         refValue: isFileSelectionInProgressRef.current
       });
       
@@ -252,7 +262,16 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
       input.accept = 'image/*';
       input.capture = 'environment';
       
+      // Set up a safety timeout to clear the flag if nothing happens
+      // This prevents the dialog from being stuck if something goes wrong
+      const safetyTimeoutId = setTimeout(() => {
+        console.log('[AddReceiptDialog] Safety timeout - clearing flag');
+        isFileSelectionInProgressRef.current = false;
+        setIsFileSelectionInProgress(false);
+      }, 120000); // 2 minutes
+      
       input.onchange = (e) => {
+        clearTimeout(safetyTimeoutId);
         const file = (e.target as HTMLInputElement).files?.[0];
         console.log('[AddReceiptDialog] Mobile camera onchange', { hasFile: !!file });
         
@@ -260,14 +279,16 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           // Validate file type
           if (!file.type.startsWith('image/')) {
             toast.error('Please select an image file');
-            setFileSelectionInProgress(false);
+            isFileSelectionInProgressRef.current = false;
+            setIsFileSelectionInProgress(false);
             return;
           }
           
           // Validate file size
           if (file.size > 10 * 1024 * 1024) {
             toast.error('File size must be less than 10MB');
-            setFileSelectionInProgress(false);
+            isFileSelectionInProgressRef.current = false;
+            setIsFileSelectionInProgress(false);
             return;
           }
           
@@ -283,12 +304,14 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             setImagePreview(e.target?.result as string);
             setIsLoadingPreview(false);
             
-            // IMPORTANT: Longer delay for real mobile devices (1 second)
-            // Mobile devices can have longer event delays than desktop browsers
+            // IMPORTANT: Longer delay for real mobile devices (2 seconds)
+            // Mobile browsers can have multiple navigation events that fire after file selection
+            // We need to keep blocking until all events have settled
             setTimeout(() => {
               console.log('[AddReceiptDialog] Clearing file selection flag after delay (mobile)');
-              setFileSelectionInProgress(false);
-            }, 1000);
+              isFileSelectionInProgressRef.current = false;
+              setIsFileSelectionInProgress(false);
+            }, 2000); // Increased from 1000 to 2000ms
           };
           reader.onerror = () => {
             console.error('[AddReceiptDialog] Error reading mobile camera file');
@@ -296,28 +319,53 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             setSelectedImage(null);
             setImagePreview(null);
             setIsLoadingPreview(false);
-            setFileSelectionInProgress(false);
+            isFileSelectionInProgressRef.current = false;
+            setIsFileSelectionInProgress(false);
           };
           reader.readAsDataURL(file);
         } else {
           console.log('[AddReceiptDialog] Mobile camera cancelled (no file)');
           // User cancelled the file picker - longer delay for mobile
           setTimeout(() => {
-            setFileSelectionInProgress(false);
-          }, 1000);
+            isFileSelectionInProgressRef.current = false;
+            setIsFileSelectionInProgress(false);
+          }, 2000); // Increased from 1000 to 2000ms
         }
       };
       
       // Handle cancellation (user closes file picker without selecting)
       input.oncancel = () => {
-        console.log('[AddReceiptDialog] Mobile camera oncancel');
+        clearTimeout(safetyTimeoutId);
+        console.log('[AddReceiptDialog] Mobile camera oncancel event');
         // Longer delay for mobile to block pending events
         setTimeout(() => {
-          setFileSelectionInProgress(false);
-        }, 1000);
+          console.log('[AddReceiptDialog] Clearing flag after cancel');
+          isFileSelectionInProgressRef.current = false;
+          setIsFileSelectionInProgress(false);
+        }, 2000); // Increased from 1000 to 2000ms
+      };
+      
+      // Handle the case where file picker is opened but no events fire
+      // (some mobile browsers don't always fire onchange or oncancel)
+      input.onfocus = () => {
+        console.log('[AddReceiptDialog] Input received focus (file picker opened)');
+      };
+      
+      input.onblur = () => {
+        console.log('[AddReceiptDialog] Input lost focus (file picker likely closed)');
+        // Add extra safety - if we lose focus and haven't cleared the flag yet,
+        // schedule a check
+        setTimeout(() => {
+          if (isFileSelectionInProgressRef.current && !selectedImage) {
+            console.log('[AddReceiptDialog] Clearing flag after blur (no file selected)');
+            isFileSelectionInProgressRef.current = false;
+            setIsFileSelectionInProgress(false);
+          }
+        }, 2000);
       };
       
       input.click();
+      console.log('[AddReceiptDialog] Triggered file input click');
     } else {
       // On desktop/laptop, use webcam
       startCamera();
@@ -325,14 +373,18 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   };
 
   const handleFileUpload = () => {
+    console.log('[AddReceiptDialog] handleFileUpload called');
+    
     // Set flag BEFORE clicking to prevent dialog from closing while file picker is open
     setFileSelectionInProgress(true);
+    console.log('[AddReceiptDialog] Set file selection in progress (upload)', {
+      refValue: isFileSelectionInProgressRef.current
+    });
     
     // Use a timeout to clear the flag if no file is selected after a reasonable time
     // This handles the case where user cancels the file picker
     const timeoutId = setTimeout(() => {
-      // Check if we still don't have a selected image after 1 minute
-      // If so, clear the flag (user probably cancelled)
+      console.log('[AddReceiptDialog] Clearing flag after timeout (user likely cancelled)');
       setFileSelectionInProgress(false);
     }, 60000);
     
@@ -439,30 +491,44 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
 
   // Wrap onClose to prevent closing during file selection or upload
   const handleDialogClose = useCallback(() => {
-    console.log('[AddReceiptDialog] handleDialogClose called', {
+    const timestamp = new Date().toISOString();
+    console.log(`[AddReceiptDialog] handleDialogClose called at ${timestamp}`, {
+      globalFlag: globalFileSelectionInProgress,
       refValue: isFileSelectionInProgressRef.current,
       stateValue: isFileSelectionInProgress,
       isUploading,
+      hasSelectedImage: !!selectedImage,
       isMobile
     });
     
-    // Prevent closing if file selection is in progress (check ref for immediate value)
-    if (isFileSelectionInProgressRef.current || isFileSelectionInProgress) {
-      console.log('[AddReceiptDialog] Prevented close - file selection in progress');
+    // CRITICAL: Check all flags - global, ref, and state
+    // Global flag is checked first as it's set synchronously
+    if (globalFileSelectionInProgress) {
+      console.log('[AddReceiptDialog] ⛔ BLOCKED close - file selection in progress (global check)');
+      return;
+    }
+    
+    if (isFileSelectionInProgressRef.current) {
+      console.log('[AddReceiptDialog] ⛔ BLOCKED close - file selection in progress (ref check)');
+      return;
+    }
+    
+    if (isFileSelectionInProgress) {
+      console.log('[AddReceiptDialog] ⛔ BLOCKED close - file selection in progress (state check)');
       return;
     }
     
     // Prevent closing if upload is in progress
     if (isUploading) {
-      console.log('[AddReceiptDialog] Prevented close - upload in progress');
+      console.log('[AddReceiptDialog] ⛔ BLOCKED close - upload in progress');
       return;
     }
     
-    console.log('[AddReceiptDialog] Proceeding with close');
+    console.log('[AddReceiptDialog] ✅ Proceeding with close');
     // Just close the dialog - don't reset the image
     // User should explicitly click "Cancel" or "Choose Different" to reset
     handleCancel();
-  }, [isFileSelectionInProgress, isUploading, handleCancel, isMobile]);
+  }, [isFileSelectionInProgress, isUploading, handleCancel, isMobile, selectedImage]);
 
 
   return (
