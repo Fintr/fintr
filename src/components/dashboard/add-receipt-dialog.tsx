@@ -134,7 +134,10 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         reader.onload = (e) => {
           setImagePreview(e.target?.result as string);
           setIsLoadingPreview(false);
-          // Flag stays set - will be cleared on Cancel, Choose Different, or Upload
+          // Keep flag set for 3 seconds to absorb any delayed browser navigation events
+          setTimeout(() => {
+            setFileSelectionInProgress(false);
+          }, 3000);
         };
         reader.onerror = () => {
           toast.error('Error reading image file');
@@ -269,7 +272,11 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           reader.onload = (e) => {
             setImagePreview(e.target?.result as string);
             setIsLoadingPreview(false);
-            // Flag stays set - will be cleared on Cancel, Choose Different, or Upload
+            // Keep flag set for 3 seconds to absorb any delayed browser navigation events
+            setTimeout(() => {
+              isFileSelectionInProgressRef.current = false;
+              setIsFileSelectionInProgress(false);
+            }, 3000);
           };
           reader.onerror = () => {
             console.error('Error reading mobile camera file');
@@ -352,17 +359,12 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
-        // Clear the file selection flag after successful upload
-        setFileSelectionInProgress(false);
         handleCancel();
       } else {
         // Fallback: if no callback is provided, just show success message
-        // Clear file input after successful upload
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
-        // Clear the file selection flag after successful upload
-        setFileSelectionInProgress(false);
         handleCancel();
       }
     } catch (error) {
@@ -403,17 +405,14 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   };
 
   const handleCancel = useCallback(() => {
-    // Prevent closing if file selection is in progress
-    if (isFileSelectionInProgressRef.current || isFileSelectionInProgress) {
-      return;
-    }
-    
     // Clear any pending timeout
     if (fileInputRef.current && (fileInputRef.current as any)._pickTimeout) {
       clearTimeout((fileInputRef.current as any)._pickTimeout);
       delete (fileInputRef.current as any)._pickTimeout;
     }
     
+    // Force clear the flag immediately when user explicitly cancels
+    isFileSelectionInProgressRef.current = false;
     setSelectedImage(null);
     setImagePreview(null);
     setFileSelectionInProgress(false);
@@ -423,30 +422,22 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
       fileInputRef.current.value = '';
     }
     onClose();
-  }, [isFileSelectionInProgress, stopCamera, onClose, setFileSelectionInProgress]);
+  }, [stopCamera, onClose, setFileSelectionInProgress]);
 
   // Wrap onClose to prevent closing during file selection or upload
   const handleDialogClose = useCallback(() => {
-    // Check all flags - global, ref, and state
-    if (globalFileSelectionInProgress) {
-      return;
-    }
-    
-    if (isFileSelectionInProgressRef.current) {
-      return;
-    }
-    
-    if (isFileSelectionInProgress) {
-      return;
-    }
-    
-    // Prevent closing if upload is in progress
+    // Prevent closing only if upload is in progress
     if (isUploading) {
       return;
     }
     
+    // Prevent closing if file picker is currently active (but not if file is already selected)
+    if (isFileSelectionInProgress && !selectedImage) {
+      return;
+    }
+    
     handleCancel();
-  }, [isFileSelectionInProgress, isUploading, handleCancel]);
+  }, [isFileSelectionInProgress, isUploading, handleCancel, selectedImage]);
 
 
   return (
@@ -607,6 +598,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                   <Button
                     variant="outline"
                     onClick={() => {
+                      isFileSelectionInProgressRef.current = false;
                       setSelectedImage(null);
                       setImagePreview(null);
                       setIsLoadingPreview(false);
