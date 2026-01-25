@@ -87,6 +87,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
       setFileSelectionInProgress(false);
       setIsLoadingPreview(false);
       stopCamera();
+      (window as any).__fileSelectionInProgress = false;
       // Clear file input when dialog closes
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -111,6 +112,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           fileInputRef.current.value = '';
         }
         setFileSelectionInProgress(false);
+        (window as any).__fileSelectionInProgress = false;
         return;
       }
       
@@ -121,6 +123,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           fileInputRef.current.value = '';
         }
         setFileSelectionInProgress(false);
+        (window as any).__fileSelectionInProgress = false;
         return;
       }
       
@@ -134,10 +137,11 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         reader.onload = (e) => {
           setImagePreview(e.target?.result as string);
           setIsLoadingPreview(false);
-          // Keep flag set for 3 seconds to absorb any delayed browser navigation events
+          // Clear flag after successful load
           setTimeout(() => {
             setFileSelectionInProgress(false);
-          }, 3000);
+            (window as any).__fileSelectionInProgress = false;
+          }, 100);
         };
         reader.onerror = () => {
           toast.error('Error reading image file');
@@ -145,15 +149,18 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           setImagePreview(null);
           setIsLoadingPreview(false);
           setFileSelectionInProgress(false);
+          (window as any).__fileSelectionInProgress = false;
         };
         reader.readAsDataURL(file);
       } else {
         setImagePreview(null);
         setFileSelectionInProgress(false);
+        (window as any).__fileSelectionInProgress = false;
       }
     } else {
       // No file selected (user cancelled)
       setFileSelectionInProgress(false);
+      (window as any).__fileSelectionInProgress = false;
     }
   };
 
@@ -236,10 +243,14 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
       input.accept = 'image/*';
       input.capture = 'environment';
       
+      // Set global flag to prevent dialog close during file selection
+      (window as any).__fileSelectionInProgress = true;
+      
       // Safety timeout to clear flag if nothing happens (5 minutes)
       const safetyTimeoutId = setTimeout(() => {
         isFileSelectionInProgressRef.current = false;
         setIsFileSelectionInProgress(false);
+        (window as any).__fileSelectionInProgress = false;
       }, 300000);
       
       input.onchange = (e) => {
@@ -252,6 +263,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             toast.error('Please select an image file');
             isFileSelectionInProgressRef.current = false;
             setIsFileSelectionInProgress(false);
+            (window as any).__fileSelectionInProgress = false;
             return;
           }
           
@@ -260,6 +272,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             toast.error('File size must be less than 10MB');
             isFileSelectionInProgressRef.current = false;
             setIsFileSelectionInProgress(false);
+            (window as any).__fileSelectionInProgress = false;
             return;
           }
           
@@ -272,11 +285,12 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           reader.onload = (e) => {
             setImagePreview(e.target?.result as string);
             setIsLoadingPreview(false);
-            // Keep flag set for 3 seconds to absorb any delayed browser navigation events
+            // Clear flag after successful load
             setTimeout(() => {
               isFileSelectionInProgressRef.current = false;
               setIsFileSelectionInProgress(false);
-            }, 3000);
+              (window as any).__fileSelectionInProgress = false;
+            }, 100);
           };
           reader.onerror = () => {
             console.error('Error reading mobile camera file');
@@ -286,12 +300,14 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             setIsLoadingPreview(false);
             isFileSelectionInProgressRef.current = false;
             setIsFileSelectionInProgress(false);
+            (window as any).__fileSelectionInProgress = false;
           };
           reader.readAsDataURL(file);
         } else {
           // User cancelled the file picker
           isFileSelectionInProgressRef.current = false;
           setIsFileSelectionInProgress(false);
+          (window as any).__fileSelectionInProgress = false;
         }
       };
       
@@ -300,6 +316,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         clearTimeout(safetyTimeoutId);
         isFileSelectionInProgressRef.current = false;
         setIsFileSelectionInProgress(false);
+        (window as any).__fileSelectionInProgress = false;
       };
       
       // Handle blur as fallback
@@ -308,6 +325,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           if (isFileSelectionInProgressRef.current && !selectedImage) {
             isFileSelectionInProgressRef.current = false;
             setIsFileSelectionInProgress(false);
+            (window as any).__fileSelectionInProgress = false;
           }
         }, 1000);
       };
@@ -322,10 +340,12 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   const handleFileUpload = () => {
     // Set flag BEFORE clicking to prevent dialog from closing while file picker is open
     setFileSelectionInProgress(true);
+    (window as any).__fileSelectionInProgress = true;
     
     // Safety timeout to clear flag if no file is selected after 1 minute
     const timeoutId = setTimeout(() => {
       setFileSelectionInProgress(false);
+      (window as any).__fileSelectionInProgress = false;
     }, 60000);
     
     // Store timeout so we can cancel it if file is selected
@@ -413,6 +433,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     
     // Force clear the flag immediately when user explicitly cancels
     isFileSelectionInProgressRef.current = false;
+    (window as any).__fileSelectionInProgress = false;
     setSelectedImage(null);
     setImagePreview(null);
     setFileSelectionInProgress(false);
@@ -599,6 +620,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                     variant="outline"
                     onClick={() => {
                       isFileSelectionInProgressRef.current = false;
+                      (window as any).__fileSelectionInProgress = false;
                       setSelectedImage(null);
                       setImagePreview(null);
                       setIsLoadingPreview(false);

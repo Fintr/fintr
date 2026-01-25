@@ -87,6 +87,16 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
         return;
       }
       
+      // Check if file selection is in progress (global flag from add-receipt-dialog)
+      if (typeof (window as any).__fileSelectionInProgress !== 'undefined' && 
+          (window as any).__fileSelectionInProgress === true) {
+        // Prevent closing, restore history entry
+        if (historyPushedRef.current) {
+          window.history.pushState({ modalOpen: true, lightboxOpen: false }, "");
+        }
+        return;
+      }
+      
       const isLightboxOpen = checkLightboxOpen();
       if (isLightboxOpen) {
         const event = new CustomEvent("lightbox-close");
