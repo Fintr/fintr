@@ -87,6 +87,11 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
         return;
       }
       
+      // On mobile, we don't use history manipulation, so ignore popstate events
+      if (isMobile) {
+        return;
+      }
+      
       // CRITICAL: Check if file selection is in progress
       // If so, restore the history state immediately and prevent close
       if (typeof (window as any).__fileSelectionInProgress !== 'undefined' && 
@@ -138,7 +143,9 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
     html.style.overflow = "hidden";
 
     setTimeout(() => {
-      if (isOpen && !checkLightboxOpen()) {
+      // Don't push history state on mobile to avoid conflicts with native file pickers
+      // Mobile file pickers trigger navigation events that conflict with our history management
+      if (isOpen && !checkLightboxOpen() && !isMobile) {
         window.history.pushState({ modalOpen: true, lightboxOpen: false }, "");
         historyPushedRef.current = true;
       }
@@ -157,7 +164,8 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
       
       window.scrollTo(0, scrollY);
       
-      if (historyPushedRef.current) {
+      // Only manipulate history if we pushed a state (desktop only now)
+      if (historyPushedRef.current && !isMobile) {
         historyPushedRef.current = false;
         if (window.history.state?.modalOpen) {
           window.history.back();
