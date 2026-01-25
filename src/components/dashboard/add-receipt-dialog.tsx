@@ -95,6 +95,29 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     }
   }, [isOpen, stopCamera, setFileSelectionInProgress]);
 
+  // CRITICAL: Global popstate interceptor to prevent navigation during file selection
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handlePopStateIntercept = (e: PopStateEvent) => {
+      if ((window as any).__fileSelectionInProgress === true) {
+        // Prevent ANY popstate handling during file selection
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        // Immediately restore history state
+        window.history.pushState({ modalOpen: true, lightboxOpen: false, fileSelection: true }, "");
+      }
+    };
+    
+    // Add this listener at capture phase to intercept before other handlers
+    window.addEventListener('popstate', handlePopStateIntercept, true);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopStateIntercept, true);
+    };
+  }, [isOpen]);
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     
@@ -234,17 +257,16 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
 
   const handleTakePhoto = () => {
     if (isMobile) {
-      // On mobile, use the native camera via file input
+      // CRITICAL: Set ALL flags FIRST, before any DOM manipulation
+      (window as any).__fileSelectionInProgress = true;
       isFileSelectionInProgressRef.current = true;
       setIsFileSelectionInProgress(true);
       
+      // On mobile, use the native camera via file input
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
       input.capture = 'environment';
-      
-      // Set global flag to prevent dialog close during file selection
-      (window as any).__fileSelectionInProgress = true;
       
       // Safety timeout to clear flag if nothing happens (5 minutes)
       const safetyTimeoutId = setTimeout(() => {

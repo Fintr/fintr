@@ -87,13 +87,16 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
         return;
       }
       
-      // Check if file selection is in progress (global flag from add-receipt-dialog)
+      // CRITICAL: Check if file selection is in progress
+      // If so, restore the history state immediately and prevent close
       if (typeof (window as any).__fileSelectionInProgress !== 'undefined' && 
           (window as any).__fileSelectionInProgress === true) {
-        // Prevent closing, restore history entry
-        if (historyPushedRef.current) {
-          window.history.pushState({ modalOpen: true, lightboxOpen: false }, "");
-        }
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        // Push state back immediately to prevent navigation
+        window.history.pushState({ modalOpen: true, lightboxOpen: false }, "");
+        historyPushedRef.current = true;
         return;
       }
       
