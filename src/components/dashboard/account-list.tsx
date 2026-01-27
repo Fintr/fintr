@@ -29,11 +29,13 @@ const AccountList: React.FC<AccountListProps> = ({
   onDeleteAccount,
   currencySymbol = "₱",
 }) => {
-  const { updateAccount, deleteAccount, accountCategoryOptions } = useAccounts();
+  const { updateAccount, deleteAccount, adjustAccountBalance, accountCategoryOptions } = useAccounts();
   const [activeAccount, setActiveAccount] = useState<Account | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editedAccountName, setEditedAccountName] = useState("");
+  const [newBalance, setNewBalance] = useState("");
+  const [adjustmentDate, setAdjustmentDate] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -64,6 +66,10 @@ const AccountList: React.FC<AccountListProps> = ({
   const handleOpenEditDialog = (account: Account) => {
     setActiveAccount(account);
     setEditedAccountName(account.name);
+    setNewBalance(account.balance);
+    const today = new Date().toISOString().split('T')[0];
+    setAdjustmentDate(today);
+    setErrorMessage(null);
     setShowEditDialog(true);
   };
 
@@ -74,7 +80,8 @@ const AccountList: React.FC<AccountListProps> = ({
     setShowDeleteDialog(true);
   };
 
-  // Handle account update
+
+  // Handle account update (name and/or balance)
   const handleUpdateAccount = async () => {
     if (!activeAccount) return;
     
@@ -83,22 +90,68 @@ const AccountList: React.FC<AccountListProps> = ({
       return;
     }
 
-    if (editedAccountName.trim() === activeAccount.name) {
+    const newBalanceNum = parseFloat(newBalance);
+    if (isNaN(newBalanceNum)) {
+      toast.error("Please enter a valid balance");
+      return;
+    }
+
+    if (!adjustmentDate) {
+      toast.error("Please select an adjustment date");
+      return;
+    }
+
+    const currentBalance = parseBalance(activeAccount.balance);
+    const nameChanged = editedAccountName.trim() !== activeAccount.name;
+    const balanceChanged = newBalanceNum !== currentBalance;
+
+    if (!nameChanged && !balanceChanged) {
+      toast.info("No changes to save");
       setShowEditDialog(false);
       return;
     }
 
     setIsUpdating(true);
+    setErrorMessage(null);
+    
     try {
-      await updateAccount({
-        accountId: activeAccount.id,
-        updateData: { name: editedAccountName.trim() }
-      });
-      toast.success(`Account updated to "${editedAccountName.trim()}"`);
+      // Update name if changed
+      if (nameChanged) {
+        await updateAccount({
+          accountId: activeAccount.id,
+          updateData: { name: editedAccountName.trim() }
+        });
+      }
+
+      // Adjust balance if changed
+      if (balanceChanged) {
+        await adjustAccountBalance({
+          accountId: activeAccount.id,
+          adjustmentData: {
+            newBalance: newBalanceNum,
+            adjustmentDate: adjustmentDate
+          }
+        });
+      }
+
+      // Success message
+      if (nameChanged && balanceChanged) {
+        const difference = newBalanceNum - currentBalance;
+        const adjustmentType = difference > 0 ? "Income" : "Expense";
+        toast.success(`Account updated and balance adjusted. ${adjustmentType} Adjustment transaction created.`);
+      } else if (nameChanged) {
+        toast.success(`Account updated to "${editedAccountName.trim()}"`);
+      } else {
+        const difference = newBalanceNum - currentBalance;
+        const adjustmentType = difference > 0 ? "Income" : "Expense";
+        toast.success(`Balance adjusted successfully. ${adjustmentType} Adjustment transaction created.`);
+      }
+      
       setShowEditDialog(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update account:", error);
-      toast.error("Failed to update account");
+      const backendMessage = error?.error?.details?.message || error?.error?.message || "Failed to update account";
+      setErrorMessage(backendMessage);
     } finally {
       setIsUpdating(false);
     }
@@ -129,6 +182,7 @@ const AccountList: React.FC<AccountListProps> = ({
       setIsDeleting(false);
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -192,6 +246,54 @@ const AccountList: React.FC<AccountListProps> = ({
                 autoFocus
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="current-balance">Current Balance</Label>
+              <Input
+                id="current-balance"
+                value={activeAccount ? formatCurrency(parseBalance(activeAccount.balance)) : ""}
+                disabled
+                className="bg-gray-50"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-balance">New Balance</Label>
+              <Input
+                id="new-balance"
+                type="number"
+                step="0.01"
+                value={newBalance}
+                onChange={(e) => setNewBalance(e.target.value)}
+                placeholder="Enter new balance"
+                disabled={isUpdating}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="adjustment-date">Adjustment Date</Label>
+              <Input
+                id="adjustment-date"
+                type="date"
+                value={adjustmentDate}
+                onChange={(e) => setAdjustmentDate(e.target.value)}
+                disabled={isUpdating}
+              />
+            </div>
+            {activeAccount && newBalance && parseFloat(newBalance) !== parseBalance(activeAccount.balance) && (
+              <div className="text-sm p-3 rounded-md bg-blue-50 border border-blue-200">
+                <strong>Note:</strong> This will create a{" "}
+                <span className="font-semibold">
+                  {parseFloat(newBalance) > parseBalance(activeAccount.balance) ? "Income" : "Expense"} Adjustment
+                </span>{" "}
+                transaction for{" "}
+                <span className="font-semibold">
+                  {formatCurrency(Math.abs(parseFloat(newBalance) - parseBalance(activeAccount.balance)))}
+                </span>
+              </div>
+            )}
+            {errorMessage && (
+              <div className="text-sm text-red-900 bg-red-100/50 p-3 rounded-md border border-red-300">
+                <strong>Error:</strong> {errorMessage}
+              </div>
+            )}
             <div className="flex justify-end space-x-2">
               <Button
                 type="button"
@@ -204,7 +306,7 @@ const AccountList: React.FC<AccountListProps> = ({
               <Button
                 type="button"
                 onClick={handleUpdateAccount}
-                disabled={isUpdating || !editedAccountName.trim()}
+                disabled={isUpdating || !editedAccountName.trim() || !newBalance || !adjustmentDate}
               >
                 {isUpdating ? "Updating..." : "Update"}
               </Button>
@@ -212,6 +314,7 @@ const AccountList: React.FC<AccountListProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+
 
       {/* Delete Account Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useAuthApi from '../useAuthApi';
 import { fetchAccounts } from '@/services/transactions/accounts/queries';
-import { createAccount, updateAccount, deleteAccount, CreateAccountType, UpdateAccountType } from '@/services/transactions/accounts/mutation';
+import { createAccount, updateAccount, deleteAccount, adjustAccountBalance, CreateAccountType, UpdateAccountType, AdjustAccountBalanceType } from '@/services/transactions/accounts/mutation';
 import { Account } from '@/types/accountTypes';
 import { toast } from 'sonner';
 
@@ -79,6 +79,24 @@ export const useAccounts = () => {
     },
   });
 
+  // Adjust account balance mutation
+  const adjustAccountBalanceMutation = useMutation({
+    mutationFn: ({ accountId, adjustmentData }: { accountId: string; adjustmentData: AdjustAccountBalanceType }) => 
+      adjustAccountBalance(api, accountId, adjustmentData),
+    onSuccess: (response, variables) => {
+      // Invalidate and refetch accounts
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      // Invalidate dashboard and transactions to show the new adjustment transaction
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['filteredTransactions'] });
+    },
+    onError: (error: any) => {
+      console.error('Error adjusting account balance:', error);
+      throw error;
+    },
+  });
+
   // Helper function to get accounts data from response
   const getAccountsData = (): Account[] => {
     if (!accounts) return [];
@@ -131,5 +149,7 @@ export const useAccounts = () => {
     isUpdating: updateAccountMutation.isLoading,
     deleteAccount: deleteAccountMutation.mutateAsync,
     isDeleting: deleteAccountMutation.isLoading,
+    adjustAccountBalance: adjustAccountBalanceMutation.mutateAsync,
+    isAdjusting: adjustAccountBalanceMutation.isLoading,
   };
 }; 

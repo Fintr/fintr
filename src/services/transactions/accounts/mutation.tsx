@@ -12,6 +12,12 @@ export interface UpdateAccountType {
   name: string;
 }
 
+// Type for adjusting account balance
+export interface AdjustAccountBalanceType {
+  newBalance: number;
+  adjustmentDate: string;
+}
+
 /**
  * Create a new account
  * 
@@ -98,5 +104,40 @@ export const deleteAccount = async (
     // Log and rethrow generic errors
     console.error('Error deleting account:', error);
     throw new Error('Failed to delete account');
+  }
+};
+
+/**
+ * Adjust account balance
+ * 
+ * @param api - The authenticated API client
+ * @param accountId - The ID of the account to adjust
+ * @param adjustmentData - The adjustment data (new balance and date)
+ * @returns Success response with created transaction
+ */
+export const adjustAccountBalance = async (
+  api: AxiosInstance,
+  accountId: string,
+  adjustmentData: AdjustAccountBalanceType
+) => {
+  try {
+    const payload = {
+      new_balance: adjustmentData.newBalance,
+      adjustment_date: adjustmentData.adjustmentDate
+    };
+    const response = await api.post(`/transactions/accounts/${accountId}/adjust_balance`, payload);
+    return response.data;
+  } catch (error) {
+    // Handle different error structures
+    const axiosError = error as AxiosError;
+    
+    if (axiosError.response?.data) {
+      // Pass through the structured error response for field validation handling
+      throw axiosError.response.data;
+    }
+    
+    // Log and rethrow generic errors
+    console.error('Error adjusting account balance:', error);
+    throw new Error('Failed to adjust account balance');
   }
 }; 
