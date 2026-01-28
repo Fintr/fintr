@@ -141,7 +141,7 @@ export default function AuthCallback() {
           }
         }
 
-        const response = await fetch(`${backendUrl}/api/v1/auth/google/callback`, {
+        const response = await fetch(`${backendUrl}/api/v1/auth/oauth/callback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -347,7 +347,7 @@ export default function AuthCallback() {
                   Completing Sign-In
                 </h2>
                 <p className="text-muted-foreground">
-                  Please wait while we complete your Google authentication...
+                  Please wait while we complete your authentication...
                 </p>
               </div>
             </div>
@@ -365,7 +365,7 @@ export default function AuthCallback() {
                 {(showCloseBrowserButton || isCapacitorFlow) ? (
                   <>
                     <p className="text-muted-foreground mb-4">
-                      You've been signed in with Google! Tap the button below to return to the app.
+                      You've been signed in successfully! Tap the button below to return to the app.
                     </p>
                     <Button
                       onClick={handleCloseBrowser}
@@ -377,7 +377,7 @@ export default function AuthCallback() {
                 ) : showOpenAppButton ? (
                   <>
                     <p className="text-muted-foreground mb-4">
-                      You've been signed in with Google. Tap the button below to open the app.
+                      You've been signed in successfully. Tap the button below to open the app.
                     </p>
                     <Button
                       onClick={handleOpenApp}
@@ -388,7 +388,7 @@ export default function AuthCallback() {
                   </>
                 ) : (
                   <p className="text-muted-foreground">
-                    You've been signed in with Google. Redirecting to your dashboard...
+                    You've been signed in successfully. Redirecting to your dashboard...
                   </p>
                 )}
               </div>

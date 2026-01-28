@@ -10,7 +10,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { smartInAppBrowserGoogleSignIn } from "@/services/auth/modal-google-signin";
-import { initiateAppleSignIn } from "@/services/auth/apple-signin";
+import { smartAppleSignIn } from "@/services/auth/in-app-apple-signin";
 
 interface UnifiedAuthPageProps {
   onBack?: () => void;
@@ -140,8 +140,8 @@ const UnifiedAuthPage = ({
       setIsLoading(true);
       console.log('Initiating Apple sign-in flow...');
       
-      // Initiate Apple Sign-In via Auth0
-      initiateAppleSignIn();
+      // Use smart in-app browser Apple Sign-In (in-app browser on mobile, redirect on desktop)
+      await smartAppleSignIn();
       
       console.log('✅ Apple sign-in initiated successfully');
       // Note: User will be redirected, so no need to setIsLoading(false)
