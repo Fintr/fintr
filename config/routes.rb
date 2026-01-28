@@ -13,6 +13,7 @@ Rails.application.routes.draw do
         post "/signup", to: "signup#create"
         post "/refresh", to: "refresh#create"
         post "/google/callback", to: "google#callback"
+        post "/oauth/callback", to: "oauth#callback" # Generic OAuth callback for all providers
 
         # Private routes
         get "/private", to: "private#private"
