@@ -3,22 +3,29 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import { AxiosInstance } from "axios";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { 
   currentSpaceAtom, 
   availableSpacesAtom, 
   spacePermissionsAtom,
-  spaceFeaturesAtom 
+  spaceFeaturesAtom,
+  workspaceTransitionAtom 
 } from "@/atoms/spaceAtoms";
 import { Space, SpaceContext } from "@/types/spaceTypes";
 import { spacesApi } from "@/services/spaces/api";
 
 export function useSpaceContext(api: AxiosInstance) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const currentSpace = useAtomValue(currentSpaceAtom);
   const setCurrentSpace = useSetAtom(currentSpaceAtom);
   const setAvailableSpaces = useSetAtom(availableSpacesAtom);
   const setSpacePermissions = useSetAtom(spacePermissionsAtom);
   const setSpaceFeatures = useSetAtom(spaceFeaturesAtom);
+  
+  // Use shared atom for workspace transition state
+  const transitionState = useAtomValue(workspaceTransitionAtom);
+  const setTransitionState = useSetAtom(workspaceTransitionAtom);
 
   // Fetch available spaces
   const { data: spaces, isLoading: spacesLoading } = useQuery({
@@ -54,21 +61,36 @@ export function useSpaceContext(api: AxiosInstance) {
   // Space switching mutation
   const switchSpaceMutation = useMutation({
     mutationFn: async (spaceCode: string) => {
-      // For now, just update the current space in state
-      // In a real implementation, this would call the switch API
       const space = spaces?.find(s => s.code === spaceCode);
-      if (space) {
-        setCurrentSpace(space);
-        // Update localStorage for persistence - this will trigger re-renders in components using useLocalStorage
-        if (typeof window !== 'undefined') {
-          localStorage.setItem("spaceCode", spaceCode);
-          // Dispatch a custom event to notify components of the change
-          window.dispatchEvent(new CustomEvent('spaceCodeChanged', { detail: { spaceCode } }));
-        }
+      if (!space) {
+        throw new Error('Space not found');
       }
+
+      console.log('🔄 Starting space switch to:', space.name);
+
+      // Show transition screen immediately
+      setTransitionState({
+        isTransitioning: true,
+        destinationSpace: space,
+      });
+
+      console.log('🎬 Transition state set, overlay should appear now');
+
+      // Small delay to ensure the slide-in animation starts smoothly
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Update the current space
+      setCurrentSpace(space);
+      
+      // Update localStorage for persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("spaceCode", spaceCode);
+        window.dispatchEvent(new CustomEvent('spaceCodeChanged', { detail: { spaceCode } }));
+      }
+
       return { space };
     },
-    onSuccess: (data, spaceCode) => {
+    onSuccess: async (data, spaceCode) => {
       // Invalidate all space-scoped queries when workspace is switched
       queryClient.invalidateQueries({ queryKey: ["space-context"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -83,6 +105,29 @@ export function useSpaceContext(api: AxiosInstance) {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["messages"] });
       queryClient.invalidateQueries({ queryKey: ["ai", "usage"] });
+
+      // Keep showing the transition screen for smooth experience (2.5 seconds total)
+      // This ensures users see the full slide-in animation and the pulsating logo
+      await new Promise(resolve => setTimeout(resolve, 2500));
+
+      // Navigate to transactions tab
+      router.push('/dashboard');
+
+      // Wait a bit before hiding transition screen (allows page to start loading)
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      // Hide transition screen with slide-out animation
+      setTransitionState({
+        isTransitioning: false,
+        destinationSpace: null,
+      });
+    },
+    onError: () => {
+      // Hide transition screen on error
+      setTransitionState({
+        isTransitioning: false,
+        destinationSpace: null,
+      });
     },
   });
 
@@ -117,7 +162,8 @@ export function useSpaceContext(api: AxiosInstance) {
     spaceContext,
     switchSpace,
     isLoading: spacesLoading || contextLoading,
-    isSwitching: switchSpaceMutation.isLoading,
+    isSwitching: switchSpaceMutation.isPending || switchSpaceMutation.isLoading,
+    transitionState,
   };
 }
 

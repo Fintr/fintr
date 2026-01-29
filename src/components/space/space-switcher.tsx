@@ -12,15 +12,20 @@ import { GrantAccessDialog } from "@/components/space/grant-access-dialog";
 interface SpaceSwitcherProps {
   showSpaceSwitcher?: boolean;
   isMobile?: boolean;
+  defaultExpanded?: boolean;
 }
 
-export function SpaceSwitcher({ showSpaceSwitcher = true, isMobile = true }: SpaceSwitcherProps) {
+export function SpaceSwitcher({ 
+  showSpaceSwitcher = true, 
+  isMobile = true,
+  defaultExpanded = false,
+}: SpaceSwitcherProps) {
   const { api } = useAuthApi();
   const { spaces, currentSpace, switchSpace, isLoading, isSwitching } = useSpaceContext(api);
   const { canManageUsers } = useSpacePermissions();
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [showGrantAccessDialog, setShowGrantAccessDialog] = React.useState(false);
-  const [showSpaceList, setShowSpaceList] = React.useState(false);
+  const [showSpaceList, setShowSpaceList] = React.useState(defaultExpanded);
 
   const handleSpaceSwitch = (spaceCode: string) => {
     if (spaceCode !== currentSpace?.code) {
@@ -74,9 +79,6 @@ export function SpaceSwitcher({ showSpaceSwitcher = true, isMobile = true }: Spa
                 )}
               </div>
             </div>
-            {isSwitching && (
-              <div className="animate-spin h-3 w-3 border border-gray-300 border-t-blue-500 rounded-full" />
-            )}
           </div>
         </div>
 

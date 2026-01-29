@@ -18,6 +18,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SpaceSwitcher } from "@/components/space/space-switcher";
 import { useAtomValue } from "jotai";
 import { isAdminAtom } from "@/atoms/dashboardAtoms";
+import { useQueryClient } from "@tanstack/react-query";
+import { resetGlobalAuthLock } from "@/components/deep-link-handler";
 
 interface SettingsCard {
   title: string;
@@ -36,9 +38,30 @@ export default function AppSettingsPage() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const isAdmin = useAtomValue(isAdminAtom);
+  const queryClient = useQueryClient();
+
+  // Extract login provider from user.sub (e.g., "google-oauth2|123" or "apple|456")
+  const getLoginProvider = (): string => {
+    if (!user?.sub) return "Email";
+    if (user.sub.startsWith("google-oauth2")) return "Google";
+    if (user.sub.startsWith("apple")) return "Apple";
+    if (user.sub.startsWith("auth0")) return "Email";
+    return "Email";
+  };
+
+  const loginProvider = getLoginProvider();
 
   const handleLogout = () => {
     try {
+      // CRITICAL: Clear ALL React Query caches to ensure fresh data on next login
+      // This fixes the infinite loading issue when logging in again
+      console.log('🧹 Clearing React Query cache before logout...');
+      queryClient.clear();
+      
+      // Reset the global auth lock to allow future logins
+      console.log('🔓 Resetting global auth lock for next login...');
+      resetGlobalAuthLock();
+      
       // Clear all local storage items related to auth and space
       if (typeof window !== "undefined") {
         localStorage.removeItem("spaceCode");
@@ -142,6 +165,17 @@ export default function AppSettingsPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
             Hi {user?.name || "User"}
           </h1>
+          
+          {/* Login Method and Email */}
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+              {loginProvider}
+            </span>
+            <span className="text-primary/70 text-sm break-all">
+              {user?.email}
+            </span>
+          </div>
+          
           <p className="text-primary/70 text-sm md:text-base">
             Manage your settings and preferences
           </p>
@@ -150,7 +184,11 @@ export default function AppSettingsPage() {
         {/* Space Management Section */}
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-primary mb-4">Space Management</h2>
-          <SpaceSwitcher showSpaceSwitcher={true} isMobile={false} />
+          <SpaceSwitcher 
+            showSpaceSwitcher={true} 
+            isMobile={false}
+            defaultExpanded={true}
+          />
         </div>
 
         {/* Menu Sections */}

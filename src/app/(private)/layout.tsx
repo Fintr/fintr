@@ -7,6 +7,7 @@ import MobileStickyHeader from "@/components/dashboard/mobile-sticky-header";
 import { useAtomValue } from 'jotai';
 import { isAdminAtom } from '@/atoms/dashboardAtoms';
 import { onboardingStepAtom, isOnboardingCompletedAtom } from '@/atoms/onboardingAtoms';
+import { workspaceTransitionAtom } from '@/atoms/spaceAtoms';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
 import { usePathname } from 'next/navigation';
@@ -14,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/ui/loading-screen";
 import TutorialOverlay from "@/components/tutorial/TutorialOverlay";
+import { WorkspaceTransitionScreen } from "@/components/space/workspace-transition-screen";
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const { api, isLoading: isApiLoading } = useAuthApi({
@@ -24,6 +26,9 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const isOnboardingCompleted = useAtomValue(isOnboardingCompletedAtom);
   const pathname = usePathname();
   const router = useRouter();
+  
+  // Get workspace transition state from shared atom
+  const transitionState = useAtomValue(workspaceTransitionAtom);
 
   // Determine if action buttons should be hidden (e.g., on admin page)
   const hideActionButtons = pathname.startsWith("/admin");
@@ -65,7 +70,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="min-h-screen bg-background text-primary">
-      {!isOnOnboardingPage && !isStandalonePage && (
+      {!isOnOnboardingPage && !isStandalonePage && !transitionState.isTransitioning && (
         <>
           <DashboardNavigation hideActionButtons={hideActionButtons} isAdmin={isAdmin} />
           {/* Mobile Sticky Header - Show only on CRM and Admin pages (not dashboard pages) */}
@@ -86,11 +91,18 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
         {children}
       </div>
       {/* Bottom Navigation for Mobile - Show on CRM and Admin pages */}
-      {!isOnOnboardingPage && !isStandalonePage && (
+      {!isOnOnboardingPage && !isStandalonePage && !transitionState.isTransitioning && (
         <BottomNavigation />
       )}
       {/* Tutorial Overlay */}
       <TutorialOverlay />
+      
+      {/* Workspace Transition Screen */}
+      <WorkspaceTransitionScreen
+        isVisible={transitionState.isTransitioning}
+        workspaceName={transitionState.destinationSpace?.name}
+        isOrganization={transitionState.destinationSpace?.isOrganization}
+      />
     </div>
   );
 };

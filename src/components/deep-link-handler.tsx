@@ -1,13 +1,26 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthStorage } from '@/lib/auth-storage';
 
+// Global flag to prevent processing during auth flows
+let globalAuthLock = false;
+
+// Export function to reset the global auth lock after auth flow completes
+export const resetGlobalAuthLock = () => {
+  console.log('🔓 Resetting global auth lock');
+  globalAuthLock = false;
+};
+
 export default function DeepLinkHandler() {
   const router = useRouter();
   const { checkAuth, isAuthenticated, isLoading } = useAuth();
+  
+  // Use refs to persist across renders and prevent race conditions
+  const processedUrlsRef = useRef(new Set<string>());
+  const isProcessingRef = useRef(false);
 
   useEffect(() => {
     const handleDeepLink = async () => {
@@ -30,6 +43,32 @@ export default function DeepLinkHandler() {
         const listener = await App.addListener('appUrlOpen', async (event: { url: string }) => {
           console.log('\n=== Deep Link Received ===');
           console.log('URL:', event.url);
+          
+          // CRITICAL: Check global auth lock first (prevents all processing during auth)
+          if (globalAuthLock) {
+            console.log('🔒 Global auth lock active - ignoring deep link');
+            return;
+          }
+          
+          // Prevent duplicate processing of the same URL (synchronous check)
+          if (processedUrlsRef.current.has(event.url)) {
+            console.log('⏭️ Skipping duplicate deep link:', event.url);
+            return;
+          }
+          
+          // Mark as processed IMMEDIATELY to prevent race conditions
+          processedUrlsRef.current.add(event.url);
+          
+          // Prevent concurrent processing
+          if (isProcessingRef.current) {
+            console.log('⏭️ Already processing a deep link, skipping:', event.url);
+            return;
+          }
+          
+          // Set processing flag
+          isProcessingRef.current = true;
+          
+          console.log('✅ Processing deep link:', event.url);
           
           // Immediately close Browser if it's still open (from OAuth redirect)
           // This ensures the Browser closes when iOS intercepts the custom URL scheme
@@ -81,19 +120,33 @@ export default function DeepLinkHandler() {
           
           // Check if this is an OAuth callback with query params
           if (path === '/auth-callback' && queryParams) {
-            console.log('Routing to auth-callback with params');
+            console.log('🔐 OAuth callback detected - initiating token exchange');
             console.log('Query params:', queryParams);
             
-            // Close the Browser plugin if it's still open (from OAuth redirect)
-            // This ensures the browser closes when the app opens via deep link
-            import('@capacitor/browser').then(({ Browser }) => {
-              Browser.close().catch(() => {
-                // Ignore errors if browser is already closed
-              });
-            });
+            // CRITICAL: Close the browser BEFORE setting lock or navigating
+            // This ensures the Safari view closes immediately so user can see the app
+            console.log('🚪 Closing Safari browser immediately...');
+            try {
+              const { Browser } = await import('@capacitor/browser');
+              await Browser.close();
+              console.log('✅ Safari browser closed successfully');
+            } catch (error) {
+              console.log('ℹ️ Browser close failed (might already be closed):', error);
+            }
+            
+            // Small delay to ensure browser view dismisses before navigation
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Set global auth lock to prevent ANY other deep links during auth
+            globalAuthLock = true;
+            console.log('🔒 Global auth lock activated');
             
             // Route to auth-callback page to process the tokens
+            console.log('📍 Navigating to /auth-callback...');
             router.push(`/auth-callback?${queryParams}`);
+            
+            // DON'T reset processing flag for auth callbacks
+            console.log('✅ Auth callback navigation initiated');
             return;
           }
           
@@ -101,55 +154,39 @@ export default function DeepLinkHandler() {
           if (path === '/auth-callback-success' || path === 'auth-callback-success') {
             console.log('Auth callback success - refreshing auth state...');
             
-            // Wait for checkAuth to complete and verify auth state is updated
-            let retryCount = 0;
-            const maxRetries = 10; // Maximum 5 seconds of retries (10 * 500ms)
-            
-            const navigateToDashboard = () => {
-              // Check auth state directly from storage as a fallback
-              const authData = AuthStorage.getAuthData();
-              const isAuthReady = authData && AuthStorage.isAuthenticated();
-              
-              if (isAuthReady) {
-                console.log('Auth confirmed ready, navigating to dashboard');
-                router.push('/dashboard');
-                // Force a small delay to ensure navigation completes
-                setTimeout(() => {
-                  // If still on same route, the state should be ready now
-                  console.log('Dashboard navigation initiated');
-                }, 100);
-              } else if (retryCount < maxRetries) {
-                retryCount++;
-                console.warn(`Auth not ready yet, retrying (${retryCount}/${maxRetries}) in 500ms...`);
-                setTimeout(navigateToDashboard, 500);
-              } else {
-                console.error('Auth not ready after maximum retries, navigating anyway');
-                // Navigate anyway - AuthWrapper will handle the redirect if needed
-                router.push('/dashboard');
-              }
-            };
-            
-            checkAuth().then(() => {
-              console.log('Auth state refreshed, verifying authentication...');
-              
-              // Wait for React state to propagate, then check if authenticated
-              setTimeout(() => {
-                navigateToDashboard();
-              }, 500);
-            }).catch((error) => {
+            // Refresh auth state from storage
+            await checkAuth().catch((error) => {
               console.error('Error refreshing auth state:', error);
-              // Still try to navigate - auth might be in storage even if checkAuth failed
-              navigateToDashboard();
             });
+            
+            // Check auth state from storage
+            const authData = AuthStorage.getAuthData();
+            const isAuthReady = authData && AuthStorage.isAuthenticated();
+            
+            if (isAuthReady) {
+              console.log('✅ Auth confirmed ready, navigating to dashboard');
+              router.push('/dashboard');
+            } else {
+              console.error('❌ Auth not ready after token exchange');
+              router.push('/login');
+            }
+            
+            isProcessingRef.current = false; // Reset processing flag
             return;
           }
           
           console.log('Routing to:', path);
           
           // Refresh auth state when deep link is received
-          checkAuth().then(() => {
+          try {
+            await checkAuth();
             router.push(path);
-          });
+          } catch (error) {
+            console.error('Error in deep link handler:', error);
+            router.push(path); // Navigate anyway
+          } finally {
+            isProcessingRef.current = false; // Reset processing flag
+          }
         });
 
         return () => {

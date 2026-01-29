@@ -53,6 +53,34 @@ const UnifiedAuthPage = ({
     }
   }, [isAuthenticated, router]);
 
+  // Reset loading state when page becomes visible again
+  // (e.g., user cancels auth flow or hits back button)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('🔄 Page became visible - resetting loading state');
+        setIsLoading(false);
+      }
+    };
+
+    // Also handle when the window regains focus (for Capacitor apps)
+    const handleFocus = () => {
+      console.log('🔄 Window regained focus - resetting loading state');
+      setIsLoading(false);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    // Reset loading state on mount (in case user navigated back)
+    setIsLoading(false);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLoginData((prev) => ({ ...prev, [name]: value }));
@@ -121,8 +149,11 @@ const UnifiedAuthPage = ({
       // Use smart in-app browser Google Sign-In (in-app browser on mobile, redirect on desktop)
       await smartInAppBrowserGoogleSignIn();
       
-      console.log('✅ Google sign-in initiated successfully');
-      // Note: User will be redirected, so no need to setIsLoading(false)
+      console.log('✅ Google sign-in flow completed');
+      // Reset loading state after browser closes
+      // If auth succeeded, user will be redirected via deep link
+      // If user cancelled, they stay on this page and need loading state reset
+      setIsLoading(false);
     } catch (error: any) {
       console.error('\n❌ Google sign-in error:', error.message || error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -143,8 +174,11 @@ const UnifiedAuthPage = ({
       // Use smart in-app browser Apple Sign-In (in-app browser on mobile, redirect on desktop)
       await smartAppleSignIn();
       
-      console.log('✅ Apple sign-in initiated successfully');
-      // Note: User will be redirected, so no need to setIsLoading(false)
+      console.log('✅ Apple sign-in flow completed');
+      // Reset loading state after browser closes
+      // If auth succeeded, user will be redirected via deep link
+      // If user cancelled, they stay on this page and need loading state reset
+      setIsLoading(false);
     } catch (error: any) {
       console.error('\n❌ Apple sign-in error:', error.message || error);
       console.error('Error details:', JSON.stringify(error, null, 2));

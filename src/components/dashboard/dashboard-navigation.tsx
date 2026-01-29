@@ -12,6 +12,8 @@ import { NotificationProps } from "@/components/dashboard/notification-item";
 import NavDrawer from "@/components/dashboard/nav-drawer";
 import Link from "next/link";
 import { shouldShowV2Features } from "@/lib/utils";
+import { resetGlobalAuthLock } from "@/components/deep-link-handler";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface NavItem {
   title: string;
@@ -36,6 +38,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
 
   const pathname = usePathname();
   const showV2Features = shouldShowV2Features();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -108,6 +111,14 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
   };
 
   const handleLogout = () => {
+    // Clear React Query cache for fresh data on next login
+    console.log('🧹 Clearing React Query cache before logout...');
+    queryClient.clear();
+    
+    // Reset global auth lock for next login
+    console.log('🔓 Resetting global auth lock for next login...');
+    resetGlobalAuthLock();
+    
     if (typeof window !== 'undefined') {
       localStorage.removeItem('spaceCode');
     }
