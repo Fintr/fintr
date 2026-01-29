@@ -6,6 +6,17 @@ export const availableSpacesAtom = atom<Space[]>([]);
 export const spacePermissionsAtom = atom<SpacePermissions | null>(null);
 export const spaceFeaturesAtom = atom<SpaceFeatures | null>(null);
 
+// Workspace transition state atom
+export interface WorkspaceTransitionState {
+  isTransitioning: boolean;
+  destinationSpace: Space | null;
+}
+
+export const workspaceTransitionAtom = atom<WorkspaceTransitionState>({
+  isTransitioning: false,
+  destinationSpace: null,
+});
+
 // Derived atoms
 export const isPersonalSpaceAtom = atom(
   (get) => get(currentSpaceAtom)?.isPersonal ?? false

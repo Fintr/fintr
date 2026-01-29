@@ -7,6 +7,7 @@ import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { verifyState, getOriginalRedirectPath } from '@/services/auth/google-signin';
 import { AuthStorage, AuthStorageData, AuthTokens } from '@/lib/auth-storage';
+import { resetGlobalAuthLock } from '@/components/deep-link-handler';
 
 // Helper function to detect if we're on iOS mobile
 const isIOSDevice = (): boolean => {
@@ -141,6 +142,11 @@ export default function AuthCallback() {
           }
         }
 
+        console.log('🔐 Exchanging code for tokens...', {
+          codePrefix: code.substring(0, 20) + '...',
+          redirectUri,
+        });
+
         const response = await fetch(`${backendUrl}/api/v1/auth/oauth/callback`, {
           method: 'POST',
           headers: {
@@ -153,14 +159,40 @@ export default function AuthCallback() {
           }),
         });
 
+        console.log('🔐 Token exchange response:', {
+          status: response.status,
+          ok: response.ok,
+        });
+
         const data = await response.json();
+        console.log('🔐 Token exchange data:', {
+          hasData: !!data,
+          dataKeys: Object.keys(data),
+          hasDataValue: !!data.data?.value,
+        });
 
         if (!response.ok) {
+          console.error('❌ Token exchange failed:', {
+            status: response.status,
+            details: data.details,
+            message: data.message,
+          });
           throw new Error(data.details || data.message || 'Token exchange failed');
         }
         // Extract tokens from response
         // Backend returns: { success: true, message: "...", data: { access_token, id_token, ... } }
         const tokens = data.data?.value || data.data || data;
+        console.log('🔐 Extracted tokens:', {
+          hasAccessToken: !!tokens.access_token,
+          hasIdToken: !!tokens.id_token,
+          hasRefreshToken: !!tokens.refresh_token,
+          accessTokenLength: tokens.access_token?.length,
+          idTokenLength: tokens.id_token?.length,
+          accessTokenParts: tokens.access_token?.split('.').length,
+          idTokenParts: tokens.id_token?.split('.').length,
+          accessTokenPrefix: tokens.access_token?.substring(0, 50) + '...',
+          idTokenPrefix: tokens.id_token?.substring(0, 50) + '...',
+        });
 
         // Validate tokens are present
         if (!tokens.access_token || !tokens.id_token) {
@@ -246,13 +278,27 @@ export default function AuthCallback() {
           issued_at: Date.now(),
         };
 
+        console.log('💾 Storing auth data in localStorage...', {
+          userEmail: userProfile?.email,
+          userSub: userProfile?.sub,
+          expiresAt: new Date(authData.expires_at).toISOString(),
+        });
         AuthStorage.setAuthData(authData);
 
         // Verify tokens are stored
         const storedAuthData = AuthStorage.getAuthData();
+        console.log('💾 Verifying stored auth data:', {
+          storedSuccessfully: !!storedAuthData,
+          hasTokens: !!storedAuthData?.tokens,
+          hasUser: !!storedAuthData?.user,
+          isAuthenticatedInStorage: AuthStorage.isAuthenticated(),
+        });
+        
         // Refresh auth context state before redirecting to prevent brief login page flash
         // This ensures AuthWrapper sees the user as authenticated immediately
+        console.log('🔄 Refreshing AuthContext state...');
         await checkAuth();
+        console.log('✅ AuthContext refreshed');
 
         // Success!
         hasProcessedRef.current = true;
@@ -268,27 +314,42 @@ export default function AuthCallback() {
           redirectPath = '/dashboard';
         }
 
-        // For Capacitor flow, redirect to app using custom URL scheme
-        // This will close the browser and open the app
-        if (capacitorFlow || isCapacitorCallback) {
-          // Small delay to ensure token storage is complete
-          setTimeout(async () => {
-            try {
-              // Close the browser
-              const { Browser } = await import('@capacitor/browser');
-              await Browser.close();
-              console.log('Browser closed');
-            } catch (error) {
-              console.log('Browser might already be closed (this is OK)');
-            }
+        console.log('🔄 Determining redirect strategy...', {
+          capacitorFlow,
+          isCapacitorCallback,
+          isIOSDevice: isIOSDevice(),
+          redirectPath,
+        });
 
-            // Redirect to app using custom URL scheme
-            // This will be caught by the deep link handler
-            window.location.href = 'fintrapp://auth-callback-success';
+        // For Capacitor flow, close browser and redirect directly
+        if (capacitorFlow || isCapacitorCallback) {
+          console.log('📱 Capacitor flow detected - closing browser and redirecting to dashboard');
+          
+          // Close the browser (will fail silently if already closed)
+          try {
+            const { Browser } = await import('@capacitor/browser');
+            await Browser.close();
+            console.log('✅ Browser closed successfully');
+          } catch (error) {
+            console.log('ℹ️ Browser already closed (this is OK)');
+          }
+
+          // Small delay to ensure browser view dismisses
+          await new Promise(resolve => setTimeout(resolve, 200));
+
+          // Redirect directly to dashboard (no need for intermediate deep link)
+          // Auth state is already refreshed, so we can navigate immediately
+          console.log('🚀 Navigating to dashboard:', redirectPath);
+          router.push(redirectPath);
+          
+          // Reset the global auth lock after navigation
+          // This allows future logins to work
+          setTimeout(() => {
+            resetGlobalAuthLock();
           }, 500);
-        } else if (isIOSDevice()) {
-          setShowOpenAppButton(true);
         } else {
+          // For web browser (not Capacitor), always redirect to dashboard
+          console.log('🌐 Web browser flow - redirecting to:', redirectPath);
           // Use router.push instead of window.location.href to avoid full page reload
           // This prevents the brief flash of login page
           // No delay needed since auth state is already refreshed
@@ -372,18 +433,6 @@ export default function AuthCallback() {
                       className="bg-primary hover:bg-primary/80 text-white w-full"
                     >
                       Return to App
-                    </Button>
-                  </>
-                ) : showOpenAppButton ? (
-                  <>
-                    <p className="text-muted-foreground mb-4">
-                      You've been signed in successfully. Tap the button below to open the app.
-                    </p>
-                    <Button
-                      onClick={handleOpenApp}
-                      className="bg-primary hover:bg-primary/80 text-white w-full"
-                    >
-                      Open Fintr App
                     </Button>
                   </>
                 ) : (

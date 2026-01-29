@@ -40,11 +40,15 @@ export interface SignupResponse extends LoginResponse {
 export const loginWithCredentials = async (
   credentials: LoginCredentials
 ): Promise<LoginResponse> => {
+  console.log('🔐 loginWithCredentials: Starting...', { username: credentials.username });
   const backendUrl = process.env.NEXT_PUBLIC_BE_URL;
 
   if (!backendUrl) {
+    console.error('❌ loginWithCredentials: Backend URL not configured');
     throw new Error('Backend URL is not configured. Please check your environment variables.');
   }
+
+  console.log('🔐 loginWithCredentials: Calling backend:', `${backendUrl}/api/v1/auth/login`);
 
   try {
     const response = await fetch(`${backendUrl}/api/v1/auth/login`, {
@@ -55,15 +59,31 @@ export const loginWithCredentials = async (
       body: JSON.stringify(credentials),
     });
 
+    console.log('🔐 loginWithCredentials: Response received', {
+      status: response.status,
+      ok: response.ok,
+    });
+
     const data = await response.json();
+    console.log('🔐 loginWithCredentials: Response data', {
+      hasData: !!data,
+      hasValue: !!data?.data?.value,
+      dataKeys: Object.keys(data),
+    });
 
     if (!response.ok) {
+      console.error('❌ loginWithCredentials: Login failed', {
+        status: response.status,
+        message: data.message || data.error,
+      });
       throw new Error(data.message || data.error || 'Login failed');
     }
 
+    console.log('✅ loginWithCredentials: Login successful');
     // The backend returns the data in a success wrapper under data.value
     return data.data.value as LoginResponse;
   } catch (error) {
+    console.error('❌ loginWithCredentials: Exception thrown', error);
     throw error;
   }
 };

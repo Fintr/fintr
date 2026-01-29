@@ -30,10 +30,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [tokens, setTokens] = useState<LoginResponse | null>(null);
   const router = useRouter();
 
+  console.log('🔄 AuthProvider State:', {
+    hasUser: !!user,
+    userEmail: user?.email,
+    hasTokens: !!tokens,
+    isLoading,
+    error,
+  });
+
   // Check for existing authentication
   const checkAuth = async () => {
+    console.log('🔍 checkAuth: Starting authentication check...');
+    
+    // Set a timeout to ensure loading state doesn't hang forever
+    const timeoutId = setTimeout(() => {
+      console.warn('⏰ checkAuth: Taking longer than expected (10s timeout)');
+      setIsLoading(false);
+    }, 10000); // 10 second timeout
+    
     try {
       setIsLoading(true);
+      
       // Migrate from old storage format if needed
       AuthStorage.migrateFromOldFormat();
       
@@ -66,13 +83,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setTokens(null);
       setUser(null);
     } finally {
+      clearTimeout(timeoutId); // Clear the timeout if we finish normally
       setIsLoading(false);
+      console.log('✅ checkAuth: Complete');
     }
   };
 
   // Check for existing authentication on mount
   useEffect(() => {
-    checkAuth();
+    console.log('🚀 AuthProvider: Initializing auth on mount...');
+    // Wrap in try-catch to ensure errors don't break the app
+    const initAuth = async () => {
+      try {
+        console.log('🚀 AuthProvider: Calling checkAuth...');
+        await checkAuth();
+        console.log('✅ AuthProvider: checkAuth complete');
+      } catch (error) {
+        console.error('❌ AuthProvider: Failed to initialize auth:', error);
+        setIsLoading(false);
+      }
+    };
+    
+    initAuth();
   }, []);
 
   // Auto-refresh token when it's about to expire
@@ -123,17 +155,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [tokens]);
 
   const login = async (credentials: LoginCredentials) => {
+    console.log('🔐 AuthContext.login: Starting login...', { email: credentials.email });
     try {
       setIsLoading(true);
       setError(null);
+      console.log('🔐 AuthContext.login: Calling loginWithCredentials...');
 
       const response = await loginWithCredentials(credentials);
+      console.log('🔐 AuthContext.login: Login successful, received tokens');
       
       // Store tokens and user data in unified storage
+      console.log('🔐 AuthContext.login: Decoding user profile from token...');
       const userProfile = AuthStorage.decodeJWT(response.id_token);
       if (!userProfile) {
+        console.error('❌ AuthContext.login: Failed to decode user profile');
         throw new Error('Failed to decode user profile from token');
       }
+      console.log('🔐 AuthContext.login: User profile decoded:', { email: userProfile.email, sub: userProfile.sub });
 
       // Convert LoginResponse to AuthTokens format
       const authTokens: AuthTokens = {
@@ -152,23 +190,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         issued_at: Date.now(),
       };
 
+      console.log('🔐 AuthContext.login: Storing auth data in localStorage...');
       AuthStorage.setAuthData(authData);
+      console.log('🔐 AuthContext.login: Setting state (tokens & user)...');
       setTokens(response);
       setUser(userProfile);
+      console.log('✅ AuthContext.login: Login complete!');
     } catch (error: any) {
+      console.error('❌ AuthContext.login: Login failed:', error.message);
       setError(error.message || 'Login failed');
       throw error;
     } finally {
+      console.log('🔐 AuthContext.login: Setting isLoading = false');
       setIsLoading(false);
     }
   };
 
   const signup = async (credentials: SignupCredentials) => {
+    console.log('📝 AuthContext.signup: Starting signup...', { email: credentials.email });
     try {
       setIsLoading(true);
       setError(null);
+      console.log('📝 AuthContext.signup: Calling signupWithCredentials...');
 
       const response = await signupWithCredentials(credentials);
+      console.log('📝 AuthContext.signup: Signup successful, received tokens');
       
       // Store tokens and user data in unified storage
       const userProfile = AuthStorage.decodeJWT(response.id_token);
@@ -213,16 +259,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const getAccessToken = async (): Promise<string | null> => {
+    console.log('🔑 getAccessToken: Called');
     try {
       // First try to get token from state
       if (tokens?.access_token) {
+        console.log('🔑 getAccessToken: Found token in state', {
+          hasAccessToken: !!tokens.access_token,
+          hasIdToken: !!tokens.id_token,
+          accessTokenPrefix: tokens.access_token?.substring(0, 30) + '...',
+          idTokenPrefix: tokens.id_token?.substring(0, 30) + '...',
+        });
+        
         // Check if token is expired and refresh if needed
         const authData = AuthStorage.getAuthData();
         if (authData) {
           const now = Date.now();
           const isExpired = authData.expires_at <= now;
+          console.log('🔑 getAccessToken: Token expiry check', {
+            expiresAt: new Date(authData.expires_at).toISOString(),
+            now: new Date(now).toISOString(),
+            isExpired,
+          });
           
           if (isExpired) {
+            console.log('⚠️ getAccessToken: Token expired, refreshing...');
             try {
               if (tokens.refresh_token) {
                 const newTokens = await refreshAccessToken(tokens.refresh_token);
@@ -259,11 +319,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Check if access token is encrypted (JWE format)
         const isEncrypted = tokens.access_token.includes('..') && tokens.access_token.split('.').length === 5;
+        console.log('🔑 getAccessToken: Token format check', {
+          isEncrypted,
+          accessTokenParts: tokens.access_token.split('.').length,
+          willUseIdToken: isEncrypted,
+        });
         
         if (isEncrypted) {
+          console.log('🔑 getAccessToken: Returning ID token (access token is encrypted)');
           return tokens.id_token;
         }
         
+        console.log('🔑 getAccessToken: Returning access token');
         return tokens.access_token;
       }
 
