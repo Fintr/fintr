@@ -6,6 +6,8 @@ module Dashboards
       class Contract < Dry::Validation::Contract
         params do
           required(:space_code).value(:string)
+          optional(:start_date).maybe(:string)
+          optional(:end_date).maybe(:string)
         end
       end
 
@@ -31,7 +33,12 @@ module Dashboards
       end
 
       def get_financial_summary(params:)
-        MonthlyFinancialSummaries::Queries::CurrentMonthSummary.call(params:)
+        # If date range is provided, use date range query; otherwise use current month
+        if params[:start_date].present? && params[:end_date].present?
+          MonthlyFinancialSummaries::Queries::DateRangeSummary.call(params:)
+        else
+          MonthlyFinancialSummaries::Queries::CurrentMonthSummary.call(params:)
+        end
       end
 
       def combine_data(dashboard_data:, financial_summary:)

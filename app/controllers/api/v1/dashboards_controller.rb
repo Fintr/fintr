@@ -21,7 +21,11 @@ module Api
       private
 
       def show_params
-        { space_code: current_space.code }
+        {
+          space_code: current_space.code,
+          start_date: params[:start_date],
+          end_date: params[:end_date]
+        }
       end
     end
   end
