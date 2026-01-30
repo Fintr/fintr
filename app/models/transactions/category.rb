@@ -9,8 +9,8 @@ module Transactions
       Family Insurance Home Utilities Food\ &\ Groceries Transport Pet Subscriptions\ &\ Hobbies
       Dine\ Out\ &\ Entertainment Travel\ &\ Vacations Shopping
     ].freeze
-    UNINCLUDED_INCOME_CATEGORIES = %w[Initial\ Balance]
-    UNINCLUDED_EXPENSE_CATEGORIES = %w[Transfer\ Fee]
+    UNINCLUDED_INCOME_CATEGORIES = %w[Initial\ Balance Income\ Adjustment]
+    UNINCLUDED_EXPENSE_CATEGORIES = %w[Transfer\ Fee Expense\ Adjustment]
 
     belongs_to :space, class_name: "Spaces::Space"
     has_many :transactions, class_name: "Transactions::Transaction", foreign_key: "category_id", dependent: :restrict_with_error
@@ -28,11 +28,11 @@ module Transactions
 
     def self.create_default_categories(space)
       transaction do
-        (DEFAULT_INCOME_CATEGORIES + ["Initial Balance"]).each do |name| # 'Initial Balance' should not be selected by user anytime
+        (DEFAULT_INCOME_CATEGORIES + ["Initial Balance", "Income Adjustment"]).each do |name| # 'Initial Balance' should not be selected by user anytime
           self.find_or_create_by(name:, category_type: "income", space:)
         end
 
-        (["Transfer Fee"]).each do |name| # 'Transfer' should not be selected by user anytime
+        (DEFAULT_EXPENSE_CATEGORIES + ["Transfer Fee", "Expense Adjustment"]).each do |name| # 'Transfer' should not be selected by user anytime
           self.find_or_create_by(name:, category_type: "expense", space:)
         end
       end

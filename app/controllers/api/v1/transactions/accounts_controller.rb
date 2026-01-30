@@ -37,13 +37,22 @@ module Api
 
           render_success(data: operation.value!)
         end
-
+        
+        def adjust_balance
+          operation = ::Transactions::Operations::Accounts::AdjustAccountBalance.new.call(with_current_params(adjust_balance_params))
+          return render_unprocessable_content(details: operation.failure) unless operation.success?
+          render_success(data: operation.value!)
+        end
         private
 
         def create_params
           params.permit(:name, :balance, :account_category)
         end
-
+        
+        def adjust_balance_params
+          params.permit(:id, :new_balance, :adjustment_date)
+        end
+        
         def update_params
           params.permit(:id, :name)
         end

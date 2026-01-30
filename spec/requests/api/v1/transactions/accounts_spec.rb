@@ -305,4 +305,164 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
       end
     end
   end
+
+  describe "POST /api/v1/transactions/accounts/:id/adjust_balance" do
+    let(:operation_double) { instance_double(Transactions::Operations::Accounts::AdjustAccountBalance) }
+    let!(:account_to_adjust) { create(:account, space: space, name: "Account to Adjust", balance: Money.from_amount(1000, 'PHP')) }
+
+    before do
+      allow(::Transactions::Operations::Accounts::AdjustAccountBalance).to receive(:new).and_return(operation_double)
+    end
+
+    context "when adjustment is successful with positive balance change" do
+      let(:valid_params) do
+        {
+          id: account_to_adjust.id,
+          new_balance: 1500.0,
+          adjustment_date: Date.current.to_s
+        }
+      end
+
+      it "adjusts the account balance" do
+        adjustment_transaction = build(:income_transaction, amount: Money.from_amount(500.0, 'PHP'), description: 'Balance adjustment')
+        operation_result = Dry::Monads::Result::Success.new(adjustment_transaction)
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        post "/api/v1/transactions/accounts/#{account_to_adjust.id}/adjust_balance", params: valid_params, headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => true)
+        expect(parsed_response).to include("message")
+        expect(parsed_response).to include("data")
+      end
+    end
+
+    context "when adjustment is successful with negative balance change" do
+      let(:valid_params) do
+        {
+          id: account_to_adjust.id,
+          new_balance: 700.0,
+          adjustment_date: Date.current.to_s
+        }
+      end
+
+      it "adjusts the account balance downward" do
+        adjustment_transaction = build(:expense_transaction, amount: Money.from_amount(300.0, 'PHP'), description: 'Balance adjustment')
+        operation_result = Dry::Monads::Result::Success.new(adjustment_transaction)
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        post "/api/v1/transactions/accounts/#{account_to_adjust.id}/adjust_balance", params: valid_params, headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => true)
+        expect(parsed_response).to include("message")
+      end
+    end
+
+    context "when parameters are invalid" do
+      let(:invalid_params) do
+        {
+          id: account_to_adjust.id,
+          new_balance: 1500.0
+        }
+      end
+
+      it "returns validation errors" do
+        errors = { adjustment_date: ["is missing"] }
+        operation_result = Dry::Monads::Result::Failure.new(errors)
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        post "/api/v1/transactions/accounts/#{account_to_adjust.id}/adjust_balance", params: invalid_params, headers: headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => false)
+        expect(parsed_response).to include("error")
+        expect(parsed_response["error"]).to include("details")
+      end
+    end
+
+    context "when adjustment_date has invalid format" do
+      let(:invalid_date_params) do
+        {
+          id: account_to_adjust.id,
+          new_balance: 1500.0,
+          adjustment_date: 'invalid-date'
+        }
+      end
+
+      it "returns date format error" do
+        errors = { adjustment_date: "invalid date format" }
+        operation_result = Dry::Monads::Result::Failure.new(errors)
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        post "/api/v1/transactions/accounts/#{account_to_adjust.id}/adjust_balance", params: invalid_date_params, headers: headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => false)
+        expect(parsed_response["error"]["details"]).to include("adjustmentDate" => "invalid date format")
+      end
+    end
+
+    context "when account is not found" do
+      let(:params_with_invalid_account) do
+        {
+          id: 'non-existent-id',
+          new_balance: 1500.0,
+          adjustment_date: Date.current.to_s
+        }
+      end
+
+      it "returns account not found error" do
+        errors = { account: "not found" }
+        operation_result = Dry::Monads::Result::Failure.new(errors)
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        post "/api/v1/transactions/accounts/non-existent-id/adjust_balance", params: params_with_invalid_account, headers: headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => false)
+        expect(parsed_response["error"]["details"]).to include("account" => "not found")
+      end
+    end
+
+    context "when transaction creation fails" do
+      let(:valid_params) do
+        {
+          id: account_to_adjust.id,
+          new_balance: 1500.0,
+          adjustment_date: Date.current.to_s
+        }
+      end
+
+      it "returns transaction creation error" do
+        errors = { transaction: "could not create adjustment transaction", error: { category_name: "not found" } }
+        operation_result = Dry::Monads::Result::Failure.new(errors)
+        allow(operation_double).to receive(:call).and_return(operation_result)
+
+        post "/api/v1/transactions/accounts/#{account_to_adjust.id}/adjust_balance", params: valid_params, headers: headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.content_type).to include('application/json')
+
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include("success" => false)
+        expect(parsed_response["error"]["details"]).to include("transaction" => "could not create adjustment transaction")
+      end
+    end
+  end
 end
