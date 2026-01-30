@@ -11,7 +11,7 @@ import {
 } from "@/atoms/dashboardAtoms";
 import { useEffect } from "react";
 
-export const useDashboardData = () => {
+export const useDashboardData = (startDate?: string, endDate?: string) => {
   const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
@@ -25,9 +25,9 @@ export const useDashboardData = () => {
   const setCategoryOptions = useSetAtom(categoryOptionsAtom);
 
   const { data, error, isLoading, isError, isSuccess, refetch } = useQuery({
-    queryKey: ["dashboard", spaceCode],
+    queryKey: ["dashboard", spaceCode, startDate, endDate],
     queryFn: async () => {
-      const response = await fetchDashboardData(api);
+      const response = await fetchDashboardData(api, startDate, endDate);
       return response;
     },
     enabled: !!spaceCode && isAuthenticated, // Only run this query if spaceCode is available and user is authenticated
