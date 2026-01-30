@@ -509,13 +509,13 @@ const TutorialOverlay: React.FC = () => {
   }, [getConfig, platform]);
 
   // Handle tutorial completion or skip
-  const handleTutorialCompletion = useCallback((status: string) => {
+  const handleTutorialCompletion = useCallback(async (status: string) => {
     setRun(false);
     setIsTutorialActive(false);
     if (status === STATUS.FINISHED) {
-      completeTutorial();
+      await completeTutorial();
     } else if (status === STATUS.SKIPPED) {
-      skipTutorial();
+      await skipTutorial();
     }
   }, [completeTutorial, skipTutorial, setIsTutorialActive]);
 
@@ -578,9 +578,6 @@ const TutorialOverlay: React.FC = () => {
 
     // Defer all callback logic to avoid flushSync errors during render cycle
     setTimeout(() => {
-      // Log ALL callbacks for debugging
-      console.log('🎯 Joyride callback fired:', { action, index, type, stepIndex: stepIndexRef.current, isHandling: isHandlingClickRef.current });
-      
       const config = getConfig();
       if (!config) return;
       
