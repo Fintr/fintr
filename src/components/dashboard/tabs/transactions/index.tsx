@@ -52,7 +52,6 @@ interface TransactionsTabProps {
 const TransactionsTab = ({ }: TransactionsTabProps) => {
   const showV2Features = shouldShowV2Features();
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const { data: dashboardData } = useDashboardData();
   const { firstDay, lastDay } = getCurrentMonthDates();
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
@@ -64,6 +63,9 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const [startDate] = useAtom(dateFilterStartDateAtom);
   const [endDate] = useAtom(dateFilterEndDateAtom);
   const [monthYear] = useAtom(dateFilterMonthYearAtom);
+  
+  // Fetch dashboard data with date filters
+  const { data: dashboardData } = useDashboardData(startDate, endDate);
   
   // Format the description to show selected month/year
   const getDescription = () => {
@@ -97,15 +99,6 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     appliedMaxAmount: "",
     searchQuery: "",
   }))
-  
-  // Sync appliedFilters with date filter atoms when they change
-  useEffect(() => {
-    setAppliedFilters(prev => ({
-      ...prev,
-      queryStartDate: startDate,
-      queryEndDate: endDate,
-    }));
-  }, [startDate, endDate]);
   
   // Check if any filters are active (beyond default date range)
   const hasActiveFilters = () => {
@@ -198,7 +191,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       
       // Invalidate dashboard query to refresh financial summary
       queryClient.invalidateQueries({
-        queryKey: ["dashboard", spaceCode],
+        queryKey: ["dashboard", spaceCode, startDate, endDate],
       });
       
       setDeleteScopeModalOpen(false);
@@ -480,7 +473,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     
     // Invalidate dashboard query to refresh financial summary
     queryClient.invalidateQueries({
-      queryKey: ["dashboard", spaceCode],
+      queryKey: ["dashboard", spaceCode, startDate, endDate],
     });
   };
 
