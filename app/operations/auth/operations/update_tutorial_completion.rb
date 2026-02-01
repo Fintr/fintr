@@ -37,7 +37,7 @@ module Auth
 
       def update_tutorial_completion(user:, params:)
         field_name = "#{params[:platform]}_tutorial"
-        user.update(field_name => Time.current)
+        user.update!(field_name => Time.current)
         Success(user)
       rescue ActiveRecord::RecordInvalid => e
         Failure(**user.errors, error: e, expected: true)
