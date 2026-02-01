@@ -255,5 +255,10 @@ html, body {
     .input-container input {
       font-size: 16px !important; /* Prevents zoom on iOS */
     }
+
+    /* Position toaster above mobile bottom navigation */
+    [data-sonner-toaster] {
+      bottom: calc(64px + max(env(safe-area-inset-bottom), 20px)) !important;
+    }
   }
 }
