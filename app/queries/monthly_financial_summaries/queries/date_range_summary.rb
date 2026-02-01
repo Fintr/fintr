@@ -49,8 +49,8 @@ module MonthlyFinancialSummaries
 
       def fetch_transactions(space:, date_range:)
         transactions = space.transactions.where(
-          date: date_range[:start_date]..date_range[:end_date]
-        )
+          date: date_range[:start_date]..date_range[:end_date].end_of_day
+        ).calculated
         
         Success(transactions)
       rescue ActiveRecord::ActiveRecordError => e
