@@ -22,7 +22,6 @@ module Spaces
     has_many :conversations, class_name: "Ai::Conversation", dependent: :destroy
     has_many :imports, class_name: "Imports::Import", dependent: :destroy
     has_many :space_subscriptions, class_name: "Finance::SpaceSubscription", dependent: :destroy
-    has_many :payment_methods, class_name: "Finance::PaymentMethod", dependent: :destroy
 
     validates :name, presence: true
     validates :code, presence: true, uniqueness: true

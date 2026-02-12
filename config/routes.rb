@@ -22,6 +22,7 @@ Rails.application.routes.draw do
         get "/user", to: "user#index"
         patch "/user", to: "user#update"
         post "/user/reset_password", to: "user#reset_password"
+        delete "/user", to: "user#delete_account"
 
         post "/tutorial/complete", to: "tutorial#complete"
       end

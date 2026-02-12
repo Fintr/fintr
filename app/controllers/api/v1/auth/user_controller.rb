@@ -39,6 +39,18 @@ module Api
           end
         end
 
+        def delete_account
+          result = ::Auth::Operations::DeleteAccount.new.call(
+            user_id: current_user.id
+          )
+
+          if result.success?
+            render_success(data: result.value!)
+          else
+            render_unprocessable_content(details: result.failure)
+          end
+        end
+
         private
 
         def user_params
