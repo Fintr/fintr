@@ -12,6 +12,7 @@ import { getUserAuth0Settings } from '@/services/auth/user/queries';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { CheckCircle, AlertTriangle } from 'lucide-react';
 import ResetDataDialog from '../../../../components/dashboard/reset-data-dialog';
+import DeleteUserAccountDialog from '../../../../components/dashboard/delete-user-account-dialog';
 import SpaceAccessCard from '../../../../components/dashboard/space-access-card';
 
 /**
@@ -28,6 +29,7 @@ const SettingsPage = () => {
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [usesEmail, setUsesEmail] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isDeleteAccountDialogOpen, setIsDeleteAccountDialogOpen] = useState(false);
 
   useEffect(() => {
     const runGetUserAuth0Settings = async () => {
@@ -185,13 +187,22 @@ const SettingsPage = () => {
                 This will permanently delete all your financial data, including transactions, 
                 accounts, budgets, and goals. This action cannot be undone.
               </p>
-              <Button 
-                variant="destructive" 
-                onClick={() => setIsResetDialogOpen(true)}
-                aria-label="Reset all data"
-              >
-                Reset Data
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="destructive" 
+                  onClick={() => setIsResetDialogOpen(true)}
+                  aria-label="Reset all data"
+                >
+                  Reset Data
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => setIsDeleteAccountDialogOpen(true)}
+                  aria-label="Delete account"
+                >
+                  Delete Account
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -200,6 +211,10 @@ const SettingsPage = () => {
       <ResetDataDialog 
         isOpen={isResetDialogOpen}
         onClose={() => setIsResetDialogOpen(false)}
+      />
+      <DeleteUserAccountDialog 
+        isOpen={isDeleteAccountDialogOpen}
+        onClose={() => setIsDeleteAccountDialogOpen(false)}
       />
       <Toaster />
     </div>
