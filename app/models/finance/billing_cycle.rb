@@ -8,6 +8,7 @@ module Finance
                class_name: "Finance::SpaceSubscription"
     has_many :payments,
              class_name: "Finance::Payment",
+             foreign_key: :biling_cycle_id,
              dependent: :nullify
 
     enum :status, {
