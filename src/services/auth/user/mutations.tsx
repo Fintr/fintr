@@ -58,4 +58,19 @@ interface ResetDataArgs {
 export const resetData = async ({ api }: ResetDataArgs) => {
   const response = await api.post('/dashboard/reset_data');
   return response.data;
+};
+
+interface DeleteAccountArgs {
+  api: AxiosInstance;
+}
+
+/**
+ * Permanently deletes the user's account and all associated data.
+ * @param {DeleteAccountArgs} args - Arguments for deleting the account.
+ * @param {AxiosInstance} args.api - Authenticated Axios instance.
+ * @returns {Promise<any>} - The response data from the backend API.
+ */
+export const deleteAccount = async ({ api }: DeleteAccountArgs) => {
+  const response = await api.delete('/auth/user');
+  return response.data;
 }; 

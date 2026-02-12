@@ -1,11 +1,58 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from 'react';
-import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
+import Joyride, { CallBackProps, STATUS, Step, TooltipRenderProps } from 'react-joyride';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { useSetAtom } from 'jotai';
 import { isTutorialActiveAtom } from '@/atoms/tutorialAtoms';
 import { usePathname } from 'next/navigation';
+
+// Custom tooltip component with working skip button
+interface CustomTooltipProps extends TooltipRenderProps {
+  onSkipClick: () => void;
+}
+
+const CustomTooltip: React.FC<CustomTooltipProps> = ({
+  index,
+  step,
+  primaryProps,
+  tooltipProps,
+  size,
+  isLastStep,
+  onSkipClick,
+}) => {
+  return (
+    <div
+      {...tooltipProps}
+      className="bg-white rounded-lg p-4 max-w-xs shadow-lg z-[10050]"
+    >
+      {step.content}
+      <div className="flex justify-between items-center mt-4 pt-3 border-t border-black/10">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onSkipClick();
+          }}
+          className="text-primary bg-transparent border-none cursor-pointer text-sm py-2"
+        >
+          Skip
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {index + 1}/{size}
+          </span>
+          <button
+            {...primaryProps}
+            className="bg-primary text-white rounded-md px-4 py-2 border-none cursor-pointer text-sm font-medium min-w-[80px]"
+          >
+            {isLastStep ? 'Finish' : 'Next'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const TutorialOverlay: React.FC = () => {
   const {
@@ -32,6 +79,13 @@ const TutorialOverlay: React.FC = () => {
   useEffect(() => {
     stepIndexRef.current = stepIndex;
   }, [stepIndex]);
+
+  // Handle skip button click - directly calls skipTutorial
+  const handleSkipClick = useCallback(async () => {
+    setRun(false);
+    setIsTutorialActive(false);
+    await skipTutorial();
+  }, [skipTutorial, setIsTutorialActive]);
 
   // Convert our tutorial steps to react-joyride format
   useEffect(() => {
@@ -588,8 +642,6 @@ const TutorialOverlay: React.FC = () => {
       
       // Handle special action steps ONLY if we're currently handling a click
       if (action === 'next' && typeof index === 'number' && type === 'step:after' && !isHandlingClickRef.current) {
-        console.log('Tutorial callback:', { action, index, type, stepIndex: stepIndexRef.current });
-        console.log('Current stepIndex:', currentStepIndex, 'Callback index:', index, 'Current step:', currentStep?.id, 'Action:', currentStep?.action);
         
         // Handle 'open-menu' action (e.g., mobile-add-button)
         if (currentStep?.action === 'open-menu') {
@@ -617,11 +669,11 @@ const TutorialOverlay: React.FC = () => {
       }
 
       // Handle tutorial completion, skip, or close (X button)
-      // Treat close button the same as skip - mark tutorial as complete
       if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
         handleTutorialCompletion(status);
+      } else if (action === 'skip') {
+        handleTutorialCompletion(STATUS.SKIPPED);
       } else if (action === 'close' || type === 'tour:end') {
-        // Handle close button (X) - treat it the same as skip
         handleTutorialCompletion(STATUS.SKIPPED);
       }
 
@@ -650,14 +702,17 @@ const TutorialOverlay: React.FC = () => {
       run={run}
       stepIndex={stepIndex}
       continuous={true}
-      showProgress={true}
-      showSkipButton={true}
+      showProgress={false}
+      showSkipButton={false}
       disableOverlayClose={true}
       disableScrolling={true}
       scrollOffset={20}
       scrollToFirstStep={false}
       spotlightClicks={false}
       callback={handleJoyrideCallback}
+      tooltipComponent={(props) => (
+        <CustomTooltip {...props} onSkipClick={handleSkipClick} />
+      )}
       styles={{
         options: {
           primaryColor: '#083d64',
@@ -666,51 +721,6 @@ const TutorialOverlay: React.FC = () => {
         spotlight: {
           pointerEvents: 'none',
         },
-        tooltip: {
-          borderRadius: '8px',
-          overflow: 'visible',
-          maxHeight: 'none',
-        },
-        tooltipContainer: {
-          textAlign: 'left',
-          overflow: 'visible',
-        },
-        buttonNext: {
-          backgroundColor: '#083d64',
-          color: 'white',
-          borderRadius: '6px',
-          padding: '8px 16px',
-          display: 'block',
-          visibility: 'visible',
-          opacity: 1,
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '14px',
-          fontWeight: '500',
-          minWidth: '80px',
-        },
-        tooltipFooter: {
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '16px',
-          paddingTop: '12px',
-          borderTop: '1px solid rgba(0, 0, 0, 0.1)',
-        },
-        buttonBack: {
-          color: '#083d64',
-          marginRight: '8px',
-        },
-        buttonSkip: {
-          color: '#083d64',
-        },
-      }}
-      locale={{
-        back: 'Previous',
-        close: 'Close',
-        last: 'Finish',
-        next: 'Next',
-        skip: 'Skip',
       }}
     />
   );
