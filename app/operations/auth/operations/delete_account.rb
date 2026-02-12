@@ -82,7 +82,7 @@ module Auth
         Spaces::SpaceUser.where(space_id: space_id).delete_all
 
         # Finally delete the space itself
-        space.delete
+        space.destroy
       end
 
       def delete_user_from_auth0(user:)
