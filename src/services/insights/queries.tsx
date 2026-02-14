@@ -49,10 +49,11 @@ interface ApiMonthlySpendingItem {
 
 interface ApiAccountBreakdownItem {
   name: string;
-  balance: {
-    cents: number;
-    currency_iso: string;
-  };
+  /** API returns balance as { cents, currencyIso } (camelCase). Legacy may send number/string. */
+  balance:
+    | { cents: number; currencyIso?: string; currency_iso?: string }
+    | number
+    | string;
   percentage: string;
   category: string;
 }
@@ -334,14 +335,26 @@ export const fetchInsights = async (
         savings: item.net_amount,
       })) || [],
       accountBreakdown: {
-        totalBalance: parseFloat((apiData.accountBreakdown?.totalBalance || '0').replace(/,/g, '')),
-        breakdown: apiData.accountBreakdown?.breakdown?.map((item, index) => ({
-          name: item.name,
-          value: item.balance.cents / 100, // Convert cents to actual amount
-          color: getColorByIndex(index), // Use unique color based on index
-          percentage: item.percentage,
-          category: item.category,
-        })) || [],
+        totalBalance: parseFloat(
+          (apiData.accountBreakdown?.totalBalance || '0').replace(/,/g, '')
+        ),
+        breakdown:
+          apiData.accountBreakdown?.breakdown?.map((item, index) => {
+            const balance = item.balance;
+            const value =
+              typeof balance === 'object' &&
+              balance !== null &&
+              'cents' in balance
+                ? (balance as { cents: number }).cents / 100
+                : parseFloat(String(balance ?? 0).replace(/,/g, '')) || 0;
+            return {
+              name: item.name,
+              value,
+              color: getColorByIndex(index),
+              percentage: item.percentage ?? '0%',
+              category: item.category ?? '',
+            };
+          }) ?? [],
       },
     };
 
