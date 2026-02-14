@@ -129,6 +129,26 @@ For iOS and Android development, you'll need additional setup. The app uses Capa
 - `pnpm android` - Run app on Android emulator/device
 - `pnpm android:open` - Open Android project in Android Studio
 
+## Testing production build (Android)
+
+To test the app as it will run in production (production API, bundled assets, no live reload):
+
+1. **One command** (from `fintr-fe`):
+   ```bash
+   ./scripts/mobile/build-production-android.sh
+   ```
+   This cleans the build, loads `.env.production` (so the app uses `https://api.fintr.ai`), builds the static export, syncs to Android, and runs the app on the emulator. Start an AVD in Device Manager first if none is running.
+
+2. **Install a release APK on a device**: After running the script once (so `out/` and Android assets are up to date), build and install the signed APK:
+   ```bash
+   cd android && ./gradlew assembleRelease
+   ```
+   Then install `android/app/build/outputs/apk/release/app-release.apk` on your device (or use **Build → Build Bundle(s) / APK(s) → Build APK(s)** in Android Studio).
+
+3. **Build AAB for Play Store**: Use `./scripts/mobile/build-android-aab.sh` (after a production build + sync as above).
+
+**View logs and network on device without USB:** The app can show an in-app devtools panel (Console, Network, etc.) on the phone. It appears automatically when running a **dev** build in the Capacitor app. For a **production** build, set `NEXT_PUBLIC_ERUDA=true` in `.env.production` (or in the env when running the build script), then rebuild. A small floating button appears on screen; tap it to open the panel. No USB or ADB required.
+
 ## Troubleshooting
 
 ### iOS Issues
@@ -152,8 +172,24 @@ For iOS and Android development, you'll need additional setup. The app uses Capa
 
 ### Android Issues
 
-**"Cannot connect to server" in emulator:**
-- For emulator: use `http://10.0.2.2:5173` (not localhost)
+**`net::ERR_CONNECTION_REFUSED` when calling the backend (localhost:3000):**  
+In the Android emulator, **localhost** is the emulator itself, not your Mac, so the app never reaches your Rails server. Use the emulator’s special host alias:
+
+1. **Point the app at your Mac’s backend**  
+   In `fintr-fe`, set the backend URL to the host loopback:
+   ```bash
+   # In fintr-fe/.env (or .env.local) when testing on Android emulator:
+   NEXT_PUBLIC_BE_URL="http://10.0.2.2:3000"
+   ```
+2. **Rebuild and sync** so the new URL is baked in:
+   ```bash
+   pnpm build && npx cap sync android
+   ```
+   Then run the app again on the emulator.  
+   For a **physical device**, use your computer’s LAN IP instead, e.g. `http://192.168.50.203:3000`, and ensure the backend CORS allows it (see backend README).
+
+**"Cannot connect to server" in emulator (frontend dev server):**
+- For emulator: use `http://10.0.2.2:5173` (not localhost) for `CAPACITOR_SERVER_URL`
 - For physical device: use your computer's IP address
 - Ensure your dev server is running: `pnpm dev`
 - Ensure computer and device are on the same network
@@ -168,6 +204,17 @@ For iOS and Android development, you'll need additional setup. The app uses Capa
 - Open Android Studio
 - Go to `File → Sync Project with Gradle Files`
 - If issues persist, try `File → Invalidate Caches / Restart`
+
+**Viewing console logs on the Android emulator:**
+- **JavaScript (e.g. `console.log`)**: WebView debugging is enabled. With the app running on the emulator, open Chrome on your computer, go to `chrome://inspect`, find your app’s WebView, and click **inspect** to open DevTools and see the JS console.
+- **Native / system logs**: Run `adb logcat` in a terminal (with the emulator or device connected). Filter by tag if needed, e.g. `adb logcat | grep -i fintr` or `adb logcat *:V` for verbose.
+
+**`adb: device offline` or "ADB is unresponsive" when running `pnpm android`:**
+- The emulator may still be booting, or ADB is in a bad state. Try in order:
+  1. **Restart ADB**: Run `adb kill-server` then `adb start-server`. Wait a few seconds, then run `pnpm android` again.
+  2. **Start the emulator first**: Open Android Studio → Device Manager → start an AVD. Wait until the home screen is fully visible, then run `pnpm android` (or `npx cap run android`) from the project.
+  3. **Cold boot**: In Device Manager, use the dropdown on the AVD → **Cold Boot Now**. When it finishes booting, run `pnpm android` again.
+  4. If the device stays offline, **Wipe Data** for that AVD in Device Manager, or create a new virtual device.
 
 ### General Issues
 

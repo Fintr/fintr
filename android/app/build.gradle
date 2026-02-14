@@ -47,7 +47,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            
+            // Allow chrome://inspect to attach to the WebView on device (set false for Play Store prod if desired)
+            debuggable true
+
             // Apply signing config if keystore.properties exists
             def keystorePropertiesFile = rootProject.file("keystore.properties")
             if (keystorePropertiesFile.exists()) {
