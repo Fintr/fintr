@@ -23,7 +23,7 @@ module Insights
       def call(params)
         params                = step validate(params:)
         space                 = params[:space]
-        accounts              = space.accounts
+        accounts              = space.accounts.kept.to_a
         account_breakdown     = step create_account_breakdown(accounts:)
         account_breakdown
       end
@@ -31,16 +31,29 @@ module Insights
       private
 
       def create_account_breakdown(accounts:)
-        total_balance = accounts.sum(&:balance).amount
+        return Success(total_balance: Utils::Number.format_delimiter(0), breakdown: []) if accounts.empty?
+
+        total_balance_cents = accounts.sum { |a| a.balance.cents }
+        total_balance       = total_balance_cents / 100.0
+
         result = accounts.map do |account|
+          balance_cents = account.balance.cents
+          percentage    = total_balance.zero? ? 0 : (balance_cents.to_d / total_balance_cents * 100)
           {
             name: account.name,
-            balance: Utils::Number.format_number(account.balance),
-            percentage: Utils::Number.format_percentage((account.balance.to_d / total_balance) * 100),
+            balance: {
+              cents: balance_cents,
+              currency_iso: account.balance.currency.iso_code
+            },
+            percentage: Utils::Number.format_percentage(percentage),
             category: account.account_category
           }
-        end.sort_by { |account| account[:balance].to_d }.reverse
-        Success(total_balance: Utils::Number.format_delimiter(total_balance), breakdown: result)
+        end.sort_by { |item| -item[:balance][:cents] }
+
+        Success(
+          total_balance: Utils::Number.format_delimiter(total_balance),
+          breakdown: result
+        )
       end
     end
   end

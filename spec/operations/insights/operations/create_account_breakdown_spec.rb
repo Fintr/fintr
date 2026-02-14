@@ -18,8 +18,6 @@ RSpec.describe Insights::Operations::CreateAccountBreakdown do
 
   describe '#call' do
     before do
-      # Mock Utils::Number methods for consistent testing
-      allow(Utils::Number).to receive(:format_number) { |num| "formatted_#{num}" }
       allow(Utils::Number).to receive(:format_percentage) { |num| "#{num.round(2)}%" }
       allow(Utils::Number).to receive(:format_delimiter) { |num| "delimited_#{num}" }
     end
@@ -31,7 +29,6 @@ RSpec.describe Insights::Operations::CreateAccountBreakdown do
       let!(:account2) { create(:account, space: space, name: 'Checking Account', balance: Money.from_amount(500, 'PHP')) }
       let!(:account3) { create(:account, space: space, name: 'Investment Account', balance: Money.from_amount(2000, 'PHP')) }
 
-
       it { is_expected.to be_success }
 
       it 'returns the correct account breakdown structure' do
@@ -42,29 +39,31 @@ RSpec.describe Insights::Operations::CreateAccountBreakdown do
         expect(result[:breakdown].length).to eq(3)
       end
 
+      it 'returns balance as cents and currency_iso per account' do
+        result = call_operation.value!
+        breakdown = result[:breakdown]
+
+        expect(breakdown[0][:balance]).to eq(cents: 200_000, currency_iso: 'PHP')
+        expect(breakdown[1][:balance]).to eq(cents: 100_000, currency_iso: 'PHP')
+        expect(breakdown[2][:balance]).to eq(cents: 50_000, currency_iso: 'PHP')
+      end
+
       it 'returns accounts sorted by balance in descending order' do
         result = call_operation.value!
         breakdown = result[:breakdown]
 
-        # The operation sorts by formatted balance string, so it's alphabetical
         expect(breakdown[0][:name]).to eq('Investment Account')
-        expect(breakdown[0][:balance]).to eq('formatted_2000.00')
-        expect(breakdown[1][:name]).to eq('Checking Account')
-        expect(breakdown[1][:balance]).to eq('formatted_500.00')
-        expect(breakdown[2][:name]).to eq('Savings Account')
-        expect(breakdown[2][:balance]).to eq('formatted_1000.00')
+        expect(breakdown[1][:name]).to eq('Savings Account')
+        expect(breakdown[2][:name]).to eq('Checking Account')
       end
 
       it 'calculates correct percentages for each account' do
         result = call_operation.value!
         breakdown = result[:breakdown]
 
-        # Investment Account: 2000/3500 * 100 = 57.14%
         expect(breakdown[0][:percentage]).to eq('57.14%')
-        # Checking Account: 500/3500 * 100 = 14.29%
-        expect(breakdown[1][:percentage]).to eq('14.29%')
-        # Savings Account: 1000/3500 * 100 = 28.57%
-        expect(breakdown[2][:percentage]).to eq('28.57%')
+        expect(breakdown[1][:percentage]).to eq('28.57%')
+        expect(breakdown[2][:percentage]).to eq('14.29%')
       end
 
       it 'includes account category for each account' do
@@ -76,8 +75,14 @@ RSpec.describe Insights::Operations::CreateAccountBreakdown do
     end
 
     context 'with empty accounts' do
-      it 'raises NoMethodError when no accounts exist' do
-        expect { operation.call(valid_params) }.to raise_error(NoMethodError, "undefined method 'amount' for an instance of Integer")
+      subject(:call_operation) { operation.call(valid_params) }
+
+      it { is_expected.to be_success }
+
+      it 'returns empty breakdown and zero total' do
+        result = call_operation.value!
+        expect(result[:total_balance]).to eq('delimited_0')
+        expect(result[:breakdown]).to eq([])
       end
     end
 
@@ -86,7 +91,6 @@ RSpec.describe Insights::Operations::CreateAccountBreakdown do
 
       let!(:zero_balance_account) { create(:account, space: space, name: 'Zero Account', balance: Money.from_amount(0, 'PHP')) }
 
-
       it { is_expected.to be_success }
 
       it 'handles zero balance accounts correctly' do
@@ -94,8 +98,8 @@ RSpec.describe Insights::Operations::CreateAccountBreakdown do
         expect(result[:total_balance]).to eq('delimited_0.0')
         expect(result[:breakdown]).to be_an(Array)
         expect(result[:breakdown].length).to eq(1)
-        expect(result[:breakdown][0][:balance]).to eq('formatted_0.00')
-        expect(result[:breakdown][0][:percentage]).to eq('NaN%')
+        expect(result[:breakdown][0][:balance]).to eq(cents: 0, currency_iso: 'PHP')
+        expect(result[:breakdown][0][:percentage]).to eq('0.0%')
       end
     end
 
@@ -103,7 +107,6 @@ RSpec.describe Insights::Operations::CreateAccountBreakdown do
       subject(:call_operation) { operation.call(valid_params) }
 
       let!(:single_account) { create(:account, space: space, name: 'Single Account', balance: Money.from_amount(1500, 'PHP')) }
-
 
       it { is_expected.to be_success }
 
