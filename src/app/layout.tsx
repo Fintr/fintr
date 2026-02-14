@@ -5,6 +5,7 @@ import Providers from "@/lib/providers";
 import { PerformanceMonitor } from "@/components/performance-monitor";
 import DeepLinkHandler from "@/components/deep-link-handler";
 import CapacitorLoader from "@/components/capacitor-loader";
+import ErudaDevTools from "@/components/eruda-devtools";
 
 const leagueSpartan = League_Spartan({
   variable: "--font-league-spartan",
@@ -38,6 +39,7 @@ export default function RootLayout({
         className={`${leagueSpartan.variable} antialiased ${leagueSpartan.className}`}
       >
         <CapacitorLoader />
+        <ErudaDevTools />
         <PerformanceMonitor>
           <Providers>
             <DeepLinkHandler />

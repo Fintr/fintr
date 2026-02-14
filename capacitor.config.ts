@@ -22,6 +22,9 @@ const config: CapacitorConfig = {
     scheme: 'fintrapp',
     contentInset: 'never'
   },
+  android: {
+    scheme: 'fintrapp', // Same as iOS for consistent Origin (fintrapp://) and CORS
+  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
