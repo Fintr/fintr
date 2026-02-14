@@ -4,7 +4,6 @@ import EditButton from "@/components/ui/edit-button";
 import { DeleteButton } from "@/components/dashboard/tabs/transactions/buttons/DeleteButton";
 import { Account } from "@/types/accountTypes";
 import { useAccounts } from "@/hooks/async/useAccounts";
-
 import {
   Dialog,
   DialogContent,
@@ -15,51 +14,120 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { cn, getNumberColor } from "@/lib/utils";
+import { cn, formatCurrency as formatCurrencyWithCurrency, getNumberColor } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CurrencyPicker } from "@/components/ui/currency-picker";
+import { useAuthApi } from "@/hooks/useAuthApi";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { getCurrentRate } from "@/services/exchangeRates/queries";
 
 interface AccountListProps {
   accounts: Account[];
   onEditAccount?: (account: Account) => void;
   onDeleteAccount?: (account: Account) => void;
-  currencySymbol?: string;
+  /** Optional override for space currency (e.g. when not inside space context). */
+  totalBalanceCurrency?: string;
 }
 
 const AccountList: React.FC<AccountListProps> = ({
   accounts,
   onEditAccount,
   onDeleteAccount,
-  currencySymbol = "₱",
+  totalBalanceCurrency: totalBalanceCurrencyProp,
 }) => {
+  const { api } = useAuthApi();
+  const { currentSpace } = useSpaceContext(api);
+  const spaceCurrency = totalBalanceCurrencyProp ?? currentSpace?.currency ?? "PHP";
+
   const { updateAccount, deleteAccount, adjustAccountBalance, accountCategoryOptions } = useAccounts();
   const [activeAccount, setActiveAccount] = useState<Account | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editedAccountName, setEditedAccountName] = useState("");
+  const [editedBalanceCurrency, setEditedBalanceCurrency] = useState("PHP");
   const [newBalance, setNewBalance] = useState("");
   const [adjustmentDate, setAdjustmentDate] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [showMoreInfo, setShowMoreInfo] = useState(false);
+  const [ratesToSpace, setRatesToSpace] = useState<Record<string, number>>({});
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [showConvertedForCurrency, setShowConvertedForCurrency] = useState<string | null>(null);
 
   // Helper function to parse balance string to number
   const parseBalance = (balance: string): number => {
     return parseFloat(balance) || 0;
   };
 
-  // Calculate total balance
-  const totalBalance = accounts.reduce(
-    (sum, account) => sum + parseBalance(account.balance),
-    0,
-  );
+  // Unique account currencies (for fetching rates)
+  const accountCurrencies = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const account of accounts) {
+      set.add(account.balanceCurrency ?? "PHP");
+    }
+    return Array.from(set);
+  }, [accounts]);
 
-  // Helper function to format currency
-  const formatCurrency = (amount: number) => {
-    return `${amount < 0 ? "-" : ""}${currencySymbol}${Math.abs(amount).toLocaleString()}`;
-  };
+  // Fetch today's rates from each account currency to space currency
+  React.useEffect(() => {
+    const needRates = accountCurrencies.filter((c) => c !== spaceCurrency);
+    if (needRates.length === 0) {
+      setRatesToSpace({ [spaceCurrency]: 1 });
+      setRatesLoading(false);
+      return;
+    }
+    setRatesLoading(true);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    Promise.all(
+      needRates.map((fromCurrency) =>
+        getCurrentRate(api, fromCurrency, spaceCurrency, todayStr)
+          .then((data) => ({ fromCurrency, rate: Number(data.rate) }))
+          .catch(() => ({ fromCurrency, rate: 1 }))
+      )
+    )
+      .then((results) => {
+        const map: Record<string, number> = { [spaceCurrency]: 1 };
+        for (const { fromCurrency, rate } of results) {
+          map[fromCurrency] = rate;
+        }
+        setRatesToSpace(map);
+      })
+      .catch(() => setRatesToSpace({ [spaceCurrency]: 1 }))
+      .finally(() => setRatesLoading(false));
+  }, [api, spaceCurrency, accountCurrencies.join(",")]);
+
+  // Total balance converted to space currency using today's rates
+  const totalInSpaceCurrency = React.useMemo(() => {
+    return accounts.reduce((sum, account) => {
+      const currency = account.balanceCurrency ?? "PHP";
+      const rate = ratesToSpace[currency] ?? 1;
+      return sum + parseBalance(account.balance) * rate;
+    }, 0);
+  }, [accounts, ratesToSpace]);
+
+  // Balance per currency (for "more info"), up to 3 currencies
+  const balancesByCurrency = React.useMemo(() => {
+    const byCurrency = new Map<string, number>();
+    for (const account of accounts) {
+      const code = account.balanceCurrency ?? "PHP";
+      const current = byCurrency.get(code) ?? 0;
+      byCurrency.set(code, current + parseBalance(account.balance));
+    }
+    return Array.from(byCurrency.entries())
+      .map(([currency, total]) => ({ currency, total }))
+      .slice(0, 3);
+  }, [accounts]);
 
   // Helper function to get category label from category value
   const getCategoryLabel = (categoryValue: string): string => {
@@ -71,8 +139,9 @@ const AccountList: React.FC<AccountListProps> = ({
   const handleOpenEditDialog = (account: Account) => {
     setActiveAccount(account);
     setEditedAccountName(account.name);
+    setEditedBalanceCurrency(account.balanceCurrency ?? "PHP");
     setNewBalance(account.balance);
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     setAdjustmentDate(today);
     setErrorMessage(null);
     setShowEditDialog(true);
@@ -107,10 +176,12 @@ const AccountList: React.FC<AccountListProps> = ({
     }
 
     const currentBalance = parseBalance(activeAccount.balance);
+    const currentCurrency = activeAccount.balanceCurrency ?? "PHP";
     const nameChanged = editedAccountName.trim() !== activeAccount.name;
     const balanceChanged = newBalanceNum !== currentBalance;
+    const currencyChanged = editedBalanceCurrency !== currentCurrency;
 
-    if (!nameChanged && !balanceChanged) {
+    if (!nameChanged && !balanceChanged && !currencyChanged) {
       toast.info("No changes to save");
       setShowEditDialog(false);
       return;
@@ -118,13 +189,19 @@ const AccountList: React.FC<AccountListProps> = ({
 
     setIsUpdating(true);
     setErrorMessage(null);
-    
+
     try {
-      // Update name if changed
-      if (nameChanged) {
+      // Update name and/or currency if changed
+      if (nameChanged || currencyChanged) {
+        const updateData: { name: string; balanceCurrency?: string } = {
+          name: editedAccountName.trim(),
+        };
+        if (currencyChanged) {
+          updateData.balanceCurrency = editedBalanceCurrency;
+        }
         await updateAccount({
           accountId: activeAccount.id,
-          updateData: { name: editedAccountName.trim() }
+          updateData,
         });
       }
 
@@ -144,8 +221,11 @@ const AccountList: React.FC<AccountListProps> = ({
         const difference = newBalanceNum - currentBalance;
         const adjustmentType = difference > 0 ? "Income" : "Expense";
         toast.success(`Account updated and balance adjusted. ${adjustmentType} Adjustment transaction created.`);
-      } else if (nameChanged) {
-        toast.success(`Account updated to "${editedAccountName.trim()}"`);
+      } else if (nameChanged || currencyChanged) {
+        const parts = [];
+        if (nameChanged) parts.push(`name to "${editedAccountName.trim()}"`);
+        if (currencyChanged) parts.push(`currency to ${editedBalanceCurrency}`);
+        toast.success(`Account updated: ${parts.join(", ")}`);
       } else {
         const difference = newBalanceNum - currentBalance;
         const adjustmentType = difference > 0 ? "Income" : "Expense";
@@ -191,14 +271,100 @@ const AccountList: React.FC<AccountListProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-xl font-medium">Your Accounts</h3>
-        <div className="text-xl">
-          Total:{" "}
-          <span className={`font-medium ${getNumberColor(totalBalance)}`}>
-            {formatCurrency(totalBalance)}
-          </span>
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-end">
+          <div className="text-xl text-right">
+            <div className="text-sm text-muted-foreground font-normal">
+              Total
+              {accountCurrencies.length > 1 && (
+                <span className="font-normal"> (in {spaceCurrency})</span>
+              )}
+            </div>
+            {ratesLoading ? (
+              <span className="font-medium text-muted-foreground">…</span>
+            ) : (
+              <span className={`font-medium ${getNumberColor(totalInSpaceCurrency)}`}>
+                {formatCurrencyWithCurrency(totalInSpaceCurrency, spaceCurrency)}
+              </span>
+            )}
+          </div>
         </div>
+        <div className="flex justify-between items-center">
+          <h3 className="text-xl font-medium">Your Accounts</h3>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground -mr-2"
+            onClick={() => setShowMoreInfo((v) => !v)}
+          >
+            {showMoreInfo ? (
+              <>
+                <ChevronUp className="h-4 w-4 mr-1" />
+                Show less
+              </>
+            ) : (
+              <>
+                <Info className="h-4 w-4 mr-1" />
+                Show more information
+              </>
+            )}
+          </Button>
+        </div>
+        {showMoreInfo && balancesByCurrency.length > 0 && (
+          <div className="rounded-md border border-gray-200 bg-muted/30 p-3 space-y-1.5">
+            {balancesByCurrency.map(({ currency, total }) => {
+              const isSpaceCurrency = currency === spaceCurrency;
+              const rate = ratesToSpace[currency] ?? 1;
+              const convertedInSpace = total * rate;
+              const showConverted = showConvertedForCurrency === currency;
+              return (
+                <div key={currency} className="space-y-0.5">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">{currency}</span>
+                    {isSpaceCurrency ? (
+                      <span className={`font-medium ${getNumberColor(total)}`}>
+                        {formatCurrencyWithCurrency(total, currency)}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowConvertedForCurrency((c) =>
+                            c === currency ? null : currency
+                          )
+                        }
+                        className={cn(
+                          "font-medium text-left hover:underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded",
+                          getNumberColor(total)
+                        )}
+                        title={`Show equivalent in ${spaceCurrency}`}
+                      >
+                        {formatCurrencyWithCurrency(total, currency)}
+                      </button>
+                    )}
+                  </div>
+                  {!isSpaceCurrency && showConverted && !ratesLoading && (
+                    <div className="text-xs text-muted-foreground pl-1 flex justify-end">
+                      ≈ {formatCurrencyWithCurrency(convertedInSpace, spaceCurrency)}{" "}
+                      <span className="italic">(today&apos;s rate)</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {accountCurrencies.length > 1 && !ratesLoading && (
+              <div className="flex justify-between items-center text-sm pt-1.5 border-t border-gray-200 mt-1.5">
+                <span className="text-muted-foreground font-medium">
+                  Total (in {spaceCurrency})
+                </span>
+                <span className={`font-medium ${getNumberColor(totalInSpaceCurrency)}`}>
+                  {formatCurrencyWithCurrency(totalInSpaceCurrency, spaceCurrency)}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -219,7 +385,7 @@ const AccountList: React.FC<AccountListProps> = ({
                 <span
                   className={`text-lg font-medium ${getNumberColor(balanceAmount)}`}
                 >
-                  {formatCurrency(balanceAmount)}
+                  {formatCurrencyWithCurrency(balanceAmount, account.balanceCurrency ?? "PHP")}
                 </span>
                 <div className="ml-6">
                   <div className="flex gap-1">
@@ -252,10 +418,27 @@ const AccountList: React.FC<AccountListProps> = ({
               />
             </div>
             <div className="space-y-2">
+              <CurrencyPicker
+                label="Currency"
+                placeholder="Search by name or code (e.g. PHP, US Dollar)..."
+                value={editedBalanceCurrency}
+                onChange={setEditedBalanceCurrency}
+                disabled={isUpdating}
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="current-balance">Current Balance</Label>
               <Input
                 id="current-balance"
-                value={activeAccount ? formatCurrency(parseBalance(activeAccount.balance)) : ""}
+                value={
+                  activeAccount
+                    ? formatCurrencyWithCurrency(
+                        parseBalance(activeAccount.balance),
+                        activeAccount.balanceCurrency ?? "PHP"
+                      )
+                    : ""
+                }
                 disabled
                 className="bg-gray-50"
               />
@@ -312,7 +495,10 @@ const AccountList: React.FC<AccountListProps> = ({
                 </span>{" "}
                 transaction for{" "}
                 <span className="font-semibold">
-                  {formatCurrency(Math.abs(parseFloat(newBalance) - parseBalance(activeAccount.balance)))}
+                  {formatCurrencyWithCurrency(
+                    Math.abs(parseFloat(newBalance) - parseBalance(activeAccount.balance)),
+                    editedBalanceCurrency ?? "PHP"
+                  )}
                 </span>
               </div>
             )}

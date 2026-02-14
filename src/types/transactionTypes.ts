@@ -1,5 +1,18 @@
 import { UpdateScopeEnum } from "@/constants/transactionConstants";
 
+/** Currency conversion details when a transaction used a different currency. */
+export interface CurrencyConversionType {
+  id?: string;
+  originalAmount: number;
+  originalCurrency: string;
+  convertedAmount: number;
+  convertedCurrency: string;
+  exchangeRate: number;
+  source: string;
+  rateTimestamp?: string;
+  note?: string | null;
+}
+
 export interface IndexTransaction {
   id: string;
   date: string;
@@ -39,12 +52,16 @@ export interface UpdateTransactionType {
   installmentPeriod: number;
   file: File | null;
   updateScope?: UpdateScopeEnum;
+  hasCurrencyConversion?: boolean;
+  currencyConversion?: CurrencyConversionType;
 }
 
 export interface TransferUpdateTransactionType extends UpdateTransactionType {
   fromAccountName: string;
   toAccountName: string;
   transactionCost: number;
+  hasCurrencyConversion?: boolean;
+  currencyConversion?: CurrencyConversionType;
 }
 
 

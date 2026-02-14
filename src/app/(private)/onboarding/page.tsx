@@ -22,20 +22,22 @@ export default function OnboardingIndex() {
       } else {
         // If not completed, redirect to appropriate step
         switch (onboardingStep) {
-          case 'income':
+          case 'currency':
             router.push('/onboarding/step1');
             break;
-          case 'budgets':
+          case 'income':
             router.push('/onboarding/step2');
             break;
-          case 'accounts':
+          case 'budgets':
             router.push('/onboarding/step3');
             break;
-          case 'import':
+          case 'accounts':
             router.push('/onboarding/step4');
             break;
+          case 'import':
+            router.push('/onboarding/step5');
+            break;
           default:
-            // Default to step 1 if no step is set
             router.push('/onboarding/step1');
         }
       }

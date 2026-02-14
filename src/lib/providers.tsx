@@ -3,9 +3,10 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
-import { Toaster } from "@/components/ui/sonner";
+import { ToasterWithSettings } from "@/components/ui/toaster-with-settings";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TutorialProvider } from "@/contexts/TutorialContext";
+import { ToastSettingsProvider } from "@/contexts/ToastSettingsContext";
 import AuthWrapper from "@/components/auth-wrapper";
 import DeepLinkHandler from "@/components/deep-link-handler";
 import SessionExpirationModal from "@/components/session-expiration-modal";
@@ -28,12 +29,14 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TutorialProvider>
-          <DeepLinkHandler />
-          <SessionExpirationModal />
-          <Toaster />
-          <AuthWrapper>
-            {children}
-          </AuthWrapper>
+          <ToastSettingsProvider>
+            <DeepLinkHandler />
+            <SessionExpirationModal />
+            <ToasterWithSettings />
+            <AuthWrapper>
+              {children}
+            </AuthWrapper>
+          </ToastSettingsProvider>
         </TutorialProvider>
       </AuthProvider>
     </QueryClientProvider>

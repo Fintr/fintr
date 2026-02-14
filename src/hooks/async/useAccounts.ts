@@ -46,9 +46,9 @@ export const useAccounts = () => {
     mutationFn: ({ accountId, updateData }: { accountId: string; updateData: UpdateAccountType }) => 
       updateAccount(api, accountId, updateData),
     onSuccess: (updatedAccount, variables) => {
-      // Invalidate and refetch accounts
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      // Don't show toast here since the EditAccountDialog handles it
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      // Don't show toast here since the edit dialog handles it
     },
     onError: (error: any) => {
       console.error('Error updating account:', error);

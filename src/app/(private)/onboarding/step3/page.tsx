@@ -1,84 +1,73 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FloatingInput } from "@/components/ui/floating-input";
-import { FloatingSelect } from "@/components/ui/floating-select";
 import { useOnboarding } from "@/hooks/async/useOnboarding";
-import { onboardingAccountsDataAtom, onboardingAccountCategoriesAtom, AccountData } from "@/atoms/budgetAtoms";
+import { BudgetCategory, BudgetCategoryInput } from "@/services/onboarding/mutations";
+import { onboardingBudgetCategoriesAtom, onboardingTotalBudgetAtom } from "@/atoms/budgetAtoms";
 import { onboardingDataAtom } from "@/atoms/onboardingAtoms";
 import { numberFormatting } from "@/lib/utils";
 import { toast } from "sonner";
-import { CreditCard, ArrowRight, ArrowLeft, X } from "lucide-react";
+import { Target, ArrowRight, ArrowLeft, X } from "lucide-react";
 
 export default function OnboardingStep3() {
   const router = useRouter();
-  const { saveStep3Data, isUpdating, onboardingData } = useOnboarding("accounts");
+  const { saveStep2Data, isUpdating } = useOnboarding("budgets");
   
   // Use Jotai atoms for state management
-  const [accountsData, setAccountsData] = useAtom(onboardingAccountsDataAtom);
-  const [accountCategories] = useAtom(onboardingAccountCategoriesAtom);
-  const [errors, setErrors] = useState<{ [key: number]: { name?: string; accountCategory?: string; balance?: string } }>({});
-  
-  // Display values for balance fields to handle formatting
-  const [displayBalances, setDisplayBalances] = useState<{ [key: number]: string }>({});
+  const [budgetCategories, setBudgetCategories] = useAtom(onboardingBudgetCategoriesAtom);
+  const [totalBudget] = useAtom(onboardingTotalBudgetAtom);
+  const [onboardingData, setOnboardingData] = useAtom(onboardingDataAtom);
+  const [errors, setErrors] = useState<{ [key: number]: { name?: string; amount?: string } }>({});
 
   const validateForm = () => {
-    const newErrors: { [key: number]: { name?: string; accountCategory?: string; balance?: string } } = {};
+    const newErrors: { [key: number]: { name?: string; amount?: string } } = {};
     
-    accountsData.forEach((account, index) => {
-      const accountErrors: { name?: string; accountCategory?: string; balance?: string } = {};
+    budgetCategories.forEach((category, index) => {
+      const categoryErrors: { name?: string; amount?: string } = {};
       
-      if (!account.name.trim()) {
-        accountErrors.name = "Account name is required";
+      if (!category.name.trim()) {
+        categoryErrors.name = "Category name is required";
       }
       
-      if (!account.accountCategory) {
-        accountErrors.accountCategory = "Account category is required";
+      if (!category.amount || isNaN(Number(category.amount)) || Number(category.amount) < 0) {
+        categoryErrors.amount = "Please enter a valid amount";
       }
       
-      if (isNaN(Number(account.balance)) || Number(account.balance) < 0) {
-        accountErrors.balance = "Please enter a valid balance";
-      }
-      
-      if (Object.keys(accountErrors).length > 0) {
-        newErrors[index] = accountErrors;
+      if (Object.keys(categoryErrors).length > 0) {
+        newErrors[index] = categoryErrors;
       }
     });
     
     setErrors(newErrors);
-    
     return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = async () => {
     if (validateForm()) {
       try {
-        // Process account data for backend
-        const processedAccountsData = accountsData.map(account => ({
-          name: account.name,
-          accountCategory: account.accountCategory,
-          balance: account.balance
+        // Convert to BudgetCategoryInput (without percentage) for API
+        const budgetCategoryInputs: BudgetCategoryInput[] = budgetCategories.map(category => ({
+          name: category.name,
+          amount: category.amount
         }));
         
-        // Save step 3 data to backend
-        await saveStep3Data({
-          step: 'accounts',
-          accounts: processedAccountsData,
+        // Save step 2 data to backend
+        await saveStep2Data({
+          step: 'budgets',
+          budgetCategories: budgetCategoryInputs,
         });
         
-        // Navigate to step 4 (import) on success
+        // Navigate to step 4 on success
         router.push('/onboarding/step4');
       } catch (error) {
-        console.error('Error saving step 3 data:', error);
-        toast.error('Error saving accounts. Please try again.');
+        console.error('Error saving step 2 data:', error);
+        toast.error('Error saving budget categories. Please try again.');
       }
-    } else {
-      // Show toast when validation fails
-      toast.error('Please fix the errors before continuing.');
     }
   };
 
@@ -86,30 +75,33 @@ export default function OnboardingStep3() {
     router.push('/onboarding/step2');
   };
 
-  const updateAccount = (index: number, field: 'name' | 'accountCategory' | 'balance', value: string | number) => {
-    const updatedAccounts = [...accountsData];
-    if (field === 'balance') {
-      // For balance field, use handleInputChange for formatting and store clean value
-      const formattedValue = numberFormatting.handleInputChange(value.toString());
+  const updateCategory = (index: number, field: 'name' | 'amount', value: string) => {
+    const updatedCategories = [...budgetCategories];
+    if (field === 'amount') {
+      // For amount field, use handleInputChange for formatting and store clean value
+      const formattedValue = numberFormatting.handleInputChange(value);
       const cleanValue = numberFormatting.cleanForBackend(formattedValue);
-      updatedAccounts[index] = { ...updatedAccounts[index], [field]: cleanValue };
-      setDisplayBalances(prev => ({ ...prev, [index]: formattedValue }));
+      updatedCategories[index] = { ...updatedCategories[index], [field]: cleanValue.toString() };
+      setDisplayAmounts(prev => ({ ...prev, [index]: formattedValue }));
     } else {
-      updatedAccounts[index] = { ...updatedAccounts[index], [field]: value };
+      updatedCategories[index] = { ...updatedCategories[index], [field]: value };
     }
-    setAccountsData(updatedAccounts);
+    setBudgetCategories(updatedCategories);
   };
 
-  const deleteAccount = (index: number) => {
-    const updatedAccounts = accountsData.filter((_, i) => i !== index);
-    setAccountsData(updatedAccounts);
+  // Display values for amount fields to handle formatting
+  const [displayAmounts, setDisplayAmounts] = useState<{ [key: number]: string }>({});
+
+  const deleteCategory = (index: number) => {
+    const updatedCategories = budgetCategories.filter((_, i) => i !== index);
+    setBudgetCategories(updatedCategories);
     
-    // Clear any errors for this account
+    // Clear any errors for this category
     const newErrors = { ...errors };
     delete newErrors[index];
     
-    // Reindex errors for remaining accounts
-    const reindexedErrors: { [key: number]: { name?: string; accountCategory?: string; balance?: string } } = {};
+    // Reindex errors for remaining categories
+    const reindexedErrors: { [key: number]: { name?: string; amount?: string } } = {};
     Object.keys(newErrors).forEach(key => {
       const oldIndex = parseInt(key);
       if (oldIndex > index) {
@@ -122,15 +114,22 @@ export default function OnboardingStep3() {
     setErrors(reindexedErrors);
   };
 
-  const addAccount = () => {
-    const newAccount: AccountData = {
+  const addCategory = () => {
+    const newCategory: BudgetCategory = {
       name: "",
-      accountCategory: "",
-      balance: 0,
-      forSalary: false,
-      forBusiness: false
+      amount: "0",
+      percentage: 0
     };
-    setAccountsData([...accountsData, newAccount]);
+    setBudgetCategories([...budgetCategories, newCategory]);
+  };
+
+  // Calculate total income from step 2 (income)
+  const totalIncome = onboardingData.incomeData?.income || 0;
+
+  const calculatePercentage = (amount: string): number => {
+    const numAmount = Number(amount || 0);
+    if (totalIncome === 0) return 0;
+    return Math.round((numAmount / totalIncome) * 100);
   };
 
   return (
@@ -139,105 +138,119 @@ export default function OnboardingStep3() {
         {/* Progress indicator */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-muted-foreground mb-2">
-            <span>Step 3 of 4</span>
-            <span>Accounts Setup</span>
+            <span>Step 3 of 5</span>
+            <span>Budget Setup</span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
-            <div className="bg-primary h-2 rounded-full transition-all duration-500 ease-out w-3/4"></div>
+            <div className="bg-primary h-2 rounded-full transition-all duration-500 ease-out w-3/5"></div>
           </div>
         </div>
 
         <Card className="shadow-lg border-border">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 p-3 bg-primary/30 rounded-full w-fit">
-              <CreditCard className="h-8 w-8 text-primary" />
+              <Target className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Accounts Set-Up</CardTitle>
+            <CardTitle className="text-2xl">Budget Set-Up</CardTitle>
             <CardDescription>
-              Add your bank accounts, cards, and other financial accounts to track your finances
+              Customize your monthly budget allocation across different spending categories
             </CardDescription>
           </CardHeader>
           
           <CardContent className="space-y-6">
-            {/* Accounts List */}
+            {/* Budget Categories List */}
             <div className="space-y-4">
-              {accountsData.map((account, index) => (
+              {/* Total budget summary */}
+              <div className="bg-muted rounded-lg p-4 border border-border mt-6">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Total Monthly Budget:
+                  </span>
+                  <span className="text-lg font-bold text-primary">
+                    ₱{totalBudget.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Potential savings preview */}
+              <div className="bg-muted rounded-lg p-4 border border-border mt-6">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Potential Monthly Savings:
+                  </span>
+                  <span className="text-lg font-bold text-teal-600">
+                    ₱{(totalIncome - totalBudget).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {budgetCategories.map((category, index) => (
                 <div key={index} className="border border-border rounded-lg p-4 space-y-4 bg-card relative">
                   {/* Delete button */}
-                  {accountsData.length > 1 && (
+                  {budgetCategories.length > 1 && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => deleteAccount(index)}
-                      className="z-20 absolute top-2 right-2 h-6 w-6 p-0 text-muted-foreground bg-white hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => deleteCategory(index)}
+                      className="z-20 absolute top-2 right-2 h-6 w-6 p-0 bg-white text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
                       <X className="h-4 w-4" />
                     </Button>
                   )}
                   
                   <div className="space-y-3">
-                    {/* First row: Account Name and Category */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <FloatingInput
-                          type="text"
-                          label="Account Name"
-                          value={account.name}
-                          onChange={(e) => updateAccount(index, 'name', e.target.value)}
-                          className={errors[index]?.name ? "border-destructive" : ""}
-                        />
-                        {errors[index]?.name && (
-                          <p className="text-destructive text-sm mt-1">{errors[index].name}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <FloatingSelect
-                          label="Account Category"
-                          value={account.accountCategory}
-                          onValueChange={(value) => updateAccount(index, 'accountCategory', value)}
-                          options={accountCategories}
-                          className={errors[index]?.accountCategory ? "border-destructive" : ""}
-                        />
-                        {errors[index]?.accountCategory && (
-                          <p className="text-destructive text-sm mt-1">{errors[index].accountCategory}</p>
-                        )}
-                      </div>
+                    <div>
+                      <FloatingInput
+                        type="text"
+                        label="Category Name"
+                        value={category.name}
+                        onChange={(e) => updateCategory(index, 'name', e.target.value)}
+                        className={errors[index]?.name ? "border-destructive" : ""}
+                      />
+                      {errors[index]?.name && (
+                        <p className="text-destructive text-sm mt-1">{errors[index].name}</p>
+                      )}
                     </div>
 
-                    {/* Second row: Balance */}
-                    <div className="space-y-3">
-                      <div>
-                        <FloatingInput
-                          type="text"
-                          label="Balance (₱)"
-                          value={displayBalances[index] || numberFormatting.formatForInput(account.balance)}
-                          onChange={(e) => updateAccount(index, 'balance', e.target.value)}
-                          onWheel={(e) => e.currentTarget.blur()}
-                          className={errors[index]?.balance ? "border-destructive" : ""}
-                        />
-                        {errors[index]?.balance && (
-                          <p className="text-destructive text-sm mt-1">{errors[index].balance}</p>
-                        )}
+                    <div>
+                      <div className="flex gap-2 items-center">
+                        <div className="flex-1">
+                          <FloatingInput
+                            type="text"
+                            label="Amount (₱)"
+                            value={displayAmounts[index] || numberFormatting.formatForInput(category.amount)}
+                            onChange={(e) => updateCategory(index, 'amount', e.target.value)}
+                            onWheel={(e) => e.currentTarget.blur()}
+                            className={errors[index]?.amount ? "border-destructive" : ""}
+                          />
+                        </div>
+                        <div>
+                          <span className="text-xs font-medium text-muted-foreground bg-primary/30 px-2 py-1 rounded-full whitespace-nowrap">
+                            {calculatePercentage(category.amount)}% of income
+                          </span>
+                        </div>
                       </div>
+                      {errors[index]?.amount && (
+                        <p className="text-destructive text-sm mt-1">{errors[index].amount}</p>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-
-            {/* Add new account button */}
+            {/* Add new category button */}
             <div className="flex justify-center">
               <Button
                 variant="outline"
-                onClick={addAccount}
+                onClick={addCategory}
                 className="border-dashed border-2 hover:border-primary hover:text-primary"
               >
-                + Add New Account
+                + Add New Category
               </Button>
             </div>
 
+            
             {/* Action buttons */}
             <div className="flex gap-3 pt-4">
               <Button 
@@ -252,9 +265,9 @@ export default function OnboardingStep3() {
               <Button 
                 onClick={handleNext}
                 disabled={isUpdating}
-                className="flex-1 bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-800"
+                className="flex-1 bg-primary hover:bg-primary/90"
               >
-                {isUpdating ? "Completing..." : "Complete Setup"}
+                {isUpdating ? "Saving..." : "Next"}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
@@ -264,7 +277,7 @@ export default function OnboardingStep3() {
         {/* Help text */}
         <div className="mt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            You can add more accounts later from your dashboard
+            You can adjust these amounts based on your spending habits and financial goals
           </p>
         </div>
       </div>

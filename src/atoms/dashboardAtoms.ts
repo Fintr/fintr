@@ -1,5 +1,5 @@
 import { atom } from 'jotai';
-import { OptionType } from '@/types/generalTypes';
+import { OptionType, AccountOptionWithCurrency } from '@/types/generalTypes';
 import { DashboardData } from '@/types/spaceTypes';
 
 // Atoms to store dashboard data directly
@@ -12,7 +12,7 @@ export const setDashboardData = (data: DashboardData, setAtom: any) => {
 
 // Atoms for storing other shared data
 export const categoryOptionsAtom = atom<OptionType[]>([]);
-export const accountOptionsAtom = atom<OptionType[]>([]);
+export const accountOptionsAtom = atom<AccountOptionWithCurrency[]>([]);
 export const expenseCategoryOptionsAtom = atom<OptionType[]>([]);
 export const incomeCategoryOptionsAtom = atom<OptionType[]>([]); 
 export const isAdminAtom = atom<boolean | null>(null); 

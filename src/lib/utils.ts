@@ -117,6 +117,42 @@ export function formatCurrency(amount: number, currency: string = "PHP"): string
   }).format(amount);
 }
 
+/** Returns the currency symbol for a given ISO 4217 code (e.g. "USD" → "$", "PHP" → "₱"). */
+export function getCurrencySymbol(currencyCode: string): string {
+  if (!currencyCode || currencyCode.length !== 3) return currencyCode || "";
+  try {
+    const parts = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: currencyCode,
+    }).formatToParts(0);
+    const currencyPart = parts.find((p) => p.type === "currency");
+    return currencyPart?.value ?? currencyCode;
+  } catch {
+    return currencyCode;
+  }
+}
+
+/** Format amount with 3 decimals and 3-letter currency code (e.g. "1,234.567 PHP"). */
+export function formatAmountWithCode(amount: number, currencyCode: string): string {
+  const formatted = amount.toLocaleString("en-US", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
+  return `${formatted} ${currencyCode}`;
+}
+
+/** Format a rate or numeric value with thousand separators and fixed decimals (e.g. "15.767" or "12,345.678"). */
+export function formatWithDelimiters(
+  value: number,
+  options: { minFractionDigits?: number; maxFractionDigits?: number } = {}
+): string {
+  const { minFractionDigits = 2, maxFractionDigits = 6 } = options;
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: minFractionDigits,
+    maximumFractionDigits: maxFractionDigits,
+  });
+}
+
 export const CHART_COLORS = [
   "#008080", // Teal
   "#FF6F61", // Coral pink

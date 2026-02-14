@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -28,6 +28,10 @@ import { updateTransfer, UpdateTransferType } from "@/services/transactions/tran
 import ExpandableTextarea from "@/components/ui/expandable-textarea";
 import FileUploadField from "./FileUploadField";
 import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
+import {
+  AmountWithRatePicker,
+  type ConversionSnapshot,
+} from "./AmountWithRatePicker";
 
 // Transfer form schema using Zod
 const transferFormSchema = z.object({
@@ -61,6 +65,8 @@ interface TransferFormProps {
   id?: string;
   date?: Date | undefined;
   setDate?: React.Dispatch<React.SetStateAction<Date | undefined>>;
+  /** Space default currency; used as fallback and to detect when account currency differs */
+  spaceCurrency?: string;
   onSubmitSuccess?: (data: any) => void;
   onCancel?: () => void;
   // Edit mode props
@@ -73,6 +79,7 @@ interface TransferFormProps {
 const TransferForm: React.FC<TransferFormProps> = ({
   date,
   setDate,
+  spaceCurrency = "PHP",
   onSubmitSuccess = () => {},
   onCancel = () => {},
   id,
@@ -83,7 +90,18 @@ const TransferForm: React.FC<TransferFormProps> = ({
 }) => {
   const { api } = useAuthApi();
   const accountOptions = useAtomValue(accountOptionsAtom);
-  
+
+  const transferAmountCurrencyOptions = useMemo(() => {
+    const codes = Array.from(
+      new Set(
+        accountOptions
+          .map((a) => a.currency)
+          .filter((c): c is string => Boolean(c))
+      )
+    );
+    return codes.length > 0 ? codes : ["PHP"];
+  }, [accountOptions]);
+
   // Form state management using local state
   const [formState, setFormState] = useState({
     amount: initialData?.amount?.toString() || "",
@@ -95,6 +113,26 @@ const TransferForm: React.FC<TransferFormProps> = ({
     repeatInterval: initialData?.repeatInterval || "",
     file: initialData?.file || null, // Add file state to formState
   });
+
+  const fromAccount = accountOptions.find(
+    (a) => a.value === formState.fromAccountName
+  );
+  const toAccount = accountOptions.find(
+    (a) => a.value === formState.toAccountName
+  );
+  const fromAccountCurrency = fromAccount?.currency ?? spaceCurrency;
+  const toAccountCurrency = toAccount?.currency ?? spaceCurrency;
+  const fromAccountCurrencyDiffersFromSpace =
+    fromAccount?.currency != null && fromAccount.currency !== spaceCurrency;
+  const toAccountCurrencyDiffersFromSpace =
+    toAccount?.currency != null && toAccount.currency !== spaceCurrency;
+
+  const [conversionSnapshot, setConversionSnapshot] =
+    useState<ConversionSnapshot | null>(null);
+
+  useEffect(() => {
+    setConversionSnapshot(null);
+  }, [fromAccountCurrency, toAccountCurrency]);
   
   // Number input hooks for amount and transactionCost fields
   const amountInput = useNumberInput({
@@ -134,6 +172,19 @@ const TransferForm: React.FC<TransferFormProps> = ({
 
       // Store the current initialData reference to prevent re-running on same object
       prevInitialDataRef.current = initialData;
+    }
+    // Always sync conversion snapshot when initialData is present so update payload includes exchange_rate
+    if (initialData) {
+      const rawConv = (initialData as any).currency_conversion ?? (initialData as any).currencyConversion;
+      if (rawConv) {
+        setConversionSnapshot({
+          originalCurrency: rawConv.original_currency ?? rawConv.originalCurrency,
+          exchangeRate: Number(rawConv.exchange_rate ?? rawConv.exchangeRate),
+          exchangeRateSource: (rawConv.source ?? "manual") as "auto" | "manual" | "recent",
+        });
+      } else {
+        setConversionSnapshot(null);
+      }
     } else if (!initialData && prevInitialDataRef.current) {
       // If initialData becomes undefined and it was previously set, clear the form
       setFormState({
@@ -154,6 +205,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
       setShowFromAccountCreation(false);
       setShowToAccountCreation(false);
       setFormSubmitted(false);
+      setConversionSnapshot(null);
       prevInitialDataRef.current = undefined;
     }
   }, [initialData, initialData?.file]); // Add initialData?.file to dependencies
@@ -224,20 +276,42 @@ const TransferForm: React.FC<TransferFormProps> = ({
       toast.error("Please select a date for the transfer");
       return;
     }
+
+    if (fromAccountCurrency !== toAccountCurrency && !conversionSnapshot) {
+      toast.error("Please wait for the exchange rate or open Rates to choose one");
+      return;
+    }
     
     setIsSubmitting(true);
     
     try {
+      // Update: backend stores amount as-is → send converted amount. Create: backend converts → send original amount.
+      // Amount is always in from-account currency; when currencies differ, backend expects original amount (create) or converted (edit)
+      const amountToSend =
+        conversionSnapshot && fromAccountCurrency !== toAccountCurrency
+          ? isEditMode
+            ? String(parseFloat(numberFormatting.cleanForBackend(formState.amount)) * conversionSnapshot.exchangeRate)
+            : formState.amount
+          : formState.amount;
       const transferData = {
-        amount: numberFormatting.cleanForBackend(formState.amount),
-        transactionCost: formState.transactionCost && formState.transactionCost.trim() !== '' ? numberFormatting.cleanForBackend(formState.transactionCost) : 0,
+        amount: numberFormatting.cleanForBackend(amountToSend),
+        transactionCost:
+          formState.transactionCost && formState.transactionCost.trim() !== ""
+            ? numberFormatting.cleanForBackend(formState.transactionCost)
+            : 0,
         fromAccountName: formState.fromAccountName,
         toAccountName: formState.toAccountName,
-        description: formState.description || '',
-        date: format(date, 'yyyy-MM-dd'),
+        description: formState.description || "",
+        date: format(date, "yyyy-MM-dd"),
         scheduleType: formState.scheduleType,
-        ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && { repeatInterval: formState.repeatInterval }),
-        file: formState.file ?? undefined // Use formState.file for submission
+        ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && {
+          repeatInterval: formState.repeatInterval
+        }),
+        file: formState.file ?? undefined,
+        ...(conversionSnapshot && {
+          exchange_rate: conversionSnapshot.exchangeRate,
+          exchange_rate_source: conversionSnapshot.exchangeRateSource,
+        }),
       };
       
       let response;
@@ -268,7 +342,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
         // Reset number input hooks
         amountInput.reset();
         transactionCostInput.reset();
-        // setFileState(null);
+        setConversionSnapshot(null);
         setFormSubmitted(false);
       }
       
@@ -318,9 +392,9 @@ const TransferForm: React.FC<TransferFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* First row: Date (50% width) */}
-      <div className="flex">
-        <div className="space-y-2 w-1/2">
+      {/* Row 1: Date. Mobile full width, desktop 50%. */}
+      <div className="flex flex-wrap">
+        <div className="space-y-2 w-full md:w-1/2">
           <Label htmlFor="transfer-date" className="text-sm">Date</Label>
           <Popover modal>
             <PopoverTrigger asChild>
@@ -346,26 +420,31 @@ const TransferForm: React.FC<TransferFormProps> = ({
         </div>
       </div>
 
-      {/* Second row: Amount and Transaction Cost */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="transfer-amount" className="text-sm">Amount</Label>
-          <Input
-            id="transfer-amount"
-            type="text" 
-            value={amountInput.displayValue}
-            placeholder="0.00"
-            onChange={(e) => amountInput.handleInputChange(e.target.value)}
-            className={`text-sm ${
-              (formSubmitted && formErrors.amount)
-                ? "border-red-800 focus-visible:ring-red-800"
-                : ""
-            }`}
-          />
-          {formSubmitted && formErrors.amount && (
-            <FormError>{formErrors.amount}</FormError>
-          )}
-        </div>
+      {/* Row 2: Amount (own row on mobile), Row 3: Transaction Cost. Desktop: Amount | Transaction Cost. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <AmountWithRatePicker
+          id="transfer-amount"
+          label="Amount"
+          amountDisplayValue={amountInput.displayValue}
+          onAmountChange={(value) => amountInput.handleInputChange(value)}
+          fromCurrency={fromAccountCurrency}
+          onFromCurrencyChange={() => {}}
+          toCurrency={toAccountCurrency}
+          amountCurrencyOptions={transferAmountCurrencyOptions}
+          accountOptions={accountOptions}
+          lockFromCurrency={true}
+          errors={
+            formSubmitted && formErrors.amount ? [formErrors.amount] : []
+          }
+          placeholder="0.00"
+          inputClassName={
+            formSubmitted && formErrors.amount
+              ? "border-red-800 focus-visible:ring-red-800"
+              : ""
+          }
+          onConversionChange={setConversionSnapshot}
+          date={date ? format(date, "yyyy-MM-dd") : undefined}
+        />
         <div className="space-y-2">
           <Label htmlFor="transfer-transaction-cost" className="text-sm">Transaction Cost</Label>
           <Input
@@ -388,7 +467,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
 
       {/* Third row: From Account and To Account */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0">
           <Label htmlFor="transfer-from" className="text-sm">From Account</Label>
           <Select
             value={formState.fromAccountName}
@@ -401,10 +480,11 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 handleFieldChange("fromAccountName", value);
               }
             }}
+            disabled={isEditMode}
           >
             <SelectTrigger 
               id="transfer-from"
-              className={`text-sm ${
+              className={`w-full min-w-0 text-sm ${
                 (formSubmitted && formErrors.fromAccountName)
                   ? "border-red-800 focus-visible:ring-red-800"
                   : ""
@@ -418,18 +498,24 @@ const TransferForm: React.FC<TransferFormProps> = ({
                   {option.label}
                 </SelectItem>
               ))}
-              <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
+              {!isEditMode && (
+                <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
+              )}
             </SelectContent>
           </Select>
           {formSubmitted && formErrors.fromAccountName && (
             <FormError>{formErrors.fromAccountName}</FormError>
           )}
-
+          {fromAccountCurrencyDiffersFromSpace && fromAccount?.currency && (
+            <p className="text-xs text-muted-foreground mt-1">
+              From account currency: {fromAccount.currency} (differs from space: {spaceCurrency})
+            </p>
+          )}
           {showFromAccountCreation && (
             <AccountCreationForm onSuccess={handleFromAccountCreated} />
           )}
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0">
           <Label htmlFor="transfer-to" className="text-sm">To Account</Label>
           <Select
             value={formState.toAccountName}
@@ -442,10 +528,11 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 handleFieldChange("toAccountName", value);
               }
             }}
+            disabled={isEditMode}
           >
             <SelectTrigger 
               id="transfer-to"
-              className={`text-sm ${
+              className={`w-full min-w-0 text-sm ${
                 (formSubmitted && formErrors.toAccountName)
                   ? "border-red-800 focus-visible:ring-red-800"
                   : ""
@@ -459,13 +546,19 @@ const TransferForm: React.FC<TransferFormProps> = ({
                   {option.label}
                 </SelectItem>
               ))}
-              <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
+              {!isEditMode && (
+                <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
+              )}
             </SelectContent>
           </Select>
           {formSubmitted && formErrors.toAccountName && (
             <FormError>{formErrors.toAccountName}</FormError>
           )}
-
+          {toAccountCurrencyDiffersFromSpace && toAccount?.currency && (
+            <p className="text-xs text-muted-foreground mt-1">
+              To account currency: {toAccount.currency} (differs from space: {spaceCurrency})
+            </p>
+          )}
           {showToAccountCreation && (
             <AccountCreationForm onSuccess={handleToAccountCreated} />
           )}
@@ -474,7 +567,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
 
       {/* Fourth row: Schedule Type and conditional Repeat Interval */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0">
           <Label htmlFor="transfer-schedule-type" className="text-sm">Schedule Type</Label>
           <Select
             value={formState.scheduleType}
@@ -482,7 +575,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
           >
             <SelectTrigger 
               id="transfer-schedule-type"
-              className={`text-sm ${
+              className={`w-full min-w-0 text-sm ${
                 (formSubmitted && formErrors.scheduleType)
                   ? "border-red-800 focus-visible:ring-red-800"
                   : ""
@@ -501,7 +594,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
         </div>
 
         {formState.scheduleType === ScheduleTypeEnum.REPEAT ? (
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label htmlFor="transfer-repeat-interval" className="text-sm">Repeat Interval</Label>
             <Select
               value={formState.repeatInterval}
@@ -509,7 +602,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
             >
               <SelectTrigger 
                 id="transfer-repeat-interval"
-                className={`text-sm ${
+                className={`w-full min-w-0 text-sm ${
                   (formSubmitted && formErrors.repeatInterval)
                     ? "border-red-800 focus-visible:ring-red-800"
                     : ""
@@ -529,7 +622,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
               <FormError>{formErrors.repeatInterval}</FormError>
             )}
           </div>
-        ) : <div className="text-sm"></div>}
+        ) : <div className="min-w-0 text-sm" />}
       </div>
 
       {/* Fifth row: Description */}

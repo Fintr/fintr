@@ -11,11 +11,13 @@ import InvestmentForm from "@/components/dashboard/forms/InvestmentForm";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  UpdateTransactionType, 
+  UpdateTransactionType,
 } from "@/types/transactionTypes";
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
 import { shouldShowV2Features } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useAuthApi } from "@/hooks/useAuthApi";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
 
 interface AddTransactionDialogProps {
   onAddTransaction?: (transaction: any) => void;
@@ -49,6 +51,9 @@ const AddTransactionDialog = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const tabsListRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { api } = useAuthApi();
+  const { currentSpace } = useSpaceContext(api);
+  const spaceCurrency = currentSpace?.currency ?? "PHP";
 
   // Use controlled or internal open state
   const isDialogOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -352,6 +357,7 @@ const AddTransactionDialog = ({
               date={date}
               setDate={setDate}
               suggestedDate={suggestedDate}
+              spaceCurrency={spaceCurrency}
               onAddCustomCategory={(category) => {
                 setCustomExpenseCategories([
                   ...customExpenseCategories,
@@ -372,6 +378,7 @@ const AddTransactionDialog = ({
             <IncomeForm
               date={date}
               setDate={setDate}
+              spaceCurrency={spaceCurrency}
               onAddCustomCategory={(category) => {
                 setCustomIncomeCategories([
                   ...customIncomeCategories,
@@ -391,6 +398,7 @@ const AddTransactionDialog = ({
             <TransferForm
               date={date}
               setDate={setDate}
+              spaceCurrency={spaceCurrency}
               onSubmitSuccess={onTransactionSuccess}
               onCancel={() => setDialogOpen(false)}
             />

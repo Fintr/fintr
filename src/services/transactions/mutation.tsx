@@ -18,6 +18,10 @@ export interface CreateTransactionType {
   // Receipt draft ID for linking receipt processing to transaction creation
   draftId?: string;
   fileId?: string;
+  // Multi-currency: when amount is in a different currency than account
+  original_currency?: string;
+  exchange_rate?: number;
+  exchange_rate_source?: "auto" | "manual" | "recent";
 }
 
 // Type for updating a transaction

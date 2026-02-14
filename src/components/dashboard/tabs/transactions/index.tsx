@@ -456,21 +456,11 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   };
 
   const handleEditSuccess = () => {
-    // Use consistent invalidation pattern with all filter parameters
+    // Invalidate all transaction list queries (any filters) so the list shows updated data
     queryClient.invalidateQueries({
-      queryKey: [
-        "transactions",
-        spaceCode,
-        appliedFilters.appliedCategory,
-        appliedFilters.queryStartDate,
-        appliedFilters.queryEndDate,
-        appliedFilters.appliedMinAmount,
-        appliedFilters.appliedMaxAmount,
-        appliedFilters.searchQuery,
-      ],
-      refetchType: 'active'
+      queryKey: ["transactions"],
     });
-    
+
     // Invalidate dashboard query to refresh financial summary
     queryClient.invalidateQueries({
       queryKey: ["dashboard", spaceCode, startDate, endDate],
