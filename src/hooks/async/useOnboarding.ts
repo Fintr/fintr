@@ -1,7 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAtom, useSetAtom } from 'jotai';
 import { useAuthApi } from '@/hooks/useAuthApi';
-import { saveStep1Data, saveStep2Data, saveStep3Data, SaveStep1DataArgs, SaveStep2DataArgs, SaveStep3DataArgs } from '@/services/onboarding/mutations';
+import {
+  saveCurrencyStepData,
+  saveStep1Data,
+  saveStep2Data,
+  saveStep3Data,
+  SaveCurrencyStepArgs,
+  SaveStep1DataArgs,
+  SaveStep2DataArgs,
+  SaveStep3DataArgs,
+} from '@/services/onboarding/mutations';
 import { getOnboardingData } from '@/services/onboarding/queries';
 import { onboardingBudgetCategoriesAtom, onboardingAccountsDataAtom, onboardingAccountCategoriesAtom, incomeRequirementsAtom } from '@/atoms/budgetAtoms';
 import { toast } from 'sonner';
@@ -24,6 +33,7 @@ export const useOnboarding = (step?: string) => {
   // - For 'accounts' step: only if no existing accounts data
   // - For other steps: always fetch if step is provided
   const shouldFetchData = !!api && !!step && isAuthenticated && (
+    (step === 'currency') ||
     (step === 'budgets' && budgetCategories.length === 0) ||
     (step === 'accounts' && accountsData.length === 0) ||
     (step !== 'budgets' && step !== 'accounts')
@@ -61,6 +71,20 @@ export const useOnboarding = (step?: string) => {
           setAccountCategories(response.data.accountCategories);
         }
       }
+    },
+  });
+
+  // Save currency step mutation
+  const saveCurrencyStepMutation = useMutation({
+    mutationFn: (data: Omit<SaveCurrencyStepArgs, 'api'>) =>
+      saveCurrencyStepData({ api, ...data }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      queryClient.invalidateQueries({ queryKey: ['onboarding'] });
+      toast.success('Currency set successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error saving currency step:', error);
     },
   });
 
@@ -131,6 +155,15 @@ export const useOnboarding = (step?: string) => {
     },
   });
 
+  const saveCurrencyStepDataAsync = (data: Omit<SaveCurrencyStepArgs, 'api'>) => {
+    return new Promise((resolve, reject) => {
+      saveCurrencyStepMutation.mutate(data, {
+        onSuccess: (result) => resolve(result),
+        onError: (error) => reject(error),
+      });
+    });
+  };
+
   // Create async wrapper functions
   const saveStep1DataAsync = (data: Omit<SaveStep1DataArgs, 'api'>) => {
     return new Promise((resolve, reject) => {
@@ -168,10 +201,15 @@ export const useOnboarding = (step?: string) => {
     refetchOnboarding,
     
     // Mutations (async versions)
+    saveCurrencyStepData: saveCurrencyStepDataAsync,
     saveStep1Data: saveStep1DataAsync,
     saveStep2Data: saveStep2DataAsync,
     saveStep3Data: saveStep3DataAsync,
-    isUpdating: saveStep1Mutation.isLoading || saveStep2Mutation.isLoading || saveStep3Mutation.isLoading,
+    isUpdating:
+      saveCurrencyStepMutation.isLoading ||
+      saveStep1Mutation.isLoading ||
+      saveStep2Mutation.isLoading ||
+      saveStep3Mutation.isLoading,
     
     // Mutation errors
     step1Error: saveStep1Mutation.error,

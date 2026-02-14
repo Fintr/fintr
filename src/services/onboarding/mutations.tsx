@@ -35,6 +35,12 @@ export interface SaveStep3DataArgs {
   accounts: AccountDataInput[];
 }
 
+export interface SaveCurrencyStepArgs {
+  api: AxiosInstance;
+  step: string;
+  currency: string;
+}
+
 /**
  * Saves step 1 onboarding data (income information).
  * @param {SaveStep1DataArgs} args - Arguments for saving step 1 data.
@@ -43,6 +49,17 @@ export interface SaveStep3DataArgs {
  * @param {number} [args.income] - User's total income.
  * @returns {Promise<any>} - The response data from the backend API.
  */
+/**
+ * Saves currency step onboarding data (workspace currency).
+ */
+export const saveCurrencyStepData = async ({ api, step, currency }: SaveCurrencyStepArgs) => {
+  const response = await api.post('/onboardings', {
+    step,
+    currency: currency.toUpperCase(),
+  });
+  return response.data;
+};
+
 export const saveStep1Data = async ({ api, step, income }: SaveStep1DataArgs) => {
   const response = await api.post('/onboardings', {
     step,

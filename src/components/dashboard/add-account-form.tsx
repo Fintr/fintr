@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,13 +9,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CurrencyPicker } from "@/components/ui/currency-picker";
+import { useNumberInput } from "@/hooks/useNumberInput";
+import { getCurrencySymbol, numberFormatting } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { useAccounts } from "@/hooks/async/useAccounts";
+import { useAuthApi } from "@/hooks/useAuthApi";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
 
 export interface NewAccountData {
   name: string;
   balance: number;
   accountCategory: string;
+  balanceCurrency?: string;
 }
 
 interface AddAccountFormProps {
@@ -27,10 +33,18 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
   onAddAccount,
   currencySymbol = "₱",
 }) => {
+  const { api } = useAuthApi();
+  const { currentSpace } = useSpaceContext(api);
+  const spaceCurrency = currentSpace?.currency ?? "PHP";
   const [name, setName] = useState("");
-  const [balance, setBalance] = useState("");
   const [accountCategory, setAccountCategory] = useState("");
+  const [balanceCurrency, setBalanceCurrency] = useState(spaceCurrency);
+  const balanceInput = useNumberInput();
   const { createAccount, isCreating, accountCategoryOptions } = useAccounts();
+
+  useEffect(() => {
+    setBalanceCurrency(spaceCurrency);
+  }, [spaceCurrency]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +52,9 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
 
     const accountData = {
       name: name.trim(),
-      balance: parseFloat(balance) || 0,
+      balance: numberFormatting.cleanForBackend(balanceInput.displayValue),
       accountCategory: accountCategory,
+      balanceCurrency: balanceCurrency,
     };
 
     try {
@@ -47,8 +62,9 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
 
     // Reset form
     setName("");
-    setBalance("");
-      setAccountCategory("");
+    balanceInput.reset();
+    setAccountCategory("");
+    setBalanceCurrency(spaceCurrency);
       
       // Call the optional callback if provided
       if (onAddAccount) {
@@ -94,17 +110,35 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
         </div>
 
         <div className="space-y-2">
+          <CurrencyPicker
+            label="Currency"
+            placeholder="Search by name or code (e.g. PHP, US Dollar)..."
+            value={balanceCurrency}
+            onChange={setBalanceCurrency}
+            disabled={isCreating}
+            className="bg-white"
+          />
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="current-balance">Current Balance</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-2.5">{currencySymbol}</span>
+          <div className="relative h-9">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm leading-none">
+              {getCurrencySymbol(balanceCurrency)}
+              {"\u00A0"}
+            </span>
             <Input
               id="current-balance"
-              type="number"
-              step="0.01"
-              className="pl-7 bg-white"
+              type="text"
+              inputMode="decimal"
+              className={
+                getCurrencySymbol(balanceCurrency).length > 1
+                  ? "pl-16 bg-white"
+                  : "pl-8 bg-white"
+              }
               placeholder="0.00"
-              value={balance}
-              onChange={(e) => setBalance(e.target.value)}
+              value={balanceInput.displayValue}
+              onChange={(e) => balanceInput.handleInputChange(e.target.value)}
               disabled={isCreating}
             />
           </div>

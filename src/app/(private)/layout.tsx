@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import DashboardNavigation from "@/components/dashboard/dashboard-navigation";
 import BottomNavigation from "@/components/dashboard/bottom-navigation";
 import MobileStickyHeader from "@/components/dashboard/mobile-sticky-header";
@@ -8,12 +8,12 @@ import { useAtomValue } from 'jotai';
 import { isAdminAtom } from '@/atoms/dashboardAtoms';
 import { onboardingStepAtom, isOnboardingCompletedAtom } from '@/atoms/onboardingAtoms';
 import { workspaceTransitionAtom } from '@/atoms/spaceAtoms';
+import { useToastSettings } from '@/contexts/ToastSettingsContext';
 import { useAuthApi } from '@/hooks/useAuthApi';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
 import { usePathname } from 'next/navigation';
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import LoadingScreen from "@/components/ui/loading-screen";
 import TutorialOverlay from "@/components/tutorial/TutorialOverlay";
 import { WorkspaceTransitionScreen } from "@/components/space/workspace-transition-screen";
 
@@ -43,6 +43,19 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const isDashboardPage = pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/subscriptions/create');
 
   const { spaceCode } = useGetSpaceCode(api);
+  const { setSettings: setToastSettings } = useToastSettings();
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
+  // Control toast position: bottom-most on onboarding (mobile); above nav elsewhere on mobile
+  useEffect(() => {
+    const offsetBottom =
+      isOnOnboardingPage && isMobile
+        ? 24
+        : isMobile
+          ? 88
+          : 24;
+    setToastSettings({ offsetBottom });
+  }, [isOnOnboardingPage, isMobile, setToastSettings]);
 
   // Check onboarding status and redirect if necessary
   useEffect(() => {
@@ -56,9 +69,10 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     if (pathname === '/dashboard' && onboardingStep && onboardingStep !== 'completed') {
       // Determine which step to redirect to based on current onboarding step
       const stepRoutes = {
-        income: '/onboarding/step1',
-        budgets: '/onboarding/step2',
-        accounts: '/onboarding/step3',
+        currency: '/onboarding/step1',
+        income: '/onboarding/step2',
+        budgets: '/onboarding/step3',
+        accounts: '/onboarding/step4',
       };
       
       const redirectRoute = stepRoutes[onboardingStep as keyof typeof stepRoutes];

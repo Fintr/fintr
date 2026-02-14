@@ -1,47 +1,64 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom } from "jotai";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FloatingInput } from "@/components/ui/floating-input";
-import { useOnboarding } from "@/hooks/async/useOnboarding";
-import { BudgetCategory, BudgetCategoryInput } from "@/services/onboarding/mutations";
-import { onboardingBudgetCategoriesAtom, onboardingTotalBudgetAtom } from "@/atoms/budgetAtoms";
+import { PhilippinesTaxCalculator } from "@/components/ui/philippines-tax-calculator";
 import { onboardingDataAtom } from "@/atoms/onboardingAtoms";
+import { useOnboarding } from "@/hooks/async/useOnboarding";
 import { numberFormatting } from "@/lib/utils";
+import { useNumberInput } from "@/hooks/useNumberInput";
 import { toast } from "sonner";
-import { Target, ArrowRight, ArrowLeft, X } from "lucide-react";
+import { PhilippinePeso, ArrowRight, ArrowLeft } from "lucide-react";
 
 export default function OnboardingStep2() {
   const router = useRouter();
-  const { saveStep2Data, isUpdating } = useOnboarding("budgets");
-  
-  // Use Jotai atoms for state management
-  const [budgetCategories, setBudgetCategories] = useAtom(onboardingBudgetCategoriesAtom);
-  const [totalBudget] = useAtom(onboardingTotalBudgetAtom);
   const [onboardingData, setOnboardingData] = useAtom(onboardingDataAtom);
-  const [errors, setErrors] = useState<{ [key: number]: { name?: string; amount?: string } }>({});
+  const { saveStep1Data, isUpdating } = useOnboarding("income");
+  const { onboardingData: currencyData } = useOnboarding("currency");
+  const workspaceCurrency =
+    currencyData?.data?.currency ??
+    currencyData?.data?.storedCurrency ??
+    "PHP";
+  const isPhp = workspaceCurrency === "PHP";
+  
+  const [income, setIncome] = useState<string>(
+    onboardingData.incomeData?.income?.toString() || ""
+  );
+  // Number input hook for income field
+  const incomeInput = useNumberInput({
+    initialValue: income,
+    onValueChange: (cleanValue) => setIncome(cleanValue.toString())
+  });
+  
+  const [errors, setErrors] = useState<{ income?: string }>({});
+  
+  // Tax calculator integration
+  const grossIncome = parseFloat(income) || 0;
+  const [taxCalculation, setTaxCalculation] = useState({
+    grossIncome: 0,
+    sssContribution: 0,
+    philhealthContribution: 0,
+    pagibigContribution: 0,
+    incomeTax: 0,
+    totalDeductions: 0,
+    netIncome: 0
+  });
+  
+  // Deduction options state - set to true by default
+  const [deductTaxes, setDeductTaxes] = useState(true);
+  const [deductContributions, setDeductContributions] = useState(true);
+
 
   const validateForm = () => {
-    const newErrors: { [key: number]: { name?: string; amount?: string } } = {};
+    const newErrors: { income?: string } = {};
     
-    budgetCategories.forEach((category, index) => {
-      const categoryErrors: { name?: string; amount?: string } = {};
-      
-      if (!category.name.trim()) {
-        categoryErrors.name = "Category name is required";
-      }
-      
-      if (!category.amount || isNaN(Number(category.amount)) || Number(category.amount) < 0) {
-        categoryErrors.amount = "Please enter a valid amount";
-      }
-      
-      if (Object.keys(categoryErrors).length > 0) {
-        newErrors[index] = categoryErrors;
-      }
-    });
+    if (!income || isNaN(Number(income)) || Number(income) < 0) {
+      newErrors.income = "Please enter a valid income amount";
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -50,87 +67,38 @@ export default function OnboardingStep2() {
   const handleNext = async () => {
     if (validateForm()) {
       try {
-        // Convert to BudgetCategoryInput (without percentage) for API
-        const budgetCategoryInputs: BudgetCategoryInput[] = budgetCategories.map(category => ({
-          name: category.name,
-          amount: category.amount
-        }));
-        
-        // Save step 2 data to backend
-        await saveStep2Data({
+        // Update local onboarding data
+        setOnboardingData({
+          ...onboardingData,
           step: 'budgets',
-          budgetCategories: budgetCategoryInputs,
+          incomeData: {
+            income: Number(income),
+          },
         });
         
-        // Navigate to next step on success
+        // Calculate the amount to use based on deduction options (PHP only)
+        let amountToUse = Number(income);
+        if (isPhp && (deductTaxes || deductContributions) && taxCalculation) {
+          amountToUse = taxCalculation.netIncome;
+        }
+        
+        // Save step 1 data to backend
+        await saveStep1Data({
+          step: 'income',
+          income: amountToUse,
+        });
+        
+        // Navigate to step 3 (budgets) on success
         router.push('/onboarding/step3');
       } catch (error) {
-        console.error('Error saving step 2 data:', error);
-        toast.error('Error saving budget categories. Please try again.');
+        console.error('Error saving step 1 data:', error);
+        toast.error('Error saving income data. Please try again.');
       }
     }
   };
 
-  const handleBack = () => {
-    router.push('/onboarding/step1');
-  };
-
-  const updateCategory = (index: number, field: 'name' | 'amount', value: string) => {
-    const updatedCategories = [...budgetCategories];
-    if (field === 'amount') {
-      // For amount field, use handleInputChange for formatting and store clean value
-      const formattedValue = numberFormatting.handleInputChange(value);
-      const cleanValue = numberFormatting.cleanForBackend(formattedValue);
-      updatedCategories[index] = { ...updatedCategories[index], [field]: cleanValue.toString() };
-      setDisplayAmounts(prev => ({ ...prev, [index]: formattedValue }));
-    } else {
-      updatedCategories[index] = { ...updatedCategories[index], [field]: value };
-    }
-    setBudgetCategories(updatedCategories);
-  };
-
-  // Display values for amount fields to handle formatting
-  const [displayAmounts, setDisplayAmounts] = useState<{ [key: number]: string }>({});
-
-  const deleteCategory = (index: number) => {
-    const updatedCategories = budgetCategories.filter((_, i) => i !== index);
-    setBudgetCategories(updatedCategories);
-    
-    // Clear any errors for this category
-    const newErrors = { ...errors };
-    delete newErrors[index];
-    
-    // Reindex errors for remaining categories
-    const reindexedErrors: { [key: number]: { name?: string; amount?: string } } = {};
-    Object.keys(newErrors).forEach(key => {
-      const oldIndex = parseInt(key);
-      if (oldIndex > index) {
-        reindexedErrors[oldIndex - 1] = newErrors[oldIndex];
-      } else if (oldIndex < index) {
-        reindexedErrors[oldIndex] = newErrors[oldIndex];
-      }
-    });
-    
-    setErrors(reindexedErrors);
-  };
-
-  const addCategory = () => {
-    const newCategory: BudgetCategory = {
-      name: "",
-      amount: "0",
-      percentage: 0
-    };
-    setBudgetCategories([...budgetCategories, newCategory]);
-  };
-
-  // Calculate total income from step1
-  const totalIncome = onboardingData.incomeData?.income || 0;
-
-  const calculatePercentage = (amount: string): number => {
-    const numAmount = Number(amount || 0);
-    if (totalIncome === 0) return 0;
-    return Math.round((numAmount / totalIncome) * 100);
-  };
+  // Calculate total income for logic (use net income if deductions are enabled)
+  const totalIncome = (deductTaxes || deductContributions) && taxCalculation ? taxCalculation.netIncome : (Number(income) || 0);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -138,134 +106,100 @@ export default function OnboardingStep2() {
         {/* Progress indicator */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-muted-foreground mb-2">
-            <span>Step 2 of 4</span>
-            <span>Budget Setup</span>
+            <span>Step 2 of 5</span>
+            <span>Income Setup</span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
-            <div className="bg-primary h-2 rounded-full transition-all duration-500 ease-out w-2/4"></div>
+            <div className="bg-primary h-2 rounded-full transition-all duration-500 ease-out w-2/5"></div>
           </div>
         </div>
 
         <Card className="shadow-lg border-border">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 p-3 bg-primary/30 rounded-full w-fit">
-              <Target className="h-8 w-8 text-primary" />
+              <PhilippinePeso className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Budget Set-Up</CardTitle>
+            <CardTitle className="text-2xl">Tell us about your income</CardTitle>
             <CardDescription>
-              Customize your monthly budget allocation across different spending categories
+              Enter your gross income, we'll deduct taxes and contributions to give you your take-home pay. 
+              We'll use this to build a personalized budget and financial plan for you.
             </CardDescription>
           </CardHeader>
           
           <CardContent className="space-y-6">
-            {/* Budget Categories List */}
             <div className="space-y-4">
-              {/* Total budget summary */}
-              <div className="bg-muted rounded-lg p-4 border border-border mt-6">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Total Monthly Budget:
-                  </span>
-                  <span className="text-lg font-bold text-primary">
-                    ₱{totalBudget.toLocaleString()}
-                  </span>
-                </div>
+              <div>
+                <FloatingInput
+                  type="text"
+                  label="Monthly Income"
+                  value={incomeInput.displayValue}
+                  onChange={(e) => incomeInput.handleInputChange(e.target.value)}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  className={errors.income ? "border-destructive" : ""}
+                />
+                {errors.income && (
+                  <p className="text-destructive text-sm mt-1">{errors.income}</p>
+                )}
               </div>
-
-              {/* Potential savings preview */}
-              <div className="bg-muted rounded-lg p-4 border border-border mt-6">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Potential Monthly Savings:
-                  </span>
-                  <span className="text-lg font-bold text-teal-600">
-                    ₱{(totalIncome - totalBudget).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-
-              {budgetCategories.map((category, index) => (
-                <div key={index} className="border border-border rounded-lg p-4 space-y-4 bg-card relative">
-                  {/* Delete button */}
-                  {budgetCategories.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteCategory(index)}
-                      className="z-20 absolute top-2 right-2 h-6 w-6 p-0 bg-white text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              
+              {/* Deduction Options (Philippines only) */}
+              {isPhp && (
+                <>
+                  <div className="flex justify-center gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeductTaxes(!deductTaxes)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
+                        deductTaxes 
+                          ? 'bg-primary text-white border border-primary shadow-md' 
+                          : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                      }`}
                     >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <FloatingInput
-                        type="text"
-                        label="Category Name"
-                        value={category.name}
-                        onChange={(e) => updateCategory(index, 'name', e.target.value)}
-                        className={errors[index]?.name ? "border-destructive" : ""}
-                      />
-                      {errors[index]?.name && (
-                        <p className="text-destructive text-sm mt-1">{errors[index].name}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <div className="flex gap-2 items-center">
-                        <div className="flex-1">
-                          <FloatingInput
-                            type="text"
-                            label="Amount (₱)"
-                            value={displayAmounts[index] || numberFormatting.formatForInput(category.amount)}
-                            onChange={(e) => updateCategory(index, 'amount', e.target.value)}
-                            onWheel={(e) => e.currentTarget.blur()}
-                            className={errors[index]?.amount ? "border-destructive" : ""}
-                          />
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-muted-foreground bg-primary/30 px-2 py-1 rounded-full whitespace-nowrap">
-                            {calculatePercentage(category.amount)}% of income
-                          </span>
-                        </div>
-                      </div>
-                      {errors[index]?.amount && (
-                        <p className="text-destructive text-sm mt-1">{errors[index].amount}</p>
-                      )}
-                    </div>
+                      Deduct Taxes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeductContributions(!deductContributions)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
+                        deductContributions 
+                          ? 'bg-primary text-white border border-primary shadow-md' 
+                          : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                      }`}
+                    >
+                      Deduct Contributions
+                    </button>
                   </div>
-                </div>
-              ))}
+                  {/* Tax Calculator */}
+                  {(deductTaxes || deductContributions) && (
+                    <div className="w-full animate-in slide-in-from-top-2 fade-in duration-300">
+                      <PhilippinesTaxCalculator 
+                        grossIncome={grossIncome}
+                        deductTaxes={deductTaxes}
+                        deductContributions={deductContributions}
+                        onCalculationChange={setTaxCalculation}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
-            {/* Add new category button */}
-            <div className="flex justify-center">
-              <Button
-                variant="outline"
-                onClick={addCategory}
-                className="border-dashed border-2 hover:border-primary hover:text-primary"
-              >
-                + Add New Category
-              </Button>
-            </div>
-
-            
             {/* Action buttons */}
-            <div className="flex gap-3 pt-4">
-              <Button 
-                variant="outline" 
-                onClick={handleBack}
-                className="flex-1"
+            <div className="flex justify-between pt-4 gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push("/onboarding/step1")}
+                className="shrink-0"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
-              
-              <Button 
+              <Button
                 onClick={handleNext}
                 disabled={isUpdating}
-                className="flex-1 bg-primary hover:bg-primary/90"
+                className="px-8 bg-primary hover:bg-primary/90"
               >
                 {isUpdating ? "Saving..." : "Next"}
                 <ArrowRight className="h-4 w-4 ml-2" />
@@ -277,7 +211,7 @@ export default function OnboardingStep2() {
         {/* Help text */}
         <div className="mt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            You can adjust these amounts based on your spending habits and financial goals
+            Don't worry, you can always update this information later in your dashboard
           </p>
         </div>
       </div>

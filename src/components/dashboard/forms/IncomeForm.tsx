@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -32,6 +32,10 @@ import ExpandableTextarea from '@/components/ui/expandable-textarea';
 import FileUploadField from "./FileUploadField";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
+import {
+  AmountWithRatePicker,
+  type ConversionSnapshot,
+} from "./AmountWithRatePicker";
 
 // Income form schema using Zod
 const incomeFormSchema = z.object({
@@ -65,6 +69,8 @@ interface IncomeFormProps {
   id?: string;
   date: Date | undefined;
   setDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
+  /** Space default currency; used as fallback and to detect when account currency differs */
+  spaceCurrency?: string;
   onAddCustomCategory?: (categoryName: string) => void;
   onAddCustomAccount?: (accountName: string) => void;
   onSubmitSuccess?: (data: any) => void;
@@ -81,6 +87,7 @@ interface IncomeFormProps {
 const IncomeForm: React.FC<IncomeFormProps> = ({
   date,
   setDate,
+  spaceCurrency = "PHP",
   onAddCustomCategory,
   onAddCustomAccount,
   onSubmitSuccess,
@@ -95,6 +102,17 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const categoryOptions = useAtomValue(incomeCategoryOptionsAtom);
   const accountOptions = useAtomValue(accountOptionsAtom);
   const { api } = useAuthApi();
+
+  const amountCurrencyOptions = useMemo(() => {
+    const codes = Array.from(
+      new Set(
+        accountOptions
+          .map((a) => a.currency)
+          .filter((c): c is string => Boolean(c))
+      )
+    );
+    return codes.length > 0 ? codes : ["PHP"];
+  }, [accountOptions]);
 
   // Local state for UI elements and form handling
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
@@ -126,15 +144,35 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     repeatInterval: initialData?.repeatInterval || "",
     file: initialData?.file || null,
   });
-  
+
+  const selectedAccount = accountOptions.find((a) => a.value === formState.accountName);
+  const selectedAccountCurrency =
+    selectedAccount?.currency ?? spaceCurrency;
+  const accountCurrencyDiffersFromSpace =
+    selectedAccount?.currency != null && selectedAccount.currency !== spaceCurrency;
+
+  const [amountCurrency, setAmountCurrency] = useState(selectedAccountCurrency);
+  const [conversionSnapshot, setConversionSnapshot] =
+    useState<ConversionSnapshot | null>(null);
+
+  // Do not sync amountCurrency to selected account when account changes.
+  // The user's chosen transaction currency should persist so the API
+  // receives that currency and uses it for calculations/conversion.
+
   // Number input hook for amount field
   const amountInput = useNumberInput({
     initialValue: formState.amount,
     onValueChange: (cleanValue) => handleFieldChange("amount", cleanValue.toString())
   });
   
-  // Tax calculator integration
-  const grossIncome = parseFloat(formState.amount) || 0;
+  // Tax calculator integration: use amount in PHP (converted output when applicable)
+  const rawAmount = numberFormatting.cleanForBackend(formState.amount);
+  const grossIncome =
+    amountCurrency === "PHP"
+      ? rawAmount
+      : conversionSnapshot && selectedAccountCurrency === "PHP"
+        ? rawAmount * conversionSnapshot.exchangeRate
+        : 0;
   const [taxCalculation, setTaxCalculation] = useState({
     grossIncome: 0,
     sssContribution: 0,
@@ -190,6 +228,19 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
       // Store the current initialData reference to prevent re-running on same object
       prevInitialDataRef.current = initialData;
+    }
+    // Always sync conversion snapshot when initialData is present (including first mount with data)
+    if (initialData) {
+      const rawConv = (initialData as any).currency_conversion ?? (initialData as any).currencyConversion;
+      if (rawConv) {
+        setConversionSnapshot({
+          originalCurrency: rawConv.original_currency ?? rawConv.originalCurrency,
+          exchangeRate: Number(rawConv.exchange_rate ?? rawConv.exchangeRate),
+          exchangeRateSource: (rawConv.source ?? "manual") as "auto" | "manual" | "recent",
+        });
+      } else {
+        setConversionSnapshot(null);
+      }
     } else if (!initialData && prevInitialDataRef.current) {
       // If initialData becomes undefined and it was previously set, clear the form
       setFormState({
@@ -208,6 +259,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       setShowCustomAccountInput(false);
       setScheduleType(ScheduleTypeEnum.ONE_TIME);
       setFormSubmitted(false);
+      setConversionSnapshot(null);
       prevInitialDataRef.current = undefined;
     }
   }, [initialData, initialData?.file]); // Add initialData?.file and setDate to dependencies
@@ -270,11 +322,13 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     }
     
     try {
-      // Calculate the amount to use based on deduction options
+      // Update: backend stores amount as-is → send converted amount. Create: backend converts → send original amount.
       let amountToUse = numberFormatting.cleanForBackend(formState.amount);
-      
-      // If deductions are enabled, use the net income from tax calculation
-      if ((deductTaxes || deductContributions) && taxCalculation) {
+      if (conversionSnapshot && conversionSnapshot.originalCurrency !== selectedAccountCurrency && isEditMode) {
+        amountToUse = String(parseFloat(amountToUse) * conversionSnapshot.exchangeRate);
+      }
+      // If deductions are enabled (PHP only), use the net income from tax calculation
+      if (spaceCurrency === "PHP" && (deductTaxes || deductContributions) && taxCalculation) {
         amountToUse = taxCalculation.netIncome;
       }
       
@@ -285,10 +339,15 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         accountName: formState.accountName,
         date: format(date, "yyyy-MM-dd"),
         scheduleType: formState.scheduleType,
-        ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && { 
-          repeatInterval: formState.repeatInterval 
+        ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && {
+          repeatInterval: formState.repeatInterval
         }),
-        ...(fileState && { file: fileState })
+        ...(fileState && { file: fileState }),
+        ...(conversionSnapshot && {
+          original_currency: conversionSnapshot.originalCurrency,
+          exchange_rate: conversionSnapshot.exchangeRate,
+          exchange_rate_source: conversionSnapshot.exchangeRateSource,
+        }),
       };
       
       let response;
@@ -322,6 +381,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         });
         // Reset number input hook
         amountInput.reset();
+        setConversionSnapshot(null);
         setDate(undefined);
         setFileState(null);
         setShowCustomCategoryInput(false);
@@ -381,9 +441,9 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   return (
     <form ref={formRef} onSubmit={handleSubmit}>
       <div className="space-y-4">
-        {/* Income Form Essential Fields - Tutorial Target */}
-        <div data-tutorial-target="income-form" className="grid grid-cols-2 gap-x-4 gap-y-1">
-          <div className="space-y-2">
+        {/* Income Form Essential Fields - Date on first row, Amount on second row. */}
+        <div data-tutorial-target="income-form" className="grid grid-cols-1 gap-4">
+          <div className="space-y-2 min-w-0">
             <Label htmlFor="date" className="text-sm">Date</Label>
             <Popover modal>
               <PopoverTrigger asChild>
@@ -405,56 +465,63 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             </Popover>
           </div>
 
-          {/* Amount Field */}
-          <div className="space-y-2">
-            <Label htmlFor="amount" className="text-sm">Amount</Label>
-            <Input
-              id="amount"
-              name="amount"
-              value={amountInput.displayValue}
-              onChange={(e) => amountInput.handleInputChange(e.target.value)}
-              onWheel={(e) => e.currentTarget.blur()}
-              type="text"
-              placeholder="0.00"
-              className={`text-sm ${formSubmitted && formErrors.amount ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-            />
-            {formSubmitted && formErrors.amount?.map((error) => (
-              <FormError key={error}>{error}</FormError>
-            ))}
-            
+          {/* Amount + currency + rates - own row */}
+          <div className="space-y-2 min-w-0">
+          <AmountWithRatePicker
+            id="amount"
+            label="Amount"
+            amountDisplayValue={amountInput.displayValue}
+            onAmountChange={(value) => amountInput.handleInputChange(value)}
+            fromCurrency={amountCurrency}
+            onFromCurrencyChange={setAmountCurrency}
+            toCurrency={selectedAccountCurrency}
+            amountCurrencyOptions={amountCurrencyOptions}
+            accountOptions={accountOptions}
+            errors={formSubmitted && formErrors.amount ? formErrors.amount : []}
+            placeholder="0.00"
+            inputClassName={
+              formSubmitted && formErrors.amount
+                ? "border-red-800 focus-visible:ring-red-800"
+                : ""
+            }
+            onConversionChange={setConversionSnapshot}
+            date={date ? format(date, "yyyy-MM-dd") : undefined}
+          />
           </div>
 
-          {/* Deduction Options - Spanning 2 columns */}
-          <div className="col-span-2 flex justify-end gap-2 mt-2">
-            <button
-              type="button"
-              data-tutorial-target="deduct-taxes"
-              onClick={() => setDeductTaxes(!deductTaxes)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
-                deductTaxes 
-                  ? 'bg-primary text-white border border-primary shadow-md' 
-                  : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
-              }`}
-            >
-              Deduct Taxes
-            </button>
-            <button
-              type="button"
-              data-tutorial-target="deduct-contributions"
-              onClick={() => setDeductContributions(!deductContributions)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
-                deductContributions 
-                  ? 'bg-primary text-white border border-primary shadow-md' 
-                  : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
-              }`}
-            >
-              Deduct Contributions
-            </button>
-          </div>
+          {/* Deduction Options - only for PHP (Philippines tax/contributions) */}
+          {spaceCurrency === "PHP" && (
+            <div className="flex justify-end gap-2 mt-2">
+                <button
+                  type="button"
+                  data-tutorial-target="deduct-taxes"
+                  onClick={() => setDeductTaxes(!deductTaxes)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
+                    deductTaxes 
+                      ? 'bg-primary text-white border border-primary shadow-md' 
+                      : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                  }`}
+                >
+                  Deduct Taxes
+                </button>
+                <button
+                  type="button"
+                  data-tutorial-target="deduct-contributions"
+                  onClick={() => setDeductContributions(!deductContributions)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
+                    deductContributions 
+                      ? 'bg-primary text-white border border-primary shadow-md' 
+                      : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                  }`}
+                >
+                  Deduct Contributions
+                </button>
+            </div>
+          )}
         </div>
 
-         {/* Tax Calculator */}
-         {(deductTaxes || deductContributions) && (
+         {/* Tax Calculator - Philippines only */}
+         {spaceCurrency === "PHP" && (deductTaxes || deductContributions) && (
            <div className="w-full animate-in slide-in-from-top-2 fade-in duration-300">
              <PhilippinesTaxCalculator 
                grossIncome={grossIncome}
@@ -467,9 +534,8 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
          )}
 
         <div className="grid grid-cols-2 gap-4">
-         
           {/* Schedule Type Field */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label htmlFor="scheduleType" className="text-sm">Schedule Type</Label>
             <Select
               value={formState.scheduleType}
@@ -477,7 +543,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             >
               <SelectTrigger 
                 id="scheduleType" 
-                className={`text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-800 focus-visible:ring-red-800" : ""}`}
               >
                 <SelectValue placeholder="Select schedule type" className="text-sm" />
               </SelectTrigger>
@@ -500,7 +566,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                 >
                   <SelectTrigger 
                     id="repeatInterval" 
-                    className={`text-sm ${formSubmitted && formErrors.repeatInterval ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                    className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.repeatInterval ? "border-red-800 focus-visible:ring-red-800" : ""}`}
                   >
                     <SelectValue placeholder="Select interval" className="text-sm" />
                   </SelectTrigger>
@@ -518,7 +584,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           </div>
           
           {/* Category Field */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label htmlFor="categoryName" className="text-sm">Income Category</Label>
             <Select
               value={formState.categoryName}
@@ -533,7 +599,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             >
               <SelectTrigger 
                 id="categoryName" 
-                className={`text-sm ${formSubmitted && formErrors.categoryName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.categoryName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
               >
                 <SelectValue placeholder="Select category" className="text-sm" />
               </SelectTrigger>
@@ -561,7 +627,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
         <div className="grid grid-cols-2 gap-4">
           {/* Account Field */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label htmlFor="accountName" className="text-sm">Account</Label>
             <Select
               value={formState.accountName}
@@ -576,7 +642,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             >
               <SelectTrigger 
                 id="accountName" 
-                className={`text-sm ${formSubmitted && formErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
               >
                 <SelectValue placeholder="Select Account" className="text-sm" />
               </SelectTrigger>
@@ -592,14 +658,18 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             {formSubmitted && formErrors.accountName?.map((error) => (
               <FormError key={error}>{error}</FormError>
             ))}
-
+            {accountCurrencyDiffersFromSpace && selectedAccount?.currency && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Account currency: {selectedAccount.currency} (differs from space: {spaceCurrency})
+              </p>
+            )}
             {showCustomAccountInput && (
               <AccountCreationForm onSuccess={handleAccountCreated} />
             )}
           </div>
 
           {/* Description Field */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label htmlFor="description" className="text-sm">Note (Optional)</Label>
             <Input
               id="description"

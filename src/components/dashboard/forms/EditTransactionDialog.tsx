@@ -1,20 +1,25 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { CustomModal } from "@/components/ui/custom-modal";
 import ExpenseForm from "./ExpenseForm";
 import IncomeForm from "./IncomeForm";
 import TransferForm from "./TransferForm";
 import ScopeModal, { UpdateScope, Scope, DeleteScope } from "./ScopeModal";
-import { IndexTransaction, CombinedTransactionTypeEnum, TransferUpdateTransactionType, UpdateTransactionType } from "@/types/transactionTypes";
+import { IndexTransaction, CombinedTransactionTypeEnum, TransferUpdateTransactionType, UpdateTransactionType, CurrencyConversionType } from "@/types/transactionTypes";
 import { UpdateTransferType, updateTransfer } from "@/services/transactions/transfers/mutation";
 import { updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
 import { deleteTransfer } from "@/services/transactions/transfers/mutation";
 import { fetchTransactionById } from "@/services/transactions/queries";
 import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { ScheduleTypeEnum, UpdateScopeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createDisplayFileFromAttachment } from "@/utils/fileUtils";
+import { formatAmountWithCode, formatWithDelimiters } from "@/lib/utils";
+import { ArrowLeftRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface FileAttachment {
   id: string;
@@ -22,6 +27,57 @@ interface FileAttachment {
   contentType: string;
   url: string;
   createdAt: string;
+}
+
+/** Normalize conversion from API (may return snake_case). */
+function getConversion(data: UpdateTransactionType | TransferUpdateTransactionType | null): CurrencyConversionType | null {
+  if (!data) return null;
+  const raw = (data as any).currency_conversion ?? data.currencyConversion;
+  if (!raw) return null;
+  return {
+    id: raw.id,
+    originalAmount: raw.original_amount ?? raw.originalAmount,
+    originalCurrency: raw.original_currency ?? raw.originalCurrency,
+    convertedAmount: raw.converted_amount ?? raw.convertedAmount,
+    convertedCurrency: raw.converted_currency ?? raw.convertedCurrency,
+    exchangeRate: raw.exchange_rate ?? raw.exchangeRate,
+    source: raw.source ?? "",
+    rateTimestamp: raw.rate_timestamp ?? raw.rateTimestamp,
+    note: raw.note ?? raw.note,
+  };
+}
+
+function hasConversion(data: UpdateTransactionType | TransferUpdateTransactionType | null): boolean {
+  if (!data) return false;
+  return Boolean((data as any).has_currency_conversion ?? data.hasCurrencyConversion);
+}
+
+function ConversionInfoPopover({ conv }: { conv: CurrencyConversionType }) {
+  return (
+    <div className="space-y-3">
+      <p className="font-medium text-sm">Currency conversion</p>
+      <dl className="space-y-2 text-sm">
+        <div>
+          <dt className="text-muted-foreground">Original</dt>
+          <dd>{formatAmountWithCode(conv.originalAmount, conv.originalCurrency)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Exchange rate</dt>
+          <dd>{formatWithDelimiters(conv.exchangeRate, { minFractionDigits: 4, maxFractionDigits: 6 })}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Converted to</dt>
+          <dd>{formatAmountWithCode(conv.convertedAmount, conv.convertedCurrency)}</dd>
+        </div>
+        {conv.source && (
+          <div>
+            <dt className="text-muted-foreground">Source</dt>
+            <dd>{conv.source}</dd>
+          </div>
+        )}
+      </dl>
+    </div>
+  );
 }
 
 interface EditTransactionDialogProps {
@@ -40,6 +96,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   const [fullTransactionData, setFullTransactionData] = useState<UpdateTransactionType | TransferUpdateTransactionType | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const { api } = useAuthApi();
+  const { currentSpace } = useSpaceContext(api);
+  const spaceCurrency = currentSpace?.currency ?? "PHP";
   const [isLoading, setIsLoading] = useState(false);
   const [fileAttachments, setFileAttachments] = useState<FileAttachment[]>([]);
   
@@ -54,6 +112,28 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   // Delete scope modal state
   const [showDeleteScopeModal, setShowDeleteScopeModal] = useState(false);
   const [deleteScope, setDeleteScope] = useState<DeleteScope>(DeleteScopeEnum.THIS_ONLY);
+
+  // View conversion popover: close when clicking outside or elsewhere
+  const [conversionPopoverOpen, setConversionPopoverOpen] = useState(false);
+  const conversionPopoverTriggerRef = useRef<HTMLDivElement>(null);
+  const conversionPopoverContentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) setConversionPopoverOpen(false);
+  }, [isOpen]);
+
+  // Close conversion popover when clicking anywhere outside it (modal, form, backdrop, etc.)
+  useEffect(() => {
+    if (!conversionPopoverOpen) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (conversionPopoverTriggerRef.current?.contains(target)) return;
+      if (conversionPopoverContentRef.current?.contains(target)) return;
+      setConversionPopoverOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [conversionPopoverOpen]);
 
   useEffect(() => {
     const fetchTransactionDetails = async () => {
@@ -363,6 +443,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             initialData={fullTransactionData}
             date={date}
             setDate={setDate}
+            spaceCurrency={spaceCurrency}
             onSubmitSuccess={handleFormSubmit}
             onCancel={onClose}
             isEditMode={true}
@@ -378,6 +459,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             initialData={fullTransactionData}
             date={date}
             setDate={setDate}
+            spaceCurrency={spaceCurrency}
             onSubmitSuccess={handleFormSubmit}
             onCancel={onClose}
             isEditMode={true}
@@ -386,10 +468,13 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
           />
         );
       case CombinedTransactionTypeEnum.TRANSFER:
-        // For transfers, we need to map the transaction data to the expected format
+        // For transfers, we need to map the transaction data to the expected format.
+        // When there's a currency conversion, the stored amount is in to-account currency;
+        // the form expects amount in from-account currency (original amount).
+        const transferConv = getConversion(fullTransactionData);
         const transferData: UpdateTransferType = {
           id: fullTransactionData.id,
-          amount: fullTransactionData.amount,
+          amount: transferConv ? transferConv.originalAmount : fullTransactionData.amount,
           transactionCost: (fullTransactionData as any).transactionCost || 0,
           fromAccountName: (fullTransactionData as any).fromAccountName || "",
           toAccountName: (fullTransactionData as any).toAccountName || "",
@@ -399,6 +484,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
           repeatInterval: fullTransactionData.repeatInterval,
           file: fullTransactionData.file || undefined, // Ensure file is explicitly included here
           updateScope: fullTransactionData.updateScope,
+          hasCurrencyConversion: fullTransactionData.hasCurrencyConversion ?? (fullTransactionData as any).has_currency_conversion,
+          currencyConversion: transferConv ?? undefined,
         };
         
         return (
@@ -408,6 +495,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             initialData={transferData}
             date={date}
             setDate={setDate}
+            spaceCurrency={spaceCurrency}
             onSubmitSuccess={handleFormSubmit}
             onCancel={onClose}
             isEditMode={true}
@@ -429,10 +517,44 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         maxWidth="2xl"
         className="p-0"
       >
-        <div className="px-6 pb-6 pt-4">
+        <div
+          className="px-6 pb-6 pt-4"
+          onPointerDown={(e) => {
+            if (!conversionPopoverOpen) return;
+            const target = e.target as Node;
+            if (conversionPopoverTriggerRef.current?.contains(target)) return;
+            if (conversionPopoverContentRef.current?.contains(target)) return;
+            setConversionPopoverOpen(false);
+          }}
+        >
           <p className="text-sm text-muted-foreground mb-4">
             {getDialogDescription()}
           </p>
+          {hasConversion(fullTransactionData) && getConversion(fullTransactionData) && (
+            <div ref={conversionPopoverTriggerRef} className="mb-4">
+              <Popover
+                open={conversionPopoverOpen}
+                onOpenChange={setConversionPopoverOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <ArrowLeftRight className="h-4 w-4" />
+                    View conversion
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-80">
+                  <div ref={conversionPopoverContentRef}>
+                    <ConversionInfoPopover conv={getConversion(fullTransactionData)!} />
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
           {renderForm()}
         </div>
       </CustomModal>

@@ -1,6 +1,6 @@
 import * as Ariakit from "@ariakit/react";
 import { matchSorter } from "match-sorter";
-import { startTransition, useMemo, useState, useEffect } from "react";
+import { startTransition, useMemo, useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { OptionType } from "@/types/generalTypes";
 
@@ -77,6 +77,15 @@ export interface ComboBoxProps {
    * Receives the current search value and a function to select the value and close the popover.
    */
   renderNotFound?: (searchValue: string, selectValueAndClose: () => void) => React.ReactNode;
+  /**
+   * When provided, the input shows this label when closed (e.g. flag + name) instead of the raw value.
+   * When the popover opens, the input reverts to the raw value so the user can type to search.
+   */
+  getDisplayLabel?: (value: string) => string;
+  /**
+   * Maximum number of options to show in the dropdown (e.g. 5). Omit to show all.
+   */
+  maxVisibleOptions?: number;
 }
 
 export const ComboBox = ({
@@ -95,27 +104,39 @@ export const ComboBox = ({
   disabled = false,
   showAllOnFocus = true,
   renderNotFound,
+  getDisplayLabel,
+  maxVisibleOptions,
 }: ComboBoxProps) => {
-  const [searchValue, setSearchValue] = useState(value || "");
+  const [searchValue, setSearchValue] = useState(
+    () => (value != null && getDisplayLabel ? getDisplayLabel(value) : value ?? "")
+  );
   const [options, setOptions] = useState<ComboBoxItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
   // Initialize searchValue from value prop on mount
   useEffect(() => {
-    if (value !== undefined && value !== searchValue) {
-      setSearchValue(value);
+    if (value !== undefined && value !== null) {
+      setSearchValue(getDisplayLabel ? getDisplayLabel(value) : value);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
-  // Sync searchValue with the value prop when combobox closes
-  // This prevents interfering with typing while the combobox is open
+  // When closed: show display label (flag + name) or raw value. When open: show raw value for searching.
   useEffect(() => {
-    if (!open && value !== undefined && value !== searchValue) {
+    if (!open && value !== undefined && value !== null) {
+      setSearchValue(getDisplayLabel ? getDisplayLabel(value) : value);
+    }
+  }, [value, open, getDisplayLabel]);
+
+  // When opening, switch to raw value once so user can type to search (don't reset while open)
+  const prevOpen = useRef(open);
+  useEffect(() => {
+    if (open && !prevOpen.current && value != null && getDisplayLabel) {
       setSearchValue(value);
     }
-  }, [value, open]);
+    prevOpen.current = open;
+  }, [open, value, getDisplayLabel]);
 
   // For frontend filtering
   const filteredOptions = useMemo(() => {
@@ -176,8 +197,12 @@ export const ComboBox = ({
     // Do not automatically close here, selection of an item or explicit action should close.
   };
 
-  // Get the appropriate options based on filtering type
+  // Get the appropriate options based on filtering type; optionally cap visible count
   const displayOptions = filterType === "frontend" ? filteredOptions : options;
+  const visibleOptions =
+    maxVisibleOptions != null
+      ? displayOptions.slice(0, maxVisibleOptions)
+      : displayOptions;
 
   // Format items for display
   const formatItem = (item: ComboBoxItem): { display: string; value: string } => {
@@ -223,8 +248,8 @@ export const ComboBox = ({
       >
         {loading ? (
           <div className="p-2 text-center text-gray-300">Loading...</div>
-        ) : displayOptions && displayOptions.length > 0 ? (
-          displayOptions.map((item) => {
+        ) : visibleOptions && visibleOptions.length > 0 ? (
+          visibleOptions.map((item) => {
             const { display, value: itemValue } = formatItem(item);
             return (
               <Ariakit.ComboboxItem
@@ -244,7 +269,9 @@ export const ComboBox = ({
               </Ariakit.ComboboxItem>
             );
           })
-        ) : ((searchValue.length >= minSearchLength && !(showAllOnFocus && open && searchValue.length === 0 && filterType === 'frontend')) || (showAllOnFocus && open && searchValue.length === 0)) && !loading ? (
+        ) : ((searchValue.length >= minSearchLength && !(showAllOnFocus && open && searchValue.length === 0 && filterType === "frontend")) ||
+          (showAllOnFocus && open && searchValue.length === 0)) &&
+        !loading ? (
           renderNotFound && searchValue.length > 0 ? (
             renderNotFound(searchValue, () => {
               if (onChange) {
