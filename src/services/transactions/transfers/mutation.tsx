@@ -13,6 +13,9 @@ export interface CreateTransferType {
   scheduleType: ScheduleTypeEnum;
   repeatInterval?: string;
   file?: File;
+  // Multi-currency: when from/to account currencies differ
+  exchange_rate?: number;
+  exchange_rate_source?: "auto" | "manual" | "recent";
 }
 
 // Type for updating a transfer

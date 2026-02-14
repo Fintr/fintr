@@ -5,11 +5,15 @@ export interface CreateAccountType {
   name: string;
   balance: number;
   accountCategory: string;
+  /** ISO 4217 currency code (e.g. PHP, USD). Defaults to space currency if omitted. */
+  balanceCurrency?: string;
 }
 
 // Type for updating an account
 export interface UpdateAccountType {
   name: string;
+  /** ISO 4217 currency code. Omitted if not changing. */
+  balanceCurrency?: string;
 }
 
 // Type for adjusting account balance

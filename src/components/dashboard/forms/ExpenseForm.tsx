@@ -39,6 +39,13 @@ import { useTransactionDrafts } from "@/hooks/async/useTransactionDrafts";
 import DraftItems from "./DraftItems";
 import { useQueryClient } from "@tanstack/react-query";
 import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
+import {
+  AmountWithRatePicker,
+  type ConversionSnapshot,
+} from "./AmountWithRatePicker";
+
+/** System category for transfer-fee expenses; when editing such a transaction, the category is shown and disabled. */
+const TRANSFER_FEE_CATEGORY_NAME = "Transfer Fee";
 
 // Keep Zod schemas as they are used by the adapter and nested forms
 const categorySchema = z.object({
@@ -93,6 +100,8 @@ interface ExpenseFormProps {
   date: Date | undefined;
   setDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
   suggestedDate?: Date; // AI-suggested date to display as a clickable suggestion
+  /** Space default currency; used as fallback and to detect when account currency differs */
+  spaceCurrency?: string;
   onAddCustomCategory?: (categoryName: string) => void;
   onAddCustomAccount?: (accountName: string) => void;
   onSubmitSuccess?: (data: any) => void; // Renamed for clarity
@@ -111,6 +120,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   date,
   setDate,
   suggestedDate,
+  spaceCurrency = "PHP",
   onAddCustomCategory,
   onAddCustomAccount,
   onSubmitSuccess,
@@ -123,9 +133,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   onDelete,
 }) => {
   // Get options from atoms
-  const categoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  const categoryOptionsRaw = useAtomValue(expenseCategoryOptionsAtom);
   const accountOptionsRaw = useAtomValue(accountOptionsAtom);
-  
+
   // Deduplicate account options to prevent React key warnings
   const accountOptions = useMemo(() => {
     const seen = new Set();
@@ -137,7 +147,18 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       return true;
     });
   }, [accountOptionsRaw]);
-  
+
+  const amountCurrencyOptions = useMemo(() => {
+    const codes = Array.from(
+      new Set(
+        accountOptions
+          .map((a) => a.currency)
+          .filter((c): c is string => Boolean(c))
+      )
+    );
+    return codes.length > 0 ? codes : ["PHP"];
+  }, [accountOptions]);
+
   const { api } = useAuthApi();
 
   // Local state for UI elements not directly part of the form data
@@ -166,7 +187,34 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     installmentPeriod: initialData?.installmentPeriod?.toString() || "",
     file: initialData?.file || null,
   });
-  
+
+  // Ensure "Transfer Fee" is in the list when editing a transfer-fee expense so the Select can display it
+  const categoryOptions = useMemo(() => {
+    const isTransferFee = formState.categoryName === TRANSFER_FEE_CATEGORY_NAME;
+    const hasTransferFee = categoryOptionsRaw.some((c) => c.value === TRANSFER_FEE_CATEGORY_NAME);
+    if (isTransferFee && !hasTransferFee) {
+      return [
+        { value: TRANSFER_FEE_CATEGORY_NAME, label: TRANSFER_FEE_CATEGORY_NAME },
+        ...categoryOptionsRaw,
+      ];
+    }
+    return categoryOptionsRaw;
+  }, [categoryOptionsRaw, formState.categoryName]);
+
+  const selectedAccount = accountOptions.find((a) => a.value === formState.accountName);
+  const selectedAccountCurrency =
+    selectedAccount?.currency ?? spaceCurrency;
+  const accountCurrencyDiffersFromSpace =
+    selectedAccount?.currency != null && selectedAccount.currency !== spaceCurrency;
+
+  const [amountCurrency, setAmountCurrency] = useState(selectedAccountCurrency);
+  const [conversionSnapshot, setConversionSnapshot] =
+    useState<ConversionSnapshot | null>(null);
+
+  // Do not sync amountCurrency to selected account when account changes.
+  // The user's chosen transaction currency (e.g. AED) should persist so the API
+  // receives that currency and uses it for calculations/conversion.
+
   // Number input hook for amount field
   const amountInput = useNumberInput({
     initialValue: formState.amount,
@@ -241,6 +289,19 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
       // Store the current initialData reference to prevent re-running on same object
       prevInitialDataRef.current = initialData;
+    }
+    // Always sync conversion snapshot when initialData is present (including first mount with data)
+    if (initialData) {
+      const rawConv = (initialData as any).currency_conversion ?? (initialData as any).currencyConversion;
+      if (rawConv) {
+        setConversionSnapshot({
+          originalCurrency: rawConv.original_currency ?? rawConv.originalCurrency,
+          exchangeRate: Number(rawConv.exchange_rate ?? rawConv.exchangeRate),
+          exchangeRateSource: (rawConv.source ?? "manual") as "auto" | "manual" | "recent",
+        });
+      } else {
+        setConversionSnapshot(null);
+      }
     } else if (!initialData && prevInitialDataRef.current) {
       // If initialData becomes undefined and it was previously set, clear the form
       setFormState({
@@ -260,6 +321,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       setShowCustomAccountInput(false);
       setScheduleType(ScheduleTypeEnum.ONE_TIME);
       setFormSubmitted(false);
+      setConversionSnapshot(null);
       prevInitialDataRef.current = undefined;
     }
   }, [initialData, initialData?.file]); // Add initialData?.file to dependencies
@@ -333,24 +395,37 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     }
     
     try {
+      // Update: backend stores amount as-is and only persists conversion metadata → send converted amount (PHP).
+      // Create: backend converts original amount × rate → send original amount (e.g. AED) so it converts once.
+      const amountToSend =
+        conversionSnapshot && conversionSnapshot.originalCurrency !== selectedAccountCurrency
+          ? isEditMode
+            ? String(parseFloat(numberFormatting.cleanForBackend(formState.amount)) * conversionSnapshot.exchangeRate)
+            : formState.amount
+          : formState.amount;
       const transactionData = {
-        amount: numberFormatting.cleanForBackend(formState.amount),
+        amount: numberFormatting.cleanForBackend(amountToSend),
         description: formState.description || "",
         categoryName: formState.categoryName,
         accountName: formState.accountName,
         date: format(date, "yyyy-MM-dd"),
         scheduleType: formState.scheduleType,
-        ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && { 
-          repeatInterval: formState.repeatInterval 
+        ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && {
+          repeatInterval: formState.repeatInterval
         }),
-        ...(formState.scheduleType === ScheduleTypeEnum.INSTALLMENT && { 
-          installmentPeriod: formState.installmentPeriod 
-            ? parseInt(formState.installmentPeriod, 10) 
-            : undefined 
+        ...(formState.scheduleType === ScheduleTypeEnum.INSTALLMENT && {
+          installmentPeriod: formState.installmentPeriod
+            ? parseInt(formState.installmentPeriod, 10)
+            : undefined
         }),
-        ...(fileId && { fileId }), // Use fileId if available from draft
-        ...(formState.file && { file: formState.file }), // Use formState.file
-        ...(draftId && { draftId }) // Include draftId if available
+        ...(fileId && { fileId }),
+        ...(formState.file && { file: formState.file }),
+        ...(draftId && { draftId }),
+        ...(conversionSnapshot && {
+          original_currency: conversionSnapshot.originalCurrency,
+          exchange_rate: conversionSnapshot.exchangeRate,
+          exchange_rate_source: conversionSnapshot.exchangeRateSource,
+        }),
       };
       
       let response;
@@ -389,6 +464,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         });
         // Reset number input hook
         amountInput.reset();
+        setConversionSnapshot(null);
         setFileId(null);
         setDate(undefined);
         // setFileState(null); // Removed
@@ -634,9 +710,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           )}
         </div>
 
-        {/* Date Picker */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
+        {/* Date + Amount: on mobile stack (Date row, then Amount row); on desktop side-by-side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2 min-w-0">
             <Label htmlFor="date" className="text-sm">Date</Label>
             <Popover modal>
               <PopoverTrigger asChild>
@@ -667,27 +743,34 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             )}
           </div>
 
-          {/* Amount Field */}
-          <div className="space-y-2">
-            <Label htmlFor="amount" className="text-sm">Amount</Label>
-            <Input
-              id="amount"
-              name="amount"
-              value={amountInput.displayValue}
-              onChange={(e) => amountInput.handleInputChange(e.target.value)}
-              type="text"
-              placeholder="0.00"
-              className={`text-sm ${formSubmitted && formErrors.amount ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-            />
-            {formSubmitted && formErrors.amount?.map((error) => (
-              <FormError key={error}>{error}</FormError>
-            ))}
+          {/* Amount + currency + rates */}
+          <div className="min-w-0">
+          <AmountWithRatePicker
+            id="amount"
+            label="Amount"
+            amountDisplayValue={amountInput.displayValue}
+            onAmountChange={(value) => amountInput.handleInputChange(value)}
+            fromCurrency={amountCurrency}
+            onFromCurrencyChange={setAmountCurrency}
+            toCurrency={selectedAccountCurrency}
+            amountCurrencyOptions={amountCurrencyOptions}
+            accountOptions={accountOptions}
+            errors={formSubmitted && formErrors.amount ? formErrors.amount : []}
+            placeholder="0.00"
+            inputClassName={
+              formSubmitted && formErrors.amount
+                ? "border-red-800 focus-visible:ring-red-800"
+                : ""
+            }
+            onConversionChange={setConversionSnapshot}
+            date={date ? format(date, "yyyy-MM-dd") : undefined}
+          />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           {/* Schedule Type Field */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label htmlFor="scheduleType" className="text-sm">Schedule Type</Label>
             <Select
               value={formState.scheduleType}
@@ -695,7 +778,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             >
               <SelectTrigger 
                 id="scheduleType" 
-                className={`text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-800 focus-visible:ring-red-800" : ""}`}
               >
                 <SelectValue placeholder="Select schedule type" className="text-sm" />
               </SelectTrigger>
@@ -719,7 +802,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 >
                   <SelectTrigger 
                     id="repeatInterval" 
-                    className={`text-sm ${formSubmitted && formErrors.repeatInterval ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                    className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.repeatInterval ? "border-red-800 focus-visible:ring-red-800" : ""}`}
                   >
                     <SelectValue placeholder="Select interval" className="text-sm" />
                   </SelectTrigger>
@@ -755,7 +838,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           </div>
           
           {/* Category Field */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label htmlFor="categoryName" className="text-sm">Expense Category</Label>
             <Select
               value={formState.categoryName}
@@ -767,10 +850,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                   handleFieldChange("categoryName", value);
                 }
               }}
+              disabled={isEditMode && formState.categoryName === TRANSFER_FEE_CATEGORY_NAME}
             >
               <SelectTrigger 
                 id="categoryName" 
-                className={`text-sm ${formSubmitted && formErrors.categoryName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.categoryName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
               >
                 <SelectValue placeholder="Select category" className="text-sm" />
               </SelectTrigger>
@@ -780,7 +864,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                     {cat.label}
                   </SelectItem>
                 ))}
-                <SelectItem value="add_category" className="text-sm">+ Add Expense Category</SelectItem>
+                {!(isEditMode && formState.categoryName === TRANSFER_FEE_CATEGORY_NAME) && (
+                  <SelectItem value="add_category" className="text-sm">+ Add Expense Category</SelectItem>
+                )}
               </SelectContent>
             </Select>
             {formSubmitted && formErrors.categoryName?.map((error) => (
@@ -798,7 +884,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
         <div className="grid grid-cols-2 gap-4">
           {/* Account Field */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label htmlFor="accountName" className="text-sm">Account</Label>
             <Select
               value={formState.accountName}
@@ -813,7 +899,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             >
               <SelectTrigger 
                 id="accountName" 
-                className={`text-sm ${formSubmitted && formErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
               >
                 <SelectValue placeholder="Select Account" className="text-sm" />
               </SelectTrigger>
@@ -829,14 +915,18 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             {formSubmitted && formErrors.accountName?.map((error) => (
               <FormError key={error}>{error}</FormError>
             ))}
-
+            {accountCurrencyDiffersFromSpace && selectedAccount?.currency && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Account currency: {selectedAccount.currency} (differs from space: {spaceCurrency})
+              </p>
+            )}
             {showCustomAccountInput && (
               <AccountCreationForm onSuccess={handleAccountCreated} />
             )}
           </div>
 
           {/* Description Field */}
-          <div className="w-full">
+          <div className="min-w-0">
             <Label htmlFor="description" className="text-sm">Note (Optional)</Label>
             <ExpandableTextarea
               id="description"

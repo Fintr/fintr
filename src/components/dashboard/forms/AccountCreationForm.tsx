@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
 import { FormError } from "@/components/ui/form-error";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useAtom, useSetAtom } from "jotai";
 import { createAccountAtom, accountValidationErrorsAtom } from "@/atoms/accountAtoms";
 import { toast } from "sonner";
@@ -18,25 +19,37 @@ import {
   SelectValue,
 } from "../../ui/select";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { CurrencyPicker } from "@/components/ui/currency-picker";
 
 interface AccountCreationFormProps {
   onSuccess: (name: string) => void;
   horizontal?: boolean; // Whether to display the form in horizontal layout
 }
 
-const AccountCreationForm: React.FC<AccountCreationFormProps> = ({ 
+const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
   onSuccess,
-  horizontal = false 
+  horizontal = false,
 }) => {
   const { api } = useAuthApi();
+  const { currentSpace } = useSpaceContext(api);
+  const spaceCurrency = currentSpace?.currency ?? "PHP";
   const queryClient = useQueryClient();
   const addAccount = useSetAtom(createAccountAtom);
   const [accountValidationErrors, setAccountValidationErrors] = useAtom(accountValidationErrorsAtom);
-  const [accountName, setAccountName] = useState('');
-  const [initialBalance, setInitialBalance] = useState('');
+  const [accountName, setAccountName] = useState("");
+  const [initialBalance, setInitialBalance] = useState("");
   const [accountCategory, setAccountCategory] = useState<AccountCategory>(AccountCategory.CASH);
+  const [balanceCurrency, setBalanceCurrency] = useState(spaceCurrency);
   const [isLoading, setIsLoading] = useState(false);
-  const [localErrors, setLocalErrors] = useState<{ name?: string; balance?: string; accountCategory?: string }>({});
+  const [localErrors, setLocalErrors] = useState<{
+    name?: string;
+    balance?: string;
+    accountCategory?: string;
+  }>({});
+
+  useEffect(() => {
+    setBalanceCurrency(spaceCurrency);
+  }, [spaceCurrency]);
 
   const validateBalance = (balance: string): string | undefined => {
     if (!balance.trim()) return "Initial balance is required";
@@ -78,8 +91,9 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
         accountData: {
           name: accountName,
           balance: parseFloat(initialBalance), // Already validated
-          accountCategory: accountCategory
-        }
+          accountCategory: accountCategory,
+          balanceCurrency: balanceCurrency,
+        },
       });
 
       toast.success(`"${accountName}" has been added to your accounts`);
@@ -91,9 +105,10 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
       const finalAccountName = createdAccountName || accountName;
       
       // Reset inputs first
-      setAccountName('');
-      setInitialBalance('');
+      setAccountName("");
+      setInitialBalance("");
       setAccountCategory(AccountCategory.CASH);
+      setBalanceCurrency(spaceCurrency);
       
       // Delay onSuccess to ensure state updates have completed
       setTimeout(() => {
@@ -105,7 +120,11 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
       const fieldErrors = extractFieldErrors(error);
       setAccountValidationErrors(fieldErrors);
 
-      if (!fieldErrors.name && !fieldErrors.balance && !fieldErrors.accountCategory) {
+      if (
+        !fieldErrors.name &&
+        !fieldErrors.balance &&
+        !fieldErrors.accountCategory
+      ) {
         toast.error("Failed to create account. Please try again.");
       }
     } finally {
@@ -198,6 +217,19 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
           )}
         </div>
       </div>
+
+      <div className={horizontal ? "flex gap-4 items-end mt-2" : "space-y-2 mt-2"}>
+        <div className={horizontal ? "flex-1" : "space-y-2"}>
+          <CurrencyPicker
+            label="Currency"
+            placeholder="Search by name or code (e.g. PHP, US Dollar)..."
+            value={balanceCurrency}
+            onChange={setBalanceCurrency}
+            disabled={isLoading}
+            className="bg-white"
+          />
+        </div>
+      </div>
       
       {horizontal && (
         <div className="flex mt-4">
@@ -215,13 +247,14 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
             variant="outline" 
             size="sm"
             className="ml-2 h-10" 
-            onClick={() => { 
-              setAccountName(''); 
-              setInitialBalance(''); 
+            onClick={() => {
+              setAccountName("");
+              setInitialBalance("");
               setAccountCategory(AccountCategory.CASH);
-              setLocalErrors({}); 
-              setAccountValidationErrors({}); 
-              onSuccess(""); 
+              setBalanceCurrency(spaceCurrency);
+              setLocalErrors({});
+              setAccountValidationErrors({});
+              onSuccess("");
             }} 
             disabled={isLoading}
           >
@@ -236,13 +269,14 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
             type="button" 
             variant="outline" 
             size="sm" 
-            onClick={() => { 
-              setAccountName(''); 
-              setInitialBalance(''); 
+            onClick={() => {
+              setAccountName("");
+              setInitialBalance("");
               setAccountCategory(AccountCategory.CASH);
-              setLocalErrors({}); 
-              setAccountValidationErrors({}); 
-              onSuccess(""); 
+              setBalanceCurrency(spaceCurrency);
+              setLocalErrors({});
+              setAccountValidationErrors({});
+              onSuccess("");
             }} 
             disabled={isLoading}
           >

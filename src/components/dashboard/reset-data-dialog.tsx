@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -29,6 +30,7 @@ interface ResetDataDialogProps {
  */
 const ResetDataDialog = ({ isOpen, onClose }: ResetDataDialogProps) => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { api } = useAuthApi();
   const [confirmText, setConfirmText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,6 +48,7 @@ const ResetDataDialog = ({ isOpen, onClose }: ResetDataDialogProps) => {
     setIsLoading(true);
     try {
       await resetData({ api });
+      await queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       toast.success('Data reset successfully. Redirecting to onboarding...');
       onClose();
       router.push('/onboarding/step1');
