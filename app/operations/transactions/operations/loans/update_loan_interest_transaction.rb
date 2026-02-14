@@ -96,7 +96,7 @@ module Transactions
         end
 
         def update_interest_transaction(interest_transaction:, loan:, loan_payment:, interest_amount:)
-          currency = loan_payment.currency || loan.currency || "PHP"
+          currency = loan_payment.currency.presence || loan.currency.presence || loan.space.currency.presence || "PHP"
           entity_name = loan.entity.display_name
           description = if loan.loan_type == "borrowed"
                          "Interest expense from #{entity_name}"

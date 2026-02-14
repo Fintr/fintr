@@ -91,7 +91,7 @@ module Transactions
         end
 
         def update_currency_if_needed(transaction:, loan_payment:, loan:)
-          currency = loan_payment.currency || loan.currency || "PHP"
+          currency = loan_payment.currency.presence || loan.currency.presence || loan.space.currency.presence || "PHP"
           return Success(transaction) if transaction.amount_currency == currency
 
           transaction.update!(amount_currency: currency, balance_currency: currency)

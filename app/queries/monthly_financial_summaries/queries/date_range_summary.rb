@@ -23,7 +23,7 @@ module MonthlyFinancialSummaries
         space = step find_space
         date_range = step parse_dates
         transactions = step fetch_transactions(space:, date_range:)
-        totals = step aggregate_totals(transactions:)
+        totals = step aggregate_totals(transactions:, space:)
         numeric_values = step convert_to_numeric(totals:)
         summary = step build_summary(numeric_values:)
         summary
@@ -57,9 +57,10 @@ module MonthlyFinancialSummaries
         Failure(transactions: "Failed to fetch transactions", error: e.message)
       end
 
-      def aggregate_totals(transactions:)
-        total_income = Money.new(0, 'PHP')
-        total_expenses = Money.new(0, 'PHP')
+      def aggregate_totals(transactions:, space:)
+        currency = space.currency.presence || "PHP"
+        total_income = Money.new(0, currency)
+        total_expenses = Money.new(0, currency)
 
         transactions.each do |transaction|
           case transaction.type

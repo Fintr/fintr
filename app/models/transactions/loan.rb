@@ -89,7 +89,7 @@ module Transactions
     def income
       case loan_type
       when "borrowed"
-        Money.from_amount(0, currency || "PHP")
+        Money.from_amount(0, currency.presence || space.currency.presence || "PHP")
       when "lent"
         calculate_interest_for_period(date, Date.current)
       end
@@ -101,7 +101,7 @@ module Transactions
       when "borrowed"
         calculate_interest_for_period(date, Date.current)
       when "lent"
-        Money.from_amount(0, currency || "PHP")
+        Money.from_amount(0, currency.presence || space.currency.presence || "PHP")
       end
     end
 
@@ -282,7 +282,7 @@ module Transactions
     private
 
     def set_default_currency
-      self.currency ||= "PHP"
+      self.currency ||= space.currency.presence || "PHP"
     end
   end
 end

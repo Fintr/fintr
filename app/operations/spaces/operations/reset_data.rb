@@ -72,7 +72,7 @@ module Spaces
 
       def populate_initial_data(space:, user:)
         space.create_default_transaction_categories
-        Onboarding.create(user:, step: "income")
+        Onboarding.create(user:, step: "currency")
         Success()
       end
     end

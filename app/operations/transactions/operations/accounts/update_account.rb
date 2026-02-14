@@ -9,6 +9,7 @@ module Transactions
             required(:space_id).value(:string)
             required(:id).value(:string)
             required(:name).value(:string)
+            optional(:balance_currency).value(:string)
           end
         end
 
@@ -39,7 +40,9 @@ module Transactions
         end
 
         def update_account(account:, params:)
-          account.update!(name: params[:name])
+          attrs = { name: params[:name] }
+          attrs[:balance_currency] = params[:balance_currency] if params[:balance_currency].present?
+          account.update!(attrs)
           Success(account)
         rescue ActiveRecord::RecordInvalid => e
           Failure(**account.errors.to_hash, error: e, expected: true)

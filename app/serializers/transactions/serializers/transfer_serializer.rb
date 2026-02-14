@@ -38,6 +38,14 @@ module Transactions
         "transfer"
       end
 
+      field :has_currency_conversion do |record|
+        record.has_currency_conversion?
+      end
+
+      association :currency_conversion,
+        blueprint: CurrencyConversionSerializer,
+        if: ->(_field_name, transfer, _options) { transfer.currency_conversion.present? }
+
       field :files do |record|
         record.files.map do |file|
           {

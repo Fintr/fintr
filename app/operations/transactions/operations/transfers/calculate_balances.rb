@@ -41,12 +41,11 @@ module Transactions
         def update_from_account_balance(transfer:)
           return Success() if transfer.balance_state == "calculated"
 
-          from_old_balance = transfer.from_account.balance.amount
-          # Only subtract the transfer amount, not the fee
-          # The fee is handled by a separate expense transaction
-          from_new_balance = from_old_balance - transfer.amount.amount
-
           from_account = transfer.from_account
+          # Debit in from-account currency: use original_amount when conversion exists, else amount
+          amount_to_debit = transfer.original_amount
+          from_new_balance = from_account.balance - amount_to_debit
+
           from_account.assign_attributes(balance: from_new_balance)
           from_account.save!
 
@@ -58,10 +57,10 @@ module Transactions
         def update_to_account_balance(transfer:)
           return Success() if transfer.balance_state == "calculated"
 
-          to_old_balance = transfer.to_account.balance.amount
-          to_new_balance = to_old_balance + transfer.amount.amount
-
           to_account = transfer.to_account
+          # Credit in to-account currency: transfer.amount is already in that currency
+          to_new_balance = to_account.balance + transfer.amount
+
           to_account.assign_attributes(balance: to_new_balance)
           to_account.save!
 

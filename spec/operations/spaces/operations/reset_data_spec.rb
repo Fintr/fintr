@@ -353,7 +353,7 @@ RSpec.describe Spaces::Operations::ResetData do
     it 'creates an onboarding record for the user' do
       expect { populate_initial_data_result }.to change(Onboarding, :count).by(1)
       expect(Onboarding.last.user).to eq(user)
-      expect(Onboarding.last.step).to eq("income")
+      expect(Onboarding.last.step).to eq("currency")
     end
   end
 end

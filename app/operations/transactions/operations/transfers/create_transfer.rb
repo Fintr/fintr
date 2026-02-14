@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
+
 module Transactions
   module Operations
     module Transfers
       class CreateTransfer < Dry::Operation
+        include Dry::Operation::Extensions::ActiveRecord
+
         class Contract < Dry::Validation::Contract
           params do
             # Current user and space
@@ -23,6 +27,10 @@ module Transactions
             required(:schedule_type).value(:string)
             optional(:repeat_interval).maybe(:string)
             optional(:repeat_count).value(:integer)
+
+            # Exchange rate / conversion (optional)
+            optional(:exchange_rate).value(:decimal, gt?: 0)
+            optional(:exchange_rate_source).value(:string, included_in?: %w[auto manual recent])
           end
 
           # Validate that schedule_type is valid
@@ -56,25 +64,29 @@ module Transactions
 
         include FailureHandler
 
-        def call(params:)
-          transfer = ActiveRecord::Base.transaction do
-            params          = step validate(params:)
+        def call(params)
+          params   = step validate(params:)
+          transfer = transaction do
             from_account    = step find_account(params:, account_name: params[:from_account_name])
             to_account      = step find_account(params:, account_name: params[:to_account_name])
+            params, conversion_data = step handle_currency_conversion(
+              params:,
+              from_account:,
+              to_account:
+            )
             params          = step transform_params(params:, from_account:, to_account:)
-            transfer        = step create_transfer(params:)
-            # Always create fee transaction for the parent transfer
+            transfer        = step create_transfer(params:, conversion_data:)
+            _               = step create_conversion_record(transfer:, conversion_data:)
             _               = step create_transfer_fee_transaction(transfer:, params:)
             _               = step calculate_balances(transfer:)
             transfer        = step create_schedule(transfer:, params:) if params[:schedule_type] != "one_time"
-
             _               = step create_past_transfers(transfer:) if transfer.repeat?
             _               = step create_future_transfers(transfer:) if transfer.repeat?
             transfer.reload
           end
-          _   = step attach_file(transfer:, params:)
-          _   = step update_monthly_summary(transfer:)
-          _   = step generate_embedding_async(transfer:)
+          _ = step attach_file(transfer:, params:)
+          _ = step update_monthly_summary(transfer:)
+          _ = step generate_embedding_async(transfer:)
           transfer.reload
         end
 
@@ -87,22 +99,81 @@ module Transactions
           Failure(account_name: "'#{account_name}' not found", error: e, expected: true)
         end
 
+        def handle_currency_conversion(params:, from_account:, to_account:)
+          from_currency = from_account.balance_currency
+          to_currency = to_account.balance_currency
+          original_amount = params[:amount]
+
+          if from_currency == to_currency
+            conversion_data = {
+              needs_conversion: false,
+              original_amount:,
+              original_currency: from_currency,
+              converted_amount: original_amount,
+              converted_currency: from_currency,
+              exchange_rate: 1.0,
+              source: "none",
+              rate_timestamp: Time.current
+            }
+            return Success([params.merge(amount_currency: from_currency), conversion_data])
+          end
+
+          rate = params[:exchange_rate]
+          unless rate
+            rate_result = step ::ExchangeRates::Operations::FetchRate.new.call(
+              from_currency:,
+              to_currency:,
+              space_id: params[:space_id],
+              date: params[:date]
+            )
+            rate = rate_result[:rate]
+            params = params.merge(exchange_rate_source: rate_result[:source])
+          end
+
+          converted_amount = (BigDecimal(original_amount.to_s) * rate).round(2)
+          conversion_data = {
+            needs_conversion: true,
+            original_amount:,
+            original_currency: from_currency,
+            converted_amount:,
+            converted_currency: to_currency,
+            exchange_rate: rate,
+            source: params[:exchange_rate_source] || "manual",
+            rate_timestamp: Time.current
+          }
+          Success([
+            params.merge(amount_currency: to_currency, amount: converted_amount),
+            conversion_data
+          ])
+        end
+
+        def create_conversion_record(transfer:, conversion_data:)
+          step ::Transactions::Operations::Transfers::PersistCurrencyConversion.new.call(
+            transfer:,
+            conversion_data:
+          )
+          Success(nil)
+        end
+
         def transform_params(params:, from_account:, to_account:)
           params = params.dup
           params[:from_account_id] = from_account.id
           params[:to_account_id] = to_account.id
           params[:repeat_count] = 1 if params[:schedule_type] == "repeat"
           params[:balance_state] = "pending"
-          params[:amount_currency] = "PHP"
-          params[:transaction_cost_currency] = "PHP"
+          params[:amount_currency] = params[:amount_currency] || from_account.balance_currency
+          params[:transaction_cost_currency] = params[:amount_currency]
           params.delete(:from_account_name)
           params.delete(:to_account_name)
+          params.delete(:exchange_rate)
+          params.delete(:exchange_rate_source)
 
           Success(params)
         end
 
-        def create_transfer(params:)
+        def create_transfer(params:, conversion_data:)
           transfer = Transactions::Transfer.new(params.except(:file))
+          build_currency_conversion_on_transfer(transfer:, conversion_data:, space_id: params[:space_id])
           transfer.save!
           Success(transfer)
         rescue ActiveRecord::RecordInvalid => e
@@ -110,6 +181,21 @@ module Transactions
         rescue StandardError => e
           error_hash = transfer.respond_to?(:errors) ? transfer.errors.to_hash : { error: e.message }
           Failure(transfer: error_hash, error: e, expected: false)
+        end
+
+        def build_currency_conversion_on_transfer(transfer:, conversion_data:, space_id:)
+          return unless conversion_data[:needs_conversion]
+
+          transfer.build_currency_conversion(
+            space_id: space_id,
+            original_amount_cents: (BigDecimal(conversion_data[:original_amount].to_s) * 100).to_i,
+            original_currency: conversion_data[:original_currency],
+            converted_amount_cents: (BigDecimal(conversion_data[:converted_amount].to_s) * 100).to_i,
+            converted_currency: conversion_data[:converted_currency],
+            exchange_rate: conversion_data[:exchange_rate],
+            source: conversion_data[:source],
+            rate_timestamp: conversion_data[:rate_timestamp]
+          )
         end
 
         def create_transfer_fee_transaction(transfer:, params:)

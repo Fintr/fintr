@@ -11,6 +11,12 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
   let(:from_account) { create(:account, name: "Savings", space:, balance: Money.from_amount(1000, "PHP")) }
   let(:to_account) { create(:account, name: "Checking", space:, balance: Money.from_amount(500, "PHP")) }
 
+  # Stub currency conversion persistence (same-currency path uses source: "none" which contract rejects)
+  before do
+    persist_op = instance_double(Transactions::Operations::Transfers::PersistCurrencyConversion, call: Success(nil))
+    allow(Transactions::Operations::Transfers::PersistCurrencyConversion).to receive(:new).and_return(persist_op)
+  end
+
   describe '#call' do
     context 'with valid parameters' do
       let(:valid_params) do
@@ -28,7 +34,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
       end
 
       it 'creates a new transfer successfully' do
-        result = operation.call(params: valid_params)
+        result = operation.call(valid_params)
         expect(result).to be_success
 
         transfer = result.value!
@@ -41,7 +47,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
       end
 
       it 'updates account balances correctly' do
-        result = operation.call(params: valid_params)
+        result = operation.call(valid_params)
         expect(result).to be_success
 
         from_account.reload
@@ -52,7 +58,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
       end
 
       it 'creates transfer with correct attributes' do
-        result = operation.call(params: valid_params)
+        result = operation.call(valid_params)
         expect(result).to be_success
 
         transfer = result.value!
@@ -71,7 +77,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         allow(Transactions::Operations::Transfers::CreateTransferFeeTransaction).to receive(:new).and_return(create_transfer_fee_operation)
         allow(create_transfer_fee_operation).to receive(:call).and_return(Success())
 
-        result = operation.call(params: valid_params)
+        result = operation.call(valid_params)
         expect(result).to be_success
 
         expect(create_transfer_fee_operation).to have_received(:call).with(
@@ -97,7 +103,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         allow(Transactions::Operations::Transfers::CreateTransferFeeTransaction).to receive(:new).and_return(create_transfer_fee_operation)
         allow(create_transfer_fee_operation).to receive(:call).and_return(Success())
 
-        result = operation.call(params: params_without_fee)
+        result = operation.call(params_without_fee)
         expect(result).to be_success
 
         expect(create_transfer_fee_operation).not_to have_received(:call)
@@ -111,7 +117,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
           utils_active_storage = instance_double(Utils::ActiveStorage)
           allow(Utils::ActiveStorage).to receive(:attach_file).and_return(true)
 
-          result = operation.call(params: params_with_file)
+          result = operation.call(params_with_file)
           expect(result).to be_success
 
           expect(Utils::ActiveStorage).to have_received(:attach_file).with(
@@ -122,7 +128,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         end
 
         it 'succeeds without file when no file is provided' do
-          result = operation.call(params: valid_params)
+          result = operation.call(valid_params)
           expect(result).to be_success
         end
       end
@@ -145,7 +151,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
       end
 
       it 'creates future transfers' do
-        result = operation.call(params: valid_params)
+        result = operation.call(valid_params)
         expect(result).to be_success
 
         transfer = result.value!
@@ -162,7 +168,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         utils_recurrence = instance_double(Utils::Recurrence)
         allow(Utils::Recurrence).to receive(:schedule).and_return({ "interval" => 1, "frequency" => "monthly" })
 
-        result = operation.call(params: valid_params)
+        result = operation.call(valid_params)
         expect(result).to be_success
 
         expect(Utils::Recurrence).to have_received(:schedule).with(
@@ -179,7 +185,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         allow(Transactions::Operations::Transfers::CreateRepeatTransfers).to receive(:new).and_return(create_repeat_transfers_operation)
         allow(create_repeat_transfers_operation).to receive(:call).and_return(Success())
 
-        result = operation.call(params: params_with_past_date)
+        result = operation.call(params_with_past_date)
         expect(result).to be_success
 
         expect(create_repeat_transfers_operation).to have_received(:call).with(
@@ -197,7 +203,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         allow(Transactions::Operations::Transfers::CreateRepeatTransfers).to receive(:new).and_return(create_repeat_transfers_operation)
         allow(create_repeat_transfers_operation).to receive(:call).and_return(Success())
 
-        result = operation.call(params: valid_params)
+        result = operation.call(valid_params)
         expect(result).to be_success
 
         expect(create_repeat_transfers_operation).to have_received(:call).with(
@@ -216,7 +222,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         allow(Transactions::Operations::Transfers::CreateRepeatTransfers).to receive(:new).and_return(create_repeat_transfers_operation)
         allow(create_repeat_transfers_operation).to receive(:call).and_return(Success())
 
-        result = operation.call(params: one_time_params)
+        result = operation.call(one_time_params)
         expect(result).to be_success
 
         expect(create_repeat_transfers_operation).not_to have_received(:call)
@@ -239,7 +245,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         end
 
         it 'returns validation error' do
-          result = operation.call(params: invalid_params)
+          result = operation.call(invalid_params)
           expect(result).to be_failure
           expect(result.failure).to include(:amount)
         end
@@ -260,7 +266,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         end
 
         it 'returns account not found error' do
-          result = operation.call(params: invalid_params)
+          result = operation.call(invalid_params)
           expect(result).to be_failure
           expect(result.failure).to include(account_name: "'NonExistentAccount' not found")
         end
@@ -286,7 +292,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
           allow(transfer_instance).to receive(:save!).and_raise(StandardError.new("Transfer creation failed"))
           allow(transfer_instance).to receive(:errors).and_return(instance_double(ActiveModel::Errors, to_hash: { error: "Transfer creation failed" }))
 
-          result = operation.call(params: invalid_params)
+          result = operation.call(invalid_params)
           expect(result).to be_failure
           expect(result.failure).to include(:transfer)
         end
@@ -310,7 +316,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         it 'returns schedule creation error' do
           allow(Utils::Recurrence).to receive(:schedule).and_raise(StandardError.new("Schedule creation failed"))
 
-          result = operation.call(params: repeat_params)
+          result = operation.call(repeat_params)
           expect(result).to be_failure
           expect(result.failure).to include(:error)
         end
@@ -335,7 +341,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
           allow(Transactions::Operations::Transfers::CreateTransferFeeTransaction).to receive(:new).and_return(create_transfer_fee_operation)
           allow(create_transfer_fee_operation).to receive(:call).and_return(Failure(error: "Fee transaction creation failed"))
 
-          result = operation.call(params: valid_params)
+          result = operation.call(valid_params)
           expect(result).to be_failure
           expect(result.failure).to include(:error)
         end
@@ -360,7 +366,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
           allow(Transactions::Operations::Transfers::CalculateBalances).to receive(:new).and_return(calculate_balances_operation)
           allow(calculate_balances_operation).to receive(:call).and_return(Failure(error: "Balance calculation failed"))
 
-          result = operation.call(params: valid_params)
+          result = operation.call(valid_params)
           expect(result).to be_failure
           expect(result.failure).to include(:error)
         end
@@ -386,7 +392,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
           allow(Transactions::Operations::Transfers::CreateRepeatTransfers).to receive(:new).and_return(create_repeat_transfers_operation)
           allow(create_repeat_transfers_operation).to receive(:call).and_return(Failure(error: "Past transfers creation failed"))
 
-          result = operation.call(params: repeat_params)
+          result = operation.call(repeat_params)
           expect(result).to be_failure
           expect(result.failure).to include(:error)
         end
@@ -412,7 +418,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
           allow(Transactions::Operations::Transfers::CreateRepeatTransfers).to receive(:new).and_return(create_repeat_transfers_operation)
           allow(create_repeat_transfers_operation).to receive(:call).and_return(Failure(error: "Future transfers creation failed"))
 
-          result = operation.call(params: repeat_params)
+          result = operation.call(repeat_params)
           expect(result).to be_failure
           expect(result.failure).to include(:error)
         end
@@ -439,7 +445,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
     %i[user_id space_id amount transaction_cost date from_account_name to_account_name schedule_type].each do |field|
       it "fails if #{field} is missing" do
         params = base_valid_params.except(field)
-        result = operation.call(params: params)
+        result = operation.call(params)
         expect(result).to be_failure
         expect(result.failure).to include(field => ['is missing'])
       end
@@ -447,14 +453,14 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
 
     it 'fails if amount is not greater than 0' do
       params = base_valid_params.merge(amount: 0)
-      result = operation.call(params: params)
+      result = operation.call(params)
       expect(result).to be_failure
       expect(result.failure).to include(amount: ['must be greater than 0'])
     end
 
     it 'fails if transaction_cost is negative' do
       params = base_valid_params.merge(transaction_cost: -1)
-      result = operation.call(params: params)
+      result = operation.call(params)
       expect(result).to be_failure
       expect(result.failure).to include(transaction_cost: ['must be greater than or equal to 0'])
     end
@@ -479,7 +485,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
 
     it 'fails if schedule_type is invalid' do
       params = base_valid_params.merge(schedule_type: 'invalid_type')
-      result = operation.call(params: params)
+      result = operation.call(params)
       expect(result).to be_failure
       expect(result.failure).to include(schedule_type: ['must be one of: one_time, repeat'])
     end
@@ -487,14 +493,14 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
     context 'when schedule_type is repeat' do
       it 'fails if repeat_interval is missing' do
         params = base_valid_params.merge(schedule_type: 'repeat', repeat_interval: nil)
-        result = operation.call(params: params)
+        result = operation.call(params)
         expect(result).to be_failure
         expect(result.failure).to include(repeat_interval: ['must be provided for recurring transfers'])
       end
 
       it 'fails if repeat_interval is invalid' do
         params = base_valid_params.merge(schedule_type: 'repeat', repeat_interval: 'invalid_interval')
-        result = operation.call(params: params)
+        result = operation.call(params)
         expect(result).to be_failure
         expect(result.failure).to include(repeat_interval: ['must be a valid interval'])
       end
@@ -617,8 +623,21 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         }
       end
 
+      let(:conversion_data) do
+        {
+          needs_conversion: false,
+          original_amount: 100,
+          original_currency: "PHP",
+          converted_amount: 100,
+          converted_currency: "PHP",
+          exchange_rate: 1.0,
+          source: "auto",
+          rate_timestamp: Time.current
+        }
+      end
+
       it 'creates transfer successfully' do
-        result = operation.send(:create_transfer, params: params)
+        result = operation.send(:create_transfer, params: params, conversion_data: conversion_data)
         expect(result).to be_success
 
         transfer = result.value!
@@ -634,7 +653,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
       end
 
       it 'excludes file from transfer creation' do
-        result = operation.send(:create_transfer, params: params)
+        result = operation.send(:create_transfer, params: params, conversion_data: conversion_data)
         expect(result).to be_success
 
         transfer = result.value!
@@ -648,7 +667,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         allow(transfer_instance).to receive(:save!).and_raise(StandardError.new("Creation failed"))
         allow(transfer_instance).to receive(:errors).and_return(instance_double(ActiveModel::Errors, to_hash: { error: "Creation failed" }))
 
-        result = operation.send(:create_transfer, params: params)
+        result = operation.send(:create_transfer, params: params, conversion_data: conversion_data)
         expect(result).to be_failure
         expect(result.failure).to include(:transfer)
       end

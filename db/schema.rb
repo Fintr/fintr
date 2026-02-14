@@ -10,11 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_30_082714) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_15_000001) do
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
-  enable_extension "timescaledb"
   enable_extension "timescaledb_toolkit"
   enable_extension "vector"
   enable_extension "vectorscale"
@@ -33,7 +33,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_30_082714) do
   create_enum "finance_billing_cycle_status", ["pending", "paid", "failed"]
   create_enum "finance_payment_status", ["pending", "succeeded", "failed", "refunded"]
   create_enum "finance_space_subscription_status", ["requires_action", "pending", "active", "inactive"]
-  create_enum "onboarding_step_enum", ["income", "budgets", "accounts", "completed"]
+  create_enum "onboarding_step_enum", ["income", "budgets", "accounts", "completed", "currency"]
   create_enum "repeat_interval", ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
   create_enum "schedule_type", ["one_time", "repeat", "installment"]
 
@@ -143,6 +143,18 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_30_082714) do
     t.index ["user_id"], name: "index_ai_usages_on_user_id"
   end
 
+  create_table "api_exchange_rates", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "base_currency", default: "USD", null: false
+    t.datetime "created_at", null: false
+    t.decimal "rate", precision: 15, scale: 6, null: false
+    t.date "rate_date", null: false
+    t.string "target_currency", null: false
+    t.datetime "updated_at", null: false
+    t.index ["base_currency", "target_currency", "rate_date"], name: "idx_api_rates_unique_per_day", unique: true
+    t.index ["rate_date"], name: "index_api_exchange_rates_on_rate_date"
+    t.index ["target_currency", "rate_date"], name: "index_api_exchange_rates_on_target_currency_and_rate_date"
+  end
+
   create_table "budgets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.bigint "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "PHP", null: false
@@ -189,6 +201,27 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_30_082714) do
     t.index ["status"], name: "index_crm_tickets_on_status"
     t.index ["ticket_type"], name: "index_crm_tickets_on_ticket_type"
     t.index ["user_id"], name: "index_crm_tickets_on_user_id"
+  end
+
+  create_table "currency_conversions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.bigint "converted_amount_cents", null: false
+    t.string "converted_currency", null: false
+    t.uuid "convertible_id", null: false
+    t.string "convertible_type", null: false
+    t.datetime "created_at", null: false
+    t.decimal "exchange_rate", precision: 15, scale: 6, null: false
+    t.text "note"
+    t.bigint "original_amount_cents", null: false
+    t.string "original_currency", null: false
+    t.datetime "rate_timestamp", null: false
+    t.string "source", null: false
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["convertible_type", "convertible_id"], name: "idx_currency_conversions_unique_per_convertible", unique: true
+    t.index ["created_at"], name: "index_currency_conversions_on_created_at"
+    t.index ["original_currency", "converted_currency"], name: "idx_on_original_currency_converted_currency_2f8b236032"
+    t.index ["space_id", "original_currency", "converted_currency", "rate_timestamp"], name: "idx_currency_conversions_space_currencies_timestamp"
+    t.index ["space_id"], name: "index_currency_conversions_on_space_id"
   end
 
   create_table "entities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -398,7 +431,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_30_082714) do
   create_table "onboardings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.jsonb "data", default: {}
-    t.enum "step", default: "income", null: false, enum_type: "onboarding_step_enum"
+    t.enum "step", default: "currency", null: false, enum_type: "onboarding_step_enum"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.index ["user_id"], name: "index_onboardings_on_user_id"
@@ -599,6 +632,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_30_082714) do
   add_foreign_key "crm_ticket_responses", "users", column: "responder_id"
   add_foreign_key "crm_tickets", "spaces"
   add_foreign_key "crm_tickets", "users"
+  add_foreign_key "currency_conversions", "spaces"
   add_foreign_key "entities", "spaces"
   add_foreign_key "finance_billing_cycles", "finance_space_subscriptions", column: "space_subscription_id"
   add_foreign_key "finance_payments", "finance_billing_cycles", column: "biling_cycle_id"

@@ -70,7 +70,7 @@ module Transactions
           return Success(nil) unless old_total_payment_cents
 
           # Calculate old payment amount
-          currency = loan.currency || "PHP"
+          currency = loan.currency.presence || loan.space.currency.presence || "PHP"
           old_total_payment = Money.new(old_total_payment_cents, currency)
 
           # Reverse the old payment amount from the old account
@@ -109,7 +109,7 @@ module Transactions
           when "lent"
             loan_payment.total_payment
           else
-            Money.from_amount(0, loan.currency || "PHP")
+            Money.from_amount(0, loan.currency.presence || loan.space.currency.presence || "PHP")
           end
 
           Success(balance_change)

@@ -222,7 +222,10 @@ module Finance
 
             # Create payment record for the full amount
             amount_cents = (pending_change["amount_cents"] || new_plan.price_cents).to_i
-            currency = params[:currency] || new_plan.price_currency || "PHP"
+            currency = params[:currency].presence ||
+              new_plan.price_currency.presence ||
+              subscription.space.currency.presence ||
+              "PHP"
             payment_id = params[:payment_id] || "ps-#{SecureRandom.hex(8)}"
 
             payment = Finance::Payment.find_or_initialize_by(
@@ -397,7 +400,10 @@ module Finance
                             prorated_cycle.metadata&.dig("prorated_amount_cents").to_i
             end
 
-            currency = params[:currency] || subscription.subscription_plan.price_currency || "PHP"
+            currency = params[:currency].presence ||
+              subscription.subscription_plan.price_currency.presence ||
+              subscription.space.currency.presence ||
+              "PHP"
 
             # Use payment_id as xendit_cycle_id for uniqueness
             # If no payment_id, use payment_session_id as fallback

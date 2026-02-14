@@ -32,6 +32,17 @@ module Transactions
 
           optional(:draft).value(:bool)
           optional(:draft_id).maybe(:string)
+
+          # Exchange rate / conversion (optional)
+          optional(:original_currency).value(:string)
+          optional(:exchange_rate).value(:decimal, gt?: 0)
+          optional(:exchange_rate_source).value(:string, included_in?: %w[auto manual recent])
+        end
+
+        rule(:original_currency, :exchange_rate) do
+          if values[:exchange_rate].present? && values[:original_currency].blank?
+            key(:original_currency).failure("must be provided when exchange rate is specified")
+          end
         end
 
         # Validate that schedule_type is valid
@@ -77,15 +88,17 @@ module Transactions
         transaction = transaction do
           category           = step find_category(params:)
           account            = step find_account(params:)
+          conversion_data    = step prepare_conversion(params:, account:)
           skip_calculation   = step find_skip_calculation(params:)
-          params             = step transform_params(params:, category:, account:)
+          params             = step transform_params(params:, category:, account:, conversion_data:)
           params             = step adjust_amount(params:)
-          transaction        = step create_transaction(params:, category:)
-          _                  = step calculate_balance(transaction:, skip_calculation:, params:)
-          transaction        = step create_schedule(transaction:, params:) if params[:schedule_type] != "one_time"
-          _                  = step create_past_transactions(transaction:) if params[:schedule_type] != "one_time"
-          _                  = step create_future_transactions(transaction:) if params[:schedule_type] != "one_time"
-          transaction
+          tx                 = step create_transaction(params:, category:)
+          _                  = step create_conversion_record(transaction: tx, conversion_data:)
+          _                  = step calculate_balance(transaction: tx, skip_calculation:, params:)
+          tx                 = step create_schedule(transaction: tx, params:) if params[:schedule_type] != "one_time"
+          _                  = step create_past_transactions(transaction: tx) if params[:schedule_type] != "one_time"
+          _                  = step create_future_transactions(transaction: tx) if params[:schedule_type] != "one_time"
+          tx
         end
 
         transaction          = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
@@ -115,23 +128,74 @@ module Transactions
         Success(params[:skip_calculation] ? true : false)
       end
 
-      # Note: Add default values for currencies and repeat_count
-      def transform_params(params:, category:, account:)
+      def prepare_conversion(params:, account:)
+        original_currency = params[:original_currency] || account.balance_currency
+        target_currency = account.balance_currency
+        original_amount = params[:amount]
+
+        if original_currency == target_currency
+          return Success(
+            needs_conversion: false,
+            amount: original_amount,
+            amount_currency: target_currency
+          )
+        end
+
+        rate = params[:exchange_rate]
+        source = params[:exchange_rate_source]
+        unless rate
+          rate_result = step ::ExchangeRates::Operations::FetchRate.new.call(
+            from_currency: original_currency,
+            to_currency: target_currency,
+            space_id: params[:space_id],
+            date: params[:date]
+          )
+          rate = rate_result[:rate]
+          source = rate_result[:source]
+        end
+
+        converted_amount = (BigDecimal(original_amount.to_s) * rate).round(2)
+        Success(
+          needs_conversion: true,
+          original_amount:,
+          original_currency:,
+          converted_amount:,
+          converted_currency: target_currency,
+          exchange_rate: rate,
+          source: source || "manual",
+          rate_timestamp: Time.current
+        )
+      end
+
+      # Note: Add default values for currencies and repeat_count; use conversion_data when conversion happened
+      def transform_params(params:, category:, account:, conversion_data:)
         params = params.dup
         params[:category_id] = category.id
         params[:account_id] = account.id
         params[:repeat_count] = 1 if params[:schedule_type] == "repeat"
         params[:installment_count] = 1 if params[:schedule_type] == "installment"
         params[:balance_state] = "pending"
-        params[:amount_currency] = "PHP"
-        params[:balance_currency] = "PHP"
+        params[:amount_currency] = conversion_data[:amount_currency] || conversion_data[:converted_currency] || account.balance_currency
+        params[:balance_currency] = params[:amount_currency]
+        params[:amount] = conversion_data[:converted_amount] if conversion_data[:needs_conversion]
         params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
         params.delete(:category_name)
         params.delete(:account_name)
         params.delete(:skip_calculation)
         params.delete(:skip_embedding)
+        params.delete(:original_currency)
+        params.delete(:exchange_rate)
+        params.delete(:exchange_rate_source)
 
         Success(params)
+      end
+
+      def create_conversion_record(transaction:, conversion_data:)
+        step ::Transactions::Operations::PersistCurrencyConversion.new.call(
+          transaction:,
+          conversion_data:
+        )
+        Success(nil)
       end
 
       def adjust_amount(params:)

@@ -3,6 +3,7 @@
 module Transactions
   class Transaction < ApplicationRecord
     include Repeatable
+    include HasCurrencyConversion
 
     belongs_to :user, class_name: "Auth::User"
     belongs_to :space, class_name: "Spaces::Space"

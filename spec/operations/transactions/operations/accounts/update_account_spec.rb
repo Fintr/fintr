@@ -22,13 +22,13 @@ RSpec.describe Transactions::Operations::Accounts::UpdateAccount do
 
       before do
         allow(Transactions::Account).to receive(:find).with(account.id).and_return(account)
-        allow(account).to receive(:update!).with(name: "New Account Name").and_return(true)
+        allow(account).to receive(:update!).with({ name: "New Account Name" }).and_return(true)
       end
 
       it { is_expected.to be_success }
 
       it 'calls update! on the account with the new name' do
-        expect(account).to receive(:update!).with(name: "New Account Name")
+        expect(account).to receive(:update!).with({ name: "New Account Name" })
         call_operation
       end
 

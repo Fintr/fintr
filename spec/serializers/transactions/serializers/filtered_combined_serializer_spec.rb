@@ -172,6 +172,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       :category_name,
       :amount,
       :balance,
+      :calculated,
       :type,
       :in_series,
       :has_image,

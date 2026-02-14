@@ -41,7 +41,8 @@ module Spaces
         space.accounts.kept.map do |account|
           {
             label: account.name,
-            value: account.name
+            value: account.name,
+            currency: account.balance_currency
           }
         end
       end

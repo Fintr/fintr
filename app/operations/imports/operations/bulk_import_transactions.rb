@@ -180,6 +180,7 @@ module Imports
           # Convert amount to cents
           amount_cents = (row_data[:amount].to_d * 100).to_i
 
+          currency = import_account.space.currency.presence || "PHP"
           transaction = transaction_type.new(
             user_id: import.user_id,
             space_id: import.space_id,
@@ -188,9 +189,9 @@ module Imports
             date: parsed_date,
             description: row_data[:description],
             amount_cents: amount_cents,
-            amount_currency: "PHP",
+            amount_currency: currency,
             balance_cents: 0, # Will be calculated later
-            balance_currency: "PHP",
+            balance_currency: currency,
             type: transaction_type.name,
             schedule_type: "one_time",
             balance_state: "calculated"

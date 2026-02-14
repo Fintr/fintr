@@ -34,7 +34,7 @@ module Transactions
         end
 
         def create_category(params:)
-          category = Transactions::Category.new(params.slice(:space_id, :name, :category_type))
+          category = Transactions::Category.find_or_initialize_by(params.slice(:space_id, :name, :category_type))
           category.save!
           Success(category)
         rescue ActiveRecord::ActiveRecordError => e

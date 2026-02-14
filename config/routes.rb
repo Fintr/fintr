@@ -101,6 +101,14 @@ Rails.application.routes.draw do
           get :generate_csv
         end
       end
+
+      resources :exchange_rates, only: [] do
+        collection do
+          get :current
+          get :recent
+        end
+      end
+
       resource :onboardings, only: %i[create show]
       resources :budgets, only: %i[index create update destroy]
       resources :entities, only: %i[index create]

@@ -25,6 +25,8 @@ module Api
 
       def create_params
         case params[:step]
+        when "currency"
+          currency_params
         when "income"
           income_params
         when "budgets"
@@ -36,6 +38,13 @@ module Api
 
       def show_params
         show_step_params
+      end
+
+      def currency_params
+        params.permit(
+          :step,
+          :currency
+        )
       end
 
       def income_params

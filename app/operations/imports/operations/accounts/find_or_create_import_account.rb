@@ -51,7 +51,7 @@ module Imports
                 space: space,
                 name: "Import",
                 balance_cents: 0,
-                balance_currency: "PHP",
+                balance_currency: space.currency.presence || "PHP",
                 account_category: "cash"
               )
             rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid

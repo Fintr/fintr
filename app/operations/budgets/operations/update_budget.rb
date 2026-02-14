@@ -22,7 +22,7 @@ module Budgets
         params = step validate(params:)
         budget = step find_budget(params:)
         budget = step validate_budget(budget:, params:)
-        params = step update_params(params:)
+        params = step update_params(params:, budget:)
         budget = step update_budget(budget:, params:)
         budget.reload
       end
@@ -40,9 +40,9 @@ module Budgets
         Success(budget)
       end
 
-      def update_params(params:)
+      def update_params(params:, budget:)
         params[:amount_cents] = params[:amount] * 100
-        params[:amount_currency] = "PHP"
+        params[:amount_currency] = budget.space.currency.presence || "PHP"
         Success(params)
       rescue StandardError
         Failure(:params_error)

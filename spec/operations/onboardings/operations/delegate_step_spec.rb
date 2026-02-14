@@ -9,6 +9,35 @@ RSpec.describe Onboardings::Operations::DelegateStep do
 
   describe "#call" do
     context "when action is 'show'" do
+      context "when step is 'currency'" do
+        let(:space) { create(:space, currency: "PHP") }
+        let!(:space_user) { create(:space_user, user: user, space: space) }
+        let(:params) { { user_id: user.id, space_id: space.id, step: "currency", action: "show" }.with_indifferent_access }
+        let(:currency_data) { { currency: "PHP", stored_currency: nil } }
+
+        before do
+          show_currency_data_operation = instance_double(Onboardings::Operations::ShowCurrencyData)
+          allow(Onboardings::Operations::ShowCurrencyData)
+            .to receive(:new)
+            .and_return(show_currency_data_operation)
+          allow(show_currency_data_operation)
+            .to receive(:call)
+            .with(params)
+            .and_return(Dry::Monads::Success(currency_data))
+        end
+
+        it "returns a successful result with currency data" do
+          result = delegate_step_operation.call(params)
+          expect(result).to be_success
+          expect(result.value!).to eq(currency_data)
+        end
+
+        it "calls ShowCurrencyData operation" do
+          delegate_step_operation.call(params)
+          expect(Onboardings::Operations::ShowCurrencyData).to have_received(:new)
+        end
+      end
+
       context "when step is 'budgets'" do
         let(:params) { { user_id: user.id, step: "budgets", action: "show" }.with_indifferent_access }
         let(:budgets_data) do
@@ -89,6 +118,35 @@ RSpec.describe Onboardings::Operations::DelegateStep do
     end
 
     context "when action is 'create'" do
+      context "when step is 'currency'" do
+        let(:space) { create(:space, currency: "PHP") }
+        let!(:space_user) { create(:space_user, user: user, space: space) }
+        let(:params) { { user_id: user.id, space_id: space.id, step: "currency", action: "create", currency: "USD" }.with_indifferent_access }
+        let(:currency_step_result) { { income_data: { income: nil } } }
+
+        before do
+          currency_step_operation = instance_double(Onboardings::Operations::CurrencyStep)
+          allow(Onboardings::Operations::CurrencyStep)
+            .to receive(:new)
+            .and_return(currency_step_operation)
+          allow(currency_step_operation)
+            .to receive(:call)
+            .with(params)
+            .and_return(Dry::Monads::Success(currency_step_result))
+        end
+
+        it "returns a successful result with income data for next step" do
+          result = delegate_step_operation.call(params)
+          expect(result).to be_success
+          expect(result.value!).to eq(currency_step_result)
+        end
+
+        it "calls CurrencyStep operation" do
+          delegate_step_operation.call(params)
+          expect(Onboardings::Operations::CurrencyStep).to have_received(:new)
+        end
+      end
+
       context "when step is 'income'" do
         let(:params) { { user_id: user.id, step: "income", action: "create" }.with_indifferent_access }
         let(:income_data_from_income_step) { { budgets_data: "some_budgets_data" } }

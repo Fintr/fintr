@@ -90,7 +90,7 @@ module Transactions
           params[:account_id] = account.id
           params[:principal_amount_cents] = (params[:principal_amount] * 100).to_i
           params[:outstanding_balance_cents] = params[:principal_amount_cents]
-          params[:currency] = "PHP"
+          params[:currency] = account.space.currency.presence || "PHP"
           params[:maturity_date] = params[:date] + params[:loan_term_months].months
           params[:status] = "active"
           params.delete(:principal_amount)
@@ -125,7 +125,7 @@ module Transactions
           when "lent"
                             -loan.principal_amount  # Subtract principal from account
           else
-                            Money.from_amount(0, loan.currency || "PHP")
+                            Money.from_amount(0, loan.currency.presence || loan.space.currency.presence || "PHP")
           end
 
           old_balance = account.balance.amount

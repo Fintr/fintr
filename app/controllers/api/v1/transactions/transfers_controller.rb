@@ -6,7 +6,7 @@ module Api
       class TransfersController < ApiController
         def create
           params = with_current_params(create_params)
-          operation = ::Transactions::Operations::Transfers::CreateTransfer.new.call(params:)
+          operation = ::Transactions::Operations::Transfers::CreateTransfer.new.call(params)
 
           return render_unprocessable_content(details: operation.failure) unless operation.success?
 
@@ -52,7 +52,9 @@ module Api
             :repeat_count,
             :file,
             :draft_id,
-            :file_id
+            :file_id,
+            :exchange_rate,
+            :exchange_rate_source
           )
         end
 
@@ -69,7 +71,9 @@ module Api
             :schedule_type,
             :repeat_interval,
             :repeat_count,
-            :file
+            :file,
+            :exchange_rate,
+            :exchange_rate_source
           )
         end
 

@@ -84,9 +84,10 @@ module Finance
                            space_subscription.subscription_plan.price_cents
           end
 
-          # Extract currency from flat structure, nested action, or default to PHP
-          currency = params[:currency] ||
-                    params.dig(:action, :currency) ||
+          # Extract currency from flat structure, nested action, space, or PHP as last resort
+          currency = params[:currency].presence ||
+                    params.dig(:action, :currency).presence ||
+                    space_subscription.space.currency.presence ||
                     "PHP"
 
           # Extract reference_id from params

@@ -106,20 +106,21 @@ RSpec.describe Transactions::Operations::Categories::CreateCategory do
           }
         end
 
-        before do
+        let!(:existing_category) do
           create(:category, name: "Entertainment", category_type: "expense", space:)
         end
 
-        it { is_expected.to be_failure }
+        it { is_expected.to be_success }
 
-        it 'does not create a category' do
+        it 'does not create a new category' do
           expect { call_operation }.not_to change(Transactions::Category, :count)
         end
 
-        it 'returns a uniqueness error' do
-          result = call_operation
-          expect(result.failure).to include(:name)
-          expect(result.failure[:name]).to include("already exists for this space and type")
+        it 'returns the existing category' do
+          result = call_operation.value!
+          expect(result).to eq(existing_category)
+          expect(result.name).to eq("Entertainment")
+          expect(result.category_type).to eq("expense")
         end
       end
     end

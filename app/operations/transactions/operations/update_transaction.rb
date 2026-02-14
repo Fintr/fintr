@@ -31,6 +31,8 @@ module Transactions
 
       include FailureHandler
       include Dry::Operation::Extensions::ActiveRecord
+      
+      CONVERSION_PARAMS = %i[original_currency exchange_rate exchange_rate_source].freeze
 
       def call(params)
         transaction = transaction do
@@ -47,6 +49,7 @@ module Transactions
           _                   = step adjust_balance(transaction: changed_transaction)
           new_transaction     = step update_repeat_transactions(transaction: changed_transaction, params:)
           saved_transaction   = step save_transaction(transaction: new_transaction)
+          _                   = step persist_currency_conversion(transaction: saved_transaction, params:, account:)
           _                   = step update_transfer_transaction_cost(transaction: saved_transaction) if saved_transaction.transfer
           saved_transaction
         end
@@ -96,8 +99,8 @@ module Transactions
         params[:category_id] = category.id
         params[:category_id] = space.categories.transfer_fee.id if transaction.transfer.present?
         params[:account_id] = account.id
-        params[:amount_currency] = "PHP"
-        params[:balance_currency] = "PHP"
+        params[:amount_currency] = space.currency.presence || "PHP"
+        params[:balance_currency] = space.currency.presence || "PHP"
         params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
         params[:repeat_count] ||= 1 if params[:schedule_type] == "repeat"
         params[:installment_count] ||= 1 if params[:schedule_type] == "installment"
@@ -106,9 +109,18 @@ module Transactions
         Success(params)
       end
 
+      # Frontend sends amount already converted; we only store the exchange-rate metadata for display.
+      def persist_currency_conversion(transaction:, params:, account:)
+        step ::Transactions::Operations::PersistCurrencyConversion.new.call(
+          transaction:,
+          params:,
+          account:
+        )
+      end
 
       def initialize_update_transaction(transaction:, params:)
-        transaction.assign_attributes(**params.except(:id, :update_scope, :file))
+        assignable = params.except(:id, :update_scope, :file, *CONVERSION_PARAMS)
+        transaction.assign_attributes(**assignable)
         Success(transaction)
       end
 

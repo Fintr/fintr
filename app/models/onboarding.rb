@@ -4,6 +4,7 @@ class Onboarding < ApplicationRecord
   belongs_to :user, class_name: "Auth::User"
 
   enum :step, {
+    currency: "currency",
     income: "income",
     budgets: "budgets",
     accounts: "accounts",

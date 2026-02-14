@@ -14,7 +14,12 @@ module Transactions
              :category_name
 
       field :amount do |record|
-        record.value&.amount
+        if record.transactable_type == "Transactions::Transfer" &&
+           record.transactable.respond_to?(:original_amount)
+          record.transactable.original_amount.amount
+        else
+          record.value&.amount
+        end
       end
 
       field :balance do |record|

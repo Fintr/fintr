@@ -14,6 +14,8 @@ module Onboardings
 
       def show_data(params:)
         case params[:step]
+        when "currency"
+          return ShowCurrencyData.new.call(params)
         when "income"
           return ShowIncomeData.new.call(params)
         when "budgets"
@@ -32,6 +34,8 @@ module Onboardings
 
       def create_data(params:)
         case params[:step]
+        when "currency"
+          return CurrencyStep.new.call(params)
         when "income"
           return IncomeStep.new.call(params)
         when "budgets"

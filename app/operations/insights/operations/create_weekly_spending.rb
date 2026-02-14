@@ -73,11 +73,13 @@ module Insights
                          (amount.to_d / total_expenses.to_d) * 100
           end
 
-          # Get currency from first expense transaction, or default to 'PHP'
+          # Get currency from first expense transaction, or space currency, or PHP as last resort
           currency = if transactions_for_date.any?
                        transactions_for_date.first.amount_currency
           else
-                       expenses_array.first&.amount_currency || "PHP"
+                       expenses_array.first&.amount_currency ||
+                         expenses.first&.space&.currency ||
+                         "PHP"
           end
 
           {

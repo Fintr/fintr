@@ -90,7 +90,10 @@ module Api
           :installment_count,
           :draft_id,
           :file,
-          :file_id
+          :file_id,
+          :original_currency,
+          :exchange_rate,
+          :exchange_rate_source
         )
       end
 
@@ -109,7 +112,10 @@ module Api
           :installment_period,
           :installment_count,
           :file,
-          :update_scope
+          :update_scope,
+          :original_currency,
+          :exchange_rate,
+          :exchange_rate_source
         )
       end
 

@@ -25,6 +25,8 @@ module Transactions
             optional(:repeat_count).value(:integer)
             optional(:update_scope).value(:string)
             optional(:file)
+            optional(:exchange_rate).value(:decimal, gt?: 0)
+            optional(:exchange_rate_source).value(:string, included_in?: %w[auto manual recent])
           end
 
           # Validate that schedule_type is valid
@@ -64,6 +66,8 @@ module Transactions
 
         include FailureHandler
         include Dry::Operation::Extensions::ActiveRecord
+        
+        CONVERSION_PARAMS = %i[original_currency exchange_rate exchange_rate_source].freeze
 
         def call(params)
           transfer = transaction do
@@ -78,6 +82,7 @@ module Transactions
             new_transfer        = step update_repeat_transfers(transfer: changed_transfer, params:)
             _                   = step update_transfer_fee_transaction(transfer: new_transfer, params:)
             saved_transfer      = step save_transfer(transfer: new_transfer)
+            _                   = step persist_currency_conversion(transfer: saved_transfer, params:, from_account:, to_account:)
             saved_transfer
           end
           _ = step attach_file(transfer:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
@@ -105,16 +110,28 @@ module Transactions
           params = params.dup
           params[:from_account_id] = from_account.id
           params[:to_account_id] = to_account.id
-          params[:amount_currency] = "PHP"
-          params[:transaction_cost_currency] = "PHP"
+          space_currency = from_account.space.currency.presence || "PHP"
+          params[:amount_currency] = space_currency
+          params[:transaction_cost_currency] = space_currency
           params[:repeat_count] ||= 1 if params[:schedule_type] == "repeat"
           params.delete(:from_account_name)
           params.delete(:to_account_name)
           Success(params)
         end
 
+        # Frontend sends amount already converted; we only store the exchange-rate metadata for display.
+        def persist_currency_conversion(transfer:, params:, from_account:, to_account:)
+          step ::Transactions::Operations::Transfers::PersistCurrencyConversion.new.call(
+            transfer:,
+            params:,
+            from_account:,
+            to_account:
+          )
+        end
+
         def initialize_update_transfer(transfer:, params:)
-          transfer.assign_attributes(**params.except(:id, :update_scope, :file))
+          assignable = params.except(:id, :update_scope, :file, *CONVERSION_PARAMS)
+          transfer.assign_attributes(**assignable)
           Success(transfer)
         end
 

@@ -41,7 +41,7 @@ module Auth
     end
 
     def create_onboarding
-      Onboarding.create!(user: self, step: "income")
+      Onboarding.create!(user: self, step: "currency")
     end
   end
 end

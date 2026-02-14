@@ -62,7 +62,11 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
   describe ':account_options field' do
     let(:expected_options) do
       [account1, account2].map do |account|
-        { label: account.name, value: account.name }
+        {
+          label: account.name,
+          value: account.name,
+          currency: account.balance_currency
+        }
       end.sort_by { |h| h[:label] }
     end
 

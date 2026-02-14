@@ -10,6 +10,7 @@ module Transactions
             required(:name).value(:string)
             required(:balance).value(:decimal)
             required(:account_category).value(:string)
+            optional(:balance_currency).value(:string)
           end
 
           rule(:balance) do
@@ -45,19 +46,20 @@ module Transactions
         end
 
         def modify_params(params:)
-          params[:balance_currency] = "PHP"
+          space = Spaces::Space.find(params[:space_id])
+          params[:balance_currency] = params[:balance_currency].presence || space.currency.presence || "PHP"
           Success(params)
         end
 
         def create_account(params:)
-          account = Transactions::Account.new(
+          account = Transactions::Account.find_or_initialize_by(
             params.slice(
               :space_id,
               :name,
-              :balance_currency,
               :account_category
             )
           )
+          account.assign_attributes(balance_currency: params[:balance_currency])
           account.save!
           Success(account)
         rescue ActiveRecord::RecordInvalid => e

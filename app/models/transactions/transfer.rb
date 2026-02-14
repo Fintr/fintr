@@ -3,6 +3,7 @@
 module Transactions
   class Transfer < ApplicationRecord
     include Repeatable
+    include HasCurrencyConversion
 
     belongs_to :user, class_name: "Auth::User"
     belongs_to :space, class_name: "Spaces::Space"
@@ -64,8 +65,9 @@ module Transactions
 
     def currencies_match
       return if from_account&.balance_currency == to_account&.balance_currency
+      return if currency_conversion.present?
 
-      errors.add(:base, "Account currencies must match")
+      errors.add(:base, "Account currencies must match or exchange rate must be provided")
     end
   end
 end

@@ -42,7 +42,7 @@ module Transactions
           when "lent"
             -loan_payment.total_payment
           else
-            Money.from_amount(0, loan.currency || "PHP")
+            Money.from_amount(0, loan.currency.presence || loan.space.currency.presence || "PHP")
           end
 
           old_balance = account.balance.amount

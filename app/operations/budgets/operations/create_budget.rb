@@ -35,9 +35,10 @@ module Budgets
       end
 
       def update_params(params:, category:)
+        space = Spaces::Space.find_by(id: params[:space_id])
         params[:category_id] = category.id
         params[:amount_cents] = params[:amount] * 100
-        params[:amount_currency] = "PHP"
+        params[:amount_currency] = space&.currency.presence || "PHP"
         Success(params)
       rescue StandardError
         Failure(:params_error)
