@@ -25,6 +25,8 @@ export interface Space {
   name: string;
   type: string;
   currency: string;
+  /** When set, expense/income forms pre-select this currency. */
+  defaultTransactionCurrency?: string | null;
   isPersonal: boolean;
   isOrganization: boolean;
   userRole: string;

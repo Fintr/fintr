@@ -34,12 +34,19 @@ import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSetAtom } from "jotai";
-import { Users, UserPlus, Trash2, Mail, Shield, User, Edit2, Save, X } from "lucide-react";
+import { Users, UserPlus, Trash2, Mail, Shield, User, Edit2, Save, X, Info } from "lucide-react";
 import { SpaceUser } from "@/types/spaceTypes";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { spacesApi } from "@/services/spaces/api";
 import { toast } from "sonner";
 import { currentSpaceAtom, availableSpacesAtom } from "@/atoms/spaceAtoms";
+import { CurrencyPicker } from "@/components/ui/currency-picker";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CURRENCY_CODES } from "@/data/currencies";
 
 const SpaceAccessCard = () => {
   const { api } = useAuthApi();
@@ -63,37 +70,59 @@ const SpaceAccessCard = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isEditingSpaceName, setIsEditingSpaceName] = useState(false);
   const [spaceName, setSpaceName] = useState(currentSpace?.name || "");
+  const [spaceCurrency, setSpaceCurrency] = useState(
+    currentSpace?.currency ?? "PHP"
+  );
+  const defaultTransactionCurrency =
+    currentSpace?.defaultTransactionCurrency ?? currentSpace?.currency ?? "";
+  const [defaultCurrency, setDefaultCurrency] = useState(defaultTransactionCurrency);
+  const [isSavingCurrencies, setIsSavingCurrencies] = useState(false);
 
-  // Update space name mutation
+  // Update space mutation (name, currency, and/or default transaction currency)
   const updateSpaceMutation = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (params: {
+      name: string;
+      currency?: string | null;
+      defaultTransactionCurrency?: string | null;
+    }) => {
       if (!currentSpace?.id) throw new Error("No space selected");
-      const response = await spacesApi.updateSpace(api, currentSpace.id, name);
+      const response = await spacesApi.updateSpace(api, currentSpace.id, {
+        name: params.name,
+        ...(params.currency !== undefined && {
+          currency: params.currency,
+        }),
+        ...(params.defaultTransactionCurrency !== undefined && {
+          defaultTransactionCurrency: params.defaultTransactionCurrency,
+        }),
+      });
       return response.data.data.space;
     },
     onSuccess: (updatedSpace) => {
-      toast.success("Space name updated successfully");
+      toast.success("Space updated successfully");
       setIsEditingSpaceName(false);
       setSpaceName(updatedSpace.name);
-      
+      setSpaceCurrency(updatedSpace.currency ?? "PHP");
+      setDefaultCurrency(
+        updatedSpace.defaultTransactionCurrency ?? updatedSpace.currency ?? ""
+      );
+
       // Update atoms immediately for instant UI update
       if (currentSpace?.id === updatedSpace.id) {
         setCurrentSpace(updatedSpace);
       }
-      
+
       // Update the space in availableSpacesAtom
       setAvailableSpaces((prevSpaces) =>
         prevSpaces.map((space) =>
           space.id === updatedSpace.id ? updatedSpace : space
         )
       );
-      
+
       // Invalidate all relevant queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      queryClient.invalidateQueries({ 
-        queryKey: ["space-context", currentSpace?.code] 
+      queryClient.invalidateQueries({
+        queryKey: ["space-context", currentSpace?.code],
       });
-      // Also invalidate without code to catch all space-context queries
       queryClient.invalidateQueries({ queryKey: ["space-context"] });
     },
     onError: (error: any) => {
@@ -106,7 +135,38 @@ const SpaceAccessCard = () => {
       toast.error("Space name cannot be empty");
       return;
     }
-    await updateSpaceMutation.mutateAsync(spaceName.trim());
+    await updateSpaceMutation.mutateAsync({
+      name: spaceName.trim(),
+    });
+  };
+
+  const spaceCurrencyChanged =
+    spaceCurrency !== (currentSpace?.currency ?? "PHP");
+  const defaultCurrencyChanged =
+    defaultCurrency !==
+    (currentSpace?.defaultTransactionCurrency ?? currentSpace?.currency ?? "");
+  const hasCurrencyChanges = spaceCurrencyChanged || defaultCurrencyChanged;
+
+  const handleSaveCurrencies = async () => {
+    if (!currentSpace?.name || !hasCurrencyChanges) return;
+    const spaceCurrencyValue =
+      spaceCurrency && CURRENCY_CODES.has(spaceCurrency.toUpperCase())
+        ? spaceCurrency.toUpperCase()
+        : currentSpace?.currency ?? "PHP";
+    const defaultCurrencyValue =
+      defaultCurrency && CURRENCY_CODES.has(defaultCurrency.toUpperCase())
+        ? defaultCurrency.toUpperCase()
+        : null;
+    setIsSavingCurrencies(true);
+    try {
+      await updateSpaceMutation.mutateAsync({
+        name: currentSpace.name,
+        currency: spaceCurrencyValue,
+        defaultTransactionCurrency: defaultCurrencyValue,
+      });
+    } finally {
+      setIsSavingCurrencies(false);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -114,12 +174,24 @@ const SpaceAccessCard = () => {
     setIsEditingSpaceName(false);
   };
 
-  // Update spaceName when currentSpace changes
+  // Update spaceName, spaceCurrency, and defaultCurrency when currentSpace changes
   useEffect(() => {
     if (currentSpace?.name && !isEditingSpaceName) {
       setSpaceName(currentSpace.name);
     }
-  }, [currentSpace?.name, isEditingSpaceName]);
+    if (currentSpace) {
+      setSpaceCurrency(currentSpace.currency ?? "PHP");
+      setDefaultCurrency(
+        currentSpace.defaultTransactionCurrency ?? currentSpace.currency ?? ""
+      );
+    }
+  }, [
+    currentSpace?.name,
+    currentSpace?.currency,
+    currentSpace?.defaultTransactionCurrency,
+    isEditingSpaceName,
+    currentSpace,
+  ]);
 
   const handleGrantAccess = async () => {
     if (!email.trim()) return;
@@ -161,83 +233,175 @@ const SpaceAccessCard = () => {
           Manage who has access to this space and their permissions
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Space Name Section */}
-        <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium">Space Name</h4>
-            {!isEditingSpaceName && (
+      <CardContent className="space-y-4">
+        {/* Space Name */}
+        <div className="space-y-2 p-3 rounded-lg border bg-muted/30">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">Space name</h4>
+            {!isEditingSpaceName ? (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
+                className="h-8 gap-1.5 text-muted-foreground"
                 onClick={() => setIsEditingSpaceName(true)}
               >
-                <Edit2 className="h-4 w-4 mr-2" />
+                <Edit2 className="h-3.5 w-3.5" />
                 Edit
               </Button>
-            )}
+            ) : null}
           </div>
-          
           {isEditingSpaceName ? (
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="space-name">Name</Label>
-                <Input
-                  id="space-name"
-                  value={spaceName}
-                  onChange={(e) => setSpaceName(e.target.value)}
-                  placeholder="Enter space name"
-                />
-              </div>
-              <div className="flex gap-2">
+            <div className="flex flex-wrap items-end gap-2">
+              <Input
+                id="space-name"
+                value={spaceName}
+                onChange={(e) => setSpaceName(e.target.value)}
+                placeholder="Enter space name"
+                className="h-9 flex-1 min-w-[160px]"
+              />
+              <div className="flex gap-1.5">
                 <Button
-                  onClick={handleUpdateSpaceName}
-                  disabled={!spaceName.trim() || updateSpaceMutation.isLoading}
                   size="sm"
+                  className="h-9"
+                  onClick={handleUpdateSpaceName}
+                  disabled={!spaceName.trim() || updateSpaceMutation.isPending}
                 >
-                  {updateSpaceMutation.isLoading ? (
+                  {updateSpaceMutation.isPending ? (
                     <LoadingSpinner size="small" />
                   ) : (
                     <>
-                      <Save className="h-4 w-4 mr-2" />
+                      <Save className="h-3.5 w-3.5 mr-1.5" />
                       Save
                     </>
                   )}
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={handleCancelEdit}
                   size="sm"
-                  disabled={updateSpaceMutation.isLoading}
+                  className="h-9"
+                  onClick={handleCancelEdit}
+                  disabled={updateSpaceMutation.isPending}
                 >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
+                  <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="text-sm font-medium text-gray-700">
+            <p className="text-sm text-muted-foreground">
               {currentSpace?.name || "Loading..."}
-            </div>
+            </p>
           )}
         </div>
 
+        {/* Currency (space + default for expenses/income) */}
+        <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">Currency</h4>
+            <Button
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={handleSaveCurrencies}
+              disabled={
+                !hasCurrencyChanges ||
+                isSavingCurrencies ||
+                updateSpaceMutation.isPending
+              }
+            >
+              {isSavingCurrencies || updateSpaceMutation.isPending ? (
+                <LoadingSpinner size="small" />
+              ) : (
+                <>
+                  <Save className="h-3.5 w-3.5" />
+                  Save changes
+                </>
+              )}
+            </Button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Space currency
+                </span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
+                      aria-label="More information"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72" align="start">
+                    <p className="text-sm text-muted-foreground">
+                      Main currency for this space. Used for totals and reports.
+                    </p>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <CurrencyPicker
+                value={spaceCurrency}
+                onChange={setSpaceCurrency}
+                label=""
+                placeholder="Search..."
+                className="h-9"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Default for expenses & income
+                </span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
+                      aria-label="More information"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72" align="start">
+                    <p className="text-sm text-muted-foreground">
+                      Pre-selected when adding an expense or income.
+                    </p>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <CurrencyPicker
+                value={defaultCurrency}
+                onChange={setDefaultCurrency}
+                label=""
+                placeholder="Search..."
+                className="h-9"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Add User Form */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium">Grant Access</h4>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">Grant access</h4>
             <Button
               variant="outline"
               size="sm"
+              className="h-8 gap-1.5"
               onClick={() => setShowAddForm(!showAddForm)}
             >
-              <UserPlus className="h-4 w-4 mr-2" />
-              {showAddForm ? "Cancel" : "Add User"}
+              <UserPlus className="h-3.5 w-3.5" />
+              {showAddForm ? "Cancel" : "Add user"}
             </Button>
           </div>
 
           {showAddForm && (
-            <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+            <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
@@ -323,9 +487,13 @@ const SpaceAccessCard = () => {
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                       {getRoleIcon(user.role)}
-                      <div>
-                        <div className="font-medium text-sm">{user.fullName}</div>
-                        <div className="text-xs text-gray-500">{user.email}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-sm break-words">
+                          {user.fullName?.trim() || user.email || "—"}
+                        </div>
+                        <div className="text-xs text-gray-500 break-all">
+                          {user.email}
+                        </div>
                       </div>
                     </div>
                     <Badge variant={getRoleBadgeVariant(user.role)}>

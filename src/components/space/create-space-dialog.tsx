@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,17 +21,12 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CurrencyPicker } from "@/components/ui/currency-picker";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { toast } from "sonner";
+import { CURRENCY_CODES } from "@/data/currencies";
 
 const createSpaceSchema = z.object({
   name: z.string().min(1, "Space name is required").max(50, "Name too long"),
@@ -45,19 +40,41 @@ interface CreateSpaceDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const DEFAULT_CURRENCY = "USD";
+
+function getDefaultCurrency(currentSpaceCurrency: string | undefined): string {
+  if (currentSpaceCurrency && CURRENCY_CODES.has(currentSpaceCurrency.toUpperCase())) {
+    return currentSpaceCurrency.toUpperCase();
+  }
+  return DEFAULT_CURRENCY;
+}
+
 export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps) {
   const { api } = useAuthApi();
   const queryClient = useQueryClient();
-  const { switchSpace } = useSpaceContext(api);
+  const { switchSpace, currentSpace } = useSpaceContext(api);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const defaultCurrency = getDefaultCurrency(currentSpace?.currency);
 
   const form = useForm<CreateSpaceForm>({
     resolver: zodResolver(createSpaceSchema),
     defaultValues: {
       name: "",
-      currency: "USD",
+      currency: defaultCurrency,
     },
   });
+
+  // When dialog opens, reset form and set currency default from current space
+  useEffect(() => {
+    if (open) {
+      const currency = getDefaultCurrency(currentSpace?.currency);
+      form.reset({
+        name: "",
+        currency,
+      });
+    }
+  }, [open, currentSpace?.currency, form]);
 
   const createSpaceMutation = useMutation({
     mutationFn: async (data: CreateSpaceForm) => {
@@ -100,42 +117,34 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Space Name</FormLabel>
+                <FormItem className="space-y-1.5">
+                  <FormLabel className="text-sm">Space name</FormLabel>
                   <FormControl>
-                    <Input placeholder="My Organization" {...field} />
+                    <Input placeholder="My Organization" className="h-9" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
             <FormField
               control={form.control}
               name="currency"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Currency</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="USD">USD - US Dollar</SelectItem>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
-                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                      <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
-                      <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
-                      <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <FormItem className="space-y-1.5">
+                  <FormLabel className="text-sm">Space currency</FormLabel>
+                  <FormControl>
+                    <CurrencyPicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      label=""
+                      placeholder="Search by name or code..."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

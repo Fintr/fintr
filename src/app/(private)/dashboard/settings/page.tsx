@@ -6,7 +6,7 @@ import { Input } from '../../../../components/ui/input';
 import { Label } from '../../../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { Toaster, toast } from 'sonner';
+import { toast } from 'sonner';
 import { updateUser, requestPasswordReset } from '@/services/auth/user/mutations';
 import { getUserAuth0Settings } from '@/services/auth/user/queries';
 import { useAuthApi } from '@/hooks/useAuthApi';
@@ -216,7 +216,6 @@ const SettingsPage = () => {
         isOpen={isDeleteAccountDialogOpen}
         onClose={() => setIsDeleteAccountDialogOpen(false)}
       />
-      <Toaster />
     </div>
   );
 };
