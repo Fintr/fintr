@@ -16,30 +16,19 @@ export default function OnboardingIndex() {
   useEffect(() => {
     if (!isApiLoading && onboardingStep !== null) {
       // Check if user has completed onboarding
-      if (onboardingStep === 'completed') {
-        // If already completed, redirect to completed page
-        router.push('/onboarding/completed');
+      if (onboardingStep === "completed") {
+        router.push("/onboarding/completed");
       } else {
-        // If not completed, redirect to appropriate step
-        switch (onboardingStep) {
-          case 'currency':
-            router.push('/onboarding/step1');
-            break;
-          case 'income':
-            router.push('/onboarding/step2');
-            break;
-          case 'budgets':
-            router.push('/onboarding/step3');
-            break;
-          case 'accounts':
-            router.push('/onboarding/step4');
-            break;
-          case 'import':
-            router.push('/onboarding/step5');
-            break;
-          default:
-            router.push('/onboarding/step1');
-        }
+        // Map API step to route; unknown or missing step always starts at step1
+        const stepRoutes: Record<string, string> = {
+          currency: "/onboarding/step1",
+          income: "/onboarding/step2",
+          budgets: "/onboarding/step3",
+          accounts: "/onboarding/step4",
+          import: "/onboarding/step5",
+        };
+        const route = stepRoutes[onboardingStep] ?? "/onboarding/step1";
+        router.push(route);
       }
     }
   }, [onboardingStep, isApiLoading, router]);

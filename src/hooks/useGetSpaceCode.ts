@@ -36,9 +36,12 @@ export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = t
         if (fetchedIsAdmin !== undefined) {
           setIsAdmin(fetchedIsAdmin);
         }
-        if (fetchedOnboardingStep) {
-          setOnboardingStep(fetchedOnboardingStep);
-        }
+        // Always set onboarding step: treat empty/missing as "currency" so new users start at step1
+        const normalizedStep =
+          fetchedOnboardingStep && String(fetchedOnboardingStep).trim()
+            ? fetchedOnboardingStep
+            : "currency";
+        setOnboardingStep(normalizedStep);
         if (fetchedDesktopTutorial !== undefined) {
           setDesktopTutorialCompleted(fetchedDesktopTutorial);
         }
