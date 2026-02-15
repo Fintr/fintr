@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AuthStorage } from '@/lib/auth-storage';
 
 interface ImageData {
   url: string;
@@ -303,16 +304,16 @@ export default function ImageLightbox({
     };
 
     const extension = getFileExtension();
-    const baseFilename = currentImage.filename 
+    const baseFilename = currentImage.filename
       ? currentImage.filename.replace(/\.[^/.]+$/, '')
       : `image-${currentIndex + 1}`;
     const filename = extension ? `${baseFilename}.${extension}` : baseFilename;
 
-    const downloadBlob = (blob: Blob, filename: string) => {
+    const downloadBlob = (blob: Blob, name: string) => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename;
+      a.download = name;
       a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
@@ -322,66 +323,90 @@ export default function ImageLightbox({
       }, 100);
     };
 
-    try {
-      const response = await fetch(currentImage.url, {
-        mode: 'cors',
-        credentials: 'include',
+    const tryProxyDownload = async (): Promise<boolean> => {
+      const backendUrl = process.env.NEXT_PUBLIC_BE_URL;
+      const token = AuthStorage.getAuthData()?.tokens?.access_token;
+      if (!backendUrl || !token) return false;
+      const allowedPrefixes = [
+        'https://s3.ap-southeast-1.amazonaws.com/fintr-production/',
+        'https://s3.ap-southeast-1.amazonaws.com/fintr-staging/',
+        'https://s3.ap-southeast-1.amazonaws.com/fintr-development/',
+      ];
+      const isAllowed = allowedPrefixes.some((p) => currentImage.url.startsWith(p));
+      if (!isAllowed) return false;
+      const proxyUrl = `${backendUrl}/api/v1/attachments/download?url=${encodeURIComponent(currentImage.url)}`;
+      const response = await fetch(proxyUrl, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.statusText}`);
-      }
-
+      if (!response.ok) return false;
       const blob = await response.blob();
       downloadBlob(blob, filename);
-    } catch (error) {
-      try {
-        const response = await fetch(currentImage.url);
-        if (response.ok) {
-          const blob = await response.blob();
+      return true;
+    };
+
+    try {
+      let response = await fetch(currentImage.url, {
+        mode: 'cors',
+        credentials: 'omit',
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        downloadBlob(blob, filename);
+        return;
+      }
+    } catch {
+      // Direct fetch failed (e.g. CORS); try backend proxy
+    }
+
+    try {
+      const ok = await tryProxyDownload();
+      if (ok) return;
+    } catch {
+      // Proxy failed
+    }
+
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = currentImage.url;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        const blob = await new Promise<Blob | null>((resolveBlob) => {
+          canvas.toBlob(
+            resolveBlob,
+            `image/${extension === 'jpg' ? 'jpeg' : extension}`
+          );
+        });
+        if (blob) {
           downloadBlob(blob, filename);
           return;
         }
-      } catch (fetchError) {
-        console.error('Fetch with default options failed:', fetchError);
       }
+    } catch {
+      // Canvas path failed
+    }
 
-      try {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        
-        await new Promise((resolve, reject) => {
-          img.onload = () => resolve(img);
-          img.onerror = reject;
-          img.src = currentImage.url;
-        });
+    try {
+      const ok = await tryProxyDownload();
+      if (ok) return;
+    } catch {
+      // Final proxy attempt failed
+    }
 
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          canvas.toBlob((blob) => {
-            if (blob) {
-              downloadBlob(blob, filename);
-            } else {
-              throw new Error('Failed to create blob from canvas');
-            }
-          }, `image/${extension === 'jpg' ? 'jpeg' : extension}`);
-        } else {
-          throw new Error('Failed to get canvas context');
-        }
-      } catch (canvasError) {
-        console.error('Canvas download method failed:', canvasError);
-        const a = document.createElement('a');
-        a.href = currentImage.url;
-        a.download = filename;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
+    console.error('Image download failed: could not fetch or proxy image');
+    if (typeof window !== 'undefined' && window.alert) {
+      window.alert(
+        'Download failed. The image could not be saved. Try again or open the image in a new tab.'
+      );
     }
   };
 
