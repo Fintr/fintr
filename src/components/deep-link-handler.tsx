@@ -8,6 +8,9 @@ import { AuthStorage } from '@/lib/auth-storage';
 // Global flag to prevent processing during auth flows
 let globalAuthLock = false;
 
+// Global set of auth-callback URLs we've already navigated for (survives duplicate appUrlOpen events)
+const processedAuthCallbackUrls = new Set<string>();
+
 // Export function to reset the global auth lock after auth flow completes
 export const resetGlobalAuthLock = () => {
   console.log('🔓 Resetting global auth lock');
@@ -120,32 +123,32 @@ export default function DeepLinkHandler() {
           
           // Check if this is an OAuth callback with query params
           if (path === '/auth-callback' && queryParams) {
+            // Only one navigation per auth callback URL (iOS can fire appUrlOpen multiple times)
+            if (processedAuthCallbackUrls.has(event.url)) {
+              console.log('⏭️ Auth callback already handled for this URL, skipping navigation');
+              isProcessingRef.current = false;
+              return;
+            }
+            processedAuthCallbackUrls.add(event.url);
+            globalAuthLock = true;
+            console.log('🔒 Global auth lock activated');
             console.log('🔐 OAuth callback detected - initiating token exchange');
             console.log('Query params:', queryParams);
-            
-            // CRITICAL: Close the browser BEFORE setting lock or navigating
-            // This ensures the Safari view closes immediately so user can see the app
-            console.log('🚪 Closing Safari browser immediately...');
+
+            // Close the browser so user sees the app (may already be closed)
+            console.log('🚪 Closing Safari browser...');
             try {
               const { Browser } = await import('@capacitor/browser');
               await Browser.close();
-              console.log('✅ Safari browser closed successfully');
+              console.log('✅ Safari browser closed');
             } catch (error) {
               console.log('ℹ️ Browser close failed (might already be closed):', error);
             }
-            
-            // Small delay to ensure browser view dismisses before navigation
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            // Set global auth lock to prevent ANY other deep links during auth
-            globalAuthLock = true;
-            console.log('🔒 Global auth lock activated');
-            
-            // Route to auth-callback page to process the tokens
+
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
             console.log('📍 Navigating to /auth-callback...');
             router.push(`/auth-callback?${queryParams}`);
-            
-            // DON'T reset processing flag for auth callbacks
             console.log('✅ Auth callback navigation initiated');
             return;
           }

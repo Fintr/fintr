@@ -1,11 +1,14 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// Only use server URL in development (when CAPACITOR_SERVER_URL is explicitly set)
-// For production/staging builds, omit server config to use bundled app
-const serverConfig = process.env.CAPACITOR_SERVER_URL
+// When CAPACITOR_SERVER_URL is set, the app loads the web app from that URL.
+// - Development: set to http://localhost:5173 (or your machine IP) for live reload
+// - Production: set to https://www.fintr.ai so the app always loads the latest website
+//   (no app store update needed when you deploy web changes)
+const serverUrl = process.env.CAPACITOR_SERVER_URL;
+const serverConfig = serverUrl
   ? {
-      url: process.env.CAPACITOR_SERVER_URL,
-      cleartext: true, // Allow HTTP (required for localhost)
+      url: serverUrl,
+      ...(serverUrl.startsWith("http://") && { cleartext: true }),
     }
   : undefined;
 
@@ -13,10 +16,7 @@ const config: CapacitorConfig = {
   appId: 'com.fintr.app',
   appName: 'Fintr',
   webDir: 'out',
-  // Server configuration for development only
-  // For iOS Simulator: use 'localhost'
-  // For physical iOS device: use your Mac's IP address (find with: ifconfig | grep "inet ")
-  // For production/staging: leave CAPACITOR_SERVER_URL unset to use bundled app
+  // Server URL: app loads web content from this URL (dev: localhost, prod: https://www.fintr.ai)
   ...(serverConfig && { server: serverConfig }),
   ios: {
     scheme: 'fintrapp',

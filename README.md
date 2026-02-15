@@ -216,6 +216,19 @@ In the Android emulator, **localhost** is the emulator itself, not your Mac, so 
   3. **Cold boot**: In Device Manager, use the dropdown on the AVD → **Cold Boot Now**. When it finishes booting, run `pnpm android` again.
   4. If the device stays offline, **Wipe Data** for that AVD in Device Manager, or create a new virtual device.
 
+### Live view auth (iOS/Android loading from website)
+
+When the app loads from the live website (e.g. `https://www.fintr.ai`), the token exchange is a `fetch()` from that origin to your backend. If you see **"Authentication Failed"** or **"Load failed"** / **"Could not reach the server"**:
+
+1. **Backend CORS** – The backend must allow the app’s origin. Set `CORS_ORIGINS` (or equivalent) to include:
+   - `https://www.fintr.ai`
+   - `https://fintr.ai`
+   - (Optional) `capacitor://localhost` if you test with a bundled build
+2. **Auth0** – In the Auth0 application, **Allowed Callback URLs** must include:
+   - `fintrapp://auth-callback` (for the native app OAuth redirect)
+
+After changing CORS or Auth0, redeploy the backend / Auth0 config and try sign-in again.
+
 ### General Issues
 
 **Dependencies not installing:**
