@@ -144,7 +144,8 @@ accessories:
       memory: 1g
       cpus: 1.0
       network: 'private'
-deploy_timeout: 60
+# Rails can take 60–90s+ to boot on constrained hosts; health check must pass within this window.
+deploy_timeout: 120
 boot:
   limit: 1     # Deploy one container at a time
   wait: 10  
