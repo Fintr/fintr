@@ -3,7 +3,10 @@
 module Ai
   module Operations
     module Receipts
+      # Vision-based receipt extraction. Optimized for ~1s latency: resized image + low detail + concise output.
       class ExtractReceiptDataVision < Dry::Operation
+        MAX_VISION_EDGE = 1024   # Max pixels on longest side; smaller = faster upload + inference
+        JPEG_QUALITY    = 85     # Balance size vs readability for receipts
         class Contract < Dry::Validation::Contract
           params do
             required(:image_path).value(:string)
@@ -83,12 +86,8 @@ module Ai
           image_path = params[:image_path]
 
           begin
-            # Read the image file and encode it to base64
-            image_data = File.binread(image_path)
-            mime_type = determine_mime_type(image_path)
+            image_data, mime_type = resize_image_for_vision(image_path)
             base64_string = Base64.strict_encode64(image_data)
-
-            # Format for OpenAI API
             formatted_image = "data:#{mime_type};base64,#{base64_string}"
 
             Success(formatted_image)
@@ -98,6 +97,18 @@ module Ai
               error: e
             )
           end
+        end
+
+        # Resize and compress for fast vision API: smaller payload and fewer tokens.
+        def resize_image_for_vision(image_path)
+          img = MiniMagick::Image.open(image_path)
+          img.resize "#{MAX_VISION_EDGE}x#{MAX_VISION_EDGE}>"
+          img.format "jpeg"
+          img.quality JPEG_QUALITY.to_s
+          [img.to_blob, "image/jpeg"]
+        rescue StandardError
+          # Fallback: original file (e.g. MiniMagick not available or invalid image)
+          [File.binread(image_path), determine_mime_type(image_path)]
         end
 
         def determine_mime_type(image_path)
@@ -115,13 +126,12 @@ module Ai
           system_prompt = build_vision_system_prompt(space_categories, space_accounts)
 
           begin
-            client = OpenAI::Client.new(
-              access_token: ENV["OPENAI_API_KEY"] || Rails.application.credentials.openai_api_key
-            )
+            client = ::Ai::Llm::VisionClient.client
+            model  = ::Ai::Llm::VisionClient.model
 
             response = client.chat(
               parameters: {
-                model: "gpt-4o", # GPT-4 with vision capabilities
+                model:    model,
                 messages: [
                   {
                     role: "system",
@@ -137,28 +147,38 @@ module Ai
                       {
                         type: "image_url",
                         image_url: {
-                          url: base64_image,
-                          detail: "high" # High detail for better text recognition
+                          url:   base64_image,
+                          detail: "high" # Keep high for readable text; speed comes from resized image + fast model
                         }
                       }
                     ]
                   }
                 ],
-                temperature: 0.0, # Low temperature for consistent extraction
-                max_tokens: 300   # Keep response concise
+                temperature: 0.0,
+                max_tokens: 300
               }
             )
 
             ai_content = response.dig("choices", 0, "message", "content")&.strip
-            return Failure(ai_error: "No response from OpenAI Vision") if ai_content.blank?
+            return Failure(ai_error: "No response from vision API") if ai_content.blank?
 
             Success(ai_content)
           rescue StandardError => e
+            failure_message = vision_api_error_message(e)
             Failure(
-              ai_vision_error: "OpenAI Vision API call failed",
+              ai_vision_error: failure_message,
               error: e
             )
           end
+        end
+
+        def vision_api_error_message(exception)
+          msg = exception.message.to_s
+          return "Vision API payment required (402). Add credits or a payment method at https://openrouter.ai/credits" if msg.include?("402")
+          return "Vision API authentication failed (401). Check OPENROUTER_API_KEY or OPENAI_API_KEY." if msg.include?("401")
+          return "Vision API rate limit (429). Try again in a few moments." if msg.include?("429")
+
+          "Vision API call failed"
         end
 
         def build_vision_system_prompt(space_categories, space_accounts)
@@ -216,7 +236,7 @@ module Ai
             end
 
             Success(parsed)
-          rescue JSON::ParserError => e
+          rescue JSON::ParserError
             # Try to extract JSON from text if it's wrapped in other content
             json_match = ai_response.match(/\{.*\}/m)
             if json_match

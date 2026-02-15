@@ -28,8 +28,8 @@ module Api
 
           return render_internal_server_error(message: "Receipt processing failed", details: operation.failure) unless operation.success?
 
-          # Add processing time to response
           result = operation.value!
+          result = result.merge(dev_timer_attrs(result)) if Rails.env.development?
 
           render_success(
             data: result,
@@ -144,6 +144,16 @@ module Api
         else
           false
         end
+      end
+
+      def dev_timer_attrs(result)
+        sec = result[:processing_time]
+        return {} unless sec.is_a?(Numeric)
+
+        {
+          processing_time_seconds: sec.round(3),
+          processing_time_display: format("%.2fs", sec)
+        }
       end
 
       def cleanup_temporary_files(*file_paths)
