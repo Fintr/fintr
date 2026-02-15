@@ -305,17 +305,17 @@ export const useAiChat = () => {
               currentSessionRef.current = null;
               
               // Set error state
+              const rawError = data.error ?? 'An error occurred while processing your request';
+              const wsErrorText = typeof rawError === 'string' ? rawError : (rawError && typeof (rawError as any).message === 'string' ? (rawError as any).message : String(rawError));
               setChatState(prev => ({
                 ...prev,
-                error: data.error || 'An error occurred while processing your request',
+                error: wsErrorText,
                 isLoading: false,
                 isStreaming: false,
               }));
-              
-              // Update message with error
-              const errorMessage = data.error || 'An error occurred while processing your request';
+
               updateMessage(assistantMessageId, {
-                content: `Sorry, I encountered an error: ${errorMessage}`,
+                content: `Sorry, I encountered an error: ${wsErrorText}`,
               });
               
               return; // Don't process further
@@ -538,43 +538,44 @@ export const useAiChat = () => {
       
     } catch (error) {
       console.error("Error starting chat:", error);
-      
-      // Extract detailed error message from API response
-      let errorMessage = 'An unknown error occurred';
-      
+
+      // Extract detailed error message from API response (supports snake_case and camelCase)
+      let errorMessage: unknown = "An unknown error occurred";
+
       if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
-      // Try to extract more specific error details from the API response
-      if ((error as any)?.response?.data) {
-        const apiError = (error as any).response.data;
-        
-        // Handle different API error response formats
-        if (apiError.error) {
-          if (typeof apiError.error === 'string') {
-            errorMessage = apiError.error;
-          } else if (apiError.error.message) {
-            errorMessage = apiError.error.message;
-            if (apiError.error.details) {
-              errorMessage += `: ${apiError.error.details}`;
-            }
+
+      const responseData = (error as any)?.response?.data;
+      if (responseData) {
+        const err = responseData.error ?? responseData;
+        const msg = typeof err === "string" ? err : (err?.message ?? err?.msg);
+        if (msg != null) {
+          errorMessage = typeof msg === "string" ? msg : String(msg);
+          const details = err?.details;
+          if (details != null) {
+            errorMessage += typeof details === "string" ? `: ${details}` : `: ${JSON.stringify(details)}`;
           }
-        } else if (apiError.message) {
-          errorMessage = apiError.message;
-        } else if (apiError.details) {
-          errorMessage = apiError.details;
+        } else if (responseData.message != null) {
+          errorMessage = typeof responseData.message === "string" ? responseData.message : String(responseData.message);
         }
       }
-      
-      setChatState(prev => ({
+
+      const errorText = typeof errorMessage === "string" ? errorMessage : String(errorMessage);
+
+      setChatState((prev) => ({
         ...prev,
-        error: errorMessage,
+        error: errorText,
         isLoading: false,
         isStreaming: false,
       }));
+
+      // Show error in the assistant message bubble so the user sees it in the conversation
+      updateMessage(assistantMessageId, {
+        content: `Sorry, I encountered an error: ${errorText}`,
+      });
     }
-  }, [addMessage, api, subscribeToChat, currentConversationId]);
+  }, [addMessage, api, subscribeToChat, currentConversationId, updateMessage]);
 
   const clearChat = useCallback(() => {
     // Stop subscription and typing animation
