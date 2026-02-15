@@ -110,6 +110,11 @@ Rails.application.routes.draw do
       end
 
       resource :onboardings, only: %i[create show]
+      resources :attachments, only: [] do
+        collection do
+          get :download
+        end
+      end
       resources :budgets, only: %i[index create update destroy]
       resources :entities, only: %i[index create]
       resources :insights, only: [:index]
