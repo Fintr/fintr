@@ -29,6 +29,7 @@ import ConversationRenameDialog from "./conversation-rename-dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { ChartComponent } from "./chart-components";
 import { ChartPlaceholder } from "./chart-placeholder";
+import { MarkdownContent } from "./markdown-content";
 import { parseContentWithCharts, parseContentWithInlineCharts } from "@/utils/chartParser";
 
 interface EnhancedAiChatModalProps {
@@ -473,7 +474,11 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                 {message.segments.map((segment, index) => (
                   <div key={index}>
                     {segment.type === 'text' && segment.content && !segment.content.includes('*****') && (
-                      <p className="whitespace-pre-wrap text-sm">{segment.content}</p>
+                      isUser ? (
+                        <p className="whitespace-pre-wrap text-sm">{segment.content}</p>
+                      ) : (
+                        <MarkdownContent content={segment.content} />
+                      )
                     )}
                     {segment.type === 'chart' && segment.chart && (
                       <ChartComponent
@@ -487,9 +492,13 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                 ))}
               </div>
             ) : (
-              // Fallback to regular content rendering
+              // Fallback to regular content rendering (markdown for assistant)
               <div>
-                <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                {isUser ? (
+                  <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                ) : (
+                  <MarkdownContent content={message.content} />
+                )}
                 {/* Debug: Show if content has chart blocks but no segments */}
                 {message.content.includes('*****') && (
                   <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded text-xs">
@@ -704,7 +713,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                             {currentStreamingSegments.map((segment, index) => (
                               <div key={index}>
                                 {segment.type === 'text' && segment.content && (
-                                  <p className="whitespace-pre-wrap text-sm">{segment.content}</p>
+                                  <MarkdownContent content={segment.content} />
                                 )}
                                 {segment.type === 'chart' && segment.chart && (
                                   <ChartComponent
@@ -718,8 +727,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                             ))}
                           </div>
                         ) : (
-                          // Fallback to regular content rendering
-                          <p className="whitespace-pre-wrap text-sm">{currentStreamingMessage}</p>
+                          <MarkdownContent content={currentStreamingMessage} />
                         )}
                         
                         {/* Show placeholder for incomplete chart */}
