@@ -12,7 +12,7 @@ import { Button } from "../../ui/button";
 import { Upload, CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Calendar } from "../../ui/calendar";
-import { format } from "date-fns";
+import { format, endOfMonth } from "date-fns";
 import { useAtomValue } from "jotai";
 import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
 import { createTransfer } from "@/services/transactions/transfers/mutation";
@@ -413,6 +413,8 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 selected={date}
                 onSelect={setDate}
                 initialFocus
+                toDate={endOfMonth(new Date())}
+                toYear={new Date().getFullYear()}
                 defaultMonth={date || new Date()}
               />
             </PopoverContent>

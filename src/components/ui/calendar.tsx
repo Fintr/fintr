@@ -1,27 +1,67 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker } from "react-day-picker"
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { DayPicker, type DropdownProps } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+
+const DEFAULT_FROM_YEAR = 2010;
+const DEFAULT_TO_YEAR = 2030;
+
+/** Single visible select (no overlay caption) to avoid duplicate month/year display. */
+function CalendarDropdown({
+  value,
+  onChange,
+  children,
+  "aria-label": ariaLabel,
+  className,
+  name,
+}: DropdownProps) {
+  return (
+    <div className={cn("relative", className)}>
+      <select
+        name={name}
+        aria-label={ariaLabel}
+        value={value}
+        onChange={onChange}
+        className={cn(
+          "h-8 rounded-md border border-input bg-background px-3 pr-8 text-sm",
+          "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+          "appearance-none cursor-pointer"
+        )}
+      >
+        {children}
+      </select>
+      <ChevronDown className="absolute right-2 top-1/2 size-4 -translate-y-1/2 pointer-events-none text-muted-foreground" />
+    </div>
+  )
+}
 
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  fromYear = DEFAULT_FROM_YEAR,
+  toYear = DEFAULT_TO_YEAR,
+  captionLayout = "dropdown",
   ...props
 }: React.ComponentProps<typeof DayPicker>) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      fromYear={fromYear}
+      toYear={toYear}
+      captionLayout={captionLayout}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row gap-2",
         month: "flex flex-col gap-4",
         caption: "flex justify-center pt-1 relative items-center w-full",
-        caption_label: "text-sm font-medium",
+        caption_label: "sr-only",
+        caption_dropdowns: "flex flex-row gap-2 justify-center",
+        vhidden: "sr-only",
         nav: "flex items-center gap-1",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -60,6 +100,7 @@ function Calendar({
         ...classNames,
       }}
       components={{
+        Dropdown: CalendarDropdown,
         IconLeft: ({ className, ...props }) => (
           <ChevronLeft className={cn("size-4", className)} {...props} />
         ),

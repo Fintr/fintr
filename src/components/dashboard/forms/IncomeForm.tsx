@@ -435,9 +435,9 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     setShowCustomAccountInput(false);
   };
 
-  const currentDate = new Date();
-  const maxDate = endOfMonth(currentDate);
-  
+  const maxDate = endOfMonth(new Date());
+  const currentYear = new Date().getFullYear();
+
   return (
     <form ref={formRef} onSubmit={handleSubmit}>
       <div className="space-y-4">
@@ -453,12 +453,13 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar 
-                  mode="single" 
-                  selected={date} 
-                  onSelect={setDate} 
-                  initialFocus 
-                  toDate={maxDate} 
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  initialFocus
+                  toDate={maxDate}
+                  toYear={currentYear}
                   defaultMonth={date || new Date()}
                 />
               </PopoverContent>

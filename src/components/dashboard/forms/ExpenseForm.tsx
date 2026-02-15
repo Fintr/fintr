@@ -668,9 +668,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     setShowCustomAccountInput(false);
   };
 
-  const currentDate = new Date();
-  const maxDate = endOfMonth(currentDate);
-  
+  const maxDate = endOfMonth(new Date());
+  const currentYear = new Date().getFullYear();
+
   return (
     <form ref={formRef} onSubmit={handleSubmit}>
       <div className="space-y-4">
@@ -722,24 +722,27 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar 
-                  mode="single" 
-                  selected={date} 
-                  onSelect={setDate} 
-                  initialFocus 
-                  toDate={maxDate} 
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  initialFocus
+                  toDate={maxDate}
+                  toYear={currentYear}
                   defaultMonth={date || new Date()}
                 />
               </PopoverContent>
             </Popover>
             {suggestedDate && date && suggestedDate.toDateString() !== date.toDateString() && (
-              <button
-                type="button"
-                onClick={() => setDate(suggestedDate)}
-                className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer border border-primary/30"
-              >
-                Use AI date: {format(suggestedDate, "MMM d, yyyy")}
-              </button>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setDate(suggestedDate)}
+                  className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer border border-primary/30"
+                >
+                  Use AI date: {format(suggestedDate, "MMM d, yyyy")}
+                </button>
+              </div>
             )}
           </div>
 
