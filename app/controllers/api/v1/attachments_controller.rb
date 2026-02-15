@@ -8,6 +8,7 @@ module Api
     # Proxies attachment downloads from allowed S3 URLs so the frontend can
     # trigger a real download (avoids CORS and cross-origin <a download>).
     class AttachmentsController < ApiController
+      skip_before_action :authorize, only: [:download]
       skip_before_action :ensure_space_access!, only: [:download]
 
       # Allowed S3 URL prefixes (bucket names may vary by env)
