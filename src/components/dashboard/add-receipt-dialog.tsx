@@ -38,7 +38,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     scope: "openid profile email read:users read:current_user read:ai_usage",
   });
 
-  const { data: aiUsage, isLoading: isLoadingUsage } = useAIUsage();
+  const { data: aiUsage, isLoading: isLoadingUsage, refetch: refetchAIUsage } = useAIUsage();
   const { data: dashboardData, isLoading: isLoadingDashboard } = useDashboardData();
 
   // Check if tokens are available
@@ -385,17 +385,28 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     setIsUploading(true);
     try {
       const response = await uploadReceipt(api, { image: selectedImage });
-      
+      const payload = response?.data ?? response;
+
+      // Show processing time in development (backend sends processingTimeDisplay only in dev)
+      if (payload?.processingTimeDisplay) {
+        toast.success(`Processed in ${payload.processingTimeDisplay}`, {
+          duration: 3000,
+        });
+      }
+
+      // Refetch AI usage so "X tokens left" updates immediately
+      refetchAIUsage();
+
       // Always navigate to Add Transaction dialog if onReceiptSuccess callback is provided
       if (onReceiptSuccess) {
         // Check if the response contains suggestedTransactionPayload
-        if (response?.data?.suggestedTransactionPayload) {
+        if (payload?.suggestedTransactionPayload) {
           // Call the callback with the suggested data, receipt image, and draftId
-          onReceiptSuccess(response.data.suggestedTransactionPayload, selectedImage, response.data.draftId);
+          onReceiptSuccess(payload.suggestedTransactionPayload, selectedImage, payload.draftId);
         } else {
           // Even if there's no suggested payload, still open the transaction dialog with the receipt image
           // Call the callback with empty/default values, but include the receipt image and draftId
-          onReceiptSuccess({}, selectedImage, response.data?.draftId);
+          onReceiptSuccess({}, selectedImage, payload?.draftId);
         }
         // Clear file input after successful upload
         if (fileInputRef.current) {
