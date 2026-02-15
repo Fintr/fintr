@@ -10,7 +10,7 @@ module Ai
       PROVIDER_OPENROUTER = "openrouter"
 
       OPENAI_DEFAULT_MODEL    = "gpt-4o"
-      OPENROUTER_DEFAULT_MODEL = "google/gemini-2.0-flash-001"
+      OPENROUTER_DEFAULT_MODEL = "google/gemini-2.5-flash-lite"
 
       # No trailing /v1 — ruby-openai appends /v1/ to uri_base
       OPENROUTER_URI_BASE = "https://openrouter.ai/api"

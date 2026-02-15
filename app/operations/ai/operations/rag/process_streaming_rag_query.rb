@@ -188,7 +188,7 @@ module Ai
           has_no_structured_data = structured_context.match?(/No (data|relevant data|transaction data|trend data) found/i) ||
                                   structured_data[:raw_data].empty?
 
-          has_no_vector_data = search_results[:results].blank?
+          has_no_vector_data = search_results.blank?
 
           has_no_data = has_no_structured_data && has_no_vector_data
 
@@ -198,11 +198,12 @@ module Ai
           end
 
           # Get vector search context - limit and truncate to prevent context length issues
-          relevant_docs = if search_results[:results]&.any?
-            search_results[:results].first(15).map do |result|
-              # Truncate each result to max 200 characters to save tokens
-              truncated_content = result[:content].length > 200 ? result[:content][0..200] + "..." : result[:content]
-              "#{truncated_content} (Similarity: #{(result[:similarity_score] * 100).round(1)}%)"
+          relevant_docs = if search_results.any?
+            Array(search_results).first(15).map do |result|
+              content = result[:content].to_s
+              truncated_content = content.length > 200 ? content[0..200] + "..." : content
+              score = (result[:similarity_score].to_f * 100).round(1)
+              "#{truncated_content} (Similarity: #{score}%)"
             end.join("\n\n")
           else
             "No relevant documents found from vector search."

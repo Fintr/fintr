@@ -35,7 +35,7 @@ This API allows you to upload receipt images and automatically extract transacti
 - **Pattern Enhancement**: AI-powered text analysis
 
 ### Pure AI Vision Method (plug-and-play)
-- **Default (new, cheaper)**: OpenRouter + Gemini 2.0 Flash (`google/gemini-2.0-flash-001`) when `OPENROUTER_API_KEY` is set. Lower cost, strong document/receipt extraction.
+- **Default (new, cheaper)**: OpenRouter + Gemini 2.0 Flash (`google/gemini-2.5-flash-lite`) when `OPENROUTER_API_KEY` is set. Lower cost, strong document/receipt extraction.
 - **Legacy**: OpenAI GPT-4 Vision (gpt-4o) when only `OPENAI_API_KEY` is set or `AI_VISION_PROVIDER=openai`.
 - **Direct Analysis**: No separate OCR step; same request/response shape for both providers.
 - **Override model**: Set `AI_VISION_MODEL` (e.g. `openai/gpt-4o` or `google/gemini-2.5-pro`) to override the default for the chosen provider.
@@ -267,7 +267,7 @@ rails credentials:edit
 Receipt vision uses a single client that switches by env:
 
 - **OpenRouter (new, cheaper and effective)**  
-  Set `OPENROUTER_API_KEY`. Optional: `AI_VISION_PROVIDER=openrouter`. Default model: `google/gemini-2.0-flash-001`. Override with `AI_VISION_MODEL` if needed.
+  Set `OPENROUTER_API_KEY`. Optional: `AI_VISION_PROVIDER=openrouter`. Default model: `google/gemini-2.5-flash-lite`. Override with `AI_VISION_MODEL` if needed.
 
 - **OpenAI (old way)**  
   Set `OPENAI_API_KEY` and either leave `OPENROUTER_API_KEY` unset or set `AI_VISION_PROVIDER=openai`. Model: `gpt-4o` unless `AI_VISION_MODEL` is set.

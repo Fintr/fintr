@@ -56,13 +56,13 @@ RSpec.describe Ai::Llm::VisionClient do
       expect(described_class.model).to eq("gpt-4o")
     end
 
-    it "returns google/gemini-2.0-flash-001 for openrouter when AI_VISION_MODEL unset" do
+    it "returns google/gemini-2.5-flash-lite for openrouter when AI_VISION_MODEL unset" do
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with("AI_VISION_PROVIDER").and_return("openrouter")
       allow(ENV).to receive(:[]).with("OPENROUTER_API_KEY").and_return("sk-or-xxx")
       allow(ENV).to receive(:[]).with("AI_VISION_MODEL").and_return(nil)
 
-      expect(described_class.model).to eq("google/gemini-2.0-flash-001")
+      expect(described_class.model).to eq("google/gemini-2.5-flash-lite")
     end
   end
 

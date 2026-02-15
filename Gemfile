@@ -62,6 +62,7 @@ gem "ruby-vips", "~> 2.2"
 
 # AI Processing
 gem "ruby-openai", "~> 8.3"
+# OpenRouter uses OpenAI SDK with custom base URL, no separate gem needed
 
 # Documentation
 gem "rdoc", "6.17.0"
