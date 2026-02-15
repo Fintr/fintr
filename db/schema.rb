@@ -146,7 +146,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_15_000001) do
   create_table "api_exchange_rates", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "base_currency", default: "USD", null: false
     t.datetime "created_at", null: false
-    t.decimal "rate", precision: 15, scale: 6, null: false
+    t.decimal "rate", precision: 20, scale: 6, null: false
     t.date "rate_date", null: false
     t.string "target_currency", null: false
     t.datetime "updated_at", null: false
