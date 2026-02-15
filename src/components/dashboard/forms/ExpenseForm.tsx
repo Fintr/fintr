@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -102,6 +102,8 @@ interface ExpenseFormProps {
   suggestedDate?: Date; // AI-suggested date to display as a clickable suggestion
   /** Space default currency; used as fallback and to detect when account currency differs */
   spaceCurrency?: string;
+  /** When set, this currency is pre-selected when the form opens (e.g. from space settings). */
+  defaultTransactionCurrency?: string | null;
   onAddCustomCategory?: (categoryName: string) => void;
   onAddCustomAccount?: (accountName: string) => void;
   onSubmitSuccess?: (data: any) => void; // Renamed for clarity
@@ -121,6 +123,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   setDate,
   suggestedDate,
   spaceCurrency = "PHP",
+  defaultTransactionCurrency,
   onAddCustomCategory,
   onAddCustomAccount,
   onSubmitSuccess,
@@ -149,15 +152,24 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   }, [accountOptionsRaw]);
 
   const amountCurrencyOptions = useMemo(() => {
-    const codes = Array.from(
+    const fromAccounts = Array.from(
       new Set(
         accountOptions
           .map((a) => a.currency)
           .filter((c): c is string => Boolean(c))
       )
     );
-    return codes.length > 0 ? codes : ["PHP"];
-  }, [accountOptions]);
+    const codes = fromAccounts.length > 0 ? fromAccounts : ["PHP"];
+    // Include space default so it can be pre-selected even if no account uses it yet
+    if (
+      defaultTransactionCurrency &&
+      defaultTransactionCurrency.length === 3 &&
+      !codes.includes(defaultTransactionCurrency)
+    ) {
+      return [defaultTransactionCurrency, ...codes];
+    }
+    return codes;
+  }, [accountOptions, defaultTransactionCurrency]);
 
   const { api } = useAuthApi();
 
@@ -207,9 +219,25 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const accountCurrencyDiffersFromSpace =
     selectedAccount?.currency != null && selectedAccount.currency !== spaceCurrency;
 
-  const [amountCurrency, setAmountCurrency] = useState(selectedAccountCurrency);
+  const initialAmountCurrency =
+    defaultTransactionCurrency && amountCurrencyOptions.includes(defaultTransactionCurrency)
+      ? defaultTransactionCurrency
+      : selectedAccountCurrency;
+  const [amountCurrency, setAmountCurrency] = useState(initialAmountCurrency);
   const [conversionSnapshot, setConversionSnapshot] =
     useState<ConversionSnapshot | null>(null);
+
+  const defaultCurrencySetRef = useRef(false);
+  useEffect(() => {
+    if (defaultCurrencySetRef.current) return;
+    if (
+      defaultTransactionCurrency &&
+      amountCurrencyOptions.includes(defaultTransactionCurrency)
+    ) {
+      setAmountCurrency(defaultTransactionCurrency);
+      defaultCurrencySetRef.current = true;
+    }
+  }, [defaultTransactionCurrency, amountCurrencyOptions]);
 
   // Do not sync amountCurrency to selected account when account changes.
   // The user's chosen transaction currency (e.g. AED) should persist so the API
@@ -400,7 +428,10 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       const amountToSend =
         conversionSnapshot && conversionSnapshot.originalCurrency !== selectedAccountCurrency
           ? isEditMode
-            ? String(parseFloat(numberFormatting.cleanForBackend(formState.amount)) * conversionSnapshot.exchangeRate)
+            ? String(
+                numberFormatting.cleanForBackend(formState.amount) *
+                  conversionSnapshot.exchangeRate
+              )
             : formState.amount
           : formState.amount;
       const transactionData = {

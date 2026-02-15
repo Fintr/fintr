@@ -51,11 +51,27 @@ export const spacesApi = {
   removeUser: (api: AxiosInstance, spaceCode: string, userId: string) =>
     api.delete<{ success: boolean; message: string }>(`/spaces/${spaceCode}/users/${userId}/remove`),
 
-  // Update space name (admin only)
-  updateSpace: (api: AxiosInstance, spaceId: string, name: string) =>
+  // Update space (admin only): name, currency, and/or defaultTransactionCurrency
+  updateSpace: (
+    api: AxiosInstance,
+    spaceId: string,
+    params: {
+      name: string;
+      currency?: string | null;
+      defaultTransactionCurrency?: string | null;
+    }
+  ) =>
     api.patch<{ success: boolean; message: string; data: { space: Space } }>(
       `/spaces/${spaceId}`,
-      { name }
+      {
+        name: params.name,
+        ...(params.currency !== undefined && {
+          currency: params.currency || null,
+        }),
+        ...(params.defaultTransactionCurrency !== undefined && {
+          default_transaction_currency: params.defaultTransactionCurrency || null,
+        }),
+      }
     ),
 };
 

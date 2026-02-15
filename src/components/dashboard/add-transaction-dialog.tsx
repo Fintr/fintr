@@ -54,6 +54,7 @@ const AddTransactionDialog = ({
   const { api } = useAuthApi();
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
+  const defaultTransactionCurrency = currentSpace?.defaultTransactionCurrency ?? null;
 
   // Use controlled or internal open state
   const isDialogOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -358,6 +359,7 @@ const AddTransactionDialog = ({
               setDate={setDate}
               suggestedDate={suggestedDate}
               spaceCurrency={spaceCurrency}
+              defaultTransactionCurrency={defaultTransactionCurrency}
               onAddCustomCategory={(category) => {
                 setCustomExpenseCategories([
                   ...customExpenseCategories,
@@ -379,6 +381,7 @@ const AddTransactionDialog = ({
               date={date}
               setDate={setDate}
               spaceCurrency={spaceCurrency}
+              defaultTransactionCurrency={defaultTransactionCurrency}
               onAddCustomCategory={(category) => {
                 setCustomIncomeCategories([
                   ...customIncomeCategories,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -71,6 +71,8 @@ interface IncomeFormProps {
   setDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
   /** Space default currency; used as fallback and to detect when account currency differs */
   spaceCurrency?: string;
+  /** When set, this currency is pre-selected when the form opens (e.g. from space settings). */
+  defaultTransactionCurrency?: string | null;
   onAddCustomCategory?: (categoryName: string) => void;
   onAddCustomAccount?: (accountName: string) => void;
   onSubmitSuccess?: (data: any) => void;
@@ -88,6 +90,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   date,
   setDate,
   spaceCurrency = "PHP",
+  defaultTransactionCurrency,
   onAddCustomCategory,
   onAddCustomAccount,
   onSubmitSuccess,
@@ -104,15 +107,23 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const { api } = useAuthApi();
 
   const amountCurrencyOptions = useMemo(() => {
-    const codes = Array.from(
+    const fromAccounts = Array.from(
       new Set(
         accountOptions
           .map((a) => a.currency)
           .filter((c): c is string => Boolean(c))
       )
     );
-    return codes.length > 0 ? codes : ["PHP"];
-  }, [accountOptions]);
+    const codes = fromAccounts.length > 0 ? fromAccounts : ["PHP"];
+    if (
+      defaultTransactionCurrency &&
+      defaultTransactionCurrency.length === 3 &&
+      !codes.includes(defaultTransactionCurrency)
+    ) {
+      return [defaultTransactionCurrency, ...codes];
+    }
+    return codes;
+  }, [accountOptions, defaultTransactionCurrency]);
 
   // Local state for UI elements and form handling
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
@@ -151,9 +162,25 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const accountCurrencyDiffersFromSpace =
     selectedAccount?.currency != null && selectedAccount.currency !== spaceCurrency;
 
-  const [amountCurrency, setAmountCurrency] = useState(selectedAccountCurrency);
+  const initialAmountCurrency =
+    defaultTransactionCurrency && amountCurrencyOptions.includes(defaultTransactionCurrency)
+      ? defaultTransactionCurrency
+      : selectedAccountCurrency;
+  const [amountCurrency, setAmountCurrency] = useState(initialAmountCurrency);
   const [conversionSnapshot, setConversionSnapshot] =
     useState<ConversionSnapshot | null>(null);
+
+  const defaultCurrencySetRef = useRef(false);
+  useEffect(() => {
+    if (defaultCurrencySetRef.current) return;
+    if (
+      defaultTransactionCurrency &&
+      amountCurrencyOptions.includes(defaultTransactionCurrency)
+    ) {
+      setAmountCurrency(defaultTransactionCurrency);
+      defaultCurrencySetRef.current = true;
+    }
+  }, [defaultTransactionCurrency, amountCurrencyOptions]);
 
   // Do not sync amountCurrency to selected account when account changes.
   // The user's chosen transaction currency should persist so the API
@@ -323,17 +350,19 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     
     try {
       // Update: backend stores amount as-is → send converted amount. Create: backend converts → send original amount.
-      let amountToUse = numberFormatting.cleanForBackend(formState.amount);
+      let amountToUse: string = String(
+        numberFormatting.cleanForBackend(formState.amount)
+      );
       if (conversionSnapshot && conversionSnapshot.originalCurrency !== selectedAccountCurrency && isEditMode) {
         amountToUse = String(parseFloat(amountToUse) * conversionSnapshot.exchangeRate);
       }
       // If deductions are enabled (PHP only), use the net income from tax calculation
       if (spaceCurrency === "PHP" && (deductTaxes || deductContributions) && taxCalculation) {
-        amountToUse = taxCalculation.netIncome;
+        amountToUse = String(taxCalculation.netIncome);
       }
-      
+
       const transactionData = {
-        amount: amountToUse,
+        amount: Number(amountToUse),
         description: formState.description || "",
         categoryName: formState.categoryName,
         accountName: formState.accountName,

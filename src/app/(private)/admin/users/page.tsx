@@ -130,8 +130,12 @@ export default function UsersPage() {
               <Fragment key={i}>
                 {page.users.map((user: UserData) => (
                   <TableRow key={user.id}>
-                    <TableCell>{user.fullName}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell className="min-w-[120px]">
+                      {user.fullName?.trim() || user.email || "—"}
+                    </TableCell>
+                    <TableCell className="min-w-0 break-all">
+                      {user.email || "—"}
+                    </TableCell>
                   </TableRow>
                 ))}
               </Fragment>
