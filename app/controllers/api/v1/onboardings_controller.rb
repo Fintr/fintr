@@ -3,6 +3,9 @@
 module Api
   module V1
     class OnboardingsController < ApiController
+      skip_before_action :ensure_space_access!
+      before_action :set_onboarding_space
+
       def create
         params = { **with_current_params(create_params), action: "create" }.with_indifferent_access
         operation = Onboardings::Operations::DelegateStep.new.call(params)
@@ -70,6 +73,15 @@ module Api
 
       def show_step_params
         params.permit(:step)
+      end
+
+      # Use the current user's personal space for onboarding (no X-Space-Code required).
+      # Ensures new users can complete step 1 before the frontend has set the space code.
+      def set_onboarding_space
+        personal_space = current_user.personal_spaces.first
+        return if personal_space.blank?
+
+        @current_space = personal_space
       end
     end
   end
