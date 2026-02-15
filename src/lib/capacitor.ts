@@ -53,6 +53,21 @@ export const isCapacitorEnvironment = (): boolean => {
 };
 
 /**
+ * Whether to show the "Simulate Payment" button (dev/staging only, never in production Capacitor).
+ * Used for subscription management to hide simulate cycle payment in iOS/Android production builds.
+ */
+export const shouldShowSimulatePaymentButton = (): boolean => {
+  const isDevOrStaging =
+    process.env.NODE_ENV === "development" ||
+    (typeof window !== "undefined" &&
+      (window.location.hostname.includes("staging") ||
+        window.location.hostname.includes("localhost")));
+  if (!isDevOrStaging) return false;
+  if (isCapacitorEnvironment() && process.env.NODE_ENV === "production") return false;
+  return true;
+};
+
+/**
  * Get the base URL for redirects based on the environment
  * - For Capacitor: returns 'fintrapp://'
  * - For browser: returns window.location.origin
