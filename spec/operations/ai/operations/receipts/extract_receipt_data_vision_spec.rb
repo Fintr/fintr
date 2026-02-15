@@ -170,10 +170,9 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
     end
 
     before do
-      # Global OpenAI mock setup for #call block
-      mock_openai_client = instance_double(OpenAI::Client)
-      allow(OpenAI::Client).to receive(:new).and_return(mock_openai_client)
-      allow(mock_openai_client).to receive(:chat).and_return({
+      # Stub plug-and-play vision client (OpenAI or OpenRouter)
+      mock_vision_client = instance_double(OpenAI::Client)
+      allow(mock_vision_client).to receive(:chat).and_return({
         "choices" => [
           {
             "message" => {
@@ -182,7 +181,8 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
           }
         ]
       })
-      allow(ENV).to receive(:[]).with("OPENAI_API_KEY").and_return("dummy_openai_key")
+      allow(::Ai::Llm::VisionClient).to receive(:client).and_return(mock_vision_client)
+      allow(::Ai::Llm::VisionClient).to receive(:model).and_return("gpt-4o")
     end
 
     context "when all steps are successful" do
@@ -252,17 +252,16 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
 
       context "when call_openai_vision_api fails" do
         before do
-          # Simulate an error during the OpenAI API call
-          mock_openai_client = instance_double(OpenAI::Client)
-          allow(OpenAI::Client).to receive(:new).and_return(mock_openai_client)
-          allow(mock_openai_client).to receive(:chat).and_raise(StandardError, "API error")
-          allow(ENV).to receive(:[]).with("OPENAI_API_KEY").and_return("dummy_openai_key")
+          mock_vision_client = instance_double(OpenAI::Client)
+          allow(::Ai::Llm::VisionClient).to receive(:client).and_return(mock_vision_client)
+          allow(::Ai::Llm::VisionClient).to receive(:model).and_return("gpt-4o")
+          allow(mock_vision_client).to receive(:chat).and_raise(StandardError, "API error")
         end
 
         it "returns a failure" do
           result = operation.call(params:)
           expect(result).to be_failure
-          expect(result.failure).to include(ai_vision_error: 'OpenAI Vision API call failed', error: instance_of(StandardError))
+          expect(result.failure).to include(ai_vision_error: 'Vision API call failed', error: instance_of(StandardError))
         end
       end
 
@@ -397,13 +396,14 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
 
       context "with a valid image path" do
         it "encodes the image to base64 successfully" do
+          # MiniMagick fails on dummy text file → fallback uses File.binread
           allow(File).to receive(:binread).with(test_image_path).and_return("dummy png image data")
-          allow(Base64).to receive(:strict_encode64).and_return("ZHVtbXkgcG5nIGltYWdlIGRhdGE=") # Base64 of "dummy png image data"
+          allow(Base64).to receive(:strict_encode64).and_return("ZHVtbXkgcG5nIGltYWdlIGRhdGE=")
 
           result = operation.__send__(:encode_image_to_base64, params: { image_path: test_image_path })
           expect(result).to be_success
-          expect(result.value!).to start_with("data:image/png;base64,")
-          expect(result.value!).to include("ZHVtbXkgcG5nIGltYWdlIGRhdGE=")
+          expect(result.value!).to start_with("data:image/")
+          expect(result.value!).to include("base64,", "ZHVtbXkgcG5nIGltYWdlIGRhdGE=")
         end
       end
 
@@ -453,7 +453,7 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
     describe "#call_openai_vision_api" do
       let(:base64_image) { "data:image/jpeg;base64,dummy_base64_image_data" }
       let(:space_categories) { ["Food", "Transport"] }
-      let(:mock_openai_client) { instance_double(OpenAI::Client) }
+      let(:mock_vision_client) { instance_double(OpenAI::Client) }
       let(:mock_response) do
         {
           "choices" => [
@@ -469,19 +469,19 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
       end
 
       before do
-        allow(OpenAI::Client).to receive(:new).and_return(mock_openai_client)
-        allow(mock_openai_client).to receive(:chat).and_return(mock_response)
-        allow(ENV).to receive(:[]).with("OPENAI_API_KEY").and_return("dummy_openai_key")
+        allow(::Ai::Llm::VisionClient).to receive(:client).and_return(mock_vision_client)
+        allow(::Ai::Llm::VisionClient).to receive(:model).and_return("gpt-4o")
+        allow(mock_vision_client).to receive(:chat).and_return(mock_response)
       end
 
-      it "calls OpenAI API and returns success with content" do
+      it "calls vision API and returns success with content" do
         result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
         expect(result).to be_success
         expect(result.value!).to eq("{\"total_amount\": \"50.00\", \"category\": \"Food\", \"confidence\": \"high\"}")
       end
 
-      it "calls OpenAI API with temperature 0.0" do
-        expect(mock_openai_client).to receive(:chat) do |params|
+      it "calls vision API with temperature 0.0" do
+        expect(mock_vision_client).to receive(:chat) do |params|
           expect(params[:parameters][:temperature]).to eq(0.0)
           mock_response
         end
@@ -489,27 +489,27 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
         operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
       end
 
-      context "when OpenAI API returns no content" do
+      context "when vision API returns no content" do
         before do
-          allow(mock_openai_client).to receive(:chat).and_return({ "choices" => [{ "message" => { "content" => nil } }] })
+          allow(mock_vision_client).to receive(:chat).and_return({ "choices" => [{ "message" => { "content" => nil } }] })
         end
 
         it "returns failure" do
           result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
           expect(result).to be_failure
-          expect(result.failure).to include(ai_error: 'No response from OpenAI Vision')
+          expect(result.failure).to include(ai_error: 'No response from vision API')
         end
       end
 
-      context "when OpenAI API call fails" do
+      context "when vision API call fails" do
         before do
-          allow(mock_openai_client).to receive(:chat).and_raise(StandardError, "API error")
+          allow(mock_vision_client).to receive(:chat).and_raise(StandardError, "API error")
         end
 
         it "returns failure" do
           result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
           expect(result).to be_failure
-          expect(result.failure).to include(ai_vision_error: 'OpenAI Vision API call failed')
+          expect(result.failure).to include(ai_vision_error: 'Vision API call failed')
         end
       end
     end
