@@ -96,7 +96,7 @@ module Api
       end
 
       def update_params
-        params.permit(:name)
+        params.permit(:name, :currency, :default_transaction_currency)
       end
     end
   end

@@ -47,9 +47,11 @@ module Secured
     return @current_user if @current_user.present?
     return nil unless @validation_response&.decoded_token
 
-    auth_id = @validation_response.decoded_token.token.first["sub"]
-    email = @validation_response.decoded_token.token.first["email"]
-    full_name = @validation_response.decoded_token.token.first["full_name"]
+    token_data = @validation_response.decoded_token.token.first
+    auth_id = token_data["sub"]
+    email = token_data["email"]
+    # Auth0 may send "name" or "full_name"; prefer full_name, fall back to name
+    full_name = token_data["full_name"].presence || token_data["name"].presence
 
     data = {
       auth_id:,

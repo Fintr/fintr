@@ -5,8 +5,13 @@ module Spaces
     class SpaceUserSerializer < Blueprinter::Base
       identifier :id
 
-      fields :email,
-             :full_name
+      field :email do |user|
+        user.email
+      end
+
+      field :full_name do |user|
+        user.full_name.presence || user.email.presence || "Unknown"
+      end
 
       field :role do |user, options|
         space = options[:space]

@@ -5,7 +5,13 @@ module Admin
     class UserSerializer < Blueprinter::Base
       identifier :id
 
-      fields :email, :full_name
+      field :email do |user|
+        user.email
+      end
+
+      field :full_name do |user|
+        user.full_name.presence || "-"
+      end
     end
   end
 end

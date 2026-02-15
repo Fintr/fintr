@@ -485,6 +485,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_15_000001) do
     t.string "code", null: false
     t.datetime "created_at", null: false
     t.string "currency", default: "PHP", null: false
+    t.string "default_transaction_currency", limit: 3
     t.string "name", null: false
     t.string "type", null: false
     t.datetime "updated_at", null: false

@@ -40,7 +40,12 @@ module Auth
           user = Auth::User.new(auth_id: params[:auth_id])
         end
 
-        user.assign_attributes(params.slice(*User.clean_attributes))
+        # Only assign attributes from token; do not overwrite full_name or email with nil
+        # so existing users keep their names when Auth0 token omits them
+        attrs = params.slice(*User.clean_attributes)
+        attrs.delete(:full_name) if attrs[:full_name].blank?
+        attrs.delete(:email) if attrs[:email].blank?
+        user.assign_attributes(attrs)
         return Success(user) unless user.changed?
 
         user.save!

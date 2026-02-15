@@ -8,7 +8,8 @@ module Spaces
       fields :code,
              :name,
              :type,
-             :currency
+             :currency,
+             :default_transaction_currency
 
       field :is_personal do |space|
         space.is_a?(::Spaces::PersonalSpace)

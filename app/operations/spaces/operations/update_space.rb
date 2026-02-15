@@ -11,6 +11,8 @@ module Spaces
           required(:user_id).filled(:string)
           required(:space_id).filled(:string)
           required(:name).filled(:string)
+          optional(:currency).maybe(:string)
+          optional(:default_transaction_currency).maybe(:string)
         end
       end
 
@@ -61,7 +63,10 @@ module Spaces
       end
 
       def update_space(space, params)
-        space.update!(name: params[:name])
+        attrs = { name: params[:name] }
+        attrs[:currency] = params[:currency] if params.key?(:currency)
+        attrs[:default_transaction_currency] = params[:default_transaction_currency] if params.key?(:default_transaction_currency)
+        space.update!(attrs)
         Success(space)
       rescue ActiveRecord::RecordInvalid => e
         Failure(errors: e.record.errors.full_messages, error: e, expected: true)
