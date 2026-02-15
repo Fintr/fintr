@@ -30,14 +30,10 @@ echo ""
 # Step 2: Set up environment
 echo "⚙️  Step 2: Setting up environment..."
 
-export CAPACITOR_SERVER_URL=""
-unset CAPACITOR_SERVER_URL
-
-if [ -n "${CAPACITOR_SERVER_URL}" ]; then
-  echo "❌ ERROR: CAPACITOR_SERVER_URL is still set: ${CAPACITOR_SERVER_URL}"
-  exit 1
-fi
-echo "✅ CAPACITOR_SERVER_URL is unset"
+# App loads web from live URL so website updates apply without app store release
+PRODUCTION_WEB_URL="https://fintr.ai"
+export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
+echo "🔧 App will load web app from: ${PRODUCTION_WEB_URL}"
 
 if [ -f .env.production ]; then
   echo "Loading .env.production..."
@@ -48,7 +44,7 @@ else
   echo "⚠️  .env.production not found"
 fi
 
-export NEXT_PUBLIC_APP_BASE_URL="https://www.fintr.ai"
+export NEXT_PUBLIC_APP_BASE_URL="${PRODUCTION_WEB_URL}"
 echo "✅ Environment configured (NEXT_PUBLIC_BE_URL=${NEXT_PUBLIC_BE_URL:-not set})"
 echo ""
 
@@ -90,20 +86,24 @@ fi
 echo "✅ Next.js build complete"
 echo ""
 
-# Step 4: Sync to Android
+# Step 4: Sync to Android (app will load from PRODUCTION_WEB_URL)
 echo "🔄 Step 4: Syncing to Android..."
-export CAPACITOR_SERVER_URL=""
-unset CAPACITOR_SERVER_URL
+export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
 npx cap sync android
 echo "✅ Capacitor sync complete"
 echo ""
 
-# Step 5: Verify no dev server in config
-if grep -q '"server"' android/app/src/main/assets/capacitor.config.json 2>/dev/null; then
-  echo "❌ ERROR: capacitor.config.json contains 'server' (would load from localhost)"
+# Step 5: Verify app loads from production URL
+if ! grep -q "\"url\": \"${PRODUCTION_WEB_URL}\"" android/app/src/main/assets/capacitor.config.json 2>/dev/null; then
+  echo "❌ ERROR: capacitor.config.json should load from ${PRODUCTION_WEB_URL}"
+  grep -A 2 '"server"' android/app/src/main/assets/capacitor.config.json 2>/dev/null || true
   exit 1
 fi
-echo "✅ Capacitor config OK (bundled app)"
+if grep -q 'localhost' android/app/src/main/assets/capacitor.config.json 2>/dev/null; then
+  echo "❌ ERROR: config contains localhost; production should use ${PRODUCTION_WEB_URL}"
+  exit 1
+fi
+echo "✅ Capacitor config OK (app loads from ${PRODUCTION_WEB_URL})"
 echo ""
 
 # Step 6: Run on emulator
@@ -114,6 +114,8 @@ npx cap run android
 
 echo ""
 echo "✅ Production build is running on the emulator."
+echo ""
+echo "📋 The app loads from ${PRODUCTION_WEB_URL}; website updates apply without app store release."
 echo ""
 echo "📋 Other options:"
 echo "  • APK (install on device): cd android && ./gradlew assembleRelease"

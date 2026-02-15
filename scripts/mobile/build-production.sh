@@ -23,19 +23,11 @@ echo ""
 # Step 2: Set up environment
 echo "⚙️  Step 2: Setting up environment..."
 
-# CRITICAL: Unset CAPACITOR_SERVER_URL to use bundled files instead of localhost
-# This ensures the production build uses the static files in the app bundle
-echo "🔧 Unsetting CAPACITOR_SERVER_URL to use bundled app..."
-export CAPACITOR_SERVER_URL=""
-unset CAPACITOR_SERVER_URL
-
-# Verify it's unset
-if [ ! -z "${CAPACITOR_SERVER_URL}" ]; then
-    echo "❌ ERROR: CAPACITOR_SERVER_URL is still set!"
-    echo "Value: ${CAPACITOR_SERVER_URL}"
-    exit 1
-fi
-echo "✅ CAPACITOR_SERVER_URL is unset"
+# Production app loads the web app from the live website so updates appear without app store release
+PRODUCTION_WEB_URL="https://www.fintr.ai"
+echo "🔧 App will load web app from: ${PRODUCTION_WEB_URL}"
+export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
+echo "✅ CAPACITOR_SERVER_URL set (app will use live website)"
 
 # Export all variables from .env.production
 if [ -f .env.production ]; then
@@ -108,39 +100,30 @@ fi
 echo "✅ Next.js build complete"
 echo ""
 
-# Step 4: Sync Capacitor
-echo "🔄 Step 4: Syncing to Capacitor..."
+# Step 4: Sync Capacitor (both platforms); app will load from PRODUCTION_WEB_URL
+echo "🔄 Step 4: Syncing to Capacitor (iOS + Android)..."
 
-# Double-check CAPACITOR_SERVER_URL is still unset before sync
-export CAPACITOR_SERVER_URL=""
-unset CAPACITOR_SERVER_URL
-
-npx cap sync ios
+export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
+npx cap sync
 
 echo "✅ Capacitor sync complete"
 echo ""
 
-# Step 5: Verify configuration
+# Step 5: Verify configuration (app must load from production URL, not localhost)
 echo "🔍 Step 5: Verifying Capacitor configuration..."
 
-if grep -q '"server"' ios/App/App/capacitor.config.json 2>/dev/null; then
-    echo "❌ ERROR: capacitor.config.json contains 'server' configuration!"
-    echo "This will cause the app to try loading from localhost instead of bundled files."
-    echo ""
-    echo "Generated config contains:"
-    grep -A 3 '"server"' ios/App/App/capacitor.config.json
-    echo ""
-    echo "Your shell environment might have CAPACITOR_SERVER_URL set."
-    echo ""
-    echo "To fix, run these commands in your terminal:"
-    echo "  unset CAPACITOR_SERVER_URL"
-    echo "  echo 'export CAPACITOR_SERVER_URL=\"\"' >> ~/.zshrc"
-    echo "  source ~/.zshrc"
-    echo ""
+if ! grep -q "\"url\": \"${PRODUCTION_WEB_URL}\"" ios/App/App/capacitor.config.json 2>/dev/null; then
+    echo "❌ ERROR: capacitor.config.json should load from ${PRODUCTION_WEB_URL}"
+    echo "Generated config:"
+    grep -A 2 '"server"' ios/App/App/capacitor.config.json 2>/dev/null || true
+    exit 1
+fi
+if grep -q 'localhost' ios/App/App/capacitor.config.json 2>/dev/null; then
+    echo "❌ ERROR: config contains localhost; production should use ${PRODUCTION_WEB_URL}"
     exit 1
 fi
 
-echo "✅ Capacitor config is correct (no server URL)"
+echo "✅ Capacitor config is correct (app loads from ${PRODUCTION_WEB_URL})"
 echo ""
 
 # Step 6: Run on iOS simulator
@@ -151,6 +134,9 @@ npx cap run ios
 
 echo ""
 echo "✅ Production build is now running on iOS simulator!"
+echo ""
+echo "📋 The app loads the web app from ${PRODUCTION_WEB_URL}. When you deploy updates"
+echo "   to the website, users get them automatically — no app store update needed."
 echo ""
 echo "📋 Additional distribution options:"
 echo ""

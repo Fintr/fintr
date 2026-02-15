@@ -147,41 +147,86 @@ export default function AuthCallback() {
           redirectUri,
         });
 
-        const response = await fetch(`${backendUrl}/api/v1/auth/oauth/callback`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code,
-            state,
-            redirect_uri: redirectUri // Send redirect URI to backend
-          }),
-        });
+        let response: Response;
+        let data: Record<string, unknown>;
+
+        try {
+          response = await fetch(`${backendUrl}/api/v1/auth/oauth/callback`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              code,
+              state,
+              redirect_uri: redirectUri,
+            }),
+          });
+        } catch (networkError: unknown) {
+          const message =
+            networkError instanceof Error ? networkError.message : 'Network error';
+          console.error('❌ Token exchange network error:', message);
+          // "Failed to fetch" / "Load failed" usually means CORS or backend unreachable
+          const friendlyMessage =
+            message === 'Failed to fetch' || message === 'Load failed'
+              ? 'Could not reach the server. If you\'re in the app, ensure the backend allows your app origin (CORS) and is reachable.'
+              : message;
+          throw new Error(friendlyMessage);
+        }
+
+        try {
+          data = (await response.json()) as Record<string, unknown>;
+        } catch {
+          const text = await response.text();
+          console.error('❌ Token exchange invalid JSON:', response.status, text);
+          throw new Error(
+            response.status === 0
+              ? 'Network or CORS error (no response from server).'
+              : `Server error (${response.status}). Check backend CORS allows this origin.`
+          );
+        }
 
         console.log('🔐 Token exchange response:', {
           status: response.status,
           ok: response.ok,
         });
-
-        const data = await response.json();
         console.log('🔐 Token exchange data:', {
           hasData: !!data,
           dataKeys: Object.keys(data),
-          hasDataValue: !!data.data?.value,
+          hasDataValue: !!(data as { data?: { value?: unknown } }).data?.value,
         });
 
         if (!response.ok) {
+          const details = (data as { details?: string }).details;
+          const message = (data as { message?: string }).message;
           console.error('❌ Token exchange failed:', {
             status: response.status,
-            details: data.details,
-            message: data.message,
+            details,
+            message,
           });
-          throw new Error(data.details || data.message || 'Token exchange failed');
+          throw new Error(details || message || 'Token exchange failed');
         }
         // Extract tokens from response
         // Backend returns: { success: true, message: "...", data: { access_token, id_token, ... } }
-        const tokens = data.data?.value || data.data || data;
+        type TokenPayload = {
+          access_token?: string;
+          id_token?: string;
+          refresh_token?: string;
+          expires_in?: number;
+          token_type?: string;
+          scope?: string;
+        };
+        const responseData = data as {
+          data?: { value?: TokenPayload } | TokenPayload;
+        };
+        const rawData = responseData.data;
+        const extracted =
+          typeof rawData === 'object' &&
+          rawData !== null &&
+          'value' in rawData
+            ? (rawData as { value?: TokenPayload }).value
+            : rawData;
+        const tokens: TokenPayload = (extracted ?? data) as TokenPayload;
         console.log('🔐 Extracted tokens:', {
           hasAccessToken: !!tokens.access_token,
           hasIdToken: !!tokens.id_token,
@@ -262,19 +307,20 @@ export default function AuthCallback() {
         }
 
         // Store authentication data
+        const expiresIn = typeof tokens.expires_in === 'number' ? tokens.expires_in : 0;
         const authTokens: AuthTokens = {
-          access_token: tokens.access_token,
-          id_token: tokens.id_token,
+          access_token: tokens.access_token ?? '',
+          id_token: tokens.id_token ?? '',
           refresh_token: tokens.refresh_token,
-          expires_in: tokens.expires_in,
-          token_type: tokens.token_type,
-          scope: tokens.scope,
+          expires_in: expiresIn,
+          token_type: tokens.token_type ?? 'Bearer',
+          scope: tokens.scope ?? '',
         };
 
         const authData: AuthStorageData = {
           tokens: authTokens,
           user: userProfile,
-          expires_at: Date.now() + (tokens.expires_in * 1000),
+          expires_at: Date.now() + expiresIn * 1000,
           issued_at: Date.now(),
         };
 
