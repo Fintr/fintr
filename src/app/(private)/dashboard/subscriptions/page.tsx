@@ -28,6 +28,7 @@ import { formatCurrency } from "@/lib/utils";
 import { CreditCard, Loader2, Plus, X, Play, AlertCircle, Copy, Check, Zap, Pencil, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { shouldShowSimulatePaymentButton } from "@/lib/capacitor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -205,7 +206,7 @@ const SubscriptionsPage = () => {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0 z-10 relative">
-          {isDevOrStaging && (
+          {shouldShowSimulatePaymentButton() && (
             <Button
               variant="outline"
               onClick={() => setShowSimulateDialog(true)}

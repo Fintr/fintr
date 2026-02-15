@@ -43,6 +43,7 @@ import { getActionCableClient, ActionCableMessage } from "@/lib/actionCable";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { getColor, shouldShowV2Features, formatCurrency } from "@/lib/utils";
+import { shouldShowSimulatePaymentButton } from "@/lib/capacitor";
 import { TransactionCategory } from "@/types/transactionCategoryTypes";
 import { Account } from "@/types/accountTypes";
 import { toast } from "sonner";
@@ -1059,7 +1060,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                   Manage your subscription plan and payment methods
                 </p>
               </div>
-              {isDevOrStaging && (
+              {shouldShowSimulatePaymentButton() && (
                 <Button
                   variant="outline"
                   onClick={() => setShowSimulateDialog(true)}
