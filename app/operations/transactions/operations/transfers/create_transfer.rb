@@ -105,6 +105,7 @@ module Transactions
           original_amount = params[:amount]
 
           if from_currency == to_currency
+            # No conversion: pass minimal data so we never build or persist a currency_conversion.
             conversion_data = {
               needs_conversion: false,
               original_amount:,
@@ -112,7 +113,6 @@ module Transactions
               converted_amount: original_amount,
               converted_currency: from_currency,
               exchange_rate: 1.0,
-              source: "none",
               rate_timestamp: Time.current
             }
             return Success([params.merge(amount_currency: from_currency), conversion_data])
