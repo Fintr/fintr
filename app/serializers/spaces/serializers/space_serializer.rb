@@ -39,6 +39,14 @@ module Spaces
       field :updated_at do |space|
         space.updated_at
       end
+
+      field :has_new_invitation do |space, options|
+        current_user = options[:current_user]
+        return false unless current_user
+
+        space_user = space.space_users.find { |su| su.user_id == current_user.id }
+        space_user&.invitation_unseen? || false
+      end
     end
   end
 end

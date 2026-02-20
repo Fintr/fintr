@@ -465,6 +465,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_15_000001) do
     t.string "access_code"
     t.datetime "created_at", null: false
     t.datetime "invitation_expires_at"
+    t.datetime "invitation_seen_at"
     t.string "invitation_status", default: "active"
     t.datetime "invitation_used_at"
     t.uuid "invited_by_id"
@@ -473,6 +474,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_15_000001) do
     t.uuid "user_id"
     t.index ["access_code"], name: "index_space_users_on_access_code", unique: true
     t.index ["invitation_expires_at"], name: "index_space_users_on_invitation_expires_at"
+    t.index ["invitation_seen_at"], name: "index_space_users_on_invitation_seen_at"
     t.index ["invitation_status"], name: "index_space_users_on_invitation_status"
     t.index ["invited_by_id"], name: "index_space_users_on_invited_by_id"
     t.index ["space_id", "invitation_status"], name: "index_space_users_on_space_id_and_invitation_status"

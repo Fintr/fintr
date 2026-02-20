@@ -145,4 +145,79 @@ RSpec.describe Api::V1::SpacesController, type: :request do
       expect(response).to have_http_status(:ok)
     end
   end
+
+  describe "POST /api/v1/spaces/:code/mark_seen" do
+    let(:inviter) { create(:user) }
+    let!(:user_space) do
+      create(:space_user, user: user, space: space, invitation_status: :pending,
+                          invited_by: inviter, access_code: "INVITE123",
+                          invitation_expires_at: 7.days.from_now)
+    end
+
+    it "marks the space invitation as seen" do
+      expect(user_space.invitation_seen_at).to be_nil
+
+      post "/api/v1/spaces/#{space.code}/mark_seen", headers: auth_setup[:headers]
+
+      expect(response).to have_http_status(:ok)
+      expect(user_space.reload.invitation_seen_at).to be_present
+    end
+
+    it "returns 404 for non-existent space" do
+      post "/api/v1/spaces/nonexistent/mark_seen", headers: auth_setup[:headers]
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "PATCH /api/v1/spaces/:id" do
+    let!(:user_space) { create(:space_user, user: user, space: space) }
+    let(:mock_update_operation) { instance_double(Spaces::Operations::UpdateSpace) }
+    let(:valid_params) { { name: "Updated Space Name" } }
+
+    before do
+      allow(Spaces::Operations::UpdateSpace).to receive(:new).and_return(mock_update_operation)
+    end
+
+    context "when the params are valid" do
+      before do
+        allow(mock_update_operation).to receive(:call).and_return(
+          Dry::Monads::Result::Success.new(space)
+        )
+
+        patch "/api/v1/spaces/#{space.id}", params: valid_params, headers: auth_setup[:headers]
+      end
+
+      it "returns an HTTP status ok" do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "returns the updated space in the response" do
+        json_response = JSON.parse(response.body)
+        expect(json_response["data"]["space"]).to be_present
+      end
+    end
+
+    context "when the operation fails" do
+      let(:failure_details) { { "error" => "Failed to update space" } }
+
+      before do
+        allow(mock_update_operation).to receive(:call).and_return(
+          Dry::Monads::Result::Failure.new(failure_details)
+        )
+
+        patch "/api/v1/spaces/#{space.id}", params: valid_params, headers: auth_setup[:headers]
+      end
+
+      it "returns an HTTP status unprocessable_content" do
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it "returns the failure details in the response body" do
+        json_response = JSON.parse(response.body)
+        expect(json_response["success"]).to be(false)
+        expect(json_response["error"]["details"]).to eq(failure_details.deep_stringify_keys)
+      end
+    end
+  end
 end

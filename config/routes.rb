@@ -149,6 +149,7 @@ Rails.application.routes.draw do
         member do
           post :join
           delete :leave
+          post :mark_seen
         end
 
         resources :users, module: :spaces, only: [:index] do

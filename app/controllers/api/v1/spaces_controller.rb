@@ -66,6 +66,18 @@ module Api
         render_success(message: "Successfully left the space")
       end
 
+      # POST /api/v1/spaces/:id/mark_seen
+      # Marks the space invitation as seen for the current user
+      def mark_seen
+        space = current_user.spaces.find { |s| s.id == params[:id] || s.code == params[:id] }
+        return render_not_found(details: "Space not found") unless space
+
+        space_user = space.space_users.find_by(user_id: current_user.id)
+        space_user&.mark_invitation_seen!
+
+        render_success(message: "Invitation marked as seen")
+      end
+
       # PATCH /api/v1/spaces/:id
       # Updates a space (admin only)
       def update

@@ -35,10 +35,7 @@ module RequestAuthHelper
     # Mock the CreateUserAndSpace operation directly
     operation_double = instance_double(Auth::Operations::CreateUserAndSpace)
     allow(Auth::Operations::CreateUserAndSpace).to receive(:new).and_return(operation_double)
-    allow(operation_double).to receive(:call).with(hash_including(auth_id: auth_id)).and_return(Dry::Monads::Result::Success.new(user))
-
-    # Allow the user to access the space
-    allow(user).to receive(:spaces).and_return([space])
+    allow(operation_double).to receive(:call).and_return(Dry::Monads::Result::Success.new(user))
 
     # Mock space caching
     allow(Rails.cache).to receive(:fetch).with("current_space_#{space.code}", expires_in: 15.minutes).and_return(space)

@@ -48,6 +48,14 @@ module Spaces
       update!(invitation_status: :revoked) if invitation_pending?
     end
 
+    def invitation_unseen?
+      invited_by_id.present? && invitation_seen_at.nil?
+    end
+
+    def mark_invitation_seen!
+      update!(invitation_seen_at: Time.current) if invitation_unseen?
+    end
+
     private
 
     def user_can_only_have_one_of_each_space_type
