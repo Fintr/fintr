@@ -14,6 +14,8 @@ import Link from "next/link";
 import { shouldShowV2Features } from "@/lib/utils";
 import { resetGlobalAuthLock } from "@/components/deep-link-handler";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { useAuthApi } from "@/hooks/useAuthApi";
 
 interface NavItem {
   title: string;
@@ -55,7 +57,11 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
   const showAddButtons = !hideActionButtons && isOnDashboard;
 
   const { logout, user } = useAuth();
+  const { api } = useAuthApi();
+  const { spaces } = useSpaceContext(api);
 
+  // Check if any space has a new invitation
+  const hasNewSpaceInvitations = spaces?.some(space => space.hasNewInvitation) || false;
 
   const [notifications, setNotifications] = useState<NotificationProps[]>(
     [
@@ -211,13 +217,18 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
                   </div>
                 )
               }
-              <button
-                className="text-primary hover:text-primary/80 flex items-center gap-2"
-                onClick={() => setIsDesktopNavOpen(true)}
-              >
-                <UserIcon className="h-5 w-5" />
-                <span>{user?.name || "User"}</span>
-              </button>
+              <div className="relative">
+                <button
+                  className="text-primary hover:text-primary/80 flex items-center gap-2"
+                  onClick={() => setIsDesktopNavOpen(true)}
+                >
+                  <UserIcon className="h-5 w-5" />
+                  <span>{user?.name || "User"}</span>
+                </button>
+                {hasNewSpaceInvitations && (
+                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                )}
+              </div>
             </div>
           </div>
         </div>
