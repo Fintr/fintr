@@ -4,7 +4,21 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { AuthStorage } from '@/lib/auth-storage';
+
+const ALLOWED_S3_PREFIXES = [
+  'https://s3.ap-southeast-1.amazonaws.com/fintr-production/',
+  'https://s3.ap-southeast-1.amazonaws.com/fintr-staging/',
+  'https://s3.ap-southeast-1.amazonaws.com/fintr-development/',
+];
 
 interface ImageData {
   url: string;
@@ -38,6 +52,7 @@ export default function ImageLightbox({
   const [isMobile, setIsMobile] = useState(false);
   const [lastTouchDistance, setLastTouchDistance] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [showDownloadErrorDialog, setShowDownloadErrorDialog] = useState(false);
   const historyPushedRef = useRef(false);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -277,6 +292,12 @@ export default function ImageLightbox({
     const currentImage = images[currentIndex];
     if (!currentImage) return;
 
+    // Debug logging for production troubleshooting
+    console.log('[ImageLightbox] Download started');
+    console.log('[ImageLightbox] Image URL:', currentImage.url);
+    console.log('[ImageLightbox] NEXT_PUBLIC_BE_URL:', process.env.NEXT_PUBLIC_BE_URL);
+    console.log('[ImageLightbox] Token available:', !!AuthStorage.getAuthData()?.tokens?.access_token);
+
     const getFileExtension = () => {
       if (currentImage.filename) {
         const parts = currentImage.filename.split('.');
@@ -323,50 +344,82 @@ export default function ImageLightbox({
       }, 100);
     };
 
+    const backendUrl = process.env.NEXT_PUBLIC_BE_URL;
+    const token = AuthStorage.getAuthData()?.tokens?.access_token;
+    const isS3Url = ALLOWED_S3_PREFIXES.some((p) => currentImage.url.startsWith(p));
+    const canUseProxy = Boolean(backendUrl && token && isS3Url);
+
+    console.log('[ImageLightbox] canUseProxy:', canUseProxy, { backendUrl: !!backendUrl, token: !!token, isS3Url });
+
     const tryProxyDownload = async (): Promise<boolean> => {
-      const backendUrl = process.env.NEXT_PUBLIC_BE_URL;
-      const token = AuthStorage.getAuthData()?.tokens?.access_token;
-      if (!backendUrl || !token) return false;
-      const allowedPrefixes = [
-        'https://s3.ap-southeast-1.amazonaws.com/fintr-production/',
-        'https://s3.ap-southeast-1.amazonaws.com/fintr-staging/',
-        'https://s3.ap-southeast-1.amazonaws.com/fintr-development/',
-      ];
-      const isAllowed = allowedPrefixes.some((p) => currentImage.url.startsWith(p));
-      if (!isAllowed) return false;
+      if (!backendUrl || !token || !isS3Url) {
+        console.log('[ImageLightbox] Proxy download prerequisites not met:', { backendUrl: !!backendUrl, token: !!token, isS3Url });
+        return false;
+      }
       const proxyUrl = `${backendUrl}/api/v1/attachments/download?url=${encodeURIComponent(currentImage.url)}`;
+      console.log('[ImageLightbox] Proxy URL:', proxyUrl);
       const response = await fetch(proxyUrl, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) return false;
+      console.log('[ImageLightbox] Proxy response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.log('[ImageLightbox] Proxy error response:', errorText);
+        return false;
+      }
       const blob = await response.blob();
       downloadBlob(blob, filename);
       return true;
     };
 
+    // In production, direct fetch to S3 often fails (CORS). Try proxy first for S3 URLs.
+    if (canUseProxy) {
+      try {
+        console.log('[ImageLightbox] Attempting proxy download...');
+        const ok = await tryProxyDownload();
+        if (ok) {
+          console.log('[ImageLightbox] Proxy download successful');
+          return;
+        }
+      } catch (e) {
+        console.log('[ImageLightbox] Proxy download failed:', e);
+        // Fall through to other methods
+      }
+    }
+
     try {
-      let response = await fetch(currentImage.url, {
+      console.log('[ImageLightbox] Attempting direct S3 download...');
+      const response = await fetch(currentImage.url, {
         mode: 'cors',
         credentials: 'omit',
       });
-
       if (response.ok) {
         const blob = await response.blob();
         downloadBlob(blob, filename);
+        console.log('[ImageLightbox] Direct S3 download successful');
         return;
       }
-    } catch {
-      // Direct fetch failed (e.g. CORS); try backend proxy
+      console.log('[ImageLightbox] Direct S3 download failed:', response.status);
+    } catch (e) {
+      console.log('[ImageLightbox] Direct S3 download error:', e);
+      // Direct fetch failed (e.g. CORS); try proxy if not yet tried
+    }
+
+    if (!canUseProxy) {
+      try {
+        console.log('[ImageLightbox] Attempting proxy download (second try)...');
+        const ok = await tryProxyDownload();
+        if (ok) {
+          console.log('[ImageLightbox] Second proxy attempt successful');
+          return;
+        }
+      } catch (e) {
+        console.log('[ImageLightbox] Second proxy attempt failed:', e);
+      }
     }
 
     try {
-      const ok = await tryProxyDownload();
-      if (ok) return;
-    } catch {
-      // Proxy failed
-    }
-
-    try {
+      console.log('[ImageLightbox] Attempting canvas download...');
       const img = new Image();
       img.crossOrigin = 'anonymous';
       await new Promise<void>((resolve, reject) => {
@@ -388,26 +441,27 @@ export default function ImageLightbox({
         });
         if (blob) {
           downloadBlob(blob, filename);
+          console.log('[ImageLightbox] Canvas download successful');
           return;
         }
       }
-    } catch {
-      // Canvas path failed
+    } catch (e) {
+      console.log('[ImageLightbox] Canvas download failed:', e);
     }
 
     try {
+      console.log('[ImageLightbox] Attempting proxy download (final try)...');
       const ok = await tryProxyDownload();
-      if (ok) return;
-    } catch {
-      // Final proxy attempt failed
+      if (ok) {
+        console.log('[ImageLightbox] Final proxy attempt successful');
+        return;
+      }
+    } catch (e) {
+      console.log('[ImageLightbox] Final proxy attempt failed:', e);
     }
 
-    console.error('Image download failed: could not fetch or proxy image');
-    if (typeof window !== 'undefined' && window.alert) {
-      window.alert(
-        'Download failed. The image could not be saved. Try again or open the image in a new tab.'
-      );
-    }
+    console.error('[ImageLightbox] All download methods failed');
+    setShowDownloadErrorDialog(true);
   };
 
   if (!isOpen || !images.length || !mounted) return null;
@@ -667,5 +721,48 @@ export default function ImageLightbox({
     </div>
   );
 
-  return createPortal(lightboxContent, document.body);
+  return (
+    <>
+      {createPortal(lightboxContent, document.body)}
+      <Dialog
+        open={showDownloadErrorDialog}
+        onOpenChange={setShowDownloadErrorDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Download failed</DialogTitle>
+            <DialogDescription>
+              The image could not be saved. Try again or open the image in a new
+              tab.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDownloadErrorDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDownloadErrorDialog(false);
+                if (currentImage?.url) window.open(currentImage.url, '_blank');
+              }}
+            >
+              Open in new tab
+            </Button>
+            <Button
+              onClick={() => {
+                setShowDownloadErrorDialog(false);
+                handleDownload();
+              }}
+            >
+              Try again
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }

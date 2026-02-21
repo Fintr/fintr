@@ -5,9 +5,22 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // - Production: set to https://www.fintr.ai so the app always loads the latest website
 //   (no app store update needed when you deploy web changes)
 const serverUrl = process.env.CAPACITOR_SERVER_URL;
+
+// Cache-busting version - change this value to force all apps to refresh their cache
+// This can be updated via admin panel to trigger cache refresh across all devices
+const CACHE_VERSION = process.env.CAPACITOR_CACHE_VERSION || Date.now().toString();
+
+const buildServerUrl = (baseUrl: string | undefined): string | undefined => {
+  if (!baseUrl) return undefined;
+
+  // Append cache version as query parameter for cache busting
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}cv=${CACHE_VERSION}`;
+};
+
 const serverConfig = serverUrl
   ? {
-      url: serverUrl,
+      url: buildServerUrl(serverUrl),
       ...(serverUrl.startsWith("http://") && { cleartext: true }),
     }
   : undefined;
