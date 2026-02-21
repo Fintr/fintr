@@ -94,7 +94,7 @@ echo "✅ Capacitor sync complete"
 echo ""
 
 # Step 5: Verify app loads from production URL
-if ! grep -q "\"url\": \"${PRODUCTION_WEB_URL}" android/app/src/main/assets/capacitor.config.json 2>/dev/null; then
+if ! grep -q "\"url\": \"${PRODUCTION_WEB_URL}\"" android/app/src/main/assets/capacitor.config.json 2>/dev/null; then
   echo "❌ ERROR: capacitor.config.json should load from ${PRODUCTION_WEB_URL}"
   grep -A 2 '"server"' android/app/src/main/assets/capacitor.config.json 2>/dev/null || true
   exit 1
