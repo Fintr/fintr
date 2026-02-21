@@ -11,17 +11,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { smartInAppBrowserGoogleSignIn } from "@/services/auth/modal-google-signin";
 import { smartAppleSignIn } from "@/services/auth/in-app-apple-signin";
+import { isNativeCapacitor } from "@/lib/capacitor";
 
 interface UnifiedAuthPageProps {
   onBack?: () => void;
   isLogin?: boolean;
   authToggle?: React.ReactNode;
 }
-
-// Check if we're in a Capacitor environment (iOS app)
-const isCapacitorEnvironment = (): boolean => {
-  return typeof window !== 'undefined' && (window as any).Capacitor !== undefined;
-};
 
 const UnifiedAuthPage = ({
   onBack,
@@ -200,9 +196,9 @@ const UnifiedAuthPage = ({
   }
 
   return (
-    <div className="bg-white p-8 rounded-lg shadow-sm max-w-md mx-auto border border-gray-200">
+    <div className="p-8 rounded-lg max-w-md mx-auto">
       <div className="mb-8">
-        {onBack && (
+        {onBack && !isNativeCapacitor() && (
           <button
             onClick={onBack}
             className="flex items-center text-gray-600 hover:text-gray-800 mb-6"
@@ -281,7 +277,7 @@ const UnifiedAuthPage = ({
           <div className="w-full border-t border-gray-300"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-white text-gray-600 font-medium">
+          <span className="px-2 bg-background text-gray-600 font-medium">
             OR
           </span>
         </div>
@@ -462,7 +458,7 @@ const UnifiedAuthPage = ({
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2.5"
             >
               {isLoading ? (
                 <LoadingSpinner size="small" className="mr-2" />

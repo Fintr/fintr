@@ -24,6 +24,19 @@ html, body {
   }
 }
 
+@keyframes pulse-logo {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-logo {
+  animation: pulse-logo 2s ease-in-out infinite;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
