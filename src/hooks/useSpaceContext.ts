@@ -88,10 +88,20 @@ export function useSpaceContext(api: AxiosInstance) {
         window.dispatchEvent(new CustomEvent('spaceCodeChanged', { detail: { spaceCode } }));
       }
 
+      // Mark invitation as seen if this space has a new invitation
+      if (space.hasNewInvitation) {
+        try {
+          await spacesApi.markSeen(api, spaceCode);
+        } catch (error) {
+          console.error('Failed to mark invitation as seen:', error);
+        }
+      }
+
       return { space };
     },
     onSuccess: async (data, spaceCode) => {
       // Invalidate all space-scoped queries when workspace is switched
+      queryClient.invalidateQueries({ queryKey: ["spaces"] });
       queryClient.invalidateQueries({ queryKey: ["space-context"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["budgets"] });

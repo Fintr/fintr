@@ -8,12 +8,35 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     private var hasAdjustedWebView = false
 
+    // MARK: - Cache Configuration
+
+    private func configureWebViewCache() {
+        let cacheSizeMB = 100 * 1024 * 1024 // 100 MB
+        let diskCapacity = cacheSizeMB
+        let memoryCapacity = cacheSizeMB / 4 // 25 MB for memory cache
+
+        let cache = URLCache(
+            memoryCapacity: memoryCapacity,
+            diskCapacity: diskCapacity,
+            diskPath: "webCache"
+        )
+        URLCache.shared = cache
+
+        // Configure URLSession for better caching behavior
+        let config = URLSessionConfiguration.default
+        config.requestCachePolicy = .returnCacheDataElseLoad
+        config.urlCache = cache
+    }
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Set the app background color to match web app's off-white background
         if let window = UIApplication.shared.windows.first {
             // oklch(98.20% 0.004 91.45) converted to RGB: #FAF9F8
             window.backgroundColor = UIColor(red: 0.98, green: 0.976, blue: 0.973, alpha: 1.0)
         }
+        
+        // Configure cache settings for the WebView
+        configureWebViewCache()
         
         // Adjust webview safe area after launch
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

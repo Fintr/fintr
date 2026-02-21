@@ -32,6 +32,7 @@ export interface Space {
   userRole: string;
   createdAt: string;
   updatedAt: string;
+  hasNewInvitation: boolean;
 }
 
 export interface SpacePermissions {

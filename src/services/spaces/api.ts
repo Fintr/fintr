@@ -73,5 +73,9 @@ export const spacesApi = {
         }),
       }
     ),
+
+  // Mark space invitation as seen
+  markSeen: (api: AxiosInstance, spaceCode: string) =>
+    api.post<{ success: boolean; message: string }>(`/spaces/${spaceCode}/mark_seen`),
 };
 

@@ -38,6 +38,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       title: "AI Interactions",
       href: "/admin/ai-interactions",
     },
+    {
+      title: "App cache",
+      href: "/admin/cache",
+    },
   ];
 
   useEffect(() => {

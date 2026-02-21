@@ -36,6 +36,9 @@ export function SpaceSwitcher({
 
   const personalSpaces = spaces?.filter(space => space.isPersonal) || [];
   const organizationSpaces = spaces?.filter(space => space.isOrganization) || [];
+  
+  // Check if any space (other than current) has a new invitation
+  const hasNewInvitations = spaces?.some(space => space.code !== currentSpace?.code && space.hasNewInvitation) || false;
 
   if (!showSpaceSwitcher) {
     return null;
@@ -46,14 +49,19 @@ export function SpaceSwitcher({
       <div className="mb-4 pb-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-2">
           <h4 className="text-sm font-medium text-gray-700">Current Space</h4>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowSpaceList(!showSpaceList)}
-            className="h-6 px-2 text-xs"
-          >
-            <ChevronDown className={`h-3 w-3 transition-transform ${showSpaceList ? 'rotate-180' : ''}`} />
-          </Button>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSpaceList(!showSpaceList)}
+              className="h-6 px-2 text-xs"
+            >
+              <ChevronDown className={`h-3 w-3 transition-transform ${showSpaceList ? 'rotate-180' : ''}`} />
+            </Button>
+            {hasNewInvitations && !showSpaceList && (
+              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+            )}
+          </div>
         </div>
 
         {/* Current Space Display */}
@@ -95,8 +103,16 @@ export function SpaceSwitcher({
                   className="flex items-center justify-between w-full p-2 text-left rounded hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <div className="relative">
+                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+                      {space.hasNewInvitation && (
+                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                      )}
+                    </div>
                     <span className="text-sm">{space.name}</span>
+                    {space.hasNewInvitation && (
+                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                    )}
                   </div>
                   <Check className="h-3 w-3 text-green-600" />
                 </button>
@@ -112,8 +128,16 @@ export function SpaceSwitcher({
                   className="flex items-center justify-between w-full p-2 text-left rounded hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                    <div className="relative">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                      {space.hasNewInvitation && (
+                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                      )}
+                    </div>
                     <span className="text-sm">{space.name}</span>
+                    {space.hasNewInvitation && (
+                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                    )}
                     <Badge variant="outline" className="text-xs">
                       {space.userRole}
                     </Badge>
