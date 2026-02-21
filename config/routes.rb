@@ -7,6 +7,9 @@ Rails.application.routes.draw do
   # API routes
   namespace :api do
     namespace :v1 do
+      # Public endpoint for mobile app cache version check (no auth)
+      get "/cache_version", to: "cache_version#show"
+
       namespace :auth do
         # Public routes (no authentication required)
         post "/login", to: "login#create"
@@ -40,6 +43,11 @@ Rails.application.routes.draw do
             collection do
               get :stats
             end
+          end
+        end
+        resource :cache, only: [:show] do
+          collection do
+            post :clear
           end
         end
       end
