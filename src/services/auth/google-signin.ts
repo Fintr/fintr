@@ -32,6 +32,7 @@ export const initiateGoogleSignIn = (options?: GoogleSignInOptions) => {
   if (typeof window !== 'undefined') {
     sessionStorage.setItem('auth0_state', state);
     sessionStorage.setItem('auth0_redirect_origin', window.location.pathname);
+    sessionStorage.setItem('auth0_redirect_uri', redirectUri);
   }
 
   // Build Auth0 authorization URL with Google connection

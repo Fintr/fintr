@@ -4,18 +4,12 @@
  */
 
 import { verifyState, generateRandomState } from './google-signin';
+import { isNativeCapacitor } from '@/lib/capacitor';
 
 export interface InAppBrowserOptions {
   redirectUri?: string;
   state?: string;
 }
-
-/**
- * Check if we're running in a Capacitor environment
- */
-const isCapacitorEnvironment = (): boolean => {
-  return typeof window !== 'undefined' && (window as any).Capacitor !== undefined;
-};
 
 /**
  * Initiates Google Sign-In using Capacitor's in-app browser
@@ -31,43 +25,36 @@ export const initiateInAppBrowserGoogleSignIn = async (options?: InAppBrowserOpt
     throw new Error('Auth0 configuration is missing. Please check your environment variables.');
   }
 
-  // Check if we're in Capacitor environment
-  const isCapacitor = isCapacitorEnvironment();
+  // Only use fintrapp:// when we're in the native app (iOS/Android), not in a browser.
+  const isNativeApp = isNativeCapacitor();
 
-  // Use environment variable for redirect URI to ensure consistency
-  // For Capacitor with server hostname configured, use http://localhost
-  // This works because Capacitor serves the app on http://localhost in the Browser plugin
   let redirectUri = options?.redirectUri;
-  
   if (!redirectUri) {
-    if (isCapacitor) {
-      // For Capacitor, use custom URL scheme directly
-      // Auth0 will redirect to fintrapp://auth-callback?code=...
-      // Safari will show "invalid address" error (this is expected and harmless)
-      // iOS intercepts the custom URL scheme and opens the app
-      // The deep link handler catches it and routes to /auth-callback
+    if (isNativeApp) {
       redirectUri = 'fintrapp://auth-callback';
-      console.log('Using custom URL scheme for redirect URI:', redirectUri);
-      console.log('Note: Safari may show an error, but iOS will intercept and open the app');
-      console.log('The deep link handler will route to /auth-callback with the auth code');
-    } else if (appBaseUrl && !appBaseUrl.includes('localhost')) {
-      // For web, use app base URL if it's not localhost
-      redirectUri = `${appBaseUrl}/auth-callback`;
-    } else if (typeof window !== 'undefined') {
-      // Fallback to current origin for web
-      redirectUri = `${window.location.origin}/auth-callback`;
+      console.log('Native app detected – using redirect URI:', redirectUri);
     } else {
-      // Last resort for web development
-      redirectUri = 'http://localhost:5173/auth-callback';
+      const base =
+        appBaseUrl && !String(appBaseUrl).includes('undefined')
+          ? String(appBaseUrl).replace(/\/+$/, '')
+          : typeof window !== 'undefined' && window.location?.origin
+            ? window.location.origin
+            : 'http://localhost:5173';
+      redirectUri = `${base}/auth-callback`;
+      if (
+        redirectUri.includes('undefined') ||
+        !redirectUri.startsWith('http')
+      ) {
+        throw new Error(
+          'Redirect URI invalid. Set NEXT_PUBLIC_APP_BASE_URL or run the app from a valid origin.'
+        );
+      }
+      console.log('Web detected – using redirect URI:', redirectUri);
     }
   }
 
-  // Generate state for CSRF protection
-  // For Capacitor, we need to encode that this is a Capacitor flow in the state
   const randomState = options?.state || generateRandomState();
-  
-  // Encode Capacitor flag in state: randomState|isCapacitor
-  const state = `${randomState}|${isCapacitor ? 'true' : 'false'}`;
+  const state = `${randomState}|${isNativeApp ? 'true' : 'false'}`;
   
   // Store original state and redirect URI for verification and backend token exchange
   if (typeof window !== 'undefined') {
@@ -99,7 +86,7 @@ export const initiateInAppBrowserGoogleSignIn = async (options?: InAppBrowserOpt
   console.log('\n=== Google Sign-In Debug Info ===');
   console.log('Auth0 Domain:', auth0Domain);
   console.log('Client ID:', clientId ? `${clientId.substring(0, 10)}...` : 'NOT SET');
-  console.log('Is Capacitor Environment:', isCapacitor);
+  console.log('Is native Capacitor app (fintrapp used):', isNativeApp);
   console.log('App Base URL:', appBaseUrl || 'NOT SET');
   console.log('Redirect URI:', redirectUri);
   console.log('Full Authorization URL:', authorizationUrl.toString());
@@ -204,17 +191,15 @@ export const closeInAppBrowser = async () => {
  * Smart Google Sign-In that chooses the best method based on environment
  */
 export const smartInAppBrowserGoogleSignIn = async (options?: InAppBrowserOptions) => {
-  if (isCapacitorEnvironment()) {
+  if (isNativeCapacitor()) {
     try {
       return await initiateInAppBrowserGoogleSignIn(options);
     } catch (error) {
-      // Fallback to regular redirect method if in-app browser fails
       const { initiateGoogleSignIn } = await import('./google-signin');
       return initiateGoogleSignIn(options);
     }
-  } else {
-    // Fallback to regular redirect method for web
-    const { initiateGoogleSignIn } = await import('./google-signin');
-    return initiateGoogleSignIn(options);
   }
+  // Web (browser or Capacitor in web): always use redirect with web URL (localhost or https://fintr.ai)
+  const { initiateGoogleSignIn } = await import('./google-signin');
+  return initiateGoogleSignIn(options);
 };

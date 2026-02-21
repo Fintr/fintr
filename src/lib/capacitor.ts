@@ -45,11 +45,28 @@ export const waitForCapacitor = async (): Promise<boolean> => {
 };
 
 /**
- * Check if we're running in a Capacitor environment (mobile app)
+ * Check if we're running in a Capacitor environment (Capacitor runtime present)
  * This is a synchronous check - use waitForCapacitor() if you need to ensure it's loaded
  */
 export const isCapacitorEnvironment = (): boolean => {
   return typeof window !== 'undefined' && (window as any).Capacitor !== undefined;
+};
+
+/**
+ * Check if we're running as a native Capacitor app (iOS/Android), not in a browser.
+ * Use this when choosing redirect URIs: only use fintrapp:// when this is true.
+ * When Capacitor is loaded in a web build, getPlatform() is 'web' and we must use
+ * the web redirect (e.g. https://fintr.ai/auth-callback or localhost).
+ */
+export const isNativeCapacitor = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const cap = (window as any).Capacitor;
+  if (!cap) return false;
+  if (typeof cap.isNativePlatform === 'function') {
+    return cap.isNativePlatform() === true;
+  }
+  const platform = typeof cap.getPlatform === 'function' ? cap.getPlatform() : '';
+  return platform === 'ios' || platform === 'android';
 };
 
 /**

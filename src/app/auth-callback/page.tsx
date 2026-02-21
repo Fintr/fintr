@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { verifyState, getOriginalRedirectPath } from '@/services/auth/google-signin';
 import { AuthStorage, AuthStorageData, AuthTokens } from '@/lib/auth-storage';
 import { resetGlobalAuthLock } from '@/components/deep-link-handler';
+import { isNativeCapacitor } from '@/lib/capacitor';
 
 // Helper function to detect if we're on iOS mobile
 const isIOSDevice = (): boolean => {
@@ -17,11 +18,6 @@ const isIOSDevice = (): boolean => {
   const isIOS = /iphone|ipad|ipod/.test(userAgent);
 
   return isIOS;
-};
-
-// Helper function to check if Capacitor environment
-const isCapacitorEnvironment = (): boolean => {
-  return typeof window !== 'undefined' && (window as any).Capacitor !== undefined;
 };
 
 export default function AuthCallback() {
@@ -53,10 +49,7 @@ export default function AuthCallback() {
       console.log('Search params entries:', Array.from(searchParams.entries()));
 
       try {
-        // If we're in a Capacitor environment and came from a custom URL scheme,
-        // close the browser immediately (it should have already closed automatically,
-        // but this ensures it's closed)
-        if (isCapacitorEnvironment()) {
+        if (isNativeCapacitor()) {
           console.log('Capacitor environment detected - attempting to close browser');
           try {
             const { Browser } = await import('@capacitor/browser');
@@ -105,9 +98,7 @@ export default function AuthCallback() {
 
         setIsCapacitorFlow(capacitorFlow);
 
-        // Verify state to prevent CSRF (only for web, not Capacitor)
-        // For Capacitor, Auth0 already validates the state on its side
-        const isCapacitorCallback = typeof window !== 'undefined' && (window as any).Capacitor !== undefined;
+        const isCapacitorCallback = isNativeCapacitor();
         const isCapacitorContext = isCapacitorCallback || capacitorFlow;
 
         if (!isCapacitorContext && !verifyState(decodedState)) {
@@ -124,20 +115,16 @@ export default function AuthCallback() {
           throw new Error('Backend URL is not configured');
         }
 
-        // Get the redirect URI that was used in the authorization request
-        // This must match exactly what Auth0 expects for token exchange
-        let redirectUri = 'http://localhost:5173/auth-callback'; // Default fallback
-
-        if (isCapacitorContext || capacitorFlow) {
-          // For Capacitor, we used fintrapp://auth-callback
+        // Use the same redirect_uri that was sent to Auth0 (must match exactly for token exchange).
+        // Only use fintrapp:// when we're actually in the native app; otherwise use stored or origin.
+        let redirectUri = 'http://localhost:5173/auth-callback';
+        if (isCapacitorCallback) {
           redirectUri = 'fintrapp://auth-callback';
         } else if (typeof window !== 'undefined') {
-          // Try to get from sessionStorage (stored during auth initiation)
           const storedRedirectUri = sessionStorage.getItem('auth0_redirect_uri');
           if (storedRedirectUri) {
             redirectUri = storedRedirectUri;
           } else {
-            // Fallback to constructing from current origin
             redirectUri = `${window.location.origin}/auth-callback`;
           }
         }
