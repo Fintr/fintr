@@ -8,8 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
-echo "🚀 Production Build (Android)"
-echo "============================="
+echo "Production Build (Android)"
+echo "==========================="
 echo ""
 echo "This script will:"
 echo "  1. Clean previous builds"
@@ -20,20 +20,21 @@ echo "  5. Run on Android emulator (or show APK/AAB instructions)"
 echo ""
 
 # Step 1: Clean previous builds
-echo "🧹 Step 1: Cleaning previous builds..."
+echo "Step 1: Cleaning previous builds..."
 rm -rf .next out
 rm -f ios/App/App/capacitor.config.json
 rm -f android/app/src/main/assets/capacitor.config.json
-echo "✅ Clean complete"
+echo "Clean complete"
 echo ""
 
 # Step 2: Set up environment
-echo "⚙️  Step 2: Setting up environment..."
+echo "Step 2: Setting up environment..."
 
 # App loads web from live URL so website updates apply without app store release
-PRODUCTION_WEB_URL="https://fintr.ai"
+# Use www so the app hits the same origin as the live site (avoids redirect/blank in WebView)
+PRODUCTION_WEB_URL="https://www.fintr.ai"
 export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
-echo "🔧 App will load web app from: ${PRODUCTION_WEB_URL}"
+echo "App will load web app from: ${PRODUCTION_WEB_URL}"
 
 if [ -f .env.production ]; then
   echo "Loading .env.production..."
@@ -41,15 +42,15 @@ if [ -f .env.production ]; then
   source .env.production
   set +a
 else
-  echo "⚠️  .env.production not found"
+  echo "Warning: .env.production not found"
 fi
 
 export NEXT_PUBLIC_APP_BASE_URL="${PRODUCTION_WEB_URL}"
-echo "✅ Environment configured (NEXT_PUBLIC_BE_URL=${NEXT_PUBLIC_BE_URL:-not set})"
+echo "Environment configured (NEXT_PUBLIC_BE_URL=${NEXT_PUBLIC_BE_URL:-not set})"
 echo ""
 
 # Step 3: Build Next.js app
-echo "🔨 Step 3: Building Next.js app for Capacitor..."
+echo "Step 3: Building Next.js app for Capacitor..."
 
 export NEXT_OUTPUT_MODE=export
 
@@ -80,44 +81,81 @@ mv next.config.ts.backup next.config.ts
 rm next.config.capacitor.ts
 
 if [ ! -d "out" ]; then
-  echo "❌ ERROR: Build did not create 'out' directory"
+  echo "ERROR: Build did not create 'out' directory"
   exit 1
 fi
-echo "✅ Next.js build complete"
+echo "Next.js build complete"
 echo ""
 
 # Step 4: Sync to Android (app will load from PRODUCTION_WEB_URL)
-echo "🔄 Step 4: Syncing to Android..."
+echo "Step 4: Syncing to Android..."
 export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
 npx cap sync android
-echo "✅ Capacitor sync complete"
+echo "Capacitor sync complete"
 echo ""
 
-# Step 5: Verify app loads from production URL
-if ! grep -q "\"url\": \"${PRODUCTION_WEB_URL}\"" android/app/src/main/assets/capacitor.config.json 2>/dev/null; then
-  echo "❌ ERROR: capacitor.config.json should load from ${PRODUCTION_WEB_URL}"
+# Step 5: Verify app loads from production URL (config may include ?cv=...)
+if ! grep -qF "\"url\": \"${PRODUCTION_WEB_URL}" android/app/src/main/assets/capacitor.config.json 2>/dev/null; then
+  echo "ERROR: capacitor.config.json should load from ${PRODUCTION_WEB_URL}"
   grep -A 2 '"server"' android/app/src/main/assets/capacitor.config.json 2>/dev/null || true
   exit 1
 fi
 if grep -q 'localhost' android/app/src/main/assets/capacitor.config.json 2>/dev/null; then
-  echo "❌ ERROR: config contains localhost; production should use ${PRODUCTION_WEB_URL}"
+  echo "ERROR: config contains localhost; production should use ${PRODUCTION_WEB_URL}"
   exit 1
 fi
-echo "✅ Capacitor config OK (app loads from ${PRODUCTION_WEB_URL})"
+echo "Capacitor config OK (app loads from ${PRODUCTION_WEB_URL})"
 echo ""
 
 # Step 6: Run on emulator
-echo "📱 Step 6: Running on Android emulator..."
-echo "   (Start an AVD in Device Manager first if none is running.)"
+echo "Step 6: Running on Android emulator..."
+echo ""
+
+# Auto-launch emulator with correct DNS if none is running
+RUNNING_EMULATOR=$(/Users/mikodagatan/Library/Android/sdk/platform-tools/adb devices 2>/dev/null | grep "^emulator" | head -1 | cut -f1)
+
+if [ -z "$RUNNING_EMULATOR" ]; then
+  AVD_NAME=$(/Users/mikodagatan/Library/Android/sdk/emulator/emulator -list-avds 2>/dev/null | head -1)
+  if [ -n "$AVD_NAME" ]; then
+    echo "Launching emulator: $AVD_NAME (with DNS 8.8.8.8)..."
+    # Remove stale lock files
+    AVD_DIR=$(find ~/.android/avd -name "*.avd" -maxdepth 1 -type d 2>/dev/null | head -1)
+    [ -n "$AVD_DIR" ] && rm -f "${AVD_DIR}/multiinstance.lock"
+    nohup /Users/mikodagatan/Library/Android/sdk/emulator/emulator \
+      -avd "$AVD_NAME" \
+      -dns-server 8.8.8.8,8.8.4.4 \
+      -no-snapshot-load \
+      > /tmp/android-emulator.log 2>&1 &
+    echo "   Waiting for emulator to boot (~60s)..."
+    sleep 10
+    /Users/mikodagatan/Library/Android/sdk/platform-tools/adb wait-for-device
+    until [ "$(/Users/mikodagatan/Library/Android/sdk/platform-tools/adb shell getprop sys.boot_completed 2>/dev/null)" = "1" ]; do
+      sleep 3
+    done
+    echo "Emulator booted"
+  else
+    echo "Warning: No AVD found. Create one in Android Studio Device Manager first."
+    exit 1
+  fi
+else
+  echo "Using running emulator: $RUNNING_EMULATOR"
+fi
 echo ""
 npx cap run android
 
 echo ""
-echo "✅ Production build is running on the emulator."
+echo "Production build is running on the emulator."
 echo ""
-echo "📋 The app loads from ${PRODUCTION_WEB_URL}; website updates apply without app store release."
+echo "The app loads from ${PRODUCTION_WEB_URL}; website updates apply without app store release."
 echo ""
-echo "📋 Other options:"
-echo "  • APK (install on device): cd android && ./gradlew assembleRelease"
-echo "  • AAB (Play Store):        ./scripts/mobile/build-android-aab.sh"
+echo "If the app opens but the screen is blank:"
+echo "  - Close this emulator and re-run this script (it auto-launches a fresh one with DNS 8.8.8.8)."
+echo "  - On your computer, open Chrome -> chrome://inspect -> find your app WebView -> Inspect to see console/network errors."
+echo "  - Quick local test (no DNS needed):"
+echo "      Terminal 1: pnpm dev"
+echo "      Terminal 2: export CAPACITOR_SERVER_URL=http://10.0.2.2:5173 && npx cap sync android && npx cap run android"
+echo ""
+echo "Other options:"
+echo "  - APK (install on device): cd android && ./gradlew assembleRelease"
+echo "  - AAB (Play Store):        ./scripts/mobile/build-android-aab.sh"
 echo ""

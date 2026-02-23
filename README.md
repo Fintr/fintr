@@ -205,6 +205,10 @@ In the Android emulator, **localhost** is the emulator itself, not your Mac, so 
 - Go to `File → Sync Project with Gradle Files`
 - If issues persist, try `File → Invalidate Caches / Restart`
 
+**App opens but the screen is blank (no content in WebView):**
+- **Check emulator network**: In the emulator, open the **Browser** app and go to `https://www.fintr.ai`. If that page is also blank or doesn't load, the emulator has no internet or DNS. Fix: In Android Studio Device Manager, use **Cold Boot Now** for the AVD.
+- **Inspect the WebView**: On your computer, open Chrome and go to **chrome://inspect**. Find your app's WebView and click **Inspect** to see console and network errors (e.g. ERR_NAME_NOT_RESOLVED).
+
 **Viewing console logs on the Android emulator:**
 - **JavaScript (e.g. `console.log`)**: WebView debugging is enabled. With the app running on the emulator, open Chrome on your computer, go to `chrome://inspect`, find your app’s WebView, and click **inspect** to open DevTools and see the JS console.
 - **Native / system logs**: Run `adb logcat` in a terminal (with the emulator or device connected). Filter by tag if needed, e.g. `adb logcat | grep -i fintr` or `adb logcat *:V` for verbose.
