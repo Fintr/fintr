@@ -58,15 +58,24 @@ export const isCapacitorEnvironment = (): boolean => {
  * When Capacitor is loaded in a web build, getPlatform() is 'web' and we must use
  * the web redirect (e.g. https://fintr.ai/auth-callback or localhost).
  *
- * Detection strategy (in order):
- * 1. Primary: window.Capacitor bridge (always works on iOS; works on Android after onPageFinished)
- * 2. Fallback: Android WebView user-agent signature ("; wv)") — Chrome omits this, WebView includes it.
- *    This is needed because on Android the bridge is injected via evaluateJavascript after page load,
- *    so there is a window where window.Capacitor is not yet present even though we are native.
+ * Detection strategy (in order of reliability):
+ * 1. User-agent: capacitor.config.ts appends "FintrNativeApp" to the WebView UA for both
+ *    iOS and Android. This is set by the native layer before any JS runs, so it is always
+ *    reliable regardless of Capacitor bridge injection timing.
+ * 2. window.Capacitor bridge (always works on iOS at document start; on Android this can
+ *    arrive after page load via evaluateJavascript, so it may be absent initially).
+ * 3. Android WebView user-agent signature ("; wv)") — Chrome omits this, WebView includes it.
  */
 export const isNativeCapacitor = (): boolean => {
   if (typeof window === 'undefined') return false;
 
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+
+  // Primary check: FintrNativeApp is appended to the user-agent by capacitor.config.ts for
+  // both iOS and Android native builds. This is the most reliable signal.
+  if (ua.includes('FintrNativeApp')) return true;
+
+  // Secondary check: Capacitor bridge object
   const cap = (window as any).Capacitor;
   if (cap) {
     if (typeof cap.isNativePlatform === 'function') {
@@ -76,9 +85,8 @@ export const isNativeCapacitor = (): boolean => {
     return platform === 'ios' || platform === 'android';
   }
 
-  // Fallback for Android: the Capacitor WebView user-agent always contains "; wv)"
+  // Tertiary fallback for Android: the Capacitor WebView user-agent always contains "; wv)"
   // whereas Chrome (used by regular Android browsers and Chrome Custom Tabs) does not.
-  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
   if (/Android/.test(ua) && /; wv\)/.test(ua)) return true;
 
   return false;

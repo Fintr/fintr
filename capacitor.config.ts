@@ -31,12 +31,18 @@ const config: CapacitorConfig = {
   webDir: 'out',
   // Server URL: app loads web content from this URL (dev: localhost, prod: https://www.fintr.ai)
   ...(serverConfig && { server: serverConfig }),
+  // FintrNativeApp is appended to the WebView user-agent so that JavaScript running inside
+  // the WebView (including code served from https://www.fintr.ai) can reliably detect it is
+  // running inside the native Capacitor app, independently of the Capacitor bridge injection
+  // timing. Checked in isNativeCapacitor() in src/lib/capacitor.ts.
   ios: {
     scheme: 'fintrapp',
-    contentInset: 'never'
+    contentInset: 'never',
+    appendUserAgent: 'FintrNativeApp',
   },
   android: {
     scheme: 'fintrapp', // Same as iOS for consistent Origin (fintrapp://) and CORS
+    appendUserAgent: 'FintrNativeApp',
   },
   plugins: {
     SplashScreen: {

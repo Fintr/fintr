@@ -142,7 +142,6 @@ else
 fi
 echo ""
 npx cap run android
-
 echo ""
 echo "Production build is running on the emulator."
 echo ""
