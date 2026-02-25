@@ -116,9 +116,13 @@ export default function AuthCallback() {
         }
 
         // Use the same redirect_uri that was sent to Auth0 (must match exactly for token exchange).
-        // Only use fintrapp:// when we're actually in the native app; otherwise use stored or origin.
+        // Use fintrapp:// when:
+        //   1. We are currently running inside the native Capacitor runtime (isCapacitorCallback), OR
+        //   2. The state flag tells us the flow was initiated from the native app (capacitorFlow).
+        //      This covers the edge case where the auth-callback page is reached without the
+        //      Capacitor bridge being available (e.g. in-app browser on web with state|true).
         let redirectUri = 'http://localhost:5173/auth-callback';
-        if (isCapacitorCallback) {
+        if (isCapacitorCallback || capacitorFlow) {
           redirectUri = 'fintrapp://auth-callback';
         } else if (typeof window !== 'undefined') {
           const storedRedirectUri = sessionStorage.getItem('auth0_redirect_uri');

@@ -4,6 +4,7 @@
  */
 
 import { verifyState, generateRandomState } from './apple-signin';
+import { isNativeCapacitor } from '@/lib/capacitor';
 
 // Dynamic import for Capacitor Browser to avoid build issues
 let Browser: any = null;
@@ -27,39 +28,36 @@ export const initiateInAppAppleSignIn = async (options?: InAppAppleSignInOptions
     throw new Error('Auth0 configuration is missing. Please check your environment variables.');
   }
 
-  // Check if we're in Capacitor environment
-  const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor !== undefined;
+  const isNativeApp = isNativeCapacitor();
 
   // Use environment variable for redirect URI to ensure consistency
   // For Capacitor, use custom URL scheme to return to app
   let redirectUri = options?.redirectUri;
   
   if (!redirectUri) {
-    if (isCapacitor) {
-      // For Capacitor, use custom URL scheme directly
+    if (isNativeApp) {
+      // For native Capacitor (iOS/Android), use custom URL scheme directly.
       // Auth0 will redirect to fintrapp://auth-callback?code=...
-      // iOS intercepts the custom URL scheme and opens the app
+      // The OS intercepts the custom URL scheme and opens the app via appUrlOpen.
       redirectUri = 'fintrapp://auth-callback';
-      console.log('🍎 Using custom URL scheme for redirect URI:', redirectUri);
-      console.log('Note: iOS will intercept and open the app');
-    } else if (appBaseUrl && !appBaseUrl.includes('localhost')) {
-      // For web, use app base URL if it's not localhost
-      redirectUri = `${appBaseUrl}/auth-callback`;
-    } else if (typeof window !== 'undefined') {
-      // Fallback to current origin for web
-      redirectUri = `${window.location.origin}/auth-callback`;
+      console.log('🍎 Native app detected – using redirect URI:', redirectUri);
     } else {
-      // Last resort for web development
-      redirectUri = 'http://localhost:5173/auth-callback';
+      const base =
+        appBaseUrl && !String(appBaseUrl).includes('undefined')
+          ? String(appBaseUrl).replace(/\/+$/, '')
+          : typeof window !== 'undefined' && window.location?.origin
+            ? window.location.origin
+            : 'http://localhost:5173';
+      redirectUri = `${base}/auth-callback`;
+      console.log('🌐 Web detected – using redirect URI:', redirectUri);
     }
   }
 
   // Generate state for CSRF protection
-  // For Capacitor, we need to encode that this is a Capacitor flow in the state
+  // Encode native Capacitor flag in state: randomState|isNativeApp
   const randomState = options?.state || generateRandomState();
   
-  // Encode Capacitor flag in state: randomState|isCapacitor
-  const state = `${randomState}|${isCapacitor ? 'true' : 'false'}`;
+  const state = `${randomState}|${isNativeApp ? 'true' : 'false'}`;
   
   // Store original state and redirect URI for verification and backend token exchange
   if (typeof window !== 'undefined') {
@@ -200,27 +198,22 @@ export const closeInAppBrowser = async () => {
 };
 
 /**
- * Check if we're running in a Capacitor environment
- */
-const isCapacitorEnvironment = (): boolean => {
-  return typeof window !== 'undefined' && (window as any).Capacitor !== undefined;
-};
-
-/**
  * Smart Apple Sign-In that chooses the best method based on environment
  */
 export const smartAppleSignIn = async (options?: InAppAppleSignInOptions) => {
-  if (isCapacitorEnvironment()) {
+  if (isNativeCapacitor()) {
     try {
       return await initiateInAppAppleSignIn(options);
     } catch (error) {
-      // Fallback to regular redirect method if in-app browser fails
+      // Fallback: still use fintrapp:// as redirect URI so the OS routes back to the app
       const { initiateAppleSignIn } = await import('./apple-signin');
-      return initiateAppleSignIn(options);
+      return initiateAppleSignIn({
+        ...options,
+        redirectUri: options?.redirectUri ?? 'fintrapp://auth-callback',
+      });
     }
-  } else {
-    // Fallback to regular redirect method for web
-    const { initiateAppleSignIn } = await import('./apple-signin');
-    return initiateAppleSignIn(options);
   }
+  // Web (browser or Capacitor in web): always use redirect with web URL
+  const { initiateAppleSignIn } = await import('./apple-signin');
+  return initiateAppleSignIn(options);
 };

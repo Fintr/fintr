@@ -195,8 +195,12 @@ export const smartInAppBrowserGoogleSignIn = async (options?: InAppBrowserOption
     try {
       return await initiateInAppBrowserGoogleSignIn(options);
     } catch (error) {
+      // Fallback: still use fintrapp:// as redirect URI so the OS routes back to the app
       const { initiateGoogleSignIn } = await import('./google-signin');
-      return initiateGoogleSignIn(options);
+      return initiateGoogleSignIn({
+        ...options,
+        redirectUri: options?.redirectUri ?? 'fintrapp://auth-callback',
+      });
     }
   }
   // Web (browser or Capacitor in web): always use redirect with web URL (localhost or https://fintr.ai)
