@@ -4,7 +4,7 @@
  */
 
 import { verifyState, generateRandomState } from './google-signin';
-import { isNativeCapacitor } from '@/lib/capacitor';
+import { isNativeCapacitor, isNativeCapacitorAsync } from '@/lib/capacitor';
 
 export interface InAppBrowserOptions {
   redirectUri?: string;
@@ -26,7 +26,8 @@ export const initiateInAppBrowserGoogleSignIn = async (options?: InAppBrowserOpt
   }
 
   // Only use fintrapp:// when we're in the native app (iOS/Android), not in a browser.
-  const isNativeApp = isNativeCapacitor();
+  // Use the async version to handle Android's delayed bridge injection.
+  const isNativeApp = await isNativeCapacitorAsync();
 
   let redirectUri = options?.redirectUri;
   if (!redirectUri) {
@@ -188,10 +189,14 @@ export const closeInAppBrowser = async () => {
 };
 
 /**
- * Smart Google Sign-In that chooses the best method based on environment
+ * Smart Google Sign-In that chooses the best method based on environment.
+ * Uses isNativeCapacitorAsync to wait for the Capacitor bridge to initialize
+ * on Android before making the decision (avoids race conditions where the bridge
+ * isn't injected yet when this function is first called).
  */
 export const smartInAppBrowserGoogleSignIn = async (options?: InAppBrowserOptions) => {
-  if (isNativeCapacitor()) {
+  const isNative = await isNativeCapacitorAsync();
+  if (isNative) {
     try {
       return await initiateInAppBrowserGoogleSignIn(options);
     } catch (error) {

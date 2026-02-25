@@ -57,16 +57,41 @@ export const isCapacitorEnvironment = (): boolean => {
  * Use this when choosing redirect URIs: only use fintrapp:// when this is true.
  * When Capacitor is loaded in a web build, getPlatform() is 'web' and we must use
  * the web redirect (e.g. https://fintr.ai/auth-callback or localhost).
+ *
+ * Detection strategy (in order):
+ * 1. Primary: window.Capacitor bridge (always works on iOS; works on Android after onPageFinished)
+ * 2. Fallback: Android WebView user-agent signature ("; wv)") — Chrome omits this, WebView includes it.
+ *    This is needed because on Android the bridge is injected via evaluateJavascript after page load,
+ *    so there is a window where window.Capacitor is not yet present even though we are native.
  */
 export const isNativeCapacitor = (): boolean => {
   if (typeof window === 'undefined') return false;
+
   const cap = (window as any).Capacitor;
-  if (!cap) return false;
-  if (typeof cap.isNativePlatform === 'function') {
-    return cap.isNativePlatform() === true;
+  if (cap) {
+    if (typeof cap.isNativePlatform === 'function') {
+      return cap.isNativePlatform() === true;
+    }
+    const platform = typeof cap.getPlatform === 'function' ? cap.getPlatform() : '';
+    return platform === 'ios' || platform === 'android';
   }
-  const platform = typeof cap.getPlatform === 'function' ? cap.getPlatform() : '';
-  return platform === 'ios' || platform === 'android';
+
+  // Fallback for Android: the Capacitor WebView user-agent always contains "; wv)"
+  // whereas Chrome (used by regular Android browsers and Chrome Custom Tabs) does not.
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  if (/Android/.test(ua) && /; wv\)/.test(ua)) return true;
+
+  return false;
+};
+
+/**
+ * Async version of isNativeCapacitor that waits for the Capacitor bridge to initialize
+ * before checking. Use this in sign-in flows where you need a reliable answer before
+ * opening the OAuth browser.
+ */
+export const isNativeCapacitorAsync = async (): Promise<boolean> => {
+  await waitForCapacitor();
+  return isNativeCapacitor();
 };
 
 /**

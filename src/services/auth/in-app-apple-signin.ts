@@ -4,7 +4,7 @@
  */
 
 import { verifyState, generateRandomState } from './apple-signin';
-import { isNativeCapacitor } from '@/lib/capacitor';
+import { isNativeCapacitor, isNativeCapacitorAsync } from '@/lib/capacitor';
 
 // Dynamic import for Capacitor Browser to avoid build issues
 let Browser: any = null;
@@ -28,7 +28,8 @@ export const initiateInAppAppleSignIn = async (options?: InAppAppleSignInOptions
     throw new Error('Auth0 configuration is missing. Please check your environment variables.');
   }
 
-  const isNativeApp = isNativeCapacitor();
+  // Use the async version to handle Android's delayed bridge injection.
+  const isNativeApp = await isNativeCapacitorAsync();
 
   // Use environment variable for redirect URI to ensure consistency
   // For Capacitor, use custom URL scheme to return to app
@@ -198,10 +199,14 @@ export const closeInAppBrowser = async () => {
 };
 
 /**
- * Smart Apple Sign-In that chooses the best method based on environment
+ * Smart Apple Sign-In that chooses the best method based on environment.
+ * Uses isNativeCapacitorAsync to wait for the Capacitor bridge to initialize
+ * on Android before making the decision (avoids race conditions where the bridge
+ * isn't injected yet when this function is first called).
  */
 export const smartAppleSignIn = async (options?: InAppAppleSignInOptions) => {
-  if (isNativeCapacitor()) {
+  const isNative = await isNativeCapacitorAsync();
+  if (isNative) {
     try {
       return await initiateInAppAppleSignIn(options);
     } catch (error) {
