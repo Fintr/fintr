@@ -5,6 +5,7 @@
 
 import { verifyState, generateRandomState } from './google-signin';
 import { isNativeCapacitor, isNativeCapacitorAsync } from '@/lib/capacitor';
+import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
 
 export interface InAppBrowserOptions {
   redirectUri?: string;
@@ -99,6 +100,13 @@ export const initiateInAppBrowserGoogleSignIn = async (options?: InAppBrowserOpt
   }
   
   try {
+    // Ensure the native Capacitor bridge is set up before importing any plugin.
+    // On Android with server.url, the bridge injection via handleProxyRequest can
+    // silently fail (URL path mismatch or Brotli encoding), leaving PluginHeaders
+    // unset and all plugins permanently registered with their web fallback.
+    // initCapacitorBridgeIfNeeded() detects this and sets up the bridge manually.
+    initCapacitorBridgeIfNeeded();
+
     // Import Capacitor Browser plugin
     const { Browser } = await import('@capacitor/browser');
 
@@ -128,7 +136,9 @@ export const initiateInAppBrowserGoogleSignIn = async (options?: InAppBrowserOpt
           finish('browserFinished');
         });
 
-        // Android: resolve when the app returns to the foreground
+        // Android: resolve when the app returns to the foreground.
+        // initCapacitorBridgeIfNeeded() was already called above so App plugin
+        // will use the native path if we're on Android.
         let appStateListener: { remove: () => void } | null = null;
         try {
           const { App } = await import('@capacitor/app');

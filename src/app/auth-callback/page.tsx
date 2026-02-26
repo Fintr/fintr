@@ -9,6 +9,7 @@ import { verifyState, getOriginalRedirectPath } from '@/services/auth/google-sig
 import { AuthStorage, AuthStorageData, AuthTokens } from '@/lib/auth-storage';
 import { resetGlobalAuthLock } from '@/components/deep-link-handler';
 import { isNativeCapacitor } from '@/lib/capacitor';
+import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
 
 // Helper function to detect if we're on iOS mobile
 const isIOSDevice = (): boolean => {
@@ -51,6 +52,7 @@ export default function AuthCallback() {
       try {
         if (isNativeCapacitor()) {
           console.log('Capacitor environment detected - attempting to close browser');
+          initCapacitorBridgeIfNeeded();
           try {
             const { Browser } = await import('@capacitor/browser');
             await Browser.close();

@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { smartInAppBrowserGoogleSignIn } from "@/services/auth/modal-google-signin";
 import { smartAppleSignIn } from "@/services/auth/in-app-apple-signin";
 import { isNativeCapacitor } from "@/lib/capacitor";
+import { initCapacitorBridgeIfNeeded } from "@/lib/capacitor-bridge-init";
 
 interface UnifiedAuthPageProps {
   onBack?: () => void;
@@ -77,6 +78,8 @@ const UnifiedAuthPage = ({
     // user has returned to the app (after the OAuth browser closed).
     let appStateCleanup: (() => void) | null = null;
     if (isNativeCapacitor()) {
+      // Initialize bridge before importing any Capacitor plugin
+      initCapacitorBridgeIfNeeded();
       import('@capacitor/app').then(({ App }) => {
         App.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
           if (isActive) {

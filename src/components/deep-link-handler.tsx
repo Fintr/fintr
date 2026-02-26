@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthStorage } from '@/lib/auth-storage';
+import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
 
 // Global flag to prevent processing during auth flows
 let globalAuthLock = false;
@@ -35,9 +36,13 @@ export default function DeepLinkHandler() {
       // Give Capacitor time to initialize
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      if (!(window as any).Capacitor) {
+      if (!(window as any).Capacitor && !(window as any).androidBridge) {
         return;
       }
+
+      // Ensure the native bridge (PluginHeaders, nativeCallback, etc.) is set up.
+      // On Android with server.url this can be missing if the HTML injection failed.
+      initCapacitorBridgeIfNeeded();
 
       try {
         const { App } = await import('@capacitor/app');

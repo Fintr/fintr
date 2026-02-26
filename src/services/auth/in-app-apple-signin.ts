@@ -5,6 +5,7 @@
 
 import { verifyState, generateRandomState } from './apple-signin';
 import { isNativeCapacitor, isNativeCapacitorAsync } from '@/lib/capacitor';
+import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
 
 // Dynamic import for Capacitor Browser to avoid build issues
 let Browser: any = null;
@@ -87,7 +88,7 @@ export const initiateInAppAppleSignIn = async (options?: InAppAppleSignInOptions
   console.log('\n=== Apple Sign-In Debug Info ===');
   console.log('Auth0 Domain:', auth0Domain);
   console.log('Client ID:', clientId ? `${clientId.substring(0, 10)}...` : 'NOT SET');
-  console.log('Is Capacitor Environment:', isCapacitor);
+  console.log('Is native Capacitor app (fintrapp used):', isNativeApp);
   console.log('App Base URL:', appBaseUrl || 'NOT SET');
   console.log('Redirect URI:', redirectUri);
   console.log('Full Authorization URL:', authorizationUrl.toString());
@@ -99,6 +100,12 @@ export const initiateInAppAppleSignIn = async (options?: InAppAppleSignInOptions
   }
   
   try {
+    // Ensure the native Capacitor bridge is set up before importing any plugin.
+    // On Android with server.url, the bridge injection via handleProxyRequest can
+    // silently fail (URL path mismatch or Brotli encoding), leaving PluginHeaders
+    // unset and all plugins permanently registered with their web fallback.
+    initCapacitorBridgeIfNeeded();
+
     // Dynamically import Browser plugin
     if (!Browser) {
       console.log('📦 Loading @capacitor/browser...');

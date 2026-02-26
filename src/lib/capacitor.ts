@@ -2,6 +2,8 @@
  * Capacitor environment detection and utilities
  */
 
+import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
+
 /**
  * Wait for Capacitor to be ready (if in Capacitor environment)
  * Also ensures Capacitor is fully initialized with all methods
@@ -179,6 +181,7 @@ export const openUrl = async (
   
   if (isCapacitor) {
     try {
+      initCapacitorBridgeIfNeeded();
       const { Browser } = await import('@capacitor/browser');
       
       await Browser.open({
