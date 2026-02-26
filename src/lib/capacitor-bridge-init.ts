@@ -20,8 +20,12 @@
  *
  * This module detects the gap and fills it synchronously:
  *   - sets up cap.nativeCallback / cap.nativePromise (backed by androidBridge)
+ *   - sets cap.fromNative so the native layer can deliver responses back to JS
+ *     (Android native bridge uses evaluateJavascript("window.Capacitor.fromNative(…)")
+ *      — without this function, ALL native responses are silently dropped and
+ *      every nativePromise hangs forever)
  *   - sets cap.PluginHeaders for Browser & App so registerPlugin uses native
- *   - sets window.androidBridge.onmessage to dispatch callbacks back to JS
+ *   - sets window.androidBridge.onmessage as secondary delivery path
  *
  * MUST be called (awaited) before the first dynamic import of
  * @capacitor/browser or @capacitor/app.
@@ -34,8 +38,11 @@ export const initCapacitorBridgeIfNeeded = (): void => {
 
   const win = window as any;
 
-  // Only needed on Android (androidBridge is exposed via addJavascriptInterface)
-  if (!win.androidBridge) return;
+  // Only needed on Android (androidBridge is exposed via addJavascriptInterface).
+  // Capital-A AndroidBridge is the raw Java interface; lowercase androidBridge
+  // is the alias set up by native-bridge.js when injection succeeds. Check both.
+  const hasAndroidBridge = !!(win.androidBridge || win.AndroidBridge);
+  if (!hasAndroidBridge) return;
 
   const cap = (win.Capacitor = win.Capacitor || {});
 
@@ -48,7 +55,7 @@ export const initCapacitorBridgeIfNeeded = (): void => {
 
   console.log('[CapacitorBridgeInit] Initializing Capacitor bridge manually (Android remote-URL mode)');
 
-  type NativeCallback = (data: unknown) => void;
+  type NativeCallback = (data: unknown, err?: unknown) => void;
   type NativeResolve = (value: unknown) => void;
   type NativeReject = (reason: unknown) => void;
 
@@ -61,55 +68,100 @@ export const initCapacitorBridgeIfNeeded = (): void => {
     keepAlive?: boolean;
   }>();
 
-  // --- androidBridge.onmessage (one handler, routes to registered callbacks) ---
+  // --- Shared response dispatcher ---
+  // Mirrors Capacitor's native-bridge.js `returnResult` function.
+  // Native delivers results via EITHER:
+  //   (a) evaluateJavascript("window.Capacitor.fromNative({…})") → cap.fromNative
+  //   (b) androidBridge.onmessage event                         → onmessage handler
+  // Both paths call this function so callbacks always fire.
+  const returnResult = (result: {
+    callbackId: string;
+    success?: boolean;
+    data?: unknown;
+    error?: unknown;
+    save?: boolean;
+  }) => {
+    const stored = callbacks.get(String(result.callbackId));
+    if (!stored) return;
+
+    if (typeof stored.callback === 'function') {
+      // Event-listener / keepAlive callback
+      if (result.success !== false) {
+        stored.callback(result.data);
+      } else {
+        stored.callback(null, result.error);
+      }
+      // Native sets save:false to signal the listener should be torn down
+      if (result.save === false) {
+        callbacks.delete(String(result.callbackId));
+      }
+    } else if (stored.resolve) {
+      // One-shot promise callback
+      if (result.success !== false) {
+        stored.resolve(result.data);
+      } else {
+        stored.reject?.(result.error);
+      }
+      callbacks.delete(String(result.callbackId));
+    }
+  };
+
+  // --- cap.fromNative (primary delivery path for Android native responses) ---
+  // Android Bridge.java calls: evaluateJavascript("window.Capacitor.fromNative({…})")
+  // Without this function every nativePromise hangs forever.
+  cap.fromNative = (result: unknown) => {
+    try {
+      returnResult(result as Parameters<typeof returnResult>[0]);
+    } catch (err) {
+      console.error('[CapacitorBridgeInit] fromNative error', err);
+    }
+  };
+
+  // Ensure the raw Java interface is aliased as win.androidBridge so the
+  // postMessage call below works regardless of which name is present.
+  if (!win.androidBridge && win.AndroidBridge) {
+    win.androidBridge = {
+      postMessage: (data: string) => win.AndroidBridge.postMessage(data),
+    };
+  }
+
+  // --- androidBridge.onmessage (secondary delivery path) ---
   win.androidBridge.onmessage = (event: MessageEvent) => {
     try {
-      const result = JSON.parse(
-        typeof event.data === 'string' ? event.data : JSON.stringify(event.data)
-      );
-      const stored = callbacks.get(result.callbackId);
-      if (!stored) return;
-
-      if (result.error) {
-        stored.reject?.(result.error);
-        callbacks.delete(result.callbackId);
-        return;
-      }
-
-      if (typeof stored.callback === 'function') {
-        stored.callback(result.data);
-        // keep-alive callbacks (e.g. event listeners) persist until removed
-        if (!stored.keepAlive) {
-          callbacks.delete(result.callbackId);
-        }
-      } else if (stored.resolve) {
-        stored.resolve(result.data);
-        callbacks.delete(result.callbackId);
-      }
+      const result =
+        typeof event === 'object' && event !== null && 'data' in event
+          ? JSON.parse(typeof event.data === 'string' ? event.data : JSON.stringify(event.data))
+          : JSON.parse(String(event));
+      returnResult(result);
     } catch (err) {
       console.error('[CapacitorBridgeInit] onmessage parse error', err);
     }
   };
 
   // --- cap.toNative ---
+  // Message format matches Capacitor native-bridge.js exactly (no extra 'type' field).
   cap.toNative = (
     pluginName: string,
     methodName: string,
     options: unknown,
-    storedCallback?: { resolve?: NativeResolve; reject?: NativeReject; callback?: NativeCallback; keepAlive?: boolean }
+    storedCallback?: {
+      resolve?: NativeResolve;
+      reject?: NativeReject;
+      callback?: NativeCallback;
+      keepAlive?: boolean;
+    }
   ): string => {
     const callbackId = String(++callbackIdCounter);
     if (storedCallback) {
-      callbacks.set(callbackId, storedCallback as any);
+      callbacks.set(callbackId, storedCallback);
     }
     try {
       win.androidBridge.postMessage(
         JSON.stringify({
-          type: 'message',
+          callbackId,
           pluginId: pluginName,
           methodName,
           options: options ?? {},
-          callbackId,
         })
       );
     } catch (err) {
@@ -125,22 +177,44 @@ export const initCapacitorBridgeIfNeeded = (): void => {
     options: unknown,
     callback: NativeCallback
   ): string => {
-    return cap.toNative(pluginName, methodName, options, {
-      callback,
-      keepAlive: true,
-    });
+    return cap.toNative(
+      pluginName,
+      methodName,
+      options,
+      { callback, keepAlive: true }
+    );
   };
 
   // --- cap.nativePromise ---
-  cap.nativePromise = (pluginName: string, methodName: string, options: any): Promise<any> => {
+  cap.nativePromise = (
+    pluginName: string,
+    methodName: string,
+    options: unknown
+  ): Promise<unknown> => {
     return new Promise((resolve, reject) => {
       cap.toNative(pluginName, methodName, options, { resolve, reject });
     });
   };
 
-  // --- cap.addListener (global helper used by addListenerNative) ---
-  cap.addListener = (pluginName: string, eventName: string, callback: NativeCallback): string => {
+  // --- cap.addListener (used by @capacitor/core's addListenerNative) ---
+  cap.addListener = (
+    pluginName: string,
+    eventName: string,
+    callback: NativeCallback
+  ): string => {
     return cap.nativeCallback(pluginName, 'addListener', { eventName }, callback);
+  };
+
+  // --- cap.removeListener ---
+  cap.removeListener = (
+    pluginName: string,
+    callbackId: string,
+    eventName: string,
+    _callback: NativeCallback
+  ): void => {
+    cap.nativeCallback(pluginName, 'removeListener', { callbackId, eventName }, () => {
+      callbacks.delete(callbackId);
+    });
   };
 
   // --- Platform detection ---
@@ -176,13 +250,13 @@ export const initCapacitorBridgeIfNeeded = (): void => {
     },
   ];
 
-  // --- Plugins object (old-style compatibility used by native-bridge.js) ---
+  // --- Plugins object (legacy compatibility) ---
   const Plugins = (cap.Plugins = cap.Plugins || {});
 
   Plugins.Browser = {
     addListener: (eventName: string, callback: NativeCallback) =>
       cap.addListener('Browser', eventName, callback),
-    open: (options: any) => cap.nativePromise('Browser', 'open', options),
+    open: (options: unknown) => cap.nativePromise('Browser', 'open', options),
     close: () => cap.nativePromise('Browser', 'close', {}),
     removeAllListeners: () => cap.nativePromise('Browser', 'removeAllListeners', {}),
   };
