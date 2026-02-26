@@ -16,11 +16,15 @@ public class CacheControlPlugin extends Plugin {
   @PluginMethod
   public void clearCacheAndReload(PluginCall call) {
     WebView webView = getBridge().getWebView();
-    if (webView != null) {
+    if (webView == null) {
+      call.resolve();
+      return;
+    }
+    getActivity().runOnUiThread(() -> {
       webView.clearCache(true);
       webView.clearSslPreferences();
       webView.reload();
-    }
-    call.resolve();
+      call.resolve();
+    });
   }
 }

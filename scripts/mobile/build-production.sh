@@ -112,7 +112,7 @@ echo ""
 # Step 5: Verify configuration (app must load from production URL, not localhost)
 echo "🔍 Step 5: Verifying Capacitor configuration..."
 
-if ! grep -q "\"url\": \"${PRODUCTION_WEB_URL}\"" ios/App/App/capacitor.config.json 2>/dev/null; then
+if ! grep -qF "\"url\": \"${PRODUCTION_WEB_URL}" ios/App/App/capacitor.config.json 2>/dev/null; then
     echo "❌ ERROR: capacitor.config.json should load from ${PRODUCTION_WEB_URL}"
     echo "Generated config:"
     grep -A 2 '"server"' ios/App/App/capacitor.config.json 2>/dev/null || true

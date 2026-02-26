@@ -248,6 +248,12 @@ export const initCapacitorBridgeIfNeeded = (): void => {
         { name: 'removeAllListeners', rtype: 'promise' },
       ],
     },
+    {
+      name: 'CacheControl',
+      methods: [
+        { name: 'clearCacheAndReload', rtype: 'promise' },
+      ],
+    },
   ];
 
   // --- Plugins object (legacy compatibility) ---
@@ -268,6 +274,10 @@ export const initCapacitorBridgeIfNeeded = (): void => {
     getLaunchUrl: () => cap.nativePromise('App', 'getLaunchUrl', {}),
     exitApp: () => cap.toNative('App', 'exitApp', {}),
     minimizeApp: () => cap.nativePromise('App', 'minimizeApp', {}),
+  };
+
+  Plugins.CacheControl = {
+    clearCacheAndReload: () => cap.nativePromise('CacheControl', 'clearCacheAndReload', {}),
   };
 
   win.Capacitor = cap;
