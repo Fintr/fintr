@@ -102,61 +102,71 @@ export const initiateInAppBrowserGoogleSignIn = async (options?: InAppBrowserOpt
     // Import Capacitor Browser plugin
     const { Browser } = await import('@capacitor/browser');
 
-    // Return a promise that resolves when the browser closes
+    // Return a promise that resolves when the browser closes.
+    // We listen to both browserFinished and Capacitor's appStateChange because:
+    // - browserFinished: reliable on iOS; on Android it fires when the Custom Tab is
+    //   dismissed by the user but may NOT fire when the tab closes due to a custom
+    //   URL scheme redirect (fintrapp://).
+    // - appStateChange (isActive: true): fires on Android when the app comes back to
+    //   the foreground after the Chrome Custom Tab is dismissed for any reason.
+    //   Browser.close() is a no-op on Android, so this is the reliable Android signal.
     return new Promise<void>(async (resolve, reject) => {
       try {
         let resolved = false;
 
-        // Set up listener for when browser finishes
-        // This will fire when:
-        // 1. User manually closes the browser
-        // 2. Browser redirects to fintrapp://auth-callback (custom URL scheme triggers browser close)
-        const browserFinishedListener = await Browser.addListener('browserFinished', () => {
-          console.log('\n✅ Browser finished event received - closing authentication flow\n');
+        const finish = (label: string) => {
           if (!resolved) {
+            console.log(`\n✅ Browser closed (${label}) - completing authentication flow\n`);
             resolved = true;
-            browserFinishedListener.remove();
+            browserFinishedListener?.remove();
+            appStateListener?.remove();
             resolve();
           }
+        };
+
+        const browserFinishedListener = await Browser.addListener('browserFinished', () => {
+          finish('browserFinished');
         });
+
+        // Android: resolve when the app returns to the foreground
+        let appStateListener: { remove: () => void } | null = null;
+        try {
+          const { App } = await import('@capacitor/app');
+          appStateListener = await App.addListener(
+            'appStateChange',
+            ({ isActive }: { isActive: boolean }) => {
+              if (isActive) finish('appStateChange');
+            }
+          );
+        } catch {
+          // @capacitor/app not available or not on native - ignore
+        }
 
         console.log('\n=== Opening Browser Plugin ===');
         console.log('Authorization URL:', authorizationUrl.toString());
         console.log('Expected Redirect URI:', redirectUri);
         console.log('===============================\n');
 
-        // Open in-app browser with native popup
+        // Open in-app browser. On iOS this is SFSafariViewController (presentationStyle applies).
+        // On Android this is a Chrome Custom Tab (presentationStyle is ignored).
         await Browser.open({
           url: authorizationUrl.toString(),
-          windowName: '_self',
           presentationStyle: 'popover',
           toolbarColor: '#ffffff',
-          showTitle: true
         }).catch((error) => {
           console.error('\n❌ Browser.open error:', error);
-          console.error('Error details:', JSON.stringify(error, null, 2));
-          console.error('==========================\n');
           if (!resolved) {
             resolved = true;
             browserFinishedListener.remove();
+            appStateListener?.remove();
             reject(error);
           }
         });
 
-        // Timeout fallback - if browser doesn't close within 5 minutes, resolve anyway
-        // (User might have completed auth but browserFinished event didn't fire)
-        setTimeout(() => {
-          if (!resolved) {
-            console.warn('\n⚠️ Browser timeout after 5 minutes - resolving promise anyway\n');
-            resolved = true;
-            browserFinishedListener.remove();
-            resolve();
-          }
-        }, 300000); // 5 minutes
+        // Safety timeout — resolves after 5 minutes if no other signal fires.
+        setTimeout(() => finish('timeout'), 300000);
       } catch (error) {
         console.error('\n❌ Browser setup error:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        console.error('===========================\n');
         reject(error);
       }
     });

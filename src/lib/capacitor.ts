@@ -96,8 +96,15 @@ export const isNativeCapacitor = (): boolean => {
  * Async version of isNativeCapacitor that waits for the Capacitor bridge to initialize
  * before checking. Use this in sign-in flows where you need a reliable answer before
  * opening the OAuth browser.
+ *
+ * If the synchronous UA check already returns true (FintrNativeApp in user-agent), we
+ * skip the async bridge wait entirely — the UA is injected by the native layer before
+ * any JS runs so it is always reliable and requires no polling delay.
  */
 export const isNativeCapacitorAsync = async (): Promise<boolean> => {
+  // Fast path: UA check is definitive and synchronous — no need to wait for bridge.
+  if (isNativeCapacitor()) return true;
+  // Slow path: bridge may not be injected yet (Android remote-URL mode).
   await waitForCapacitor();
   return isNativeCapacitor();
 };

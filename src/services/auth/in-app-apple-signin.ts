@@ -107,63 +107,66 @@ export const initiateInAppAppleSignIn = async (options?: InAppAppleSignInOptions
       console.log('✅ Browser plugin loaded successfully');
     }
 
-    // Return a promise that resolves when the browser closes
+    // Return a promise that resolves when the browser closes.
+    // Same dual-signal approach as Google sign-in:
+    // - browserFinished: reliable on iOS; may not fire on Android for custom-scheme redirects.
+    // - appStateChange (isActive: true): reliable on Android when app returns to foreground.
     return new Promise<void>(async (resolve, reject) => {
       try {
         let resolved = false;
 
-        // Set up listener for when browser finishes
-        // This will fire when:
-        // 1. User manually closes the browser
-        // 2. Browser redirects to fintrapp://auth-callback (custom URL scheme triggers browser close)
-        const browserFinishedListener = await Browser.addListener('browserFinished', () => {
-          console.log('\n✅ Browser finished event received - closing authentication flow\n');
+        const finish = (label: string) => {
           if (!resolved) {
+            console.log(`\n✅ Browser closed (${label}) - completing authentication flow\n`);
             resolved = true;
-            browserFinishedListener.remove();
+            browserFinishedListener?.remove();
+            appStateListener?.remove();
             resolve();
           }
+        };
+
+        const browserFinishedListener = await Browser.addListener('browserFinished', () => {
+          finish('browserFinished');
         });
+
+        // Android: resolve when the app returns to the foreground
+        let appStateListener: { remove: () => void } | null = null;
+        try {
+          const { App } = await import('@capacitor/app');
+          appStateListener = await App.addListener(
+            'appStateChange',
+            ({ isActive }: { isActive: boolean }) => {
+              if (isActive) finish('appStateChange');
+            }
+          );
+        } catch {
+          // @capacitor/app not available or not on native - ignore
+        }
 
         console.log('\n=== Opening Browser Plugin ===');
         console.log('Authorization URL:', authorizationUrl.toString());
         console.log('Expected Redirect URI:', redirectUri);
         console.log('===============================\n');
 
-        // Open in-app browser with native popup
+        // Open in-app browser. presentationStyle is iOS-only; Android uses Chrome Custom Tab.
         await Browser.open({
           url: authorizationUrl.toString(),
-          windowName: '_self',
-          presentationStyle: 'popover', // This makes it slide up from bottom on iOS
+          presentationStyle: 'popover',
           toolbarColor: '#ffffff',
-          showTitle: true,
-          title: 'Sign in with Apple',
-          closeButtonCaption: 'Cancel'
         }).catch((error) => {
           console.error('\n❌ Browser.open error:', error);
-          console.error('Error details:', JSON.stringify(error, null, 2));
-          console.error('==========================\n');
           if (!resolved) {
             resolved = true;
             browserFinishedListener.remove();
+            appStateListener?.remove();
             reject(error);
           }
         });
 
-        // Timeout fallback - if browser doesn't close within 5 minutes, resolve anyway
-        // (User might have completed auth but browserFinished event didn't fire)
-        setTimeout(() => {
-          if (!resolved) {
-            console.warn('\n⚠️ Browser timeout after 5 minutes - resolving promise anyway\n');
-            resolved = true;
-            browserFinishedListener.remove();
-            resolve();
-          }
-        }, 300000); // 5 minutes
+        // Safety timeout — resolves after 5 minutes if no other signal fires.
+        setTimeout(() => finish('timeout'), 300000);
       } catch (error) {
         console.error('\n❌ Browser setup error:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        console.error('===========================\n');
         reject(error);
       }
     });

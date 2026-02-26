@@ -71,9 +71,30 @@ const UnifiedAuthPage = ({
     // Reset loading state on mount (in case user navigated back)
     setIsLoading(false);
 
+    // On Android, Browser.close() is a no-op and browserFinished may not fire
+    // when Chrome Custom Tab closes after a custom URL scheme redirect.
+    // Use Capacitor's appStateChange event as the reliable signal that the
+    // user has returned to the app (after the OAuth browser closed).
+    let appStateCleanup: (() => void) | null = null;
+    if (isNativeCapacitor()) {
+      import('@capacitor/app').then(({ App }) => {
+        App.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
+          if (isActive) {
+            console.log('🔄 App became active (Capacitor) - resetting loading state');
+            setIsLoading(false);
+          }
+        }).then((handle) => {
+          appStateCleanup = () => handle.remove();
+        });
+      }).catch(() => {
+        // Ignore if @capacitor/app is unavailable
+      });
+    }
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      appStateCleanup?.();
     };
   }, []);
 
