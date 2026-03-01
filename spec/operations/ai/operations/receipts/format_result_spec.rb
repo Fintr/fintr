@@ -95,6 +95,7 @@ RSpec.describe Ai::Operations::Receipts::FormatResult, type: :operation do
     {
       amount: 100.0,
       date: Date.current.to_s,
+      transaction_type: "expense",
       category_name: "Groceries",
       account_name: "Credit Card",
       description: "Whole Foods", # Adjusted to match current app logic
@@ -203,6 +204,7 @@ RSpec.describe Ai::Operations::Receipts::FormatResult, type: :operation do
         expected_suggested_payload = {
           amount: 100.0,
           date: Date.current.to_s,
+          transaction_type: "expense",
           category_name: "Groceries",
           account_name: "Credit Card",
           description: "Whole Foods", # Matches current app logic
@@ -481,6 +483,7 @@ RSpec.describe Ai::Operations::Receipts::FormatResult, type: :operation do
           expect(payload).to eq(
             amount: 100.0,
             date: Date.current.to_s,
+            transaction_type: "expense",
             category_name: "Groceries",
             account_name: "Credit Card",
             description: "Whole Foods", # Matches current app logic
@@ -508,6 +511,7 @@ RSpec.describe Ai::Operations::Receipts::FormatResult, type: :operation do
         expect(payload).to eq(
           amount: 0.0,
           date: Date.current.to_s,
+          transaction_type: "expense",
           category_name: "Family",
           account_name: "Credit Card",
           description: "", # Adjusted to match current app logic

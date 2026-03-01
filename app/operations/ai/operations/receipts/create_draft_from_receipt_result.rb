@@ -16,6 +16,7 @@ module Ai
               required(:suggested_transaction_payload).hash do
                 required(:amount).value(:decimal)
                 required(:date).value(:date)
+                required(:transaction_type).value(:string, included_in?: %w[income expense])
                 required(:category_name).value(:string)
                 required(:account_name).value(:string)
                 required(:description).value(:string)

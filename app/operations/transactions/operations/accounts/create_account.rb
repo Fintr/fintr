@@ -72,6 +72,7 @@ module Transactions
             space_id: params[:space_id],
             amount: params[:balance],
             date: Time.zone.today,
+            transaction_type: "income",
             category_name: "Initial Balance",
             account_name: account.name,
             schedule_type: "one_time"

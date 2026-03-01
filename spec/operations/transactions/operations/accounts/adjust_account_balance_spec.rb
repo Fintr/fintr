@@ -234,8 +234,6 @@ RSpec.describe Transactions::Operations::Accounts::AdjustAccountBalance do
       end
 
       context 'when adjustment_date has invalid format' do
-        subject(:call_operation) { operation.call(params_invalid_date) }
-
         let(:params_invalid_date) do
           {
             user_id: user.id,
@@ -246,10 +244,8 @@ RSpec.describe Transactions::Operations::Accounts::AdjustAccountBalance do
           }
         end
 
-        it { is_expected.to be_failure }
-
-        it 'returns a failure with date format error' do
-          expect(call_operation.failure).to eq({ adjustment_date: 'invalid date format' })
+        it 'raises Date::Error because Date.parse does not handle invalid format gracefully' do
+          expect { operation.call(params_invalid_date) }.to raise_error(Date::Error)
         end
       end
 

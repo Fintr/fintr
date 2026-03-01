@@ -116,10 +116,12 @@ module Ai
           # Handle case where extracted_data might be nil
           return Success(default_transaction_payload) if extracted_data.nil?
 
-          # Build the exact payload frontend should send if user doesn't change anything
+          # Build the exact payload frontend should send if user doesn't change anything.
+          # Receipts document purchases, so the suggested transaction type is always expense.
           payload = {
             amount: extract_amount_value(extracted_data),
             date: extract_date_value(extracted_data),
+            transaction_type: "expense",
             category_name: extract_category_value(extracted_data),
             account_name: extract_account_value(extracted_data),
             description: build_description(extracted_data),
@@ -133,6 +135,7 @@ module Ai
           {
             amount: 0.0,
             date: Date.current.to_s,
+            transaction_type: "expense",
             category_name: "Family",
             account_name: "Credit Card",
             description: "",

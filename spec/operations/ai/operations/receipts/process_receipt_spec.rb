@@ -93,6 +93,7 @@ RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
         validation_flags: { reasonableAmount: true },
         suggested_transaction_payload: {
           amount: 100.00,
+          transaction_type: "expense",
           category_name: "Groceries",
           date: Date.current,
           account_name: "Cash",
@@ -203,6 +204,7 @@ RSpec.describe Ai::Operations::Receipts::ProcessReceipt, type: :operation do
         validation_flags: { reasonableAmount: true },
         suggested_transaction_payload: {
           amount: 100.00,
+          transaction_type: "expense",
           category_name: "Groceries",
           date: Date.current,
           account_name: "Cash",

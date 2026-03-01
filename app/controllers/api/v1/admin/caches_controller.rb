@@ -3,7 +3,7 @@
 module Api
   module V1
     module Admin
-      class CacheController < ApiController
+      class CachesController < ApiController
         skip_before_action :ensure_space_access!
 
         # GET /api/v1/admin/cache/version

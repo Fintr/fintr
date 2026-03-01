@@ -81,7 +81,11 @@ module Transactions
       end
 
       def find_category(params:)
-        category = Transactions::Category.find_by!(name: params[:category_name], space_id: params[:space_id])
+        category = Transactions::Category.find_by!(
+          name: params[:category_name],
+          space_id: params[:space_id],
+          category_type: params[:transaction_type]
+        )
         Success(category)
       rescue ActiveRecord::RecordNotFound
         Failure(category_name: "not found")
@@ -106,6 +110,7 @@ module Transactions
         params[:installment_count] ||= 1 if params[:schedule_type] == "installment"
         params.delete(:category_name)
         params.delete(:account_name)
+        params.delete(:transaction_type)
         Success(params)
       end
 

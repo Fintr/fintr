@@ -136,6 +136,7 @@ module Imports
           space_id: space_id,
           amount: row_data[:amount].to_d,
           date:,
+          transaction_type: category.category_type,
           category_name: category.name,
           account_name: account.name,
           description: row_data[:description],

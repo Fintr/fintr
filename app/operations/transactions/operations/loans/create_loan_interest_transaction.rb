@@ -76,6 +76,7 @@ module Transactions
             space_id: loan.space_id.to_s,
             amount: interest_amount.amount,
             date: loan_payment.date,
+            transaction_type: loan.loan_type == "borrowed" ? "expense" : "income",
             category_name: category.name,
             account_name: account.name,
             description: description,

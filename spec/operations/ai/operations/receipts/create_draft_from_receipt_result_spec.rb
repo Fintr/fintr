@@ -21,6 +21,7 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
         suggested_transaction_payload: {
           amount: 100.50,
           date: Date.current,
+          transaction_type: "expense",
           category_name: category.name,
           account_name: account.name,
           description: "Receipt from Whole Foods"
@@ -135,6 +136,18 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
         end
       end
 
+      context "when receipt_result.suggested_transaction_payload.transaction_type is missing" do
+        let(:params) do
+          valid_params.deep_merge(receipt_result: { suggested_transaction_payload: { transaction_type: nil } })
+        end
+
+        it "fails with an error" do
+          result = operation.validate(params: params)
+          expect(result).to be_failure
+          expect(result.failure).to include(receipt_result: { suggested_transaction_payload: { transaction_type: ['must be a string'] } })
+        end
+      end
+
       context "when receipt_result is missing" do
         let(:params) do
           valid_params.except(:receipt_result)
@@ -178,6 +191,7 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
         expected_transaction_params = {
           amount: 100.50,
           date: Date.current,
+          transaction_type: "expense",
           category_name: category.name,
           account_name: account.name,
           description: "Receipt from Whole Foods",
@@ -374,6 +388,8 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
   end
 
   describe "integration with real CreateTransaction operation" do
+    let(:category) { create(:category, space: space, category_type: "expense") }
+
     context "when all required data exists" do
       let(:transaction_params) do
         {
@@ -386,6 +402,7 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
             suggested_transaction_payload: {
               amount: 75.25,
               date: Date.current,
+              transaction_type: "expense",
               category_name: category.name,
               account_name: account.name,
               description: "Coffee shop receipt"
@@ -420,6 +437,7 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
             suggested_transaction_payload: {
               amount: 50.00,
               date: Date.current,
+              transaction_type: "expense",
               category_name: "Non-existent Category",
               account_name: account.name,
               description: "Test receipt"
@@ -447,6 +465,7 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
             suggested_transaction_payload: {
               amount: 50.00,
               date: Date.current,
+              transaction_type: "expense",
               category_name: category.name,
               account_name: "Non-existent Account",
               description: "Test receipt"

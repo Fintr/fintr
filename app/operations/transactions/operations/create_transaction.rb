@@ -16,6 +16,7 @@ module Transactions
 
           required(:amount).value(:decimal)
           required(:date).value(:date)
+          required(:transaction_type).value(:string, included_in?: %w[income expense])
           required(:category_name).value(:string)
           required(:account_name).value(:string)
           optional(:description).value(:string)
@@ -111,7 +112,11 @@ module Transactions
       private
 
       def find_category(params:)
-        category = Transactions::Category.find_by(name: params[:category_name], space_id: params[:space_id])
+        category = Transactions::Category.find_by(
+          name: params[:category_name],
+          space_id: params[:space_id],
+          category_type: params[:transaction_type]
+        )
         return Failure(category_name: "not found") unless category
 
         Success(category)
@@ -181,6 +186,7 @@ module Transactions
         params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
         params.delete(:category_name)
         params.delete(:account_name)
+        params.delete(:transaction_type)
         params.delete(:skip_calculation)
         params.delete(:skip_embedding)
         params.delete(:original_currency)
@@ -207,11 +213,11 @@ module Transactions
       end
 
       def create_transaction(params:, category:)
-        transaction_type = category.income? ? Transactions::Income : Transactions::Expense
-        transaction_type = Transactions::Draft if params[:draft]
+        type_klass = category.income? ? Transactions::Income : Transactions::Expense
+        type_klass = Transactions::Draft if params[:draft]
 
         transaction_params = params.except(:file, :draft, :draft_id, :file_id)
-        transaction = transaction_type.new(**transaction_params)
+        transaction = type_klass.new(**transaction_params)
 
         transaction.save!
 

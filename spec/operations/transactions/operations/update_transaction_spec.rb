@@ -7,8 +7,8 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
   let!(:space) { create(:personal_space) }
   let!(:space_user) { create(:space_user, user:, space:) }
   let!(:account) { create(:account, space:) }
-  let!(:category) { create(:category, name: 'Food', space:) }
-  let!(:new_category) { create(:category, name: 'Entertainment', space:) }
+  let!(:category) { create(:category, name: 'Food', space:, category_type: 'expense') }
+  let!(:new_category) { create(:category, name: 'Entertainment', space:, category_type: 'expense') }
 
   describe '#call' do
     context 'with a one-time transaction' do
@@ -32,6 +32,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 150.00,
           date: transaction.date.to_date,
+          transaction_type: 'expense',
           category_name: new_category.name,
           account_name: account.name,
           description: 'Updated description',
@@ -85,6 +86,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
             space_id: space.id,
             amount: 150.00,
             date: child_transaction.date.to_date,
+            transaction_type: 'expense',
             category_name: new_category.name,
             account_name: account.name,
             description: 'Updated description',
@@ -117,6 +119,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
             space_id: space.id,
             amount: 150.00,
             date: child_transaction.date.to_date,
+            transaction_type: 'expense',
             category_name: new_category.name,
             account_name: account.name,
             description: 'Updated description',
@@ -164,6 +167,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 150.00,
           date: transaction.date.to_date,
+          transaction_type: 'expense',
           category_name: 'Non-existent Category',
           account_name: account.name,
           schedule_type: 'one_time'
@@ -180,6 +184,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 150.00,
           date: transaction.date.to_date,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           schedule_type: 'one_time',
@@ -213,6 +218,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
             space_id: space.id,
             amount: 150.00,
             date: transaction.date.to_date,
+            transaction_type: 'expense',
             category_name: category.name,
             account_name: account.name,
             schedule_type: 'one_time'
@@ -225,6 +231,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           user_id: user.id,
           space_id: space.id,
           amount: 150.00,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           schedule_type: 'one_time'
@@ -240,6 +247,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
             space_id: space.id,
             amount: 150.00,
             date: transaction.date.to_date,
+            transaction_type: 'expense',
             category_name: category.name,
             account_name: account.name,
             schedule_type: 'one_time'
@@ -258,6 +266,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
             space_id: space.id,
             amount: 150.00,
             date: transaction.date.to_date,
+            transaction_type: 'expense',
             category_name: category.name,
             account_name: account.name,
             schedule_type: 'one_time',
@@ -325,13 +334,13 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
 
     describe '#find_category' do
       it 'finds existing category' do
-        result = described_class.new.send(:find_category, params: { category_name: category.name, space_id: space.id })
+        result = described_class.new.send(:find_category, params: { transaction_type: 'expense', category_name: category.name, space_id: space.id })
         expect(result).to be_success
         expect(result.value!).to eq(category)
       end
 
       it 'fails when category not found' do
-        result = described_class.new.send(:find_category, params: { category_name: 'Non-existent', space_id: space.id })
+        result = described_class.new.send(:find_category, params: { transaction_type: 'expense', category_name: 'Non-existent', space_id: space.id })
         expect(result).to be_failure
         expect(result.failure).to include(category_name: "not found")
       end
@@ -367,6 +376,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           user_id: user.id,
           space_id: space.id,
           amount: 100.00,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           schedule_type: 'repeat',
@@ -397,6 +407,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           user_id: user.id,
           space_id: space.id,
           amount: 100.00,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           schedule_type: 'repeat'
@@ -419,6 +430,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           user_id: user.id,
           space_id: space.id,
           amount: 100.00,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           schedule_type: 'installment'
@@ -447,6 +459,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           user_id: user.id,
           space_id: space.id,
           amount: 100.00,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           schedule_type: 'one_time'
@@ -874,6 +887,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 50.00,
           date: first_of_previous_month.to_date,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           description: 'Weekly expense',
@@ -905,6 +919,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 50.00,
           date: Date.current.to_date,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           description: 'Weekly expense',
@@ -952,6 +967,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 50.00,
           date: past_date.to_date,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           description: 'Standalone past expense',
@@ -994,6 +1010,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 75.00, # Changed amount
           date: standalone_future_transaction.date.to_date, # Same date
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           description: 'Standalone future expense',
@@ -1047,6 +1064,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 150.00, # Changed amount
           date: calculated_transaction.date.to_date,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           description: 'Past expense',
@@ -1086,6 +1104,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 100.00,
           date: future_date.to_date,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           description: 'Future expense',
@@ -1154,6 +1173,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 1.00,
           date: august_first,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           description: 'Weekly expense',
@@ -1198,6 +1218,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 150.00,
           date: transaction.date.to_date,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           schedule_type: 'one_time'
@@ -1216,6 +1237,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 150.00,
           date: transaction.date.to_date,
+          transaction_type: 'expense',
           category_name: 'Non-existent Category',
           account_name: account.name,
           schedule_type: 'one_time'
@@ -1234,6 +1256,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 150.00,
           date: transaction.date.to_date,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: 'Non-existent Account',
           schedule_type: 'one_time'
@@ -1252,6 +1275,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 150.00,
           date: transaction.date.to_date,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           schedule_type: 'repeat',
@@ -1289,6 +1313,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           space_id: space.id,
           amount: 150.00,
           date: transaction.date.to_date,
+          transaction_type: 'expense',
           category_name: category.name,
           account_name: account.name,
           schedule_type: 'one_time'

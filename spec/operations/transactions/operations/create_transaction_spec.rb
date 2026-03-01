@@ -22,6 +22,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           amount: 150.0,
           date: Date.current,
           description: 'Salary payment',
+          transaction_type: 'income',
           category_name: income_category.name,
           account_name: account.name,
           schedule_type: 'one_time'
@@ -62,6 +63,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           amount: 75.0,
           date: Date.current,
           description: 'Grocery shopping',
+          transaction_type: 'expense',
           category_name: expense_category.name,
           account_name: account.name,
           schedule_type: 'one_time'
@@ -101,6 +103,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           amount: 100.0,
           date: Date.current,
           description: 'Draft transaction',
+          transaction_type: 'expense',
           category_name: expense_category.name,
           account_name: account.name,
           schedule_type: 'one_time',
@@ -142,6 +145,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           amount: 150.0,
           date: Date.current,
           description: 'Salary payment',
+          transaction_type: 'income',
           category_name: income_category.name,
           account_name: account.name,
           schedule_type: 'one_time'
@@ -173,6 +177,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           amount: 50.0,
           date: Date.current,
           description: 'Transaction with file',
+          transaction_type: 'expense',
           category_name: expense_category.name,
           account_name: account.name,
           schedule_type: 'one_time',
@@ -208,6 +213,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           amount: 50.0,
           date: Date.current,
           description: 'Transaction with file_id',
+          transaction_type: 'expense',
           category_name: expense_category.name,
           account_name: account.name,
           schedule_type: 'one_time',
@@ -234,6 +240,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           amount: 100.0,
           date: Date.current,
           description: 'Transaction with draft removal',
+          transaction_type: 'expense',
           category_name: expense_category.name,
           account_name: account.name,
           schedule_type: 'one_time',
@@ -262,6 +269,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           amount: 50.0,
           date: Date.current,
           description: 'Netflix subscription',
+          transaction_type: 'expense',
           category_name: expense_category.name,
           account_name: account.name,
           schedule_type: 'repeat',
@@ -296,6 +304,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           amount: 150.0,
           date: Date.current,
           description: 'Phone payment',
+          transaction_type: 'expense',
           category_name: expense_category.name,
           account_name: account.name,
           schedule_type: 'installment',
@@ -331,6 +340,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           amount: 100.0,
           date: Date.current,
           description: 'Too expensive item',
+          transaction_type: 'expense',
           category_name: expense_category.name,
           account_name: low_balance_account.name,
           schedule_type: 'one_time'
@@ -385,6 +395,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
             amount: 100.0,
             date: Date.current,
             description: 'Test',
+            transaction_type: 'expense',
             category_name: 'NonExistentCategory',
             account_name: account.name,
             schedule_type: 'one_time'
@@ -411,6 +422,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
             amount: 100.0,
             date: Date.current,
             description: 'Test',
+            transaction_type: 'income',
             category_name: income_category.name,
             account_name: 'NonExistentAccount',
             schedule_type: 'one_time'
@@ -437,6 +449,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
             amount: 100.0,
             date: Date.current,
             description: 'Test',
+            transaction_type: 'income',
             category_name: income_category.name,
             account_name: account.name,
             schedule_type: 'invalid_type'
@@ -463,6 +476,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
             amount: 100.0,
             date: Date.current,
             description: 'Test recurring payment',
+            transaction_type: 'expense',
             category_name: expense_category.name,
             account_name: account.name,
             schedule_type: 'repeat'
@@ -489,6 +503,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
             amount: 100.0,
             date: Date.current,
             description: 'Test recurring payment',
+            transaction_type: 'expense',
             category_name: expense_category.name,
             account_name: account.name,
             schedule_type: 'repeat',
@@ -517,6 +532,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
             amount: 100.0,
             date: Date.current,
             description: 'Test installment payment',
+            transaction_type: 'expense',
             category_name: expense_category.name,
             account_name: account.name,
             schedule_type: 'installment'

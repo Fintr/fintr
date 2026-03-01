@@ -84,6 +84,7 @@ module Transactions
             user_id: params[:user_id],
             amount: adjustment_amount.abs,
             date: params[:adjustment_date],
+            transaction_type: category.category_type,
             category_name: category.name,
             account_name: account.name,
             description: "Balance adjustment",
