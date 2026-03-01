@@ -364,6 +364,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       const transactionData = {
         amount: Number(amountToUse),
         description: formState.description || "",
+        transactionType: "income" as const,
         categoryName: formState.categoryName,
         accountName: formState.accountName,
         date: format(date, "yyyy-MM-dd"),

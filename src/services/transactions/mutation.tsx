@@ -6,6 +6,8 @@ import { formDataWithFile } from '@/utils/formUtils';
 export interface CreateTransactionType {
   amount: number;
   description?: string;
+  /** Explicit form type: "income" or "expense" */
+  transactionType: "income" | "expense";
   categoryName: string;
   accountName: string;
   date: string;

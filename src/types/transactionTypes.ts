@@ -46,6 +46,8 @@ export interface UpdateTransactionType {
   amount: number;
   categoryName: string;
   accountName: string;
+  /** Explicit form type sent to API: "income" or "expense" */
+  transactionType: "income" | "expense";
   type: CombinedTransactionTypeEnum;
   scheduleType: ScheduleTypeEnum;
   repeatInterval: string;

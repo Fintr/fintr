@@ -437,6 +437,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       const transactionData = {
         amount: numberFormatting.cleanForBackend(amountToSend),
         description: formState.description || "",
+        transactionType: "expense" as const,
         categoryName: formState.categoryName,
         accountName: formState.accountName,
         date: format(date, "yyyy-MM-dd"),
