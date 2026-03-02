@@ -193,6 +193,17 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       queryClient.invalidateQueries({
         queryKey: ["dashboard", spaceCode, startDate, endDate],
       });
+      // Invalidate accounts to refresh account balances after delete
+      queryClient.invalidateQueries({
+        queryKey: ["accounts"],
+        refetchType: "active",
+      });
+      // Invalidate insights query so Insights tab reflects latest stats
+      queryClient.invalidateQueries({
+        queryKey: ["insights"],
+        refetchType: "active",
+        exact: false,
+      });
       
       setDeleteScopeModalOpen(false);
       // Reset transaction state after a delay to prevent visual glitch
@@ -439,6 +450,19 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         ],
         refetchType: 'active'
       });
+      // Invalidate dashboard, accounts, and insights so summary, balances, and charts refresh
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", spaceCode, startDate, endDate],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["accounts"],
+        refetchType: "active",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["insights"],
+        refetchType: "active",
+        exact: false,
+      });
       setEditingCell(null);
       setEditValue("");
     } catch (error) {
@@ -461,9 +485,19 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       queryKey: ["transactions"],
     });
 
-    // Invalidate dashboard query to refresh financial summary
+    // Invalidate dashboard and accounts to refresh financial summary and balances
     queryClient.invalidateQueries({
       queryKey: ["dashboard", spaceCode, startDate, endDate],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["accounts"],
+      refetchType: "active",
+    });
+    // Invalidate insights so Insights tab stays in sync
+    queryClient.invalidateQueries({
+      queryKey: ["insights"],
+      refetchType: "active",
+      exact: false,
     });
   };
 

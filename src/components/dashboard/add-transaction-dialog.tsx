@@ -226,16 +226,22 @@ const AddTransactionDialog = ({
         queryKey: ["loans"],
         refetchType: 'active',
       });
-      // Invalidate accounts when loan is created/updated since it affects account balances
-      queryClient.invalidateQueries({ 
-        queryKey: ["accounts"],
-        refetchType: 'active',
-      });
     }
+    // Invalidate accounts when any transaction/transfer/loan is created or updated
+    queryClient.invalidateQueries({ 
+      queryKey: ["accounts"],
+      refetchType: 'active',
+    });
     
     // Invalidate dashboard query to refresh financial summary
     queryClient.invalidateQueries({
       queryKey: ["dashboard"],
+    });
+    // Invalidate insights query so Insights tab reflects latest stats
+    queryClient.invalidateQueries({
+      queryKey: ["insights"],
+      refetchType: 'active',
+      exact: false,
     });
     
     // Call the callback if provided
