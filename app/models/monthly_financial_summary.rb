@@ -40,6 +40,17 @@ class MonthlyFinancialSummary < ApplicationRecord
   scope :recent,
         -> { order(year: :desc, month: :desc) }
 
+  scope :in_date_range,
+        ->(start_date:, end_date:) {
+          start_y, start_m = start_date.year, start_date.month
+          end_y, end_m = end_date.year, end_date.month
+          where(
+            " (year > ? OR (year = ? AND month >= ?)) AND (year < ? OR (year = ? AND month <= ?)) ",
+            start_y, start_y, start_m,
+            end_y, end_y, end_m
+          ).order(:year, :month)
+        }
+
   def self.find_or_create_for_space_and_month(space:, year: Date.current.year, month: Date.current.month)
     summary = find_or_initialize_by(
       space:,

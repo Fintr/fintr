@@ -172,6 +172,47 @@ RSpec.describe Transactions::Operations::DeleteTransaction do
       end
     end
 
+    context 'with delete_scope: all_in_series across multiple months' do
+      let(:other_month_transaction) do
+        create(
+          :expense_transaction,
+          user:,
+          space:,
+          account:,
+          category:,
+          date: Time.zone.today + 1.month
+        )
+      end
+
+      before do
+        allow(transaction).to receive(:series_transactions).and_return(
+          Transactions::Transaction.where(id: [transaction.id, other_month_transaction.id])
+        )
+      end
+
+      it 'recalculates monthly summaries for all affected months' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Success())
+
+        result = operation.call({
+          id: transaction.id,
+          delete_scope: "all_in_series"
+        })
+
+        expect(result).to be_success
+
+        expect(update_summary_operation).to have_received(:call).with(
+          space_id: transaction.space_id,
+          transaction_date: transaction.date.to_date
+        )
+        expect(update_summary_operation).to have_received(:call).with(
+          space_id: transaction.space_id,
+          transaction_date: other_month_transaction.date.to_date
+        )
+      end
+    end
+
     context 'when delete_scope is not specified' do
       it 'defaults to calling DeleteThisTransaction operation' do
         expect(delete_this_operation).to receive(:call).with(transaction: transaction).and_return(Success(transaction))

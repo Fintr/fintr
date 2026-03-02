@@ -40,9 +40,8 @@ module Dashboards
           MonthlyFinancialSummaries::Queries::CurrentMonthSummary.call(params:)
         end
       end
-
+      
       def combine_data(dashboard_data:, financial_summary:)
-        # Serialize the space model using the DashboardSerializer
         serialized_dashboard = Spaces::Serializers::DashboardSerializer.render_as_hash(dashboard_data)
 
         combined_data = {

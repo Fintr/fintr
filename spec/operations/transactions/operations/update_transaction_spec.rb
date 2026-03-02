@@ -1328,6 +1328,65 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
       end
     end
 
+    context 'when date changes to a different month' do
+      let(:old_date) { Date.new(2024, 3, 15) }
+      let(:new_date) { Date.new(2024, 4, 20) }
+
+      before do
+        transaction.update!(date: old_date)
+      end
+
+      it 'recalculates the monthly summary for the old month' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Success())
+
+        result = described_class.new.call(
+          id: transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 150.00,
+          date: new_date,
+          transaction_type: 'expense',
+          category_name: category.name,
+          account_name: account.name,
+          schedule_type: 'one_time'
+        )
+
+        expect(result).to be_success
+
+        expect(update_summary_operation).to have_received(:call).with(
+          space_id: transaction.space_id,
+          transaction_date: old_date
+        )
+      end
+
+      it 'recalculates the monthly summary for the new month' do
+        update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)
+        allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
+        allow(update_summary_operation).to receive(:call).and_return(Success())
+
+        result = described_class.new.call(
+          id: transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 150.00,
+          date: new_date,
+          transaction_type: 'expense',
+          category_name: category.name,
+          account_name: account.name,
+          schedule_type: 'one_time'
+        )
+
+        expect(result).to be_success
+
+        expect(update_summary_operation).to have_received(:call).with(
+          space_id: transaction.space_id,
+          transaction_date: new_date
+        )
+      end
+    end
+
     describe '#update_monthly_summary' do
       it 'calls MonthlyFinancialSummaries::Operations::UpdateSummary with correct parameters' do
         update_summary_operation = instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary)

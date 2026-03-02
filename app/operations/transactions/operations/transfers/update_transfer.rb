@@ -229,10 +229,23 @@ module Transactions
         end
 
         def update_monthly_summary(transfer:)
-          MonthlyFinancialSummaries::Operations::UpdateSummary.new.call(
-            space_id: transfer.space_id,
-            transaction_date: transfer.date.to_date
-          )
+          dates = [transfer.date.to_date]
+
+          if transfer.saved_change_to_date?
+            previous_date = transfer.saved_change_to_date.first
+            if previous_date &&
+               (previous_date.year != transfer.date.year ||
+                previous_date.month != transfer.date.month)
+              dates << previous_date.to_date
+            end
+          end
+
+          dates.uniq.each do |date|
+            MonthlyFinancialSummaries::Operations::UpdateSummary.new.call(
+              space_id: transfer.space_id,
+              transaction_date: date
+            )
+          end
 
           Success()
         end
