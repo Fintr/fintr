@@ -63,7 +63,7 @@ class CapacitorViewController: CAPBridgeViewController {
         var rightPadding: CGFloat = 0
 
         if #available(iOS 13.0, *) {
-            let window = view.window ?? UIApplication.shared.windows.first { $0.isKeyWindow }
+            let window = view.window ?? AppDelegate.keyWindow()
 
             topPadding = window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
             leftPadding = window?.safeAreaInsets.left ?? 0

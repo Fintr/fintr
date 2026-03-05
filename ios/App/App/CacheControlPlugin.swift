@@ -18,15 +18,18 @@ public class CacheControlPlugin: CAPPlugin {
                 ofTypes: dataTypes,
                 modifiedSince: date
             ) { [weak self] in
-                // Clear URL cache used by the app
-                URLCache.shared.removeAllCachedResponses()
+                // Completion may run on a background queue; UI and bridge must run on main
+                DispatchQueue.main.async {
+                    // Clear URL cache used by the app
+                    URLCache.shared.removeAllCachedResponses()
 
-                // Reload the WebView
-                if let webView = self?.bridge?.webView {
-                    webView.reload()
+                    // Reload the WebView (must be on main thread)
+                    if let webView = self?.bridge?.webView {
+                        webView.reload()
+                    }
+
+                    call.resolve()
                 }
-
-                call.resolve()
             }
         }
     }

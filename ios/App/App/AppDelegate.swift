@@ -1,12 +1,24 @@
 import UIKit
 import Capacitor
 import WebKit
+import Sentry
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
     private var hasAdjustedWebView = false
+
+    /// Key window for the app. Uses scene-based API on iOS 15+ to avoid deprecated `windows`.
+    static func keyWindow() -> UIWindow? {
+        if #available(iOS 15.0, *) {
+            return UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first?
+                .keyWindow
+        }
+        return UIApplication.shared.windows.first { $0.isKeyWindow }
+    }
 
     // MARK: - Cache Configuration
 
@@ -29,8 +41,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Initialize Sentry for native crash/error reporting
+        if let dsn = Bundle.main.object(
+            forInfoDictionaryKey: "SentryDSN"
+        ) as? String,
+           !dsn.isEmpty,
+           dsn != "YOUR_IOS_SENTRY_DSN_HERE" {
+            SentrySDK.start { options in
+                options.dsn = dsn
+                options.enableAutoSessionTracking = true
+                options.enableAutoBreadcrumbTracking = true
+                options.tracesSampleRate = 0.0
+            }
+        }
+
         // Set the app background color to match web app's off-white background
-        if let window = UIApplication.shared.windows.first {
+        if let window = AppDelegate.keyWindow() {
             // oklch(98.20% 0.004 91.45) converted to RGB: #FAF9F8
             window.backgroundColor = UIColor(red: 0.98, green: 0.976, blue: 0.973, alpha: 1.0)
         }
@@ -122,7 +148,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         var rightPadding: CGFloat = 0
 
         if #available(iOS 13.0, *) {
-            let window = viewController.view.window ?? UIApplication.shared.windows.first { $0.isKeyWindow }
+            let window = viewController.view.window ?? AppDelegate.keyWindow()
 
             topPadding = window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
             leftPadding = window?.safeAreaInsets.left ?? 0

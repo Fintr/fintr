@@ -74,5 +74,7 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>SentryDSN</key>
+	<string>https://b4e0e35b1e29ba3ac929b461bdbc41e0@o4509212494004224.ingest.us.sentry.io/4510978442133504</string>
 </dict>
 </plist>
