@@ -33,6 +33,8 @@ export interface Space {
   createdAt: string;
   updatedAt: string;
   hasNewInvitation: boolean;
+  isOwner: boolean;
+  ownerId: string | null;
 }
 
 export interface SpacePermissions {

@@ -58,8 +58,8 @@ export const useSpaceUsers = () => {
     removeUserMutation.mutate(userId);
   };
 
-  // Access users from the correct path: response.data.data.users
-  const usersList = (users as any)?.data?.users || [];
+  // Access users from the correct path: axios response -> data -> data -> users
+  const usersList = (users as any)?.data?.data?.users || [];
   
   return {
     users: usersList,

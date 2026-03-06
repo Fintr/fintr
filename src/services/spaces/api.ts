@@ -77,5 +77,16 @@ export const spacesApi = {
   // Mark space invitation as seen
   markSeen: (api: AxiosInstance, spaceCode: string) =>
     api.post<{ success: boolean; message: string }>(`/spaces/${spaceCode}/mark_seen`),
+
+  // Delete space (owner only)
+  deleteSpace: (api: AxiosInstance, spaceCode: string) =>
+    api.delete<{ success: boolean; message: string }>(`/spaces/${spaceCode}`),
+
+  // Transfer ownership (owner only)
+  transferOwnership: (api: AxiosInstance, spaceCode: string, newOwnerId: string) =>
+    api.post<{ success: boolean; message: string; data: { space: Space } }>(
+      `/spaces/${spaceCode}/transfer_ownership`,
+      { new_owner_id: newOwnerId }
+    ),
 };
 
