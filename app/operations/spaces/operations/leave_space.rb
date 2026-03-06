@@ -10,7 +10,7 @@ module Spaces
         params do
           required(:user_id).filled(:string)
           required(:space_id).filled(:string)
-          required(:space_code).filled(:string)
+          optional(:space_code).filled(:string)
         end
       end
 
@@ -52,14 +52,14 @@ module Spaces
       end
 
       def validate_can_leave(current_user, space)
-        # Check if user belongs to this space
-        unless current_user.spaces.include?(space)
+        # Check if user belongs to this space (use exists? for performance)
+        unless current_user.spaces.exists?(id: space.id)
           return Failure(errors: { user: ["User does not belong to this space"] })
         end
 
-        # Check if user is the space owner (admin who created it)
-        if current_user.has_role?(:admin, space) && is_space_owner?(current_user, space)
-          return Failure(errors: { permission: ["Space owner cannot leave the space"] })
+        # Check if user is the space owner
+        if space.owned_by?(current_user)
+          return Failure(errors: { permission: ["Space owner cannot leave the space. Transfer ownership first or delete the space."] })
         end
 
         Success()
@@ -70,18 +70,14 @@ module Spaces
         return Failure(errors: { user: ["User not found in this space"] }) unless space_user
 
         space_user.destroy!
+        Rails.logger.info("[LeaveSpace] User #{current_user.id} left space #{space.id}")
         Success()
       end
 
       def remove_user_roles(space, current_user)
-        current_user.roles.where(resource: space).destroy_all
+        current_user.remove_role(:admin, space) if current_user.has_role?(:admin, space)
+        current_user.remove_role(:member, space) if current_user.has_role?(:member, space)
         Success()
-      end
-
-      def is_space_owner?(user, space)
-        # Check if this user created the space (first admin)
-        # This is a simplified check - in a real app you might have a separate owner field
-        user.roles.where(resource: space, name: "admin").exists?
       end
     end
   end

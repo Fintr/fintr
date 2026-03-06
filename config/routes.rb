@@ -153,11 +153,12 @@ Rails.application.routes.draw do
       end
 
       # Space management routes
-      resources :spaces, only: [:index, :show, :create, :update] do
+      resources :spaces, only: [:index, :show, :create, :update, :destroy] do
         member do
           post :join
           delete :leave
           post :mark_seen
+          post :transfer_ownership
         end
 
         resources :users, module: :spaces, only: [:index] do

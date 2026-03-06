@@ -24,6 +24,7 @@ module Auth
              class_name: "Spaces::OrganizationSpace"
     has_many :user_activities, dependent: :destroy
     has_many :conversations, class_name: "Ai::Conversation", dependent: :destroy
+    has_many :owned_spaces, class_name: "Spaces::Space", foreign_key: :owner_id, dependent: :nullify, inverse_of: :owner
 
     validates :email,
               presence: true,

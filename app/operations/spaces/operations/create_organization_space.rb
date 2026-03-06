@@ -29,7 +29,7 @@ module Spaces
         transaction do
           user            = step find_user(validated_params)
           reference_space = step find_reference_space(validated_params)
-          space           = step create_organization_space(validated_params)
+          space           = step create_organization_space(validated_params, user)
           _               = step join_user_to_space(validated_params, space, user)
           _               = step assign_admin_role(space, user)
           _               = step copy_categories(space, reference_space)
@@ -55,13 +55,14 @@ module Spaces
         Success(space)
       end
 
-      def create_organization_space(params)
+      def create_organization_space(params, user)
         code = generate_space_code(params[:name])
 
         space = Spaces::OrganizationSpace.new(
           name: params[:name],
           code: code,
-          currency: params[:currency]
+          currency: params[:currency],
+          owner: user
         )
 
         space.save!

@@ -4,6 +4,8 @@ module Spaces
   class Space < ApplicationRecord
     FREE_TOKENS = 30
 
+    belongs_to :owner, class_name: "Auth::User", optional: true
+
     has_many :transactions, class_name: "Transactions::Transaction", dependent: :destroy
     has_many :incomes, class_name: "Transactions::Income", dependent: :destroy
     has_many :expenses, class_name: "Transactions::Expense", dependent: :destroy
@@ -62,6 +64,12 @@ module Spaces
       total_tokens = active_cycles.sum(:tokens_allocated)
 
       FREE_TOKENS + total_tokens
+    end
+
+    def owned_by?(user)
+      return false if owner_id.nil? || user.nil?
+
+      owner_id == user.id
     end
   end
 end

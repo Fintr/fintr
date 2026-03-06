@@ -9,10 +9,12 @@ module Api
           ensure_space_admin!
           return if performed?
 
-          users = current_space.users.includes(:roles)
+          # Reload space to ensure fresh owner_id after potential transfers
+          space = current_space.reload
+          users = space.users.includes(:roles)
           render_success(
             data: {
-              users: ::Spaces::Serializers::SpaceUserSerializer.render_as_hash(users, space: current_space)
+              users: ::Spaces::Serializers::SpaceUserSerializer.render_as_hash(users, space: space)
             }
           )
         end

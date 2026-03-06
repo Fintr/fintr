@@ -93,7 +93,47 @@ module Api
         )
       end
 
+      # DELETE /api/v1/spaces/:id
+      # Deletes a space (owner only)
+      def destroy
+        space = find_space_by_id_or_code
+        return render_not_found(details: "Space not found") unless space
+
+        operation = ::Spaces::Operations::DeleteSpace.new.call(
+          user_id: current_user.id.to_s,
+          space_id: space.id.to_s
+        )
+        return render_unprocessable_content(details: operation.failure) unless operation.success?
+
+        render_success(message: "Space deleted successfully")
+      end
+
+      # POST /api/v1/spaces/:id/transfer_ownership
+      # Transfers ownership to another user (owner only)
+      def transfer_ownership
+        space = find_space_by_id_or_code
+        return render_not_found(details: "Space not found") unless space
+
+        operation = ::Spaces::Operations::TransferOwnership.new.call(
+          user_id: current_user.id.to_s,
+          space_id: space.id.to_s,
+          new_owner_id: params[:new_owner_id]
+        )
+        return render_unprocessable_content(details: operation.failure) unless operation.success?
+
+        render_success(
+          message: "Ownership transferred successfully",
+          data: {
+            space: ::Spaces::Serializers::SpaceSerializer.render_as_hash(operation.value![:space], current_user: current_user)
+          }
+        )
+      end
+
       private
+
+      def find_space_by_id_or_code
+        current_user.spaces.find { |s| s.id == params[:id] || s.code == params[:id] }
+      end
 
       def create_params
         params.permit(:name, :currency, :access_code)

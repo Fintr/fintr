@@ -10,11 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_15_000001) do
-
+ActiveRecord::Schema[8.1].define(version: 2026_02_26_083300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
+  enable_extension "timescaledb"
   enable_extension "timescaledb_toolkit"
   enable_extension "vector"
   enable_extension "vectorscale"
@@ -489,12 +489,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_15_000001) do
     t.string "currency", default: "PHP", null: false
     t.string "default_transaction_currency", limit: 3
     t.string "name", null: false
+    t.uuid "owner_id"
     t.string "type", null: false
     t.datetime "updated_at", null: false
     t.string "xendit_customer_id"
     t.string "xendit_customer_reference_id"
     t.index ["code"], name: "index_spaces_on_code", unique: true
     t.index ["currency"], name: "index_spaces_on_currency"
+    t.index ["owner_id"], name: "index_spaces_on_owner_id"
     t.index ["type"], name: "index_spaces_on_type"
     t.index ["xendit_customer_id"], name: "index_spaces_on_xendit_customer_id"
     t.index ["xendit_customer_reference_id"], name: "index_spaces_on_xendit_customer_reference_id"
@@ -659,6 +661,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_15_000001) do
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
   add_foreign_key "space_users", "users", column: "invited_by_id"
+  add_foreign_key "spaces", "users", column: "owner_id"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "transactions", column: "effective_parent_id"
   add_foreign_key "transactions", "transactions", column: "parent_id"

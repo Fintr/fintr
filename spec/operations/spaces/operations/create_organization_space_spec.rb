@@ -32,6 +32,16 @@ RSpec.describe Spaces::Operations::CreateOrganizationSpace, type: :operation do
         expect(user.has_role?(:admin, space)).to be true
       end
 
+      it "sets the creator as owner" do
+        result = described_class.new.call(valid_params)
+
+        expect(result).to be_success
+        space = result.value!
+
+        expect(space.owner).to eq(user)
+        expect(space.owned_by?(user)).to be true
+      end
+
       it "copies categories from reference space" do
         category1 = create(:category,
                            space: reference_space,

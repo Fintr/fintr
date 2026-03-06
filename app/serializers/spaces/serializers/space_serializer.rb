@@ -47,6 +47,17 @@ module Spaces
         space_user = space.space_users.find { |su| su.user_id == current_user.id }
         space_user&.invitation_unseen? || false
       end
+
+      field :is_owner do |space, options|
+        current_user = options[:current_user]
+        return false unless current_user
+
+        space.owned_by?(current_user)
+      end
+
+      field :owner_id do |space|
+        space.owner_id
+      end
     end
   end
 end

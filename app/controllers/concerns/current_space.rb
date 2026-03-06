@@ -40,12 +40,12 @@ module CurrentSpace
     space_code = request.headers["X-Space-Code"] || params[:space_id] || params[:id]
     return nil unless space_code
 
-    space = Rails.cache.fetch("current_space_#{space_code}", expires_in: 15.minutes) do
-      # Try to find by ID first (UUID), then by code
-      Spaces::Space.find_by(id: space_code) || Spaces::Space.find_by(code: space_code)
-    end
+    # Direct lookup without caching
+    space = Spaces::Space.find_by(id: space_code) || Spaces::Space.find_by(code: space_code)
+    return nil unless space
 
-    return space if space && current_user&.spaces&.include?(space)
+    # Use exists? query instead of loading all spaces into memory
+    return space if current_user && current_user.spaces.exists?(id: space.id)
     nil
   end
 

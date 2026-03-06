@@ -17,7 +17,11 @@ module Spaces
         space = options[:space]
         return "member" unless space
 
-        if user.has_role?(:admin, space)
+        # Owner takes priority over admin/member roles
+        # Compare as strings to handle UUID type mismatches
+        if space.owner_id.to_s == user.id.to_s
+          "owner"
+        elsif user.has_role?(:admin, space)
           "admin"
         elsif user.has_role?(:member, space)
           "member"

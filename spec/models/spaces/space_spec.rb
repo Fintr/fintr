@@ -4,6 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Spaces::Space, type: :model do
   describe 'associations' do
+    it { is_expected.to belong_to(:owner).class_name('Auth::User').optional }
     it { is_expected.to have_many(:transactions).class_name('Transactions::Transaction').dependent(:destroy) }
     it { is_expected.to have_many(:incomes).class_name('Transactions::Income').dependent(:destroy) }
     it { is_expected.to have_many(:expenses).class_name('Transactions::Expense').dependent(:destroy) }
@@ -53,6 +54,38 @@ RSpec.describe Spaces::Space, type: :model do
       it 'delegates to Transactions::Category.create_default_categories' do
         expect(Transactions::Category).to receive(:create_default_categories).with(space)
         space.create_default_transaction_categories
+      end
+    end
+
+    describe '#owned_by?' do
+      let(:owner) { create(:user) }
+      let(:other_user) { create(:user) }
+      let(:space_with_owner) { create(:space, owner: owner) }
+
+      context 'when user is the owner' do
+        it 'returns true' do
+          expect(space_with_owner.owned_by?(owner)).to be true
+        end
+      end
+
+      context 'when user is not the owner' do
+        it 'returns false' do
+          expect(space_with_owner.owned_by?(other_user)).to be false
+        end
+      end
+
+      context 'when space has no owner' do
+        let(:space_without_owner) { create(:space, owner: nil) }
+
+        it 'returns false for any user' do
+          expect(space_without_owner.owned_by?(owner)).to be false
+        end
+      end
+
+      context 'when user is nil' do
+        it 'returns false' do
+          expect(space_with_owner.owned_by?(nil)).to be false
+        end
       end
     end
 

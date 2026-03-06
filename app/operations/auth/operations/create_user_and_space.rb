@@ -71,6 +71,7 @@ module Auth
         return Success(space) if space.persisted?
 
         space.assign_attributes(space_attributes)
+        space.owner = user
         space.save!
 
         space.create_default_transaction_categories

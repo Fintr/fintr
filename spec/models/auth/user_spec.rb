@@ -14,6 +14,7 @@ RSpec.describe Auth::User, type: :model do
     it { is_expected.to have_many(:organization_spaces).class_name("Spaces::OrganizationSpace").through(:space_users) }
     it { is_expected.to have_many(:user_activities).dependent(:destroy) }
     it { is_expected.to have_many(:conversations).class_name("Ai::Conversation").dependent(:destroy) }
+    it { is_expected.to have_many(:owned_spaces).class_name("Spaces::Space").with_foreign_key(:owner_id).dependent(:nullify) }
   end
 
   describe 'validations' do
