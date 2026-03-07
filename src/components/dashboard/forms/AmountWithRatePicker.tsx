@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { TrendingUp, Loader2 } from "lucide-react";
+import { TrendingUp, Loader2, Check } from "lucide-react";
 import { FormError } from "@/components/ui/form-error";
 import { RollingNumber } from "@/components/ui/rolling-number";
 import { formatAmountWithCode, formatWithDelimiters, numberFormatting } from "@/lib/utils";
@@ -62,6 +62,8 @@ interface AmountWithRatePickerProps {
   onConversionChange: (conversion: ConversionSnapshot | null) => void;
   /** Transaction date for "current" rate (yyyy-MM-dd). */
   date?: string;
+  /** When provided (e.g. edit mode), use this rate instead of fetching a default; prevents overwriting parent's conversion. */
+  initialConversion?: ConversionSnapshot | null;
 }
 
 export function AmountWithRatePicker({
@@ -81,6 +83,7 @@ export function AmountWithRatePicker({
   lockFromCurrency = false,
   onConversionChange,
   date,
+  initialConversion,
 }: AmountWithRatePickerProps) {
   const { api } = useAuthApi();
   const [currencyPopoverOpen, setCurrencyPopoverOpen] = useState(false);
@@ -95,7 +98,21 @@ export function AmountWithRatePicker({
   const [conversion, setConversion] = useState<{
     exchangeRate: number;
     exchangeRateSource: "auto" | "manual" | "recent";
-  } | null>(null);
+  } | null>(() =>
+    initialConversion
+      ? { exchangeRate: initialConversion.exchangeRate, exchangeRateSource: initialConversion.exchangeRateSource }
+      : null
+  );
+
+  const RATE_TOLERANCE = 1e-6;
+  const ratesMatch = (a: number, b: number) => Math.abs(a - b) < RATE_TOLERANCE;
+  const isTodayRateApplied =
+    conversion?.exchangeRateSource === "auto" &&
+    currentRateDisplay != null &&
+    ratesMatch(conversion.exchangeRate, currentRateDisplay);
+  const isManualRateApplied = conversion?.exchangeRateSource === "manual";
+  const isRecentRateApplied = (rate: number) =>
+    conversion?.exchangeRateSource === "recent" && ratesMatch(conversion.exchangeRate, rate);
 
   const amountNumeric = numberFormatting.cleanForBackend(amountDisplayValue);
   const needsConversion = fromCurrency !== toCurrency;
@@ -211,28 +228,52 @@ export function AmountWithRatePicker({
     applyConversion(parsed, "manual");
   }, [manualRate, applyConversion]);
 
+  // When parent provides initial conversion (e.g. edit mode), use it and do not overwrite
   useEffect(() => {
     if (!needsConversion) {
       setConversion(null);
       onConversionChange(null);
       return;
     }
-    // When user changes to a different currency, auto-apply today's rate so they don't have to click Rates
+    if (initialConversion) {
+      setConversion({
+        exchangeRate: initialConversion.exchangeRate,
+        exchangeRateSource: initialConversion.exchangeRateSource,
+      });
+      return;
+    }
+    // Create mode: default to most recent rate used, else today's rate
     setLoadingRate("currency");
     const todayStr = new Date().toISOString().slice(0, 10);
-    getCurrentRate(api, fromCurrency, toCurrency, todayStr)
-      .then((r) => {
-        const rate = Number(r.rate);
-        setCurrentRateDisplay(rate);
-        setDisplayedRateDate(todayStr);
-        applyConversion(rate, "auto");
+    Promise.all([
+      getRecentRates(api, fromCurrency, toCurrency),
+      getCurrentRate(api, fromCurrency, toCurrency, todayStr),
+    ])
+      .then(([recent, current]) => {
+        const rates = recent.rates ?? [];
+        if (rates.length > 0) {
+          const mostRecent = rates[0];
+          const rate = Number(mostRecent.rate);
+          setCurrentRateDisplay(rate);
+          setDisplayedRateDate(
+            mostRecent.usedAt ?? (mostRecent as { timestamp?: string }).timestamp ?? todayStr
+          );
+          setRecentRates(rates);
+          applyConversion(rate, "recent");
+        } else {
+          const rate = Number(current.rate);
+          setCurrentRateDisplay(rate);
+          setDisplayedRateDate(todayStr);
+          applyConversion(rate, "auto");
+        }
       })
       .catch(() => {
         setCurrentRateDisplay(null);
         setDisplayedRateDate(undefined);
+        setRecentRates([]);
       })
       .finally(() => setLoadingRate(null));
-  }, [fromCurrency, toCurrency, needsConversion, api, applyConversion]);
+  }, [fromCurrency, toCurrency, needsConversion, api, applyConversion, initialConversion]);
 
   return (
     <div className="space-y-3">
@@ -370,6 +411,8 @@ export function AmountWithRatePicker({
                     >
                       {loadingRate === "current" ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
+                      ) : isTodayRateApplied ? (
+                        <Check className="h-4 w-4 text-primary mr-2 shrink-0" aria-hidden />
                       ) : null}
                       Use today's rate
                     </Button>
@@ -389,7 +432,10 @@ export function AmountWithRatePicker({
                             setPopoverOpen(false);
                           }}
                         >
-                          <span>
+                          <span className="flex items-center gap-2">
+                            {isRecentRateApplied(Number(r.rate)) ? (
+                              <Check className="h-4 w-4 text-primary shrink-0" aria-hidden />
+                            ) : null}
                             {formatWithDelimiters(Number(r.rate), { minFractionDigits: RATE_DISPLAY_DECIMALS, maxFractionDigits: RATE_DISPLAY_DECIMALS })} {toCurrency}
                           </span>
                           {(r.usedAt ?? (r as { timestamp?: string }).timestamp) ? (
@@ -431,6 +477,9 @@ export function AmountWithRatePicker({
                         );
                       })()}
                     >
+                      {isManualRateApplied ? (
+                        <Check className="h-4 w-4 text-primary mr-1.5 shrink-0" aria-hidden />
+                      ) : null}
                       Apply
                     </Button>
                   </div>

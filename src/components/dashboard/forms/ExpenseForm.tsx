@@ -223,13 +223,48 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     defaultTransactionCurrency && amountCurrencyOptions.includes(defaultTransactionCurrency)
       ? defaultTransactionCurrency
       : selectedAccountCurrency;
-  const [amountCurrency, setAmountCurrency] = useState(initialAmountCurrency);
+
+  // In edit mode with conversion, show original currency (e.g. PLN) from the start so the label is correct
+  const [amountCurrency, setAmountCurrency] = useState(() => {
+    if (isEditMode && initialData) {
+      const d = initialData as unknown as Record<string, unknown>;
+      const orig = d.originalDisplayCurrency ?? d.original_display_currency;
+      if (orig != null && String(orig).trim() !== "") return String(orig);
+      const conv = (d as any).currencyConversion ?? (d as any).currency_conversion;
+      const fromConv = (conv as Record<string, unknown>)?.originalCurrency ?? (conv as Record<string, unknown>)?.original_currency;
+      if (fromConv != null && String(fromConv).trim() !== "") return String(fromConv);
+    }
+    return initialAmountCurrency;
+  });
   const [conversionSnapshot, setConversionSnapshot] =
-    useState<ConversionSnapshot | null>(null);
+    useState<ConversionSnapshot | null>(() => {
+      if (!isEditMode || !initialData) return null;
+      const d = initialData as any;
+      const rawConv = d.currencyConversion ?? d.currency_conversion;
+      const origCur = d.originalDisplayCurrency ?? d.original_display_currency;
+      if (!rawConv && origCur == null) return null;
+      const originalCurrency =
+        origCur != null && String(origCur).trim() !== ""
+          ? String(origCur)
+          : String((rawConv as any)?.originalCurrency ?? (rawConv as any)?.original_currency ?? "");
+      if (!originalCurrency) return null;
+      const exchangeRate = Number((rawConv as any)?.exchange_rate ?? (rawConv as any)?.exchangeRate ?? 1);
+      const source = (rawConv as any)?.source ?? "manual";
+      const exchangeRateSource = (source === "auto" || source === "recent" ? source : "manual") as "auto" | "manual" | "recent";
+      return { originalCurrency, exchangeRate, exchangeRateSource };
+    });
 
   const defaultCurrencySetRef = useRef(false);
   useEffect(() => {
     if (defaultCurrencySetRef.current) return;
+    // Do not overwrite with space/default currency when editing a transaction that has original currency (conversion)
+    if (isEditMode && initialData) {
+      const d = initialData as any;
+      const hasOriginal =
+        (d.originalDisplayCurrency ?? d.original_display_currency) != null ||
+        (d.currencyConversion ?? d.currency_conversion) != null;
+      if (hasOriginal) return;
+    }
     if (
       defaultTransactionCurrency &&
       amountCurrencyOptions.includes(defaultTransactionCurrency)
@@ -237,7 +272,25 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       setAmountCurrency(defaultTransactionCurrency);
       defaultCurrencySetRef.current = true;
     }
-  }, [defaultTransactionCurrency, amountCurrencyOptions]);
+  }, [defaultTransactionCurrency, amountCurrencyOptions, isEditMode, initialData]);
+
+  // In edit mode, lock currency to original when transaction has currency_conversion
+  const hasEditModeConversion = useMemo(
+    () =>
+      isEditMode &&
+      (!!conversionSnapshot ||
+        !!(
+          (initialData as any)?.original_display_currency ??
+          (initialData as any)?.originalDisplayCurrency ??
+          (initialData as any)?.currency_conversion?.original_currency ??
+          (initialData as any)?.currencyConversion?.originalCurrency
+        )),
+    [
+      isEditMode,
+      conversionSnapshot,
+      initialData,
+    ]
+  );
 
   // Do not sync amountCurrency to selected account when account changes.
   // The user's chosen transaction currency (e.g. AED) should persist so the API
@@ -276,16 +329,36 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Form errors
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
   
-  // Initialize formState from initialData
-  const prevInitialDataRef = React.useRef<UpdateTransactionType | undefined>(initialData);
+  // Initialize formState from initialData (ref must start undefined so first run syncs original amount/currency for edit)
+  const prevInitialDataRef = React.useRef<UpdateTransactionType | undefined>(undefined);
 
   useEffect(() => {
-    // Only proceed if initialData is provided and is a different object reference
+    const data = initialData as Record<string, unknown> | undefined;
+    const rawConv = data
+      ? (data.currency_conversion ?? (initialData as any).currencyConversion) as Record<string, unknown> | undefined
+      : undefined;
+
+    // Backend sends original_display_amount / original_display_currency when there is a conversion; prefer those so edit form shows e.g. PLN and original amount.
+    const originalAmount =
+      data?.original_display_amount ?? (data as any)?.originalDisplayAmount;
+    const originalCurrency =
+      data?.original_display_currency ?? (data as any)?.originalDisplayCurrency;
+    const hasOriginal = originalAmount != null && originalCurrency != null && String(originalCurrency).trim() !== "";
+
     if (initialData && (initialData !== prevInitialDataRef.current)) {
-      
-      const initialAmount = initialData.amount?.toString() || "";
-      
-      // Update form state with all initialData values
+      const initialAmount = hasOriginal
+        ? String(originalAmount)
+        : rawConv != null
+          ? String((rawConv as any).original_amount ?? (rawConv as any).originalAmount ?? initialData.amount ?? "")
+          : (initialData.amount?.toString() ?? "");
+
+      const displayCurrency = hasOriginal
+        ? String(originalCurrency)
+        : rawConv != null
+          ? String((rawConv as any).original_currency ?? (rawConv as any).originalCurrency ?? spaceCurrency)
+          : spaceCurrency;
+      const useConversion = hasOriginal || (rawConv != null);
+
       setFormState({
         amount: initialAmount,
         description: initialData.description || "",
@@ -296,41 +369,32 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         installmentPeriod: initialData.installmentPeriod?.toString() || "",
         file: initialData.file || null,
       });
-      
-      // Update number input hook with formatted value
+
       if (initialAmount) {
-        const formattedAmount = numberFormatting.formatForInput(initialAmount);
-        amountInput.setDisplayValue(formattedAmount);
+        amountInput.setDisplayValue(numberFormatting.formatForInput(initialAmount));
       } else {
         amountInput.setDisplayValue("");
       }
-      
-      
-      // Update schedule type state
-      setScheduleType(initialData.scheduleType || ScheduleTypeEnum.ONE_TIME);
-      
-      // Update draftId
-      setDraftId(initialData.draftId);
 
-      // Note: We no longer set the date from initialData
-      // The parent component always sets date to today, and suggestedDate prop shows AI suggestions
-
-      // Store the current initialData reference to prevent re-running on same object
-      prevInitialDataRef.current = initialData;
-    }
-    // Always sync conversion snapshot when initialData is present (including first mount with data)
-    if (initialData) {
-      const rawConv = (initialData as any).currency_conversion ?? (initialData as any).currencyConversion;
-      if (rawConv) {
+      if (useConversion) {
+        setAmountCurrency(displayCurrency);
         setConversionSnapshot({
-          originalCurrency: rawConv.original_currency ?? rawConv.originalCurrency,
-          exchangeRate: Number(rawConv.exchange_rate ?? rawConv.exchangeRate),
-          exchangeRateSource: (rawConv.source ?? "manual") as "auto" | "manual" | "recent",
+          originalCurrency: displayCurrency,
+          exchangeRate: Number((rawConv as any)?.exchange_rate ?? (rawConv as any)?.exchangeRate ?? 1),
+          exchangeRateSource: ((rawConv as any)?.source ?? "manual") as "auto" | "manual" | "recent",
         });
       } else {
+        setAmountCurrency(spaceCurrency);
         setConversionSnapshot(null);
       }
-    } else if (!initialData && prevInitialDataRef.current) {
+
+      setScheduleType(initialData.scheduleType || ScheduleTypeEnum.ONE_TIME);
+      setDraftId(initialData.draftId);
+
+      prevInitialDataRef.current = initialData;
+    }
+
+    if (!initialData && prevInitialDataRef.current) {
       // If initialData becomes undefined and it was previously set, clear the form
       setFormState({
         amount: "",
@@ -423,19 +487,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     }
     
     try {
-      // Update: backend stores amount as-is and only persists conversion metadata → send converted amount (PHP).
-      // Create: backend converts original amount × rate → send original amount (e.g. AED) so it converts once.
-      const amountToSend =
-        conversionSnapshot && conversionSnapshot.originalCurrency !== selectedAccountCurrency
-          ? isEditMode
-            ? String(
-                numberFormatting.cleanForBackend(formState.amount) *
-                  conversionSnapshot.exchangeRate
-              )
-            : formState.amount
-          : formState.amount;
+      // Create: amount in space currency. Edit with conversion: amount in original_currency + metadata so backend converts to account.
       const transactionData = {
-        amount: numberFormatting.cleanForBackend(amountToSend),
+        amount: numberFormatting.cleanForBackend(formState.amount),
         description: formState.description || "",
         transactionType: "expense" as const,
         categoryName: formState.categoryName,
@@ -787,7 +841,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             onAmountChange={(value) => amountInput.handleInputChange(value)}
             fromCurrency={amountCurrency}
             onFromCurrencyChange={setAmountCurrency}
-            toCurrency={selectedAccountCurrency}
+            toCurrency={isEditMode && conversionSnapshot ? selectedAccountCurrency : spaceCurrency}
             amountCurrencyOptions={amountCurrencyOptions}
             accountOptions={accountOptions}
             errors={formSubmitted && formErrors.amount ? formErrors.amount : []}
@@ -797,8 +851,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 ? "border-red-800 focus-visible:ring-red-800"
                 : ""
             }
+            hideRatePicker={!isEditMode || !conversionSnapshot}
+            lockFromCurrency={hasEditModeConversion}
             onConversionChange={setConversionSnapshot}
             date={date ? format(date, "yyyy-MM-dd") : undefined}
+            initialConversion={conversionSnapshot ?? undefined}
           />
           </div>
         </div>

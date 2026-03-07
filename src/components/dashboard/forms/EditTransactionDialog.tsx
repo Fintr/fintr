@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createDisplayFileFromAttachment } from "@/utils/fileUtils";
-import { formatAmountWithCode, formatWithDelimiters } from "@/lib/utils";
+import { formatWithDelimiters } from "@/lib/utils";
 import { ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -59,15 +59,27 @@ function ConversionInfoPopover({ conv }: { conv: CurrencyConversionType }) {
       <dl className="space-y-2 text-sm">
         <div>
           <dt className="text-muted-foreground">Original</dt>
-          <dd>{formatAmountWithCode(conv.originalAmount, conv.originalCurrency)}</dd>
+          <dd>
+            {formatWithDelimiters(Number(conv.originalAmount), {
+              minFractionDigits: 2,
+              maxFractionDigits: 3,
+            })}{" "}
+            {conv.originalCurrency}
+          </dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Exchange rate</dt>
-          <dd>{formatWithDelimiters(conv.exchangeRate, { minFractionDigits: 4, maxFractionDigits: 6 })}</dd>
+          <dd>{formatWithDelimiters(Number(conv.exchangeRate), { minFractionDigits: 4, maxFractionDigits: 6 })}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Converted to</dt>
-          <dd>{formatAmountWithCode(conv.convertedAmount, conv.convertedCurrency)}</dd>
+          <dd>
+            {formatWithDelimiters(Number(conv.convertedAmount), {
+              minFractionDigits: 2,
+              maxFractionDigits: 2,
+            })}{" "}
+            {conv.convertedCurrency}
+          </dd>
         </div>
         {conv.source && (
           <div>
