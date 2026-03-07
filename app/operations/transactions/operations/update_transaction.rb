@@ -98,13 +98,18 @@ module Transactions
         Failure(account_name: "not found")
       end
 
+      # Frontend sends either (a) amount in space currency, or (b) amount in original_currency + conversion metadata (edit with currency_conversion).
       def transform_params(params:, transaction:, category:, account:, space:)
         params = params.dup
+        conversion = step convert_amount_to_account_currency(params:, transaction:, account:, space:)
+        params.merge!(conversion) if conversion.present?
+
+        account_currency = account.balance_currency.presence || "PHP"
         params[:category_id] = category.id
         params[:category_id] = space.categories.transfer_fee.id if transaction.transfer.present?
         params[:account_id] = account.id
-        params[:amount_currency] = space.currency.presence || "PHP"
-        params[:balance_currency] = space.currency.presence || "PHP"
+        params[:amount_currency] = account_currency
+        params[:balance_currency] = account_currency
         params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
         params[:repeat_count] ||= 1 if params[:schedule_type] == "repeat"
         params[:installment_count] ||= 1 if params[:schedule_type] == "installment"
@@ -114,7 +119,23 @@ module Transactions
         Success(params)
       end
 
-      # Frontend sends amount already converted; we only store the exchange-rate metadata for display.
+      # When edit sends original_currency + exchange_rate, amount is in original currency; else amount is in space currency.
+      def convert_amount_to_account_currency(params:, transaction:, account:, space:)
+        if params[:original_currency].present? && params[:exchange_rate].present? && params[:amount].present?
+          amount_account = (BigDecimal(params[:amount].to_s) * params[:exchange_rate]).round(2)
+          return Success(amount: amount_account)
+        end
+
+        ::ExchangeRates::Operations::SpaceAmountToAccountCurrency.new.call(
+          amount: params[:amount],
+          space_currency: space.currency.presence || "PHP",
+          account_currency: account.balance_currency.presence || "PHP",
+          date: params[:date] || transaction.date,
+          space_id: params[:space_id] || transaction.space_id
+        )
+      end
+
+      # Persist conversion metadata when amount was converted from space to account currency.
       def persist_currency_conversion(transaction:, params:, account:)
         step ::Transactions::Operations::PersistCurrencyConversion.new.call(
           transaction:,

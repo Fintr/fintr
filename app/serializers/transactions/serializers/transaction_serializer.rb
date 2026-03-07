@@ -7,7 +7,6 @@ module Transactions
 
       fields :date,
              :description,
-             :amount,
              :balance,
              :schedule_type,
              :repeat_interval,
@@ -15,11 +14,14 @@ module Transactions
              :installment_period,
              :installment_count
 
+      # Single display amount: always in space currency so the frontend reads one field only.
       field :amount do |record|
-        record.amount.amount
+        record.amount_in_space_currency[:amount]
       end
 
-      field :amount_currency
+      field :amount_currency do |record|
+        record.amount_in_space_currency[:currency]
+      end
 
       field :balance do |record|
         record.balance.amount
@@ -49,6 +51,17 @@ module Transactions
       field :has_currency_conversion do |record|
         record.has_currency_conversion?
       end
+
+      # For edit form: when a conversion exists, expose original amount and currency so the form shows them (e.g. PLN, not space currency).
+      field :original_display_amount,
+        if: ->(_field_name, record, _options) { record.currency_conversion.present? } do |record|
+          record.currency_conversion.original_money.amount
+        end
+
+      field :original_display_currency,
+        if: ->(_field_name, record, _options) { record.currency_conversion.present? } do |record|
+          record.currency_conversion.original_currency
+        end
 
       association :currency_conversion,
         blueprint: CurrencyConversionSerializer,

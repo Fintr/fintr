@@ -13,13 +13,13 @@ module Transactions
              :from_account_name,
              :category_name
 
+      # Single display amount: always in space currency (backend decides; frontend reads one field).
       field :amount do |record|
-        if record.transactable_type == "Transactions::Transfer" &&
-           record.transactable.respond_to?(:original_amount)
-          record.transactable.original_amount.amount
-        else
-          record.value&.amount
-        end
+        record.transactable.respond_to?(:amount_in_space_currency) ? record.transactable.amount_in_space_currency[:amount] : record.value&.amount
+      end
+
+      field :amount_currency do |record|
+        record.transactable.respond_to?(:amount_in_space_currency) ? record.transactable.amount_in_space_currency[:currency] : record.transactable.try(:amount_currency)
       end
 
       field :balance do |record|

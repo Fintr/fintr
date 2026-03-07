@@ -75,7 +75,8 @@ module Transactions
             transaction_type: "income",
             category_name: "Initial Balance",
             account_name: account.name,
-            schedule_type: "one_time"
+            schedule_type: "one_time",
+            initial_balance: true
           }
           Success(new_params)
         end

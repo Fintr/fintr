@@ -38,6 +38,9 @@ module Transactions
           optional(:original_currency).value(:string)
           optional(:exchange_rate).value(:decimal, gt?: 0)
           optional(:exchange_rate_source).value(:string, included_in?: %w[auto manual recent])
+
+          # When true (e.g. initial balance for new account), amount is already in account currency; no conversion.
+          optional(:initial_balance).value(:bool)
         end
 
         rule(:original_currency, :exchange_rate) do
@@ -133,41 +136,70 @@ module Transactions
         Success(params[:skip_calculation] ? true : false)
       end
 
+      # When frontend sends original_currency + exchange_rate, amount is in original currency; convert to account.
+      # When initial_balance is true (e.g. new account), amount is already in account currency; no conversion.
+      # Otherwise treat amount as space currency and convert to account when account != space.
       def prepare_conversion(params:, account:)
-        original_currency = params[:original_currency] || account.balance_currency
-        target_currency = account.balance_currency
-        original_amount = params[:amount]
+        space = account.space
+        space_currency = space.currency.presence || "PHP"
+        account_currency = account.balance_currency.presence || "PHP"
+        amount_param = params[:amount]
 
-        if original_currency == target_currency
+        if params[:initial_balance]
           return Success(
             needs_conversion: false,
-            amount: original_amount,
-            amount_currency: target_currency
+            amount: amount_param,
+            amount_currency: account_currency
           )
         end
 
-        rate = params[:exchange_rate]
-        source = params[:exchange_rate_source]
-        unless rate
-          rate_result = step ::ExchangeRates::Operations::FetchRate.new.call(
-            from_currency: original_currency,
-            to_currency: target_currency,
-            space_id: params[:space_id],
-            date: params[:date]
+        if params[:original_currency].present? && params[:exchange_rate].present?
+          original_amount = BigDecimal(amount_param.to_s)
+          exchange_rate = BigDecimal(params[:exchange_rate].to_s)
+          converted_amount = (original_amount * exchange_rate).round(2)
+          source = params[:exchange_rate_source].presence || "manual"
+
+          return Success(
+            needs_conversion: true,
+            original_amount: original_amount.to_f,
+            original_currency: params[:original_currency],
+            converted_amount: converted_amount.to_f,
+            converted_currency: account_currency,
+            exchange_rate: exchange_rate.to_f,
+            source: source,
+            rate_timestamp: Time.current
           )
-          rate = rate_result[:rate]
-          source = rate_result[:source]
         end
 
-        converted_amount = (BigDecimal(original_amount.to_s) * rate).round(2)
+        if account_currency == space_currency
+          return Success(
+            needs_conversion: false,
+            amount: amount_param,
+            amount_currency: account_currency
+          )
+        end
+
+        # Rate: 1 account unit = rate space units. So amount_in_space = amount_account * rate => amount_account = amount_in_space / rate.
+        rate_result = step ::ExchangeRates::Operations::FetchRate.new.call(
+          from_currency: account_currency,
+          to_currency: space_currency,
+          space_id: params[:space_id],
+          date: params[:date]
+        )
+        rate_account_to_space = rate_result[:rate]
+        raw_source = rate_result[:source]
+        source = raw_source.presence_in(%w[auto manual recent]) || "manual"
+        amount_account = (BigDecimal(amount_param.to_s) / rate_account_to_space).round(2)
+        rate_space_to_account = (BigDecimal("1") / rate_account_to_space).round(10)
+
         Success(
           needs_conversion: true,
-          original_amount:,
-          original_currency:,
-          converted_amount:,
-          converted_currency: target_currency,
-          exchange_rate: rate,
-          source: source || "manual",
+          original_amount: amount_param.to_f,
+          original_currency: space_currency,
+          converted_amount: amount_account.to_f,
+          converted_currency: account_currency,
+          exchange_rate: rate_space_to_account.to_f,
+          source: source,
           rate_timestamp: Time.current
         )
       end
@@ -192,6 +224,7 @@ module Transactions
         params.delete(:original_currency)
         params.delete(:exchange_rate)
         params.delete(:exchange_rate_source)
+        params.delete(:initial_balance)
 
         Success(params)
       end

@@ -16,7 +16,7 @@ module Api
       end
 
       def show
-        transaction = ::Transactions::Transaction.find(params[:id])
+        transaction = ::Transactions::Transaction.includes(:currency_conversion).find(params[:id])
         serializer = ::Transactions::Serializers::TransactionSerializer.render_as_hash(transaction)
         render_success(data: serializer)
       end

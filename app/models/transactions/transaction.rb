@@ -41,5 +41,18 @@ module Transactions
     def value
       amount
     end
+
+    # Amount and currency to show in UI: always in space currency. Memoized so serializer can use once.
+    def amount_in_space_currency
+      @amount_in_space_currency ||= begin
+        result = ::ExchangeRates::Operations::AmountInSpaceCurrency.new.call(
+          amount: amount.amount,
+          amount_currency: amount_currency,
+          date: date,
+          space: space
+        )
+        result.success? ? result.value! : { amount: amount.amount, currency: amount_currency }
+      end
+    end
   end
 end
