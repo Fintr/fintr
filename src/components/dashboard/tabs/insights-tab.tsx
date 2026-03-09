@@ -840,21 +840,19 @@ const InsightsTab = () => {
                     <p className="text-sm text-gray-500">No expense data available</p>
                   </div>
                 ) : (
-                  <div className="h-96 w-full">
+                  <div className="h-96 w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsPieChart>
                         <Pie
-                          data={processedExpenseBreakdown} // Use processed data
+                          data={processedExpenseBreakdown}
                           cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={80}
+                          cy="45%"
+                          innerRadius={60}
+                          outerRadius={90}
                           fill="#8884d8"
                           dataKey="value"
                           nameKey="name"
-                          label={({ name, percent }) =>
-                            `${name}: ${(percent * 100).toFixed(0)}%`
-                          }
+                          paddingAngle={2}
                         >
                           {processedExpenseBreakdown.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
@@ -876,10 +874,45 @@ const InsightsTab = () => {
                             }
                             return formatCurrency(value);
                           }}
+                          wrapperStyle={{ zIndex: 100 }}
                         />
-                        <Legend />
+                        <Legend 
+                          layout="horizontal"
+                          verticalAlign="bottom"
+                          align="center"
+                          iconType="circle"
+                          iconSize={10}
+                          payload={processedExpenseBreakdown
+                            .filter(item => {
+                              // Calculate percent from value / total
+                              const total = processedExpenseBreakdown.reduce((sum, i) => sum + i.value, 0);
+                              const percent = total > 0 ? (item.value / total) * 100 : 0;
+                              // Only include items with >= 1%
+                              return percent >= 1;
+                            })
+                            .map(item => {
+                              const total = processedExpenseBreakdown.reduce((sum, i) => sum + i.value, 0);
+                              const percent = total > 0 ? (item.value / total) * 100 : 0;
+                              return {
+                                value: `${item.name} (${percent.toFixed(0)}%)`,
+                                type: 'circle' as const,
+                                color: item.color,
+                              };
+                            })
+                          }
+                          wrapperStyle={{ paddingTop: 20 }}
+                        />
                       </RechartsPieChart>
                     </ResponsiveContainer>
+                    {/* Center label for donut - z-index lower than tooltip */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ marginBottom: '80px', zIndex: 0 }}>
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500">Total Expenses</p>
+                        <p className="text-base font-semibold text-gray-900">
+                          {formatCurrency(processedExpenseBreakdown.reduce((sum, item) => sum + item.value, 0))}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </CardContent>
