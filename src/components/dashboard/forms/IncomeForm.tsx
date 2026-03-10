@@ -580,7 +580,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                 ? "border-red-800 focus-visible:ring-red-800"
                 : ""
             }
-            hideRatePicker={!isEditMode || !conversionSnapshot}
             lockFromCurrency={hasEditModeConversion}
             onConversionChange={setConversionSnapshot}
             date={date ? format(date, "yyyy-MM-dd") : undefined}
