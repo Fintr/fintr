@@ -39,11 +39,28 @@ module ExchangeRates
       end
 
       def upsert(convertible:, validated:, rate_timestamp:)
+        original_currency = validated[:original_currency]
+        converted_currency = validated[:converted_currency]
+
+        original_subunit =
+          Money::Currency
+            .new(original_currency)
+            .subunit_to_unit
+
+        converted_subunit =
+          Money::Currency
+            .new(converted_currency)
+            .subunit_to_unit
+
         attrs = {
-          original_amount_cents: (BigDecimal(validated[:original_amount].to_s) * 100).to_i,
-          original_currency: validated[:original_currency],
-          converted_amount_cents: (BigDecimal(validated[:converted_amount].to_s) * 100).to_i,
-          converted_currency: validated[:converted_currency],
+          original_amount_cents: (
+            BigDecimal(validated[:original_amount].to_s) * original_subunit
+          ).to_i,
+          original_currency: original_currency,
+          converted_amount_cents: (
+            BigDecimal(validated[:converted_amount].to_s) * converted_subunit
+          ).to_i,
+          converted_currency: converted_currency,
           exchange_rate: validated[:exchange_rate],
           source: validated[:source],
           rate_timestamp: rate_timestamp

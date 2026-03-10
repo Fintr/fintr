@@ -186,12 +186,29 @@ module Transactions
         def build_currency_conversion_on_transfer(transfer:, conversion_data:, space_id:)
           return unless conversion_data[:needs_conversion]
 
+          original_currency = conversion_data[:original_currency]
+          converted_currency = conversion_data[:converted_currency]
+
+          original_subunit =
+            Money::Currency
+              .new(original_currency)
+              .subunit_to_unit
+
+          converted_subunit =
+            Money::Currency
+              .new(converted_currency)
+              .subunit_to_unit
+
           transfer.build_currency_conversion(
             space_id: space_id,
-            original_amount_cents: (BigDecimal(conversion_data[:original_amount].to_s) * 100).to_i,
-            original_currency: conversion_data[:original_currency],
-            converted_amount_cents: (BigDecimal(conversion_data[:converted_amount].to_s) * 100).to_i,
-            converted_currency: conversion_data[:converted_currency],
+            original_amount_cents: (
+              BigDecimal(conversion_data[:original_amount].to_s) * original_subunit
+            ).to_i,
+            original_currency: original_currency,
+            converted_amount_cents: (
+              BigDecimal(conversion_data[:converted_amount].to_s) * converted_subunit
+            ).to_i,
+            converted_currency: converted_currency,
             exchange_rate: conversion_data[:exchange_rate],
             source: conversion_data[:source],
             rate_timestamp: conversion_data[:rate_timestamp]
