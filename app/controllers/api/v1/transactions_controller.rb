@@ -58,6 +58,14 @@ module Api
         send_data operation.value!, filename:, type: "text/csv"
       end
 
+      def note_suggestions
+        query = ::Transactions::Queries::NoteSuggestions.call(params: note_suggestions_params)
+
+        return render_internal_server_error(details: query.failure) unless query.success?
+
+        render_success(data: { suggestions: query.value! })
+      end
+
 
       private
 
@@ -124,6 +132,15 @@ module Api
           :id,
           :delete_scope
         )
+      end
+
+      def note_suggestions_params
+        params.permit(
+          :category_name,
+          :transaction_type,
+          :search,
+          :limit
+        ).to_h.merge(space_id: current_space.id)
       end
     end
   end

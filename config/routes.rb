@@ -107,6 +107,7 @@ Rails.application.routes.draw do
       resources :transactions do
         collection do
           get :generate_csv
+          get :note_suggestions
         end
       end
 

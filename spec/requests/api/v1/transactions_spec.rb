@@ -164,4 +164,79 @@ RSpec.describe "Api::V1::Transactions", type: :request do
       end
     end
   end
+
+  describe "GET /api/v1/transactions/note_suggestions" do
+    let!(:expense_category) { create(:category, name: "Food & Groceries", category_type: "expense", space:) }
+    let!(:account) { create(:account, space:) }
+
+    let!(:expense_with_note) do
+      create(
+        :expense_transaction,
+        space:,
+        account:,
+        category: expense_category,
+        description: "Robinsons grocery shopping",
+        date: Date.current
+      )
+    end
+
+    context "when the request is successful" do
+      before do
+        get note_suggestions_api_v1_transactions_path,
+            params: { category_name: "Food & Groceries", transaction_type: "expense" },
+            headers: headers
+      end
+
+      it "returns an HTTP status ok" do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "returns success true in the response body" do
+        json = JSON.parse(response.body)
+        expect(json["success"]).to be true
+      end
+
+      it "returns suggestions in the response data" do
+        json = JSON.parse(response.body)
+        expect(json["data"]["suggestions"]).to be_an(Array)
+        expect(json["data"]["suggestions"]).to include("Robinsons grocery shopping")
+      end
+    end
+
+    context "when category has no notes" do
+      let!(:empty_category) { create(:category, name: "Empty Category", category_type: "expense", space:) }
+
+      before do
+        get note_suggestions_api_v1_transactions_path,
+            params: { category_name: "Empty Category", transaction_type: "expense" },
+            headers: headers
+      end
+
+      it "returns an HTTP status ok" do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "returns empty suggestions array" do
+        json = JSON.parse(response.body)
+        expect(json["data"]["suggestions"]).to eq([])
+      end
+    end
+
+    context "when category does not exist" do
+      before do
+        get note_suggestions_api_v1_transactions_path,
+            params: { category_name: "Non-existent Category", transaction_type: "expense" },
+            headers: headers
+      end
+
+      it "returns an HTTP status ok" do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "returns empty suggestions array" do
+        json = JSON.parse(response.body)
+        expect(json["data"]["suggestions"]).to eq([])
+      end
+    end
+  end
 end
