@@ -147,3 +147,37 @@ export const fetchTransactionDrafts = async (api: AxiosInstance) => {
     throw error;
   }
 };
+
+/**
+ * Fetches note suggestions for a transaction based on category
+ * 
+ * @param api - The authenticated Axios instance
+ * @param params - Parameters for filtering suggestions
+ * @returns Promise resolving to an array of note suggestions
+ */
+export interface NoteSuggestionsParams {
+  categoryName?: string;
+  transactionType?: 'income' | 'expense';
+  search?: string;
+  limit?: number;
+}
+
+export const fetchNoteSuggestions = async (
+  api: AxiosInstance,
+  params: NoteSuggestionsParams
+): Promise<string[]> => {
+  try {
+    const response = await api.get('/transactions/note_suggestions', {
+      params: {
+        category_name: params.categoryName,
+        transaction_type: params.transactionType,
+        search: params.search,
+        limit: params.limit || 10,
+      },
+    });
+    return response.data.data?.suggestions || [];
+  } catch (error) {
+    console.error("Error fetching note suggestions:", error);
+    return [];
+  }
+};

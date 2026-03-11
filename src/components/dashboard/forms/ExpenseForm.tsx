@@ -31,7 +31,7 @@ import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum, DeleteScopeEnu
 import AccountCreationForm from "./AccountCreationForm";
 import CategoryCreationForm from "./CategoryCreationForm";
 import { UpdateTransactionType } from "@/types/transactionTypes";
-import ExpandableTextarea from '@/components/ui/expandable-textarea';
+import NotesAutocomplete from '@/components/ui/notes-autocomplete';
 import FileUploadField from "./FileUploadField";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import { createDisplayFileFromDraft } from "@/utils/fileUtils";
@@ -1019,10 +1019,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           {/* Description Field */}
           <div className="min-w-0">
             <Label htmlFor="description" className="text-sm">Note (Optional)</Label>
-            <ExpandableTextarea
+            <NotesAutocomplete
               id="description"
               value={formState.description || ""}
-              onChange={e => handleFieldChange("description", e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange("description", e.target.value)}
+              categoryName={formState.categoryName}
+              transactionType="expense"
               placeholder="Add additional details"
               className="mt-1"
             />

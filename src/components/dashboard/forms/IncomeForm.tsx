@@ -28,7 +28,7 @@ import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum } from "@/const
 import AccountCreationForm from "./AccountCreationForm";
 import CategoryCreationForm from "./CategoryCreationForm";
 import { UpdateTransactionType } from "@/types/transactionTypes";
-import ExpandableTextarea from '@/components/ui/expandable-textarea';
+import NotesAutocomplete from '@/components/ui/notes-autocomplete';
 import FileUploadField from "./FileUploadField";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
@@ -769,11 +769,12 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           {/* Description Field */}
           <div className="space-y-2 min-w-0">
             <Label htmlFor="description" className="text-sm">Note (Optional)</Label>
-            <Input
+            <NotesAutocomplete
               id="description"
-              name="description"
               value={formState.description || ""}
-              onChange={(e) => handleFieldChange("description", e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange("description", e.target.value)}
+              categoryName={formState.categoryName}
+              transactionType="income"
               placeholder="Add additional details"
               className="text-sm"
             />
