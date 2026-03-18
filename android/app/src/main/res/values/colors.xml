@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Top bar background (bg-background) -->
+    <color name="fintr_top_bar">#FAFAF9</color>
+
+    <!-- Bottom navigation background (bg-primary) -->
+    <color name="fintr_bottom_nav">#0A3D62</color>
+
+    <!-- Theme colors (required by styles.xml references) -->
+    <color name="colorPrimary">@color/fintr_bottom_nav</color>
+    <color name="colorPrimaryDark">@color/fintr_bottom_nav</color>
+    <color name="colorAccent">@color/fintr_bottom_nav</color>
+</resources>

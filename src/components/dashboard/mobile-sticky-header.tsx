@@ -91,6 +91,7 @@ export default function MobileStickyHeader({ title }: MobileStickyHeaderProps) {
         duration-300
         ease-in-out
         z-30
+        pt-safe-top
         ${isScrolled ? "shadow-sm" : ""}
       `}
     >

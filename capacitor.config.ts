@@ -60,9 +60,18 @@ const config: CapacitorConfig = {
       backgroundColor: "#ffffff",
       showSpinner: false,
     },
+    // Inject reliable safe-area CSS variables on Android WebView.
+    // See https://capacitorjs.com/docs/apis/system-bars
+    SystemBars: {
+      insetsHandling: "css",
+      style: "DARK",
+      hidden: false,
+      animation: "NONE",
+    },
     StatusBar: {
       style: "dark",
-      backgroundColor: "#000000"
+      // Match top bar background.
+      backgroundColor: "#FAFAF9",
     },
     Browser: {
       presentationStyle: 'popover',

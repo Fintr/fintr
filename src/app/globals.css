@@ -165,18 +165,26 @@ html, body {
   }
 }
 
-/* Safe area utilities for mobile viewport handling */
+/* Safe area utilities for mobile viewport handling.
+   On Android WebView, Capacitor SystemBars injects:
+   --safe-area-inset-top/bottom/left/right (fallback when env() is wrong).
+   See https://capacitorjs.com/docs/apis/system-bars */
+
 @layer utilities {
   .pt-safe-top {
-    padding-top: env(safe-area-inset-top);
-    /* Fallback for Samsung Chrome and Safari mobile */
-    padding-top: max(env(safe-area-inset-top), 20px);
+    padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   }
   
   .pb-safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-    /* Fallback for Samsung Chrome and Safari mobile */
-    padding-bottom: max(env(safe-area-inset-bottom), 20px);
+    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Spacer below fixed mobile header so content doesn't sit under it */
+  .mobile-header-spacer {
+    height: 44px;
+  }
+  .mobile-header-spacer {
+    height: calc(44px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   }
   
   .pl-safe-left {

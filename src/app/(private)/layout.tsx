@@ -92,7 +92,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
             <>
               <MobileStickyHeader />
               {/* Spacer for fixed header on mobile */}
-              <div className="h-[44px] md:h-0" />
+              <div className="mobile-header-spacer md:hidden" />
             </>
           )}
         </>

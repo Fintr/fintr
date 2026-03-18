@@ -92,8 +92,8 @@ export default function Layout({
           {/* Mobile Sticky Header */}
           <MobileStickyHeader />
           
-          {/* Spacer for fixed header on mobile */}
-          <div className="h-[44px] md:h-0" />
+          {/* Spacer for fixed header on mobile (includes safe area for status bar) */}
+          <div className="mobile-header-spacer md:hidden" />
       
           <div className="p-0 md:p-4 md:px-8 flex flex-col">
             <div className="hidden md:flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6 gap-2 md:gap-0">
