@@ -33,6 +33,7 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { monthNames, getYearOptions, getCurrentMonthDates } from "@/utils/dateUtils";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
 
 interface BudgetsTabProps {}
 
@@ -43,6 +44,10 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
+
+  // Get space context for currency
+  const { currentSpace } = useSpaceContext(api);
+  const spaceCurrency = currentSpace?.currency ?? "PHP";
 
   // Use shared date filter atoms
   const [startDate, setStartDate] = useAtom(dateFilterStartDateAtom);
@@ -460,7 +465,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                     Total Budget
                   </h4>
                   <div className="text-2xl font-bold text-primary">
-                    {formatCurrency(totalBudget)}
+                    {formatCurrency(totalBudget, spaceCurrency)}
                   </div>
                 </div>
                 <div className="bg-[#f9f7f5] p-4 rounded-lg">
@@ -469,7 +474,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                   </h4>
                   <div className="flex items-center">
                     <div className="text-2xl font-bold text-primary">
-                      {formatCurrency(totalSpent)}
+                      {formatCurrency(totalSpent, spaceCurrency)}
                     </div>
                     <div className={`ml-2 text-sm font-medium ${getProgressColor(budgetUsagePercentage, "font")}`}>
                       ({formattedBudgetPercentage}%)
@@ -486,7 +491,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                     Remaining
                   </h4>
                   <div className={`text-2xl font-bold text-primary ${getProgressColor(budgetUsagePercentage, "font")}`}>
-                    {formatCurrency(totalRemaining)}
+                    {formatCurrency(totalRemaining, spaceCurrency)}
                   </div>
                 </div>
               </div>
@@ -551,11 +556,11 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                                 : "text-primary"
                             }
                           >
-                            {formatCurrency(category.spent)}
+                            {formatCurrency(category.spent, spaceCurrency)}
                           </span>
                           <span className="text-primary/70">
                             {" "}
-                            / {formatCurrency(category.budget)}
+                            / {formatCurrency(category.budget, spaceCurrency)}
                           </span>
                           <span className={`ml-2 ${getProgressColor(budgetPercentage, "font")}`}>
                             ({formattedItemPercentage}%)

@@ -35,6 +35,7 @@ import { deleteTransfer } from "@/services/transactions/transfers/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { shouldShowV2Features } from "@/lib/utils";
 import AddTransactionDialog from "../../add-transaction-dialog";
@@ -163,6 +164,8 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
 
   const queryClient = useQueryClient();
   const { api } = useAuthApi();
+  const { currentSpace } = useSpaceContext(api);
+  const spaceCurrency = currentSpace?.currency ?? "PHP";
 
   // Delete mutation
   const deleteMutation = useMutation({
@@ -590,7 +593,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             <p className="text-gray-400 text-md mb-2">Savings</p>
             <div className="flex items-center justify-between">
               <p className="text-white text-3xl font-bold">
-                {formatCurrency(netSavings)}
+                {spaceCurrency === "PHP" ? `₱${netSavings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : netSavings.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </p>
               <Link href="/dashboard/space_settings/accounts">
                 <button className="bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors">
@@ -614,7 +617,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
                 <p className="text-gray-400 text-md">Income</p>
               </div>
               <p className="text-white text-2xl font-bold">
-                {formatCurrency(totalIncome)}
+                {spaceCurrency === "PHP" ? `₱${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : totalIncome.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </p>
             </div>
 
@@ -625,7 +628,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
                 <p className="text-gray-400 text-md">Expenses</p>
               </div>
               <p className="text-white text-2xl font-bold">
-                {formatCurrency(totalExpenses)}
+                {spaceCurrency === "PHP" ? `₱${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : totalExpenses.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </p>
             </div>
           </div>

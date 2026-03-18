@@ -17,6 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
 
 interface SheetsViewProps {
     isPending: boolean;
@@ -66,6 +67,10 @@ export function SheetsView({
     const [lightboxImages, setLightboxImages] = useState<Array<{ url: string; filename?: string; contentType?: string; byteSize?: number }>>([]);
     const [lightboxIndex, setLightboxIndex] = useState(0);
     const { api } = useAuthApi();
+    
+    // Get space context for currency
+    const { currentSpace } = useSpaceContext(api);
+    const spaceCurrency = currentSpace?.currency ?? "PHP";
 
     const handleImageClick = async (transaction: IndexTransaction) => {
         if (!api) return;
@@ -487,8 +492,9 @@ export function SheetsView({
                             >
                               <div className="flex items-center gap-2">
                                 <span>
-                                  {transaction.amount > 0 ? "+" : ""}
-                                  {formatCurrency(transaction.amount)}
+                                  {transaction.amount < 0
+                                    ? `-${formatCurrency(Math.abs(transaction.amount), spaceCurrency)}`
+                                    : formatCurrency(transaction.amount, spaceCurrency)}
                                 </span>
                                 {/* Image icon - only show when hasImage is true */}
                                 {transaction.hasImage && (

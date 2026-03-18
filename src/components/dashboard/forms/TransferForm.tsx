@@ -79,7 +79,7 @@ interface TransferFormProps {
 const TransferForm: React.FC<TransferFormProps> = ({
   date,
   setDate,
-  spaceCurrency = "PHP",
+  spaceCurrency,
   onSubmitSuccess = () => {},
   onCancel = () => {},
   id,
@@ -90,6 +90,9 @@ const TransferForm: React.FC<TransferFormProps> = ({
 }) => {
   const { api } = useAuthApi();
   const accountOptions = useAtomValue(accountOptionsAtom);
+
+  // Use provided spaceCurrency or fallback to PHP if not provided
+  const effectiveSpaceCurrency = spaceCurrency ?? "PHP";
 
   const transferAmountCurrencyOptions = useMemo(() => {
     const codes = Array.from(
@@ -120,12 +123,12 @@ const TransferForm: React.FC<TransferFormProps> = ({
   const toAccount = accountOptions.find(
     (a) => a.value === formState.toAccountName
   );
-  const fromAccountCurrency = fromAccount?.currency ?? spaceCurrency;
-  const toAccountCurrency = toAccount?.currency ?? spaceCurrency;
+  const fromAccountCurrency = fromAccount?.currency ?? effectiveSpaceCurrency;
+  const toAccountCurrency = toAccount?.currency ?? effectiveSpaceCurrency;
   const fromAccountCurrencyDiffersFromSpace =
-    fromAccount?.currency != null && fromAccount.currency !== spaceCurrency;
+    fromAccount?.currency != null && fromAccount.currency !== effectiveSpaceCurrency;
   const toAccountCurrencyDiffersFromSpace =
-    toAccount?.currency != null && toAccount.currency !== spaceCurrency;
+    toAccount?.currency != null && toAccount.currency !== effectiveSpaceCurrency;
 
   const [conversionSnapshot, setConversionSnapshot] =
     useState<ConversionSnapshot | null>(null);
@@ -510,7 +513,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
           )}
           {fromAccountCurrencyDiffersFromSpace && fromAccount?.currency && (
             <p className="text-xs text-muted-foreground mt-1">
-              From account currency: {fromAccount.currency} (differs from space: {spaceCurrency})
+              From account currency: {fromAccount.currency} (differs from space: {effectiveSpaceCurrency})
             </p>
           )}
           {showFromAccountCreation && (
@@ -558,7 +561,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
           )}
           {toAccountCurrencyDiffersFromSpace && toAccount?.currency && (
             <p className="text-xs text-muted-foreground mt-1">
-              To account currency: {toAccount.currency} (differs from space: {spaceCurrency})
+              To account currency: {toAccount.currency} (differs from space: {effectiveSpaceCurrency})
             </p>
           )}
           {showToAccountCreation && (

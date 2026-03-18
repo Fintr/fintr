@@ -15,6 +15,7 @@ import { useAuthApi } from "@/hooks/useAuthApi";
 import { fetchTransactionById } from "@/services/transactions/queries";
 import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import { toast } from "sonner";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
 
 interface ListViewProps {
   isPending: boolean;
@@ -47,6 +48,10 @@ export function ListView({
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [hoveredCalculatedId, setHoveredCalculatedId] = useState<string | null>(null);
   const { api } = useAuthApi();
+  
+  // Get space context for currency
+  const { currentSpace } = useSpaceContext(api);
+  const spaceCurrency = currentSpace?.currency ?? "PHP";
 
   const handleCopyId = async (id: string) => {
     try {
@@ -253,8 +258,9 @@ export function ListView({
                                 : "text-blue-900"
                             }`}
                           >
-                              {transaction.amount > 0 ? "+" : ""}
-                              {formatCurrency(transaction.amount)}
+                              {transaction.amount < 0
+                                ? `-${formatCurrency(Math.abs(transaction.amount), spaceCurrency)}`
+                                : formatCurrency(transaction.amount, spaceCurrency)}
                           </div>
                           <span
                                   className={`px-1 md:px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 gap-1 ${

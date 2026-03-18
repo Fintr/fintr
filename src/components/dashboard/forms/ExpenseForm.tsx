@@ -122,7 +122,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   date,
   setDate,
   suggestedDate,
-  spaceCurrency = "PHP",
+  spaceCurrency,
   defaultTransactionCurrency,
   onAddCustomCategory,
   onAddCustomAccount,
@@ -138,6 +138,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Get options from atoms
   const categoryOptionsRaw = useAtomValue(expenseCategoryOptionsAtom);
   const accountOptionsRaw = useAtomValue(accountOptionsAtom);
+
+  // Use provided spaceCurrency or fallback to PHP if not provided
+  const effectiveSpaceCurrency = spaceCurrency ?? "PHP";
 
   // Deduplicate account options to prevent React key warnings
   const accountOptions = useMemo(() => {
@@ -215,9 +218,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
   const selectedAccount = accountOptions.find((a) => a.value === formState.accountName);
   const selectedAccountCurrency =
-    selectedAccount?.currency ?? spaceCurrency;
+    selectedAccount?.currency ?? effectiveSpaceCurrency;
   const accountCurrencyDiffersFromSpace =
-    selectedAccount?.currency != null && selectedAccount.currency !== spaceCurrency;
+    selectedAccount?.currency != null && selectedAccount.currency !== effectiveSpaceCurrency;
 
   const initialAmountCurrency =
     defaultTransactionCurrency && amountCurrencyOptions.includes(defaultTransactionCurrency)
@@ -355,8 +358,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       const displayCurrency = hasOriginal
         ? String(originalCurrency)
         : rawConv != null
-          ? String((rawConv as any).original_currency ?? (rawConv as any).originalCurrency ?? spaceCurrency)
-          : spaceCurrency;
+          ? String((rawConv as any).original_currency ?? (rawConv as any).originalCurrency ?? effectiveSpaceCurrency)
+          : effectiveSpaceCurrency;
       const useConversion = hasOriginal || (rawConv != null);
 
       setFormState({
@@ -384,7 +387,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           exchangeRateSource: ((rawConv as any)?.source ?? "manual") as "auto" | "manual" | "recent",
         });
       } else {
-        setAmountCurrency(spaceCurrency);
+        setAmountCurrency(effectiveSpaceCurrency);
         setConversionSnapshot(null);
       }
 
@@ -841,7 +844,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             onAmountChange={(value) => amountInput.handleInputChange(value)}
             fromCurrency={amountCurrency}
             onFromCurrencyChange={setAmountCurrency}
-            toCurrency={isEditMode && conversionSnapshot ? selectedAccountCurrency : spaceCurrency}
+            toCurrency={isEditMode && conversionSnapshot ? selectedAccountCurrency : effectiveSpaceCurrency}
             amountCurrencyOptions={amountCurrencyOptions}
             accountOptions={accountOptions}
             errors={formSubmitted && formErrors.amount ? formErrors.amount : []}
@@ -1008,7 +1011,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             ))}
             {accountCurrencyDiffersFromSpace && selectedAccount?.currency && (
               <p className="text-xs text-muted-foreground mt-1">
-                Account currency: {selectedAccount.currency} (differs from space: {spaceCurrency})
+                Account currency: {selectedAccount.currency} (differs from space: {effectiveSpaceCurrency})
               </p>
             )}
             {showCustomAccountInput && (

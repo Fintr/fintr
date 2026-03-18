@@ -69,6 +69,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
+import { useAuthApi } from "@/hooks/useAuthApi";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
 
 interface InsightsTabProps {
   filteredTransactions?: any[];
@@ -108,6 +110,23 @@ const InsightsTab = () => {
     .toLocaleString("default", { month: "long" })
     .toLowerCase();
   const currentYear = new Date().getFullYear().toString();
+
+  // Get API and space context for currency
+  const { api } = useAuthApi();
+  const { currentSpace } = useSpaceContext(api);
+  const spaceCurrency = currentSpace?.currency ?? "PHP";
+
+  console.log("[DEBUG] Component initialized - spaceCurrency:", spaceCurrency, "currentSpace:", currentSpace);
+
+  // Helper function to format currency with space currency.
+  // Removes .00 for whole numbers to make the negative sign more visible.
+  const formatAmount = (amount: number) => {
+    let result = formatCurrency(amount, spaceCurrency);
+    // Remove .00 or ,00 (depending on locale) for whole numbers
+    result = result.replace(/[.,]00$/, "");
+    console.log("[DEBUG formatAmount] input:", amount, "result:", result);
+    return result;
+  };
 
 
   // Generate dynamic year options for the select dropdowns
@@ -213,26 +232,58 @@ const InsightsTab = () => {
   // Calculate Y-axis domain for bar chart with padding
   const barChartYAxisDomain = useMemo(() => {
     const data = insightsData?.monthlySpending || monthlyFinancialData;
+    console.log("[DEBUG] Calculating Y-axis domain, raw data:", data);
+
     if (!data || data.length === 0) {
+      console.log("[DEBUG] No data, returning default domain [0, 100000]");
       return [0, 100000]; // Default range
     }
-    
+
     // Find max and min values across all data points (income, expenses, savings)
     const allValues = data.flatMap(item => [
       item.income || 0,
       Math.abs(item.expenses) || 0, // expenses shown as positive
       item.savings || 0
     ]);
-    
+
     const maxValue = Math.max(...allValues);
     const minValue = Math.min(...data.map(item => item.savings || 0)); // Check if savings go negative
-    
+
     // Add 20% padding to the top, and 10% to bottom if there are negative values
     const domainMax = maxValue * 1.2;
     const domainMin = minValue < 0 ? minValue * 1.1 : 0;
-    
-    return [domainMin, domainMax];
+
+    const result = [domainMin, domainMax];
+    console.log("[DEBUG] Y-axis domain calculation:", {
+      allValues,
+      maxValue,
+      minValue,
+      domainMin,
+      domainMax,
+      result,
+    });
+    return result;
   }, [insightsData?.monthlySpending]);
+
+  // Whether we actually have negative savings in the series
+  const hasNegativeSavings = useMemo(() => {
+    const data = insightsData?.monthlySpending || monthlyFinancialData;
+    const result = data.some((item) => (item.savings || 0) < 0);
+    console.log("[DEBUG] hasNegativeSavings:", result, "data:", data);
+    return result;
+  }, [insightsData?.monthlySpending]);
+
+  // Debug logging for formatAmount
+  const debugFormatAmount = (amount: number, context: string) => {
+    const result = formatCurrency(amount, spaceCurrency);
+    console.log(`[DEBUG formatAmount] ${context}:`, {
+      input: amount,
+      spaceCurrency,
+      result,
+      isNegative: amount < 0,
+    });
+    return result;
+  };
 
   // Calculate Y-axis domain for financial trends chart with padding
   const yAxisDomain = useMemo(() => {
@@ -592,7 +643,7 @@ const InsightsTab = () => {
                   <div
                     className={`text-2xl font-bold ${(insightsData?.summary?.totalIncome || 0) >= 0 ? "text-teal-600" : "text-red-900"}`}
                   >
-                    {formatCurrency(insightsData?.summary?.totalIncome || 0)}
+                    {formatAmount(insightsData?.summary?.totalIncome || 0)}
                   </div>
                 </div>
                 <div className="bg-[#f9f7f5] p-4 rounded-lg">
@@ -600,7 +651,7 @@ const InsightsTab = () => {
                     Total Expenses
                   </h4>
                   <div className="text-2xl font-bold text-red-900">
-                    {formatCurrency(insightsData?.summary?.totalExpenses || 0)}
+                    {formatAmount(insightsData?.summary?.totalExpenses || 0)}
                   </div>
                 </div>
                 <div className="bg-[#f9f7f5] p-4 rounded-lg">
@@ -610,7 +661,7 @@ const InsightsTab = () => {
                   <div
                     className={`text-2xl font-bold ${(insightsData?.summary?.netSavings || 0) >= 0 ? "text-teal-600" : "text-red-900"}`}
                   >
-                    {formatCurrency(insightsData?.summary?.netSavings || 0)}
+                    {formatAmount(insightsData?.summary?.netSavings || 0)}
                   </div>
                 </div>
               </div>
@@ -863,16 +914,16 @@ const InsightsTab = () => {
                             if (name === "Other" && props.payload.details) {
                               return (
                                 <div>
-                                  {formatCurrency(value)}<br/>
+                                  {formatAmount(value)}<br/>
                                  {props.payload.details.map((detail: { name: string; value: number; percent: string; }) => (
                                     <div key={detail.name}>
-                                      {detail.name}: {formatCurrency(detail.value)} ({detail.percent.includes('%') ? detail.percent : `${detail.percent}%`})
+                                      {detail.name}: {formatAmount(detail.value)} ({detail.percent.includes('%') ? detail.percent : `${detail.percent}%`})
                                     </div>
                                   ))}
                                 </div>
                               );
                             }
-                            return formatCurrency(value);
+                            return formatAmount(value);
                           }}
                           wrapperStyle={{ zIndex: 100 }}
                         />
@@ -909,7 +960,7 @@ const InsightsTab = () => {
                       <div className="text-center">
                         <p className="text-xs text-gray-500">Total Expenses</p>
                         <p className="text-base font-semibold text-gray-900">
-                          {formatCurrency(processedExpenseBreakdown.reduce((sum, item) => sum + item.value, 0))}
+                          {formatAmount(processedExpenseBreakdown.reduce((sum, item) => sum + item.value, 0))}
                         </p>
                       </div>
                     </div>
@@ -924,6 +975,7 @@ const InsightsTab = () => {
         <AccountBreakdownComponent 
           data={insightsData?.accountBreakdown || { totalBalance: 0, breakdown: [] }} 
           isLoading={isLoading}
+          currencyCode={spaceCurrency}
         />
 
         <Card className="border-0 mt-6">
@@ -952,29 +1004,19 @@ const InsightsTab = () => {
                     stroke="#888888"
                     style={{ fontSize: '14px' }}
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="#888888"
                     domain={barChartYAxisDomain}
                     tickFormatter={(value) => {
-                      // Handle millions
-                      if (Math.abs(value) >= 1000000) {
-                        return `₱${(value / 1000000).toFixed(1)}M`;
-                      }
-                      // Handle thousands
-                      if (Math.abs(value) >= 1000) {
-                        return `₱${(value / 1000).toFixed(0)}K`;
-                      }
-                      // Handle small numbers
-                      if (Math.abs(value) < 1000 && value !== 0) {
-                        return `₱${value.toFixed(0)}`;
-                      }
-                      return '₱0';
+                      // Always include sign for non-zero values; guarantees negatives are explicit
+                      const formatted = formatCurrency(Math.abs(value), spaceCurrency).replace(/[.,]00$/, "");
+                      return value < 0 ? `-${formatted}` : formatted;
                     }}
                     style={{ fontSize: '12px' }}
                   />
                   <RechartsTooltip
                     formatter={(value: number, name: string) => {
-                      return [formatCurrency(value), name];
+                      return [formatAmount(value), name];
                     }}
                     labelFormatter={(label) => `Month: ${label}`}
                     contentStyle={{ 
@@ -987,12 +1029,11 @@ const InsightsTab = () => {
                   <Legend 
                     wrapperStyle={{ paddingTop: '20px' }}
                   />
-                  <ReferenceLine 
-                    y={0} 
-                    stroke="#888888" 
+                  <ReferenceLine
+                    y={0}
+                    stroke="#888888"
                     strokeDasharray="3 3"
                     strokeWidth={1.5}
-                    label={{ value: '₱0', position: 'left', fill: '#888888', fontSize: 12 }}
                   />
                   <Line
                     type="monotone"
@@ -1048,11 +1089,11 @@ const InsightsTab = () => {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-sm text-muted-foreground font-medium flex-shrink-0">Earned:</span>
-                            <span className="font-bold text-green-600 text-base whitespace-nowrap text-right">{formatCurrency(item.income)}</span>
+                            <span className="font-bold text-green-600 text-base whitespace-nowrap text-right">{formatAmount(item.income)}</span>
                           </div>
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-sm text-muted-foreground font-medium flex-shrink-0">Spent:</span>
-                            <span className="font-bold text-red-900 text-base whitespace-nowrap text-right">{formatCurrency(Math.abs(item.expenses))}</span>
+                            <span className="font-bold text-red-900 text-base whitespace-nowrap text-right">{formatAmount(Math.abs(item.expenses))}</span>
                           </div>
                           <div className="flex items-center justify-between gap-3 pt-2 border-t">
                             <span className="text-sm text-muted-foreground font-medium flex-shrink-0 flex items-center gap-1.5">
@@ -1060,7 +1101,7 @@ const InsightsTab = () => {
                               {item.savings < 0 && <span className="text-base">⚠️</span>}
                             </span>
                             <span className={`font-bold text-base whitespace-nowrap text-right ${item.savings < 0 ? 'text-red-900' : 'text-gray-900'}`}>
-                              {formatCurrency(item.savings)}
+                              {formatAmount(item.savings)}
                             </span>
                           </div>
                         </div>
@@ -1097,7 +1138,7 @@ const InsightsTab = () => {
                     <XAxis dataKey="day" stroke="#888888" />
                     <YAxis stroke="#888888" />
                     <RechartsTooltip
-                      formatter={(value: number) => formatCurrency(value)}
+                      formatter={(value: number) => formatAmount(value)}
                     />
                     <Bar
                       dataKey="amount"

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useGetSpaceCode } from "@/hooks/useGetSpaceCode";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { shouldShowV2Features, formatCurrency } from "@/lib/utils";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -37,7 +38,9 @@ export default function Layout({
   
   const { spaceCode } = useGetSpaceCode(api, isAuthenticated);
   const { data, isLoading: isLoadingDashboardData, isError, refetch } = useDashboardData();
-  
+  const { currentSpace } = useSpaceContext(api);
+  const spaceCurrency = currentSpace?.currency ?? "PHP";
+
   const showV2Features = shouldShowV2Features();
 
   const [isEditingGoalDescription, setIsEditingGoalDescription] = useState(false);
@@ -142,11 +145,11 @@ export default function Layout({
                   <div className="mt-2">
                     <span className="text-md text-primary/70">Savings: </span>
                     <span className={`text-md font-bold ${
-                      parseFloat(data.financialSummary.netSavings) >= 0 
-                        ? 'text-teal-600' 
+                      parseFloat(data.financialSummary.netSavings) >= 0
+                        ? 'text-teal-600'
                         : 'text-red-900'
                     }`}>
-                      {formatCurrency(parseFloat(data.financialSummary.netSavings))}
+                      {formatCurrency(parseFloat(data.financialSummary.netSavings), spaceCurrency)}
                     </span>
                   </div>
                 )}

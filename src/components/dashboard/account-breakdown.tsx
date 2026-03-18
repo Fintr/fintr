@@ -23,6 +23,8 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 interface AccountBreakdownProps {
   data: AccountBreakdown;
   isLoading?: boolean;
+  /** ISO 4217 currency code for the current space (e.g. "PLN"). */
+  currencyCode?: string;
 }
 
 const getAccountIcon = (category: string) => {
@@ -49,14 +51,14 @@ const getAccountIcon = (category: string) => {
   }
 };
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload, currencyCode }: { active?: boolean; payload?: any[]; currencyCode?: string }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
       <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
         <p className="font-medium">{data.name}</p>
         <p className={`text-sm ${data.value < 0 ? 'text-red-900' : 'text-gray-600'}`}>
-          {formatCurrency(data.value)} ({data.percentage})
+          {formatCurrency(data.value, currencyCode || "PHP")} ({data.percentage})
         </p>
       </div>
     );
@@ -66,9 +68,11 @@ const CustomTooltip = ({ active, payload }: any) => {
 
 interface AccountTransactionsProps {
   accountName: string;
+  /** Currency code used for formatting amounts. */
+  currencyCode?: string;
 }
 
-const AccountTransactions = ({ accountName }: AccountTransactionsProps) => {
+const AccountTransactions = ({ accountName, currencyCode }: AccountTransactionsProps) => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [displayedTransactions, setDisplayedTransactions] = useState<IndexTransaction[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -263,17 +267,22 @@ const AccountTransactions = ({ accountName }: AccountTransactionsProps) => {
                           
                           if (isFromAccount && !isToAccount) {
                             // Money going out of this account
-                            return `-${formatCurrency(Math.abs(transaction.amount))}`;
+                            return `-${formatCurrency(Math.abs(transaction.amount), currencyCode || "PHP")}`;
                           } else if (isToAccount && !isFromAccount) {
                             // Money coming into this account
-                            return `+${formatCurrency(Math.abs(transaction.amount))}`;
+                            return `+${formatCurrency(Math.abs(transaction.amount), currencyCode || "PHP")}`;
                           } else {
                             // Fallback to original amount display
-                            return `${transaction.amount > 0 ? '+' : ''}${formatCurrency(transaction.amount)}`;
+                            return `${transaction.amount > 0 ? "+" : ""}${formatCurrency(
+                              transaction.amount,
+                              currencyCode || "PHP",
+                            )}`;
                           }
                         } else {
                           // For income and expenses, use the original logic
-                          return `${transaction.type === CombinedTransactionTypeEnum.EXPENSE ? '-' : '+'}${formatCurrency(Math.abs(transaction.amount))}`;
+                          return `${
+                            transaction.type === CombinedTransactionTypeEnum.EXPENSE ? "-" : "+"
+                          }${formatCurrency(Math.abs(transaction.amount), currencyCode || "PHP")}`;
                         }
                       })()}
                     </p>
@@ -302,8 +311,11 @@ const AccountTransactions = ({ accountName }: AccountTransactionsProps) => {
   );
 };
 
-const AccountBreakdownComponent = ({ data, isLoading = false }: AccountBreakdownProps) => {
+const AccountBreakdownComponent = ({ data, isLoading = false, currencyCode }: AccountBreakdownProps) => {
   const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
+
+  const formatAmount = (value: number) =>
+    formatCurrency(value, currencyCode || "PHP");
 
   const handleAccountClick = (accountName: string) => {
     setExpandedAccount(prev => {
@@ -348,7 +360,7 @@ const AccountBreakdownComponent = ({ data, isLoading = false }: AccountBreakdown
       <CardHeader className="px-4">
         <CardTitle>Account Breakdown</CardTitle>
         <div className="text-2xl font-bold text-teal-600">
-          {formatCurrency(data.totalBalance)}
+          {formatAmount(data.totalBalance)}
         </div>
       </CardHeader>
       <CardContent className="px-4">
@@ -377,7 +389,7 @@ const AccountBreakdownComponent = ({ data, isLoading = false }: AccountBreakdown
                     <div className="flex items-center space-x-2">
                       <div className="text-right">
                         <div className={`text-sm font-semibold ${account.value < 0 ? 'text-red-900' : 'text-teal-600'}`}>
-                          {formatCurrency(account.value)}
+                          {formatAmount(account.value)}
                         </div>
                         <div className="text-xs text-gray-500">
                           {account.percentage}
@@ -394,7 +406,10 @@ const AccountBreakdownComponent = ({ data, isLoading = false }: AccountBreakdown
                   <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
                     isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
                   }`}>
-                    <AccountTransactions accountName={account.name} />
+                    <AccountTransactions
+                      accountName={account.name}
+                      currencyCode={currencyCode}
+                    />
                   </div>
                 </div>
               );

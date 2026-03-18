@@ -89,7 +89,7 @@ interface IncomeFormProps {
 const IncomeForm: React.FC<IncomeFormProps> = ({
   date,
   setDate,
-  spaceCurrency = "PHP",
+  spaceCurrency,
   defaultTransactionCurrency,
   onAddCustomCategory,
   onAddCustomAccount,
@@ -105,6 +105,9 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const categoryOptions = useAtomValue(incomeCategoryOptionsAtom);
   const accountOptions = useAtomValue(accountOptionsAtom);
   const { api } = useAuthApi();
+
+  // Use provided spaceCurrency or fallback to PHP if not provided
+  const effectiveSpaceCurrency = spaceCurrency ?? "PHP";
 
   const amountCurrencyOptions = useMemo(() => {
     const fromAccounts = Array.from(
@@ -158,9 +161,9 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
   const selectedAccount = accountOptions.find((a) => a.value === formState.accountName);
   const selectedAccountCurrency =
-    selectedAccount?.currency ?? spaceCurrency;
+    selectedAccount?.currency ?? effectiveSpaceCurrency;
   const accountCurrencyDiffersFromSpace =
-    selectedAccount?.currency != null && selectedAccount.currency !== spaceCurrency;
+    selectedAccount?.currency != null && selectedAccount.currency !== effectiveSpaceCurrency;
 
   const initialAmountCurrency =
     defaultTransactionCurrency && amountCurrencyOptions.includes(defaultTransactionCurrency)
@@ -303,8 +306,8 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       const displayCurrency = hasOriginal
         ? String(originalCurrency)
         : rawConv != null
-          ? String((rawConv as any).original_currency ?? (rawConv as any).originalCurrency ?? spaceCurrency)
-          : spaceCurrency;
+          ? String((rawConv as any).original_currency ?? (rawConv as any).originalCurrency ?? effectiveSpaceCurrency)
+          : effectiveSpaceCurrency;
       const useConversion = hasOriginal || (rawConv != null);
 
       setFormState({
@@ -330,7 +333,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           exchangeRateSource: ((rawConv as any)?.source ?? "manual") as "auto" | "manual" | "recent",
         });
       } else {
-        setAmountCurrency(spaceCurrency);
+        setAmountCurrency(effectiveSpaceCurrency);
         setConversionSnapshot(null);
       }
 
@@ -422,7 +425,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     try {
       // Backend expects amount always in space currency; it converts to account currency when needed.
       let amountToUse: string = String(numberFormatting.cleanForBackend(formState.amount));
-      if (spaceCurrency === "PHP" && (deductTaxes || deductContributions) && taxCalculation) {
+      if (effectiveSpaceCurrency === "PHP" && (deductTaxes || deductContributions) && taxCalculation) {
         amountToUse = String(taxCalculation.netIncome);
       }
 
@@ -570,7 +573,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             onAmountChange={(value) => amountInput.handleInputChange(value)}
             fromCurrency={amountCurrency}
             onFromCurrencyChange={setAmountCurrency}
-            toCurrency={isEditMode && conversionSnapshot ? selectedAccountCurrency : spaceCurrency}
+            toCurrency={isEditMode && conversionSnapshot ? selectedAccountCurrency : effectiveSpaceCurrency}
             amountCurrencyOptions={amountCurrencyOptions}
             accountOptions={accountOptions}
             errors={formSubmitted && formErrors.amount ? formErrors.amount : []}
@@ -588,7 +591,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           </div>
 
           {/* Deduction Options - only for PHP (Philippines tax/contributions) */}
-          {spaceCurrency === "PHP" && (
+          {effectiveSpaceCurrency === "PHP" && (
             <div className="flex justify-end gap-2 mt-2">
                 <button
                   type="button"
@@ -619,7 +622,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         </div>
 
          {/* Tax Calculator - Philippines only */}
-         {spaceCurrency === "PHP" && (deductTaxes || deductContributions) && (
+         {effectiveSpaceCurrency === "PHP" && (deductTaxes || deductContributions) && (
            <div className="w-full animate-in slide-in-from-top-2 fade-in duration-300">
              <PhilippinesTaxCalculator 
                grossIncome={grossIncome}
@@ -758,7 +761,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             ))}
             {accountCurrencyDiffersFromSpace && selectedAccount?.currency && (
               <p className="text-xs text-muted-foreground mt-1">
-                Account currency: {selectedAccount.currency} (differs from space: {spaceCurrency})
+                Account currency: {selectedAccount.currency} (differs from space: {effectiveSpaceCurrency})
               </p>
             )}
             {showCustomAccountInput && (
