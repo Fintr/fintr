@@ -50,7 +50,7 @@ module Ai
             prompt: prompt,
             analysis: analysis,
             structured_data: structured_data,
-            vector_results: vector_results,
+            vector_results: vector_results
           }
         end
 

@@ -131,7 +131,7 @@ module Ai
 
             response = client.chat(
               parameters: {
-                model:    model,
+                model: model,
                 messages: [
                   {
                     role: "system",
@@ -147,7 +147,7 @@ module Ai
                       {
                         type: "image_url",
                         image_url: {
-                          url:   base64_image,
+                          url: base64_image,
                           detail: "high" # Keep high for readable text; speed comes from resized image + fast model
                         }
                       }

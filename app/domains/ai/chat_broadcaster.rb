@@ -4,7 +4,7 @@ module Ai
   # Broadcasts chat updates via Action Cable
   # Single Responsibility: Broadcasting chat messages
   class ChatBroadcaster
-    CHANNEL = 'chat'
+    CHANNEL = "chat"
 
     def initialize(channel: nil)
       @channel = channel || CHANNEL
@@ -20,8 +20,8 @@ module Ai
       broadcast(
         conversation_id,
         {
-          status: 'streaming',
-          content: chunk,
+          status: "streaming",
+          content: chunk
         },
       )
     end
@@ -36,8 +36,8 @@ module Ai
       broadcast(
         conversation_id,
         {
-          status: 'processing',
-          metadata: metadata,
+          status: "processing",
+          metadata: metadata
         },
       )
     end
@@ -52,8 +52,8 @@ module Ai
       broadcast(
         conversation_id,
         {
-          status: 'complete',
-          content: content,
+          status: "complete",
+          content: content
         },
       )
     end
@@ -70,9 +70,9 @@ module Ai
       broadcast(
         conversation_id,
         {
-          status: 'error',
+          status: "error",
           error: error,
-          error_code: code,
+          error_code: code
         },
       )
     end

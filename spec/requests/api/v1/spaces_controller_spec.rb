@@ -115,20 +115,21 @@ RSpec.describe Api::V1::SpacesController, type: :request do
   end
 
   describe "POST /api/v1/spaces/:code/join" do
-    let!(:space_user_invitation) { create(:space_user, space: space, user: nil, invitation_status: 'pending', access_code: 'VALID123', invited_by: user) }
+    let(:target_space) { create(:organization_space) }
+    let!(:space_user_invitation) { create(:space_user, space: target_space, user: nil, invitation_status: 'pending', access_code: 'VALID123', invited_by: user) }
     let(:join_params) { { access_code: 'VALID123' } }
 
     it "joins user to space with valid access code" do
       expect {
-        post "/api/v1/spaces/#{space.code}/join", params: join_params, headers: auth_setup[:headers]
+        post "/api/v1/spaces/#{target_space.code}/join", params: join_params, headers: auth_setup[:headers]
       }.to change { space_user_invitation.reload.invitation_status }.from('pending').to('used')
 
       expect(response).to have_http_status(:ok)
-      expect(user.reload.spaces).to include(space)
+      expect(user.reload.spaces).to include(target_space)
     end
 
     it "returns error for invalid access code" do
-      post "/api/v1/spaces/#{space.code}/join", params: { access_code: "invalid" }, headers: auth_setup[:headers]
+      post "/api/v1/spaces/#{target_space.code}/join", params: { access_code: "invalid" }, headers: auth_setup[:headers]
 
       expect(response).to have_http_status(:unprocessable_content)
     end

@@ -55,7 +55,7 @@ module Ai
         {
           total_messages: total,
           context_messages: [total, MAX_CONTEXT_MESSAGES].min,
-          conversation_id: @conversation_id,
+          conversation_id: @conversation_id
         }
       end
 
@@ -63,15 +63,15 @@ module Ai
 
       def build_system_message(content)
         {
-          role: 'system',
-          content: content,
+          role: "system",
+          content: content
         }
       end
 
       def build_user_message(content)
         {
-          role: 'user',
-          content: content,
+          role: "user",
+          content: content
         }
       end
 
@@ -84,7 +84,7 @@ module Ai
         messages.map do |msg|
           {
             role: msg[:role],
-            content: msg[:content],
+            content: msg[:content]
           }
         end
       end

@@ -40,7 +40,7 @@ module Dashboards
           MonthlyFinancialSummaries::Queries::CurrentMonthSummary.call(params:)
         end
       end
-      
+
       def combine_data(dashboard_data:, financial_summary:)
         serialized_dashboard = Spaces::Serializers::DashboardSerializer.render_as_hash(dashboard_data)
 

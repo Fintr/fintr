@@ -5,7 +5,7 @@ module Ai
     # Fallback provider using direct OpenAI API
     # Used when OpenRouter fails or for specific features
     class OpenaiFallbackProvider < BaseProvider
-      DEFAULT_MODEL = 'gpt-4o-mini'
+      DEFAULT_MODEL = "gpt-4o-mini"
 
       def initialize(
         client: nil,
@@ -43,12 +43,12 @@ module Ai
 
       def embeddings(
         text:,
-        model: 'text-embedding-3-small'
+        model: "text-embedding-3-small"
       )
         response = @client.embeddings(
           parameters: {
             model: model,
-            input: Array(text),
+            input: Array(text)
           },
         )
 
@@ -68,7 +68,7 @@ module Ai
       private
 
       def initialize_client(api_key)
-        api_key ||= ENV['OPENAI_API_KEY']
+        api_key ||= ENV["OPENAI_API_KEY"]
         raise ProviderError, "OpenAI API key not configured" unless api_key
 
         OpenAI::Client.new(
@@ -87,15 +87,15 @@ module Ai
           model: model || DEFAULT_MODEL,
           messages: format_messages(messages),
           temperature: temperature,
-          max_tokens: options[:max_tokens] || 2000,
+          max_tokens: options[:max_tokens] || 2000
         }.compact
       end
 
       def format_messages(messages)
         messages.map do |msg|
           {
-            role: msg[:role] || msg['role'],
-            content: msg[:content] || msg['content'],
+            role: msg[:role] || msg["role"],
+            content: msg[:content] || msg["content"]
           }
         end
       end
@@ -115,30 +115,30 @@ module Ai
 
         @client.chat(parameters: parameters.merge(stream: stream_proc))
 
-        { content: content, role: 'assistant' }
+        { content: content, role: "assistant" }
       end
 
       def synchronous_response(parameters)
         response = @client.chat(parameters: parameters)
 
         {
-          content: response.dig('choices', 0, 'message', 'content'),
-          role: response.dig('choices', 0, 'message', 'role') || 'assistant',
+          content: response.dig("choices", 0, "message", "content"),
+          role: response.dig("choices", 0, "message", "role") || "assistant"
         }
       end
 
       def extract_delta(chunk)
-        chunk.dig('choices', 0, 'delta', 'content')
+        chunk.dig("choices", 0, "delta", "content")
       end
 
       def extract_embeddings(response)
-        data = response['data']
+        data = response["data"]
         return nil unless data
 
         if data.is_a?(Array)
-          data.map { |d| d['embedding'] }
+          data.map { |d| d["embedding"] }
         else
-          data['embedding']
+          data["embedding"]
         end
       end
     end

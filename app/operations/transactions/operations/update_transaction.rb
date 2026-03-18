@@ -31,7 +31,7 @@ module Transactions
 
       include FailureHandler
       include Dry::Operation::Extensions::ActiveRecord
-      
+
       CONVERSION_PARAMS = %i[original_currency exchange_rate exchange_rate_source].freeze
 
       def call(params)

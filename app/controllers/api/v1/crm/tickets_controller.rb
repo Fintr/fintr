@@ -4,6 +4,7 @@ module Api
   module V1
     module Crm
       class TicketsController < ApiController
+        skip_before_action :ensure_space_access!
         before_action :set_ticket, only: [:show]
 
         def index

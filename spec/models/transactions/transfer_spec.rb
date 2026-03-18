@@ -100,7 +100,7 @@ RSpec.describe Transactions::Transfer, type: :model do
 
       it 'is invalid' do
         expect(transfer).not_to be_valid
-        expect(transfer.errors[:base]).to include('Account currencies must match')
+        expect(transfer.errors[:base]).to include('Account currencies must match or exchange rate must be provided')
       end
     end
 

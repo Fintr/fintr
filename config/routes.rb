@@ -76,7 +76,7 @@ Rails.application.routes.draw do
         resources :categories, only: %i[index create update destroy]
         resources :accounts, only: %i[index create update destroy] do
           member do
-            post 'adjust_balance'
+            post "adjust_balance"
           end
         end
         resources :transfers, only: %i[create show update destroy]

@@ -8,7 +8,12 @@ RSpec.describe Onboardings::Operations::ShowCurrencyData do
   let(:user) { create(:user) }
   let(:space) { create(:space, currency: "JPY") }
   let!(:space_user) { create(:space_user, user: user, space: space) }
-  let!(:onboarding) { create(:onboarding, user: user, step: "currency", data: { "currency" => "PHP" }) }
+  let!(:onboarding) do
+    # User creation automatically creates an onboarding via callback
+    # Update it instead of creating a new one
+    user.onboarding.update!(step: "currency", data: { "currency" => "PHP" })
+    user.onboarding
+  end
 
   describe "#call" do
     context "when valid params and onboarding exists" do

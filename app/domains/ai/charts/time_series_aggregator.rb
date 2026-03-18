@@ -52,7 +52,13 @@ module Ai
       end
 
       def extract_week(key)
-        date = Date.parse(key.to_s) rescue return key
+        date =
+          begin
+            Date.parse(key.to_s)
+          rescue ArgumentError, TypeError
+            return key.to_s
+          end
+
         date.beginning_of_week.to_s
       end
     end

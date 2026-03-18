@@ -10,7 +10,7 @@ module Api
       # GET /api/v1/cache_version
       def show
         cache_version = Rails.cache.fetch("capacitor_cache_version") do
-          Time.now.to_i.to_s
+          Time.zone.now.to_i.to_s
         end
 
         render_success(

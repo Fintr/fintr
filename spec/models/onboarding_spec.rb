@@ -17,8 +17,8 @@ RSpec.describe Onboarding, type: :model do
 
   describe "enums" do
     it "defines the correct step types" do
-      expect(described_class.steps.keys).to match_array(%w[income budgets accounts completed])
-      expect(described_class.steps.values).to match_array(%w[income budgets accounts completed])
+      expect(described_class.steps.keys).to match_array(%w[currency income budgets accounts completed])
+      expect(described_class.steps.values).to match_array(%w[currency income budgets accounts completed])
     end
 
     it "allows setting a valid step type" do

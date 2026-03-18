@@ -16,13 +16,13 @@ module Ai
       end
 
       model = @registry.recommend(use_case, tier: tier)
-      
+
       # Fallback to primary if specific tier not found
       model ||= @registry.recommend(use_case, tier: :primary)
-      
+
       # Final fallback to gpt-4o-mini
-      model ||= @registry.get('openai/gpt-4o-mini')
-      
+      model ||= @registry.get("openai/gpt-4o-mini")
+
       model
     end
 
@@ -34,59 +34,59 @@ module Ai
     # Get multiple model options with reasoning
     def select_with_reasoning(use_case, query: nil)
       characteristics = analyze_query(query) if query.present?
-      
+
       options = {}
-      
+
       # Primary recommendation
       options[:primary] = {
         model: select(use_case, tier: :primary),
-        reasoning: 'Best balance of quality and cost for this use case'
+        reasoning: "Best balance of quality and cost for this use case"
       }
-      
+
       # Fast option
       if fast = @registry.recommend(use_case, tier: :fast)
         options[:fast] = {
           model: fast,
-          reasoning: 'Faster response with slightly lower quality'
+          reasoning: "Faster response with slightly lower quality"
         }
       end
-      
+
       # Cost-effective option
       cost_effective = find_cost_effective(use_case)
       if cost_effective && cost_effective != options[:primary][:model]
         options[:cost_effective] = {
           model: cost_effective,
-          reasoning: 'Cheaper option with acceptable quality'
+          reasoning: "Cheaper option with acceptable quality"
         }
       end
-      
+
       # Powerful option for complex queries
       if characteristics && characteristics[:complexity] == :high
         if powerful = @registry.recommend(use_case, tier: :reasoning)
           options[:powerful] = {
             model: powerful,
-            reasoning: 'Best quality for complex analysis'
+            reasoning: "Best quality for complex analysis"
           }
         end
       end
-      
+
       options
     end
 
     # Estimate cost for a request
     def estimate_request_cost(use_case, query:, estimated_input_tokens: nil, estimated_output_tokens: nil)
       model = select(use_case, query: query)
-      
+
       # Estimate tokens if not provided
       input_tokens = estimated_input_tokens || estimate_tokens(query)
       output_tokens = estimated_output_tokens || estimate_output_tokens(use_case)
-      
+
       cost = @registry.estimate_cost(
         model[:name],
         input_tokens: input_tokens,
         output_tokens: output_tokens
       )
-      
+
       {
         model: model,
         estimated_input_tokens: input_tokens,
@@ -100,7 +100,7 @@ module Ai
       [:primary, :fallback, :fast, :reasoning].filter_map do |tier|
         model = @registry.recommend(use_case, tier: tier)
         next unless model
-        
+
         {
           tier: tier,
           name: model[:name],
@@ -118,7 +118,7 @@ module Ai
 
     def determine_tier(query, use_case)
       characteristics = analyze_query(query)
-      
+
       case use_case
       when :query_analysis
         # Always use fast models for query analysis
@@ -139,7 +139,7 @@ module Ai
 
     def analyze_query(query)
       return {} unless query.present?
-      
+
       {
         complexity: estimate_complexity(query),
         length: query.length,
@@ -156,7 +156,7 @@ module Ai
       score += 2 if query.match?(/compare.*and|analyze.*trend|forecast|predict|why.*because/i)
       score += 1 if query.match?(/calculate|compute|sum|average/i)
       score += 1 if query.match?(/breakdown|category|group by/i)
-      
+
       case score
       when 0..1 then :low
       when 2..3 then :medium
@@ -168,12 +168,12 @@ module Ai
       # Get all models for this use case and find cheapest good option
       recommendations = @registry::RECOMMENDATIONS[use_case]
       return nil unless recommendations
-      
+
       # Try fast tier first
       if fast_id = recommendations[:fast]
         return @registry.get(fast_id)
       end
-      
+
       # Otherwise use primary
       @registry.recommend(use_case, tier: :primary)
     end

@@ -61,9 +61,9 @@ module Spaces
         space_id = space.id
         space_code = space.code
         space_name = space.name
-        
+
         space.destroy!
-        
+
         Rails.logger.info("[DeleteSpace] Space deleted: id=#{space_id}, code=#{space_code}, name=#{space_name}")
         Success()
       rescue ActiveRecord::RecordNotDestroyed => e

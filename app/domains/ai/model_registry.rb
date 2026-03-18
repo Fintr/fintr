@@ -4,70 +4,70 @@ module Ai
   # Registry of curated models for different use cases
   class ModelRegistry
     FAST_MODELS = {
-      'openai/gpt-4o-mini' => {
-        name: 'GPT-4o Mini',
+      "openai/gpt-4o-mini" => {
+        name: "GPT-4o Mini",
         provider: :openrouter,
         cost_per_1k_tokens: 0.15,
         speed: :fast,
         quality: :good,
-        best_for: [:simple_queries, :high_volume],
+        best_for: [:simple_queries, :high_volume]
       },
-      'anthropic/claude-3-haiku' => {
-        name: 'Claude 3 Haiku',
+      "anthropic/claude-3-haiku" => {
+        name: "Claude 3 Haiku",
         provider: :openrouter,
         cost_per_1k_tokens: 0.25,
         speed: :fast,
         quality: :good,
-        best_for: [:simple_queries, :safety_critical],
-      },
+        best_for: [:simple_queries, :safety_critical]
+      }
     }.freeze
 
     BALANCED_MODELS = {
-      'openai/gpt-4o' => {
-        name: 'GPT-4o',
+      "openai/gpt-4o" => {
+        name: "GPT-4o",
         provider: :openrouter,
         cost_per_1k_tokens: 5.00,
         speed: :medium,
         quality: :excellent,
-        best_for: [:general_use, :complex_analysis, :rag],
+        best_for: [:general_use, :complex_analysis, :rag]
       },
-      'anthropic/claude-3-sonnet' => {
-        name: 'Claude 3 Sonnet',
+      "anthropic/claude-3-sonnet" => {
+        name: "Claude 3 Sonnet",
         provider: :openrouter,
         cost_per_1k_tokens: 3.00,
         speed: :medium,
         quality: :excellent,
-        best_for: [:complex_analysis, :safety_critical],
-      },
+        best_for: [:complex_analysis, :safety_critical]
+      }
     }.freeze
 
     POWERFUL_MODELS = {
-      'anthropic/claude-3-opus' => {
-        name: 'Claude 3 Opus',
+      "anthropic/claude-3-opus" => {
+        name: "Claude 3 Opus",
         provider: :openrouter,
         cost_per_1k_tokens: 15.00,
         speed: :slow,
         quality: :exceptional,
-        best_for: [:complex_reasoning, :research],
-      },
+        best_for: [:complex_reasoning, :research]
+      }
     }.freeze
 
     USE_CASE_RECOMMENDATIONS = {
       query_analysis: {
-        primary: 'anthropic/claude-3-haiku',
-        fallback: 'openai/gpt-4o-mini',
+        primary: "anthropic/claude-3-haiku",
+        fallback: "openai/gpt-4o-mini"
       },
       response_generation: {
-        primary: 'openai/gpt-4o',
-        fallback: 'anthropic/claude-3-sonnet',
+        primary: "openai/gpt-4o",
+        fallback: "anthropic/claude-3-sonnet"
       },
       data_analysis: {
-        primary: 'openai/gpt-4o',
-        fallback: 'anthropic/claude-3-sonnet',
+        primary: "openai/gpt-4o",
+        fallback: "anthropic/claude-3-sonnet"
       },
       embeddings: {
-        primary: 'openai/text-embedding-3-small',
-      },
+        primary: "openai/text-embedding-3-small"
+      }
     }.freeze
 
     class << self

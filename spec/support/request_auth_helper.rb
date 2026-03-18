@@ -2,6 +2,11 @@
 
 module RequestAuthHelper
   def setup_authentication(user:, space:, auth_id: "auth0|123456")
+    # Create SpaceUser association if it doesn't exist
+    unless Spaces::SpaceUser.exists?(user: user, space: space)
+      create(:space_user, user: user, space: space)
+    end
+
     # Create a valid-looking JWT token (header.payload.signature format)
     auth_token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIjeyBhdXRoX2lkIH0iLCJlbWFpbCI6InRlc3RAdGVzdC5jb20iLCJmdWxsX25hbWUiOiJUZXN0IFVzZXIifQ.signature"
 

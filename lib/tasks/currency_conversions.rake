@@ -55,7 +55,7 @@ namespace :currency_conversions do
            "converted #{converted_cents} -> #{new_converted_cents}"
 
       conversion.update_columns(
-        original_amount_cents:  new_original_cents,
+        original_amount_cents: new_original_cents,
         converted_amount_cents: new_converted_cents
       )
     end
@@ -63,4 +63,3 @@ namespace :currency_conversions do
     puts "Done."
   end
 end
-

@@ -86,7 +86,7 @@ RSpec.describe Ai::Llm::VisionClient do
 
       expect(OpenAI::Client).to receive(:new).with(
         access_token: "sk-or-xxx",
-        uri_base:      "https://openrouter.ai/api"
+        uri_base: "https://openrouter.ai/api"
       )
 
       described_class.client

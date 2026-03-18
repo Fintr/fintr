@@ -37,7 +37,7 @@ module Ai
           structured_data: result[:structured_data],
           search_results: result[:vector_results],
           data_requirements: result[:analysis],
-          raw_ai_analysis: result[:analysis].to_json,
+          raw_ai_analysis: result[:analysis].to_json
         }
       rescue StandardError => e
         Rails.logger.error "[RagAdapter] Error: #{e.message}"
@@ -86,13 +86,13 @@ module Ai
         metadata: {}
       )
         case role.to_s
-        when 'user'
+        when "user"
           @service.add_user_message(
             conversation_id: conversation_id,
             content: content,
             metadata: metadata,
           )
-        when 'assistant'
+        when "assistant"
           @service.add_assistant_message(
             conversation_id: conversation_id,
             content: content,

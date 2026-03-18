@@ -105,7 +105,7 @@ module Ai
             content: embedding.content,
             metadata: embedding.metadata,
             similarity_score: 1 - embedding.neighbor_distance,
-            distance: embedding.neighbor_distance,
+            distance: embedding.neighbor_distance
           }
         end
       end

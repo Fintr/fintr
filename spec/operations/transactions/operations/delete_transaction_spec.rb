@@ -173,6 +173,17 @@ RSpec.describe Transactions::Operations::DeleteTransaction do
     end
 
     context 'with delete_scope: all_in_series across multiple months' do
+      let(:parent_transaction) do
+        create(
+          :expense_transaction,
+          user:,
+          space:,
+          account:,
+          category:,
+          date: transaction.date
+        )
+      end
+
       let(:other_month_transaction) do
         create(
           :expense_transaction,
@@ -180,14 +191,16 @@ RSpec.describe Transactions::Operations::DeleteTransaction do
           space:,
           account:,
           category:,
-          date: Time.zone.today + 1.month
+          date: Time.zone.today + 1.month,
+          parent: parent_transaction
         )
       end
 
       before do
-        allow(transaction).to receive(:series_transactions).and_return(
-          Transactions::Transaction.where(id: [transaction.id, other_month_transaction.id])
-        )
+        # Make transaction part of the series by setting its parent
+        transaction.update!(parent: parent_transaction)
+        # Ensure other_month_transaction is created before the test runs
+        other_month_transaction
       end
 
       it 'recalculates monthly summaries for all affected months' do
@@ -362,40 +375,6 @@ RSpec.describe Transactions::Operations::DeleteTransaction do
                                transaction: transaction)
         expect(result).to be_success
       end
-    end
-  end
-
-  describe '#update_monthly_summary' do
-    let(:update_summary_operation) { instance_double(MonthlyFinancialSummaries::Operations::UpdateSummary) }
-
-    before do
-      allow(MonthlyFinancialSummaries::Operations::UpdateSummary).to receive(:new).and_return(update_summary_operation)
-    end
-
-    it 'calls MonthlyFinancialSummaries::Operations::UpdateSummary with correct parameters' do
-      allow(update_summary_operation).to receive(:call).and_return(Success())
-
-      result = operation.send(:update_monthly_summary, transaction: transaction)
-      expect(result).to be_success
-
-      expect(update_summary_operation).to have_received(:call).with(
-        space_id: transaction.space_id,
-        transaction_date: transaction.date.to_date
-      )
-    end
-
-    it 'returns success when update summary operation succeeds' do
-      allow(update_summary_operation).to receive(:call).and_return(Success())
-
-      result = operation.send(:update_monthly_summary, transaction: transaction)
-      expect(result).to be_success
-    end
-
-    it 'returns success even when update summary operation fails' do
-      allow(update_summary_operation).to receive(:call).and_return(Failure(error: "Update failed"))
-
-      result = operation.send(:update_monthly_summary, transaction: transaction)
-      expect(result).to be_success
     end
   end
 end

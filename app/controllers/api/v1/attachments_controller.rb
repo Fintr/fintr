@@ -15,7 +15,7 @@ module Api
       ALLOWED_S3_PREFIXES = [
         "https://s3.ap-southeast-1.amazonaws.com/fintr-production/",
         "https://s3.ap-southeast-1.amazonaws.com/fintr-staging/",
-        "https://s3.ap-southeast-1.amazonaws.com/fintr-development/",
+        "https://s3.ap-southeast-1.amazonaws.com/fintr-development/"
       ].freeze
 
       def download

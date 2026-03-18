@@ -5,7 +5,8 @@ module Api
     module Crm
       module Admin
         class TicketsController < ApiController
-          before_action :ensure_admin # You'll need to implement this authorization
+          skip_before_action :ensure_space_access!
+          before_action :ensure_admin
           before_action :set_ticket, only: [:show, :update]
 
           def index

@@ -99,7 +99,7 @@ RSpec.describe Insights::Operations::CreateAccountBreakdown do
         expect(result[:breakdown]).to be_an(Array)
         expect(result[:breakdown].length).to eq(1)
         expect(result[:breakdown][0][:balance]).to eq(cents: 0, currency_iso: 'PHP')
-        expect(result[:breakdown][0][:percentage]).to eq('0.0%')
+        expect(result[:breakdown][0][:percentage]).to eq('0%')
       end
     end
 

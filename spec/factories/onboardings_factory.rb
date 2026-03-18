@@ -3,7 +3,7 @@
 FactoryBot.define do
   factory :onboarding do
     association :user
-    step { "income" }
-    data { { "budgets" => [], "income" => {} } }
+    step { "currency" }  # Matches database default
+    data { {} }
   end
 end

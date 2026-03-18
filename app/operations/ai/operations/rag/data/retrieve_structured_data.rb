@@ -27,15 +27,15 @@ module Ai
 
           def call(params)
             params = step validate(params:)
-            
+
             data = case params[:analysis][:query_type]
-            when 'spending_analysis'
+            when "spending_analysis"
               step retrieve_spending_data(params:)
-            when 'income_analysis'
+            when "income_analysis"
               step retrieve_income_data(params:)
-            when 'trend_analysis'
+            when "trend_analysis"
               step retrieve_trend_data(params:)
-            when 'transaction_search'
+            when "transaction_search"
               step retrieve_transactions(params:)
             else
               step retrieve_general_data(params:)
@@ -48,7 +48,7 @@ module Ai
 
           def retrieve_spending_data(params:)
             query = @query_builder.build(params[:analysis])
-            
+
             if params[:analysis][:aggregations]&.dig(:group_by)&.any?
               retrieve_aggregated(query, params[:analysis])
             else
@@ -59,8 +59,8 @@ module Ai
           def retrieve_income_data(params:)
             income_analysis = params[:analysis].dup
             income_analysis[:filters] = income_analysis[:filters]&.merge(
-              transaction_type: ['income']
-            ) || { transaction_type: ['income'] }
+              transaction_type: ["income"]
+            ) || { transaction_type: ["income"] }
 
             retrieve_spending_data(params: params.merge(analysis: income_analysis))
           end
@@ -82,7 +82,7 @@ module Ai
               {
                 period: period.to_s,
                 amount: Money.new(amount_cents).format,
-                amount_cents: amount_cents,
+                amount_cents: amount_cents
               }
             end
 
@@ -91,7 +91,7 @@ module Ai
 
           def retrieve_transactions(params:)
             query = @query_builder.build(params[:analysis])
-            
+
             transactions = query
               .order(amount_cents: params[:analysis][:sorting]&.dig(:direction) || :desc)
               .limit(params[:analysis][:limit] || 10)
@@ -126,9 +126,9 @@ module Ai
 
           def determine_time_grouping(time_range)
             case time_range&.dig(:period)
-            when 'this_year', 'last_year'
+            when "this_year", "last_year"
               :month
-            when 'this_month', 'last_month'
+            when "this_month", "last_month"
               :day
             else
               :day
@@ -143,8 +143,8 @@ module Ai
               description: transaction.description,
               category: transaction.category&.name,
               account: transaction.account&.name,
-              date: transaction.created_at.strftime('%Y-%m-%d'),
-              type: transaction.type.demodulize.downcase,
+              date: transaction.created_at.strftime("%Y-%m-%d"),
+              type: transaction.type.demodulize.downcase
             }
           end
         end

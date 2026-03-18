@@ -30,7 +30,7 @@
       "check_name": "PermitAttributes",
       "message": "Potentially dangerous key allowed for mass assignment",
       "file": "app/controllers/api/v1/spaces/users_controller.rb",
-      "line": 49,
+      "line": 51,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.permit(:email, :role)",
       "render_path": null,
@@ -45,7 +45,30 @@
         915
       ],
       "note": "Role is needed to be used as a param"
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "c960685a485af0aef1ea47b0f6573e8eb5e5d48905cf5c0a170422ab12cf820a",
+      "check_name": "FileAccess",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/api/v1/attachments_controller.rb",
+      "line": 35,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "Net::HTTP.new(URI(params[:url].to_s.strip).host, URI(params[:url].to_s.strip).port)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Api::V1::AttachmentsController",
+        "method": "download"
+      },
+      "user_input": "params[:url].to_s.strip",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "Allowed"
     }
   ],
-  "brakeman_version": "7.1.1"
+  "brakeman_version": "8.0.4"
 }

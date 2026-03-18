@@ -30,7 +30,11 @@ RSpec.describe 'Api::V1::Dashboards', type: :request do
     end
 
     let(:expected_operation_params) do
-      { space_code: space.code }
+      {
+        space_code: space.code,
+        start_date: nil,
+        end_date: nil
+      }
     end
 
     context 'when the operation is successful' do

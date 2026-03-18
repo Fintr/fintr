@@ -22,7 +22,7 @@ module Ai
           if openrouter?
             OpenAI::Client.new(
               access_token: ENV.fetch("OPENROUTER_API_KEY"),
-              uri_base:     OPENROUTER_URI_BASE
+              uri_base: OPENROUTER_URI_BASE
             )
           else
             OpenAI::Client.new(

@@ -47,7 +47,7 @@ module Ai
       # Provider name for logging/metrics
       # @return [String]
       def name
-        self.class.name.demodulize.gsub('Provider', '').downcase
+        self.class.name.demodulize.gsub("Provider", "").downcase
       end
     end
   end

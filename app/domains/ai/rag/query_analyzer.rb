@@ -13,7 +13,7 @@ module Ai
         prompt = build_prompt(query, space_id, conversation_context)
 
         response = @provider.chat(
-          messages: [{ role: 'user', content: prompt }],
+          messages: [{ role: "user", content: prompt }],
           model: @model_selector.for_analysis,
           temperature: 0.1
         )
@@ -49,12 +49,12 @@ module Ai
 
       def normalize_analysis(parsed)
         {
-          query_type: parsed[:query_type] || 'spending_analysis',
+          query_type: parsed[:query_type] || "spending_analysis",
           data_sources: Array(parsed[:data_sources]),
           aggregations: parsed[:aggregations] || {},
           filters: parsed[:filters] || {},
-          time_range: parsed[:time_range] || { period: 'this_month' },
-          sorting: parsed[:sorting] || { field: 'amount', direction: 'desc' },
+          time_range: parsed[:time_range] || { period: "this_month" },
+          sorting: parsed[:sorting] || { field: "amount", direction: "desc" },
           limit: [parsed[:limit] || 10, 50].min,
           chart_suggestion: parsed[:chart_suggestion] || { should_include_chart: false }
         }
@@ -62,12 +62,12 @@ module Ai
 
       def default_analysis
         {
-          query_type: 'spending_analysis',
-          data_sources: ['transactions'],
-          aggregations: { group_by: ['category'], metrics: ['sum', 'count'] },
-          filters: { transaction_type: ['expense'] },
-          time_range: { period: 'this_month' },
-          sorting: { field: 'amount', direction: 'desc' },
+          query_type: "spending_analysis",
+          data_sources: ["transactions"],
+          aggregations: { group_by: ["category"], metrics: ["sum", "count"] },
+          filters: { transaction_type: ["expense"] },
+          time_range: { period: "this_month" },
+          sorting: { field: "amount", direction: "desc" },
           limit: 10,
           chart_suggestion: { should_include_chart: false }
         }

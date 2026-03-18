@@ -9,9 +9,9 @@ module OpenRouter
     attr_accessor :api_key, :site_url, :site_name
 
     def initialize
-      @api_key = ENV['OPENROUTER_API_KEY']
-      @site_url = ENV['APP_URL'] || 'https://fintr.app'
-      @site_name = 'Fintr AI'
+      @api_key = ENV["OPENROUTER_API_KEY"]
+      @site_url = ENV["APP_URL"] || "https://fintr.app"
+      @site_name = "Fintr AI"
     end
   end
 
@@ -40,9 +40,9 @@ end
 
 # Configure OpenRouter
 OpenRouter.configure do |config|
-  config.api_key = ENV['OPENROUTER_API_KEY']
-  config.site_url = ENV['APP_URL'] || 'https://fintr.app'
-  config.site_name = 'Fintr AI'
+  config.api_key = ENV["OPENROUTER_API_KEY"]
+  config.site_url = ENV["APP_URL"] || "https://fintr.app"
+  config.site_name = "Fintr AI"
 end
 
 Rails.logger.info "[OpenRouter] Configuration loaded for site: #{OpenRouter.site_name}"

@@ -23,7 +23,7 @@ module Ai
       def extract_value(item)
         case item
         when Hash
-          item[:value] || item['value'] || item[:amount] || item['amount'] || 0
+          item[:value] || item["value"] || item[:amount] || item["amount"] || 0
         when Numeric
           item
         else

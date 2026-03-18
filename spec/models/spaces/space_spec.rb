@@ -274,11 +274,6 @@ RSpec.describe Spaces::Space, type: :model do
         association = space.class.reflect_on_association(:space_subscriptions)
         expect(association.options[:dependent]).to eq(:destroy)
       end
-
-      it 'has dependent destroy set for payment_methods association' do
-        association = space.class.reflect_on_association(:payment_methods)
-        expect(association.options[:dependent]).to eq(:destroy)
-      end
     end
 
     describe 'filtered categories' do

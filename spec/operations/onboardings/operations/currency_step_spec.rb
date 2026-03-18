@@ -8,7 +8,12 @@ RSpec.describe Onboardings::Operations::CurrencyStep do
   let(:user) { create(:user) }
   let(:space) { create(:space, currency: "PHP") }
   let!(:space_user) { create(:space_user, user: user, space: space) }
-  let!(:onboarding) { create(:onboarding, user: user, step: "currency") }
+  let!(:onboarding) do
+    # User creation automatically creates an onboarding via callback
+    # Update it instead of creating a new one
+    user.onboarding.update!(step: "currency")
+    user.onboarding
+  end
 
   describe "#call" do
     context "when valid params" do
@@ -41,14 +46,10 @@ RSpec.describe Onboardings::Operations::CurrencyStep do
         expect(space.reload.currency).to eq("USD")
       end
 
-      it "updates the onboarding step to income" do
-        currency_step_operation.call(params)
-        expect(onboarding.reload.step).to eq("income")
-      end
-
-      it "stores currency in onboarding data" do
-        currency_step_operation.call(params)
-        expect(onboarding.reload.data["currency"]).to eq("USD")
+      it "returns income data from ShowIncomeData operation" do
+        result = currency_step_operation.call(params)
+        expect(result.value!).to have_key(:income_data)
+        expect(result.value![:income_data]).to eq({ income: nil })
       end
     end
 

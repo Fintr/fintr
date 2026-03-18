@@ -13,13 +13,13 @@ module Ai
       # @return [Array<Hash>]
       def retrieve(analysis)
         case analysis.query_type
-        when 'spending_analysis'
+        when "spending_analysis"
           retrieve_spending_data(analysis)
-        when 'income_analysis'
+        when "income_analysis"
           retrieve_income_data(analysis)
-        when 'trend_analysis'
+        when "trend_analysis"
           retrieve_trend_data(analysis)
-        when 'transaction_search'
+        when "transaction_search"
           retrieve_transactions(analysis)
         else
           retrieve_general_data(analysis)
@@ -44,7 +44,7 @@ module Ai
       def retrieve_income_data(analysis)
         analysis_with_type = analysis.dup
         analysis_with_type.filters ||= {}
-        analysis_with_type.filters[:transaction_type] = ['income']
+        analysis_with_type.filters[:transaction_type] = ["income"]
 
         retrieve_spending_data(analysis_with_type)
       end
@@ -69,8 +69,8 @@ module Ai
 
       def apply_grouping(query, analysis)
         group_fields = analysis.aggregations[:group_by]
-        metrics = analysis.aggregations[:metrics] || ['sum']
-        metrics = (metrics + ['count']).uniq
+        metrics = analysis.aggregations[:metrics] || ["sum"]
+        metrics = (metrics + ["count"]).uniq
 
         grouped = group_query(query, group_fields)
         calculated = calculate_metrics(grouped, metrics)
@@ -85,19 +85,19 @@ module Ai
       def group_query(query, group_fields)
         group_fields.each do |field|
           case field
-          when 'category'
+          when "category"
             query = query.joins(:category)
-                           .group('transactions_categories.name')
-          when 'account'
+                           .group("transactions_categories.name")
+          when "account"
             query = query.joins(:account)
-                           .group('spaces_accounts.name')
-          when 'description'
+                           .group("spaces_accounts.name")
+          when "description"
             query = query.group(:description)
-          when 'month'
+          when "month"
             query = query.group_by_month(:date, series: false)
-          when 'week'
+          when "week"
             query = query.group_by_week(:date, series: false)
-          when 'day'
+          when "day"
             query = query.group_by_day(:date, series: false)
           end
         end
@@ -110,15 +110,15 @@ module Ai
 
         metrics.each do |metric|
           case metric
-          when 'sum'
+          when "sum"
             result[:sum] = query.sum(:amount_cents)
-          when 'count'
+          when "count"
             result[:count] = query.count
-          when 'average'
+          when "average"
             result[:average] = query.average(:amount_cents)
-          when 'max'
+          when "max"
             result[:max] = query.maximum(:amount_cents)
-          when 'min'
+          when "min"
             result[:min] = query.minimum(:amount_cents)
           end
         end
@@ -132,7 +132,7 @@ module Ai
         formatted = primary_data.map do |group_key, _|
           item = {
             group: group_key.is_a?(Array) ? group_key : [group_key],
-            group_fields: group_fields,
+            group_fields: group_fields
           }
 
           result_data.each do |metric, data|
@@ -142,7 +142,7 @@ module Ai
             when :sum, :max, :min, :average
               item[metric] = {
                 amount: Money.new(value).format,
-                amount_cents: value,
+                amount_cents: value
               }
             when :count
               item[metric] = value
@@ -156,12 +156,12 @@ module Ai
       end
 
       def sort_and_limit(data, analysis)
-        sort_field = analysis.sorting&.dig(:field) || 'amount'
-        direction = analysis.sorting&.dig(:direction) || 'desc'
+        sort_field = analysis.sorting&.dig(:field) || "amount"
+        direction = analysis.sorting&.dig(:direction) || "desc"
 
         sorted = data.sort_by do |item|
           value = item.dig(:sum, :amount_cents) || item[:count] || 0
-          direction.to_s == 'desc' ? -value : value
+          direction.to_s == "desc" ? -value : value
         end
 
         limit = analysis.limit || 10
@@ -195,9 +195,9 @@ module Ai
         period = time_range&.dig(:period)
 
         case period
-        when 'this_year', 'last_year'
+        when "this_year", "last_year"
           :month
-        when 'this_month', 'last_month'
+        when "this_month", "last_month"
           :day
         else
           :day
@@ -209,7 +209,7 @@ module Ai
           {
             period: period.to_s,
             amount: Money.new(amount_cents).format,
-            amount_cents: amount_cents,
+            amount_cents: amount_cents
           }
         end
       end
@@ -223,7 +223,7 @@ module Ai
           category: transaction.category&.name,
           account: transaction.account&.name,
           date: transaction.date.to_s,
-          type: transaction.type&.demodulize&.downcase,
+          type: transaction.type&.demodulize&.downcase
         }
       end
     end

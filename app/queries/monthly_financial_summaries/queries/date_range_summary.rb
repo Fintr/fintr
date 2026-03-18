@@ -132,15 +132,15 @@ module MonthlyFinancialSummaries
         end_d   = month_dates.max.end_of_month.to_date
         summaries = space.monthly_financial_summaries.in_date_range(
           start_date: start_d,
-          end_date:   end_d
+          end_date: end_d
         )
 
         total_income   = summaries.sum(:total_income).to_f
         total_expenses = summaries.sum(:total_expenses).to_f
         Success(
-          total_income:   total_income,
+          total_income: total_income,
           total_expenses: total_expenses,
-          net_savings:    total_income - total_expenses
+          net_savings: total_income - total_expenses
         )
       rescue ActiveRecord::ActiveRecordError => e
         Failure(summaries: "Failed to load cached summaries", error: e.message)
@@ -154,9 +154,9 @@ module MonthlyFinancialSummaries
           te += t[:total_expenses].to_f
         end
         Success(
-          total_income:   ti,
+          total_income: ti,
           total_expenses: te,
-          net_savings:    ti - te
+          net_savings: ti - te
         )
       end
 
@@ -175,17 +175,17 @@ module MonthlyFinancialSummaries
         end
 
         {
-          total_income:   total_income.amount.to_f,
+          total_income: total_income.amount.to_f,
           total_expenses: total_expenses.amount.to_f,
-          net_savings:    (total_income - total_expenses).amount.to_f
+          net_savings: (total_income - total_expenses).amount.to_f
         }
       end
 
       def zeros(space)
         {
-          total_income:   0.0,
-          total_expenses:  0.0,
-          net_savings:     0.0
+          total_income: 0.0,
+          total_expenses: 0.0,
+          net_savings: 0.0
         }
       end
 
@@ -205,11 +205,11 @@ module MonthlyFinancialSummaries
 
       def build_summary(numeric_values:)
         summary = OpenStruct.new(
-          total_income:   numeric_values[:total_income],
+          total_income: numeric_values[:total_income],
           total_expenses: numeric_values[:total_expenses],
-          net_savings:    numeric_values[:net_savings],
+          net_savings: numeric_values[:net_savings],
           savings_percentage: numeric_values[:savings_percentage],
-          calculated_at:  Time.current
+          calculated_at: Time.current
         )
         Success(summary)
       end

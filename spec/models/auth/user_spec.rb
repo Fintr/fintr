@@ -75,7 +75,7 @@ RSpec.describe Auth::User, type: :model do
         onboarding = user.onboarding
         expect(onboarding).to be_present
         expect(onboarding.user).to eq(user)
-        expect(onboarding.step).to eq('income')
+        expect(onboarding.step).to eq('currency')
       end
     end
   end

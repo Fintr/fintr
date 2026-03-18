@@ -8,10 +8,6 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
   let!(:auth) { setup_authentication(user:, space:) }
   let(:headers) { auth[:headers] }
 
-  before do
-    create(:space_user, space:, user:)
-  end
-
   describe "GET /api/v1/finance/subscriptions" do
     let(:list_plans_query) { instance_double(Finance::Queries::ListSubscriptionPlans) }
     let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 14_900, interval: "month") }

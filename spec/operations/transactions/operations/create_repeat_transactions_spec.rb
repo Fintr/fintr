@@ -314,14 +314,15 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
         call_operation
         new_transactions = Transactions::Transaction.where(parent_id: transaction.id)
                                                     .order(date: :asc)
-        # The date may not be exactly the date we specified due to timezone conversions
-        # and the way IceCube generates dates
+        # The date may not be exactly the date we specified due to timezone conversions,
+        # the way IceCube generates dates, and day-of-week constraints
         start_date = today + 2.weeks
         first_transaction_date = new_transactions.first.date.to_date
 
         # Check that the date is within a reasonable range of our expected date
+        # Allow up to 7 days for day-of-week schedule constraints
         expect(first_transaction_date).to be >= start_date - 1.day
-        expect(first_transaction_date).to be <= start_date + 1.day
+        expect(first_transaction_date).to be <= start_date + 7.days
       end
     end
 

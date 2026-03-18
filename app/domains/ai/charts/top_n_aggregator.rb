@@ -4,7 +4,7 @@ module Ai
   module Charts
     # Aggregates data to top N items, grouping rest as 'Others'
     class TopNAggregator < BaseAggregator
-      OTHERS_COLOR = '#9CA3AF'.freeze
+      OTHERS_COLOR = "#9CA3AF".freeze
 
       def aggregate(data)
         return data if data.size <= @max_items
@@ -33,9 +33,9 @@ module Ai
         sum = remaining.sum { |_, v| extract_value(v) }
 
         {
-          'Others' => {
+          "Others" => {
             value: sum,
-            color: OTHERS_COLOR,
+            color: OTHERS_COLOR
           }
         }
       end

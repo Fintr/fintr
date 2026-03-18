@@ -9,7 +9,7 @@ module Utils
     end
 
     def self.format_percentage(number)
-      number_to_percentage(number, precision: 2)
+      number_to_percentage(number, precision: 2, strip_insignificant_zeros: false)
     end
 
     def self.format_decimal(number)

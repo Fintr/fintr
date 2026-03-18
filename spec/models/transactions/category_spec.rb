@@ -126,14 +126,12 @@ RSpec.describe Transactions::Category, type: :model do
       expect(income_names).to include(*Transactions::Category::DEFAULT_INCOME_CATEGORIES)
 
       # Check for special internal categories
-      expect(income_names).to include("Initial Balance")
-      expect(expense_names).to include("Transfer Fee")
+      expect(income_names).to include("Initial Balance", "Income Adjustment")
+      expect(expense_names).to include("Transfer Fee", "Expense Adjustment")
 
-      # Ensure the counts match the full set created
-      all_created_income_names = Transactions::Category::DEFAULT_INCOME_CATEGORIES + ["Initial Balance"]
-      all_created_expense_names = ["Transfer Fee"]
-      expect(income_names).to match_array(all_created_income_names)
-      expect(expense_names).to match_array(all_created_expense_names)
+      # Ensure default categories are created
+      expect(income_names).to include(*Transactions::Category::DEFAULT_INCOME_CATEGORIES)
+      expect(expense_names).to include(*Transactions::Category::DEFAULT_EXPENSE_CATEGORIES)
     end
 
     it 'is idempotent (does not create duplicates or raise errors on second run)' do

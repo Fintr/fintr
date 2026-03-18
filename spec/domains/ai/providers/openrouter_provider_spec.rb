@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Ai::Providers::OpenrouterProvider do
-  let(:mock_client) { instance_double(OpenAI::Client) }
+  let(:mock_client) { double("OpenAI::Client") } # rubocop:disable RSpec/VerifiedDoubles
   let(:provider) { described_class.new(client: mock_client) }
 
   describe '#chat' do
@@ -15,10 +15,10 @@ RSpec.describe Ai::Providers::OpenrouterProvider do
           {
             'message' => {
               'content' => 'Hello! How can I help you?',
-              'role' => 'assistant',
-            },
-          },
-        ],
+              'role' => 'assistant'
+            }
+          }
+        ]
       }
     end
 
@@ -81,25 +81,27 @@ RSpec.describe Ai::Providers::OpenrouterProvider do
     let(:response) do
       {
         'data' => [
-          { 'embedding' => [0.1, 0.2, 0.3] },
-        ],
+          { 'embedding' => [0.1, 0.2, 0.3] }
+        ]
       }
     end
 
     before do
-      allow(mock_client).to receive(:embeddings).with(model: anything, input: [text]).and_return(response)
+      allow(mock_client).to receive(:embeddings) do |**kwargs|
+        response
+      end
     end
 
     it 'returns embeddings' do
       result = provider.embeddings(text: text)
-      expect(result).to eq([0.1, 0.2, 0.3])
+      expect(result).to eq([[0.1, 0.2, 0.3]])
     end
   end
 
   describe '#healthy?' do
     context 'when API is accessible' do
       before do
-        allow(mock_client).to receive(:models).and_return(instance_double(Object, list: []))
+        allow(mock_client).to receive(:models).and_return(double("ModelsResponse", list: [])) # rubocop:disable RSpec/VerifiedDoubles
       end
 
       it 'returns true' do

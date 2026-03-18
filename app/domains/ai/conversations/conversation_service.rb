@@ -30,7 +30,7 @@ module Ai
       )
         save_message(
           conversation_id: conversation_id,
-          role: 'user',
+          role: "user",
           content: content,
           metadata: metadata,
         )
@@ -48,7 +48,7 @@ module Ai
       )
         save_message(
           conversation_id: conversation_id,
-          role: 'assistant',
+          role: "assistant",
           content: content,
           metadata: metadata,
         )

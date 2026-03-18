@@ -7,19 +7,19 @@ module Ai
     class ModelSelector
       MODELS = {
         analysis: {
-          primary: 'anthropic/claude-3-haiku',
-          fallback: 'openai/gpt-4o-mini',
-          complex: 'anthropic/claude-3.5-sonnet',
+          primary: "anthropic/claude-3-haiku",
+          fallback: "openai/gpt-4o-mini",
+          complex: "anthropic/claude-3.5-sonnet"
         },
         # Chat over structured data: Gemini and GPT-3.5 are cheaper and sufficient for Q&A; no need for latest flagship.
         generation: {
-          primary: 'google/gemini-2.5-flash-lite',
-          fallback: 'openai/gpt-3.5-turbo',
-          complex: 'google/gemini-2.5-flash-lite',
+          primary: "google/gemini-2.5-flash-lite",
+          fallback: "openai/gpt-3.5-turbo",
+          complex: "google/gemini-2.5-flash-lite"
         },
         embeddings: {
-          primary: 'openai/text-embedding-3-small',
-        },
+          primary: "openai/text-embedding-3-small"
+        }
       }.freeze
 
       class << self
@@ -63,7 +63,7 @@ module Ai
         def estimate_complexity(query)
           return :complex if query.length > 150
           return :complex if query.match?(/\b(compare|trend|analyze|forecast|predict|why|explain)\b/i)
-          return :complex if query.count('?') > 1
+          return :complex if query.count("?") > 1
           return :simple if query.length < 50 && query.match?(/\b(what|how much|show|list)\b/i)
 
           :normal

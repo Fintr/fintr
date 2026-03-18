@@ -43,7 +43,7 @@ module Ai
 
       def exclude_initial_balance(query)
         query.joins(:category)
-             .where.not(transactions_categories: { name: 'Initial Balance' })
+             .where.not(transactions_categories: { name: "Initial Balance" })
       end
 
       def apply_transaction_type_filter(query, filters)
@@ -51,9 +51,9 @@ module Ai
 
         types = filters[:transaction_type].map do |type|
           case type
-          when 'expense' then 'Transactions::Expense'
-          when 'income' then 'Transactions::Income'
-          when 'transfer' then 'Transactions::Transfer'
+          when "expense" then "Transactions::Expense"
+          when "income" then "Transactions::Income"
+          when "transfer" then "Transactions::Transfer"
           else type
           end
         end
@@ -66,7 +66,7 @@ module Ai
 
         query.joins(:category)
              .where(
-               'transactions_categories.name ILIKE ANY(ARRAY[?])',
+               "transactions_categories.name ILIKE ANY(ARRAY[?])",
                filters[:categories].map { |c| "%#{c}%" },
              )
       end
@@ -76,7 +76,7 @@ module Ai
 
         query.joins(:account)
              .where(
-               'spaces_accounts.name ILIKE ANY(ARRAY[?])',
+               "spaces_accounts.name ILIKE ANY(ARRAY[?])",
                filters[:accounts].map { |a| "%#{a}%" },
              )
       end
@@ -85,7 +85,7 @@ module Ai
         return query unless filters&.dig(:descriptions)&.any?
 
         query.where(
-          'description ILIKE ANY(ARRAY[?])',
+          "description ILIKE ANY(ARRAY[?])",
           filters[:descriptions].map { |d| "%#{d}%" },
         )
       end
@@ -94,8 +94,8 @@ module Ai
         range = filters&.dig(:amount_range)
         return query unless range
 
-        query = query.where('amount_cents >= ?', range[:min] * 100) if range[:min]
-        query = query.where('amount_cents <= ?', range[:max] * 100) if range[:max]
+        query = query.where("amount_cents >= ?", range[:min] * 100) if range[:min]
+        query = query.where("amount_cents <= ?", range[:max] * 100) if range[:max]
 
         query
       end
@@ -104,19 +104,19 @@ module Ai
         return query unless time_range
 
         case time_range[:period]
-        when 'this_month'
+        when "this_month"
           query.where(date: Date.current.all_month)
-        when 'last_month'
+        when "last_month"
           query.where(date: Date.current.last_month.all_month)
-        when 'this_week'
+        when "this_week"
           query.where(date: Date.current.all_week)
-        when 'last_week'
+        when "last_week"
           query.where(date: Date.current.last_week.all_week)
-        when 'this_year'
+        when "this_year"
           query.where(date: Date.current.all_year)
-        when 'last_year'
+        when "last_year"
           query.where(date: Date.current.last_year.all_year)
-        when 'custom'
+        when "custom"
           apply_custom_date_range(query, time_range)
         else
           query
@@ -130,9 +130,9 @@ module Ai
         if start_date && end_date
           query.where(date: start_date..end_date)
         elsif start_date
-          query.where('date >= ?', start_date)
+          query.where("date >= ?", start_date)
         elsif end_date
-          query.where('date <= ?', end_date)
+          query.where("date <= ?", end_date)
         else
           query
         end
@@ -149,13 +149,13 @@ module Ai
       def apply_sorting(query, sorting)
         return query unless sorting
 
-        field = sorting[:field] || 'date'
-        direction = sorting[:direction] || 'desc'
+        field = sorting[:field] || "date"
+        direction = sorting[:direction] || "desc"
 
         case field
-        when 'amount'
+        when "amount"
           query.order(amount_cents: direction)
-        when 'date'
+        when "date"
           query.order(date: direction, created_at: :desc)
         else
           query.order(created_at: :desc)

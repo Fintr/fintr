@@ -78,8 +78,8 @@ module Ai
     def extract_text(chunk)
       return chunk if chunk.is_a?(String)
 
-      chunk.dig('choices', 0, 'delta', 'content') ||
-        chunk.dig('choices', 0, 'message', 'content')
+      chunk.dig("choices", 0, "delta", "content") ||
+        chunk.dig("choices", 0, "message", "content")
     end
   end
 end

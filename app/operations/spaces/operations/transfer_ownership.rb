@@ -84,7 +84,7 @@ module Spaces
       def transfer_ownership(space, new_owner)
         old_owner_id = space.owner_id
         space.update!(owner: new_owner)
-        
+
         Rails.logger.info("[TransferOwnership] Space #{space.id} ownership transferred: #{old_owner_id} -> #{new_owner.id}")
         Success()
       rescue ActiveRecord::RecordInvalid => e

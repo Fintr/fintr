@@ -85,7 +85,7 @@ module Ai
           role: message.openai_role,
           content: message.content,
           metadata: message.metadata,
-          created_at: message.created_at,
+          created_at: message.created_at
         }
       end
     end

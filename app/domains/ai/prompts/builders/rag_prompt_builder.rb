@@ -32,11 +32,11 @@ module Ai
           return "No relevant data found." if data.blank? || data.empty?
 
           case analysis.query_type
-          when 'spending_analysis', 'income_analysis'
+          when "spending_analysis", "income_analysis"
             format_spending_data(data)
-          when 'trend_analysis'
+          when "trend_analysis"
             format_trend_data(data)
-          when 'transaction_search'
+          when "transaction_search"
             format_transaction_data(data)
           else
             data.to_s

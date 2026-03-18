@@ -7,7 +7,7 @@ module Ai
     class ProviderFactory
       PROVIDERS = {
         openrouter: OpenrouterProvider,
-        openai: OpenaiFallbackProvider,
+        openai: OpenaiFallbackProvider
       }.freeze
 
       class << self

@@ -24,7 +24,7 @@ module Ai
       broadcaster = ChatBroadcaster.new
       tracker = InteractionTracker.new
       conversation_service = Conversations::ConversationService.new
-      
+
       Rails.logger.info "[AI_CHAT_JOB] Starting job - session: #{session_id}, query: #{query}, conversation: #{conversation_id}"
 
       # Track interaction start
@@ -54,7 +54,7 @@ module Ai
         {
           query_type: result[:analysis]&.dig(:query_type),
           data_sources: result[:analysis]&.dig(:data_sources),
-          filters: result[:analysis]&.dig(:filters),
+          filters: result[:analysis]&.dig(:filters)
         },
       )
 
@@ -90,7 +90,7 @@ module Ai
         enhanced_prompt: result[:prompt],
         time_seconds: time_seconds,
       )
-      
+
       Rails.logger.info "[AI_CHAT_JOB] Completed successfully"
 
     rescue StandardError => e
@@ -145,7 +145,7 @@ module Ai
         filters: analysis&.filters,
         time_range: analysis&.time_range,
         structured_data_count: Array(structured).size,
-        vector_results_count: Array(vector).size,
+        vector_results_count: Array(vector).size
       }.compact
     end
   end

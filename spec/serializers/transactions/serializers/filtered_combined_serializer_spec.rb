@@ -171,6 +171,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       :from_account_name,
       :category_name,
       :amount,
+      :amount_currency,
       :balance,
       :calculated,
       :type,

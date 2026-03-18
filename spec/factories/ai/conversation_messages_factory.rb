@@ -23,7 +23,7 @@ FactoryBot.define do
         {
           model: "gpt-4",
           tokens: 100,
-          temperature: 0.0
+          temperature: 0.7
         }
       end
     end
