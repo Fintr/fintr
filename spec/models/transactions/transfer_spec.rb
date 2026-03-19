@@ -69,7 +69,7 @@ RSpec.describe Transactions::Transfer, type: :model do
 
     it { is_expected.to validate_presence_of(:date) }
     it { is_expected.to validate_presence_of(:amount_cents) }
-    it { is_expected.to validate_numericality_of(:amount_cents).is_greater_than(0) }
+    it { is_expected.to validate_numericality_of(:amount_cents).is_greater_than(0).with_message('must be a positive number') }
     it { is_expected.to validate_presence_of(:transaction_cost_cents) }
     it { is_expected.to validate_numericality_of(:transaction_cost_cents).is_greater_than_or_equal_to(0) }
     it { is_expected.to validate_presence_of(:balance_state) }
@@ -108,13 +108,13 @@ RSpec.describe Transactions::Transfer, type: :model do
       it 'is invalid with zero amount' do
         transfer.amount = 0
         expect(transfer).not_to be_valid
-        expect(transfer.errors[:amount_cents]).to include('must be greater than 0')
+        expect(transfer.errors[:amount_cents]).to include('must be a positive number')
       end
 
       it 'is invalid with negative amount' do
         transfer.amount = -10
         expect(transfer).not_to be_valid
-        expect(transfer.errors[:amount_cents]).to include('must be greater than 0')
+        expect(transfer.errors[:amount_cents]).to include('must be a positive number')
       end
     end
 

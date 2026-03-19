@@ -29,7 +29,7 @@ module Transactions
 
     # Required field validations
     validates :date, presence: true
-    validates :amount_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
+    validates :amount_cents, presence: true, numericality: { other_than: 0, message: "cannot be zero" }
     validates :balance_cents, presence: true
     validates :type, presence: true
 

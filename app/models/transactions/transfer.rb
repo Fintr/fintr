@@ -22,7 +22,7 @@ module Transactions
     monetize :transaction_cost_cents, allow_nil: false
 
     validates :date, presence: true
-    validates :amount_cents, presence: true, numericality: { greater_than: 0 }
+    validates :amount_cents, presence: true, numericality: { greater_than: 0, message: "must be a positive number" }
     validates :transaction_cost_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
     validates :balance_state, presence: true, inclusion: { in: Transaction.balance_states.values }
 
