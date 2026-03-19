@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
+import { CalculatorInput } from "../../ui/calculator-input";
 import {
   Select,
   SelectContent,
@@ -293,7 +294,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
       const amountToSend =
         conversionSnapshot && fromAccountCurrency !== toAccountCurrency
           ? isEditMode
-            ? String(parseFloat(numberFormatting.cleanForBackend(formState.amount)) * conversionSnapshot.exchangeRate)
+            ? String(numberFormatting.cleanForBackend(formState.amount) * conversionSnapshot.exchangeRate)
             : formState.amount
           : formState.amount;
       const transferData = {
@@ -452,12 +453,11 @@ const TransferForm: React.FC<TransferFormProps> = ({
         />
         <div className="space-y-2">
           <Label htmlFor="transfer-transaction-cost" className="text-sm">Transaction Cost</Label>
-          <Input
+          <CalculatorInput
             id="transfer-transaction-cost"
-            type="text" 
             value={transactionCostInput.displayValue}
             placeholder="0.00"
-            onChange={(e) => transactionCostInput.handleInputChange(e.target.value)}
+            onChange={(value) => transactionCostInput.handleInputChange(value)}
             className={`text-sm ${
               (formSubmitted && formErrors.transactionCost)
                 ? "border-red-800 focus-visible:ring-red-800"

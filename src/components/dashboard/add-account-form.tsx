@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -122,15 +123,13 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
 
         <div className="space-y-2">
           <Label htmlFor="current-balance">Current Balance</Label>
-          <div className="relative h-9">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm leading-none">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm leading-none z-10">
               {getCurrencySymbol(balanceCurrency)}
               {"\u00A0"}
             </span>
-            <Input
+            <CalculatorInput
               id="current-balance"
-              type="text"
-              inputMode="decimal"
               className={
                 getCurrencySymbol(balanceCurrency).length > 1
                   ? "pl-16 bg-white"
@@ -138,7 +137,7 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
               }
               placeholder="0.00"
               value={balanceInput.displayValue}
-              onChange={(e) => balanceInput.handleInputChange(e.target.value)}
+              onChange={(value) => balanceInput.handleInputChange(value)}
               disabled={isCreating}
             />
           </div>

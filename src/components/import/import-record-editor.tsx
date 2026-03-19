@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CalculatorInput } from '@/components/ui/calculator-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -138,8 +139,8 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
       errors.amount = 'Amount is required';
     } else {
       const cleanAmount = numberFormatting.cleanForBackend(formData.amount);
-      if (isNaN(cleanAmount) || cleanAmount <= 0) {
-        errors.amount = 'Amount must be a positive number';
+      if (isNaN(cleanAmount) || cleanAmount === 0) {
+        errors.amount = 'Amount cannot be zero';
       }
     }
 
@@ -282,12 +283,11 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
 
         <div className="space-y-2">
           <Label htmlFor="amount">Amount *</Label>
-          <Input
+          <CalculatorInput
             id="amount"
-            type="text"
             placeholder="0.00"
             value={amountInput.displayValue}
-            onChange={(e) => amountInput.handleInputChange(e.target.value)}
+            onChange={(value) => amountInput.handleInputChange(value)}
             className={validationErrors.amount ? 'border-red-500' : ''}
           />
           {validationErrors.amount && (

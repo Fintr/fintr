@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TrendingUp, Loader2, Check } from "lucide-react";
@@ -347,15 +348,13 @@ export function AmountWithRatePicker({
           )}
         </div>
         <div className="min-w-0 flex items-center">
-          <Input
+          <CalculatorInput
             id={id}
             name={id}
             value={amountDisplayValue}
-            onChange={(e) => onAmountChange(e.target.value)}
-            type="text"
-            inputMode="decimal"
+            onChange={onAmountChange}
             placeholder={placeholder}
-            className={`w-full min-w-0 tabular-nums text-xl font-semibold text-primary sm:text-2xl md:text-sm md:font-normal ${inputClassName}`}
+            className={`w-full min-w-0 ${inputClassName}`}
           />
         </div>
         <div className="flex flex-nowrap items-center shrink-0">

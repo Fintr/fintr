@@ -39,7 +39,7 @@ import {
 
 // Income form schema using Zod
 const incomeFormSchema = z.object({
-  amount: z.string().min(1, "Amount is required").refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, { message: "Amount must be a positive number" }),
+  amount: z.string().min(1, "Amount is required").refine(val => !isNaN(parseFloat(val)) && parseFloat(val) !== 0, { message: "Amount cannot be zero" }),
   description: z.string().optional(),
   categoryName: z.string().min(1, "Category is required"),
   accountName: z.string().min(1, "Account is required"),

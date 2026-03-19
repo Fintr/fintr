@@ -18,6 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -552,7 +553,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
     
     const totalPaymentValue = numberFormatting.cleanForBackend(totalPaymentInput.displayValue);
     if (!totalPaymentInput.displayValue || totalPaymentValue <= 0) {
-      errors.totalPayment = "Payment amount is required and must be greater than 0";
+      errors.totalPayment = "Payment amount must be a positive number";
     }
     
     if (!accountName) {
@@ -799,12 +800,11 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
 
                 <div className="space-y-2">
                   <Label htmlFor="payment-amount" className="text-sm">Total Payment Amount</Label>
-                  <Input
+                  <CalculatorInput
                     id="payment-amount"
-                    type="text"
                     value={totalPaymentInput.displayValue}
-                    onChange={(e) => {
-                      totalPaymentInput.handleInputChange(e.target.value);
+                    onChange={(value) => {
+                      totalPaymentInput.handleInputChange(value);
                       if (formSubmitted && validationErrors.totalPayment) {
                         setValidationErrors({ ...validationErrors, totalPayment: "" });
                       }
@@ -930,12 +930,11 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
 
               <div className="space-y-2">
                 <Label htmlFor="edit-payment-amount" className="text-sm">Total Payment Amount</Label>
-                <Input
+                <CalculatorInput
                   id="edit-payment-amount"
-                  type="text"
                   value={totalPaymentInput.displayValue}
-                  onChange={(e) => {
-                    totalPaymentInput.handleInputChange(e.target.value);
+                  onChange={(value) => {
+                    totalPaymentInput.handleInputChange(value);
                     if (formSubmitted && validationErrors.totalPayment) {
                       setValidationErrors({ ...validationErrors, totalPayment: "" });
                     }
@@ -986,7 +985,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                     
                     const totalPaymentValue = numberFormatting.cleanForBackend(totalPaymentInput.displayValue);
                     if (!totalPaymentInput.displayValue || totalPaymentValue <= 0) {
-                      errors.totalPayment = "Payment amount is required and must be greater than 0";
+                      errors.totalPayment = "Payment amount must be a positive number";
                     }
                     
                     if (!accountName) {

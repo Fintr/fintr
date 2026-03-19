@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
+import { CalculatorInput } from "../../ui/calculator-input";
 import {
   Select,
   SelectContent,
@@ -167,7 +168,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
 
     const amountValue = numberFormatting.cleanForBackend(principalAmountInput.displayValue);
     if (!principalAmountInput.displayValue || amountValue <= 0) {
-      errors.amount = "Principal amount is required and must be greater than 0";
+      errors.amount = "Principal amount must be a positive number";
     }
 
     const interestRateValue = parseFloat(loanForm.interestRate);
@@ -284,13 +285,12 @@ const LoanForm: React.FC<LoanFormProps> = ({
         </div>
                 <div className="space-y-2">
                   <Label htmlFor="loan-amount" className="text-sm">Principal Amount</Label>
-                  <Input
+                  <CalculatorInput
                     id="loan-amount"
-                    type="text"
                     placeholder="0.00"
                     value={principalAmountInput.displayValue}
-                    onChange={(e) => {
-                      principalAmountInput.handleInputChange(e.target.value);
+                    onChange={(value) => {
+                      principalAmountInput.handleInputChange(value);
                       if (formSubmitted && validationErrors.amount) {
                         setValidationErrors({ ...validationErrors, amount: "" });
                       }

@@ -227,13 +227,13 @@ export const numberFormatting = {
   // Parse formatted number back to clean numeric value
   parseNumber: (formattedValue: string): number => {
     if (!formattedValue) return 0;
-    // Remove all non-numeric characters except decimal point
-    const cleanValue = formattedValue.replace(/[^0-9.]/g, '');
+    // Remove all non-numeric characters except decimal point and minus sign
+    const cleanValue = formattedValue.replace(/[^0-9.-]/g, '');
     const parsed = parseFloat(cleanValue);
     return isNaN(parsed) ? 0 : parsed;
   },
 
-  // Format number for input display (with commas) - handles decimal points properly
+  // Format number for input display (with commas) - handles decimal points and negatives properly
   formatForInput: (value: string | number): string => {
     if (!value && value !== 0) return '';
     
@@ -243,35 +243,43 @@ export const numberFormatting = {
     // If the string is empty, return empty
     if (stringValue === '') return '';
     
+    // If the string is just a minus sign, return it
+    if (stringValue === '-') return '-';
+    
     // If the string is just a decimal point, return it
     if (stringValue === '.') return '.';
     
+    // Check if negative
+    const isNegative = stringValue.startsWith('-');
+    const workingValue = isNegative ? stringValue.slice(1) : stringValue;
+    const prefix = isNegative ? '-' : '';
+    
     // If the string ends with a decimal point, format the integer part and add the decimal
-    if (stringValue.endsWith('.')) {
-      const integerPart = stringValue.slice(0, -1);
-      if (integerPart === '') return '.';
+    if (workingValue.endsWith('.')) {
+      const integerPart = workingValue.slice(0, -1);
+      if (integerPart === '') return prefix + '.';
       const numValue = parseFloat(integerPart);
       if (!isNaN(numValue)) {
-        return numValue.toLocaleString('en-US') + '.';
+        return prefix + numValue.toLocaleString('en-US') + '.';
       }
       return stringValue;
     }
     
     // If the string contains a decimal point, format the integer part and preserve the decimal part
-    if (stringValue.includes('.')) {
-      const [integerPart, decimalPart] = stringValue.split('.');
-      if (integerPart === '') return '.' + decimalPart;
+    if (workingValue.includes('.')) {
+      const [integerPart, decimalPart] = workingValue.split('.');
+      if (integerPart === '') return prefix + '.' + decimalPart;
       const numValue = parseFloat(integerPart);
       if (!isNaN(numValue)) {
-        return numValue.toLocaleString('en-US') + '.' + decimalPart;
+        return prefix + numValue.toLocaleString('en-US') + '.' + decimalPart;
       }
       return stringValue;
     }
     
     // For integers, format with commas
-    const numValue = parseFloat(stringValue);
+    const numValue = parseFloat(workingValue);
     if (!isNaN(numValue)) {
-      return numValue.toLocaleString('en-US');
+      return prefix + numValue.toLocaleString('en-US');
     }
     
     return stringValue;
@@ -286,13 +294,16 @@ export const numberFormatting = {
     return isNaN(parsed) ? 0 : parsed;
   },
 
-  // Handle input change - allows decimal points during typing
+  // Handle input change - allows decimal points and negative signs during typing
   handleInputChange: (value: string): string => {
-    // Allow only numbers, decimal points, and commas
-    let cleaned = value.replace(/[^0-9.,]/g, '');
+    // Allow only numbers, decimal points, commas, and minus sign
+    let cleaned = value.replace(/[^0-9.,-]/g, '');
     
     // If the value is empty, return empty
     if (cleaned === '') return '';
+    
+    // If the value is just a minus sign, return it
+    if (cleaned === '-') return '-';
     
     // If the value is just a decimal point, return it
     if (cleaned === '.') return '.';
@@ -300,23 +311,31 @@ export const numberFormatting = {
     // Remove all commas before processing
     const withoutCommas = cleaned.replace(/,/g, '');
     
+    // Check if negative (minus sign at the start)
+    const isNegative = withoutCommas.startsWith('-');
+    const workingValue = isNegative ? withoutCommas.slice(1) : withoutCommas;
+    const prefix = isNegative ? '-' : '';
+    
+    // If working value is empty after removing minus, return just minus
+    if (workingValue === '') return '-';
+    
     // If the value ends with a decimal point, format the integer part and add the decimal
-    if (withoutCommas.endsWith('.')) {
-      const integerPart = withoutCommas.slice(0, -1);
-      if (integerPart === '') return '.';
+    if (workingValue.endsWith('.')) {
+      const integerPart = workingValue.slice(0, -1);
+      if (integerPart === '') return prefix + '.';
       const numValue = parseFloat(integerPart);
       if (!isNaN(numValue)) {
-        return numValue.toLocaleString('en-US') + '.';
+        return prefix + numValue.toLocaleString('en-US') + '.';
       }
       return withoutCommas;
     }
     
     // If the value contains a decimal point, preserve it exactly
-    if (withoutCommas.includes('.')) {
-      const [integerPart, decimalPart] = withoutCommas.split('.');
+    if (workingValue.includes('.')) {
+      const [integerPart, decimalPart] = workingValue.split('.');
       
       // If integer part is empty, just return the decimal part with a dot
-      if (integerPart === '') return '.' + decimalPart;
+      if (integerPart === '') return prefix + '.' + decimalPart;
       
       // Format integer part with commas and preserve decimal part exactly as typed
       const integerNum = parseFloat(integerPart);
@@ -324,16 +343,16 @@ export const numberFormatting = {
         // Format the integer part with commas
         const formattedInteger = integerNum.toLocaleString('en-US');
         // CRITICAL: Always preserve the decimal part exactly as typed, no matter what
-        return formattedInteger + '.' + decimalPart;
+        return prefix + formattedInteger + '.' + decimalPart;
       }
       // If parsing fails, return the original cleaned value
       return withoutCommas;
     }
     
     // For integers, format with commas
-    const numValue = parseFloat(withoutCommas);
+    const numValue = parseFloat(workingValue);
     if (!isNaN(numValue) && numValue >= 0) {
-      return numValue.toLocaleString('en-US');
+      return prefix + numValue.toLocaleString('en-US');
     }
     
     return withoutCommas;
