@@ -8,10 +8,15 @@ module Api
 
         return render_internal_server_error(details: query.failure) unless query.success?
 
-        render_paginated(
+        # Calculate totals by type using dedicated query
+        totals_query = ::Transactions::Queries::TotalsByType.call(params: filter_params)
+        totals_by_type = totals_query.success? ? totals_query.value! : { income: 0.0, expense: 0.0, transfer: 0.0 }
+
+        render_paginated_with_totals(
           query.value!,
           serializer: ::Transactions::Serializers::FilteredCombinedSerializer,
-          key: :transactions
+          key: :transactions,
+          totals: totals_by_type
         )
       end
 
@@ -134,13 +139,24 @@ module Api
         )
       end
 
-      def note_suggestions_params
-        params.permit(
-          :category_name,
-          :transaction_type,
-          :search,
-          :limit
-        ).to_h.merge(space_id: current_space.id)
+      def render_paginated_with_totals(collection, serializer:, key:, totals:)
+        data_key = key || :data
+
+        serialized_data = serializer.render_as_hash(collection)
+
+        pagination_meta = {
+          current_page: collection.current_page,
+          total_pages: collection.total_pages,
+          total_count: collection.total_count
+        }
+
+        response_data = {
+          data_key => serialized_data,
+          pagination: pagination_meta,
+          totals: totals
+        }
+
+        render_success(data: response_data)
       end
     end
   end

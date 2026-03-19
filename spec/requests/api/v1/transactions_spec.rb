@@ -9,6 +9,136 @@ RSpec.describe "Api::V1::Transactions", type: :request do
   let!(:auth) { setup_authentication(user:, space:) }
   let(:headers) { auth[:headers] }
 
+  describe "GET /api/v1/transactions" do
+    let(:account) { create(:account, space: space) }
+    let(:income_category) { create(:category, space: space, category_type: "income") }
+    let(:expense_category) { create(:category, space: space, category_type: "expense") }
+
+    let(:valid_filter_params) do
+      {
+        space_code: space.code,
+        start_date: Date.new(2024, 1, 1).to_s,
+        end_date: Date.new(2024, 1, 31).to_s
+      }
+    end
+
+    context "when the request is successful" do
+      let!(:income_transaction) do
+        create(:income_transaction,
+               space: space,
+               user: user,
+               account: account,
+               category: income_category,
+               date: Date.new(2024, 1, 10),
+               amount_cents: 10000)
+      end
+
+      let!(:expense_transaction) do
+        create(:expense_transaction,
+               space: space,
+               user: user,
+               account: account,
+               category: expense_category,
+               date: Date.new(2024, 1, 15),
+               amount_cents: 5000)
+      end
+
+      before do
+        get api_v1_transactions_path, params: valid_filter_params, headers: headers
+      end
+
+      it "returns an HTTP status ok" do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "returns success true in the response body" do
+        json = JSON.parse(response.body)
+        expect(json["success"]).to be true
+      end
+
+      it "returns transactions in the response" do
+        json = JSON.parse(response.body)
+        expect(json["data"]["transactions"]).to be_an(Array)
+      end
+
+      it "returns pagination metadata" do
+        json = JSON.parse(response.body)
+        expect(json["data"]["pagination"]).to include(
+          "currentPage",
+          "totalPages",
+          "totalCount"
+        )
+      end
+
+      it "returns totals by type" do
+        json = JSON.parse(response.body)
+        expect(json["data"]["totals"]).to include(
+          "income",
+          "expense",
+          "transfer"
+        )
+      end
+
+      it "calculates totals correctly" do
+        json = JSON.parse(response.body)
+        totals = json["data"]["totals"]
+        expect(totals["income"].to_f).to eq(100.0)
+        expect(totals["expense"].to_f).to eq(50.0)
+        expect(totals["transfer"].to_f).to eq(0.0)
+      end
+    end
+
+    context "when the query fails" do
+      before do
+        allow(::Transactions::Queries::FilteredCombined).to receive(:call).and_return(
+          Dry::Monads::Result::Failure.new(space_code: "Not found")
+        )
+        get api_v1_transactions_path, params: valid_filter_params, headers: headers
+      end
+
+      it "returns an HTTP status internal_server_error" do
+        expect(response).to have_http_status(:internal_server_error)
+      end
+
+      it "returns error details in the response body" do
+        json = JSON.parse(response.body)
+        expect(json["success"]).to be false
+        expect(json["error"]["details"]).to be_present
+      end
+    end
+
+    context "when totals query fails" do
+      let!(:income_transaction) do
+        create(:income_transaction,
+               space: space,
+               user: user,
+               account: account,
+               category: income_category,
+               date: Date.new(2024, 1, 10),
+               amount_cents: 10000)
+      end
+
+      before do
+        allow(::Transactions::Queries::TotalsByType).to receive(:call).and_return(
+          Dry::Monads::Result::Failure.new(totals: "error")
+        )
+        get api_v1_transactions_path, params: valid_filter_params, headers: headers
+      end
+
+      it "returns an HTTP status ok (graceful degradation)" do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "returns default zero totals" do
+        json = JSON.parse(response.body)
+        totals = json["data"]["totals"]
+        expect(totals["income"]).to eq(0.0)
+        expect(totals["expense"]).to eq(0.0)
+        expect(totals["transfer"]).to eq(0.0)
+      end
+    end
+  end
+
   describe "POST /api/v1/transactions" do
     let(:create_operation) { instance_double(::Transactions::Operations::CreateTransaction) }
     let(:valid_create_params) do
