@@ -25,11 +25,12 @@ public class MainActivity extends BridgeActivity {
 
   private void applySystemBarColors() {
     int topBarColor = ContextCompat.getColor(this, R.color.fintr_top_bar);
+    int bottomNavColor = ContextCompat.getColor(this, R.color.fintr_bottom_nav);
 
     getWindow().setStatusBarColor(topBarColor);
     // Keep the system navigation buttons clearly visible: use a light nav bar background
     // (matching the app chrome) with dark icons.
-    getWindow().setNavigationBarColor(topBarColor);
+    getWindow().setNavigationBarColor(bottomNavColor);
 
     // Android 10+ can enforce contrast and override nav bar coloring; disable it.
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -42,7 +43,7 @@ public class MainActivity extends BridgeActivity {
         WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
     if (controller != null) {
       controller.setAppearanceLightStatusBars(true);
-      controller.setAppearanceLightNavigationBars(true);
+      controller.setAppearanceLightNavigationBars(false);
     }
   }
 
