@@ -67,12 +67,20 @@ export interface TransferUpdateTransactionType extends UpdateTransactionType {
 }
 
 
+// Totals by transaction type
+export interface TransactionTotals {
+  income: number;
+  expense: number;
+  transfer: number;
+}
+
 // Define the expected structure of the API response for infinite query
 export interface TransactionsPage {
   transactions: IndexTransaction[];
   nextPage: number | null; // Page number for the next fetch, or null if last page
   totalPages: number | null;
   totalCount: number | null;
+  totals: TransactionTotals | null;
   // Add other pagination info if available (e.g., totalPages, totalCount)
 }
 
