@@ -121,6 +121,26 @@ export function ListView({
               array.findIndex(t => t.id === transaction.id) === index
             );
             
+            // Calculate daily net totals (income - expense, transfers don't affect net)
+            const dailyTotals: Record<string, number> = {};
+            uniqueTransactions.forEach((transaction) => {
+              const dateKey = new Date(transaction.date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+              if (!dailyTotals[dateKey]) {
+                dailyTotals[dateKey] = 0;
+              }
+              const amount = Number(transaction.amount) || 0;
+              if (transaction.type === CombinedTransactionTypeEnum.INCOME) {
+                dailyTotals[dateKey] += amount;
+              } else if (transaction.type === CombinedTransactionTypeEnum.EXPENSE) {
+                dailyTotals[dateKey] -= Math.abs(amount);
+              }
+              // Transfers don't affect net total
+            });
+            
             return uniqueTransactions.map((transaction: IndexTransaction, idx: number) => {
               const transactionDate = new Date(transaction.date);
               const currentDate = transactionDate.toLocaleDateString('en-US', {
@@ -135,6 +155,8 @@ export function ListView({
                 lastDisplayedDate = currentDate;
               }
 
+              const dailyNet = dailyTotals[currentDate] || 0;
+
               return (
                 <React.Fragment key={transaction.id}>
                   {showDivider && (
@@ -147,6 +169,12 @@ export function ListView({
                         {currentDate}
                       </span>
                       <div className="flex-grow border-t border-gray-300" />
+                      <span className={`text-xs font-semibold bg-white px-3 ${
+                        dailyNet >= 0 ? 'text-teal-600' : 'text-red-900'
+                      }`}>
+                        {dailyNet >= 0 ? '+' : ''}{formatCurrency(dailyNet)}
+                      </span>
+                      <div className="border-t border-gray-300" style={{width: '2rem'}} />
                     </div>
                   )}
                   <div 
