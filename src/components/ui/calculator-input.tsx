@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Delete, Equal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isNativeCapacitor } from "@/lib/capacitor";
 
 interface CalculatorInputProps {
   id?: string;
@@ -73,6 +74,8 @@ export function CalculatorInput({
   // Track if we're in "expression mode" (user is typing a calculation)
   const [isExpressionMode, setIsExpressionMode] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isAndroidNative, setIsAndroidNative] = useState(false);
+  const [isIOSNative, setIsIOSNative] = useState(false);
   const [keyboardPosition, setKeyboardPosition] = useState({ top: 0, left: 0, width: 0 });
   const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,6 +85,19 @@ export function CalculatorInput({
   // Handle SSR - only render portal after mount
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Ensure the calculator keyboard doesn't cover Android 3-button navigation.
+  useEffect(() => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const uaLower = ua.toLowerCase();
+    const isAndroid = /android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isNative = isNativeCapacitor();
+    const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
+    const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
+    setIsAndroidNative(isAndroid && (isNative || hasAndroidClass));
+    setIsIOSNative(isIOS && (isNative || hasIOSClass));
   }, []);
 
   // Detect mobile/desktop and update on resize
@@ -306,11 +322,23 @@ export function CalculatorInput({
           ? "fixed left-0 right-0 bottom-0 border-t rounded-t-xl p-3" 
           : "fixed rounded-xl p-4"
       )}
-      style={isMobile ? { maxHeight: '50vh' } : {
+      style={
+        isMobile
+          ? {
+              maxHeight: "50vh",
+              // Sit above the Android navigation bar area or iOS safe area.
+              bottom: isAndroidNative
+                ? "var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))"
+                : isIOSNative
+                  ? "env(safe-area-inset-bottom, 0px)"
+                  : undefined,
+            }
+          : {
         top: keyboardPosition.top,
         left: keyboardPosition.left,
         width: keyboardPosition.width,
-      }}
+      }
+      }
     >
       <div className="space-y-2">
         {/* Expression display with result preview */}

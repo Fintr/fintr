@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAtomValue } from "jotai";
 import { isTutorialActiveAtom } from "@/atoms/tutorialAtoms";
+import { isNativeCapacitor } from "@/lib/capacitor";
 
 interface AddReceiptDialogProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
   const isTutorialActive = useAtomValue(isTutorialActiveAtom);
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isAndroidNative, setIsAndroidNative] = useState(false);
+  const [isIOSNative, setIsIOSNative] = useState(false);
   const historyPushedRef = React.useRef(false);
   const viewportHeightRef = React.useRef<number | null>(null);
 
@@ -42,6 +45,20 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
     return () => {
       window.removeEventListener("resize", checkMobile);
     };
+  }, []);
+
+  // Apply safe-area padding using inline styles so it doesn't depend on
+  // html.class injection timing.
+  useEffect(() => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const uaLower = ua.toLowerCase();
+    const isAndroid = /android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isNative = isNativeCapacitor();
+    const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
+    const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
+    setIsAndroidNative(isAndroid && (isNative || hasAndroidClass));
+    setIsIOSNative(isIOS && (isNative || hasIOSClass));
   }, []);
 
   useEffect(() => {
@@ -220,10 +237,14 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
     >
       <div
         className={cn(
-          "fixed inset-0 bg-black/50 z-[100]",
+          "fixed left-0 right-0 top-0 bg-black/50 z-[100]",
           "transition-opacity duration-200",
           isTutorialActive ? "pointer-events-none" : "cursor-pointer"
         )}
+        style={{
+          // Don't dim the Android 3-button safe-area; keep it visible.
+          bottom: "var(--safe-area-inset-bottom, 0px)",
+        }}
         onClick={(e) => {
           if (isTutorialActive) {
             e.preventDefault();
@@ -244,6 +265,14 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
           }
         }}
       />
+      {/* Paint the Android 3-button nav background so the backdrop doesn't make it look white. */}
+      <div
+        className="fixed left-0 right-0 bottom-0 z-[100.5] pointer-events-none"
+        style={{
+          height: "var(--safe-area-inset-bottom, 0px)",
+          backgroundColor: "#FAFAF9",
+        }}
+      />
       <div
         data-add-receipt-dialog-content
         className={cn(
@@ -256,7 +285,10 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
         )}
         style={{
           ...(isMobile && viewportHeightRef.current
-            ? { maxHeight: `${viewportHeightRef.current}px` }
+            ? {
+                // Leave the Android 3-button navigation safe-area visible behind the overlay.
+                maxHeight: `calc(${viewportHeightRef.current}px - var(--safe-area-inset-bottom, 0px))`,
+              }
             : {}),
           ...(isTutorialActive ? { pointerEvents: 'auto' } : {})
         }}
@@ -288,11 +320,24 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
             </Button>
           </div>
         )}
-        <div 
-          className="overflow-y-auto"
+        <div
+          className="overflow-y-auto pt-safe-top pb-safe-bottom"
           style={{
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",
+            // Apply safe area padding for all native platforms (Android uses CSS vars, iOS uses env())
+            paddingTop:
+              isMobile
+                ? isAndroidNative
+                  ? "var(--safe-area-inset-top, env(safe-area-inset-top, 0px))"
+                  : "env(safe-area-inset-top, 0px)"
+                : undefined,
+            paddingBottom:
+              isMobile
+                ? isAndroidNative
+                  ? "var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))"
+                  : "env(safe-area-inset-bottom, 0px)"
+                : undefined,
           } as React.CSSProperties}
         >
           {children}

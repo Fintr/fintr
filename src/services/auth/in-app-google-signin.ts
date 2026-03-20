@@ -81,7 +81,7 @@ export const initiateInAppGoogleSignIn = async (options?: InAppGoogleSignInOptio
     const result = await Browser.open({
       url: authorizationUrl.toString(),
       windowName: '_self',
-      presentationStyle: 'popover', // This makes it slide up from bottom on iOS
+      presentationStyle: 'fullscreen',
       toolbarColor: '#ffffff',
       showTitle: true,
       title: 'Sign in with Google',

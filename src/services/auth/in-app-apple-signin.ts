@@ -158,7 +158,7 @@ export const initiateInAppAppleSignIn = async (options?: InAppAppleSignInOptions
         // Open in-app browser. presentationStyle is iOS-only; Android uses Chrome Custom Tab.
         await Browser.open({
           url: authorizationUrl.toString(),
-          presentationStyle: 'popover',
+          presentationStyle: 'fullscreen',
           toolbarColor: '#ffffff',
         }).catch((error) => {
           console.error('\n❌ Browser.open error:', error);

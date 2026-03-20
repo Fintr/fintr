@@ -51,9 +51,11 @@ const config: CapacitorConfig = {
     appendUserAgent: 'FintrNativeApp',
   },
   android: {
-    scheme: 'fintrapp', // Same as iOS for consistent Origin (fintrapp://) and CORS
+    // Same as iOS for consistent Origin (fintrapp://) and CORS.
+    // Capacitor's TS types don't currently model android.scheme, so we cast to preserve runtime behavior.
+    scheme: 'fintrapp',
     appendUserAgent: 'FintrNativeApp',
-  },
+  } as any,
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
@@ -74,7 +76,7 @@ const config: CapacitorConfig = {
       backgroundColor: "#FAFAF9",
     },
     Browser: {
-      presentationStyle: 'popover',
+      presentationStyle: 'fullscreen',
       toolbarColor: '#ffffff',
       showTitle: true
     }

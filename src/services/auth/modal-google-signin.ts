@@ -161,7 +161,7 @@ export const initiateInAppBrowserGoogleSignIn = async (options?: InAppBrowserOpt
         // On Android this is a Chrome Custom Tab (presentationStyle is ignored).
         await Browser.open({
           url: authorizationUrl.toString(),
-          presentationStyle: 'popover',
+          presentationStyle: 'fullscreen',
           toolbarColor: '#ffffff',
         }).catch((error) => {
           console.error('\n❌ Browser.open error:', error);

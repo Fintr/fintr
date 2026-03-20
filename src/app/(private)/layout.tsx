@@ -45,6 +45,27 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const { spaceCode } = useGetSpaceCode(api);
   const { setSettings: setToastSettings } = useToastSettings();
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const [isAndroidNative, setIsAndroidNative] = React.useState(false);
+  const [isIOSNative, setIsIOSNative] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ua = navigator.userAgent || "";
+    const uaLower = ua.toLowerCase();
+
+    // Detect Android native (including WebView)
+    const isAndroid = /Android/i.test(ua);
+    const isFintrNative = uaLower.includes("fintrnativeapp");
+    const isWebView = /; wv\)/.test(ua);
+    const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
+
+    // Detect iOS native (including WebView)
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
+
+    setIsAndroidNative(isAndroid && (isFintrNative || isWebView || hasAndroidClass));
+    setIsIOSNative(isIOS && (isFintrNative || isWebView || hasIOSClass));
+  }, []);
 
   // Control toast position: bottom-most on onboarding (mobile); above nav elsewhere on mobile
   useEffect(() => {
@@ -92,16 +113,47 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
             <>
               <MobileStickyHeader />
               {/* Spacer for fixed header on mobile */}
-              <div className="mobile-header-spacer md:hidden" />
+              <div
+                className="mobile-header-spacer md:hidden"
+                style={
+                  isAndroidNative || isIOSNative
+                    ? {
+                        height:
+                          "calc(44px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))",
+                      }
+                    : {
+                        // For mobile browsers, use env() for safe area
+                        height:
+                          "calc(44px + env(safe-area-inset-top, 0px))",
+                      }
+                }
+              />
             </>
           )}
         </>
       )}
-      <div className={
-        isOnOnboardingPage || isStandalonePage 
-          ? "min-h-screen" 
-          : "p-0 md:p-8 md:pt-[88px] max-w-7xl mx-auto"
-      }>
+      <div
+        className={
+          isOnOnboardingPage || isStandalonePage
+            ? "min-h-screen"
+            : "p-0 md:p-8 md:pt-[88px] max-w-7xl mx-auto"
+        }
+        style={
+          isMobile &&
+          !isOnOnboardingPage &&
+          !isStandalonePage &&
+          !transitionState.isTransitioning
+            ? {
+                // Apply bottom padding for all mobile platforms
+                // Android needs extra for 3-button nav (48px minimum)
+                // iOS and mobile browsers need fixed 80px padding to clear bottom nav
+                paddingBottom: isAndroidNative
+                  ? `max(var(--safe-area-inset-bottom, 0px), 48px)`
+                  : "80px",
+              }
+            : undefined
+        }
+      >
         {children}
       </div>
       {/* Bottom Navigation for Mobile - Show on CRM and Admin pages */}

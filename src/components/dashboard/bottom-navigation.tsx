@@ -3,7 +3,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FileText, Wallet, Plus, BarChart3, Menu, MessageSquare, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
 import AddReceiptDialog from "@/components/dashboard/add-receipt-dialog";
 import EnhancedAiChatModal from "@/components/ai-chat/enhanced-ai-chat-modal";
@@ -20,6 +21,27 @@ export default function BottomNavigation() {
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
+  const [isAndroidNative, setIsAndroidNative] = useState(false);
+  const [isIOSNative, setIsIOSNative] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ua = navigator.userAgent || "";
+    const uaLower = ua.toLowerCase();
+
+    // Detect Android native (including WebView)
+    const isAndroid = /Android/i.test(ua);
+    const isFintrNative = uaLower.includes("fintrnativeapp");
+    const isWebView = /; wv\)/.test(ua);
+    const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
+
+    // Detect iOS native (including WebView)
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
+
+    setIsAndroidNative(isAndroid && (isFintrNative || isWebView || hasAndroidClass));
+    setIsIOSNative(isIOS && (isFintrNative || isWebView || hasIOSClass));
+  }, []);
 
   // Determine active tab based on pathname
   const getActiveValue = () => {
@@ -65,7 +87,32 @@ export default function BottomNavigation() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-primary shadow-xs border-t border-primary/20 md:hidden pb-safe-bottom">
+      {/* Android 3-button nav safe-area spacer (keeps OS buttons visible). */}
+      {isAndroidNative && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-[55] md:hidden pointer-events-none"
+          style={{
+            height: "max(var(--safe-area-inset-bottom, 0px), 48px)",
+            backgroundColor: "#FAFAF9",
+          }}
+        />
+      )}
+
+      <nav
+        className={cn(
+          "fixed left-0 right-0 z-50 bg-primary shadow-xs border-t border-primary/20 md:hidden",
+          // Only add bottom padding for iOS and mobile browsers
+          // Android has the white spacer below the nav for safe area
+          isAndroidNative ? "" : "pb-4"
+        )}
+        style={{
+          // Android shifts up for 3-button nav (white spacer handles the gap)
+          // iOS sits at bottom with padding inside the nav
+          bottom: isAndroidNative
+            ? "max(var(--safe-area-inset-bottom, 0px), 48px)"
+            : 0,
+        }}
+      >
         <div className="flex items-center justify-around h-16 px-2 max-w-full">
           {/* Transactions */}
           <Link

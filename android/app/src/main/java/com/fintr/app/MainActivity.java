@@ -2,11 +2,14 @@ package com.fintr.app;
 
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -21,6 +24,26 @@ public class MainActivity extends BridgeActivity {
     WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
     applySystemBarColors();
     configureWebViewCache();
+    setupWebSafeAreaVars();
+
+    // Let the web layer know we're running on Android native so we can scope
+    // Android-only safe-area adjustments (prevents iOS from getting extra padding).
+    try {
+      getBridge()
+          .getWebView()
+          .evaluateJavascript(
+              "(function(){"
+                  + "var apply=function(){document.documentElement.classList.add('fintr-native-android');};"
+                  + "if(document.readyState==='loading'){"
+                  + "document.addEventListener('DOMContentLoaded',apply,{once:true});"
+                  + "}else{"
+                  + "apply();"
+                  + "}"
+                  + "})();",
+              null);
+    } catch (Exception e) {
+      // Ignore; best-effort only.
+    }
   }
 
   private void applySystemBarColors() {
@@ -28,9 +51,9 @@ public class MainActivity extends BridgeActivity {
     int bottomNavColor = ContextCompat.getColor(this, R.color.fintr_bottom_nav);
 
     getWindow().setStatusBarColor(topBarColor);
-    // Keep the system navigation buttons clearly visible: use a light nav bar background
-    // (matching the app chrome) with dark icons.
-    getWindow().setNavigationBarColor(bottomNavColor);
+    // Use a light nav bar background with dark icons so the 3-button navigation
+    // is always visible.
+    getWindow().setNavigationBarColor(topBarColor);
 
     // Android 10+ can enforce contrast and override nav bar coloring; disable it.
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -43,7 +66,50 @@ public class MainActivity extends BridgeActivity {
         WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
     if (controller != null) {
       controller.setAppearanceLightStatusBars(true);
-      controller.setAppearanceLightNavigationBars(false);
+      controller.setAppearanceLightNavigationBars(true);
+    }
+  }
+
+  private void setupWebSafeAreaVars() {
+    final View decorView = getWindow().getDecorView();
+
+    // Set initial value immediately (best-effort).
+    try {
+      WindowInsetsCompat rootInsets = ViewCompat.getRootWindowInsets(decorView);
+      if (rootInsets != null) {
+        applyWebSafeAreaBottom(rootInsets);
+      }
+    } catch (Exception e) {
+      // Ignore; best-effort only.
+    }
+
+    ViewCompat.setOnApplyWindowInsetsListener(decorView, (v, insets) -> {
+      applyWebSafeAreaBottom(insets);
+      return insets;
+    });
+
+    ViewCompat.requestApplyInsets(decorView);
+  }
+
+  private void applyWebSafeAreaBottom(WindowInsetsCompat insets) {
+    boolean navVisible = insets.isVisible(WindowInsetsCompat.Type.navigationBars());
+    int navBarHeight = 0;
+    if (navVisible) {
+      navBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+    }
+
+    final boolean hasNav = navBarHeight > 0;
+    try {
+      getBridge()
+          .getWebView()
+          .evaluateJavascript(
+              "(function(){"
+                  + "document.documentElement.style.setProperty('--safe-area-inset-bottom','" + navBarHeight + "px');"
+                  + "document.documentElement.classList.toggle('fintr-has-3btn-nav'," + (hasNav ? "true" : "false") + ");"
+                  + "})();",
+              null);
+    } catch (Exception e) {
+      // Ignore; best-effort only.
     }
   }
 

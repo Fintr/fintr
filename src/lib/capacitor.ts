@@ -187,7 +187,7 @@ export const openUrl = async (
       await Browser.open({
         url: url,
         windowName: '_self',
-        presentationStyle: 'popover',
+        presentationStyle: 'fullscreen',
         toolbarColor: '#ffffff'
       });
     } catch (error) {

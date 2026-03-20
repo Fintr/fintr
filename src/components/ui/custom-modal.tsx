@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { isNativeCapacitor } from "@/lib/capacitor";
 
 interface CustomModalProps {
   isOpen: boolean;
@@ -35,6 +36,8 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 }) => {
   const [mounted, setMounted] = React.useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isAndroidNative, setIsAndroidNative] = useState(false);
+  const [isIOSNative, setIsIOSNative] = useState(false);
   const historyPushedRef = React.useRef(false);
   const viewportHeightRef = React.useRef<number | null>(null);
 
@@ -51,6 +54,20 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     return () => {
       window.removeEventListener("resize", checkMobile);
     };
+  }, []);
+
+  // Apply safe-area padding using inline styles so it doesn't depend on
+  // html.class injection timing.
+  useEffect(() => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const uaLower = ua.toLowerCase();
+    const isAndroid = /android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isNative = isNativeCapacitor();
+    const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
+    const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
+    setIsAndroidNative(isAndroid && (isNative || hasAndroidClass));
+    setIsIOSNative(isIOS && (isNative || hasIOSClass));
   }, []);
 
   useEffect(() => {
@@ -178,9 +195,13 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     >
       <div
         className={cn(
-          "fixed inset-0 bg-black/50 z-[100]",
+          "fixed left-0 right-0 top-0 bg-black/50 z-[100]",
           "transition-opacity duration-200"
         )}
+        style={{
+          // Don't dim the Android 3-button safe-area; keep it visible.
+          bottom: "var(--safe-area-inset-bottom, 0px)",
+        }}
         onClick={(e) => {
           const target = e.target as HTMLElement;
           const lightbox = document.querySelector(".lightbox-container");
@@ -192,6 +213,14 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           if (e.target === e.currentTarget) {
             return;
           }
+        }}
+      />
+      {/* Paint the Android 3-button nav background so the backdrop doesn't make it look white. */}
+      <div
+        className="fixed left-0 right-0 bottom-0 z-[100.5] pointer-events-none"
+        style={{
+          height: "var(--safe-area-inset-bottom, 0px)",
+          backgroundColor: "#FAFAF9",
         }}
       />
       <div
@@ -208,7 +237,11 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         )}
         style={
           isMobile && viewportHeightRef.current
-            ? { maxHeight: `${viewportHeightRef.current}px` }
+            ? {
+                // Leave the Android 3-button navigation safe-area visible behind the overlay.
+                // `--safe-area-inset-bottom` is injected by Capacitor SystemBars on Android.
+                maxHeight: `calc(${viewportHeightRef.current}px - var(--safe-area-inset-bottom, 0px))`,
+              }
             : undefined
         }
         onClick={(e) => e.stopPropagation()}
@@ -229,11 +262,24 @@ export const CustomModal: React.FC<CustomModalProps> = ({
             </Button>
           </div>
         )}
-        <div 
-          className="flex-1 overflow-y-auto min-h-0"
+        <div
+          className="flex-1 overflow-y-auto min-h-0 pt-safe-top pb-safe-bottom"
           style={{
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",
+            // Apply safe area padding for all native platforms (Android uses CSS vars, iOS uses env())
+            paddingTop:
+              isMobile
+                ? isAndroidNative
+                  ? "var(--safe-area-inset-top, env(safe-area-inset-top, 0px))"
+                  : "env(safe-area-inset-top, 0px)"
+                : undefined,
+            paddingBottom:
+              isMobile
+                ? isAndroidNative
+                  ? "var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))"
+                  : "env(safe-area-inset-bottom, 0px)"
+                : undefined,
           } as React.CSSProperties}
         >
           {children}

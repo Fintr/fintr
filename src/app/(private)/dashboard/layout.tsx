@@ -29,6 +29,27 @@ export default function Layout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [isAndroidNative, setIsAndroidNative] = useState(false);
+  const [isIOSNative, setIsIOSNative] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ua = navigator.userAgent || "";
+    const uaLower = ua.toLowerCase();
+
+    // Detect Android native (including WebView)
+    const isAndroid = /Android/i.test(ua);
+    const isFintrNative = uaLower.includes("fintrnativeapp");
+    const isWebView = /; wv\)/.test(ua);
+    const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
+
+    // Detect iOS native (including WebView)
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
+
+    setIsAndroidNative(isAndroid && (isFintrNative || isWebView || hasAndroidClass));
+    setIsIOSNative(isIOS && (isFintrNative || isWebView || hasIOSClass));
+  }, []);
   
   // Skip dashboard layout elements for standalone subscription create page
   const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
@@ -93,7 +114,21 @@ export default function Layout({
           <MobileStickyHeader />
           
           {/* Spacer for fixed header on mobile (includes safe area for status bar) */}
-          <div className="mobile-header-spacer md:hidden" />
+          <div
+            className="mobile-header-spacer md:hidden"
+            style={
+              isAndroidNative || isIOSNative
+                ? {
+                    height:
+                          "calc(44px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))",
+                  }
+                : {
+                    // For mobile browsers, use env() for safe area
+                    height:
+                          "calc(44px + env(safe-area-inset-top, 0px))",
+                  }
+            }
+          />
       
           <div className="p-0 md:p-4 md:px-8 flex flex-col">
             <div className="hidden md:flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6 gap-2 md:gap-0">
@@ -189,7 +224,20 @@ export default function Layout({
                   </TabsTrigger>
                 </TabsList>
               </div>
-              <div className="pt-0 md:pt-2 flex-1 overflow-y-auto pb-20 md:pb-0">{children}</div>
+              <div
+                className="pt-0 md:pt-2 flex-1 overflow-y-auto md:pb-0"
+                style={{
+                  // Apply bottom padding for all mobile platforms
+                  // Need to account for bottom nav bar height (64px) + safe area
+                  // Android: 64px nav + 3-button nav safe area (48px min)
+                  // iOS: 64px nav + 16px safe area padding
+                  paddingBottom: isAndroidNative
+                    ? "calc(64px + max(var(--safe-area-inset-bottom, 0px), 48px))"
+                    : "80px",
+                }}
+              >
+                {children}
+              </div>
             </TabsWrapper>
           </div>
         </>

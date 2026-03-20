@@ -172,10 +172,22 @@ html, body {
 
 @layer utilities {
   .pt-safe-top {
+    /* Default: use native safe-area for iOS and mobile browsers with minimum fallback */
+    padding-top: max(env(safe-area-inset-top, 0px), 0px);
+  }
+
+  .pb-safe-bottom {
+    /* Default: use native safe-area for iOS and mobile browsers with minimum fallback */
+    /* The 16px minimum ensures content doesn't sit flush against bottom nav on mobile browsers */
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+  }
+
+  /* iOS native app specific - ensure proper safe area handling */
+  html.fintr-native-ios .pt-safe-top {
     padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   }
-  
-  .pb-safe-bottom {
+
+  html.fintr-native-ios .pb-safe-bottom {
     padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   }
 
@@ -183,7 +195,28 @@ html, body {
   .mobile-header-spacer {
     height: 44px;
   }
-  .mobile-header-spacer {
+
+  /* Android-only safe-area adjustments (3-button nav devices). */
+  html.fintr-native-android .pt-safe-top {
+    padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  }
+
+  html.fintr-native-android .pb-safe-bottom {
+    /* Android uses our injected variable for more reliable 3-button nav detection */
+    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  }
+
+  html.fintr-native-android .mobile-header-spacer {
+    height: calc(44px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  }
+
+  /* Shift the blue bottom navigation above the Android 3-button safe-area. */
+  html.fintr-native-android .android-bottom-nav-offset {
+    bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* iOS-specific mobile header spacer */
+  html.fintr-native-ios .mobile-header-spacer {
     height: calc(44px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   }
   
