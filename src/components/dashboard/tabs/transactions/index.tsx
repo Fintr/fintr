@@ -27,8 +27,7 @@ import { Filters, FilterTypes } from "./filters";
 import { DownloadButton } from "./buttons/DownloadButton";
 import { DeleteButton } from "./buttons/DeleteButton";
 import { ViewModeButton } from "./buttons/ViewModeButton";
-import { IndexTransaction, TransactionIndexInputType, TransactionTotals } from "@/types/transactionTypes";
-import { TransactionTotalsDisplay } from "./transaction-totals";
+import { IndexTransaction, TransactionIndexInputType } from "@/types/transactionTypes";
 import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
 import ScopeModal, { DeleteScope, Scope } from "@/components/dashboard/forms/ScopeModal";
 import { deleteTransaction } from "@/services/transactions/mutation";
@@ -718,12 +717,6 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
               <DownloadButton onClick={handleDownloadTransactions} />
             </div>
           </div>
-
-          {/* Transaction Totals Display */}
-          <TransactionTotalsDisplay 
-            totals={data?.pages?.[0]?.totals ?? null}
-            isLoading={isFetching && !data}
-          />
 
           {viewMode === "list" ? (
             <ListView

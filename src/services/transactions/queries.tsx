@@ -54,7 +54,6 @@ export const fetchTransactionsPage = async (
     const transactions = response?.data?.data?.transactions || [];
     const totalPages = response?.data?.data?.pagination?.totalPages || 1;
     const totalCount = response?.data?.data?.pagination?.totalCount || 0;
-    const totals = response?.data?.data?.totals || null;
     const currentPage = input.page;
 
     // Determine the next page number
@@ -62,11 +61,11 @@ export const fetchTransactionsPage = async (
 
     if (!Array.isArray(transactions)) {
       console.error('Invalid transaction data structure received:', response?.data);
-      return { transactions: [], nextPage: null, totalPages: null, totalCount: null, totals: null }; // Return structure expected by useInfiniteQuery
+      return { transactions: [], nextPage: null, totalPages: null, totalCount: null }; // Return structure expected by useInfiniteQuery
     }
 
-    console.log('Transactions page fetched:', { transactions, nextPage, totals });
-    return { transactions, nextPage, totalPages, totalCount, totals };
+    console.log('Transactions page fetched:', { transactions, nextPage });
+    return { transactions, nextPage, totalPages, totalCount };
   } catch (error) {
     console.error("Error fetching transactions page:", error);
     throw error; // Re-throw for React Query error handling
