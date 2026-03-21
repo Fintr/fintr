@@ -4,7 +4,31 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // - Development: set to http://localhost:5173 (or your machine IP) for live reload
 // - Production: set to https://www.fintr.ai so the app always loads the latest website
 //   (no app store update needed when you deploy web changes)
-const serverUrl = process.env.CAPACITOR_SERVER_URL;
+//
+// 10.0.2.2 is the Android emulator alias for the host machine. It does not work on
+// iOS Simulator — if it gets baked into ios/App/App/capacitor.config.json, the WebView
+// stays blank. Ignore it when the CLI targets iOS only (e.g. cap sync ios).
+const rawCapacitorServerUrl = process.env.CAPACITOR_SERVER_URL;
+const isIosCapacitorCliInvocation =
+  process.argv.includes("ios") &&
+  (process.argv.includes("sync") ||
+    process.argv.includes("run") ||
+    process.argv.includes("copy") ||
+    process.argv.includes("open") ||
+    process.argv.includes("update"));
+
+const serverUrl =
+  rawCapacitorServerUrl &&
+  rawCapacitorServerUrl.includes("10.0.2.2") &&
+  isIosCapacitorCliInvocation
+    ? (() => {
+        console.warn(
+          "[capacitor.config] Ignoring CAPACITOR_SERVER_URL with 10.0.2.2 for iOS (Android emulator only). " +
+            "Use http://localhost:5173 for iOS Simulator live reload, or unset for bundled out/."
+        );
+        return undefined;
+      })()
+    : rawCapacitorServerUrl;
 
 // Cache-busting version - change this value to force all apps to refresh their cache
 // This can be updated via admin panel to trigger cache refresh across all devices

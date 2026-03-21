@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Delete, Equal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isNativeCapacitor } from "@/lib/capacitor";
+import { getSafeAreaInsets } from "@/lib/platform-detection";
 
 interface CalculatorInputProps {
   id?: string;
@@ -77,6 +78,7 @@ export function CalculatorInput({
   const [isAndroidNative, setIsAndroidNative] = useState(false);
   const [isIOSNative, setIsIOSNative] = useState(false);
   const [keyboardPosition, setKeyboardPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [keyboardBottomOffset, setKeyboardBottomOffset] = useState<string>("0px");
   const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const keyboardRef = useRef<HTMLDivElement>(null);
@@ -87,7 +89,7 @@ export function CalculatorInput({
     setMounted(true);
   }, []);
 
-  // Ensure the calculator keyboard doesn't cover Android 3-button navigation.
+  // Detect platform and calculate bottom offset for safe area / navigation bar
   useEffect(() => {
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
     const uaLower = ua.toLowerCase();
@@ -96,8 +98,21 @@ export function CalculatorInput({
     const isNative = isNativeCapacitor();
     const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
     const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
-    setIsAndroidNative(isAndroid && (isNative || hasAndroidClass));
-    setIsIOSNative(isIOS && (isNative || hasIOSClass));
+    const androidNative = isAndroid && (isNative || hasAndroidClass);
+    const iosNative = isIOS && (isNative || hasIOSClass);
+    setIsAndroidNative(androidNative);
+    setIsIOSNative(iosNative);
+
+    // Calculate bottom offset to avoid system navigation
+    if (androidNative || iosNative) {
+      const insets = getSafeAreaInsets();
+      // Add extra padding: 48px minimum for Android 3-button nav, plus safe area
+      const minNavHeight = 48;
+      const navHeight = Math.max(insets.bottom, minNavHeight);
+      // Cap at 80px to prevent excessive spacing
+      const cappedNavHeight = Math.min(navHeight, 80);
+      setKeyboardBottomOffset(`${cappedNavHeight}px`);
+    }
   }, []);
 
   // Detect mobile/desktop and update on resize
@@ -318,26 +333,22 @@ export function CalculatorInput({
       ref={keyboardRef}
       className={cn(
         "bg-background border shadow-2xl z-[9999]",
-        isMobile 
-          ? "fixed left-0 right-0 bottom-0 border-t rounded-t-xl p-3" 
+        isMobile
+          ? "fixed left-0 right-0 border-t rounded-t-xl p-3"
           : "fixed rounded-xl p-4"
       )}
       style={
         isMobile
           ? {
               maxHeight: "50vh",
-              // Sit above the Android navigation bar area or iOS safe area.
-              bottom: isAndroidNative
-                ? "var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))"
-                : isIOSNative
-                  ? "env(safe-area-inset-bottom, 0px)"
-                  : undefined,
+              // Position above system navigation (Android 3-button nav / iOS home indicator)
+              bottom: keyboardBottomOffset,
             }
           : {
-        top: keyboardPosition.top,
-        left: keyboardPosition.left,
-        width: keyboardPosition.width,
-      }
+              top: keyboardPosition.top,
+              left: keyboardPosition.left,
+              width: keyboardPosition.width,
+            }
       }
     >
       <div className="space-y-2">

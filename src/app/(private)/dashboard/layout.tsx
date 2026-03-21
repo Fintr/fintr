@@ -22,6 +22,11 @@ import LoadingScreen from "@/components/ui/loading-screen";
 import { usePathname } from "next/navigation";
 import BottomNavigation from "@/components/dashboard/bottom-navigation";
 import MobileStickyHeader from "@/components/dashboard/mobile-sticky-header";
+import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import {
+  calculateBottomPadding,
+  calculateHeaderSpacerHeight,
+} from "@/lib/platform-detection";
 
 export default function Layout({
   children,
@@ -29,27 +34,25 @@ export default function Layout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [isAndroidNative, setIsAndroidNative] = useState(false);
-  const [isIOSNative, setIsIOSNative] = useState(false);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const ua = navigator.userAgent || "";
-    const uaLower = ua.toLowerCase();
+  const {
+    isAndroidNative,
+    isIOSNative,
+    safeAreaInsetBottom,
+    safeAreaInsetTop,
+  } = usePlatformDetection();
 
-    // Detect Android native (including WebView)
-    const isAndroid = /Android/i.test(ua);
-    const isFintrNative = uaLower.includes("fintrnativeapp");
-    const isWebView = /; wv\)/.test(ua);
-    const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
+  const bottomPadding = calculateBottomPadding(
+    isAndroidNative,
+    isIOSNative,
+    safeAreaInsetBottom
+  );
 
-    // Detect iOS native (including WebView)
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
-
-    setIsAndroidNative(isAndroid && (isFintrNative || isWebView || hasAndroidClass));
-    setIsIOSNative(isIOS && (isFintrNative || isWebView || hasIOSClass));
-  }, []);
+  const headerSpacerHeight = calculateHeaderSpacerHeight(
+    isAndroidNative,
+    isIOSNative,
+    safeAreaInsetTop
+  );
   
   // Skip dashboard layout elements for standalone subscription create page
   const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
@@ -101,36 +104,23 @@ export default function Layout({
     return <>{children}</>;
   }
 
+  // Only show loading spinner if spaceCode is not available OR dashboard data is loading
+  if (!spaceCode || isLoadingDashboardData) {
+    return <LoadingScreen />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Only show loading spinner if spaceCode is not available OR dashboard data is loading */}
-      {(!spaceCode || isLoadingDashboardData) ? (
-        <div className="flex-1">
-          <LoadingScreen />
-        </div>
-      ) : (
-        <>
-          {/* Mobile Sticky Header */}
-          <MobileStickyHeader />
-          
-          {/* Spacer for fixed header on mobile (includes safe area for status bar) */}
-          <div
-            className="mobile-header-spacer md:hidden"
-            style={
-              isAndroidNative || isIOSNative
-                ? {
-                    height:
-                          "calc(44px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))",
-                  }
-                : {
-                    // For mobile browsers, use env() for safe area
-                    height:
-                          "calc(44px + env(safe-area-inset-top, 0px))",
-                  }
-            }
-          />
-      
-          <div className="p-0 md:p-4 md:px-8 flex flex-col">
+      {/* Mobile Sticky Header */}
+      <MobileStickyHeader />
+
+      {/* Spacer for fixed header on mobile (includes safe area for status bar) */}
+      <div
+        className="mobile-header-spacer md:hidden"
+        style={{ height: headerSpacerHeight }}
+      />
+
+      <div className="p-0 md:p-4 md:px-8 flex flex-col">
             <div className="hidden md:flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6 gap-2 md:gap-0">
               <div className="w-full">
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary leading-tight">
@@ -226,23 +216,13 @@ export default function Layout({
               </div>
               <div
                 className="pt-0 md:pt-2 flex-1 overflow-y-auto md:pb-0"
-                style={{
-                  // Apply bottom padding for all mobile platforms
-                  // Need to account for bottom nav bar height (64px) + safe area
-                  // Android: 64px nav + 3-button nav safe area (48px min)
-                  // iOS: 64px nav + 16px safe area padding
-                  paddingBottom: isAndroidNative
-                    ? "calc(64px + max(var(--safe-area-inset-bottom, 0px), 48px))"
-                    : "80px",
-                }}
+                style={{ paddingBottom: bottomPadding }}
               >
                 {children}
               </div>
             </TabsWrapper>
           </div>
-        </>
-      )}
-      {/* Bottom Navigation for Mobile - Always show so users can access logout even during loading */}
+      {/* Bottom Navigation for Mobile */}
       <BottomNavigation />
     </div>
   );

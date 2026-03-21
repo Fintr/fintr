@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import { resolveAndroidNativeTopInsetPx } from "@/lib/platform-detection";
 
 interface MobileStickyHeaderProps {
   title?: string;
@@ -63,6 +65,8 @@ export default function MobileStickyHeader({ title }: MobileStickyHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const pageTitle = title || getPageTitle(pathname);
 
+  const { safeAreaInsetTop, isAndroidNative } = usePlatformDetection();
+
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
@@ -76,6 +80,14 @@ export default function MobileStickyHeader({ title }: MobileStickyHeaderProps) {
   const handleBack = () => {
     router.back();
   };
+
+  // Android native: WebView is full-screen; inline padding uses injected --safe-area-inset-top
+  // (via getSafeAreaInsets). pt-safe-top uses the same vars / env() as fallback.
+  // iOS + mobile browsers: pt-safe-top supplies env(safe-area-inset-top); when the WebView is
+  // already inset below the status bar, env() is usually 0 so there is no double gap.
+  const topPadding = isAndroidNative
+    ? `${resolveAndroidNativeTopInsetPx(safeAreaInsetTop)}px`
+    : undefined;
 
   return (
     <header
@@ -94,6 +106,7 @@ export default function MobileStickyHeader({ title }: MobileStickyHeaderProps) {
         pt-safe-top
         ${isScrolled ? "shadow-sm" : ""}
       `}
+      style={topPadding ? { paddingTop: topPadding } : undefined}
     >
       <div className="px-2 py-2">
         <div className="flex items-center">

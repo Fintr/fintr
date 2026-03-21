@@ -170,6 +170,12 @@ To test the app as it will run in production (production API, bundled assets, no
 - Clean build in Xcode: `Product → Clean Build Folder` (Shift + Cmd + K)
 - Rebuild: `Product → Build` (Cmd + B)
 
+**Simulator shows a blank white screen after `make ios-dev`:**
+- The bundled app loads from `out/` (static export). Run a full **`pnpm build`** before **`pnpm cap sync ios`** so `public/` assets (e.g. `fintr-logo.svg`) are copied into the iOS app. `make ios-dev` already runs build → sync → run; if you skip build or use a stale `out/`, the WebView can fail to paint.
+- In **Safari → Develop → [Simulator]**, connect to the WebView and check the console for red errors.
+- Tap **Reload app** if you see the in-app error screen (React error boundary).
+- **Cold boot** the simulator: Device → Erase All Content and Settings, or try another simulator device.
+
 ### Android Issues
 
 **`net::ERR_CONNECTION_REFUSED` when calling the backend (localhost:3000):**  

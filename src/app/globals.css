@@ -215,11 +215,6 @@ html, body {
     bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  /* iOS-specific mobile header spacer */
-  html.fintr-native-ios .mobile-header-spacer {
-    height: calc(44px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
-  }
-  
   .pl-safe-left {
     padding-left: env(safe-area-inset-left);
   }

@@ -143,6 +143,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return
         }
 
+        viewController.view.layoutIfNeeded()
+
         var topPadding: CGFloat = 0
         var leftPadding: CGFloat = 0
         var rightPadding: CGFloat = 0
@@ -151,19 +153,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             let window = viewController.view.window ?? AppDelegate.keyWindow()
 
             topPadding = window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
-            leftPadding = window?.safeAreaInsets.left ?? 0
-            rightPadding = window?.safeAreaInsets.right ?? 0
+            leftPadding = viewController.view.safeAreaInsets.left
+            rightPadding = viewController.view.safeAreaInsets.right
         } else {
             topPadding = UIApplication.shared.statusBarFrame.size.height
         }
 
-        // Only adjust if we have safe area insets (devices with notches/dynamic island)
-        if topPadding > 0 || leftPadding > 0 || rightPadding > 0 {
-            // Position webview with top padding but let it extend to screen bottom
+        let bottomInset = viewController.view.safeAreaInsets.bottom
+
+        // Only adjust if we have safe area insets (devices with notches/dynamic island / home indicator)
+        if topPadding > 0 || leftPadding > 0 || rightPadding > 0 || bottomInset > 0 {
+            // Match CapacitorViewController: WebView height excludes home-indicator region so web
+            // CSS does not double-stack safe-area padding on the bottom nav.
             webView.frame.origin = CGPoint(x: leftPadding, y: topPadding)
             webView.frame.size = CGSize(
                 width: UIScreen.main.bounds.width - leftPadding - rightPadding,
-                height: UIScreen.main.bounds.height - topPadding
+                height: UIScreen.main.bounds.height - topPadding - bottomInset
             )
             hasAdjustedWebView = true
             

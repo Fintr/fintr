@@ -10,6 +10,7 @@ import { ToastSettingsProvider } from "@/contexts/ToastSettingsContext";
 import AuthWrapper from "@/components/auth-wrapper";
 import DeepLinkHandler from "@/components/deep-link-handler";
 import SessionExpirationModal from "@/components/session-expiration-modal";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(() => new QueryClient({
@@ -28,16 +29,18 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TutorialProvider>
-          <ToastSettingsProvider>
-            <DeepLinkHandler />
-            <SessionExpirationModal />
-            <ToasterWithSettings />
-            <AuthWrapper>
-              {children}
-            </AuthWrapper>
-          </ToastSettingsProvider>
-        </TutorialProvider>
+        <ErrorBoundary>
+          <TutorialProvider>
+            <ToastSettingsProvider>
+              <DeepLinkHandler />
+              <SessionExpirationModal />
+              <ToasterWithSettings />
+              <AuthWrapper>
+                {children}
+              </AuthWrapper>
+            </ToastSettingsProvider>
+          </TutorialProvider>
+        </ErrorBoundary>
       </AuthProvider>
     </QueryClientProvider>
   );

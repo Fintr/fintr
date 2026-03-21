@@ -58,6 +58,8 @@ class CapacitorViewController: CAPBridgeViewController {
             return
         }
 
+        view.layoutIfNeeded()
+
         var topPadding: CGFloat = 0
         var leftPadding: CGFloat = 0
         var rightPadding: CGFloat = 0
@@ -66,18 +68,23 @@ class CapacitorViewController: CAPBridgeViewController {
             let window = view.window ?? AppDelegate.keyWindow()
 
             topPadding = window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
-            leftPadding = window?.safeAreaInsets.left ?? 0
-            rightPadding = window?.safeAreaInsets.right ?? 0
+            leftPadding = view.safeAreaInsets.left
+            rightPadding = view.safeAreaInsets.right
         } else {
             topPadding = UIApplication.shared.statusBarFrame.size.height
         }
 
-        // Only adjust if we have safe area insets (devices with bezels/notches)
-        if topPadding > 0 || leftPadding > 0 || rightPadding > 0 {
+        // Exclude the home-indicator safe region from the WKWebView frame. If the WebView
+        // extends under the indicator, CSS env(safe-area-inset-bottom) plus pb-safe-bottom on
+        // the fixed nav stacks visually as a large empty band below the tab row.
+        let bottomInset = view.safeAreaInsets.bottom
+
+        // Only adjust if we have safe area insets (devices with bezels/notches / home indicator)
+        if topPadding > 0 || leftPadding > 0 || rightPadding > 0 || bottomInset > 0 {
             webView.frame.origin = CGPoint(x: leftPadding, y: topPadding)
             webView.frame.size = CGSize(
                 width: UIScreen.main.bounds.width - leftPadding - rightPadding,
-                height: UIScreen.main.bounds.height - topPadding
+                height: UIScreen.main.bounds.height - topPadding - bottomInset
             )
             hasAdjustedFrame = true
         }

@@ -18,6 +18,17 @@ const eslintConfig = [
       "react/no-unescaped-entities": "off",
       "@typescript-eslint/no-empty-object-type": "off",
       "prefer-const": "off",
+      // Enforce @ts-expect-error over @ts-ignore for better type safety
+      "@typescript-eslint/ban-ts-comment": [
+        "error",
+        {
+          "ts-expect-error": "allow-with-description",
+          "ts-ignore": true,
+          "ts-nocheck": false,
+          "ts-check": false,
+          minimumDescriptionLength: 10,
+        },
+      ],
     },
   },
 ];

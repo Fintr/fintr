@@ -12,6 +12,12 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/playwright/.cache/
+*.test.ts.snap
+*.test.tsx.snap
+.vitest/
 
 # next.js
 /.next/

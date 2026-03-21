@@ -24,7 +24,7 @@ public class MainActivity extends BridgeActivity {
     WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
     applySystemBarColors();
     configureWebViewCache();
-    setupWebSafeAreaVars();
+    setupWebSafeAreaInsets();
 
     // Let the web layer know we're running on Android native so we can scope
     // Android-only safe-area adjustments (prevents iOS from getting extra padding).
@@ -70,33 +70,35 @@ public class MainActivity extends BridgeActivity {
     }
   }
 
-  private void setupWebSafeAreaVars() {
+  private void setupWebSafeAreaInsets() {
     final View decorView = getWindow().getDecorView();
 
     // Set initial value immediately (best-effort).
     try {
       WindowInsetsCompat rootInsets = ViewCompat.getRootWindowInsets(decorView);
       if (rootInsets != null) {
-        applyWebSafeAreaBottom(rootInsets);
+        applyWebSafeAreaInsets(rootInsets);
       }
     } catch (Exception e) {
       // Ignore; best-effort only.
     }
 
     ViewCompat.setOnApplyWindowInsetsListener(decorView, (v, insets) -> {
-      applyWebSafeAreaBottom(insets);
+      applyWebSafeAreaInsets(insets);
       return insets;
     });
 
     ViewCompat.requestApplyInsets(decorView);
   }
 
-  private void applyWebSafeAreaBottom(WindowInsetsCompat insets) {
+  private void applyWebSafeAreaInsets(WindowInsetsCompat insets) {
     boolean navVisible = insets.isVisible(WindowInsetsCompat.Type.navigationBars());
     int navBarHeight = 0;
     if (navVisible) {
       navBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
     }
+
+    int statusBarTop = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
 
     final boolean hasNav = navBarHeight > 0;
     try {
@@ -104,6 +106,7 @@ public class MainActivity extends BridgeActivity {
           .getWebView()
           .evaluateJavascript(
               "(function(){"
+                  + "document.documentElement.style.setProperty('--safe-area-inset-top','" + statusBarTop + "px');"
                   + "document.documentElement.style.setProperty('--safe-area-inset-bottom','" + navBarHeight + "px');"
                   + "document.documentElement.classList.toggle('fintr-has-3btn-nav'," + (hasNav ? "true" : "false") + ");"
                   + "})();",

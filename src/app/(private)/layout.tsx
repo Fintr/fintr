@@ -16,6 +16,12 @@ import { usePathname } from 'next/navigation';
 import { useRouter } from "next/navigation";
 import TutorialOverlay from "@/components/tutorial/TutorialOverlay";
 import { WorkspaceTransitionScreen } from "@/components/space/workspace-transition-screen";
+import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import {
+  calculateBottomPadding,
+  calculateHeaderSpacerHeight,
+} from "@/lib/platform-detection";
+import { isDashboardShellRoute } from "@/lib/dashboard-shell-route";
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const { api, isLoading: isApiLoading } = useAuthApi({
@@ -26,46 +32,46 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const isOnboardingCompleted = useAtomValue(isOnboardingCompletedAtom);
   const pathname = usePathname();
   const router = useRouter();
-  
+
   // Get workspace transition state from shared atom
   const transitionState = useAtomValue(workspaceTransitionAtom);
 
   // Determine if action buttons should be hidden (e.g., on admin page)
   const hideActionButtons = pathname.startsWith("/admin");
-  
+
   // Hide navigation completely during onboarding
   const isOnOnboardingPage = pathname.startsWith('/onboarding');
-  
+
   // Hide navigation for standalone subscription create page
   const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
-  
+
+  // Dashboard shell layout already applies mobile bottom padding + BottomNavigation
+  const isDashboardPage = isDashboardShellRoute(pathname);
+
   // Show mobile sticky header in private layout only for non-dashboard pages (CRM, Admin)
-  const isDashboardPage = pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/subscriptions/create');
 
   const { spaceCode } = useGetSpaceCode(api);
   const { setSettings: setToastSettings } = useToastSettings();
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const [isAndroidNative, setIsAndroidNative] = React.useState(false);
-  const [isIOSNative, setIsIOSNative] = React.useState(false);
 
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const ua = navigator.userAgent || "";
-    const uaLower = ua.toLowerCase();
+  const {
+    isAndroidNative,
+    isIOSNative,
+    safeAreaInsetBottom,
+    safeAreaInsetTop,
+  } = usePlatformDetection();
 
-    // Detect Android native (including WebView)
-    const isAndroid = /Android/i.test(ua);
-    const isFintrNative = uaLower.includes("fintrnativeapp");
-    const isWebView = /; wv\)/.test(ua);
-    const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
+  const bottomPadding = calculateBottomPadding(
+    isAndroidNative,
+    isIOSNative,
+    safeAreaInsetBottom
+  );
 
-    // Detect iOS native (including WebView)
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
-
-    setIsAndroidNative(isAndroid && (isFintrNative || isWebView || hasAndroidClass));
-    setIsIOSNative(isIOS && (isFintrNative || isWebView || hasIOSClass));
-  }, []);
+  const headerSpacerHeight = calculateHeaderSpacerHeight(
+    isAndroidNative,
+    isIOSNative,
+    safeAreaInsetTop
+  );
 
   // Control toast position: bottom-most on onboarding (mobile); above nav elsewhere on mobile
   useEffect(() => {
@@ -115,18 +121,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
               {/* Spacer for fixed header on mobile */}
               <div
                 className="mobile-header-spacer md:hidden"
-                style={
-                  isAndroidNative || isIOSNative
-                    ? {
-                        height:
-                          "calc(44px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))",
-                      }
-                    : {
-                        // For mobile browsers, use env() for safe area
-                        height:
-                          "calc(44px + env(safe-area-inset-top, 0px))",
-                      }
-                }
+                style={{ height: headerSpacerHeight }}
               />
             </>
           )}
@@ -142,24 +137,19 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
           isMobile &&
           !isOnOnboardingPage &&
           !isStandalonePage &&
-          !transitionState.isTransitioning
-            ? {
-                // Apply bottom padding for all mobile platforms
-                // Android needs extra for 3-button nav (48px minimum)
-                // iOS and mobile browsers need fixed 80px padding to clear bottom nav
-                paddingBottom: isAndroidNative
-                  ? `max(var(--safe-area-inset-bottom, 0px), 48px)`
-                  : "80px",
-              }
+          !transitionState.isTransitioning &&
+          !isDashboardPage
+            ? { paddingBottom: bottomPadding }
             : undefined
         }
       >
         {children}
       </div>
-      {/* Bottom Navigation for Mobile - Show on CRM and Admin pages */}
-      {!isOnOnboardingPage && !isStandalonePage && !transitionState.isTransitioning && (
-        <BottomNavigation />
-      )}
+      {/* Bottom nav: dashboard shell renders its own; CRM/Admin use this instance */}
+      {!isOnOnboardingPage &&
+        !isStandalonePage &&
+        !transitionState.isTransitioning &&
+        !isDashboardPage && <BottomNavigation />}
       {/* Tutorial Overlay */}
       <TutorialOverlay />
       

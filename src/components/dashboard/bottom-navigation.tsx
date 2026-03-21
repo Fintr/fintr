@@ -3,11 +3,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FileText, Wallet, Plus, BarChart3, Menu, MessageSquare, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
 import AddReceiptDialog from "@/components/dashboard/add-receipt-dialog";
 import EnhancedAiChatModal from "@/components/ai-chat/enhanced-ai-chat-modal";
+import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import { calculateNavBottomOffset } from "@/lib/platform-detection";
 import {
   Popover,
   PopoverContent,
@@ -21,27 +23,10 @@ export default function BottomNavigation() {
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
-  const [isAndroidNative, setIsAndroidNative] = useState(false);
-  const [isIOSNative, setIsIOSNative] = useState(false);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const ua = navigator.userAgent || "";
-    const uaLower = ua.toLowerCase();
+  const { isAndroidNative, isIOSNative, safeAreaInsetBottom } = usePlatformDetection();
 
-    // Detect Android native (including WebView)
-    const isAndroid = /Android/i.test(ua);
-    const isFintrNative = uaLower.includes("fintrnativeapp");
-    const isWebView = /; wv\)/.test(ua);
-    const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
-
-    // Detect iOS native (including WebView)
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
-
-    setIsAndroidNative(isAndroid && (isFintrNative || isWebView || hasAndroidClass));
-    setIsIOSNative(isIOS && (isFintrNative || isWebView || hasIOSClass));
-  }, []);
+  const navBottomOffset = calculateNavBottomOffset(isAndroidNative, isIOSNative, safeAreaInsetBottom);
 
   // Determine active tab based on pathname
   const getActiveValue = () => {
@@ -92,7 +77,7 @@ export default function BottomNavigation() {
         <div
           className="fixed bottom-0 left-0 right-0 z-[55] md:hidden pointer-events-none"
           style={{
-            height: "max(var(--safe-area-inset-bottom, 0px), 48px)",
+            height: `max(${safeAreaInsetBottom}px, 48px)`,
             backgroundColor: "#FAFAF9",
           }}
         />
@@ -101,16 +86,20 @@ export default function BottomNavigation() {
       <nav
         className={cn(
           "fixed left-0 right-0 z-50 bg-primary shadow-xs border-t border-primary/20 md:hidden",
-          // Only add bottom padding for iOS and mobile browsers
-          // Android has the white spacer below the nav for safe area
-          isAndroidNative ? "" : "pb-4"
+          // Android: white spacer below nav; iOS native: compact pb only — WKWebView frame ends
+          // above the home indicator (see ios/App/App/CapacitorViewController.swift) so
+          // pb-safe-bottom would stack with env() and create a large empty band.
+          // Mobile browser: fixed pb-4
+          isAndroidNative
+            ? ""
+            : isIOSNative
+              ? "pb-2"
+              : "pb-4"
         )}
         style={{
           // Android shifts up for 3-button nav (white spacer handles the gap)
-          // iOS sits at bottom with padding inside the nav
-          bottom: isAndroidNative
-            ? "max(var(--safe-area-inset-bottom, 0px), 48px)"
-            : 0,
+          // iOS native: bottom 0; home indicator is outside the WebView
+          bottom: navBottomOffset,
         }}
       >
         <div className="flex items-center justify-around h-16 px-2 max-w-full">
