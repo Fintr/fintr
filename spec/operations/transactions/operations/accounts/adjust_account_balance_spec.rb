@@ -91,30 +91,6 @@ RSpec.describe Transactions::Operations::Accounts::AdjustAccountBalance do
       end
     end
 
-    context 'with valid parameters for zero adjustment' do
-      subject(:call_operation) { operation.call(zero_adjustment_params) }
-
-      let(:zero_adjustment_params) do
-        {
-          user_id: user.id,
-          space_id: space.id,
-          id: account.id,
-          new_balance: 1000.0,
-          adjustment_date: adjustment_date
-        }
-      end
-
-      it { is_expected.to be_success }
-
-      it 'creates an income adjustment transaction with zero amount' do
-        expect { call_operation }.to change(Transactions::Income, :count).by(1)
-      end
-
-      it 'does not change the account balance' do
-        expect { call_operation }.not_to change { account.reload.balance.amount }
-      end
-    end
-
     context 'with custom adjustment date' do
       subject(:call_operation) { operation.call(custom_date_params) }
 

@@ -64,7 +64,8 @@ module Api
       end
 
       def note_suggestions
-        query = ::Transactions::Queries::NoteSuggestions.call(params: note_suggestions_params)
+        params = with_current_params(note_suggestions_params)
+        query = ::Transactions::Queries::NoteSuggestions.call(params:)
 
         return render_internal_server_error(details: query.failure) unless query.success?
 
@@ -137,6 +138,14 @@ module Api
           :id,
           :delete_scope
         )
+      end
+
+      def note_suggestions_params
+        params.permit(
+          :space_code,
+          :category_name,
+          :transaction_type
+        ).to_h
       end
 
       def render_paginated_with_totals(collection, serializer:, key:, totals:)

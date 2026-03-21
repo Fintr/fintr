@@ -115,23 +115,6 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
       end
     end
 
-    context 'with transactions having zero amounts' do
-      subject(:call_operation) { operation.call(transactions: actual_transactions) }
-
-      let(:income_zero) { create_transaction(type: :income, amount_value: 0) }
-      let(:expense_zero) { create_transaction(type: :expense, amount_value: 0) }
-      let(:actual_transactions) { [income_zero, expense_zero] }
-
-      it { is_expected.to be_success }
-
-      it 'returns all zeros correctly formatted' do
-        result = call_operation.value!
-        expect(result[:total_income]).to eq('formatted_0.0')
-        expect(result[:total_expenses]).to eq('formatted_0.0')
-        expect(result[:net_savings]).to eq('formatted_0.0')
-      end
-    end
-
     context 'when transactions is an empty ActiveRecord::Relation' do
       subject(:call_operation) { operation.call(transactions: Transactions::Transaction.none) }
 

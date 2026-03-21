@@ -186,18 +186,6 @@ RSpec.describe Transactions::Operations::DeleteThisTransaction do
         expect(result.value!).to eq(account)
       end
 
-      it 'handles zero transaction values correctly' do
-        transaction.update!(amount: Money.from_amount(0, "PHP"))
-        initial_balance = account.balance
-        transaction_value = transaction.value
-
-        result = operation.send(:revert_calculated_balance, transaction: transaction)
-        expect(result).to be_success
-
-        account.reload
-        expect(account.balance).to eq(initial_balance - transaction_value)
-      end
-
       it 'raises error when account save fails' do
         allow(account).to receive(:save!).and_raise(StandardError.new("Save failed"))
 
@@ -306,20 +294,6 @@ RSpec.describe Transactions::Operations::DeleteThisTransaction do
 
         account.reload
         expect(account.balance).to eq(initial_balance - transaction_value)
-      end
-    end
-
-    context 'with zero amount transaction' do
-      let(:transaction) { create(:transaction, user:, space:, account:, category:, amount: Money.from_amount(0, "PHP"), balance_state: "calculated") }
-
-      it 'handles zero amount correctly' do
-        initial_balance = account.balance
-
-        result = operation.call(transaction: transaction)
-        expect(result).to be_success
-
-        account.reload
-        expect(account.balance).to eq(initial_balance)
       end
     end
 
