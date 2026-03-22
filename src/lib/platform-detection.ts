@@ -279,6 +279,29 @@ export const clampAndroidNavigationInsetPx = (
 }
 
 /**
+ * Detect if Android is using 3-button navigation (vs gesture navigation).
+ * MainActivity sets 'fintr-has-3btn-nav' class when navigation bar height >= 40px.
+ * 3-button nav: typically 48px+, Gesture nav: typically 16-24px
+ */
+export const hasAndroid3ButtonNav = (): boolean => {
+  if (typeof document === "undefined") return false
+  return document.documentElement.classList.contains("fintr-has-3btn-nav")
+}
+
+/**
+ * Get the appropriate Android navigation height based on nav type.
+ * 3-button nav: uses actual inset (typically 48px+)
+ * Gesture nav: uses actual inset or 16px minimum (typically 16-24px)
+ */
+export const getAndroidNavHeightPx = (): number => {
+  const insets = getSafeAreaInsets()
+  
+  // The class is set based on height threshold in MainActivity
+  // Just return the actual inset - the class determines padding behavior
+  return insets.bottom
+}
+
+/**
  * Calculate bottom padding for mobile layouts
  * Accounts for 3-button navigation on Android and safe areas on iOS
  *
@@ -298,8 +321,9 @@ export const calculateBottomPadding = (
   const MAX_NAV_HEIGHT = 80
 
   if (isAndroidNative) {
-    // Stable Android baseline: keep content above fixed bottom nav + system bar area.
-    return "calc(64px + 48px)"
+    // Android: differentiate between 3-button and gesture navigation
+    const navHeight = hasAndroid3ButtonNav() ? 48 : Math.max(safeAreaInsetBottom, 16)
+    return `calc(64px + ${navHeight}px)`
   }
 
   if (isIOSNative) {
@@ -331,9 +355,11 @@ export const calculateNavBottomOffset = (
   isIOSNative: boolean,
   safeAreaInsetBottom: number
 ): string | number => {
-  // Stable Android baseline: keep nav above 3-button area after rotation.
+  // Android: shift up by safe area amount (3-button nav or gesture nav)
   if (isAndroidNative) {
-    return "48px"
+    // Differentiate between 3-button nav (48px) and gesture nav (16px or actual inset)
+    const navHeight = hasAndroid3ButtonNav() ? 48 : Math.max(safeAreaInsetBottom, 16)
+    return `${navHeight}px`
   }
 
   // iOS: keep nav at bottom: 0; home indicator is handled once via pb-safe-bottom

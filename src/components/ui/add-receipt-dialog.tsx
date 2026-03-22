@@ -175,7 +175,11 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
       body.style.overflow = "";
       html.style.overflow = "";
       
-      window.scrollTo(0, scrollY);
+      try {
+        window.scrollTo(0, scrollY);
+      } catch {
+        // JSDOM does not implement scrollTo; safe to ignore in tests.
+      }
       
       // Only manipulate history if we pushed a state (desktop only now)
       if (historyPushedRef.current && !isMobile) {
@@ -220,7 +224,8 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
   const modalContent = (
     <div
       className={cn(
-        "fixed inset-0 z-[100] flex items-center justify-center",
+        "fixed inset-0 z-[100] flex",
+        isMobile ? "items-start justify-start" : "items-center justify-center",
         isMobile ? "p-0" : "p-4"
       )}
       onPointerDown={(e) => {

@@ -154,7 +154,11 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       body.style.overflow = "";
       html.style.overflow = "";
       
-      window.scrollTo(0, scrollY);
+      try {
+        window.scrollTo(0, scrollY);
+      } catch {
+        // JSDOM does not implement scrollTo; safe to ignore in tests.
+      }
       
       if (historyPushedRef.current) {
         historyPushedRef.current = false;
@@ -183,7 +187,8 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   const modalContent = (
     <div
       className={cn(
-        "fixed inset-0 z-[100] flex items-center justify-center",
+        "fixed inset-0 z-[100] flex",
+        isMobile ? "items-start justify-start" : "items-center justify-center",
         isMobile ? "p-0" : "p-4"
       )}
       onClick={handleOverlayClick}

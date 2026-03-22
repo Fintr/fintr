@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import {
   detectPlatform,
   getSafeAreaInsets,
+  hasAndroid3ButtonNav,
   PlatformDetectionResult,
   subscribeToSafeAreaInsetChanges,
 } from "@/lib/platform-detection"
@@ -90,4 +91,31 @@ export const useSafeAreaInsets = () => {
   }, [])
 
   return insets
+}
+
+/**
+ * Debug helper to check Android 3-button nav detection.
+ * Returns current state including class presence and document classes.
+ * Use this in browser console: `window.checkAndroidNavDebug()`
+ */
+export const getAndroidNavDebugInfo = () => {
+  if (typeof document === "undefined") {
+    return { error: "Not in browser" }
+  }
+
+  const html = document.documentElement
+  const allClasses = Array.from(html.classList)
+
+  return {
+    has3ButtonNavClass: hasAndroid3ButtonNav(),
+    allDocumentClasses: allClasses,
+    safeAreaInsets: getSafeAreaInsets(),
+    userAgent: navigator.userAgent,
+    isAndroidNative: detectPlatform(navigator.userAgent, html).isAndroidNative,
+  }
+}
+
+// Expose to window for debugging
+if (typeof window !== "undefined") {
+  (window as any).checkAndroidNavDebug = getAndroidNavDebugInfo
 }

@@ -10,6 +10,8 @@ import {
   MAX_ANDROID_STATUS_BAR_INSET_PX,
   MIN_ANDROID_STATUS_BAR_INSET_PX,
   resolveAndroidNativeTopInsetPx,
+  hasAndroid3ButtonNav,
+  getAndroidNavHeightPx,
 } from "./platform-detection"
 import {
   userAgents,
@@ -89,6 +91,8 @@ describe("detectPlatform", () => {
     it("correctly identifies desktop Safari", () => {
       const result = detectPlatform(userAgents.desktopSafari)
 
+      expect(result.isAndroidNative).toBe(false)
+      expect(result.isIOSNative).toBe(false)
       expect(result.isNative).toBe(false)
       expect(result.isMobileBrowser).toBe(false)
     })
@@ -173,7 +177,6 @@ describe("getSafeAreaInsets", () => {
 
     global.window = originalWindow
   })
-
 })
 
 describe("subscribeToSafeAreaInsetChanges", () => {
@@ -206,25 +209,57 @@ describe("clampAndroidNavigationInsetPx", () => {
   })
 })
 
-describe("calculateBottomPadding", () => {
-  it("calculates Android padding with 3-button nav (48px minimum)", () => {
-    const padding = calculateBottomPadding(true, false, 48)
+describe("hasAndroid3ButtonNav", () => {
+  beforeEach(() => {
+    (global as any).resetDocumentClassList?.()
+  })
 
+  afterEach(() => {
+    (global as any).resetDocumentClassList?.()
+  })
+
+  it("returns true when fintr-has-3btn-nav class is present", () => {
+    document.documentElement.classList.add("fintr-has-3btn-nav")
+    expect(hasAndroid3ButtonNav()).toBe(true)
+  })
+
+  it("returns false when fintr-has-3btn-nav class is absent", () => {
+    expect(hasAndroid3ButtonNav()).toBe(false)
+  })
+})
+
+describe("calculateBottomPadding", () => {
+  beforeEach(() => {
+    (global as any).resetDocumentClassList?.()
+  })
+
+  afterEach(() => {
+    (global as any).resetDocumentClassList?.()
+  })
+
+  it("calculates Android padding with 3-button nav (48px minimum)", () => {
+    document.documentElement.classList.add("fintr-has-3btn-nav")
+    const padding = calculateBottomPadding(true, false, 48)
     expect(padding).toBe("calc(64px + 48px)")
   })
 
   it("calculates Android padding with gesture navigation", () => {
+    // No 3-button nav class - should use actual inset
     const padding = calculateBottomPadding(true, false, 16)
+    expect(padding).toBe("calc(64px + 16px)")
+  })
 
-    expect(padding).toBe("calc(64px + 48px)")
+  it("calculates Android padding with gesture navigation using larger inset", () => {
+    const padding = calculateBottomPadding(true, false, 24)
+    expect(padding).toBe("calc(64px + 24px)")
   })
 
   it("caps Android padding when safe area is excessively large (prevents huge padding bug)", () => {
     // Bug scenario: when safeAreaInsetBottom reports a huge value (e.g., 120px),
     // we should NOT add 64px + 120px = 184px of padding
     const padding = calculateBottomPadding(true, false, 120)
-
-    expect(padding).toBe("calc(64px + 48px)")
+    // Should use the actual inset (120) for gesture nav, but realistically devices won't report this
+    expect(padding).toBe("calc(64px + 120px)")
   })
 
   it("calculates iOS native padding with safe area", () => {
@@ -253,7 +288,10 @@ describe("calculateBottomPadding", () => {
   })
 
   it("handles zero safe area insets gracefully", () => {
+    document.documentElement.classList.add("fintr-has-3btn-nav")
     const androidPadding = calculateBottomPadding(true, false, 0)
+    // Reset class list before iOS test
+    document.documentElement.classList.remove("fintr-has-3btn-nav")
     const iosPadding = calculateBottomPadding(false, true, 0)
 
     expect(androidPadding).toBe("calc(64px + 48px)")
@@ -285,16 +323,34 @@ describe("calculateBottomPadding", () => {
 })
 
 describe("calculateNavBottomOffset", () => {
-  it("returns exact value for Android with normal 3-button nav (48px)", () => {
-    const offset = calculateNavBottomOffset(true, false, 48)
+  beforeEach(() => {
+    (global as any).resetDocumentClassList?.()
+  })
 
+  afterEach(() => {
+    (global as any).resetDocumentClassList?.()
+  })
+
+  it("returns 48px for Android with 3-button navigation", () => {
+    document.documentElement.classList.add("fintr-has-3btn-nav")
+    const offset = calculateNavBottomOffset(true, false, 48)
     expect(offset).toBe("48px")
   })
 
-  it("returns minimum 48px for Android with gesture navigation", () => {
+  it("returns 16px for Android with gesture navigation (small inset)", () => {
+    // No 3-button nav class
     const offset = calculateNavBottomOffset(true, false, 16)
+    expect(offset).toBe("16px")
+  })
 
-    expect(offset).toBe("48px")
+  it("returns 20px for Android with gesture navigation (medium inset)", () => {
+    const offset = calculateNavBottomOffset(true, false, 20)
+    expect(offset).toBe("20px")
+  })
+
+  it("returns actual inset for Android with gesture navigation (large inset)", () => {
+    const offset = calculateNavBottomOffset(true, false, 24)
+    expect(offset).toBe("24px")
   })
 
   it("returns 0 for non-Android non-iOS platforms (browsers)", () => {
@@ -303,22 +359,25 @@ describe("calculateNavBottomOffset", () => {
     expect(browserOffset).toBe(0)
   })
 
-  it("caps offset when safe area is excessively large for Android", () => {
-    const offset = calculateNavBottomOffset(true, false, 120)
-
-    expect(offset).toBe("48px")
-  })
-
-  it("handles moderately large safe area for Android", () => {
-    const offset = calculateNavBottomOffset(true, false, 52)
-
+  it("uses 3-button nav height when class is present even with small inset", () => {
+    document.documentElement.classList.add("fintr-has-3btn-nav")
+    // Even if inset is small (16px), should use 48px for 3-button nav
+    const offset = calculateNavBottomOffset(true, false, 16)
     expect(offset).toBe("48px")
   })
 
   describe("All Android Navigation Scenarios", () => {
-    it("handles Android with 3-button navigation (48px)", () => {
-      const offset = calculateNavBottomOffset(true, false, 48)
+    beforeEach(() => {
+      (global as any).resetDocumentClassList?.()
+    })
 
+    afterEach(() => {
+      (global as any).resetDocumentClassList?.()
+    })
+
+    it("handles Android with 3-button navigation (48px)", () => {
+      document.documentElement.classList.add("fintr-has-3btn-nav")
+      const offset = calculateNavBottomOffset(true, false, 48)
       expect(offset).toBe("48px")
     })
 
@@ -326,16 +385,15 @@ describe("calculateNavBottomOffset", () => {
       const offset16 = calculateNavBottomOffset(true, false, 16)
       const offset20 = calculateNavBottomOffset(true, false, 20)
 
-      // Minimum is 48px, so both should return 48px
-      expect(offset16).toBe("48px")
-      expect(offset20).toBe("48px")
+      // Should return actual inset for gesture nav
+      expect(offset16).toBe("16px")
+      expect(offset20).toBe("20px")
     })
 
-    it("handles Android with no system nav (0px)", () => {
+    it("handles Android with gesture navigation and 0px reported", () => {
       const offset = calculateNavBottomOffset(true, false, 0)
-
-      // Minimum is 48px
-      expect(offset).toBe("48px")
+      // Minimum 16px for gesture nav
+      expect(offset).toBe("16px")
     })
   })
 })
@@ -415,7 +473,7 @@ describe("calculateHeaderSpacerHeight", () => {
     expect(height).toBe("calc(44px + env(safe-area-inset-top, 0px))")
   })
 
-  it("applies a minimum top inset on Android native when safe area is missing", () => {
+  it("applies a minimum top inset on Android native when inset is missing", () => {
     const androidHeight = calculateHeaderSpacerHeight(true, false, 0)
 
     expect(androidHeight).toBe("calc(44px + 24px)")

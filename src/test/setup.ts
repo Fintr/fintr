@@ -35,18 +35,42 @@ Object.defineProperty(window, "getComputedStyle", {
 })
 
 // Mock document.documentElement for classList tests
+// Use a real DOMTokenList-like object that can be manipulated in tests
+const createMockClassList = () => {
+  const classes = new Set<string>()
+  return {
+    contains: (className: string) => classes.has(className),
+    add: (className: string) => classes.add(className),
+    remove: (className: string) => classes.delete(className),
+    toggle: (className: string) => {
+      if (classes.has(className)) {
+        classes.delete(className)
+        return false
+      }
+      classes.add(className)
+      return true
+    },
+    _reset: () => classes.clear(),
+    _getClasses: () => Array.from(classes),
+  }
+}
+
+const mockClassList = createMockClassList()
+
 Object.defineProperty(document, "documentElement", {
   writable: true,
   value: {
-    classList: {
-      contains: vi.fn(() => false),
-      add: vi.fn(),
-      remove: vi.fn(),
-      toggle: vi.fn(),
+    classList: mockClassList,
+    style: {
+      getPropertyValue: vi.fn(() => ""),
+      setProperty: vi.fn(),
     },
-    style: {},
   },
 })
+
+// Export for test access
+;(global as any).resetDocumentClassList = mockClassList._reset
+;(global as any).getDocumentClasses = mockClassList._getClasses
 
 // Mock navigator.userAgent for platform detection tests
 Object.defineProperty(navigator, "userAgent", {
