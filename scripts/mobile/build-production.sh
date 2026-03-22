@@ -9,7 +9,7 @@ echo "  1. Clean previous builds"
 echo "  2. Build production app"
 echo "  3. Sync to Capacitor"
 echo "  4. Verify configuration"
-echo "  5. Run on iOS simulator"
+echo "  5. Open the iOS project in Xcode"
 echo ""
 
 # Step 1: Clean previous builds
@@ -126,14 +126,14 @@ fi
 echo "✅ Capacitor config is correct (app loads from ${PRODUCTION_WEB_URL})"
 echo ""
 
-# Step 6: Run on iOS simulator
-echo "📱 Step 6: Running on iOS simulator..."
+# Step 6: Open iOS project in Xcode
+echo "📱 Step 6: Opening iOS project in Xcode..."
 echo ""
 
-npx cap run ios
+npx cap open ios
 
 echo ""
-echo "✅ Production build is now running on iOS simulator!"
+echo "✅ Xcode should be open with the production Capacitor iOS project."
 echo ""
 echo "📋 The app loads the web app from ${PRODUCTION_WEB_URL}. When you deploy updates"
 echo "   to the website, users get them automatically — no app store update needed."
@@ -141,8 +141,7 @@ echo ""
 echo "📋 Additional distribution options:"
 echo ""
 echo "📱 iOS Archive (for App Store/Ad Hoc/TestFlight):"
-echo "  1. Open Xcode: npx cap open ios"
-echo "  2. In Xcode: Product → Archive"
+echo "  1. In Xcode: Product → Archive"
 echo "  3. After archive: Distribute App → Ad Hoc/App Store/Development"
 echo ""
 echo "🤖 Android Build:"

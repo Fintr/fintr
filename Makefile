@@ -7,7 +7,7 @@ PRODUCTION_WEB_URL := https://www.fintr.ai
 # Local Next.js dev server (pnpm dev -p 5173). iOS Simulator can use localhost.
 LOCAL_CAPACITOR_SERVER_URL := http://localhost:5173
 
-.PHONY: help android-dev android-live android-reset-emulator android-stop-emulator android-clean-build ios-dev ios-prod ios-live ios-open ios-clean ios-stop-simulator sync-android sync-ios open-android open-ios
+.PHONY: help android-dev android-live android-prod-apk android-prod-aab android-reset-emulator android-stop-emulator android-clean-build ios-app ios-dev ios-prod ios-live ios-open ios-clean ios-stop-simulator sync-android sync-ios open-android open-ios
 
 # Default target
 help:
@@ -15,6 +15,8 @@ help:
 	@echo "  Android:"
 	@echo "    android-dev               - Local dev build: build → sync → run Android"
 	@echo "    android-live              - Dev build with live reload"
+	@echo "    android-prod-apk          - Production Android: export Next → cap sync → assembleRelease (no emulator)"
+	@echo "    android-prod-aab          - Same as android-prod-apk but bundleRelease for Play Store"
 	@echo "    android-reset-emulator    - Stop Android emulator, wipe data, and cold boot"
 	@echo "    android-stop-emulator     - Stop all running Android emulators"
 	@echo "    android-clean-build       - Clean Android build and gradle cache"
@@ -22,6 +24,7 @@ help:
 	@echo "    open-android              - Open Android project in Android Studio"
 	@echo ""
 	@echo "  iOS:"
+	@echo "    ios-app                   - Production iOS: runs scripts/mobile/build-production.sh (clean, prod URL, sync, open Xcode)"
 	@echo "    ios-dev                   - Capacitor loads app from $(LOCAL_CAPACITOR_SERVER_URL) (run pnpm dev first)"
 	@echo "    ios-prod                  - Load web from $(PRODUCTION_WEB_URL) in the WebView"
 	@echo "    ios-live                  - iOS dev build with live reload"
@@ -124,7 +127,17 @@ android-live:
 	@echo "📱 Starting Android with livereload..."
 	@pnpm cap run android --livereload --external
 
+# Production Android: same flow as scripts/mobile/build-production-android.sh without emulator
+android-prod-apk:
+	@SKIP_EMULATOR=1 ANDROID_ARTIFACT=apk ./scripts/mobile/build-production-android.sh
+
+android-prod-aab:
+	@SKIP_EMULATOR=1 ANDROID_ARTIFACT=aab ./scripts/mobile/build-production-android.sh
+
 # iOS Commands
+
+ios-app:
+	@./scripts/mobile/build-production.sh
 
 ios-dev:
 	@echo "🚀 Starting iOS dev (WebView → $(LOCAL_CAPACITOR_SERVER_URL))..."
