@@ -43,6 +43,7 @@ import {
   AmountWithRatePicker,
   type ConversionSnapshot,
 } from "./AmountWithRatePicker";
+import { resolvePrefillAmountCurrency } from "@/utils/formUtils";
 
 /** System category for transfer-fee expenses; when editing such a transaction, the category is shown and disabled. */
 const TRANSFER_FEE_CATEGORY_NAME = "Transfer Fee";
@@ -222,10 +223,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const accountCurrencyDiffersFromSpace =
     selectedAccount?.currency != null && selectedAccount.currency !== effectiveSpaceCurrency;
 
-  const initialAmountCurrency =
-    defaultTransactionCurrency && amountCurrencyOptions.includes(defaultTransactionCurrency)
-      ? defaultTransactionCurrency
-      : selectedAccountCurrency;
+  const initialAmountCurrency = resolvePrefillAmountCurrency({
+    defaultTransactionCurrency,
+    amountCurrencyCodes: amountCurrencyOptions,
+    accountName: formState.accountName,
+    accounts: accountOptions,
+    spaceCurrency: effectiveSpaceCurrency,
+  });
 
   // In edit mode with conversion, show original currency (e.g. PLN) from the start so the label is correct
   const [amountCurrency, setAmountCurrency] = useState(() => {
@@ -387,7 +391,15 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           exchangeRateSource: ((rawConv as any)?.source ?? "manual") as "auto" | "manual" | "recent",
         });
       } else {
-        setAmountCurrency(effectiveSpaceCurrency);
+        setAmountCurrency(
+          resolvePrefillAmountCurrency({
+            defaultTransactionCurrency,
+            amountCurrencyCodes: amountCurrencyOptions,
+            accountName: initialData.accountName,
+            accounts: accountOptions,
+            spaceCurrency: effectiveSpaceCurrency,
+          })
+        );
         setConversionSnapshot(null);
       }
 
