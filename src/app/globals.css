@@ -206,15 +206,6 @@ html, body {
     padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   }
 
-  html.fintr-native-android .mobile-header-spacer {
-    height: calc(44px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
-  }
-
-  /* Shift the blue bottom navigation above the Android 3-button safe-area. */
-  html.fintr-native-android .android-bottom-nav-offset {
-    bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) !important;
-  }
-
   .pl-safe-left {
     padding-left: env(safe-area-inset-left);
   }

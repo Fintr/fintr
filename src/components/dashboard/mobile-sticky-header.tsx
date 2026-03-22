@@ -4,7 +4,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
-import { resolveAndroidNativeTopInsetPx } from "@/lib/platform-detection";
 
 interface MobileStickyHeaderProps {
   title?: string;
@@ -65,7 +64,7 @@ export default function MobileStickyHeader({ title }: MobileStickyHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const pageTitle = title || getPageTitle(pathname);
 
-  const { safeAreaInsetTop, isAndroidNative } = usePlatformDetection();
+  const { isAndroidNative } = usePlatformDetection();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -81,13 +80,9 @@ export default function MobileStickyHeader({ title }: MobileStickyHeaderProps) {
     router.back();
   };
 
-  // Android native: WebView is full-screen; inline padding uses injected --safe-area-inset-top
-  // (via getSafeAreaInsets). pt-safe-top uses the same vars / env() as fallback.
-  // iOS + mobile browsers: pt-safe-top supplies env(safe-area-inset-top); when the WebView is
-  // already inset below the status bar, env() is usually 0 so there is no double gap.
-  const topPadding = isAndroidNative
-    ? `${resolveAndroidNativeTopInsetPx(safeAreaInsetTop)}px`
-    : undefined;
+  // Android native: padding-top comes from globals.css (android-sticky-header-inset-top) so it
+  // tracks live --safe-area-inset-top after rotation without waiting on React state.
+  // iOS + mobile browsers: pt-safe-top supplies env(safe-area-inset-top).
 
   return (
     <header
@@ -103,10 +98,10 @@ export default function MobileStickyHeader({ title }: MobileStickyHeaderProps) {
         duration-300
         ease-in-out
         z-30
-        pt-safe-top
+        ${isAndroidNative ? "" : "pt-safe-top"}
         ${isScrolled ? "shadow-sm" : ""}
       `}
-      style={topPadding ? { paddingTop: topPadding } : undefined}
+      style={isAndroidNative ? { paddingTop: "24px" } : undefined}
     >
       <div className="px-2 py-2">
         <div className="flex items-center">

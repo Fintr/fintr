@@ -103,15 +103,17 @@ export function CalculatorInput({
     setIsAndroidNative(androidNative);
     setIsIOSNative(iosNative);
 
-    // Calculate bottom offset to avoid system navigation
-    if (androidNative || iosNative) {
+    // Calculate bottom offset to avoid system navigation overlap.
+    // Android native needs extra lift for 3-button navigation.
+    // iOS native should sit flush at the modal bottom to avoid double-spacing.
+    if (androidNative) {
       const insets = getSafeAreaInsets();
-      // Add extra padding: 48px minimum for Android 3-button nav, plus safe area
       const minNavHeight = 48;
       const navHeight = Math.max(insets.bottom, minNavHeight);
-      // Cap at 80px to prevent excessive spacing
       const cappedNavHeight = Math.min(navHeight, 80);
       setKeyboardBottomOffset(`${cappedNavHeight}px`);
+    } else if (iosNative) {
+      setKeyboardBottomOffset("0px");
     }
   }, []);
 

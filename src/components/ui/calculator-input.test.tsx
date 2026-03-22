@@ -145,6 +145,41 @@ describe("CalculatorInput", () => {
       // Should be capped at 80px maximum
       expect(bottomPixels).toBeLessThanOrEqual(80);
     });
+
+    it("uses zero bottom offset on iOS native (no extra gap under calculator)", async () => {
+      Object.defineProperty(navigator, "userAgent", {
+        value:
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1 FintrNativeApp",
+        writable: true,
+        configurable: true,
+      });
+
+      Object.defineProperty(window, "innerWidth", {
+        writable: true,
+        configurable: true,
+        value: 400,
+      });
+
+      await act(async () => {
+        render(
+          <CalculatorInput
+            value=""
+            onChange={mockOnChange}
+            placeholder="0.00"
+          />
+        );
+      });
+
+      const input = screen.getByPlaceholderText("0.00");
+      fireEvent.focus(input);
+
+      const keyboard = document.body.querySelector(
+        '[class*="bg-background"][class*="shadow-2xl"]'
+      ) as HTMLElement | null;
+
+      expect(keyboard).toBeTruthy();
+      expect(keyboard?.style.bottom).toBe("0px");
+    });
   });
 
   describe("Calculator Functionality", () => {

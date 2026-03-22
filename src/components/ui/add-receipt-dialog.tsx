@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useAtomValue } from "jotai";
 import { isTutorialActiveAtom } from "@/atoms/tutorialAtoms";
 import { isNativeCapacitor } from "@/lib/capacitor";
+import { useMobileModalViewportHeight } from "@/hooks/useMobileModalViewportHeight";
 
 interface AddReceiptDialogProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
   const [isAndroidNative, setIsAndroidNative] = useState(false);
   const [isIOSNative, setIsIOSNative] = useState(false);
   const historyPushedRef = React.useRef(false);
-  const viewportHeightRef = React.useRef<number | null>(null);
+  const mobileViewportHeight = useMobileModalViewportHeight(isOpen);
 
   useEffect(() => {
     setMounted(true);
@@ -64,12 +65,7 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
   useEffect(() => {
     if (!isOpen) {
       historyPushedRef.current = false;
-      viewportHeightRef.current = null;
       return;
-    }
-
-    if (viewportHeightRef.current === null) {
-      viewportHeightRef.current = window.innerHeight;
     }
 
     const checkLightboxOpen = () => {
@@ -284,10 +280,10 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
           className
         )}
         style={{
-          ...(isMobile && viewportHeightRef.current
+          ...(isMobile && mobileViewportHeight != null
             ? {
                 // Leave the Android 3-button navigation safe-area visible behind the overlay.
-                maxHeight: `calc(${viewportHeightRef.current}px - var(--safe-area-inset-bottom, 0px))`,
+                maxHeight: `calc(${mobileViewportHeight}px - var(--safe-area-inset-bottom, 0px))`,
               }
             : {}),
           ...(isTutorialActive ? { pointerEvents: 'auto' } : {})

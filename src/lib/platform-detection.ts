@@ -64,6 +64,26 @@ const parseCssPx = (value: string | undefined): number => {
 }
 
 /**
+ * Prefer values set via `document.documentElement.style.setProperty` (Android MainActivity)
+ * so we read the latest inset immediately after native updates. `getComputedStyle` can lag
+ * one frame behind orientation / IME on some WebViews.
+ */
+const readRootInsetCssVar = (name: string): string => {
+  const html = document.documentElement
+  const style = html.style as CSSStyleDeclaration | undefined
+  const inline =
+    typeof style?.getPropertyValue === "function"
+      ? style.getPropertyValue(name).trim()
+      : ""
+
+  if (inline !== "") {
+    return inline
+  }
+
+  return window.getComputedStyle(html).getPropertyValue(name).trim()
+}
+
+/**
  * Get safe area insets from CSS environment variables
  * Only works in browser environment
  */
@@ -77,21 +97,26 @@ export const getSafeAreaInsets = (): {
     return { bottom: 0, top: 0, left: 0, right: 0 }
   }
 
-  const styles = window.getComputedStyle(document.documentElement)
-
-  const cssVarBottom = styles.getPropertyValue("--safe-area-inset-bottom").trim()
-  const cssVarTop = styles.getPropertyValue("--safe-area-inset-top").trim()
-  const cssVarLeft = styles.getPropertyValue("--safe-area-inset-left").trim()
-  const cssVarRight = styles.getPropertyValue("--safe-area-inset-right").trim()
+  const cssVarBottom = readRootInsetCssVar("--safe-area-inset-bottom")
+  const cssVarTop = readRootInsetCssVar("--safe-area-inset-top")
+  const cssVarLeft = readRootInsetCssVar("--safe-area-inset-left")
+  const cssVarRight = readRootInsetCssVar("--safe-area-inset-right")
 
   let top = parseCssPx(cssVarTop)
   let bottom = parseCssPx(cssVarBottom)
   const left = parseCssPx(cssVarLeft)
   const right = parseCssPx(cssVarRight)
 
+  const isAndroidNativeHtml =
+    typeof document !== "undefined" &&
+    document.documentElement.classList.contains("fintr-native-android")
+
   // Android injects --safe-area-inset-* from native; iOS and mobile Safari often do not.
   // env() cannot be read from getComputedStyle(documentElement), so probe when vars are unset.
+  // Skip the env() probe on Android native: after rotation, env() can briefly disagree with
+  // MainActivity's async `evaluateJavascript`, producing oversized top/bottom until the next resize.
   if (
+    !isAndroidNativeHtml &&
     (top === 0 || bottom === 0) &&
     typeof document !== "undefined" &&
     document.body
@@ -106,6 +131,92 @@ export const getSafeAreaInsets = (): {
     top,
     left,
     right,
+  }
+}
+
+/**
+ * Subscribe to events that imply `--safe-area-inset-*` or layout viewport may have changed.
+ * MainActivity updates root `style` asynchronously relative to `orientationchange`; pairing
+ * MutationObserver with deferred reads keeps React padding in sync with portrait insets.
+ */
+export const subscribeToSafeAreaInsetChanges = (
+  onInsetsMayHaveChanged: () => void
+): (() => void) => {
+  if (typeof window === "undefined") {
+    return () => {}
+  }
+
+  let rafDebounce = false
+
+  const scheduleRaf = () => {
+    if (rafDebounce) {
+      return
+    }
+
+    rafDebounce = true
+    requestAnimationFrame(() => {
+      rafDebounce = false
+      onInsetsMayHaveChanged()
+    })
+  }
+
+  let observer: MutationObserver | null = null
+
+  try {
+    observer = new MutationObserver(() => {
+      scheduleRaf()
+    })
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["style", "class"],
+    })
+  } catch {
+    // Non-Node documentElement in tests
+  }
+
+  const vv = window.visualViewport
+
+  vv?.addEventListener("resize", onInsetsMayHaveChanged)
+  vv?.addEventListener("scroll", scheduleRaf)
+  window.addEventListener("resize", onInsetsMayHaveChanged)
+
+  let timeout0: ReturnType<typeof setTimeout> | undefined
+  let timeout1: ReturnType<typeof setTimeout> | undefined
+  let timeout2: ReturnType<typeof setTimeout> | undefined
+
+  const onOrientationLike = () => {
+    scheduleRaf()
+    onInsetsMayHaveChanged()
+
+    if (timeout0) clearTimeout(timeout0)
+    if (timeout1) clearTimeout(timeout1)
+    if (timeout2) clearTimeout(timeout2)
+
+    timeout0 = setTimeout(onInsetsMayHaveChanged, 0)
+    timeout1 = setTimeout(onInsetsMayHaveChanged, 120)
+    timeout2 = setTimeout(onInsetsMayHaveChanged, 300)
+  }
+
+  window.addEventListener("orientationchange", onOrientationLike)
+  screen.orientation?.addEventListener(
+    "change",
+    onOrientationLike as EventListener
+  )
+
+  return () => {
+    observer?.disconnect()
+    vv?.removeEventListener("resize", onInsetsMayHaveChanged)
+    vv?.removeEventListener("scroll", scheduleRaf)
+    window.removeEventListener("resize", onInsetsMayHaveChanged)
+    window.removeEventListener("orientationchange", onOrientationLike)
+    screen.orientation?.removeEventListener(
+      "change",
+      onOrientationLike as EventListener
+    )
+
+    if (timeout0) clearTimeout(timeout0)
+    if (timeout1) clearTimeout(timeout1)
+    if (timeout2) clearTimeout(timeout2)
   }
 }
 
@@ -148,14 +259,25 @@ const readEnvSafeAreaInsetsFromProbe = (): {
   return { top, bottom }
 }
 
+const MIN_ANDROID_NAV_INSET_PX = 48
+/** Typical 3-button / gesture nav; cap prevents IME/orientation glitches from matching "normal" density */
+const MAX_ANDROID_NAV_INSET_PX = 56
+
 /**
- * Calculate bottom padding for mobile layouts
- * Accounts for 3-button navigation on Android and safe areas on iOS
- *
- * Android 3-button nav requires minimum 48px for the navigation bar
- * iOS uses the safe area inset for home indicator
- * Mobile browsers need standard bottom padding
+ * Android nav bar inset for content padding, fixed nav `bottom`, and the bottom
+ * white spacer. Insets from the native layer can spike after IME or rotation;
+ * this clamp matches {@link calculateNavBottomOffset} so the spacer cannot
+ * outgrow the lifted nav (which would show a dead white band above the system bar).
  */
+export const clampAndroidNavigationInsetPx = (
+  safeAreaInsetBottom: number
+): number => {
+  return Math.min(
+    Math.max(safeAreaInsetBottom, MIN_ANDROID_NAV_INSET_PX),
+    MAX_ANDROID_NAV_INSET_PX
+  )
+}
+
 /**
  * Calculate bottom padding for mobile layouts
  * Accounts for 3-button navigation on Android and safe areas on iOS
@@ -164,26 +286,20 @@ const readEnvSafeAreaInsetsFromProbe = (): {
  * iOS uses the safe area inset for home indicator
  * Mobile browsers need standard bottom padding
  *
- * NOTE: We cap the navigation height at 80px to prevent excessive padding
- * when the safe area inset reports unexpectedly large values (e.g., due to
- * keyboard open, screen rotation bugs, or certain Android OEM implementations)
+ * NOTE: We cap the navigation height (see MAX_ANDROID_NAV_INSET_PX) so glitches
+ * do not exceed typical device bars; values above that look like the "huge padding" bug.
  */
 export const calculateBottomPadding = (
   isAndroidNative: boolean,
   isIOSNative: boolean,
   safeAreaInsetBottom: number
 ): string => {
-  const MIN_ANDROID_NAV_HEIGHT = 48
   const MIN_IOS_NAV_HEIGHT = 16
   const MAX_NAV_HEIGHT = 80
 
   if (isAndroidNative) {
-    // Clamp between minimum (48px) and maximum (80px) to prevent excessive padding
-    const navHeight = Math.min(
-      Math.max(safeAreaInsetBottom, MIN_ANDROID_NAV_HEIGHT),
-      MAX_NAV_HEIGHT
-    )
-    return `calc(64px + ${navHeight}px)`
+    // Stable Android baseline: keep content above fixed bottom nav + system bar area.
+    return "calc(64px + 48px)"
   }
 
   if (isIOSNative) {
@@ -208,25 +324,16 @@ export const calculateBottomPadding = (
  * Android shifts up for 3-button nav, iOS shifts up for home indicator
  * Mobile browsers sit at bottom (handled by padding)
  *
- * NOTE: We cap the offset at 80px to prevent the navigation from shifting
- * too far up when the safe area inset reports unexpectedly large values
+ * NOTE: Same clamp as {@link clampAndroidNavigationInsetPx} for nav offset.
  */
 export const calculateNavBottomOffset = (
   isAndroidNative: boolean,
   isIOSNative: boolean,
   safeAreaInsetBottom: number
 ): string | number => {
-  const MIN_NAV_HEIGHT = 48
-  const MAX_NAV_HEIGHT = 80
-
-  // Android: shift up by safe area amount (3-button nav or gesture nav)
+  // Stable Android baseline: keep nav above 3-button area after rotation.
   if (isAndroidNative) {
-    // Clamp between minimum (48px) and maximum (80px) to prevent excessive offset
-    const navHeight = Math.min(
-      Math.max(safeAreaInsetBottom, MIN_NAV_HEIGHT),
-      MAX_NAV_HEIGHT
-    )
-    return `${navHeight}px`
+    return "48px"
   }
 
   // iOS: keep nav at bottom: 0; home indicator is handled once via pb-safe-bottom
@@ -242,14 +349,22 @@ export const calculateNavBottomOffset = (
 /**
  * Android WebView often reports no CSS env(safe-area-inset-top). MainActivity injects
  * `--safe-area-inset-top`; this floor avoids clipped headers if injection is late or zero.
+ * A ceiling avoids huge top gaps when insets spike after IME or rotation.
  * iOS is unchanged (uses env() in calculateHeaderSpacerHeight).
  */
 export const MIN_ANDROID_STATUS_BAR_INSET_PX = 24
 
+export const MAX_ANDROID_STATUS_BAR_INSET_PX = 48
+
 export const resolveAndroidNativeTopInsetPx = (
   safeAreaInsetTop: number
 ): number => {
-  return Math.max(safeAreaInsetTop, MIN_ANDROID_STATUS_BAR_INSET_PX)
+  const lifted = Math.max(
+    safeAreaInsetTop,
+    MIN_ANDROID_STATUS_BAR_INSET_PX
+  )
+
+  return Math.min(lifted, MAX_ANDROID_STATUS_BAR_INSET_PX)
 }
 
 /**
@@ -265,10 +380,9 @@ export const calculateHeaderSpacerHeight = (
 ): string => {
   const baseHeight = 44
 
-  // Android native: injected --safe-area-inset-top (see MainActivity) + minimum floor
+  // Stable Android baseline: reserve status-bar breathing room without drift.
   if (isAndroidNative) {
-    const topPx = resolveAndroidNativeTopInsetPx(safeAreaInsetTop)
-    return `calc(${baseHeight}px + ${topPx}px)`
+    return `calc(${baseHeight}px + 24px)`
   }
 
   // iOS native + mobile browsers: env() matches the real safe area in the web view

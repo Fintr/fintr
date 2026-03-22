@@ -1,5 +1,6 @@
 package com.fintr.app;
 
+import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -13,6 +14,18 @@ import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+
+  @Override
+  public void onConfigurationChanged(Configuration newConfig) {
+    super.onConfigurationChanged(newConfig);
+    // Activity is not recreated on rotation (see configChanges in AndroidManifest);
+    // re-apply window insets so WebView CSS vars match portrait/landscape bars.
+    try {
+      ViewCompat.requestApplyInsets(getWindow().getDecorView());
+    } catch (Exception e) {
+      // Ignore; best-effort only.
+    }
+  }
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {

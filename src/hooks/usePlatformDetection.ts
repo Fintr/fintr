@@ -5,6 +5,7 @@ import {
   detectPlatform,
   getSafeAreaInsets,
   PlatformDetectionResult,
+  subscribeToSafeAreaInsetChanges,
 } from "@/lib/platform-detection"
 
 /**
@@ -58,13 +59,7 @@ export const usePlatformDetection = (): PlatformDetectionResult => {
 
     updatePlatform()
 
-    window.addEventListener("resize", updatePlatform)
-    window.addEventListener("orientationchange", updatePlatform)
-
-    return () => {
-      window.removeEventListener("resize", updatePlatform)
-      window.removeEventListener("orientationchange", updatePlatform)
-    }
+    return subscribeToSafeAreaInsetChanges(updatePlatform)
   }, [])
 
   return platform
@@ -91,13 +86,7 @@ export const useSafeAreaInsets = () => {
 
     updateInsets()
 
-    window.addEventListener("resize", updateInsets)
-    window.addEventListener("orientationchange", updateInsets)
-
-    return () => {
-      window.removeEventListener("resize", updateInsets)
-      window.removeEventListener("orientationchange", updateInsets)
-    }
+    return subscribeToSafeAreaInsetChanges(updateInsets)
   }, [])
 
   return insets

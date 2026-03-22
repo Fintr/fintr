@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { isNativeCapacitor } from "@/lib/capacitor";
+import { useMobileModalViewportHeight } from "@/hooks/useMobileModalViewportHeight";
 
 interface CustomModalProps {
   isOpen: boolean;
@@ -39,7 +40,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   const [isAndroidNative, setIsAndroidNative] = useState(false);
   const [isIOSNative, setIsIOSNative] = useState(false);
   const historyPushedRef = React.useRef(false);
-  const viewportHeightRef = React.useRef<number | null>(null);
+  const mobileViewportHeight = useMobileModalViewportHeight(isOpen);
 
   useEffect(() => {
     setMounted(true);
@@ -73,12 +74,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       historyPushedRef.current = false;
-      viewportHeightRef.current = null;
       return;
-    }
-
-    if (viewportHeightRef.current === null) {
-      viewportHeightRef.current = window.innerHeight;
     }
 
     const checkLightboxOpen = () => {
@@ -236,11 +232,12 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           className
         )}
         style={
-          isMobile && viewportHeightRef.current
+          isMobile && mobileViewportHeight != null
             ? {
                 // Leave the Android 3-button navigation safe-area visible behind the overlay.
                 // `--safe-area-inset-bottom` is injected by Capacitor SystemBars on Android.
-                maxHeight: `calc(${viewportHeightRef.current}px - var(--safe-area-inset-bottom, 0px))`,
+                // Height must track visual viewport (keyboard / rotation); see useMobileModalViewportHeight.
+                maxHeight: `calc(${mobileViewportHeight}px - var(--safe-area-inset-bottom, 0px))`,
               }
             : undefined
         }

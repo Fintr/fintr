@@ -24,9 +24,13 @@ export default function BottomNavigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
 
-  const { isAndroidNative, isIOSNative, safeAreaInsetBottom } = usePlatformDetection();
+  const { isAndroidNative, isIOSNative } = usePlatformDetection();
 
-  const navBottomOffset = calculateNavBottomOffset(isAndroidNative, isIOSNative, safeAreaInsetBottom);
+  const navBottomOffset = calculateNavBottomOffset(
+    isAndroidNative,
+    isIOSNative,
+    0
+  );
 
   // Determine active tab based on pathname
   const getActiveValue = () => {
@@ -72,12 +76,10 @@ export default function BottomNavigation() {
 
   return (
     <>
-      {/* Android 3-button nav safe-area spacer (keeps OS buttons visible). */}
       {isAndroidNative && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-[55] md:hidden pointer-events-none"
+          className="fixed bottom-0 left-0 right-0 z-40 h-12 md:hidden pointer-events-none"
           style={{
-            height: `max(${safeAreaInsetBottom}px, 48px)`,
             backgroundColor: "#FAFAF9",
           }}
         />
@@ -86,19 +88,13 @@ export default function BottomNavigation() {
       <nav
         className={cn(
           "fixed left-0 right-0 z-50 bg-primary shadow-xs border-t border-primary/20 md:hidden",
-          // Android: white spacer below nav; iOS native: compact pb only — WKWebView frame ends
-          // above the home indicator (see ios/App/App/CapacitorViewController.swift) so
-          // pb-safe-bottom would stack with env() and create a large empty band.
-          // Mobile browser: fixed pb-4
           isAndroidNative
             ? ""
             : isIOSNative
               ? "pb-2"
-              : "pb-4"
+              : ""
         )}
         style={{
-          // Android shifts up for 3-button nav (white spacer handles the gap)
-          // iOS native: bottom 0; home indicator is outside the WebView
           bottom: navBottomOffset,
         }}
       >

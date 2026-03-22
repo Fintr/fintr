@@ -61,6 +61,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     safeAreaInsetTop,
   } = usePlatformDetection();
 
+
   const bottomPadding = calculateBottomPadding(
     isAndroidNative,
     isIOSNative,

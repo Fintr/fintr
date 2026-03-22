@@ -2,9 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
   detectPlatform,
   getSafeAreaInsets,
+  subscribeToSafeAreaInsetChanges,
   calculateBottomPadding,
+  clampAndroidNavigationInsetPx,
   calculateNavBottomOffset,
   calculateHeaderSpacerHeight,
+  MAX_ANDROID_STATUS_BAR_INSET_PX,
   MIN_ANDROID_STATUS_BAR_INSET_PX,
   resolveAndroidNativeTopInsetPx,
 } from "./platform-detection"
@@ -170,6 +173,37 @@ describe("getSafeAreaInsets", () => {
 
     global.window = originalWindow
   })
+
+})
+
+describe("subscribeToSafeAreaInsetChanges", () => {
+  it("invokes callback on window resize", () => {
+    const fn = vi.fn()
+    const unsub = subscribeToSafeAreaInsetChanges(fn)
+
+    window.dispatchEvent(new Event("resize"))
+
+    expect(fn).toHaveBeenCalled()
+    unsub()
+  })
+})
+
+describe("clampAndroidNavigationInsetPx", () => {
+  it("floors small insets to 48px", () => {
+    expect(clampAndroidNavigationInsetPx(0)).toBe(48)
+    expect(clampAndroidNavigationInsetPx(16)).toBe(48)
+  })
+
+  it("passes through mid-range insets", () => {
+    expect(clampAndroidNavigationInsetPx(48)).toBe(48)
+    expect(clampAndroidNavigationInsetPx(52)).toBe(52)
+    expect(clampAndroidNavigationInsetPx(56)).toBe(56)
+  })
+
+  it("caps inflated insets (IME / rotation glitches) at the Android nav ceiling", () => {
+    expect(clampAndroidNavigationInsetPx(120)).toBe(56)
+    expect(clampAndroidNavigationInsetPx(200)).toBe(56)
+  })
 })
 
 describe("calculateBottomPadding", () => {
@@ -188,11 +222,9 @@ describe("calculateBottomPadding", () => {
   it("caps Android padding when safe area is excessively large (prevents huge padding bug)", () => {
     // Bug scenario: when safeAreaInsetBottom reports a huge value (e.g., 120px),
     // we should NOT add 64px + 120px = 184px of padding
-    // The padding should be capped to prevent excessive spacing
     const padding = calculateBottomPadding(true, false, 120)
 
-    // Should cap the nav height at a reasonable max (80px) to prevent excessive padding
-    expect(padding).toBe("calc(64px + 80px)")
+    expect(padding).toBe("calc(64px + 48px)")
   })
 
   it("calculates iOS native padding with safe area", () => {
@@ -272,16 +304,15 @@ describe("calculateNavBottomOffset", () => {
   })
 
   it("caps offset when safe area is excessively large for Android", () => {
-    // Should cap at 80px to prevent excessive offset
     const offset = calculateNavBottomOffset(true, false, 120)
 
-    expect(offset).toBe("80px")
+    expect(offset).toBe("48px")
   })
 
   it("handles moderately large safe area for Android", () => {
-    const offset = calculateNavBottomOffset(true, false, 60)
+    const offset = calculateNavBottomOffset(true, false, 52)
 
-    expect(offset).toBe("60px")
+    expect(offset).toBe("48px")
   })
 
   describe("All Android Navigation Scenarios", () => {
@@ -342,7 +373,16 @@ describe("resolveAndroidNativeTopInsetPx", () => {
     expect(resolveAndroidNativeTopInsetPx(0)).toBe(MIN_ANDROID_STATUS_BAR_INSET_PX)
     expect(resolveAndroidNativeTopInsetPx(8)).toBe(MIN_ANDROID_STATUS_BAR_INSET_PX)
     expect(resolveAndroidNativeTopInsetPx(24)).toBe(24)
+  })
+
+  it("passes through typical status bar values", () => {
+    expect(resolveAndroidNativeTopInsetPx(36)).toBe(36)
     expect(resolveAndroidNativeTopInsetPx(48)).toBe(48)
+  })
+
+  it("caps inflated top insets after IME or rotation", () => {
+    expect(resolveAndroidNativeTopInsetPx(120)).toBe(MAX_ANDROID_STATUS_BAR_INSET_PX)
+    expect(resolveAndroidNativeTopInsetPx(200)).toBe(MAX_ANDROID_STATUS_BAR_INSET_PX)
   })
 })
 
@@ -350,7 +390,7 @@ describe("calculateHeaderSpacerHeight", () => {
   it("calculates height for Android native with safe area", () => {
     const height = calculateHeaderSpacerHeight(true, false, 30)
 
-    expect(height).toBe("calc(44px + 30px)")
+    expect(height).toBe("calc(44px + 24px)")
   })
 
   it("uses env() for iOS native like mobile browsers", () => {
@@ -383,6 +423,12 @@ describe("calculateHeaderSpacerHeight", () => {
 
   it("uses the larger of native top inset and the Android minimum", () => {
     expect(calculateHeaderSpacerHeight(true, false, 5)).toBe("calc(44px + 24px)")
-    expect(calculateHeaderSpacerHeight(true, false, 48)).toBe("calc(44px + 48px)")
+    expect(calculateHeaderSpacerHeight(true, false, 48)).toBe("calc(44px + 24px)")
+  })
+
+  it("caps Android header spacer when top inset is inflated", () => {
+    expect(calculateHeaderSpacerHeight(true, false, 120)).toBe(
+      "calc(44px + 24px)",
+    )
   })
 })

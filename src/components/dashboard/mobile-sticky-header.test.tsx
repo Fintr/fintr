@@ -34,7 +34,7 @@ describe("MobileStickyHeader — iOS native vs other platforms", () => {
     expect(header?.getAttribute("style")).toBeNull();
   });
 
-  it("keeps pt-safe-top and inline padding-top on Android native", async () => {
+  it("omits extra top safe-area classes on Android native", async () => {
     mockUsePlatformDetection.mockReturnValue({
       isAndroidNative: true,
       isIOSNative: false,
@@ -47,12 +47,13 @@ describe("MobileStickyHeader — iOS native vs other platforms", () => {
     render(<MobileStickyHeader />);
 
     const header = document.querySelector("header");
-    expect(header?.className).toContain("pt-safe-top");
+    expect(header?.className).not.toContain("pt-safe-top");
+    expect(header?.className).not.toContain("android-sticky-header-inset-top");
     expect(header?.getAttribute("style")).toContain("padding-top");
-    expect(header?.getAttribute("style")).toContain("30px");
+    expect(header?.getAttribute("style")).toContain("24px");
   });
 
-  it("uses minimum Android top padding when native reports zero inset", async () => {
+  it("still avoids extra top safe-area classes when native reports zero inset", async () => {
     mockUsePlatformDetection.mockReturnValue({
       isAndroidNative: true,
       isIOSNative: false,
@@ -65,6 +66,7 @@ describe("MobileStickyHeader — iOS native vs other platforms", () => {
     render(<MobileStickyHeader />);
 
     const header = document.querySelector("header");
+    expect(header?.className).not.toContain("android-sticky-header-inset-top");
     expect(header?.getAttribute("style")).toContain("padding-top");
     expect(header?.getAttribute("style")).toContain("24px");
   });

@@ -24,8 +24,7 @@ describe("Mobile Header Spacer - Top Safe Area", () => {
     it("should calculate Android native spacer with minimum 44px + safe area", () => {
       const height = calculateHeaderSpacerHeight(true, false, 30); // 30px status bar
 
-      // Should be calc(44px + 30px) = 74px total
-      expect(height).toBe("calc(44px + 30px)");
+      expect(height).toBe("calc(44px + 24px)");
     });
 
     it("should use env() for iOS native (full-bleed WebView safe area)", () => {
@@ -58,7 +57,7 @@ describe("Mobile Header Spacer - Top Safe Area", () => {
       vi.clearAllMocks();
     });
 
-    it("should have pt-safe-top class for status bar padding", async () => {
+    it("omits pt-safe-top on Android native to avoid stacking with inline inset", async () => {
       const MobileStickyHeader = (await import("./mobile-sticky-header"))
         .default;
 
@@ -67,11 +66,10 @@ describe("Mobile Header Spacer - Top Safe Area", () => {
       const header = document.querySelector("header");
       expect(header).toBeTruthy();
 
-      // Should have the pt-safe-top class for status bar padding
-      expect(header?.classList.contains("pt-safe-top")).toBe(true);
+      expect(header?.classList.contains("pt-safe-top")).toBe(false);
     });
 
-    it("should apply inline padding for native apps", async () => {
+    it("does not add Android top safe-area class", async () => {
       const MobileStickyHeader = (await import("./mobile-sticky-header"))
         .default;
 
@@ -79,12 +77,9 @@ describe("Mobile Header Spacer - Top Safe Area", () => {
 
       const header = document.querySelector("header");
       expect(header).toBeTruthy();
-
-      // Should have inline style with padding for native apps
-      // The mock returns safeAreaInsetTop: 30, so it should be "30px"
-      const style = header?.getAttribute("style");
-      expect(style).toContain("padding-top");
-      expect(style).toContain("30px");
+      expect(header?.className).not.toContain("android-sticky-header-inset-top");
+      expect(header?.getAttribute("style")).toContain("padding-top");
+      expect(header?.getAttribute("style")).toContain("24px");
     });
   });
 
@@ -98,8 +93,8 @@ describe("Mobile Header Spacer - Top Safe Area", () => {
       expect(androidHeight).toContain("44px");
       expect(browserHeight).toContain("44px");
 
-      // Android native should include the safe area value
-      expect(androidHeight).toContain("30px");
+      // Android native is fixed to 44px to avoid post-rotation drift
+      expect(androidHeight).toBe("calc(44px + 24px)");
 
       // Browser should use env()
       expect(browserHeight).toContain("env(safe-area-inset-top");
@@ -109,9 +104,8 @@ describe("Mobile Header Spacer - Top Safe Area", () => {
       const androidHeight = calculateHeaderSpacerHeight(true, false, 0);
       const iosHeight = calculateHeaderSpacerHeight(false, true, 0);
 
-      // Android should include safe area calculation
-      expect(androidHeight).not.toBe("44px");
-      expect(androidHeight).toContain("calc(");
+      // Android should stay fixed regardless of reported inset
+      expect(androidHeight).toBe("calc(44px + 24px)");
 
       expect(iosHeight).toContain("env(safe-area-inset-top");
     });
