@@ -7,6 +7,10 @@ PRODUCTION_WEB_URL := https://www.fintr.ai
 # Local Next.js dev server (pnpm dev -p 5173). iOS Simulator can use localhost.
 LOCAL_CAPACITOR_SERVER_URL := http://localhost:5173
 
+# Android Emulator host alias for the dev machine.
+# (Do not use localhost on Android emulator; it points to the emulator itself.)
+LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR := http://10.0.2.2:5173
+
 .PHONY: help android-dev android-live android-prod-apk android-prod-aab android-reset-emulator android-stop-emulator android-clean-build ios-app ios-dev ios-prod ios-live ios-open ios-clean ios-stop-simulator sync-android sync-ios open-android open-ios
 
 # Default target
@@ -91,6 +95,7 @@ android-dev:
 	@echo "   2. Sync Capacitor to Android (cap sync android)"
 	@echo "   3. Run on Android device/emulator (cap run android)"
 	@echo ""
+	@echo "💡 CAPACITOR_SERVER_URL is forced to $(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR)"
 	@echo "💡 Tip: For live reload development, use: make android-live"
 	@echo ""
 	@sleep 2
@@ -99,11 +104,11 @@ android-dev:
 	@echo "✅ Next.js build complete"
 	@echo ""
 	@echo "🔄 Step 2/3: Syncing Capacitor to Android..."
-	@pnpm cap sync android || (echo "❌ Capacitor sync failed"; exit 1)
+	@CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR) pnpm cap sync android || (echo "❌ Capacitor sync failed"; exit 1)
 	@echo "✅ Capacitor sync complete"
 	@echo ""
 	@echo "📱 Step 3/3: Running on Android..."
-	@pnpm cap run android
+	@CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR) pnpm cap run android
 
 # Live reload development (build once, then live reload)
 android-live:
