@@ -4,7 +4,6 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Delete, Equal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isNativeCapacitor } from "@/lib/capacitor";
 import { getSafeAreaInsets } from "@/lib/platform-detection";
@@ -19,12 +18,26 @@ interface CalculatorInputProps {
   disabled?: boolean;
 }
 
+// iOS-style calculator layout
+// Row 1: backspace, C, %, ÷
+// Row 2: 7, 8, 9, ×
+// Row 3: 4, 5, 6, −
+// Row 4: 1, 2, 3, +
+// Row 5: ±, 0, ., =
 const CALCULATOR_BUTTONS = [
-  ["7", "8", "9", "/"],
-  ["4", "5", "6", "*"],
-  ["1", "2", "3", "-"],
-  ["0", ".", "±", "+"],
+  ["⌫", "C", "%", "÷"],
+  ["7", "8", "9", "×"],
+  ["4", "5", "6", "−"],
+  ["1", "2", "3", "+"],
+  ["±", "0", ".", "="],
 ];
+
+// Map display symbols to actual operators for evaluation
+const OPERATOR_MAP: Record<string, string> = {
+  "÷": "/",
+  "×": "*",
+  "−": "-",
+};
 
 // Breakpoints for responsive behavior
 const MOBILE_BREAKPOINT = 768; // md breakpoint
@@ -226,49 +239,6 @@ export function CalculatorInput({
     [onChange]
   );
 
-  const handleButtonClick = useCallback(
-    (btn: string) => {
-      if (btn === "C") {
-        setExpression("");
-        setIsExpressionMode(false);
-        onChange("");
-        return;
-      }
-
-      // Handle +/- toggle
-      if (btn === "±") {
-        if (expression.startsWith("-")) {
-          const newExpression = expression.slice(1);
-          setExpression(newExpression);
-          if (!hasOperator(newExpression)) {
-            setIsExpressionMode(false);
-            onChange(newExpression);
-          }
-        } else {
-          const newExpression = "-" + expression;
-          setExpression(newExpression);
-          if (!hasOperator(newExpression)) {
-            setIsExpressionMode(false);
-            onChange(newExpression);
-          }
-        }
-        return;
-      }
-
-      const newExpression = expression + btn;
-      
-      if (hasOperator(newExpression)) {
-        setIsExpressionMode(true);
-        setExpression(newExpression);
-      } else {
-        setIsExpressionMode(false);
-        setExpression(newExpression);
-        onChange(newExpression);
-      }
-    },
-    [expression, onChange]
-  );
-
   const handleBackspace = useCallback(() => {
     const newExpression = expression.slice(0, -1);
     
@@ -300,6 +270,75 @@ export function CalculatorInput({
     }
   }, [expression, onChange]);
 
+  const handleButtonClick = useCallback(
+    (btn: string) => {
+      // Handle special buttons
+      if (btn === "C") {
+        setExpression("");
+        setIsExpressionMode(false);
+        onChange("");
+        return;
+      }
+
+      if (btn === "⌫") {
+        handleBackspace();
+        return;
+      }
+
+      if (btn === "=") {
+        handleEvaluate();
+        return;
+      }
+
+      if (btn === "%") {
+        // Convert current value to percentage (divide by 100)
+        const currentValue = safeEvaluate(expression);
+        if (currentValue !== null) {
+          const percentValue = currentValue / 100;
+          const resultStr = percentValue.toString();
+          setExpression(resultStr);
+          setIsExpressionMode(false);
+          onChange(resultStr);
+        }
+        return;
+      }
+
+      // Handle +/- toggle
+      if (btn === "±") {
+        if (expression.startsWith("-")) {
+          const newExpression = expression.slice(1);
+          setExpression(newExpression);
+          if (!hasOperator(newExpression)) {
+            setIsExpressionMode(false);
+            onChange(newExpression);
+          }
+        } else {
+          const newExpression = "-" + expression;
+          setExpression(newExpression);
+          if (!hasOperator(newExpression)) {
+            setIsExpressionMode(false);
+            onChange(newExpression);
+          }
+        }
+        return;
+      }
+
+      // Map display operators to actual operators
+      const actualBtn = OPERATOR_MAP[btn] || btn;
+      const newExpression = expression + actualBtn;
+      
+      if (hasOperator(newExpression)) {
+        setIsExpressionMode(true);
+        setExpression(newExpression);
+      } else {
+        setIsExpressionMode(false);
+        setExpression(newExpression);
+        onChange(newExpression);
+      }
+    },
+    [expression, onChange, handleBackspace, handleEvaluate]
+  );
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
@@ -327,7 +366,8 @@ export function CalculatorInput({
     }
   }, [disabled]);
 
-  const isOperatorButton = (btn: string) => ["+", "-", "*", "/"].includes(btn);
+  const isOperatorButton = (btn: string) => ["+", "−", "×", "÷", "="].includes(btn);
+  const isActionButton = (btn: string) => ["⌫", "C", "%"].includes(btn);
 
   // Render the calculator keyboard content
   const renderKeyboard = () => (
@@ -342,7 +382,7 @@ export function CalculatorInput({
       style={
         isMobile
           ? {
-              maxHeight: "50vh",
+              height: "40vh",
               // Position above system navigation (Android 3-button nav / iOS home indicator)
               bottom: keyboardBottomOffset,
             }
@@ -353,10 +393,10 @@ export function CalculatorInput({
             }
       }
     >
-      <div className="space-y-2">
+      <div className={cn("flex flex-col", isMobile ? "h-full gap-1.5" : "space-y-2")}>
         {/* Expression display with result preview */}
         {(expression || previewResult !== null) && (
-          <div className="rounded-md bg-muted/50 px-3 py-2">
+          <div className="rounded-md bg-muted/50 px-3 py-2 shrink-0">
             <p className={cn(
               "font-mono text-right break-all font-semibold",
               isMobile ? "text-lg" : "text-xl"
@@ -374,53 +414,31 @@ export function CalculatorInput({
           </div>
         )}
 
-        {/* Calculator buttons */}
-        <div className="grid grid-cols-4 gap-1.5">
-          {CALCULATOR_BUTTONS.flat().map((btn) => (
+        {/* Calculator buttons - iOS style layout */}
+        <div className={cn(
+          "grid grid-cols-4 gap-1.5",
+          isMobile && "flex-1 grid-rows-5"
+        )}>
+          {CALCULATOR_BUTTONS.flat().map((btn, index) => (
             <Button
-              key={btn}
+              key={`${btn}-${index}`}
               type="button"
-              variant={isOperatorButton(btn) ? "secondary" : btn === "±" ? "secondary" : "outline"}
+              variant={isOperatorButton(btn) ? "secondary" : isActionButton(btn) ? "secondary" : "outline"}
               className={cn(
                 "font-semibold",
-                isMobile ? "h-11 text-lg" : "h-12 text-xl",
+                isMobile ? "h-full min-h-[2.5rem] text-lg" : "h-12 text-xl",
+                // Operators column (right side) - primary/orange color
                 isOperatorButton(btn) && "bg-primary/10 hover:bg-primary/20 text-primary",
-                btn === "±" && "bg-orange-100 hover:bg-orange-200 text-orange-700"
+                // Action buttons (top row except ÷) - muted style
+                isActionButton(btn) && "bg-muted hover:bg-muted/80 text-muted-foreground",
+                // Plus/minus toggle - orange accent
+                btn === "±" && "bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-400"
               )}
               onClick={() => handleButtonClick(btn)}
             >
               {btn}
             </Button>
           ))}
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex gap-1.5">
-          <Button
-            type="button"
-            variant="destructive"
-            className={cn("px-3", isMobile ? "h-10 text-base" : "h-11 text-lg")}
-            onClick={() => handleButtonClick("C")}
-          >
-            C
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className={cn("flex-1", isMobile ? "h-10 text-base" : "h-11 text-lg")}
-            onClick={handleBackspace}
-          >
-            <Delete className={cn(isMobile ? "h-4 w-4 mr-1" : "h-5 w-5 mr-1.5")} />
-            Del
-          </Button>
-          <Button
-            type="button"
-            className={cn("flex-1 bg-primary hover:bg-primary/90", isMobile ? "h-10 text-base" : "h-11 text-lg")}
-            onClick={handleEvaluate}
-          >
-            <Equal className={cn(isMobile ? "h-4 w-4 mr-1" : "h-5 w-5 mr-1.5")} />
-            Done
-          </Button>
         </div>
       </div>
     </div>
