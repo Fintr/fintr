@@ -30,6 +30,7 @@ export default function BottomNavigation() {
     isAndroidNative,
     isIOSNative,
     safeAreaInsetBottom,
+    hasAndroid3ButtonNav
   );
 
   // Determine active tab based on pathname
@@ -286,4 +287,3 @@ export default function BottomNavigation() {
     </>
   );
 }
-

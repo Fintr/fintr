@@ -72,16 +72,13 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     };
   }, []);
   
-  // Debug logging when modal opens
-  useEffect(() => {
-    // Logging removed - was causing performance issues on mobile
-  }, [isOpen, isAndroidNative, safeAreaInsetBottom, mobileViewportHeight]);
-
   useEffect(() => {
     if (!isOpen) {
       historyPushedRef.current = false;
       return;
     }
+
+    const shouldManageHistory = !isMobileBrowser;
 
     const checkLightboxOpen = () => {
       const lightbox = document.querySelector(".lightbox-container");
@@ -110,6 +107,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         const event = new CustomEvent("lightbox-close");
         document.dispatchEvent(event);
       } else if (historyPushedRef.current) {
+        const state = e.state as { modalOpen?: boolean } | null;
+        if (state?.modalOpen) {
+          return;
+        }
         onClose();
       }
     };
@@ -129,7 +130,9 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     };
 
     document.addEventListener("keydown", handleEscape);
-    window.addEventListener("popstate", handlePopState);
+    if (shouldManageHistory) {
+      window.addEventListener("popstate", handlePopState);
+    }
     document.addEventListener("touchmove", handleTouchMove, { passive: false });
 
     const scrollY = window.scrollY;
@@ -142,16 +145,20 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     body.style.overflow = "hidden";
     html.style.overflow = "hidden";
 
-    setTimeout(() => {
-      if (isOpen && !checkLightboxOpen()) {
-        window.history.pushState({ modalOpen: true, lightboxOpen: false }, "");
-        historyPushedRef.current = true;
-      }
-    }, 0);
+    if (shouldManageHistory) {
+      setTimeout(() => {
+        if (isOpen && !checkLightboxOpen()) {
+          window.history.pushState({ modalOpen: true, lightboxOpen: false }, "");
+          historyPushedRef.current = true;
+        }
+      }, 0);
+    }
 
     return () => {
       document.removeEventListener("keydown", handleEscape);
-      window.removeEventListener("popstate", handlePopState);
+      if (shouldManageHistory) {
+        window.removeEventListener("popstate", handlePopState);
+      }
       document.removeEventListener("touchmove", handleTouchMove);
       
       body.style.position = "";
@@ -166,14 +173,14 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         // JSDOM does not implement scrollTo; safe to ignore in tests.
       }
       
-      if (historyPushedRef.current) {
+      if (shouldManageHistory && historyPushedRef.current) {
         historyPushedRef.current = false;
         if (window.history.state?.modalOpen) {
           window.history.back();
         }
       }
     };
-  }, [isOpen, onClose, isMobile]);
+  }, [isOpen, onClose, isMobile, isMobileBrowser]);
 
   if (!isOpen || !mounted) return null;
 
@@ -318,4 +325,3 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
   return createPortal(modalContent, document.body);
 };
-
