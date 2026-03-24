@@ -57,10 +57,6 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   // Detect keyboard state based on viewport dimensions
   const { isOpen: isKeyboardOpen, visualViewportHeight } = useKeyboardDetector();
 
-  console.log('SAFE AREA INSET BOTTOM:', safeAreaInsetBottom);
-  console.log('SAFE AREA INSET TOP:', safeAreaInsetTop);
-  console.log('IS ANDROID NATIVE:', isAndroidNative);
-  console.log('KEYBOARD STATE:', { isKeyboardOpen, visualViewportHeight });
   useEffect(() => {
     setMounted(true);
     
@@ -78,16 +74,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   
   // Debug logging when modal opens
   useEffect(() => {
-    if (isOpen && isAndroidNative) {
-      const cssVar = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom').trim();
-      console.log('[CustomModal] Android modal opened:', {
-        isAndroidNative,
-        cssVar,
-        safeAreaInsetBottom,
-        mobileViewportHeight,
-        classes: Array.from(document.documentElement.classList),
-      });
-    }
+    // Logging removed - was causing performance issues on mobile
   }, [isOpen, isAndroidNative, safeAreaInsetBottom, mobileViewportHeight]);
 
   useEffect(() => {

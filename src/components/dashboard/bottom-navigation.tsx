@@ -30,7 +30,6 @@ export default function BottomNavigation() {
     isAndroidNative,
     isIOSNative,
     safeAreaInsetBottom,
-    hasAndroid3ButtonNav
   );
 
   // Determine active tab based on pathname
@@ -181,11 +180,16 @@ export default function BottomNavigation() {
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-3 h-auto py-3 px-4"
-                    onClick={() => {
-                      setIsAddTransactionOpen(true);
+                    onPointerDown={() => {
+                      // Use onPointerDown for mobile touch to avoid race condition with popover closing
                       setIsMenuOpen(false);
+                      // Small delay to ensure popover closes before modal opens
+                      requestAnimationFrame(() => {
+                        setIsAddTransactionOpen(true);
+                      });
                     }}
                     data-tutorial-target="mobile-add-transaction"
+                    data-testid="mobile-add-transaction"
                   >
                     <Plus className="h-5 w-5 text-primary" />
                     <span className="text-sm font-medium">Add Transaction</span>
