@@ -38,6 +38,7 @@ export interface Loan {
   value: number;
   income: number;
   expense: number;
+  totalValue: number;
   files: Array<{
     id: string;
     filename: string;

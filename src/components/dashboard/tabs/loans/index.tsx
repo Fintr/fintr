@@ -684,12 +684,12 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
         </div>
         <div>
           <div className="text-xs text-gray-500 mb-1">
-            {isBorrowed ? 'Total Cost' : 'Total Gain'}
+            Total Value
           </div>
           <div className={`text-sm font-semibold ${textColorClass}`}>
             {isBorrowed 
-              ? `-${formatCurrency(totalInterest, loan.outstandingBalanceCurrency)}`
-              : `+${formatCurrency(totalInterest, loan.outstandingBalanceCurrency)}`
+              ? `-${formatCurrency(loan.totalValue, loan.outstandingBalanceCurrency)}`
+              : `+${formatCurrency(loan.totalValue, loan.outstandingBalanceCurrency)}`
             }
           </div>
         </div>
