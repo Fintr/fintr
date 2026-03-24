@@ -1,21 +1,13 @@
 "use client";
 
 import { useEffect } from 'react';
+import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
+import { initializeSafeAreas } from '@/lib/navigation-info';
 
-/**
- * Component to ensure Capacitor is loaded in the HTML
- * This should be included in the root layout for Capacitor builds
- */
 export default function CapacitorLoader() {
   useEffect(() => {
-    // Only run on client side
-    if (typeof window === 'undefined') {
-      return;
-    }
+    if (typeof window === 'undefined') return;
 
-    // Mark platform for platform-specific safe-area CSS rules.
-    // We rely on native-injected UA marker ("FintrNativeApp") for reliable detection.
-    // Important: this must run even when Capacitor is already loaded.
     const ua = navigator.userAgent || "";
     const uaLower = ua.toLowerCase();
 
@@ -25,13 +17,11 @@ export default function CapacitorLoader() {
         ? capacitor.getPlatform()
         : null;
 
-    // Detect Android native app
     const isAndroidNative =
       (uaLower.includes("android") && uaLower.includes("fintrnativeapp")) ||
       platform === "android" ||
       (/Android/i.test(ua) && /; wv\)/.test(ua));
 
-    // Detect iOS native app
     const isIOSNative =
       (uaLower.includes("iphone") && uaLower.includes("fintrnativeapp")) ||
       (uaLower.includes("ipad") && uaLower.includes("fintrnativeapp")) ||
@@ -39,42 +29,39 @@ export default function CapacitorLoader() {
       (/iPhone|iPad|iPod/i.test(ua) && /; wv\)/.test(ua));
 
     if (isAndroidNative) {
-      document.documentElement.classList.add("fintr-native-android");
+      // Initialize the Capacitor bridge first (needed for manual bridge mode)
+      initCapacitorBridgeIfNeeded();
+      
+      // Then initialize safe areas by calling the Android native plugin
+      // This ensures CSS variables and classes are properly set
+      initializeSafeAreas().then((result) => {
+        if (result.ok) {
+          console.log('[CapacitorLoader] Safe areas initialized:', result.value);
+        } else {
+          console.warn('[CapacitorLoader] Safe area initialization failed:', result.message);
+        }
+      });
     }
 
     if (isIOSNative) {
       document.documentElement.classList.add("fintr-native-ios");
     }
 
-    // Check if we're in a Capacitor environment by checking the user agent
-    // or if Capacitor script should be loaded
     const isLikelyCapacitor =
       window.location.protocol === 'capacitor:' ||
       window.location.href.includes('capacitor://') ||
       (window as any).Capacitor !== undefined;
 
-    // If Capacitor is already loaded, we're good
     if ((window as any).Capacitor) {
-      console.log('✅ Capacitor is already loaded');
+      if (isAndroidNative) {
+        initCapacitorBridgeIfNeeded();
+      }
       return;
     }
 
-    // If we're not in a Capacitor environment, don't try to load it
-    if (!isLikelyCapacitor) {
-      return;
-    }
+    if (!isLikelyCapacitor) return;
 
-    // Try to load Capacitor script if it's not already loaded
-    // In a proper Capacitor build, this should already be in the HTML
-    // But we'll add a safety check
-    const scriptId = 'capacitor-script';
-    if (document.getElementById(scriptId)) {
-      return;
-    }
-
-    console.log('⚠️ Capacitor not found - this might be expected in browser mode');
   }, []);
 
   return null;
 }
-

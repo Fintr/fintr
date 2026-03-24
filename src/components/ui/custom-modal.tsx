@@ -5,8 +5,8 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { isNativeCapacitor } from "@/lib/capacitor";
 import { useMobileModalViewportHeight } from "@/hooks/useMobileModalViewportHeight";
+import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 
 interface CustomModalProps {
   isOpen: boolean;
@@ -37,11 +37,15 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 }) => {
   const [mounted, setMounted] = React.useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [isAndroidNative, setIsAndroidNative] = useState(false);
-  const [isIOSNative, setIsIOSNative] = useState(false);
   const historyPushedRef = React.useRef(false);
   const mobileViewportHeight = useMobileModalViewportHeight(isOpen);
+  
+  // Use the shared platform detection hook for real-time updates
+  const { isAndroidNative, isIOSNative, isMobileBrowser, safeAreaInsetBottom, safeAreaInsetTop } = usePlatformDetection();
 
+  console.log('SAFE AREA INSET BOTTOM:', safeAreaInsetBottom);
+  console.log('SAFE AREA INSET TOP:', safeAreaInsetTop);
+  console.log('IS ANDROID NATIVE:', isAndroidNative);
   useEffect(() => {
     setMounted(true);
     
@@ -56,20 +60,20 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       window.removeEventListener("resize", checkMobile);
     };
   }, []);
-
-  // Apply safe-area padding using inline styles so it doesn't depend on
-  // html.class injection timing.
+  
+  // Debug logging when modal opens
   useEffect(() => {
-    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-    const uaLower = ua.toLowerCase();
-    const isAndroid = /android/i.test(ua);
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    const isNative = isNativeCapacitor();
-    const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
-    const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
-    setIsAndroidNative(isAndroid && (isNative || hasAndroidClass));
-    setIsIOSNative(isIOS && (isNative || hasIOSClass));
-  }, []);
+    if (isOpen && isAndroidNative) {
+      const cssVar = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom').trim();
+      console.log('[CustomModal] Android modal opened:', {
+        isAndroidNative,
+        cssVar,
+        safeAreaInsetBottom,
+        mobileViewportHeight,
+        classes: Array.from(document.documentElement.classList),
+      });
+    }
+  }, [isOpen, isAndroidNative, safeAreaInsetBottom, mobileViewportHeight]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -189,19 +193,33 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       className={cn(
         "fixed inset-0 z-[100] flex",
         isMobile ? "items-start justify-start" : "items-center justify-center",
-        isMobile ? "p-0" : "p-4"
+        isMobile ? "p-0" : "p-4",
+        isAndroidNative ? "pt-[20px]" : ""
       )}
       onClick={handleOverlayClick}
       onPointerDown={handleOverlayClick}
     >
+      {/* Android native only: Paint the 3-button nav background so the backdrop doesn't make it look white. */}
+      {isAndroidNative && (
+        <div
+          className="fixed left-0 right-0 top-0 z-[100.5] pointer-events-none"
+          style={{
+            height: "20px",
+            backgroundColor: "#FAFAF9",
+          }}
+        />
+      )}
       <div
         className={cn(
           "fixed left-0 right-0 top-0 bg-black/50 z-[100]",
           "transition-opacity duration-200"
         )}
         style={{
-          // Don't dim the Android 3-button safe-area; keep it visible.
-          bottom: "var(--safe-area-inset-bottom, 0px)",
+          // Only apply safe area adjustment for Android native
+          // iOS and mobile browsers handle this natively via env()
+          ...(isAndroidNative 
+            ? { top: 20, bottom: safeAreaInsetBottom > 0 ? `${safeAreaInsetBottom - 1}px` : "calc(var(--safe-area-inset-bottom, 0px) - 2px)" } 
+            : { bottom: 0 }),
         }}
         onClick={(e) => {
           const target = e.target as HTMLElement;
@@ -216,34 +234,42 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           }
         }}
       />
-      {/* Paint the Android 3-button nav background so the backdrop doesn't make it look white. */}
-      <div
-        className="fixed left-0 right-0 bottom-0 z-[100.5] pointer-events-none"
-        style={{
-          height: "var(--safe-area-inset-bottom, 0px)",
-          backgroundColor: "#FAFAF9",
-        }}
-      />
+      {/* Android native only: Paint the 3-button nav background so the backdrop doesn't make it look white. */}
+      {isAndroidNative && (
+        <div
+          className="fixed left-0 right-0 bottom-0 z-[100.5] pointer-events-none"
+          style={{
+            height: safeAreaInsetBottom > 0 ? `${safeAreaInsetBottom - 1}px` : "calc(var(--safe-area-inset-bottom, 0px) - 2px)",
+            backgroundColor: "#FAFAF9",
+          }}
+        />
+      )}
       <div
         data-modal-content
         className={cn(
-          "relative z-[101] bg-background shadow-lg",
+          "relative z-[101] bg-background ",
           "w-full",
           isMobile 
             ? "h-full rounded-none" 
             : cn("rounded-lg", maxWidthClasses[maxWidth], "max-h-[90vh]"),
           "overflow-hidden flex flex-col",
           "transition-opacity duration-200",
+          isAndroidNative ? "shadow-none  " : "shadow-lg",
           className
         )}
         style={
           isMobile && mobileViewportHeight != null
-            ? {
-                // Leave the Android 3-button navigation safe-area visible behind the overlay.
-                // `--safe-area-inset-bottom` is injected by Capacitor SystemBars on Android.
-                // Height must track visual viewport (keyboard / rotation); see useMobileModalViewportHeight.
-                maxHeight: `calc(${mobileViewportHeight}px - var(--safe-area-inset-bottom, 0px))`,
-              }
+            ? isAndroidNative
+              ? {
+                  // Android native: subtract safe area from viewport height
+                  // Use the hook value as fallback if CSS var isn't set yet
+                  maxHeight: `calc(${mobileViewportHeight}px - ${safeAreaInsetBottom > 0 ? safeAreaInsetBottom + 'px' : 'var(--safe-area-inset-bottom, 0px)' } - 20px + 2px)`,
+                }
+              : {
+                  // iOS and mobile browsers: use full visual viewport height
+                  // System navigation is handled natively via env()
+                  maxHeight: `${mobileViewportHeight}px`,
+                }
             : undefined
         }
         onClick={(e) => e.stopPropagation()}
@@ -265,24 +291,15 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           </div>
         )}
         <div
-          className="flex-1 overflow-y-auto min-h-0 pt-safe-top pb-safe-bottom"
+          className="flex-1 overflow-y-auto min-h-0"
           style={{
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",
-            // Apply safe area padding for all native platforms (Android uses CSS vars, iOS uses env())
-            paddingTop:
-              isMobile
-                ? isAndroidNative
-                  ? "var(--safe-area-inset-top, env(safe-area-inset-top, 0px))"
-                  : "env(safe-area-inset-top, 0px)"
-                : undefined,
-            paddingBottom:
-              isMobile
-                ? isAndroidNative
-                  ? "var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))"
-                  : "env(safe-area-inset-bottom, 0px)"
-                : undefined,
-          } as React.CSSProperties}
+            // No padding needed here - safe area is handled by:
+            // 1. Modal maxHeight using visual viewport (accounts for keyboard)
+            // 2. White spacer div at bottom for system nav background
+            // 3. Native env() CSS for iOS/mobile browsers
+          }}
         >
           {children}
         </div>

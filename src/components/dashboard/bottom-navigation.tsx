@@ -24,12 +24,13 @@ export default function BottomNavigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
 
-  const { isAndroidNative, isIOSNative } = usePlatformDetection();
+  const { isAndroidNative, isIOSNative, safeAreaInsetBottom, hasAndroid3ButtonNav } = usePlatformDetection();
 
   const navBottomOffset = calculateNavBottomOffset(
     isAndroidNative,
     isIOSNative,
-    0
+    safeAreaInsetBottom,
+    hasAndroid3ButtonNav
   );
 
   // Determine active tab based on pathname

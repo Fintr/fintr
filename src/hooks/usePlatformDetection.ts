@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import {
   detectPlatform,
+  detectPlatformWithInsets,
   getSafeAreaInsets,
   hasAndroid3ButtonNav,
   PlatformDetectionResult,
@@ -25,6 +26,7 @@ export const usePlatformDetection = (): PlatformDetectionResult => {
         isIOSBrowser: false,
         safeAreaInsetBottom: 0,
         safeAreaInsetTop: 0,
+        hasAndroid3ButtonNav: false,
       }
     }
 
@@ -38,6 +40,7 @@ export const usePlatformDetection = (): PlatformDetectionResult => {
       ...baseDetection,
       safeAreaInsetBottom: insets.bottom,
       safeAreaInsetTop: insets.top,
+      hasAndroid3ButtonNav: hasAndroid3ButtonNav(),
     }
   })
 
@@ -55,6 +58,7 @@ export const usePlatformDetection = (): PlatformDetectionResult => {
         ...baseDetection,
         safeAreaInsetBottom: insets.bottom,
         safeAreaInsetTop: insets.top,
+        hasAndroid3ButtonNav: hasAndroid3ButtonNav(),
       })
     }
 
@@ -112,6 +116,7 @@ export const getAndroidNavDebugInfo = () => {
     safeAreaInsets: getSafeAreaInsets(),
     userAgent: navigator.userAgent,
     isAndroidNative: detectPlatform(navigator.userAgent, html).isAndroidNative,
+    platformDetection: detectPlatformWithInsets(),
   }
 }
 

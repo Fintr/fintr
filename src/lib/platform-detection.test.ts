@@ -192,20 +192,18 @@ describe("subscribeToSafeAreaInsetChanges", () => {
 })
 
 describe("clampAndroidNavigationInsetPx", () => {
-  it("floors small insets to 48px", () => {
-    expect(clampAndroidNavigationInsetPx(0)).toBe(48)
-    expect(clampAndroidNavigationInsetPx(16)).toBe(48)
+  it("returns 48px for 3-button navigation", () => {
+    expect(clampAndroidNavigationInsetPx(0, true)).toBe(48)
+    expect(clampAndroidNavigationInsetPx(16, true)).toBe(48)
+    expect(clampAndroidNavigationInsetPx(48, true)).toBe(48)
+    expect(clampAndroidNavigationInsetPx(56, true)).toBe(48)
   })
 
-  it("passes through mid-range insets", () => {
-    expect(clampAndroidNavigationInsetPx(48)).toBe(48)
-    expect(clampAndroidNavigationInsetPx(52)).toBe(52)
-    expect(clampAndroidNavigationInsetPx(56)).toBe(56)
-  })
-
-  it("caps inflated insets (IME / rotation glitches) at the Android nav ceiling", () => {
-    expect(clampAndroidNavigationInsetPx(120)).toBe(56)
-    expect(clampAndroidNavigationInsetPx(200)).toBe(56)
+  it("returns 16px for gesture navigation", () => {
+    expect(clampAndroidNavigationInsetPx(0, false)).toBe(16)
+    expect(clampAndroidNavigationInsetPx(16, false)).toBe(16)
+    expect(clampAndroidNavigationInsetPx(48, false)).toBe(16)
+    expect(clampAndroidNavigationInsetPx(56, false)).toBe(16)
   })
 })
 

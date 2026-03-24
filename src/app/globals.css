@@ -3,7 +3,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
-html, body {
+html,
+body {
   width: 100%;
   max-width: 100vw;
   overflow-x: hidden;
@@ -16,16 +17,22 @@ html, body {
 } */
 
 @keyframes tutorial-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.8);
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 4px rgba(59, 130, 246, 0.5),
+      0 0 20px rgba(59, 130, 246, 0.8);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.7), 0 0 30px rgba(59, 130, 246, 1);
+    box-shadow:
+      0 0 0 6px rgba(59, 130, 246, 0.7),
+      0 0 30px rgba(59, 130, 246, 1);
   }
 }
 
 @keyframes pulse-logo {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
@@ -84,7 +91,7 @@ html, body {
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(98.20% 0.004 91.45);
+  --background: oklch(98.2% 0.004 91.45);
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
@@ -103,14 +110,14 @@ html, body {
   --input: oklch(0.929 0.013 255.508);
   --ring: oklch(0.704 0.04 256.788);
   --chart-1: #008080;
-  --chart-2: #FF6F61;
-  --chart-3: #CC5500;
-  --chart-4: #0A3D62;
-  --chart-5: #E6B800;
-  --chart-6: #B5E3C8;
-  --chart-7: #87CEEB;
-  --chart-8: #D4B483;
-  --chart-9: #C4C3D0;
+  --chart-2: #ff6f61;
+  --chart-3: #cc5500;
+  --chart-4: #0a3d62;
+  --chart-5: #e6b800;
+  --chart-6: #b5e3c8;
+  --chart-7: #87ceeb;
+  --chart-8: #d4b483;
+  --chart-9: #c4c3d0;
   --sidebar: oklch(0.984 0.003 247.858);
   --sidebar-foreground: oklch(0.129 0.042 264.695);
   --sidebar-primary: oklch(0.208 0.042 265.755);
@@ -188,7 +195,10 @@ html, body {
   }
 
   html.fintr-native-ios .pb-safe-bottom {
-    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+    padding-bottom: var(
+      --safe-area-inset-bottom,
+      env(safe-area-inset-bottom, 0px)
+    );
   }
 
   /* Spacer below fixed mobile header so content doesn't sit under it */
@@ -203,22 +213,31 @@ html, body {
 
   html.fintr-native-android .pb-safe-bottom {
     /* Android uses our injected variable for more reliable 3-button nav detection */
-    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+    /* Fallback chain: 1) Injected CSS var, 2) CSS env(), 3) 16px minimum for gesture nav, 4) 48px for 3-button nav */
+    padding-bottom: var(
+      --safe-area-inset-bottom,
+      env(safe-area-inset-bottom, 16px)
+    );
+  }
+
+  /* Additional fallback for when 3-button nav is detected but variable is not set */
+  html.fintr-native-android.fintr-has-3btn-nav .pb-safe-bottom {
+    padding-bottom: var(--safe-area-inset-bottom, 48px);
   }
 
   .pl-safe-left {
     padding-left: env(safe-area-inset-left);
   }
-  
+
   .pr-safe-right {
     padding-right: env(safe-area-inset-right);
   }
-  
+
   .h-screen-safe {
     height: 100vh;
     height: 100dvh; /* Dynamic viewport height for mobile */
   }
-  
+
   /* Samsung Chrome and Safari mobile specific fixes */
   .mobile-fullscreen {
     position: fixed !important;
@@ -237,13 +256,13 @@ html, body {
     z-index: 9999 !important;
     overflow: hidden !important;
   }
-  
+
   /* Force viewport units for problematic browsers */
   .force-viewport {
     height: 100vh !important;
     height: 100dvh !important;
   }
-  
+
   /* Samsung Chrome and Safari mobile specific overrides */
   @supports (-webkit-touch-callout: none) {
     /* Safari mobile specific */
@@ -251,7 +270,7 @@ html, body {
       height: -webkit-fill-available !important;
     }
   }
-  
+
   /* Samsung Chrome specific fixes */
   @media screen and (-webkit-min-device-pixel-ratio: 0) {
     .mobile-fullscreen {
@@ -259,13 +278,13 @@ html, body {
       height: calc(100vh - env(keyboard-inset-height, 0px)) !important;
     }
   }
-  
+
   /* Prevent keyboard from covering input */
   .keyboard-safe {
     padding-bottom: env(keyboard-inset-height, 0px);
     padding-bottom: max(env(keyboard-inset-height, 0px), 20px);
   }
-  
+
   /* Force input to stay visible */
   .input-container {
     position: sticky !important;
@@ -277,7 +296,7 @@ html, body {
     border-top: 1px solid #e5e7eb !important;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1) !important;
   }
-  
+
   /* Mobile-specific input handling */
   @media (max-width: 768px) {
     .input-container {
@@ -291,7 +310,7 @@ html, body {
       background: white !important;
       z-index: 10001 !important;
     }
-    
+
     .input-container input {
       font-size: 16px !important; /* Prevents zoom on iOS */
     }

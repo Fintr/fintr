@@ -254,6 +254,13 @@ export const initCapacitorBridgeIfNeeded = (): void => {
         { name: 'clearCacheAndReload', rtype: 'promise' },
       ],
     },
+    {
+      name: 'NavigationInfo',
+      methods: [
+        { name: 'getNavigationInfo', rtype: 'promise' },
+        { name: 'applySafeAreaClasses', rtype: 'promise' },
+      ],
+    },
   ];
 
   // --- Plugins object (legacy compatibility) ---
@@ -278,6 +285,11 @@ export const initCapacitorBridgeIfNeeded = (): void => {
 
   Plugins.CacheControl = {
     clearCacheAndReload: () => cap.nativePromise('CacheControl', 'clearCacheAndReload', {}),
+  };
+
+  Plugins.NavigationInfo = {
+    getNavigationInfo: () => cap.nativePromise('NavigationInfo', 'getNavigationInfo', {}),
+    applySafeAreaClasses: () => cap.nativePromise('NavigationInfo', 'applySafeAreaClasses', {}),
   };
 
   win.Capacitor = cap;

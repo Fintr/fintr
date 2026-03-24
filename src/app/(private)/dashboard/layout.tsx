@@ -40,12 +40,14 @@ export default function Layout({
     isIOSNative,
     safeAreaInsetBottom,
     safeAreaInsetTop,
+    hasAndroid3ButtonNav,
   } = usePlatformDetection();
 
   const bottomPadding = calculateBottomPadding(
     isAndroidNative,
     isIOSNative,
-    safeAreaInsetBottom
+    safeAreaInsetBottom,
+    hasAndroid3ButtonNav
   );
 
   const headerSpacerHeight = calculateHeaderSpacerHeight(

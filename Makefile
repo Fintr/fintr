@@ -17,8 +17,8 @@ LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR := http://10.0.2.2:5173
 help:
 	@echo "Available commands:"
 	@echo "  Android:"
-	@echo "    android-dev               - Local dev build: build → sync → run Android"
-	@echo "    android-live              - Dev build with live reload"
+	@echo "    android-dev               - Sync and run Android (requires pnpm dev running)"
+	@echo "    android-live              - Dev build with live reload (build + sync + livereload)"
 	@echo "    android-prod-apk          - Production Android: export Next → cap sync → assembleRelease (no emulator)"
 	@echo "    android-prod-aab          - Same as android-prod-apk but bundleRelease for Play Store"
 	@echo "    android-reset-emulator    - Stop Android emulator, wipe data, and cold boot"
@@ -86,28 +86,24 @@ android-reset-emulator:
 	done
 	@echo "⚠️  Emulator may still be booting. Check Android Studio."
 
-# Android dev build (local development version - build, sync, run)
+# Android dev build (local development version - sync, run)
 android-dev:
 	@echo "🚀 Starting Android dev build..."
 	@echo ""
 	@echo "📋 This will:"
-	@echo "   1. Build Next.js app (pnpm build)"
-	@echo "   2. Sync Capacitor to Android (cap sync android)"
-	@echo "   3. Run on Android device/emulator (cap run android)"
+	@echo "   1. Sync Capacitor to Android (cap sync android)"
+	@echo "   2. Run on Android device/emulator (cap run android)"
 	@echo ""
 	@echo "💡 CAPACITOR_SERVER_URL is forced to $(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR)"
+	@echo "💡 Make sure pnpm dev is running in another terminal!"
 	@echo "💡 Tip: For live reload development, use: make android-live"
 	@echo ""
 	@sleep 2
-	@echo "🔨 Step 1/3: Building Next.js app..."
-	@pnpm build || (echo "❌ Build failed. Fix errors and try again."; exit 1)
-	@echo "✅ Next.js build complete"
-	@echo ""
-	@echo "🔄 Step 2/3: Syncing Capacitor to Android..."
+	@echo "🔄 Step 1/2: Syncing Capacitor to Android..."
 	@CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR) pnpm cap sync android || (echo "❌ Capacitor sync failed"; exit 1)
 	@echo "✅ Capacitor sync complete"
 	@echo ""
-	@echo "📱 Step 3/3: Running on Android..."
+	@echo "📱 Step 2/2: Running on Android..."
 	@CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR) pnpm cap run android
 
 # Live reload development (build once, then live reload)

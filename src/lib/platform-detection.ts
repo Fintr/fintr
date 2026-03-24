@@ -12,6 +12,7 @@ export interface PlatformDetectionResult {
   isIOSBrowser: boolean
   safeAreaInsetBottom: number
   safeAreaInsetTop: number
+  hasAndroid3ButtonNav: boolean
 }
 
 /**
@@ -54,6 +55,7 @@ export const detectPlatform = (
     isIOSBrowser,
     safeAreaInsetBottom: 0,
     safeAreaInsetTop: 0,
+    hasAndroid3ButtonNav: false,
   }
 }
 
@@ -259,23 +261,21 @@ const readEnvSafeAreaInsetsFromProbe = (): {
   return { top, bottom }
 }
 
-const MIN_ANDROID_NAV_INSET_PX = 48
-/** Typical 3-button / gesture nav; cap prevents IME/orientation glitches from matching "normal" density */
-const MAX_ANDROID_NAV_INSET_PX = 56
+const ANDROID_3BUTTON_NAV_HEIGHT_PX = 48
+const ANDROID_GESTURE_NAV_HEIGHT_PX = 16
 
 /**
- * Android nav bar inset for content padding, fixed nav `bottom`, and the bottom
- * white spacer. Insets from the native layer can spike after IME or rotation;
- * this clamp matches {@link calculateNavBottomOffset} so the spacer cannot
- * outgrow the lifted nav (which would show a dead white band above the system bar).
+ * Android nav bar inset for content padding.
+ * Uses fixed values for consistency:
+ * - 3-button navigation: 48px (standard Android nav bar height)
+ * - Gesture navigation: 16px (minimal gesture area)
  */
 export const clampAndroidNavigationInsetPx = (
-  safeAreaInsetBottom: number
+  safeAreaInsetBottom: number,
+  is3ButtonNav: boolean = false
 ): number => {
-  return Math.min(
-    Math.max(safeAreaInsetBottom, MIN_ANDROID_NAV_INSET_PX),
-    MAX_ANDROID_NAV_INSET_PX
-  )
+  // Use fixed values based on nav type for consistency with native layer
+  return is3ButtonNav ? ANDROID_3BUTTON_NAV_HEIGHT_PX : ANDROID_GESTURE_NAV_HEIGHT_PX
 }
 
 /**
@@ -315,14 +315,17 @@ export const getAndroidNavHeightPx = (): number => {
 export const calculateBottomPadding = (
   isAndroidNative: boolean,
   isIOSNative: boolean,
-  safeAreaInsetBottom: number
+  safeAreaInsetBottom: number,
+  has3ButtonNav?: boolean // Optional: if not provided, will check CSS class
 ): string => {
   const MIN_IOS_NAV_HEIGHT = 16
   const MAX_NAV_HEIGHT = 80
 
   if (isAndroidNative) {
     // Android: differentiate between 3-button and gesture navigation
-    const navHeight = hasAndroid3ButtonNav() ? 48 : Math.max(safeAreaInsetBottom, 16)
+    // Use parameter if provided, otherwise check CSS class for consistency
+    const is3Button = has3ButtonNav !== undefined ? has3ButtonNav : hasAndroid3ButtonNav()
+    const navHeight = is3Button ? 48 : Math.max(safeAreaInsetBottom, 16)
     return `calc(64px + ${navHeight}px)`
   }
 
@@ -432,5 +435,6 @@ export const detectPlatformWithInsets = (): PlatformDetectionResult => {
     ...baseDetection,
     safeAreaInsetBottom: insets.bottom,
     safeAreaInsetTop: insets.top,
+    hasAndroid3ButtonNav: typeof window !== "undefined" ? hasAndroid3ButtonNav() : false,
   }
 }
