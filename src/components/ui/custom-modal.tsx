@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useMobileModalViewportHeight } from "@/hooks/useMobileModalViewportHeight";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import { useKeyboardDetector } from "@/hooks/useKeyboardDetector";
 
 interface CustomModalProps {
   isOpen: boolean;
@@ -16,6 +17,12 @@ interface CustomModalProps {
   className?: string;
   maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl";
   closeButtonDataTarget?: string;
+  /**
+   * Minimum height for modal content when keyboard is open.
+   * Prevents modal from becoming too small when keyboard appears.
+   * @default "60vh" - ensures content remains usable
+   */
+  minContentHeightOnKeyboard?: string;
 }
 
 const maxWidthClasses = {
@@ -26,6 +33,9 @@ const maxWidthClasses = {
   "2xl": "max-w-2xl",
 };
 
+// Minimum viewport height to consider content usable (not too squished)
+const MIN_USABLE_VIEWPORT_HEIGHT_PX = 300;
+
 export const CustomModal: React.FC<CustomModalProps> = ({
   isOpen,
   onClose,
@@ -34,6 +44,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   className,
   maxWidth = "2xl",
   closeButtonDataTarget = "close-modal-button",
+  minContentHeightOnKeyboard = "60vh",
 }) => {
   const [mounted, setMounted] = React.useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -42,10 +53,14 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   
   // Use the shared platform detection hook for real-time updates
   const { isAndroidNative, isIOSNative, isMobileBrowser, safeAreaInsetBottom, safeAreaInsetTop } = usePlatformDetection();
+  
+  // Detect keyboard state based on viewport dimensions
+  const { isOpen: isKeyboardOpen, visualViewportHeight } = useKeyboardDetector();
 
   console.log('SAFE AREA INSET BOTTOM:', safeAreaInsetBottom);
   console.log('SAFE AREA INSET TOP:', safeAreaInsetTop);
   console.log('IS ANDROID NATIVE:', isAndroidNative);
+  console.log('KEYBOARD STATE:', { isKeyboardOpen, visualViewportHeight });
   useEffect(() => {
     setMounted(true);
     
@@ -261,14 +276,19 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           isMobile && mobileViewportHeight != null
             ? isAndroidNative
               ? {
-                  // Android native: subtract safe area from viewport height
-                  // Use the hook value as fallback if CSS var isn't set yet
-                  maxHeight: `calc(${mobileViewportHeight}px - ${safeAreaInsetBottom > 0 ? safeAreaInsetBottom + 'px' : 'var(--safe-area-inset-bottom, 0px)' } - 20px + 2px)`,
+                  // Android native: use full viewport height when keyboard is open
+                  // When keyboard is closed: subtract safe area from viewport height
+                  ...(isKeyboardOpen 
+                    ? { height: "100vh" }
+                    : { maxHeight: `calc(${mobileViewportHeight}px - ${safeAreaInsetBottom > 0 ? safeAreaInsetBottom + 'px' : 'var(--safe-area-inset-bottom, 0px)' } - 20px + 2px)` }
+                  ),
                 }
               : {
-                  // iOS and mobile browsers: use full visual viewport height
-                  // System navigation is handled natively via env()
-                  maxHeight: `${mobileViewportHeight}px`,
+                  // iOS and mobile browsers: use full viewport height when keyboard is open
+                  ...(isKeyboardOpen 
+                    ? { height: "100vh" }
+                    : { maxHeight: `${mobileViewportHeight}px` }
+                  ),
                 }
             : undefined
         }
@@ -291,10 +311,12 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           </div>
         )}
         <div
-          className="flex-1 overflow-y-auto min-h-0"
+          className="flex-1 overflow-y-auto"
           style={{
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",
+            // Ensure minimum height when keyboard is open to prevent content from being too small
+            minHeight: isKeyboardOpen ? `max(200px, calc(100% - ${title ? '80px' : '0px'}))` : undefined,
             // No padding needed here - safe area is handled by:
             // 1. Modal maxHeight using visual viewport (accounts for keyboard)
             // 2. White spacer div at bottom for system nav background

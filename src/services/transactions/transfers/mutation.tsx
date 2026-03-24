@@ -51,10 +51,19 @@ export const createTransfer = async (
         }
       });
       
+      // Defensive: handle null/undefined response
+      if (!response) {
+        throw new Error('Empty response from server');
+      }
       return response.data;
     } else {
       // Regular JSON request without file
       const response = await api.post('/transactions/transfers', transferData);
+      
+      // Defensive: handle null/undefined response
+      if (!response) {
+        throw new Error('Empty response from server');
+      }
       return response.data;
     }
   } catch (error) {
@@ -93,10 +102,19 @@ export const updateTransfer = async (
         }
       });
       
+      // Defensive: handle null/undefined response
+      if (!response) {
+        throw new Error('Empty response from server');
+      }
       return response.data;
     } else {
       // Regular JSON request without file
       const response = await api.put(`/transactions/transfers/${transferData.id}`, transferData);
+      
+      // Defensive: handle null/undefined response
+      if (!response) {
+        throw new Error('Empty response from server');
+      }
       return response.data;
     }
   } catch (error) {
@@ -132,6 +150,10 @@ export const deleteTransfer = async (
       }
     });
     
+    // Defensive: handle null/undefined response
+    if (!response) {
+      throw new Error('Empty response from server');
+    }
     return response.data;
   } catch (error) {
     // Handle different error structures

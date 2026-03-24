@@ -3,7 +3,6 @@
 import React, { type ReactNode } from "react";
 import Providers from "@/lib/providers";
 import { PerformanceMonitor } from "@/components/performance-monitor";
-import DeepLinkHandler from "@/components/deep-link-handler";
 import CapacitorLoader from "@/components/capacitor-loader";
 import CacheVersionChecker from "@/components/cache-version-checker";
 import ErudaDevTools from "@/components/eruda-devtools";
@@ -104,7 +103,6 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       <ErudaDevTools />
       <PerformanceMonitor>
         <Providers>
-          <DeepLinkHandler />
           {children}
         </Providers>
       </PerformanceMonitor>

@@ -212,7 +212,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
       setConversionSnapshot(null);
       prevInitialDataRef.current = undefined;
     }
-  }, [initialData, initialData?.file]); // Add initialData?.file to dependencies
+  }, [initialData]); // Only depend on initialData reference, not nested properties
   
   // Local state
   const [fileState, setFileState] = useState<File | null>(null);
