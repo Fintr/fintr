@@ -50,6 +50,10 @@ module Loans
         record.expense.amount
       end
 
+      field :total_value do |record|
+        record.total_value.amount
+      end
+
       field :files do |record|
         record.files.map do |file|
           {

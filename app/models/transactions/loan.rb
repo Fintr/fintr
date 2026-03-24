@@ -105,6 +105,14 @@ module Transactions
       end
     end
 
+    # Total value of the loan - sum of all scheduled payments (principal + total interest)
+    # This represents the total amount that will be paid (for borrowed) or received (for lent)
+    def total_value
+      schedule = generate_amortization_schedule
+      total_amount = schedule.sum { |entry| entry[:payment_amount] }
+      Money.from_amount(total_amount, currency.presence || space.currency.presence || "PHP")
+    end
+
     # Generate amortization schedule accounting for actual payments made
     # This calculates the schedule from actual payments made, then projects remaining payments
     #

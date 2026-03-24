@@ -314,6 +314,78 @@ RSpec.describe Transactions::Loan, type: :model do
     end
   end
 
+  describe '#total_value' do
+    let(:loan) do
+      create(
+        :loan,
+        principal_amount_cents: 9_400_000_00,
+        outstanding_balance_cents: 9_400_000_00,
+        interest_rate: 8.0,
+        loan_term_months: 240,
+        date: Date.new(2024, 1, 1),
+        maturity_date: Date.new(2044, 1, 1),
+        currency: "PHP"
+      )
+    end
+
+    it 'calculates total value as sum of all scheduled payments (principal + interest)' do
+      schedule = loan.generate_amortization_schedule
+      expected_total = schedule.sum { |entry| entry[:payment_amount] }
+      
+      expect(loan.total_value.amount).to be_within(0.01).of(expected_total)
+    end
+
+    it 'verifies total value equals principal plus total interest' do
+      schedule = loan.generate_amortization_schedule
+      total_principal = schedule.sum { |entry| entry[:principal_payment] }
+      total_interest = schedule.sum { |entry| entry[:interest_payment] }
+      
+      expect(loan.total_value.amount).to be_within(0.01).of(total_principal + total_interest)
+    end
+
+    it 'returns a positive Money object' do
+      expect(loan.total_value).to be_a(Money)
+      expect(loan.total_value.amount).to be > 0
+    end
+
+    it 'uses the loan currency' do
+      expect(loan.total_value.currency.iso_code).to eq("PHP")
+    end
+
+    it 'calculates correct total value for 9.4M PHP over 240 months at 8%' do
+      # For a 9.4M loan at 8% over 240 months:
+      # - Monthly payment: ~78,625.37 PHP
+      # - Total value should be ~18,885,832 PHP (principal + ~9,485,836 interest)
+      # - Total value = monthly_payment × 240 months
+      
+      expect(loan.total_value.amount).to be_within(100_000).of(18_885_832)
+      
+      # Tight bounds for confidence: 18.8M < total_value < 18.9M
+      expect(loan.total_value.amount).to be > 18_800_000
+      expect(loan.total_value.amount).to be < 18_900_000
+    end
+
+    context 'with actual payments made' do
+      before do
+        create(
+          :loan_payment,
+          loan: loan,
+          principal_payment_cents: 500_000_00,
+          interest_payment_cents: 50_000_00,
+          total_payment_cents: 550_000_00,
+          date: Date.new(2024, 2, 1)
+        )
+      end
+
+      it 'reflects remaining schedule including actual payments' do
+        schedule = loan.generate_amortization_schedule
+        expected_total = schedule.sum { |entry| entry[:payment_amount] }
+        
+        expect(loan.total_value.amount).to be_within(0.01).of(expected_total)
+      end
+    end
+  end
+
   describe '#generate_amortization_schedule' do
     let(:loan) do
       create(
