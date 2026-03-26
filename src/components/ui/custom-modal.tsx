@@ -145,9 +145,6 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     body.style.overflow = "hidden";
     html.style.overflow = "hidden";
 
-    // Record when modal opened for race condition protection
-    modalOpenTimeRef.current = Date.now();
-    
     if (shouldManageHistory && !historyPushedRef.current) {
       setTimeout(() => {
         if (isOpen && !historyPushedRef.current && !checkLightboxOpen()) {
