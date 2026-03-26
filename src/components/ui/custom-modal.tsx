@@ -167,7 +167,6 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     // Record when modal opened for race condition protection
     modalOpenTimeRef.current = Date.now();
     
-    if (shouldManageHistory) {
     if (shouldManageHistory && !historyPushedRef.current) {
       setTimeout(() => {
         if (isOpen && !historyPushedRef.current && !checkLightboxOpen()) {
