@@ -344,7 +344,13 @@ export const mobileTutorialSteps: TutorialStep[] = [
   },
 ];
 
-export const getTutorialConfig = (platform: 'desktop' | 'mobile'): TutorialConfig => {
-  const steps = platform === 'desktop' ? desktopTutorialSteps : mobileTutorialSteps;
+const PHP_ONLY_STEP_IDS = ['deduct-taxes', 'deduct-contributions'];
+
+export const getTutorialConfig = (platform: 'desktop' | 'mobile', currency?: string): TutorialConfig => {
+  const allSteps = platform === 'desktop' ? desktopTutorialSteps : mobileTutorialSteps;
+  const isPhp = !currency || currency.toUpperCase() === 'PHP';
+  const steps = isPhp
+    ? allSteps
+    : allSteps.filter((step) => !PHP_ONLY_STEP_IDS.includes(step.id));
   return { steps };
 };
