@@ -140,6 +140,9 @@ export const getSafeAreaInsets = (): {
  * Subscribe to events that imply `--safe-area-inset-*` or layout viewport may have changed.
  * MainActivity updates root `style` asynchronously relative to `orientationchange`; pairing
  * MutationObserver with deferred reads keeps React padding in sync with portrait insets.
+ * 
+ * IMPORTANT: Pauses monitoring when app is backgrounded to prevent watchdog termination
+ * (0x8BADF00D) caused by layout feedback loops during WKWebView frame changes.
  */
 export const subscribeToSafeAreaInsetChanges = (
   onInsetsMayHaveChanged: () => void
@@ -149,16 +152,19 @@ export const subscribeToSafeAreaInsetChanges = (
   }
 
   let rafDebounce = false
+  let isPaused = false // Pause monitoring when app is backgrounded
 
   const scheduleRaf = () => {
-    if (rafDebounce) {
+    if (rafDebounce || isPaused) {
       return
     }
 
     rafDebounce = true
     requestAnimationFrame(() => {
       rafDebounce = false
-      onInsetsMayHaveChanged()
+      if (!isPaused) {
+        onInsetsMayHaveChanged()
+      }
     })
   }
 
@@ -166,7 +172,9 @@ export const subscribeToSafeAreaInsetChanges = (
 
   try {
     observer = new MutationObserver(() => {
-      scheduleRaf()
+      if (!isPaused) {
+        scheduleRaf()
+      }
     })
     observer.observe(document.documentElement, {
       attributes: true,
@@ -178,15 +186,23 @@ export const subscribeToSafeAreaInsetChanges = (
 
   const vv = window.visualViewport
 
-  vv?.addEventListener("resize", onInsetsMayHaveChanged)
+  const onViewportChange = () => {
+    if (!isPaused) {
+      onInsetsMayHaveChanged()
+    }
+  }
+
+  vv?.addEventListener("resize", onViewportChange)
   vv?.addEventListener("scroll", scheduleRaf)
-  window.addEventListener("resize", onInsetsMayHaveChanged)
+  window.addEventListener("resize", onViewportChange)
 
   let timeout0: ReturnType<typeof setTimeout> | undefined
   let timeout1: ReturnType<typeof setTimeout> | undefined
   let timeout2: ReturnType<typeof setTimeout> | undefined
 
   const onOrientationLike = () => {
+    if (isPaused) return
+    
     scheduleRaf()
     onInsetsMayHaveChanged()
 
@@ -205,16 +221,49 @@ export const subscribeToSafeAreaInsetChanges = (
     onOrientationLike as EventListener
   )
 
+  // Pause monitoring when app goes to background to prevent watchdog termination
+  // This is critical for iOS where WKWebView frame changes during backgrounding
+  // can cause layout feedback loops that hang the main thread
+  const handleVisibilityChange = () => {
+    isPaused = document.hidden
+    if (isPaused) {
+      // Clear any pending timeouts when backgrounding
+      if (timeout0) clearTimeout(timeout0)
+      if (timeout1) clearTimeout(timeout1)
+      if (timeout2) clearTimeout(timeout2)
+      timeout0 = undefined
+      timeout1 = undefined
+      timeout2 = undefined
+    }
+  }
+
+  document.addEventListener("visibilitychange", handleVisibilityChange)
+
+  // Also listen for pagehide which fires more reliably on iOS
+  const handlePageHide = () => {
+    isPaused = true
+    if (timeout0) clearTimeout(timeout0)
+    if (timeout1) clearTimeout(timeout1)
+    if (timeout2) clearTimeout(timeout2)
+    timeout0 = undefined
+    timeout1 = undefined
+    timeout2 = undefined
+  }
+
+  window.addEventListener("pagehide", handlePageHide)
+
   return () => {
     observer?.disconnect()
-    vv?.removeEventListener("resize", onInsetsMayHaveChanged)
+    vv?.removeEventListener("resize", onViewportChange)
     vv?.removeEventListener("scroll", scheduleRaf)
-    window.removeEventListener("resize", onInsetsMayHaveChanged)
+    window.removeEventListener("resize", onViewportChange)
     window.removeEventListener("orientationchange", onOrientationLike)
     screen.orientation?.removeEventListener(
       "change",
       onOrientationLike as EventListener
     )
+    document.removeEventListener("visibilitychange", handleVisibilityChange)
+    window.removeEventListener("pagehide", handlePageHide)
 
     if (timeout0) clearTimeout(timeout0)
     if (timeout1) clearTimeout(timeout1)

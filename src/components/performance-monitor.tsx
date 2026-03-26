@@ -10,8 +10,20 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({ children
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    let memoryCheckInterval: NodeJS.Timeout;
-    let refreshTimeout: NodeJS.Timeout;
+    let memoryCheckInterval: NodeJS.Timeout | null = null;
+    let refreshTimeout: NodeJS.Timeout | null = null;
+    let isPaused = false;
+
+    // Pause monitoring when app is backgrounded to prevent watchdog termination
+    const handleVisibilityChange = () => {
+      isPaused = document.hidden;
+      if (isPaused && refreshTimeout) {
+        clearTimeout(refreshTimeout);
+        refreshTimeout = null;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Monitor memory usage and performance for mobile devices
     if (performanceUtils.isMobileDevice()) {
@@ -19,6 +31,9 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({ children
 
       // Check memory usage every 30 seconds
       memoryCheckInterval = setInterval(() => {
+        // Skip memory check when app is backgrounded
+        if (isPaused) return;
+        
         if ('memory' in performance) {
           const memory = (performance as any).memory;
           const memoryUsage = memory.usedJSHeapSize / memory.jsHeapSizeLimit;
@@ -53,6 +68,7 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({ children
 
       // Prevent excessive re-renders by throttling certain events
       const throttledResize = performanceUtils.throttle(() => {
+        if (isPaused) return;
         // Trigger cleanup on resize to free up memory
         performanceUtils.cleanupMemory();
       }, 1000);
@@ -70,6 +86,7 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({ children
 
       // Cleanup on unmount
       return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
         if (memoryCheckInterval) clearInterval(memoryCheckInterval);
         if (refreshTimeout) clearTimeout(refreshTimeout);
         window.removeEventListener('resize', throttledResize);
@@ -100,6 +117,7 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({ children
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('error', handleError);
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
     };
