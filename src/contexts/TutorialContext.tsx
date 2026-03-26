@@ -17,6 +17,7 @@ import { performanceUtils } from '@/lib/utils';
 import { getTutorialConfig as getTutorialConfigFromSteps } from '@/config/tutorialSteps';
 import { useAtomValue } from 'jotai';
 import { desktopTutorialCompletedAtom, mobileTutorialCompletedAtom, tutorialDataLoadedAtom } from '@/atoms/tutorialAtoms';
+import { currentSpaceAtom } from '@/atoms/spaceAtoms';
 import { useQueryClient } from '@tanstack/react-query';
 
 export type TutorialPlatform = 'desktop' | 'mobile';
@@ -67,6 +68,7 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
   const desktopTutorialCompleted = useAtomValue(desktopTutorialCompletedAtom);
   const mobileTutorialCompleted = useAtomValue(mobileTutorialCompletedAtom);
   const tutorialDataLoaded = useAtomValue(tutorialDataLoadedAtom);
+  const currentSpace = useAtomValue(currentSpaceAtom);
   
   const [isActive, setIsActive] = useState(false);
   const [platform, setPlatform] = useState<TutorialPlatform | null>(null);
@@ -161,8 +163,8 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
 
   const getTutorialConfig = useCallback((): TutorialConfig | null => {
     if (!platform) return null;
-    return getTutorialConfigFromSteps(platform);
-  }, [platform]);
+    return getTutorialConfigFromSteps(platform, currentSpace?.currency ?? undefined);
+  }, [platform, currentSpace?.currency]);
 
   const skipTutorial = useCallback(async () => {
     await completeTutorialHandlerRef(platform);

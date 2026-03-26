@@ -257,20 +257,32 @@ const TutorialOverlay: React.FC = () => {
     console.log(`Open menu (${currentStep.id}): opening menu, will advance from step ${currentStepIndex} to ${nextStepIndex}`);
 
     isHandlingClickRef.current = true;
-    // Update ref immediately to prevent race conditions
     stepIndexRef.current = currentStepIndex;
     setStepIndex(currentStepIndex);
     
     // Click the button to open the menu
     targetElement.click();
     
-    // Wait for menu to open, then advance to next step
-    setTimeout(() => {
-      // Update ref immediately to prevent race conditions
-      stepIndexRef.current = nextStepIndex;
-      setStepIndex(nextStepIndex);
-      isHandlingClickRef.current = false;
-    }, 0);
+    // Get the next step's target selector to wait for it to appear
+    const nextStep = config.steps[nextStepIndex];
+    const nextSelector = nextStep?.targetSelector || '';
+
+    const checkForNextElement = (attempt = 0) => {
+      const maxAttempts = 20;
+      const nextElement = nextSelector ? document.querySelector(nextSelector) as HTMLElement | null : null;
+      const isVisible = nextElement && nextElement.offsetParent !== null;
+
+      if (isVisible || attempt >= maxAttempts) {
+        stepIndexRef.current = nextStepIndex;
+        setStepIndex(nextStepIndex);
+        isHandlingClickRef.current = false;
+      } else {
+        setTimeout(() => checkForNextElement(attempt + 1), 100);
+      }
+    };
+
+    // Start checking after a short delay to allow the menu to begin opening
+    setTimeout(() => checkForNextElement(), 150);
     
     return true;
   }, []);
@@ -304,7 +316,20 @@ const TutorialOverlay: React.FC = () => {
     // Keep current step index while clicking
     setStepIndex(currentStepIndex);
     
-    // Click the "Add Transaction" button
+    // Some buttons (e.g. "Add Transaction") use onPointerDown instead of onClick,
+    // so we must dispatch pointerdown to trigger their handler.
+    if (window.PointerEvent) {
+      targetElement.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          pointerId: 1,
+          pointerType: 'mouse',
+          buttons: 1,
+        })
+      );
+    }
     targetElement.click();
     
     // Wait for dialog to open and element to be available, then advance to next step
@@ -479,32 +504,27 @@ const TutorialOverlay: React.FC = () => {
               nextElementSelector = nextStep?.targetSelector || '[data-tutorial-target="dashboard-summary"]';
             }
             
-            // Wait for navigation to complete AND next element to be available
-            const checkNavigationAndElement = (attempt = 0) => {
-              const currentPath = window.location.pathname;
+            // Poll until the next element is visible — no hard timeout so slow navigation always works.
+            // We use an interval that checks every 200ms and gives up after 60 seconds.
+            const maxAttempts = 300; // 300 × 200ms = 60 seconds
+            let attempts = 0;
+            const pollInterval = setInterval(() => {
+              attempts++;
               const nextElement = document.querySelector(nextElementSelector) as HTMLElement | null;
               const isElementVisible = nextElement && nextElement.offsetParent !== null;
-              
-              const isNavigationComplete = currentPath === targetPath || currentPath.startsWith(targetPath);
-              const maxAttempts = 30; // Allow up to 3 seconds (30 * 100ms)
-              
-              if ((isNavigationComplete && isElementVisible) || attempt >= maxAttempts) {
-                // Navigation complete and element available, or timeout - advance to next step
-                console.log('Navigation and element ready, advancing from step', currentStepIndex, 'to step', nextStepIndex, 
-                  'navigation:', isNavigationComplete, 'element:', isElementVisible);
+
+              if (isElementVisible || attempts >= maxAttempts) {
+                clearInterval(pollInterval);
+                console.log(
+                  'Navigation element ready, advancing from step', currentStepIndex, 'to step', nextStepIndex,
+                  'element visible:', isElementVisible,
+                );
                 stepIndexRef.current = nextStepIndex;
                 setStepIndex(nextStepIndex);
                 isHandlingClickRef.current = false;
-              } else {
-                // Still waiting, check again
-                console.log(`Waiting for navigation/element (attempt ${attempt + 1}/${maxAttempts}):`, 
-                  'path:', currentPath, 'target:', targetPath, 'element found:', !!nextElement, 'visible:', isElementVisible);
-                setTimeout(() => checkNavigationAndElement(attempt + 1), 100);
               }
-            };
+            }, 200);
             
-            // Start checking after a short delay
-            setTimeout(() => checkNavigationAndElement(), 100);
             return;
           }
           
@@ -604,10 +624,13 @@ const TutorialOverlay: React.FC = () => {
             const targetElement = document.querySelector(selector) as HTMLElement | null;
             if (targetElement && targetElement.offsetParent !== null) {
               console.log('Element found after retry, continuing tutorial at step', index);
-              // Element found and visible, continue with the same step
-              // Update ref immediately to prevent race conditions
+              // Toggle run off then on so Joyride re-evaluates the target for this step index
               stepIndexRef.current = index;
-              setStepIndex(index);
+              setRun(false);
+              setTimeout(() => {
+                setStepIndex(index);
+                setRun(true);
+              }, 50);
             } else if (retryCount < maxRetries) {
               retryCount++;
               console.log(`Retrying to find element (attempt ${retryCount}/${maxRetries}):`, selector, 'visible:', targetElement?.offsetParent !== null);
@@ -617,8 +640,6 @@ const TutorialOverlay: React.FC = () => {
             }
           };
           
-          // Start retrying after initial delay
-          // For loan-menu-item, wait 500ms to allow page to fully load (navigation step should have already waited)
           const initialDelay = isLoanMenuItem ? 500 : retryDelay;
           setTimeout(retryFindElement, initialDelay);
         }
@@ -630,58 +651,56 @@ const TutorialOverlay: React.FC = () => {
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
     const { status, type, index, action } = data;
 
-    // Defer all callback logic to avoid flushSync errors during render cycle
-    setTimeout(() => {
-      const config = getConfig();
-      if (!config) return;
+    const config = getConfig();
+    if (!config) return;
+    
+    const currentStepIndex = stepIndexRef.current;
+    const currentStep = currentStepIndex >= 0 && currentStepIndex < config.steps.length 
+      ? config.steps[currentStepIndex] 
+      : null;
+
+    // Handle tutorial completion, skip, or close (X button) — always handle these immediately
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      handleTutorialCompletion(status);
+      return;
+    } else if (action === 'skip') {
+      handleTutorialCompletion(STATUS.SKIPPED);
+      return;
+    } else if (action === 'close' || type === 'tour:end') {
+      handleTutorialCompletion(STATUS.SKIPPED);
+      return;
+    }
+
+    // Handle errors
+    if (status === STATUS.ERROR) {
+      handleTutorialError(data);
+      return;
+    }
+
+    // Handle "Next" button presses
+    if (action === 'next' && typeof index === 'number' && type === 'step:after') {
+      // Skip if we're already handling a click (prevents double-firing)
+      if (isHandlingClickRef.current) return;
+
+      // Handle 'open-menu' action (e.g., mobile-add-button)
+      if (currentStep?.action === 'open-menu') {
+        if (handleCreateTransactionButtonClick(currentStep, config)) {
+          return;
+        }
+      }
       
-      const currentStepIndex = stepIndexRef.current;
-      const currentStep = currentStepIndex >= 0 && currentStepIndex < config.steps.length 
-        ? config.steps[currentStepIndex] 
-        : null;
-      
-      // Handle special action steps ONLY if we're currently handling a click
-      if (action === 'next' && typeof index === 'number' && type === 'step:after' && !isHandlingClickRef.current) {
-        
-        // Handle 'open-menu' action (e.g., mobile-add-button)
-        if (currentStep?.action === 'open-menu') {
-          if (handleCreateTransactionButtonClick(currentStep, config)) {
-            return;
-          }
-        }
-        
-        // Handle 'click-menu-item' action (e.g., mobile-add-transaction, mobile-add-receipt)
-        if (currentStep?.action === 'click-menu-item') {
-          if (handleTransactionMenuClick(currentStep, config)) {
-            return;
-          }
+      // Handle 'click-menu-item' action (e.g., mobile-add-transaction, mobile-add-receipt)
+      if (currentStep?.action === 'click-menu-item') {
+        if (handleTransactionMenuClick(currentStep, config)) {
+          return;
         }
       }
 
-      // Handle normal navigation for ALL other steps (highlight-only, click, or default)
-      // IMPORTANT: Always handle navigation, even if isHandlingClickRef is true
-      // This ensures "Next" button always works, especially for highlight-only steps
-      if (action === 'next' && typeof index === 'number' && type === 'step:after') {
-        // Skip if it's an 'open-menu' or 'click-menu-item' action (already handled above)
-        if (currentStep?.action !== 'open-menu' && currentStep?.action !== 'click-menu-item') {
-          handleNormalNavigation(index, action, type);
-        }
+      // Handle all other step types (highlight-only, click, or default)
+      if (currentStep?.action !== 'open-menu' && currentStep?.action !== 'click-menu-item') {
+        handleNormalNavigation(index, action, type);
       }
-
-      // Handle tutorial completion, skip, or close (X button)
-      if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
-        handleTutorialCompletion(status);
-      } else if (action === 'skip') {
-        handleTutorialCompletion(STATUS.SKIPPED);
-      } else if (action === 'close' || type === 'tour:end') {
-        handleTutorialCompletion(STATUS.SKIPPED);
-      }
-
-      // Handle errors
-      if (status === STATUS.ERROR) {
-        handleTutorialError(data);
-      }
-    }, 0);
+    }
   }, [
     getConfig,
     handleCreateTransactionButtonClick,
