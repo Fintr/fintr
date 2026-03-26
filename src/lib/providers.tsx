@@ -3,6 +3,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
+import { Provider as JotaiProvider } from "jotai";
 import { ToasterWithSettings } from "@/components/ui/toaster-with-settings";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TutorialProvider } from "@/contexts/TutorialContext";
@@ -27,21 +28,23 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }));
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ErrorBoundary>
-          <TutorialProvider>
-            <ToastSettingsProvider>
-              <DeepLinkHandler />
-              <SessionExpirationModal />
-              <ToasterWithSettings />
-              <AuthWrapper>
-                {children}
-              </AuthWrapper>
-            </ToastSettingsProvider>
-          </TutorialProvider>
-        </ErrorBoundary>
-      </AuthProvider>
-    </QueryClientProvider>
+    <JotaiProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ErrorBoundary>
+            <TutorialProvider>
+              <ToastSettingsProvider>
+                <DeepLinkHandler />
+                <SessionExpirationModal />
+                <ToasterWithSettings />
+                <AuthWrapper>
+                  {children}
+                </AuthWrapper>
+              </ToastSettingsProvider>
+            </TutorialProvider>
+          </ErrorBoundary>
+        </AuthProvider>
+      </QueryClientProvider>
+    </JotaiProvider>
   );
 }

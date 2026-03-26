@@ -189,30 +189,30 @@ export default function Layout({
                 {/* Desktop Horizontal Layout */}
                 <TabsList className="hidden md:flex w-full min-w-0 bg-white border flex-nowrap overflow-x-auto">
                   <TabsTrigger asChild value="transactions">
-                    <Link prefetch href="/dashboard/">Transactions</Link>
+                    <Link prefetch={false} href="/dashboard/">Transactions</Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="budgets">
-                    <Link prefetch href="/dashboard/budgets">Budgets</Link>
+                    <Link prefetch={false} href="/dashboard/budgets">Budgets</Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="loans">
-                    <Link prefetch href="/dashboard/loans" data-tutorial-target="dashboard-loan-tab">Loans</Link>
+                    <Link prefetch={false} href="/dashboard/loans" data-tutorial-target="dashboard-loan-tab">Loans</Link>
                   </TabsTrigger>
                   {showV2Features && (
                     <>
                       <TabsTrigger asChild value="goals">
-                        <Link prefetch href="/dashboard/goals">Goals</Link>
+                        <Link prefetch={false} href="/dashboard/goals">Goals</Link>
                       </TabsTrigger>
                       <TabsTrigger asChild value="investments">
-                        <Link prefetch href="/dashboard/investments">Investments</Link>
+                        <Link prefetch={false} href="/dashboard/investments">Investments</Link>
                       </TabsTrigger>
                     </>
                   )}
                   <TabsTrigger asChild value="insights">
                     {/* Insights -> Dashboard */}
-                    <Link prefetch href="/dashboard/insights" data-tutorial-target="dashboard-tab">Dashboard</Link>
+                    <Link prefetch={false} href="/dashboard/insights" data-tutorial-target="dashboard-tab">Dashboard</Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="space_settings">
-                    <Link prefetch href="/dashboard/space_settings">Settings</Link>
+                    <Link prefetch={false} href="/dashboard/space_settings">Settings</Link>
                   </TabsTrigger>
                 </TabsList>
               </div>

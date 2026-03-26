@@ -1,6 +1,7 @@
 "use client";
 
 import React, { type ReactNode } from "react";
+import * as Sentry from "@sentry/nextjs";
 import Providers from "@/lib/providers";
 import { PerformanceMonitor } from "@/components/performance-monitor";
 import CapacitorLoader from "@/components/capacitor-loader";
@@ -31,6 +32,13 @@ class GlobalErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("[GlobalErrorBoundary]", error, errorInfo);
+    // Capture error with Sentry including component stack
+    Sentry.captureException(error, {
+      extra: {
+        componentStack: errorInfo.componentStack,
+        component: "GlobalErrorBoundary",
+      },
+    });
   }
 
   render() {
