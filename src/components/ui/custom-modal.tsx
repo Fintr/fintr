@@ -167,9 +167,9 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     // Record when modal opened for race condition protection
     modalOpenTimeRef.current = Date.now();
     
-    if (shouldManageHistory) {
+    if (shouldManageHistory && !historyPushedRef.current) {
       setTimeout(() => {
-        if (isOpen && !checkLightboxOpen()) {
+        if (isOpen && !historyPushedRef.current && !checkLightboxOpen()) {
           window.history.pushState({ modalOpen: true, lightboxOpen: false }, "");
           historyPushedRef.current = true;
         }
@@ -202,7 +202,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         }
       }
     };
-  }, [isOpen, onClose, isMobile, isMobileBrowser]);
+  }, [isOpen, onClose, isMobileBrowser]);
 
   if (!isOpen || !mounted) return null;
 
