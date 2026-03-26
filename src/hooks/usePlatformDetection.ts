@@ -53,12 +53,30 @@ export const usePlatformDetection = (): PlatformDetectionResult => {
         document.documentElement
       )
       const insets = getSafeAreaInsets()
-
-      setPlatform({
+      const next: PlatformDetectionResult = {
         ...baseDetection,
         safeAreaInsetBottom: insets.bottom,
         safeAreaInsetTop: insets.top,
         hasAndroid3ButtonNav: hasAndroid3ButtonNav(),
+      }
+
+      // Only update state when values actually change to avoid spurious re-renders
+      // (visualViewport scroll fires very frequently on iOS, e.g. inside modals)
+      setPlatform((prev) => {
+        if (
+          prev.isAndroidNative === next.isAndroidNative &&
+          prev.isIOSNative === next.isIOSNative &&
+          prev.isNative === next.isNative &&
+          prev.isMobileBrowser === next.isMobileBrowser &&
+          prev.isAndroidBrowser === next.isAndroidBrowser &&
+          prev.isIOSBrowser === next.isIOSBrowser &&
+          prev.safeAreaInsetBottom === next.safeAreaInsetBottom &&
+          prev.safeAreaInsetTop === next.safeAreaInsetTop &&
+          prev.hasAndroid3ButtonNav === next.hasAndroid3ButtonNav
+        ) {
+          return prev
+        }
+        return next
       })
     }
 
