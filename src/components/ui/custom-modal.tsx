@@ -49,7 +49,6 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   const [mounted, setMounted] = React.useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const historyPushedRef = React.useRef(false);
-  const modalOpenTimeRef = React.useRef<number>(0);
   const mobileViewportHeight = useMobileModalViewportHeight(isOpen);
   
   // Use the shared platform detection hook for real-time updates
@@ -103,34 +102,16 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     };
 
     const handlePopState = (e: PopStateEvent) => {
-      // Prevent modal from closing within 500ms of opening (race condition protection)
-      const timeSinceOpen = Date.now() - modalOpenTimeRef.current;
-      if (timeSinceOpen < 500) {
-        // Re-push our history state if it was lost
-        if (!window.history.state?.modalOpen) {
-          window.history.pushState({ modalOpen: true, lightboxOpen: false }, "");
-        }
-        return;
-      }
-      
       const isLightboxOpen = checkLightboxOpen();
       if (isLightboxOpen) {
         const event = new CustomEvent("lightbox-close");
         document.dispatchEvent(event);
       } else if (historyPushedRef.current) {
-        const state = e.state as { modalOpen?: boolean; lightboxOpen?: boolean } | null;
-        // Only close if this is a genuine back navigation (no modalOpen in state)
-        // AND we actually pushed a history entry for this modal
-        // Ignore popstate events from Next.js router replaceState operations
-        if (state?.modalOpen === true) {
-          // State still shows modal open - this is likely a Next.js router update, not a back navigation
+        const state = e.state as { modalOpen?: boolean } | null;
+        if (state?.modalOpen) {
           return;
         }
-        // Check if this looks like a real back button press vs router state update
-        // If state is null or doesn't have our modal marker, it's likely a back navigation
-        if (state === null || state.modalOpen === undefined) {
-          onClose();
-        }
+        onClose();
       }
     };
 
