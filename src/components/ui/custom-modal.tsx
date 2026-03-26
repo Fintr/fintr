@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,6 +50,12 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   const [isMobile, setIsMobile] = useState(false);
   const historyPushedRef = React.useRef(false);
   const modalOpenTimeRef = React.useRef<number>(0);
+  // Use a ref for onClose to avoid re-running the history/scroll-lock effect
+  // every time the parent re-renders with a new inline function reference.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
   const mobileViewportHeight = useMobileModalViewportHeight(isOpen);
   
   // Use the shared platform detection hook for real-time updates
@@ -97,7 +103,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           const event = new CustomEvent("lightbox-close");
           document.dispatchEvent(event);
         } else {
-          onClose();
+          onCloseRef.current();
         }
       }
     };
@@ -129,7 +135,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         // Check if this looks like a real back button press vs router state update
         // If state is null or doesn't have our modal marker, it's likely a back navigation
         if (state === null || state.modalOpen === undefined) {
-          onClose();
+          onCloseRef.current();
         }
       }
     };
@@ -202,7 +208,9 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         }
       }
     };
-  }, [isOpen, onClose, isMobileBrowser]);
+  // onClose is intentionally excluded from deps — we access it via onCloseRef
+  // to prevent the scroll-lock effect from re-running on every parent render.
+  }, [isOpen, isMobileBrowser]);
 
   if (!isOpen || !mounted) return null;
 
