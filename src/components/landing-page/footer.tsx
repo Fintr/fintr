@@ -62,13 +62,6 @@ export default function Footer() {
           </Link>
           <div className="flex gap-6 flex-wrap justify-center">
             <Link
-              href="https://www.fintr.ai"
-              target="_blank"
-              className="text-[14px] text-[#78716C] transition-colors hover:text-[#1C1917]"
-            >
-              fintr.ai
-            </Link>
-            <Link
               href="https://apps.apple.com/ph/app/fintr-finance-tracking/id6757146677"
               target="_blank"
               className="text-[14px] text-[#78716C] transition-colors hover:text-[#1C1917]"
@@ -99,7 +92,7 @@ export default function Footer() {
               href="https://www.linkedin.com/company/fintrai"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#78716C] transition-colors hover:text-[#1C1917]"
+              className="text-[#0A2540] transition-opacity hover:opacity-70"
               aria-label="LinkedIn"
             >
               <LinkedInIcon />
