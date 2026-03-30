@@ -1,3 +1,5 @@
+@import url("https://fonts.cdnfonts.com/css/garet");
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -178,6 +180,18 @@ body {
    See https://capacitorjs.com/docs/apis/system-bars */
 
 @layer utilities {
+  .font-landing-title {
+    font-family: var(--font-league-spartan), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .font-garet {
+    font-family: "Garet", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .landing-section-y {
+    @apply py-10 md:py-12;
+  }
+
   .pt-safe-top {
     /* Default: use native safe-area for iOS and mobile browsers with minimum fallback */
     padding-top: max(env(safe-area-inset-top, 0px), 0px);

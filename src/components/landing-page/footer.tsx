@@ -1,138 +1,126 @@
-import React from "react";
+"use client";
+
 import Link from "next/link";
 
-interface FooterProps {
-  companyName?: string;
+function LinkedInIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+    </svg>
+  );
 }
 
-const Footer = ({
-  companyName = "Fintr",
-}: FooterProps) => {
+function FacebookIcon() {
   return (
-    <footer className="bg-background border-t border-gray-200">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-        <div className="flex items-center justify-between h-16">
-          {/* Fintr Logo */}
-          <div className="flex items-center">
-            <img
-              src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
-              alt="Fintr Logo"
-              className="h-8 w-auto"
-            />
-          </div>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+    </svg>
+  );
+}
 
-          {/* Legal Links */}
-          <div className="flex items-center space-x-6">
+function TikTokIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
+    </svg>
+  );
+}
+
+export default function Footer() {
+  return (
+    <footer className="landing-section-y border-t border-black/[0.06]">
+      <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-12">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <Link href="/" className="flex items-center shrink-0 no-underline">
+            <img
+              src="/fintr-logo.png"
+              alt="Fintr"
+              width={50}
+              height={50}
+              className="h-16 w-auto block"
+              decoding="async"
+              fetchPriority="low"
+            />
+          </Link>
+          <div className="flex gap-6 flex-wrap justify-center">
+            <Link
+              href="https://apps.apple.com/ph/app/fintr-finance-tracking/id6757146677"
+              target="_blank"
+              className="text-[14px] text-[#78716C] transition-colors hover:text-[#1C1917]"
+            >
+              App Store
+            </Link>
+            <Link
+              href="mailto:joelpaoloparaiso@gmail.com"
+              className="text-[14px] text-[#78716C] transition-colors hover:text-[#1C1917]"
+            >
+              Contact
+            </Link>
             <Link
               href="/terms-of-service"
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              className="text-[14px] text-[#78716C] transition-colors hover:text-[#1C1917]"
             >
               Terms of Service
             </Link>
             <Link
               href="/privacy-policy"
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              className="text-[14px] text-[#78716C] transition-colors hover:text-[#1C1917]"
             >
               Privacy Policy
             </Link>
           </div>
-
-          {/* Social Media Icons */}
-          <div className="flex items-center space-x-4">
-            <a
-              href="https://www.facebook.com/people/Fintr/61573370577403/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:text-primary/80 transition-colors"
-              aria-label="Meta (Facebook)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
-              </svg>
-            </a>
-            <a
-              href="https://www.instagram.com/fintr.ai/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:text-primary/80 transition-colors"
-              aria-label="Instagram"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
-              </svg>
-            </a>
-            <a
-              href="https://www.youtube.com/@fintrai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:text-primary/80 transition-colors"
-              aria-label="YouTube"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
-                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
-              </svg>
-            </a>
-            <a
+          <div className="flex items-center gap-4">
+            <Link
               href="https://www.linkedin.com/company/fintrai"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:text-primary/80 transition-colors"
+              className="text-[#0A2540] transition-opacity hover:opacity-70"
               aria-label="LinkedIn"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
-                <rect width="4" height="12" x="2" y="9"></rect>
-                <circle cx="4" cy="4" r="2"></circle>
-              </svg>
-            </a>
+              <LinkedInIcon />
+            </Link>
+            <Link
+              href="https://www.facebook.com/share/189qyVpDaW/?mibextid=wwXIfr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#78716C] transition-colors hover:text-[#1C1917]"
+              aria-label="Facebook"
+            >
+              <FacebookIcon />
+            </Link>
+            <Link
+              href="https://www.tiktok.com/@fintrai?_r=1&_t=ZS-954yp4BAwQj"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#78716C] transition-colors hover:text-[#1C1917]"
+              aria-label="TikTok"
+            >
+              <TikTokIcon />
+            </Link>
           </div>
+        </div>
+        <div className="mt-6 text-center">
+          <span className="text-[13px] text-[#A8A29E]">© 2026 Fintr. All rights reserved.</span>
         </div>
       </div>
     </footer>
   );
-};
-
-export default Footer;
+}
