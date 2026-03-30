@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { League_Spartan, Source_Serif_4 } from "next/font/google";
+import { League_Spartan } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "./client-layout";
 
@@ -7,13 +7,6 @@ const leagueSpartan = League_Spartan({
   variable: "--font-league-spartan",
   subsets: ["latin"],
   display: "swap",
-});
-
-const sourceSerif = Source_Serif_4({
-  variable: "--font-serif",
-  subsets: ["latin"],
-  display: "swap",
-  axes: ["opsz"],
 });
 
 export const metadata: Metadata = {
@@ -109,7 +102,7 @@ export default function RootLayout({
         <EarlyErrorDetection />
       </head>
       <body
-        className={`${leagueSpartan.variable} ${sourceSerif.variable} antialiased ${leagueSpartan.className}`}
+        className={`${leagueSpartan.variable} antialiased ${leagueSpartan.className}`}
       >
         <ClientLayout>{children}</ClientLayout>
       </body>

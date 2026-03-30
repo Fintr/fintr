@@ -81,13 +81,13 @@ export default function AppCarouselSection() {
   }, [emblaApi, onSelect]);
 
   return (
-    <section className="bg-[#0A2540] py-[clamp(64px,8vw,120px)] overflow-hidden">
+    <section className="landing-section-y bg-[#0A2540] overflow-hidden">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-12">
         <div className="text-center mb-12">
           <span className="inline-block text-[13px] font-semibold uppercase tracking-[1.5px] text-[#14B8A6] mb-4">
             App Preview
           </span>
-          <h2 className="font-[family-name:var(--font-serif)] text-[clamp(32px,4vw,44px)] font-bold text-white leading-[1.12] tracking-[-1px] mb-4">
+          <h2 className="font-landing-title text-[clamp(32px,4vw,44px)] font-bold text-white leading-[1.12] tracking-[-1px] mb-4">
             See Fintr in Action
           </h2>
           <p className="text-[18px] text-white/70 max-w-[600px] mx-auto">
@@ -148,15 +148,9 @@ export default function AppCarouselSection() {
           <a
             href="https://apps.apple.com/ph/app/fintr-finance-tracking/id6757146677"
             target="_blank"
-            className="inline-flex items-center gap-2 bg-white text-[#0A2540] px-8 py-4 rounded-[12px] font-semibold text-[16px] transition-transform hover:scale-105"
+            className="inline-flex items-center justify-center bg-white text-[#0A2540] px-8 py-4 rounded-[12px] font-semibold text-[16px] transition-transform hover:scale-105"
           >
-            Download on App Store
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 8a4 4 0 1 0-8 0 4 4 0 0 0 8 0Z"/>
-              <path d="M8 8a4 4 0 1 0 8 0 4 4 0 0 0-8 0Z"/>
-              <path d="M12 12v8"/>
-              <path d="M8 16h8"/>
-            </svg>
+            Download iOS App
           </a>
         </div>
       </div>

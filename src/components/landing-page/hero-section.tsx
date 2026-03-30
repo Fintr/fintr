@@ -4,17 +4,17 @@ import Link from "next/link";
 
 export default function HeroSection() {
   return (
-    <section className="pt-[clamp(140px,16vw,200px)] pb-[clamp(60px,8vw,100px)]">
+    <section className="landing-section-y">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-12">
         <div className="max-w-[800px]">
           <span className="block text-[13px] font-semibold uppercase tracking-[1.5px] text-[#0D9488] mb-4">
-            AI-Powered Personal Finance
+            AI-POWERED PERSONAL FINANCE ASSISTANT
           </span>
-          <h1 className="font-[family-name:var(--font-serif)] text-[clamp(40px,5.5vw,64px)] font-bold leading-[1.08] text-[#0A2540] tracking-[-1.5px] mb-6">
+          <h1 className="font-landing-title text-[clamp(40px,5.5vw,64px)] font-bold leading-[1.08] text-[#0A2540] tracking-[-1.5px] mb-6">
             Save more. Spend smarter. Afford the life you want.
           </h1>
           <p className="text-[18px] leading-[1.75] text-[#57534E] max-w-[600px] mb-10">
-            Fintr is an AI-powered personal finance assistant that helps you track your money, understand your spending, and make smarter financial decisions — no bank account linking needed.
+            Fintr is an AI-powered personal finance assistant that helps you track your money, understand your spending, and make smarter financial decisions. No bank account linking needed.
           </p>
           <div className="flex gap-3 items-center flex-wrap">
             <Link
@@ -22,7 +22,7 @@ export default function HeroSection() {
               target="_blank"
               className="inline-flex items-center gap-2 bg-[#0A2540] text-white px-7 py-3.5 rounded-[10px] font-semibold text-[15px] transition-opacity hover:opacity-90"
             >
-              Download on iOS →
+              Download iOS App
             </Link>
             <Link
               href="#features"
@@ -39,10 +39,6 @@ export default function HeroSection() {
             <span className="flex items-center gap-2 text-[13px] font-medium text-[#78716C]">
               <span className="w-[6px] h-[6px] rounded-full bg-[#0D9488]"></span>
               NVIDIA Inception Member
-            </span>
-            <span className="flex items-center gap-2 text-[13px] font-medium text-[#78716C]">
-              <span className="w-[6px] h-[6px] rounded-full bg-[#0D9488]"></span>
-              AI-Native from Day One
             </span>
           </div>
         </div>

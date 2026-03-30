@@ -4,17 +4,17 @@ import Link from "next/link";
 
 const teamMembers = [
   {
-    initials: "P",
     name: "Paolo Paraiso",
     role: "Co-Founder & CEO",
+    imageSrc: "/images/founders/paolo-paraiso.png",
     bio: "10+ years in B2B enterprise sales, strategic partnerships, and digital transformation across AI, data platforms, cloud, cybersecurity, and SaaS. Helps organizations turn data into measurable business outcomes through actionable insights and secure, governed AI. Leads product vision, go-to-market, and business development for Fintr.",
     companies: ["AI Rudder", "Globe Telecom", "IBM", "Petron"],
     linkedin: "https://linkedin.com/in/joelpaoloparaiso",
   },
   {
-    initials: "M",
     name: "Miko Dagatan",
     role: "Co-Founder & CTO",
+    imageSrc: "/images/founders/miko-dagatan.png",
     bio: "Senior full-stack software engineer with 8+ years of experience building scalable web applications. Expertise in Ruby on Rails, React, Next.js, and AWS. Has shipped products across companies in Australia, Thailand, Malaysia, and the Philippines. Leads Fintr's architecture, AI integration, infrastructure, and the entire technical stack.",
     companies: ["Reinteractive", "CodeCare", "Sourcepad", "Ateneo de Manila"],
     linkedin: "https://www.linkedin.com/in/miguel-alberto-dagatan-05401094/",
@@ -23,13 +23,13 @@ const teamMembers = [
 
 export default function TeamSection() {
   return (
-    <section id="team" className="py-[clamp(64px,8vw,120px)]">
+    <section id="team" className="landing-section-y">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-12">
         <div className="w-[40px] h-[3px] bg-[#0D9488] rounded-[2px] mb-5"></div>
         <span className="block text-[13px] font-semibold uppercase tracking-[1.5px] text-[#0D9488] mb-4">
           Founding Team
         </span>
-        <h2 className="font-[family-name:var(--font-serif)] text-[clamp(32px,4vw,44px)] font-bold text-[#0A2540] leading-[1.12] tracking-[-1px] mb-4">
+        <h2 className="font-landing-title text-[clamp(32px,4vw,44px)] font-bold text-[#0A2540] leading-[1.12] tracking-[-1px] mb-4">
           Who&apos;s building Fintr
         </h2>
         <p className="text-[18px] leading-[1.75] text-[#57534E] mb-12">
@@ -37,21 +37,30 @@ export default function TeamSection() {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {teamMembers.map((member, index) => (
+          {teamMembers.map((member) => (
             <div
               key={member.name}
               className="bg-[#FAF9F7] rounded-[16px] p-10 border border-black/[0.04]"
             >
               <div className="flex items-center gap-4 mb-5">
-                <div
-                  className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-[20px] flex-shrink-0 ${
-                    index === 1 ? "bg-[#0D9488]" : "bg-[#0A2540]"
-                  }`}
+                <Link
+                  href={member.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 rounded-full overflow-hidden ring-2 ring-black/[0.06] hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2"
+                  aria-label={`${member.name} on LinkedIn`}
                 >
-                  {member.initials}
-                </div>
+                  <img
+                    src={member.imageSrc}
+                    alt=""
+                    width={56}
+                    height={56}
+                    className="w-14 h-14 object-cover"
+                    decoding="async"
+                  />
+                </Link>
                 <div>
-                  <div className="font-[family-name:var(--font-serif)] text-[22px] font-bold text-[#0A2540] tracking-[-0.3px]">
+                  <div className="font-landing-title text-[22px] font-bold text-[#0A2540] tracking-[-0.3px]">
                     {member.name}
                   </div>
                   <div className="text-[13px] font-semibold text-[#0D9488] mt-0.5">
@@ -101,11 +110,11 @@ export default function TeamSection() {
 
         {/* Vision Banner */}
         <div className="bg-[#0A2540] rounded-[20px] p-[clamp(40px,5vw,64px)] mt-14">
-          <h3 className="font-[family-name:var(--font-serif)] text-[clamp(24px,3vw,32px)] font-bold text-white mb-4 leading-[1.2] tracking-[-0.5px]">
-            More than a finance tracker
+          <h3 className="font-landing-title text-[clamp(24px,3vw,32px)] font-bold text-white mb-4 leading-[1.2] tracking-[-0.5px]">
+            More than a Finance Tracker
           </h3>
           <p className="text-white/70 text-[16px] max-w-[640px] leading-[1.75]">
-            We&apos;re building the financial assistant that everyone deserves. Fintr&apos;s vision is to be the platform that guides you on your personal finance journey — from tracking your first peso to reaching your own version of financial freedom.
+            We&apos;re building a personal financial assistant that everyone deserves. Fintr&apos;s vision is to be the platform that guides you on your personal finance journey, from tracking your first peso to reaching your own version of financial freedom.
           </p>
         </div>
       </div>

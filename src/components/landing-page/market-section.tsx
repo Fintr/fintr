@@ -2,52 +2,52 @@
 
 export default function MarketSection() {
   return (
-    <section id="market" className="py-[clamp(64px,8vw,120px)]">
+    <section id="market" className="landing-section-y">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-12">
         <div className="w-[40px] h-[3px] bg-[#0D9488] rounded-[2px] mb-5"></div>
         <span className="block text-[13px] font-semibold uppercase tracking-[1.5px] text-[#0D9488] mb-4">
           Market Opportunity
         </span>
-        <h2 className="font-[family-name:var(--font-serif)] text-[clamp(32px,4vw,44px)] font-bold text-[#0A2540] leading-[1.12] tracking-[-1px] mb-4">
+        <h2 className="font-landing-title text-[clamp(32px,4vw,44px)] font-bold text-[#0A2540] leading-[1.12] tracking-[-1px] mb-4">
           Large, underserved market
         </h2>
         <p className="text-[18px] leading-[1.75] text-[#57534E] max-w-[800px] mb-12">
-          Personal finance management is underserved globally. Initial research is based on the Philippine market, where fintech is dominated by payments (40–50%) and lending (20–30%) — leaving personal finance tools wide open.
+          Personal finance management is underserved globally. Initial research is based on the Philippine market, where fintech is dominated by payments (40% to 50%) and lending (20% to 30%), leaving personal finance tools wide open.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="text-center py-10 px-5 bg-white rounded-[16px] border border-black/[0.06]">
-            <div className="font-[family-name:var(--font-serif)] text-[clamp(36px,4vw,48px)] font-bold text-[#0A2540] leading-none tracking-[-1px]">
-              73.8M
+            <div className="font-landing-title text-[clamp(36px,4vw,48px)] font-bold text-[#0A2540] leading-none tracking-[-1px]">
+              91.3%
             </div>
             <div className="text-[14px] text-[#78716C] mt-3 leading-[1.5]">
-              People in the Philippines (62%) who don&apos;t use finance trackers
+              of Filipino internet users use online financial services monthly
             </div>
           </div>
           <div className="text-center py-10 px-5 bg-white rounded-[16px] border border-black/[0.06]">
-            <div className="font-[family-name:var(--font-serif)] text-[clamp(36px,4vw,48px)] font-bold text-[#0A2540] leading-none tracking-[-1px]">
-              1.4B
+            <div className="font-landing-title text-[clamp(36px,4vw,48px)] font-bold text-[#0A2540] leading-none tracking-[-1px]">
+              57.4%
             </div>
             <div className="text-[14px] text-[#78716C] mt-3 leading-[1.5]">
-              People globally (24%) without finance tracking tools
+              of Philippine transactions by volume are now digital (2024), up from just 10% in 2018
             </div>
           </div>
           <div className="text-center py-10 px-5 bg-white rounded-[16px] border border-black/[0.06]">
-            <div className="font-[family-name:var(--font-serif)] text-[clamp(36px,4vw,48px)] font-bold text-[#0A2540] leading-none tracking-[-1px]">
-              2.10B
+            <div className="font-landing-title text-[clamp(36px,4vw,48px)] font-bold text-[#0A2540] leading-none tracking-[-1px]">
+              16%
             </div>
             <div className="text-[14px] text-[#78716C] mt-3 leading-[1.5]">
-              Global internet users aged 16+ using online financial services monthly
+              YoY growth in Philippine digital economy GMV (2024 vs 2025), 3rd highest in SEA
             </div>
           </div>
         </div>
         <p className="text-[12px] text-[#A8A29E] mt-5 text-center">
-          Source: Foxmont x BCG PH Venture Capital Report 2025
+          Source: Data Reportal, e-Conomy SEA Report via Foxmont 2026
         </p>
 
         {/* Why Now */}
         <div className="mt-16">
-          <h3 className="font-[family-name:var(--font-serif)] text-[28px] tracking-[-0.5px] mb-2">
+          <h3 className="font-landing-title text-[28px] tracking-[-0.5px] mb-2">
             Why now
           </h3>
           <p className="text-[#78716C] mb-8">Three trends converging at the right time.</p>

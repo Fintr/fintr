@@ -3,7 +3,7 @@
 const availableFeatures = [
   {
     icon: "📸",
-    title: "OCR Receipt Scanning",
+    title: "Receipt Scanning",
     description: "Snap a photo of any receipt or screenshot. Fintr extracts the data and logs it automatically. No manual entry needed.",
   },
   {
@@ -28,8 +28,9 @@ const availableFeatures = [
   },
   {
     icon: "🔒",
-    title: "No Bank Integration Needed",
-    description: "Privacy-first by design. Track your finances without connecting bank accounts — minimizing the risk of data leaks while keeping full control of your data.",
+    title: "No Bank Details and Integration Needed",
+    description:
+      "Privacy-first by design. Track your finances without inputting your bank accounts, minimizing the risk of data leaks while keeping full control of your data.",
   },
 ];
 
@@ -37,28 +38,30 @@ const roadmapFeatures = [
   {
     icon: "🏠",
     title: "Affordability Assessment",
-    description: "Planning a major purchase? Fintr will assess if you can afford it based on your actual financial data — with loan assessment, eligibility checks, and investment readiness scoring.",
+    description:
+      "Planning a major purchase? Fintr will assess if you can afford it based on your actual financial data, with loan assessment, eligibility checks, and investment readiness scoring.",
   },
   {
     icon: "⚖️",
     title: "Compare & Decide",
-    description: "Side-by-side comparisons for debt consolidation, loan options, insurance, and real estate investments — so you can make informed decisions before you commit.",
+    description:
+      "Side-by-side comparisons for debt consolidation, loan options, insurance, and real estate investments, so you can make informed decisions before you commit.",
   },
 ];
 
 export default function FeaturesSection() {
   return (
-    <section id="features" className="bg-[#FAF9F7] py-[clamp(64px,8vw,120px)]">
+    <section id="features" className="landing-section-y bg-[#FAF9F7]">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-12">
         <div className="w-[40px] h-[3px] bg-[#0D9488] rounded-[2px] mb-5"></div>
         <span className="block text-[13px] font-semibold uppercase tracking-[1.5px] text-[#0D9488] mb-4">
           Features
         </span>
-        <h2 className="font-[family-name:var(--font-serif)] text-[clamp(32px,4vw,44px)] font-bold text-[#0A2540] leading-[1.12] tracking-[-1px] mb-4">
+        <h2 className="font-landing-title text-[clamp(32px,4vw,44px)] font-bold text-[#0A2540] leading-[1.12] tracking-[-1px] mb-4">
           Everything you need to take control of your money
         </h2>
         <p className="text-[18px] leading-[1.75] text-[#57534E] mb-14">
-          Not just a finance tracker — a platform that guides you toward your own version of financial freedom.
+          Not just a finance tracker, an assistant that guides you toward your own version of financial freedom.
         </p>
 
         {/* Available Now */}

@@ -55,13 +55,13 @@ const pricingPlans = [
 
 export default function PricingSection() {
   return (
-    <section id="pricing" className="bg-[#FAF9F7] py-[clamp(64px,8vw,120px)]">
+    <section id="pricing" className="landing-section-y bg-[#FAF9F7]">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-12">
         <div className="w-[40px] h-[3px] bg-[#0D9488] rounded-[2px] mb-5"></div>
         <span className="block text-[13px] font-semibold uppercase tracking-[1.5px] text-[#0D9488] mb-4">
           Pricing
         </span>
-        <h2 className="font-[family-name:var(--font-serif)] text-[clamp(32px,4vw,44px)] font-bold text-[#0A2540] leading-[1.12] tracking-[-1px] mb-4">
+        <h2 className="font-landing-title text-[clamp(32px,4vw,44px)] font-bold text-[#0A2540] leading-[1.12] tracking-[-1px] mb-4">
           Start free, upgrade when you&apos;re ready
         </h2>
         <p className="text-[18px] leading-[1.75] text-[#57534E] mb-12">
@@ -86,7 +86,7 @@ export default function PricingSection() {
               <div className="text-[14px] font-bold uppercase tracking-[1px] text-[#78716C] mb-2">
                 {plan.name}
               </div>
-              <div className="font-[family-name:var(--font-serif)] text-[32px] font-bold text-[#0A2540] mb-1">
+              <div className="font-landing-title text-[32px] font-bold text-[#0A2540] mb-1">
                 {plan.price}
               </div>
               <div className="text-[13px] text-[#A8A29E] mb-6">{plan.period}</div>

@@ -95,7 +95,7 @@ const TeamSection = dynamic(
 export default async function LandingPage() {
   return (
     <CapacitorRedirectToAuth>
-      <div className="w-full min-h-screen overflow-x-hidden">
+      <div className="w-full min-h-screen overflow-x-hidden font-garet">
         <Navbar />
         <main className="pt-20">
           <HeroSection />
