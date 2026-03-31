@@ -20,6 +20,8 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
     allow(Utils::Name).to receive(:possessive).with(any_args).and_call_original
     allow(Utils::Name).to receive(:possessive).with("Test User").and_return("Test User's")
     allow(Utils::Name).to receive(:possessive).with("Old Name").and_return("Old Name's")
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("BREVO_API_KEY").and_return(nil)
   end
 
   describe '#call' do
@@ -306,6 +308,49 @@ RSpec.describe Auth::Operations::CreateUserAndSpace do
 
       it 'does not create a space user association' do
         expect { call_operation }.not_to change(Spaces::SpaceUser, :count)
+      end
+    end
+
+    context "when Brevo sync is enabled" do
+      let(:brevo_client) { instance_double(Integrations::Marketing::Brevo::Client) }
+
+      before do
+        allow(ENV).to receive(:[]).with("BREVO_API_KEY").and_return("brevo-api-key")
+        allow(Integrations::Marketing::Brevo::Client).to receive(:new).and_return(brevo_client)
+        allow(brevo_client).to receive(:upsert_contact_to_list)
+      end
+
+      it "adds identified users to identified_contacts list" do
+        call_operation
+
+        expect(Integrations::Marketing::Brevo::Client).to have_received(:new)
+        expect(brevo_client).to have_received(:upsert_contact_to_list).with(
+          email: auth_params[:email],
+          list_name: "identified_contacts",
+          full_name: auth_params[:full_name]
+        )
+      end
+
+      context "when Brevo request raises an error" do
+        before do
+          allow(brevo_client).to receive(:upsert_contact_to_list).and_raise(StandardError.new("Brevo outage"))
+        end
+
+        it "does not fail user creation flow" do
+          result = call_operation
+
+          expect(result).to be_success
+        end
+      end
+    end
+
+    context "when Brevo sync is disabled" do
+      it "does not instantiate the Brevo client" do
+        allow(Integrations::Marketing::Brevo::Client).to receive(:new)
+
+        call_operation
+
+        expect(Integrations::Marketing::Brevo::Client).not_to have_received(:new)
       end
     end
   end

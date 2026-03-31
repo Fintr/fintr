@@ -92,6 +92,7 @@ env:
     - AUTH0_DOMAIN
     - XENDIT_API_KEY
     - XENDIT_WEBHOOK_TOKEN
+    - BREVO_API_KEY
 
 # Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
 # "bin/kamal app logs -r job" will tail logs from the first server in the job section.

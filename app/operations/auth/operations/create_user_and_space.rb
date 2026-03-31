@@ -3,15 +3,21 @@
 module Auth
   module Operations
     class CreateUserAndSpace < Dry::Operation
+      IDENTIFIED_CONTACTS_LIST_NAME = "identified_contacts".freeze
+
       def call(params)
+        user = nil
+
         ActiveRecord::Base.transaction do
-          user              = step create_user(params)
-          space_attributes  = step create_space_attributes(user)
-          space             = step create_own_space(user, space_attributes)
-          _                 = step join_own_space(user, space)
-          _                 = step assign_admin_role_to_user(user, space)
-          user
+          user = step create_user(params)
+          space_attributes = step create_space_attributes(user)
+          space = step create_own_space(user, space_attributes)
+          _ = step join_own_space(user, space)
+          _ = step assign_admin_role_to_user(user, space)
         end
+
+        _ = step add_contact_to_identified_contacts_list(user)
+        user
       end
 
       private
@@ -93,6 +99,22 @@ module Auth
 
       def assign_admin_role_to_user(user, space)
         user.add_role(:admin, space)
+        Success()
+      end
+
+      def add_contact_to_identified_contacts_list(user)
+        return Success() unless ENV["BREVO_API_KEY"].present?
+        return Success() if user.email.blank?
+
+        Integrations::Marketing::Brevo::Client.new.upsert_contact_to_list(
+          email: user.email,
+          list_name: IDENTIFIED_CONTACTS_LIST_NAME,
+          full_name: user.full_name
+        )
+
+        Success()
+      rescue StandardError => e
+        Rails.logger.error("Brevo identified contact sync failed for #{user.email}: #{e.message}")
         Success()
       end
     end
