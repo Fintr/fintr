@@ -42,7 +42,7 @@ export default function MarketSection() {
           </div>
         </div>
         <p className="text-[12px] text-[#A8A29E] mt-5 text-center">
-          Source: Data Reportal, e-Conomy SEA Report via Foxmont 2026
+          Source: Foxmont Philippine Private Capital Report 2026
         </p>
 
         {/* Why Now */}
