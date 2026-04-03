@@ -36,6 +36,7 @@ export function ToasterWithSettings() {
       position={position}
       style={{
         bottom: `${settings.offsetBottom}px`,
+        pointerEvents: "none",
       }}
     />
   );
