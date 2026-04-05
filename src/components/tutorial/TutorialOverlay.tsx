@@ -75,6 +75,35 @@ const TutorialOverlay: React.FC = () => {
   const isHandlingClickRef = React.useRef(false);
   const stepIndexRef = React.useRef(0);
   
+  // Refs for tracking timeouts and intervals for cleanup
+  const timeoutsRef = React.useRef<NodeJS.Timeout[]>([]);
+  const intervalsRef = React.useRef<NodeJS.Timeout[]>([]);
+  
+  // Helper to track timeouts
+  const trackTimeout = React.useCallback((timeoutId: NodeJS.Timeout) => {
+    timeoutsRef.current.push(timeoutId);
+    return timeoutId;
+  }, []);
+  
+  // Helper to track intervals
+  const trackInterval = React.useCallback((intervalId: NodeJS.Timeout) => {
+    intervalsRef.current.push(intervalId);
+    return intervalId;
+  }, []);
+  
+  // Cleanup all timeouts and intervals on unmount
+  useEffect(() => {
+    return () => {
+      // Clear all tracked timeouts
+      timeoutsRef.current.forEach(id => clearTimeout(id));
+      timeoutsRef.current = [];
+      
+      // Clear all tracked intervals
+      intervalsRef.current.forEach(id => clearInterval(id));
+      intervalsRef.current = [];
+    };
+  }, []);
+  
   // Keep ref in sync with state
   useEffect(() => {
     stepIndexRef.current = stepIndex;
@@ -277,15 +306,15 @@ const TutorialOverlay: React.FC = () => {
         setStepIndex(nextStepIndex);
         isHandlingClickRef.current = false;
       } else {
-        setTimeout(() => checkForNextElement(attempt + 1), 100);
+        trackTimeout(setTimeout(() => checkForNextElement(attempt + 1), 100));
       }
     };
 
     // Start checking after a short delay to allow the menu to begin opening
-    setTimeout(() => checkForNextElement(), 150);
+    trackTimeout(setTimeout(() => checkForNextElement(), 150));
     
     return true;
-  }, []);
+  }, [trackTimeout]);
 
   // Handle clicking "Add Transaction" in the menu (for both transaction-menu and income-menu)
   const handleTransactionMenuClick = useCallback((currentStep: any, config: any) => {
@@ -347,15 +376,15 @@ const TutorialOverlay: React.FC = () => {
         isHandlingClickRef.current = false;
       } else {
         // Element not found yet, check again after a short delay
-        setTimeout(checkForElement, 100);
+        trackTimeout(setTimeout(checkForElement, 100));
       }
     };
     
     // Start checking after initial delay
-    setTimeout(checkForElement, 200);
+    trackTimeout(setTimeout(checkForElement, 200));
     
     return true;
-  }, []);
+  }, [trackTimeout]);
 
   // Handle normal step navigation
   const handleNormalNavigation = useCallback((
@@ -508,7 +537,7 @@ const TutorialOverlay: React.FC = () => {
             // We use an interval that checks every 200ms and gives up after 60 seconds.
             const maxAttempts = 300; // 300 × 200ms = 60 seconds
             let attempts = 0;
-            const pollInterval = setInterval(() => {
+            const pollInterval = trackInterval(setInterval(() => {
               attempts++;
               const nextElement = document.querySelector(nextElementSelector) as HTMLElement | null;
               const isElementVisible = nextElement && nextElement.offsetParent !== null;
@@ -523,7 +552,7 @@ const TutorialOverlay: React.FC = () => {
                 setStepIndex(nextStepIndex);
                 isHandlingClickRef.current = false;
               }
-            }, 200);
+            }, 200));
             
             return;
           }
@@ -533,7 +562,7 @@ const TutorialOverlay: React.FC = () => {
           const delay = currentStep?.id === 'loan-menu-item' && platform === 'mobile' ? 500 : 0;
           
           // Wait a bit, then advance to next step
-          setTimeout(() => {
+          trackTimeout(setTimeout(() => {
             // Calculate next step index
             let nextStepIndex = index;
             if (index === currentStepIndex) {
@@ -548,13 +577,13 @@ const TutorialOverlay: React.FC = () => {
             stepIndexRef.current = nextStepIndex;
             setStepIndex(nextStepIndex);
             isHandlingClickRef.current = false;
-          }, delay);
+          }, delay));
           
           return;
         } else if (retryCount < 5) {
           // Retry finding the element (element might not be rendered yet)
           console.log(`Normal navigation: element not found, retrying (${retryCount + 1}/5) for step`, currentStepIndex, 'selector:', selector);
-          setTimeout(() => findAndClickElement(retryCount + 1), 100);
+          trackTimeout(setTimeout(() => findAndClickElement(retryCount + 1), 100));
           return;
         } else {
           console.warn('Normal navigation: element not found after retries for step', currentStepIndex, 'selector:', selector);
@@ -580,7 +609,7 @@ const TutorialOverlay: React.FC = () => {
     // Update ref immediately to prevent race conditions
     stepIndexRef.current = nextStepIndex;
     setStepIndex(nextStepIndex);
-  }, [getConfig, platform]);
+  }, [getConfig, platform, trackTimeout, trackInterval]);
 
   // Handle tutorial completion or skip
   const handleTutorialCompletion = useCallback(async (status: string) => {
@@ -627,25 +656,25 @@ const TutorialOverlay: React.FC = () => {
               // Toggle run off then on so Joyride re-evaluates the target for this step index
               stepIndexRef.current = index;
               setRun(false);
-              setTimeout(() => {
+              trackTimeout(setTimeout(() => {
                 setStepIndex(index);
                 setRun(true);
-              }, 50);
+              }, 50));
             } else if (retryCount < maxRetries) {
               retryCount++;
               console.log(`Retrying to find element (attempt ${retryCount}/${maxRetries}):`, selector, 'visible:', targetElement?.offsetParent !== null);
-              setTimeout(retryFindElement, retryDelay);
+              trackTimeout(setTimeout(retryFindElement, retryDelay));
             } else {
               console.error('Element not found after max retries:', selector);
             }
           };
           
           const initialDelay = isLoanMenuItem ? 500 : retryDelay;
-          setTimeout(retryFindElement, initialDelay);
+          trackTimeout(setTimeout(retryFindElement, initialDelay));
         }
       }
     }
-  }, [getConfig]);
+  }, [getConfig, trackTimeout]);
 
   // Handle joyride callbacks
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
