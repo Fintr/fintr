@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { IndexTransaction, CombinedTransactionTypeEnum, TransactionsPage } from "@/types/transactionTypes";
 import { formatCurrency, truncateText } from "@/lib/utils";
 import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Copy, Check, Image } from "lucide-react";
@@ -47,6 +47,7 @@ export function ListView({
   const [lightboxImages, setLightboxImages] = useState<Array<{ url: string; filename?: string; contentType?: string; byteSize?: number }>>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [hoveredCalculatedId, setHoveredCalculatedId] = useState<string | null>(null);
+  const copiedIdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { api } = useAuthApi();
   
   // Get space context for currency
@@ -59,7 +60,11 @@ export function ListView({
       if (typeof window !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(id);
         setCopiedId(id);
-        setTimeout(() => setCopiedId(null), 2000); // Reset after 2 seconds
+        // Clear any existing timeout first
+        if (copiedIdTimeoutRef.current) {
+          clearTimeout(copiedIdTimeoutRef.current);
+        }
+        copiedIdTimeoutRef.current = setTimeout(() => setCopiedId(null), 2000); // Reset after 2 seconds
       } else {
         console.warn("Clipboard API not available");
       }
@@ -67,6 +72,15 @@ export function ListView({
       console.error("Failed to copy ID:", err);
     }
   };
+
+  // Cleanup timeout on component unmount
+  useEffect(() => {
+    return () => {
+      if (copiedIdTimeoutRef.current) {
+        clearTimeout(copiedIdTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleImageClick = async (transaction: IndexTransaction) => {
     if (!api) return;

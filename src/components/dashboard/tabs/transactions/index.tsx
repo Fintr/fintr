@@ -130,6 +130,11 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const [editValue, setEditValue] = useState<string>("");
   const editInputRef = useRef<HTMLInputElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  
+  // Refs for timeout cleanup
+  const deleteSuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const editFocusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const deleteCancelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -162,6 +167,21 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     manualOnly: false,
     loadMoreRef,
   });
+
+  // Cleanup timeouts on component unmount
+  useEffect(() => {
+    return () => {
+      if (deleteSuccessTimeoutRef.current) {
+        clearTimeout(deleteSuccessTimeoutRef.current);
+      }
+      if (editFocusTimeoutRef.current) {
+        clearTimeout(editFocusTimeoutRef.current);
+      }
+      if (deleteCancelTimeoutRef.current) {
+        clearTimeout(deleteCancelTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const queryClient = useQueryClient();
   const { api } = useAuthApi();
@@ -211,7 +231,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       
       setDeleteScopeModalOpen(false);
       // Reset transaction state after a delay to prevent visual glitch
-      setTimeout(() => {
+      deleteSuccessTimeoutRef.current = setTimeout(() => {
         setTransactionToDelete(null);
       }, 300);
     },
@@ -273,7 +293,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       setEditingCell({ id, field });
       setEditValue(value);
 
-      setTimeout(() => {
+      editFocusTimeoutRef.current = setTimeout(() => {
         if (editInputRef.current) {
           editInputRef.current.focus();
         }
@@ -306,7 +326,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     setEditingCell({ id, field });
     setEditValue(value);
 
-    setTimeout(() => {
+    editFocusTimeoutRef.current = setTimeout(() => {
       if (editInputRef.current) {
         editInputRef.current.focus();
       }
@@ -387,7 +407,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           if (value === null || value === undefined) value = "";
           setEditingCell({ id, field });
           setEditValue(value.toString());
-          setTimeout(() => {
+          editFocusTimeoutRef.current = setTimeout(() => {
             if (editInputRef.current) {
               editInputRef.current.focus();
             }
@@ -552,7 +572,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const handleDeleteCancel = () => {
     setDeleteScopeModalOpen(false);
     // Reset transaction state after a delay to prevent visual glitch
-    setTimeout(() => {
+    deleteCancelTimeoutRef.current = setTimeout(() => {
       setTransactionToDelete(null);
     }, 300);
   };

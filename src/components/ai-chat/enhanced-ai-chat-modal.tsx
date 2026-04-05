@@ -49,6 +49,9 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   const [isMobile, setIsMobile] = useState(false);
   
   const historyPushedRef = useRef(false);
+  const initialScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const historyPushTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sendMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { 
     messages, 
@@ -158,15 +161,23 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   useEffect(() => {
     if (!isInitialLoad || allMessages.length === 0) return;
 
-    const timeoutId = setTimeout(() => {
+    initialScrollTimeoutRef.current = setTimeout(() => {
       scrollToBottom('smooth');
       setIsInitialLoad(false);
-      setTimeout(() => {
+      // Use another ref for the nested timeout
+      const innerTimeoutId = setTimeout(() => {
         setHasUserScrolled(true);
       }, 1000);
+      
+      // Store inner timeout to cleanup
+      return () => clearTimeout(innerTimeoutId);
     }, 100);
     
-    return () => clearTimeout(timeoutId);
+    return () => {
+      if (initialScrollTimeoutRef.current) {
+        clearTimeout(initialScrollTimeoutRef.current);
+      }
+    };
   }, [isInitialLoad, allMessages.length, setHasUserScrolled, scrollToBottom]);
 
   // Reset scroll state when conversation changes
@@ -280,7 +291,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
 
     window.addEventListener('popstate', handlePopState);
 
-    setTimeout(() => {
+    historyPushTimeoutRef.current = setTimeout(() => {
       if (isOpen) {
         window.history.pushState({ modalOpen: true }, '');
         historyPushedRef.current = true;
@@ -290,6 +301,10 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
     return () => {
       window.removeEventListener('popstate', handlePopState);
       
+      if (historyPushTimeoutRef.current) {
+        clearTimeout(historyPushTimeoutRef.current);
+      }
+      
       if (historyPushedRef.current) {
         historyPushedRef.current = false;
         if (window.history.state?.modalOpen) {
@@ -298,6 +313,18 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
       }
     };
   }, [isOpen, isMobile, onClose]);
+
+  // Cleanup all timeouts on component unmount
+  useEffect(() => {
+    return () => {
+      if (initialScrollTimeoutRef.current) {
+        clearTimeout(initialScrollTimeoutRef.current);
+      }
+      if (sendMessageTimeoutRef.current) {
+        clearTimeout(sendMessageTimeoutRef.current);
+      }
+    };
+  }, []);
 
 
   const handleSendMessage = async () => {
@@ -319,7 +346,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
     });
 
     // Auto-scroll after sending message (wait for message to be added to DOM)
-    setTimeout(() => {
+    sendMessageTimeoutRef.current = setTimeout(() => {
       scrollToBottom('smooth');
       setHasUserManuallyScrolled(false); // Reset scroll state so we follow new messages
     }, 150);
