@@ -307,7 +307,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
               </div>
             </Button>
             {hasActiveFilters() && (
-              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white z-50" />
+              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
             )}
           </div>
           <NewBudgetDialog
