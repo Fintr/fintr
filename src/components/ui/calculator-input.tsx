@@ -394,26 +394,6 @@ export function CalculatorInput({
       }
     >
       <div className={cn("flex flex-col", isMobile ? "h-full gap-1.5" : "space-y-2")}>
-        {/* Expression display with result preview */}
-        {(expression || previewResult !== null) && (
-          <div className="rounded-md bg-muted/50 px-3 py-2 shrink-0">
-            <p className={cn(
-              "font-mono text-right break-all font-semibold",
-              isMobile ? "text-lg" : "text-xl"
-            )}>
-              {expression || "0"}
-            </p>
-            {previewResult !== null && (
-              <p className={cn(
-                "text-muted-foreground text-right",
-                isMobile ? "text-sm" : "text-base"
-              )}>
-                = {previewResult.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-              </p>
-            )}
-          </div>
-        )}
-
         {/* Calculator buttons - iOS style layout */}
         <div className={cn(
           "grid grid-cols-4 gap-1.5",
