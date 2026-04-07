@@ -658,7 +658,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
 
       <div className="px-2 md:px-0">
         <Card className="border-0 shadow-none bg-transparent px-0 py-0 overflow-visible">
-        <CardHeader className="flex flex-row items-center justify-between gap-4 overflow-visible">
+        <CardHeader className="flex flex-row items-center justify-between gap-4 overflow-visible pt-2">
           <div>
             <CardTitle className="hidden md:block">All Transactions</CardTitle>
             <CardDescription className="px-0 md:px-2">
@@ -677,7 +677,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
               </div>
             </Button>
             {hasActiveFilters() && (
-              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white z-50" />
+              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
             )}
           </div>
           {shouldShowV2Features() && (
