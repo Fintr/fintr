@@ -130,8 +130,27 @@ const NotesAutocomplete: React.FC<NotesAutocompleteProps> = ({
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e);
-    if (categoryName && e.target.value.length >= 0) {
+    let newValue = e.target.value;
+    
+    // Auto-capitalize: first letter and after periods
+    if (newValue.length > 0) {
+      // Capitalize first letter
+      newValue = newValue.charAt(0).toUpperCase() + newValue.slice(1);
+      
+      // Capitalize after ". "
+      newValue = newValue.replace(/\.\s+\w/g, (match) => {
+        return match.toUpperCase();
+      });
+    }
+    
+    // Create synthetic event with capitalized value
+    const syntheticEvent = {
+      ...e,
+      target: { ...e.target, value: newValue },
+    } as React.ChangeEvent<HTMLTextAreaElement>;
+    
+    onChange(syntheticEvent);
+    if (categoryName && newValue.length >= 0) {
       setIsOpen(true);
     }
     setHighlightedIndex(-1);
