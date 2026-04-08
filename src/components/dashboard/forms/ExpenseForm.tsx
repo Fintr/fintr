@@ -43,7 +43,7 @@ import {
   AmountWithRatePicker,
   type ConversionSnapshot,
 } from "./AmountWithRatePicker";
-import { resolvePrefillAmountCurrency } from "@/utils/formUtils";
+import { resolvePrefillAmountCurrency, isUploadableFile } from "@/utils/formUtils";
 
 /** System category for transfer-fee expenses; when editing such a transaction, the category is shown and disabled. */
 const TRANSFER_FEE_CATEGORY_NAME = "Transfer Fee";
@@ -502,6 +502,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     }
     
     try {
+      const shouldUploadFile = isUploadableFile(formState.file);
+
       // Create: amount in space currency. Edit with conversion: amount in original_currency + metadata so backend converts to account.
       const transactionData = {
         amount: numberFormatting.cleanForBackend(formState.amount),
@@ -520,7 +522,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             : undefined
         }),
         ...(fileId && { fileId }),
-        ...(formState.file && { file: formState.file }),
+        ...(shouldUploadFile && { file: formState.file }),
         ...(draftId && { draftId }),
         ...(conversionSnapshot && {
           original_currency: conversionSnapshot.originalCurrency,
@@ -590,9 +592,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setFormState(prev => ({ ...prev, file }));
+      setFileId(null);
       if (onFileUpdate) onFileUpdate(file); // Notify parent of file change
     } else {
       setFormState(prev => ({ ...prev, file: null }));
+      setFileId(null);
       if (onFileUpdate) onFileUpdate(null); // Notify parent of file removal
     }
   };

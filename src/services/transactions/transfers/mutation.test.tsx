@@ -21,6 +21,7 @@ vi.mock("@/utils/formUtils", () => ({
     });
     return formData;
   }),
+  isUploadableFile: vi.fn((value: unknown) => value instanceof File || value instanceof Blob),
 }));
 
 describe("Transfer Mutations", () => {
@@ -89,6 +90,34 @@ describe("Transfer Mutations", () => {
             "Content-Type": "multipart/form-data",
           },
         }
+      );
+      expect(result).toEqual(mockResponse.data);
+    });
+
+    it("uses JSON payload when file is a draft placeholder object", async () => {
+      const transferDataWithPlaceholderFile = {
+        ...validTransferData,
+        file: {
+          isRemoteFile: true,
+          id: "draft-file-id",
+          url: "https://example.com/receipt.jpg",
+          name: "receipt.jpg",
+          type: "image/jpeg",
+        } as unknown as File,
+      };
+
+      const mockResponse = {
+        data: {
+          id: "json-123",
+        },
+      };
+      (mockApi.post as ReturnType<typeof vi.fn>).mockResolvedValue(mockResponse);
+
+      const result = await createTransfer(mockApi, transferDataWithPlaceholderFile);
+
+      expect(mockApi.post).toHaveBeenCalledWith(
+        "/transactions/transfers",
+        transferDataWithPlaceholderFile
       );
       expect(result).toEqual(mockResponse.data);
     });

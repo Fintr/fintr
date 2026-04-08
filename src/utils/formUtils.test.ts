@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolvePrefillAmountCurrency } from "./formUtils";
+import { resolvePrefillAmountCurrency, isUploadableFile } from "./formUtils";
 
 describe("resolvePrefillAmountCurrency", () => {
   const accounts = [
@@ -65,5 +65,23 @@ describe("resolvePrefillAmountCurrency", () => {
         spaceCurrency: "PHP",
       })
     ).toBe("PHP");
+  });
+});
+
+describe("isUploadableFile", () => {
+  it("returns true for a File object", () => {
+    const file = new File(["content"], "receipt.jpg", { type: "image/jpeg" });
+    expect(isUploadableFile(file)).toBe(true);
+  });
+
+  it("returns false for a draft placeholder object", () => {
+    const placeholder = {
+      isRemoteFile: true,
+      id: "draft-file-id",
+      url: "https://example.com/receipt.jpg",
+      name: "receipt.jpg",
+      type: "image/jpeg",
+    };
+    expect(isUploadableFile(placeholder)).toBe(false);
   });
 });
