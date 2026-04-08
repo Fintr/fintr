@@ -1,6 +1,6 @@
 import { AxiosInstance, AxiosError } from 'axios';
 import { ScheduleTypeEnum, UpdateScopeEnum, DeleteScopeEnum } from '@/constants/transactionConstants';
-import { formDataWithFile } from '@/utils/formUtils';
+import { formDataWithFile, isUploadableFile } from '@/utils/formUtils';
 
 // Type for creating a new transaction
 export interface CreateTransactionType {
@@ -50,8 +50,10 @@ export const createTransaction = async (
   transactionData: CreateTransactionType
 ) => {
   try {
+    const shouldUseMultipart = isUploadableFile(transactionData.file);
+
     // If there's a file, use FormData to handle the multipart/form-data request
-    if (transactionData.file) {
+    if (shouldUseMultipart) {
       const formData = formDataWithFile(transactionData);
       const response = await api.post('/transactions', formData, {
         headers: {
@@ -92,8 +94,10 @@ export const updateTransaction = async (
   transactionData: UpdateTransactionType
 ) => {
   try {
+    const shouldUseMultipart = isUploadableFile(transactionData.file);
+
     // If there's a file, use FormData to handle the multipart/form-data request
-    if (transactionData.file) {
+    if (shouldUseMultipart) {
       const formData = formDataWithFile(transactionData);
       const response = await api.put(`/transactions/${transactionData.id}`, formData, {
         headers: {

@@ -1,5 +1,5 @@
 import { AxiosInstance, AxiosError } from 'axios';
-import { formDataWithFile } from '@/utils/formUtils';
+import { formDataWithFile, isUploadableFile } from '@/utils/formUtils';
 
 // Type for creating a new loan
 export interface CreateLoanType {
@@ -32,6 +32,8 @@ export const createLoan = async (
   loanData: CreateLoanType
 ) => {
   try {
+    const shouldUseMultipart = isUploadableFile(loanData.file);
+
     // Transform frontend data to backend format
     const backendData = {
       principal_amount: loanData.principalAmount,
@@ -43,11 +45,11 @@ export const createLoan = async (
       loan_term_months: loanData.loanTermMonths,
       description: loanData.description || '',
       ...(loanData.fileId && { file_id: loanData.fileId }),
-      ...(loanData.file && { file: loanData.file })
+      ...(shouldUseMultipart && { file: loanData.file })
     };
 
     // If there's a file, use FormData to handle the multipart/form-data request
-    if (loanData.file) {
+    if (shouldUseMultipart) {
       const formData = formDataWithFile(backendData);
       const response = await api.post('/transactions/loans', formData, {
         headers: {
@@ -88,6 +90,8 @@ export const updateLoan = async (
   loanData: UpdateLoanType
 ) => {
   try {
+    const shouldUseMultipart = isUploadableFile(loanData.file);
+
     // Transform frontend data to backend format
     const backendData = {
       principal_amount: loanData.principalAmount,
@@ -97,11 +101,11 @@ export const updateLoan = async (
       entity_name: loanData.entityName,
       loan_term_months: loanData.loanTermMonths,
       description: loanData.description || '',
-      ...(loanData.file && { file: loanData.file })
+      ...(shouldUseMultipart && { file: loanData.file })
     };
 
     // If there's a file, use FormData to handle the multipart/form-data request
-    if (loanData.file) {
+    if (shouldUseMultipart) {
       const formData = formDataWithFile(backendData);
       const response = await api.put(`/transactions/loans/${loanData.id}`, formData, {
         headers: {

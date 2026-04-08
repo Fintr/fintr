@@ -19,6 +19,14 @@ export const formDataWithFile = (data: any) => {
   return formData;
 };
 
+export const isUploadableFile = (value: unknown): value is File | Blob => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return value instanceof File || value instanceof Blob;
+};
+
 /**
  * Picks the amount field currency when prefilling the expense form (e.g. Add Receipt)
  * without currency conversion metadata. Prefer space default_transaction_currency when
