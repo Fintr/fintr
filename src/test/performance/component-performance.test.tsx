@@ -199,6 +199,7 @@ describe('Performance: Transaction List Component', () => {
       cellRenderCount++;
       return React.createElement('td', null, value);
     });
+    MemoizedCell.displayName = 'MemoizedCell';
 
     const SpreadsheetView = ({ data }: { data: { id: string; cells: string[] }[] }) => {
       const [selectedRow, setSelectedRow] = useState<string | null>(null);
@@ -421,6 +422,7 @@ describe('Performance: Dashboard Charts', () => {
       const sum = data.reduce((a, b) => a + b, 0);
       return React.createElement('div', { 'data-testid': 'chart' }, `Total: ${sum}`);
     });
+    ExpensiveChart.displayName = 'ExpensiveChart';
 
     const Dashboard = () => {
       const [chartData] = useState([10, 20, 30, 40, 50]);
