@@ -54,7 +54,8 @@ describe('Performance: Infinite Query Hooks', () => {
 
   describe('useInfiniteTransactions', () => {
     it('should not re-fetch on every render with stable query keys', async () => {
-      const fetchSpy = vi.spyOn(require('@/services/transactions/queries'), 'fetchTransactionsPage');
+      const transactionQueries = await import('@/services/transactions/queries');
+      const fetchSpy = vi.spyOn(transactionQueries, 'fetchTransactionsPage');
       fetchSpy.mockResolvedValue({
         transactions: [],
         nextPage: null,

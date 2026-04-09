@@ -202,7 +202,7 @@ describe('Performance: useMemo and useCallback Optimization', () => {
   });
 
   it('should maintain stable callback references', () => {
-    const callbackHistory: Function[] = [];
+    const callbackHistory: (() => number)[] = [];
 
     function ComponentWithStableCallback() {
       const [count, setCount] = useState(0);
