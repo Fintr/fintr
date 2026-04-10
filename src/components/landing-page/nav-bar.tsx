@@ -65,11 +65,11 @@ export default function Navbar() {
                 className="inline-block transition-opacity hover:opacity-80 hidden lg:block"
               >
                 <Image
-                  src="/images/app-store-badge.jpeg"
+                  src="/images/app-store-badge.png"
                   alt="Download on the App Store"
-                  width={120}
-                  height={40}
-                  className="h-[38px] w-auto"
+                  width={140}
+                  height={47}
+                  className="h-[46px] w-auto"
                 />
               </Link>
               <Link

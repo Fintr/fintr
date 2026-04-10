@@ -21,14 +21,14 @@ export default function HeroSection() {
             <Link
               href="https://apps.apple.com/ph/app/fintr-finance-tracking/id6757146677"
               target="_blank"
-              className="inline-block transition-opacity hover:opacity-80"
+              className="inline-block transition-opacity hover:opacity-80 mt-1"
             >
               <Image
-                src="/images/app-store-badge.jpeg"
+                src="/images/app-store-badge.png"
                 alt="Download on the App Store"
-                width={180}
-                height={60}
-                className="h-[52px] w-auto"
+                width={200}
+                height={67}
+                className="h-[64px] w-auto"
               />
             </Link>
             <Link
