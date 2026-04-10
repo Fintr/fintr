@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 export default function HeroSection() {
   return (
@@ -20,9 +21,15 @@ export default function HeroSection() {
             <Link
               href="https://apps.apple.com/ph/app/fintr-finance-tracking/id6757146677"
               target="_blank"
-              className="inline-flex items-center gap-2 bg-[#0A2540] text-white px-7 py-3.5 rounded-[10px] font-semibold text-[15px] transition-opacity hover:opacity-90"
+              className="inline-block transition-opacity hover:opacity-80 mt-1"
             >
-              Download iOS App
+              <Image
+                src="/images/app-store-badge.png"
+                alt="Download on the App Store"
+                width={200}
+                height={67}
+                className="h-[64px] w-auto"
+              />
             </Link>
             <Link
               href="#features"

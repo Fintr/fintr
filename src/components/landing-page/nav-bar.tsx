@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -61,9 +62,15 @@ export default function Navbar() {
                 href="https://apps.apple.com/ph/app/fintr-finance-tracking/id6757146677"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-[#0A2540] text-white px-3.5 sm:px-5 py-2 rounded-lg font-semibold text-[13px] sm:text-[14px] transition-opacity hover:opacity-90 no-underline whitespace-nowrap hidden lg:block"
+                className="inline-block transition-opacity hover:opacity-80 hidden lg:block"
               >
-                Download iOS App
+                <Image
+                  src="/images/app-store-badge.png"
+                  alt="Download on the App Store"
+                  width={140}
+                  height={47}
+                  className="h-[46px] w-auto"
+                />
               </Link>
               <Link
                 href="/auth"
