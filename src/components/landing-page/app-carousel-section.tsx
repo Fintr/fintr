@@ -103,23 +103,15 @@ export default function AppCarouselSection() {
                 key={index}
                 className="flex-[0_0_100%] min-w-0 sm:flex-[0_0_50%] lg:flex-[0_0_33.333%] pl-4 first:pl-0"
               >
-                <div className="bg-white/5 backdrop-blur-sm rounded-[24px] p-6 border border-white/10">
-                  <div className="relative aspect-[9/19] rounded-[20px] overflow-hidden shadow-2xl">
+                <div className="bg-white/5 backdrop-blur-sm rounded-[24px] p-6 border border-white/10 h-[650px]">
+                  <div className="relative w-full h-full rounded-[20px] overflow-hidden shadow-2xl">
                     <Image
                       src={screenshot.src}
                       alt={screenshot.alt}
                       fill
-                      className="object-cover"
+                      className="object-contain"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
-                  </div>
-                  <div className="mt-6 text-center">
-                    <h3 className="text-[18px] font-semibold text-white mb-2">
-                      {screenshot.title}
-                    </h3>
-                    <p className="text-[14px] text-white/60">
-                      {screenshot.description}
-                    </p>
                   </div>
                 </div>
               </div>
@@ -148,9 +140,15 @@ export default function AppCarouselSection() {
           <a
             href="https://apps.apple.com/ph/app/fintr-finance-tracking/id6757146677"
             target="_blank"
-            className="inline-flex items-center justify-center bg-white text-[#0A2540] px-8 py-4 rounded-[12px] font-semibold text-[16px] transition-transform hover:scale-105"
+            className="inline-block transition-opacity hover:opacity-80"
           >
-            Download iOS App
+            <Image
+              src="/images/app-store-badge.jpeg"
+              alt="Download on the App Store"
+              width={180}
+              height={60}
+              className="h-[52px] w-auto"
+            />
           </a>
         </div>
       </div>
