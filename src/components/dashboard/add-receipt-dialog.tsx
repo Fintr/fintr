@@ -351,8 +351,20 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           }
         }, 1000);
       };
-      
-      input.click();
+
+      // Defer presenting the picker to the next frame(s) on iOS WebView so layout/safe-area
+      // updates from the tap are not contending with UIImagePicker presentation (reduces App Hang).
+      const cap = typeof window !== 'undefined' ? (window as any).Capacitor : undefined;
+      const isIosNative = typeof cap?.getPlatform === 'function' && cap.getPlatform() === 'ios';
+      if (isIosNative) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            input.click();
+          });
+        });
+      } else {
+        input.click();
+      }
     } else {
       // On desktop/laptop, use webcam
       startCamera();
