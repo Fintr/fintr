@@ -1,13 +1,11 @@
 import UIKit
 import Capacitor
-import WebKit
 import Sentry
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
-    private var hasAdjustedWebView = false
 
     /// Key window for the app. Uses scene-based API on iOS 15+ to avoid deprecated `windows`.
     static func keyWindow() -> UIWindow? {
@@ -63,11 +61,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         // Configure cache settings for the WebView
         configureWebViewCache()
-        
-        // Adjust webview safe area after launch
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.adjustWebViewSafeArea()
-        }
+
         return true
     }
 
@@ -87,110 +81,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-        if !hasAdjustedWebView {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                self.adjustWebViewSafeArea()
-            }
-        }
-    }
-    
-    private func adjustWebViewSafeArea() {
-        guard !hasAdjustedWebView,
-              let window = window,
-              let rootViewController = window.rootViewController as? CAPBridgeViewController else {
-            return
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.setupWebViewPadding(for: rootViewController)
-        }
-    }
-    
-    private func setupWebViewPadding(for viewController: CAPBridgeViewController) {
-        var webView: UIView? = nil
-        
-        func findWebView(in view: UIView) -> UIView? {
-            if view.isKind(of: WKWebView.self) {
-                return view
-            }
-            for subview in view.subviews {
-                if let found = findWebView(in: subview) {
-                    return found
-                }
-            }
-            return nil
-        }
-        
-        webView = findWebView(in: viewController.view)
-        
-        guard let webView = webView else {
-            if !hasAdjustedWebView {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    self.setupWebViewPadding(for: viewController)
-                }
-            }
-            return
-        }
-        
-        guard webView.superview != nil,
-              webView.frame.width > 0,
-              webView.frame.height > 0 else {
-            if !hasAdjustedWebView {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    self.setupWebViewPadding(for: viewController)
-                }
-            }
-            return
-        }
-
-        viewController.view.layoutIfNeeded()
-
-        var topPadding: CGFloat = 0
-        var leftPadding: CGFloat = 0
-        var rightPadding: CGFloat = 0
-
-        if #available(iOS 13.0, *) {
-            let window = viewController.view.window ?? AppDelegate.keyWindow()
-
-            topPadding = window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
-            leftPadding = viewController.view.safeAreaInsets.left
-            rightPadding = viewController.view.safeAreaInsets.right
-        } else {
-            topPadding = UIApplication.shared.statusBarFrame.size.height
-        }
-
-        let bottomInset = viewController.view.safeAreaInsets.bottom
-
-        // Only adjust if we have safe area insets (devices with notches/dynamic island / home indicator)
-        if topPadding > 0 || leftPadding > 0 || rightPadding > 0 || bottomInset > 0 {
-            // Match CapacitorViewController: WebView height excludes home-indicator region so web
-            // CSS does not double-stack safe-area padding on the bottom nav.
-            webView.frame.origin = CGPoint(x: leftPadding, y: topPadding)
-            webView.frame.size = CGSize(
-                width: UIScreen.main.bounds.width - leftPadding - rightPadding,
-                height: UIScreen.main.bounds.height - topPadding - bottomInset
-            )
-            hasAdjustedWebView = true
-            
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(handleOrientationChange),
-                name: UIDevice.orientationDidChangeNotification,
-                object: nil
-            )
-        }
-    }
-    
-    @objc private func handleOrientationChange() {
-        guard let window = window,
-              let rootViewController = window.rootViewController as? CAPBridgeViewController else {
-            return
-        }
-        
-        hasAdjustedWebView = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.setupWebViewPadding(for: rootViewController)
-        }
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
