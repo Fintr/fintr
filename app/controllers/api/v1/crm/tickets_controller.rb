@@ -4,12 +4,11 @@ module Api
   module V1
     module Crm
       class TicketsController < ApiController
-        skip_before_action :ensure_space_access!
         before_action :set_ticket, only: [:show]
 
         def index
           query = ::Crm::Queries::FilteredTickets.call(
-            relation: current_user.tickets,
+            relation: current_space.tickets.where(user_id: current_user.id),
             params: filter_params
           )
 
@@ -40,7 +39,7 @@ module Api
         private
 
         def set_ticket
-          @ticket = current_user.tickets.find(params[:id])
+          @ticket = current_space.tickets.where(user_id: current_user.id).find(params[:id])
         rescue ActiveRecord::RecordNotFound
           render_not_found(message: "Ticket not found")
         end

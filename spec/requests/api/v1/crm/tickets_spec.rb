@@ -37,7 +37,7 @@ RSpec.describe 'Api::V1::Crm::Tickets', type: :request do
               headers: headers
 
           expect(Crm::Queries::FilteredTickets).to have_received(:call) do |args|
-            expect(args[:relation]).to eq(user.tickets)
+            expect(args[:relation].to_sql).to eq(space.tickets.where(user_id: user.id).to_sql)
             expect(args[:params]).to include(status: 'open', priority: 'high', page: '1')
           end
         end
@@ -90,6 +90,38 @@ RSpec.describe 'Api::V1::Crm::Tickets', type: :request do
           parsed_response = JSON.parse(response.body)
           expect(parsed_response).to include('success' => false)
           expect(parsed_response['error']).to include('details')
+        end
+      end
+
+      context 'when tickets exist in different spaces' do
+        let(:other_space) { create(:space) }
+        let!(:current_space_ticket) { create(:crm_ticket, user: user, space: space, title: "Current Space Ticket") }
+        let!(:other_space_ticket) { create(:crm_ticket, user: user, space: other_space, title: "Other Space Ticket") }
+        let(:paginated_result) { double("paginated_result", current_page: 1, total_pages: 1, total_count: 1) } # rubocop:disable RSpec/VerifiedDoubles
+
+        before do
+          # Mock the query to return only tickets from current space
+          allow(Crm::Queries::FilteredTickets).to receive(:call) do |args|
+            # Verify the relation is scoped to current space
+            if args[:relation].to_sql == space.tickets.where(user_id: user.id).to_sql
+              Dry::Monads::Result::Success.new(paginated_result)
+            else
+              Dry::Monads::Result::Failure.new({ base: ["Invalid scope"] })
+            end
+          end
+
+          allow(Crm::Serializers::TicketListSerializer).to receive(:render_as_hash).and_return([
+            { id: current_space_ticket.id, title: "Current Space Ticket", status: "open" }
+          ])
+        end
+
+        it 'only returns tickets from the current space (space isolation)' do
+          get '/api/v1/crm/tickets', headers: headers
+
+          expect(response).to have_http_status(:ok)
+          expect(Crm::Queries::FilteredTickets).to have_received(:call) do |args|
+            expect(args[:relation].to_sql).to eq(space.tickets.where(user_id: user.id).to_sql)
+          end
         end
       end
     end
@@ -150,6 +182,20 @@ RSpec.describe 'Api::V1::Crm::Tickets', type: :request do
 
       it 'returns not found status' do
         get "/api/v1/crm/tickets/#{other_ticket.id}", headers: headers
+
+        expect(response).to have_http_status(:not_found)
+        parsed_response = JSON.parse(response.body)
+        expect(parsed_response).to include('success' => false)
+        expect(parsed_response['error']['message']).to eq("Ticket not found")
+      end
+    end
+
+    context 'when ticket belongs to user but in a different space' do
+      let(:other_space) { create(:space) }
+      let!(:other_space_ticket) { create(:crm_ticket, user: user, space: other_space) }
+
+      it 'returns not found status (space isolation)' do
+        get "/api/v1/crm/tickets/#{other_space_ticket.id}", headers: headers
 
         expect(response).to have_http_status(:not_found)
         parsed_response = JSON.parse(response.body)
