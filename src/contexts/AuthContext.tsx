@@ -2,7 +2,15 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { loginWithCredentials, signupWithCredentials, refreshAccessToken, LoginCredentials, SignupCredentials, LoginResponse } from '@/services/auth/login';
+import {
+  loginWithCredentials,
+  signupWithCredentials,
+  refreshAccessToken,
+  getUserProfile,
+  LoginCredentials,
+  SignupCredentials,
+  LoginResponse,
+} from '@/services/auth/login';
 import { AuthStorage, AuthUser, AuthStorageData, AuthTokens } from '@/lib/auth-storage';
 
 interface AuthContextType {
@@ -29,6 +37,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [tokens, setTokens] = useState<LoginResponse | null>(null);
   const router = useRouter();
+
+  const resolveUserProfile = async (
+    response: LoginResponse
+  ): Promise<AuthUser> => {
+    const decodedProfile = response.id_token
+      ? AuthStorage.decodeJWT(response.id_token)
+      : null;
+
+    if (decodedProfile) {
+      return decodedProfile;
+    }
+
+    const profileFromUserInfo = await getUserProfile(response.access_token);
+    if (!profileFromUserInfo?.sub) {
+      throw new Error('Failed to decode user profile from token');
+    }
+
+    return {
+      ...profileFromUserInfo,
+      name:
+        profileFromUserInfo.name ||
+        profileFromUserInfo.nickname ||
+        profileFromUserInfo.email ||
+        profileFromUserInfo.sub,
+      email: profileFromUserInfo.email || '',
+    } as AuthUser;
+  };
 
   console.log('🔄 AuthProvider State:', {
     hasUser: !!user,
@@ -155,7 +190,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [tokens]);
 
   const login = async (credentials: LoginCredentials) => {
-    console.log('🔐 AuthContext.login: Starting login...', { email: credentials.email });
+    console.log('🔐 AuthContext.login: Starting login...', { username: credentials.username });
     try {
       setIsLoading(true);
       setError(null);
@@ -165,12 +200,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('🔐 AuthContext.login: Login successful, received tokens');
       
       // Store tokens and user data in unified storage
-      console.log('🔐 AuthContext.login: Decoding user profile from token...');
-      const userProfile = AuthStorage.decodeJWT(response.id_token);
-      if (!userProfile) {
-        console.error('❌ AuthContext.login: Failed to decode user profile');
-        throw new Error('Failed to decode user profile from token');
-      }
+      console.log('🔐 AuthContext.login: Resolving user profile...');
+      const userProfile = await resolveUserProfile(response);
       console.log('🔐 AuthContext.login: User profile decoded:', { email: userProfile.email, sub: userProfile.sub });
 
       // Convert LoginResponse to AuthTokens format
@@ -217,10 +248,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('📝 AuthContext.signup: Signup successful, received tokens');
       
       // Store tokens and user data in unified storage
-      const userProfile = AuthStorage.decodeJWT(response.id_token);
-      if (!userProfile) {
-        throw new Error('Failed to decode user profile from token');
-      }
+      const userProfile = await resolveUserProfile(response);
 
       // Convert SignupResponse to AuthTokens format
       const authTokens: AuthTokens = {
