@@ -54,3 +54,6 @@ android/app/*.p12
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# iOS local secrets (e.g. Meta Facebook client token for Info.plist substitution)
+ios/App/App/DeveloperSecrets.xcconfig
