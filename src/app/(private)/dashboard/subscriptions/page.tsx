@@ -25,7 +25,7 @@ import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { getActionCableClient, ActionCableMessage } from "@/lib/actionCable";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
-import { CreditCard, Loader2, Plus, X, Play, AlertCircle, Copy, Check, Zap, Pencil, RefreshCw } from "lucide-react";
+import { CreditCard, Loader2, Plus, X, Play, AlertCircle, Copy, Check, Zap, Pencil, RefreshCw, Gift, Tag } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { shouldShowSimulatePaymentButton } from "@/lib/capacitor";
@@ -234,8 +234,28 @@ const SubscriptionsPage = () => {
           {activeSubscription && (
             <Card>
               <CardHeader>
-                <CardTitle>Current Subscription</CardTitle>
-                <CardDescription>Your active subscription plan</CardDescription>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle>Current Subscription</CardTitle>
+                    <CardDescription>Your active subscription plan</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    {activeSubscription.isDiscounted && (
+                      <div className="flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                        <Tag className="h-4 w-4" />
+                        {activeSubscription.sponsorCode?.discountPercentage
+                          ? `${activeSubscription.sponsorCode.discountPercentage}% Off`
+                          : "Discounted"}
+                      </div>
+                    )}
+                    {activeSubscription.subscriptionType === "free" && (
+                      <div className="flex items-center gap-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                        <Gift className="h-4 w-4" />
+                        Free
+                      </div>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -243,6 +263,60 @@ const SubscriptionsPage = () => {
                     <h3 className="text-lg sm:text-xl font-semibold">{activeSubscription.subscriptionPlan.name}</h3>
                     <p className="text-sm sm:text-base text-gray-600 mt-1">{activeSubscription.subscriptionPlan.description}</p>
                   </div>
+                  {activeSubscription.isDiscounted && activeSubscription.sponsorCode && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-green-900 mb-2">Discount Applied</h4>
+                      <div className="space-y-1 text-sm text-green-800">
+                        <p><span className="font-medium">Code:</span> {activeSubscription.sponsorCode.code}</p>
+                        {activeSubscription.sponsorCode.discountPercentage && (
+                          <p><span className="font-medium">Discount:</span> {activeSubscription.sponsorCode.discountPercentage}% off</p>
+                        )}
+                        {activeSubscription.sponsorCode.discountAmountCents && (
+                          <p><span className="font-medium">Discount:</span> {formatCurrency(activeSubscription.sponsorCode.discountAmountCents / 100, "PHP")}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {activeSubscription.subscriptionType === "free" && activeSubscription.freeSubscriptionInfo && (
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-purple-900">Free Subscription</h4>
+                        {activeSubscription.freeSubscriptionInfo.autoRenews && (
+                          <div className="flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-1 rounded-full">
+                            <RefreshCw className="h-3 w-3" />
+                            Auto-renews
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2 text-sm text-purple-800">
+                        <p><span className="font-medium">Space:</span> {activeSubscription.freeSubscriptionInfo.spaceName} ({activeSubscription.freeSubscriptionInfo.spaceType})</p>
+                        {activeSubscription.freeSubscriptionInfo.notes && (
+                          <p><span className="font-medium">Notes:</span> {activeSubscription.freeSubscriptionInfo.notes}</p>
+                        )}
+                        {activeSubscription.freeSubscriptionInfo.currentCycle && (
+                          <div className="mt-3 pt-3 border-t border-purple-200">
+                            <p className="text-xs text-purple-600 mb-1">Current Billing Cycle</p>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-purple-600">Cycle #{activeSubscription.freeSubscriptionInfo.currentCycle.cycleNumber}</span>
+                              </div>
+                              <div>
+                                <span className="text-purple-600">{activeSubscription.freeSubscriptionInfo.currentCycle.tokensAllocated.toLocaleString()} tokens</span>
+                              </div>
+                              <div className="col-span-2">
+                                <span className="text-purple-600">
+                                  {new Date(activeSubscription.freeSubscriptionInfo.currentCycle.startedAt).toLocaleDateString()} - {new Date(activeSubscription.freeSubscriptionInfo.currentCycle.endsAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-purple-500 mt-2">
+                              Total cycles: {activeSubscription.freeSubscriptionInfo.totalCycles}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs sm:text-sm text-gray-500">Price</p>
@@ -434,10 +508,20 @@ const SubscriptionsPage = () => {
           {requiresActionSubscriptions.map((subscription) => (
             <Card key={subscription.id}>
               <CardHeader>
-                <CardTitle>Subscription Requires Action</CardTitle>
-                <CardDescription>
-                  Your subscription requires action to complete setup. Please complete the payment authorization to activate your subscription.
-                </CardDescription>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle>Subscription Requires Action</CardTitle>
+                    <CardDescription>
+                      Your subscription requires action to complete setup. Please complete the payment authorization to activate your subscription.
+                    </CardDescription>
+                  </div>
+                  {subscription.isSponsorSubscription && (
+                    <div className="flex items-center gap-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                      <Gift className="h-4 w-4" />
+                      Sponsor
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -623,10 +707,20 @@ const SubscriptionsPage = () => {
           {pendingSubscriptions.map((subscription) => (
             <Card key={subscription.id}>
               <CardHeader>
-                <CardTitle>Pending Subscription</CardTitle>
-                <CardDescription>
-                  Your subscription is being set up. It will be activated shortly.
-                </CardDescription>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle>Pending Subscription</CardTitle>
+                    <CardDescription>
+                      Your subscription is being set up. It will be activated shortly.
+                    </CardDescription>
+                  </div>
+                  {subscription.isSponsorSubscription && (
+                    <div className="flex items-center gap-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                      <Gift className="h-4 w-4" />
+                      Sponsor
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -753,12 +847,22 @@ const SubscriptionsPage = () => {
           {cancelledSubscriptions.map((subscription) => (
             <Card key={subscription.id}>
               <CardHeader>
-                <CardTitle>Cancelled Subscription</CardTitle>
-                <CardDescription>
-                  {subscription.gracePeriodEndsAt
-                    ? `Your subscription has been cancelled. You will continue to have access until ${new Date(subscription.gracePeriodEndsAt).toLocaleDateString()}.`
-                    : "Your subscription has been cancelled."}
-                </CardDescription>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle>Cancelled Subscription</CardTitle>
+                    <CardDescription>
+                      {subscription.gracePeriodEndsAt
+                        ? `Your subscription has been cancelled. You will continue to have access until ${new Date(subscription.gracePeriodEndsAt).toLocaleDateString()}.`
+                        : "Your subscription has been cancelled."}
+                    </CardDescription>
+                  </div>
+                  {subscription.isSponsorSubscription && (
+                    <div className="flex items-center gap-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                      <Gift className="h-4 w-4" />
+                      Sponsor
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">

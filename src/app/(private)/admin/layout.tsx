@@ -39,6 +39,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: "/admin/ai-interactions",
     },
     {
+      title: "Sponsor Codes",
+      href: "/admin/sponsor-codes",
+    },
+    {
+      title: "Free Subscriptions",
+      href: "/admin/free-subscriptions",
+    },
+    {
       title: "App cache",
       href: "/admin/cache",
     },

@@ -3,6 +3,7 @@ import { SpaceSubscription } from "./queries";
 
 export interface CreateSubscriptionRequest {
   subscriptionPlanId: string;
+  sponsorCode?: string;
   totalCycles?: number;
   anchorDate?: string;
   successReturnUrl?: string;
@@ -121,6 +122,34 @@ export const updateSubscription = async (
 ): Promise<UpdateSubscriptionResponse["data"]> => {
   const response = await api.put<UpdateSubscriptionResponse>(
     `/finance/subscriptions/${subscriptionId}`,
+    data
+  );
+  return response.data.data;
+};
+
+export interface CreateSponsorSubscriptionRequest {
+  spaceId: string;
+  subscriptionPlanId: string;
+  sponsorCode?: string;
+  sponsorNotes?: string;
+  totalCycles?: number;
+  anchorDate?: string;
+}
+
+export interface CreateSponsorSubscriptionResponse {
+  success: boolean;
+  message: string;
+  data: {
+    subscription: SpaceSubscription;
+  };
+}
+
+export const createSponsorSubscription = async (
+  api: AxiosInstance,
+  data: CreateSponsorSubscriptionRequest
+): Promise<CreateSponsorSubscriptionResponse["data"]> => {
+  const response = await api.post<CreateSponsorSubscriptionResponse>(
+    "/admin/finance/subscriptions/create_sponsor",
     data
   );
   return response.data.data;

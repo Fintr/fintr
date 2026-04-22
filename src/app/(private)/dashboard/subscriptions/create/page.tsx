@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useSubscriptionPlans, useCreateSubscription } from "@/hooks/async/useSubscriptions";
 import { SubscriptionPlan } from "@/services/finance/subscriptions/queries";
 import { formatCurrency } from "@/lib/utils";
 import { buildSubscriptionRedirectUrl, openUrl } from "@/lib/capacitor";
-import { Check, ChevronLeft, ChevronRight, Loader2, ArrowLeft } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -18,6 +20,7 @@ const CreateSubscriptionPage = () => {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<WizardStep>("plan");
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const [promoCode, setPromoCode] = useState("");
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
 
@@ -59,6 +62,7 @@ const CreateSubscriptionPage = () => {
     try {
       const result = await createSubscription({
         subscriptionPlanId: selectedPlan.id,
+        sponsorCode: promoCode.trim() || undefined,
         successReturnUrl: buildSubscriptionRedirectUrl('/dashboard/subscriptions?success=true'),
         failureReturnUrl: buildSubscriptionRedirectUrl('/dashboard/subscriptions?failure=true'),
       });
@@ -86,7 +90,29 @@ const CreateSubscriptionPage = () => {
     } catch (error: any) {
       setIsRedirecting(false);
       setRedirectUrl(null);
-      toast.error(error?.message || "Failed to subscribe");
+
+      // Extract error message from axios error response
+      let errorMessage = "Failed to subscribe";
+      if (error?.response?.data?.error?.message) {
+        errorMessage = error.response.data.error.message;
+        // Add details if available
+        if (error.response.data.error.details) {
+          const details = error.response.data.error.details;
+          if (typeof details === "string") {
+            errorMessage += `: ${details}`;
+          } else if (typeof details === "object") {
+            const detailMessages = Object.entries(details)
+              .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : value}`)
+              .join("; ");
+            if (detailMessages) {
+              errorMessage += ` (${detailMessages})`;
+            }
+          }
+        }
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      toast.error(errorMessage);
     }
   };
 
@@ -277,6 +303,39 @@ const CreateSubscriptionPage = () => {
                       {selectedPlan.tokenLimit} tokens included
                     </p>
                   </div>
+                </div>
+
+                {/* Promo Code Section */}
+                <div className="pt-4 border-t">
+                  <Label htmlFor="promo-code" className="flex items-center gap-2 mb-2 text-primary">
+                    <Tag className="h-4 w-4" />
+                    Have a promo code?
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="promo-code"
+                      placeholder="Enter promo code (e.g., YOUTUBE20)"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                      className="uppercase"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (promoCode.trim()) {
+                          toast.info(`Promo code "${promoCode.toUpperCase()}" will be applied at checkout`);
+                        }
+                      }}
+                      disabled={!promoCode.trim()}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                  {promoCode.trim() && (
+                    <p className="text-sm text-green-600 mt-2">
+                      Promo code &quot;{promoCode.toUpperCase()}&quot; will be applied
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

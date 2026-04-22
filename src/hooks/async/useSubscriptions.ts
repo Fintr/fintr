@@ -16,6 +16,8 @@ import {
   ForceAttemptCycleRequest,
   updateSubscription,
   UpdateSubscriptionRequest,
+  createSponsorSubscription,
+  CreateSponsorSubscriptionRequest,
 } from "@/services/finance/subscriptions/mutations";
 
 export const useSubscriptionPlans = () => {
@@ -79,6 +81,24 @@ export const useCreateSubscription = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
       queryClient.invalidateQueries({ queryKey: ["subscriptionPlans"] });
+    },
+    onError: (error: any) => {
+      // Extract readable error message
+      let message = "Failed to create subscription";
+      if (error?.response?.data?.error?.message) {
+        message = error.response.data.error.message;
+        const details = error.response.data.error.details;
+        if (details && typeof details === "object") {
+          const detailStr = Object.entries(details)
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+            .join("; ");
+          if (detailStr) message += ` (${detailStr})`;
+        }
+      } else if (error?.message) {
+        message = error.message;
+      }
+      // Attach processed message for components to use
+      error.displayMessage = message;
     },
   });
 
@@ -174,6 +194,165 @@ export const useUpdateSubscription = () => {
   return {
     updateSubscription: mutation.mutateAsync,
     isUpdating: mutation.isPending,
+    error: mutation.error,
+    data: mutation.data,
+  };
+};
+
+// Admin hooks for sponsor codes and free subscriptions
+import {
+  fetchSponsorCodes,
+  fetchSponsorCode,
+  createSponsorCode,
+  updateSponsorCode,
+  deleteSponsorCode,
+  fetchSpacesForFreeSubscription,
+  createFreeSubscription,
+  CreateSponsorCodeRequest,
+  SponsorCode,
+  SponsorCodeWithUsers,
+  SpaceForFreeSubscription,
+  CreateFreeSubscriptionRequest,
+} from "@/services/finance/subscriptions/admin";
+
+export const useSponsorCodes = () => {
+  const { api } = useAuthApi({
+    scope: "openid profile email read:current_user read:transactions",
+  });
+
+  const { data, isLoading, error, refetch } = useQuery<SponsorCode[]>({
+    queryKey: ["sponsorCodes"],
+    queryFn: () => fetchSponsorCodes(api),
+    staleTime: 1 * 60 * 1000,
+  });
+
+  return {
+    sponsorCodes: data || [],
+    isLoading,
+    error,
+    refetch,
+  };
+};
+
+export const useSponsorCode = (id: string) => {
+  const { api } = useAuthApi({
+    scope: "openid profile email read:current_user read:transactions",
+  });
+
+  const { data, isLoading, error } = useQuery<SponsorCodeWithUsers>({
+    queryKey: ["sponsorCode", id],
+    queryFn: () => fetchSponsorCode(api, id),
+    enabled: !!id,
+    staleTime: 1 * 60 * 1000,
+  });
+
+  return {
+    sponsorCode: data,
+    isLoading,
+    error,
+  };
+};
+
+export const useCreateSponsorCode = () => {
+  const { api } = useAuthApi({
+    scope: "openid profile email read:current_user read:transactions",
+  });
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (data: CreateSponsorCodeRequest) => createSponsorCode(api, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsorCodes"] });
+    },
+  });
+
+  return {
+    createSponsorCode: mutation.mutateAsync,
+    isCreating: mutation.isPending,
+    error: mutation.error,
+    data: mutation.data,
+  };
+};
+
+export const useUpdateSponsorCode = () => {
+  const { api } = useAuthApi({
+    scope: "openid profile email read:current_user read:transactions",
+  });
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { active: boolean } }) =>
+      updateSponsorCode(api, id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsorCodes"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorCode"] });
+    },
+  });
+
+  return {
+    updateSponsorCode: mutation.mutateAsync,
+    isUpdating: mutation.isPending,
+    error: mutation.error,
+  };
+};
+
+export const useDeleteSponsorCode = () => {
+  const { api } = useAuthApi({
+    scope: "openid profile email read:current_user read:transactions",
+  });
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (id: string) => deleteSponsorCode(api, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsorCodes"] });
+    },
+  });
+
+  return {
+    deleteSponsorCode: mutation.mutateAsync,
+    isDeleting: mutation.isPending,
+    error: mutation.error,
+  };
+};
+
+// Free subscriptions admin hooks
+export const useSpacesForFreeSubscription = () => {
+  const { api } = useAuthApi({
+    scope: "openid profile email read:current_user read:transactions",
+  });
+
+  const { data, isLoading, error, refetch } = useQuery<SpaceForFreeSubscription[]>({
+    queryKey: ["spacesForFreeSubscription"],
+    queryFn: () => fetchSpacesForFreeSubscription(api),
+    staleTime: 1 * 60 * 1000,
+  });
+
+  return {
+    spaces: data || [],
+    isLoading,
+    error,
+    refetch,
+  };
+};
+
+export const useCreateFreeSubscription = () => {
+  const { api } = useAuthApi({
+    scope: "openid profile email read:current_user read:transactions",
+  });
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (data: CreateFreeSubscriptionRequest) => createFreeSubscription(api, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["spacesForFreeSubscription"] });
+      queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+    },
+  });
+
+  return {
+    createFreeSubscription: mutation.mutateAsync,
+    isCreating: mutation.isPending,
     error: mutation.error,
     data: mutation.data,
   };
