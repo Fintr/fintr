@@ -1,13 +1,13 @@
 "use client";
+import dynamic from "next/dynamic";
 import { TabsWrapper } from "@/components/tabs-wrapper";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useGetSpaceCode } from "@/hooks/useGetSpaceCode";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { shouldShowV2Features, formatCurrency } from "@/lib/utils";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Edit, ArrowRight } from "lucide-react";
 import ExpandableTextarea from "@/components/ui/expandable-textarea";
@@ -20,13 +20,21 @@ import {
 import { toast } from "sonner";
 import LoadingScreen from "@/components/ui/loading-screen";
 import { usePathname } from "next/navigation";
-import BottomNavigation from "@/components/dashboard/bottom-navigation";
-import MobileStickyHeader from "@/components/dashboard/mobile-sticky-header";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import {
   calculateBottomPadding,
   calculateHeaderSpacerHeight,
 } from "@/lib/platform-detection";
+
+// Dynamic imports for heavier components to reduce initial compile time
+const MobileStickyHeader = dynamic(
+  () => import("@/components/dashboard/mobile-sticky-header"),
+  { ssr: false }
+);
+const BottomNavigation = dynamic(
+  () => import("@/components/dashboard/bottom-navigation"),
+  { ssr: false }
+);
 
 export default function Layout({
   children,

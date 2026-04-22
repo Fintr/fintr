@@ -35,10 +35,42 @@ export interface BillingCycle {
   xenditCycleId?: string;
 }
 
+export interface SponsorMetadata {
+  sponsorCode?: string;
+  sponsorNotes?: string;
+  createdBy?: string;
+}
+
+export interface SponsorCodeInfo {
+  code: string;
+  name: string;
+  discountPercentage?: number;
+  discountAmountCents?: number;
+}
+
+export interface CurrentCycleInfo {
+  cycleNumber: number;
+  startedAt: string;
+  endsAt: string;
+  tokensAllocated: number;
+}
+
+export interface FreeSubscriptionInfo {
+  grantedBy?: string;
+  grantedAt?: string;
+  notes?: string;
+  spaceName: string;
+  spaceType: "Personal" | "Organization";
+  currentCycle?: CurrentCycleInfo;
+  totalCycles: number;
+  autoRenews: boolean;
+}
+
 export interface SpaceSubscription {
   id: string;
   subscriptionPlan: SubscriptionPlan;
   status: string;
+  subscriptionType?: "paid" | "free";
   startedAt: string;
   endedAt?: string;
   gracePeriodEndsAt?: string;
@@ -48,6 +80,9 @@ export interface SpaceSubscription {
   billingCycles?: BillingCycle[];
   actionUrl?: string;
   canChangePlan?: boolean;
+  isDiscounted?: boolean;
+  sponsorCode?: SponsorCodeInfo;
+  freeSubscriptionInfo?: FreeSubscriptionInfo;
   createdAt: string;
   updatedAt: string;
 }
