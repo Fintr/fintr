@@ -8,6 +8,7 @@ FactoryBot.define do
     xendit_customer_id { "cust-#{SecureRandom.uuid}" }
     xendit_schedule_id { "schedule-#{SecureRandom.uuid}" }
     status { "pending" }
+    subscription_type { "paid" }
     started_at { Time.current }
     current_cycle_count { 0 }
     total_cycles { 12 }
@@ -26,6 +27,20 @@ FactoryBot.define do
 
     trait :requires_action do
       status { "requires_action" }
+    end
+
+    trait :sponsor do
+      subscription_type { "sponsor" }
+      xendit_plan_id { nil }
+      xendit_customer_id { nil }
+      xendit_schedule_id { nil }
+    end
+
+    trait :free do
+      subscription_type { "free" }
+      xendit_plan_id { nil }
+      xendit_customer_id { nil }
+      xendit_schedule_id { nil }
     end
   end
 end

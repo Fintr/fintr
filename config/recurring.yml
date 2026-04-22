@@ -19,6 +19,14 @@ development:
     class: Budgets::CreateSpaceMonthlyBudgetsJob
     queue: default
     schedule: every hour
+  renew_free_subscription_cycles:
+    class: Finance::RenewFreeSubscriptionCyclesJob
+    queue: default
+    schedule: every day
+  revert_expired_promo_pricing:
+    class: Finance::RevertExpiredPromoPricingJob
+    queue: default
+    schedule: every day
 
 staging:
   check_duplicate_today:
@@ -45,6 +53,14 @@ staging:
     class: Finance::ReconcileSubscriptionCycleCountsJob
     queue: default
     schedule: "*/10 * * * * Asia/Manila"
+  renew_free_subscription_cycles:
+    class: Finance::RenewFreeSubscriptionCyclesJob
+    queue: default
+    schedule: "0 1 * * * Asia/Manila"
+  revert_expired_promo_pricing:
+    class: Finance::RevertExpiredPromoPricingJob
+    queue: default
+    schedule: "30 1 * * * Asia/Manila"
 
 production:
   check_duplicate_today:
@@ -71,3 +87,11 @@ production:
     class: Finance::ReconcileSubscriptionCycleCountsJob
     queue: default
     schedule: "*/10 * * * * Asia/Manila"
+  renew_free_subscription_cycles:
+    class: Finance::RenewFreeSubscriptionCyclesJob
+    queue: default
+    schedule: "0 1 * * * Asia/Manila"
+  revert_expired_promo_pricing:
+    class: Finance::RevertExpiredPromoPricingJob
+    queue: default
+    schedule: "30 1 * * * Asia/Manila"

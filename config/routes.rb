@@ -50,6 +50,14 @@ Rails.application.routes.draw do
             post :clear
           end
         end
+        namespace :finance do
+          resources :sponsor_codes, only: %i[index show create update destroy]
+          resources :free_subscriptions, only: %i[create] do
+            collection do
+              get :spaces
+            end
+          end
+        end
       end
 
       namespace :ai do

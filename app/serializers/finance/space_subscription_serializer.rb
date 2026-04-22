@@ -8,6 +8,7 @@ module Finance
                  name: :subscriptionPlan,
                  blueprint: Finance::SubscriptionPlanSerializer
     field :status
+    field :subscription_type, name: :subscriptionType
     field :started_at, name: :startedAt
     field :ended_at, name: :endedAt
     field :current_cycle_count, name: :currentCycleCount
@@ -46,6 +47,45 @@ module Finance
     # Include flag indicating if plan change is allowed
     field :can_change_plan, name: :canChangePlan do |subscription|
       subscription.can_change_plan?
+    end
+
+    # Include sponsor/discount information if subscription used a sponsor code
+    field :is_discounted, name: :isDiscounted do |subscription|
+      subscription.discounted?
+    end
+
+    field :sponsor_code, name: :sponsorCode do |subscription|
+      if subscription.sponsor_code
+        {
+          code: subscription.sponsor_code.code,
+          name: subscription.sponsor_code.name,
+          discountPercentage: subscription.user_sponsor_code&.discount_percentage_applied,
+          discountAmountCents: subscription.user_sponsor_code&.discount_amount_cents_applied
+        }
+      end
+    end
+
+    # For free subscriptions, include info about who granted it and cycle details
+    field :free_subscription_info, name: :freeSubscriptionInfo do |subscription|
+      if subscription.free_subscription?
+        current_cycle = subscription.billing_cycles.paid.order(cycle_number: :desc).first
+
+        {
+          grantedBy: subscription.metadata&.dig("granted_by"),
+          grantedAt: subscription.metadata&.dig("granted_at"),
+          notes: subscription.metadata&.dig("notes"),
+          spaceName: subscription.space.name,
+          spaceType: subscription.space.type == "Spaces::PersonalSpace" ? "Personal" : "Organization",
+          currentCycle: current_cycle ? {
+            cycleNumber: current_cycle.cycle_number,
+            startedAt: current_cycle.started_at,
+            endsAt: current_cycle.ends_at,
+            tokensAllocated: current_cycle.tokens_allocated
+          } : nil,
+          totalCycles: subscription.billing_cycles.paid.count,
+          autoRenews: true
+        }
+      end
     end
   end
 end

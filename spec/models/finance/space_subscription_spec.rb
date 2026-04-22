@@ -26,9 +26,111 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
     subject { build(:space_subscription) }
 
     it { is_expected.to validate_presence_of(:status) }
+    it { is_expected.to validate_presence_of(:subscription_type) }
     it { is_expected.to validate_presence_of(:current_cycle_count) }
     it { is_expected.to validate_numericality_of(:current_cycle_count).is_greater_than_or_equal_to(0) }
     it { is_expected.to validate_numericality_of(:total_cycles).is_greater_than(0).allow_nil }
+  end
+
+  describe "enums" do
+    describe "subscription_type" do
+      it "defines the correct subscription types" do
+        expect(described_class.subscription_types).to include(
+          "paid" => "paid",
+          "sponsor" => "sponsor",
+          "free" => "free"
+        )
+      end
+
+      it "defaults to paid" do
+        subscription = build(:space_subscription)
+        expect(subscription.subscription_type).to eq("paid")
+      end
+    end
+  end
+
+  describe "scopes" do
+    let(:paid_plan) { create(:subscription_plan, slug: "paid-plan-#{SecureRandom.hex(4)}") }
+    let(:sponsor_plan) { create(:subscription_plan, slug: "sponsor-plan-#{SecureRandom.hex(4)}") }
+    let(:free_plan) { create(:subscription_plan, slug: "free-plan-#{SecureRandom.hex(4)}") }
+    let!(:paid_subscription) { create(:space_subscription, subscription_plan: paid_plan, subscription_type: "paid", status: "active") }
+    let!(:sponsor_subscription) { create(:space_subscription, subscription_plan: sponsor_plan, subscription_type: "sponsor", status: "active") }
+    let!(:free_subscription) { create(:space_subscription, subscription_plan: free_plan, subscription_type: "free", status: "active") }
+
+    describe ".sponsor" do
+      it "returns only sponsor subscriptions" do
+        expect(described_class.sponsor).to include(sponsor_subscription)
+        expect(described_class.sponsor).not_to include(paid_subscription, free_subscription)
+      end
+    end
+
+    describe ".free" do
+      it "returns only free subscriptions" do
+        expect(described_class.free).to include(free_subscription)
+        expect(described_class.free).not_to include(paid_subscription, sponsor_subscription)
+      end
+    end
+
+    describe ".paid" do
+      it "returns only paid subscriptions" do
+        expect(described_class.paid).to include(paid_subscription)
+        expect(described_class.paid).not_to include(sponsor_subscription, free_subscription)
+      end
+    end
+  end
+
+  describe "#sponsor_subscription?" do
+    context "when subscription type is sponsor" do
+      let(:sponsor_subscription) { build(:space_subscription, subscription_type: "sponsor") }
+
+      it "returns true" do
+        expect(sponsor_subscription.sponsor_subscription?).to be(true)
+      end
+    end
+
+    context "when subscription type is not sponsor" do
+      let(:paid_subscription) { build(:space_subscription, subscription_type: "paid") }
+
+      it "returns false" do
+        expect(paid_subscription.sponsor_subscription?).to be(false)
+      end
+    end
+  end
+
+  describe "#free_subscription?" do
+    context "when subscription type is free" do
+      let(:free_subscription) { build(:space_subscription, subscription_type: "free") }
+
+      it "returns true" do
+        expect(free_subscription.free_subscription?).to be(true)
+      end
+    end
+
+    context "when subscription type is not free" do
+      let(:paid_subscription) { build(:space_subscription, subscription_type: "paid") }
+
+      it "returns false" do
+        expect(paid_subscription.free_subscription?).to be(false)
+      end
+    end
+  end
+
+  describe "#paid_subscription?" do
+    context "when subscription type is paid" do
+      let(:paid_subscription) { build(:space_subscription, subscription_type: "paid") }
+
+      it "returns true" do
+        expect(paid_subscription.paid_subscription?).to be(true)
+      end
+    end
+
+    context "when subscription type is not paid" do
+      let(:sponsor_subscription) { build(:space_subscription, subscription_type: "sponsor") }
+
+      it "returns false" do
+        expect(sponsor_subscription.paid_subscription?).to be(false)
+      end
+    end
   end
 
   describe "#effective_token_limit" do

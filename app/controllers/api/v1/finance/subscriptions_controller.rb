@@ -167,6 +167,7 @@ module Api
           params.permit(
             :space_id,
             :subscription_plan_id,
+            :sponsor_code,
             :total_cycles,
             :anchor_date,
             :success_return_url,

@@ -10,8 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_26_083300) do
-
+ActiveRecord::Schema[8.1].define(version: 2026_04_23_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -33,6 +32,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_083300) do
   create_enum "finance_billing_cycle_status", ["pending", "paid", "failed"]
   create_enum "finance_payment_status", ["pending", "succeeded", "failed", "refunded"]
   create_enum "finance_space_subscription_status", ["requires_action", "pending", "active", "inactive"]
+  create_enum "finance_space_subscription_type", ["paid", "sponsor", "free"]
   create_enum "onboarding_step_enum", ["income", "budgets", "accounts", "completed", "currency"]
   create_enum "repeat_interval", ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
   create_enum "schedule_type", ["one_time", "repeat", "installment"]
@@ -247,7 +247,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_083300) do
     t.enum "status", default: "pending", null: false, enum_type: "finance_billing_cycle_status"
     t.integer "tokens_allocated", null: false
     t.datetime "updated_at", null: false
-    t.string "xendit_cycle_id", null: false
+    t.string "xendit_cycle_id"
     t.index ["space_subscription_id", "cycle_number"], name: "index_finance_billing_cycles_on_subscription_and_cycle", unique: true
     t.index ["space_subscription_id", "status"], name: "index_finance_billing_cycles_on_subscription_and_status"
     t.index ["space_subscription_id"], name: "index_finance_billing_cycles_on_space_subscription_id"
@@ -286,9 +286,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_083300) do
     t.datetime "ended_at"
     t.jsonb "metadata", default: {}, null: false
     t.uuid "space_id", null: false
+    t.uuid "sponsor_code_id"
     t.datetime "started_at"
     t.enum "status", default: "pending", null: false, enum_type: "finance_space_subscription_status"
     t.uuid "subscription_plan_id", null: false
+    t.enum "subscription_type", default: "paid", null: false, enum_type: "finance_space_subscription_type"
     t.integer "total_cycles"
     t.datetime "updated_at", null: false
     t.string "xendit_customer_id"
@@ -300,11 +302,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_083300) do
     t.index ["cancelled_at"], name: "index_finance_space_subscriptions_on_cancelled_at", where: "(cancelled_at IS NOT NULL)"
     t.index ["space_id", "status"], name: "index_finance_space_subscriptions_on_space_id_and_status", unique: true, where: "(status = 'active'::finance_space_subscription_status)"
     t.index ["space_id"], name: "index_finance_space_subscriptions_on_space_id"
+    t.index ["sponsor_code_id"], name: "index_finance_space_subscriptions_on_sponsor_code_id"
     t.index ["status"], name: "index_finance_space_subscriptions_on_status"
     t.index ["subscription_plan_id"], name: "index_finance_space_subscriptions_on_subscription_plan_id"
+    t.index ["subscription_type"], name: "index_finance_space_subscriptions_on_subscription_type"
     t.index ["xendit_customer_reference_id"], name: "idx_on_xendit_customer_reference_id_0de02014c6"
     t.index ["xendit_plan_id"], name: "index_finance_space_subscriptions_on_xendit_plan_id"
     t.index ["xendit_reference_id"], name: "index_finance_space_subscriptions_on_xendit_reference_id"
+  end
+
+  create_table "finance_sponsor_codes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.uuid "created_by_id", null: false
+    t.integer "current_uses", default: 0, null: false
+    t.text "description"
+    t.bigint "discount_amount_cents"
+    t.string "discount_currency", default: "PHP"
+    t.integer "discount_months"
+    t.integer "discount_percentage"
+    t.datetime "expires_at"
+    t.integer "max_uses"
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_finance_sponsor_codes_on_active"
+    t.index ["code"], name: "index_finance_sponsor_codes_on_code", unique: true
+    t.index ["created_by_id"], name: "index_finance_sponsor_codes_on_created_by_id"
+    t.index ["discount_months"], name: "index_finance_sponsor_codes_on_discount_months"
   end
 
   create_table "finance_subscription_plans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -320,6 +345,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_083300) do
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_finance_subscription_plans_on_active"
     t.index ["slug"], name: "index_finance_subscription_plans_on_slug", unique: true
+  end
+
+  create_table "finance_user_sponsor_codes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "discount_amount_cents_applied"
+    t.integer "discount_percentage_applied"
+    t.uuid "space_subscription_id", null: false
+    t.uuid "sponsor_code_id", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["space_subscription_id"], name: "index_finance_user_sponsor_codes_on_space_subscription_id"
+    t.index ["sponsor_code_id", "user_id"], name: "idx_on_sponsor_code_id_user_id_257d2dd976", unique: true
+    t.index ["sponsor_code_id"], name: "index_finance_user_sponsor_codes_on_sponsor_code_id"
+    t.index ["user_id"], name: "index_finance_user_sponsor_codes_on_user_id"
   end
 
   create_table "goal_descriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -644,6 +683,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_083300) do
   add_foreign_key "finance_payments", "finance_space_subscriptions", column: "space_subscription_id"
   add_foreign_key "finance_space_subscriptions", "finance_subscription_plans", column: "subscription_plan_id"
   add_foreign_key "finance_space_subscriptions", "spaces"
+  add_foreign_key "finance_sponsor_codes", "users", column: "created_by_id"
+  add_foreign_key "finance_user_sponsor_codes", "finance_space_subscriptions", column: "space_subscription_id"
+  add_foreign_key "finance_user_sponsor_codes", "finance_sponsor_codes", column: "sponsor_code_id"
+  add_foreign_key "finance_user_sponsor_codes", "users"
   add_foreign_key "goal_descriptions", "spaces"
   add_foreign_key "import_records", "imports"
   add_foreign_key "imports", "spaces"

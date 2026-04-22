@@ -6,6 +6,7 @@ module Finance
 
     belongs_to :space, class_name: "Spaces::Space"
     belongs_to :subscription_plan, class_name: "Finance::SubscriptionPlan"
+    belongs_to :sponsor_code, class_name: "Finance::SponsorCode", optional: true
     has_many :payments,
              class_name: "Finance::Payment",
              foreign_key: :space_subscription_id,
@@ -14,6 +15,9 @@ module Finance
              class_name: "Finance::BillingCycle",
              foreign_key: :space_subscription_id,
              dependent: :destroy
+    has_one :user_sponsor_code,
+            class_name: "Finance::UserSponsorCode",
+            dependent: :nullify
 
     enum :status, {
       requires_action: "requires_action",
@@ -22,12 +26,20 @@ module Finance
       inactive: "inactive"
     }
 
+    enum :subscription_type, {
+      paid: "paid",
+      free: "free"
+    }, prefix: :type
+
     validates :status, presence: true
+    validates :subscription_type, presence: true
     validates :current_cycle_count, presence: true, numericality: { greater_than_or_equal_to: 0 }
     validates :total_cycles, numericality: { greater_than: 0 }, allow_nil: true
 
     scope :active, -> { where(status: :active) }
     scope :for_space, ->(space_id) { where(space_id: space_id) }
+    scope :free, -> { where(subscription_type: :free) }
+    scope :paid, -> { where(subscription_type: :paid) }
 
     def active?
       status == "active"
@@ -152,6 +164,18 @@ module Finance
       end
 
       true
+    end
+
+    def free_subscription?
+      subscription_type == "free"
+    end
+
+    def paid_subscription?
+      subscription_type == "paid"
+    end
+
+    def discounted?
+      sponsor_code_id.present?
     end
   end
 end
