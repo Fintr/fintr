@@ -32,11 +32,8 @@ class CreateSponsorCodeTables < ActiveRecord::Migration[8.1]
     end
 
     add_index :finance_user_sponsor_codes, [:sponsor_code_id, :user_id], unique: true
-    add_index :finance_user_sponsor_codes, :user_id
-    add_index :finance_user_sponsor_codes, :space_subscription_id
 
     # Add sponsor_code reference to space_subscriptions
     add_reference :finance_space_subscriptions, :sponsor_code, type: :uuid, foreign_key: { to_table: :finance_sponsor_codes }, null: true
-    add_index :finance_space_subscriptions, :sponsor_code_id
   end
 end
