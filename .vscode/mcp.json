@@ -3,6 +3,14 @@
     "Sentry": {
       "url": "https://mcp.sentry.dev/mcp/fintr/nextjs",
       "type": "http"
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
     }
   }
 }

@@ -1488,6 +1488,25 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                             </div>
                           </div>
                         )}
+                        <div className="pt-4 border-t">
+                          <Button
+                            variant="destructive"
+                            onClick={() => setShowCancelDialog(sub.id)}
+                            disabled={isCancelling}
+                          >
+                            {isCancelling ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Cancelling...
+                              </>
+                            ) : (
+                              <>
+                                <X className="h-4 w-4 mr-2" />
+                                Cancel Subscription
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

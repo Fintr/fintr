@@ -31,16 +31,28 @@ import {
 import {
   useSpacesForFreeSubscription,
   useCreateFreeSubscription,
+  useRemoveFreeSubscription,
   useSubscriptionPlans,
 } from "@/hooks/async/useSubscriptions";
 import { toast } from "sonner";
-import { Loader2, Gift, Search, User, Building2, CheckCircle, XCircle } from "lucide-react";
+import {
+  Loader2,
+  Gift,
+  Search,
+  User,
+  Building2,
+  CheckCircle,
+  XCircle,
+  Trash2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatApiErrorMessage } from "@/utils/errorUtils";
 
 const FreeSubscriptionsPage = () => {
   const { spaces, isLoading: isLoadingSpaces, refetch } = useSpacesForFreeSubscription();
   const { plans, isLoading: isLoadingPlans } = useSubscriptionPlans();
   const { createFreeSubscription, isCreating } = useCreateFreeSubscription();
+  const { removeFreeSubscription, isRemoving } = useRemoveFreeSubscription();
 
   const [showGrantDialog, setShowGrantDialog] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<typeof spaces[0] | null>(null);
@@ -65,7 +77,27 @@ const FreeSubscriptionsPage = () => {
       resetForm();
       refetch();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to grant free subscription");
+      toast.error(
+        formatApiErrorMessage(
+          error,
+          "Failed to grant free subscription"
+        )
+      );
+    }
+  };
+
+  const handleRemove = async (spaceId: string, spaceName: string) => {
+    try {
+      await removeFreeSubscription({ spaceId });
+      toast.success(`Free subscription removed from ${spaceName}`);
+      refetch();
+    } catch (error: any) {
+      toast.error(
+        formatApiErrorMessage(
+          error,
+          "Failed to remove free subscription"
+        )
+      );
     }
   };
 
@@ -180,17 +212,35 @@ const FreeSubscriptionsPage = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setSelectedSpace(space);
-                        setShowGrantDialog(true);
-                      }}
-                      disabled={space.hasActiveSubscription}
-                    >
-                      <Gift className="h-4 w-4 mr-2" />
-                      Grant Free
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedSpace(space);
+                          setShowGrantDialog(true);
+                        }}
+                        disabled={space.hasActiveSubscription}
+                      >
+                        <Gift className="h-4 w-4 mr-2" />
+                        Grant Free
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleRemove(space.id, space.name)}
+                        disabled={!space.hasActiveSubscription || space.subscriptionType !== "free" || isRemoving}
+                      >
+                        {isRemoving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

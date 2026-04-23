@@ -42,4 +42,61 @@ export const formatFieldError = (errors: string[] | undefined): string => {
 export const hasFieldValidationErrors = (error: any): boolean => {
   const fieldErrors = extractFieldErrors(error);
   return Object.keys(fieldErrors).length > 0;
-}; 
+};
+
+/**
+ * Formats an API error object into a readable message.
+ * Supports responses with shape: error.response.data.error.{message,details}
+ */
+export const formatApiErrorMessage = (
+  error: any,
+  fallbackMessage: string
+): string => {
+  const detailsCandidates = [
+    error?.response?.data?.error?.details,
+    error?.response?.data?.details,
+    error?.error?.details,
+    error?.details,
+  ];
+
+  const messageCandidates = [
+    error?.response?.data?.error?.message,
+    error?.response?.data?.message,
+    error?.error?.message,
+    error?.message,
+  ];
+
+  const details = detailsCandidates.find(
+    (candidate) => candidate && typeof candidate === "object"
+  );
+
+  if (details) {
+    const detailMessages = Object.entries(details)
+      .flatMap(([key, value]) => {
+        if (Array.isArray(value)) {
+          return value.map((item) => `${key}: ${String(item)}`);
+        }
+
+        if (value && typeof value === "object") {
+          return Object.values(value).map((item) => `${key}: ${String(item)}`);
+        }
+
+        return [`${key}: ${String(value)}`];
+      })
+      .filter((message) => message.length > 0);
+
+    if (detailMessages.length > 0) {
+      return detailMessages.join("; ");
+    }
+  }
+
+  const message = messageCandidates.find(
+    (candidate) =>
+      typeof candidate === "string" &&
+      candidate.length > 0 &&
+      candidate !== "Unprocessable Entity" &&
+      !candidate.startsWith("Request failed with status code")
+  );
+
+  return message || fallbackMessage;
+};

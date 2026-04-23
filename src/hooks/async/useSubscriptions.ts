@@ -208,11 +208,13 @@ import {
   deleteSponsorCode,
   fetchSpacesForFreeSubscription,
   createFreeSubscription,
+  removeFreeSubscription,
   CreateSponsorCodeRequest,
   SponsorCode,
   SponsorCodeWithUsers,
   SpaceForFreeSubscription,
   CreateFreeSubscriptionRequest,
+  RemoveFreeSubscriptionRequest,
 } from "@/services/finance/subscriptions/admin";
 
 export const useSponsorCodes = () => {
@@ -353,6 +355,28 @@ export const useCreateFreeSubscription = () => {
   return {
     createFreeSubscription: mutation.mutateAsync,
     isCreating: mutation.isPending,
+    error: mutation.error,
+    data: mutation.data,
+  };
+};
+
+export const useRemoveFreeSubscription = () => {
+  const { api } = useAuthApi({
+    scope: "openid profile email read:current_user read:transactions",
+  });
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (data: RemoveFreeSubscriptionRequest) => removeFreeSubscription(api, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["spacesForFreeSubscription"] });
+      queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+    },
+  });
+
+  return {
+    removeFreeSubscription: mutation.mutateAsync,
+    isRemoving: mutation.isPending,
     error: mutation.error,
     data: mutation.data,
   };
