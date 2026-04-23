@@ -64,6 +64,10 @@ export interface CreateFreeSubscriptionRequest {
   anchorDate?: string;
 }
 
+export interface RemoveFreeSubscriptionRequest {
+  spaceId: string;
+}
+
 // Sponsor Code API
 export const fetchSponsorCodes = async (api: AxiosInstance): Promise<SponsorCode[]> => {
   const response = await api.get("/admin/finance/sponsor_codes");
@@ -107,5 +111,15 @@ export const createFreeSubscription = async (
   data: CreateFreeSubscriptionRequest
 ): Promise<{ subscription: unknown }> => {
   const response = await api.post("/admin/finance/free_subscriptions", data);
+  return response.data.data;
+};
+
+export const removeFreeSubscription = async (
+  api: AxiosInstance,
+  data: RemoveFreeSubscriptionRequest
+): Promise<{ subscription: unknown }> => {
+  const response = await api.delete("/admin/finance/free_subscriptions/remove", {
+    data,
+  });
   return response.data.data;
 };

@@ -699,6 +699,29 @@ const SubscriptionsPage = () => {
                       </div>
                     </div>
                   )}
+                  <div className="pt-4 border-t">
+                    <Button
+                      variant="destructive"
+                      onClick={() => setShowCancelDialog(subscription.id)}
+                      disabled={isCancelling}
+                      className="w-full sm:w-auto"
+                      size="sm"
+                    >
+                      {isCancelling ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <span className="hidden sm:inline">Cancelling...</span>
+                          <span className="sm:hidden">Cancelling</span>
+                        </>
+                      ) : (
+                        <>
+                          <X className="h-4 w-4 mr-2" />
+                          <span className="hidden sm:inline">Cancel Subscription</span>
+                          <span className="sm:hidden">Cancel</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

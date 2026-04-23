@@ -13,8 +13,14 @@ const handleResponseError = (error: AxiosError) => {
   });
 
   // Check for session expiration error
-  const responseData = error.response?.data as { message?: string; details?: any; error?: string } | undefined;
-  const errorMessage = responseData?.message || responseData?.error || '';
+  const responseData = error.response?.data as {
+    message?: string;
+    details?: any;
+    error?: string | { message?: string; details?: any };
+  } | undefined;
+  const errorMessage = typeof responseData?.error === "string"
+    ? responseData.error
+    : responseData?.error?.message || responseData?.message || "";
   
   console.error('❌ API Error Details:', {
     message: responseData?.message,
