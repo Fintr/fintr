@@ -56,6 +56,24 @@ module Api
             )
           end
 
+          # DELETE /admin/finance/free_subscriptions/remove
+          def remove
+            operation = ::Finance::Operations::Subscriptions::RemoveFreeSubscription.new.call(
+              space_id: remove_free_subscription_params[:space_id],
+              removed_by: current_user.id.to_s
+            )
+
+            return render_unprocessable_content(details: operation.failure) unless operation.success?
+
+            subscription = operation.value!
+            subscription_serializer = ::Finance::SpaceSubscriptionSerializer.render_as_hash(subscription)
+
+            render_success(
+              data: { subscription: subscription_serializer },
+              message: "Free subscription removed successfully"
+            )
+          end
+
           private
 
           def ensure_admin!
@@ -74,6 +92,10 @@ module Api
               :notes,
               :anchor_date
             )
+          end
+
+          def remove_free_subscription_params
+            params.permit(:space_id)
           end
         end
       end
