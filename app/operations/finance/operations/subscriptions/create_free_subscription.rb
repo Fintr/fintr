@@ -58,7 +58,6 @@ module Finance
           existing_subscription = Finance::SpaceSubscription
             .where(space_id: space.id, status: blocking_statuses)
             .first
-
           return Failure(subscription: "Space already has an active subscription. Please cancel it first.") if existing_subscription
 
           Success(true)

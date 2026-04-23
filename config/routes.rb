@@ -54,6 +54,7 @@ Rails.application.routes.draw do
           resources :sponsor_codes, only: %i[index show create update destroy]
           resources :free_subscriptions, only: %i[create] do
             collection do
+              delete :remove
               get :spaces
             end
           end
