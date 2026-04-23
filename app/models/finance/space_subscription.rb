@@ -28,6 +28,7 @@ module Finance
 
     enum :subscription_type, {
       paid: "paid",
+      sponsor: "sponsor",
       free: "free"
     }, prefix: :type
 
@@ -40,6 +41,7 @@ module Finance
     scope :for_space, ->(space_id) { where(space_id: space_id) }
     scope :free, -> { where(subscription_type: :free) }
     scope :paid, -> { where(subscription_type: :paid) }
+    scope :sponsor, -> { where(subscription_type: :sponsor) }
 
     def active?
       status == "active"
@@ -172,6 +174,10 @@ module Finance
 
     def paid_subscription?
       subscription_type == "paid"
+    end
+
+    def sponsor_subscription?
+      subscription_type == "sponsor"
     end
 
     def discounted?
