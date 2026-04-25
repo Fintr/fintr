@@ -97,6 +97,31 @@ export default function OnboardingStep2() {
     }
   };
 
+  const handleSkip = async () => {
+    try {
+      // Update local onboarding data with 0 income
+      setOnboardingData({
+        ...onboardingData,
+        step: 'budgets',
+        incomeData: {
+          income: 0,
+        },
+      });
+      
+      // Save step 1 data to backend with 0 income
+      await saveStep1Data({
+        step: 'income',
+        income: 0,
+      });
+      
+      // Navigate to step 3 (budgets)
+      router.push('/onboarding/step3');
+    } catch (error) {
+      console.error('Error skipping step:', error);
+      toast.error('Error skipping step. Please try again.');
+    }
+  };
+
   // Calculate total income for logic (use net income if deductions are enabled)
   const totalIncome = (deductTaxes || deductContributions) && taxCalculation ? taxCalculation.netIncome : (Number(income) || 0);
 
@@ -186,23 +211,34 @@ export default function OnboardingStep2() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex justify-between pt-4 gap-4">
+            <div className="flex flex-col gap-3 pt-4">
+              <div className="flex justify-between gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push("/onboarding/step1")}
+                  className="shrink-0"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <Button
+                  onClick={handleNext}
+                  disabled={isUpdating}
+                  className="px-8 bg-primary hover:bg-primary/90"
+                >
+                  {isUpdating ? "Saving..." : "Next"}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => router.push("/onboarding/step1")}
-                className="shrink-0"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              <Button
-                onClick={handleNext}
+                variant="ghost"
+                onClick={handleSkip}
                 disabled={isUpdating}
-                className="px-8 bg-primary hover:bg-primary/90"
+                className="w-full text-muted-foreground hover:text-foreground"
               >
-                {isUpdating ? "Saving..." : "Next"}
-                <ArrowRight className="h-4 w-4 ml-2" />
+                Skip for now
               </Button>
             </div>
           </CardContent>

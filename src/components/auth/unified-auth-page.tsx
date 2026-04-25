@@ -208,7 +208,7 @@ const UnifiedAuthPage = ({
     }
   };
 
-  if (authLoading) {
+  if (authLoading || isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
