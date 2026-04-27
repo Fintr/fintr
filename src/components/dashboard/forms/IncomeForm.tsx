@@ -36,6 +36,7 @@ import {
   AmountWithRatePicker,
   type ConversionSnapshot,
 } from "./AmountWithRatePicker";
+import { resolvePrefillAmountCurrency } from "@/utils/formUtils";
 
 // Income form schema using Zod
 const incomeFormSchema = z.object({
@@ -160,15 +161,30 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   });
 
   const selectedAccount = accountOptions.find((a) => a.value === formState.accountName);
-  const selectedAccountCurrency =
-    selectedAccount?.currency ?? effectiveSpaceCurrency;
+  const accountLedgerCurrency =
+    selectedAccount != null ? selectedAccount.currency ?? null : null;
+  const editBookedCurrency =
+    isEditMode && initialData
+      ? String(
+          (initialData as { amountCurrency?: string; amount_currency?: string })
+            .amountCurrency ??
+            (initialData as { amount_currency?: string }).amount_currency ??
+            "",
+        ).trim() || null
+      : null;
+  const amountPickerTargetCurrency =
+    accountLedgerCurrency ?? editBookedCurrency;
   const accountCurrencyDiffersFromSpace =
-    selectedAccount?.currency != null && selectedAccount.currency !== effectiveSpaceCurrency;
+    accountLedgerCurrency != null &&
+    accountLedgerCurrency !== effectiveSpaceCurrency;
+
+  const selectedAccountCurrencyForChip =
+    accountLedgerCurrency ?? effectiveSpaceCurrency;
 
   const initialAmountCurrency =
     defaultTransactionCurrency && amountCurrencyOptions.includes(defaultTransactionCurrency)
       ? defaultTransactionCurrency
-      : selectedAccountCurrency;
+      : selectedAccountCurrencyForChip;
 
   // In edit mode with conversion, show original currency (e.g. PLN) from the start so the label is correct
   const [amountCurrency, setAmountCurrency] = useState(() => {
@@ -210,6 +226,8 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         (d.originalDisplayCurrency ?? d.original_display_currency) != null ||
         (d.currencyConversion ?? d.currency_conversion) != null;
       if (hasOriginal) return;
+      const bookedCcy = d.amountCurrency ?? d.amount_currency;
+      if (bookedCcy != null && String(bookedCcy).trim() !== "") return;
     }
     if (
       defaultTransactionCurrency &&
@@ -219,24 +237,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       defaultCurrencySetRef.current = true;
     }
   }, [defaultTransactionCurrency, amountCurrencyOptions, isEditMode, initialData]);
-
-  // In edit mode, lock currency to original when transaction has currency_conversion
-  const hasEditModeConversion = useMemo(
-    () =>
-      isEditMode &&
-      (!!conversionSnapshot ||
-        !!(
-          (initialData as any)?.original_display_currency ??
-          (initialData as any)?.originalDisplayCurrency ??
-          (initialData as any)?.currency_conversion?.original_currency ??
-          (initialData as any)?.currencyConversion?.originalCurrency
-        )),
-    [
-      isEditMode,
-      conversionSnapshot,
-      initialData,
-    ]
-  );
 
   // Do not sync amountCurrency to selected account when account changes.
   // The user's chosen transaction currency should persist so the API
@@ -253,7 +253,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const grossIncome =
     amountCurrency === "PHP"
       ? rawAmount
-      : conversionSnapshot && selectedAccountCurrency === "PHP"
+      : conversionSnapshot && accountLedgerCurrency === "PHP"
         ? rawAmount * conversionSnapshot.exchangeRate
         : 0;
   const [taxCalculation, setTaxCalculation] = useState({
@@ -333,7 +333,22 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           exchangeRateSource: ((rawConv as any)?.source ?? "manual") as "auto" | "manual" | "recent",
         });
       } else {
-        setAmountCurrency(effectiveSpaceCurrency);
+        const apiCcy =
+          (initialData as any).amountCurrency ??
+          (initialData as any).amount_currency;
+        if (apiCcy != null && String(apiCcy).trim() !== "") {
+          setAmountCurrency(String(apiCcy));
+        } else {
+          setAmountCurrency(
+            resolvePrefillAmountCurrency({
+              defaultTransactionCurrency,
+              amountCurrencyCodes: amountCurrencyOptions,
+              accountName: initialData.accountName,
+              accounts: accountOptions,
+              spaceCurrency: effectiveSpaceCurrency,
+            })
+          );
+        }
         setConversionSnapshot(null);
       }
 
@@ -573,7 +588,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             onAmountChange={(value) => amountInput.handleInputChange(value)}
             fromCurrency={amountCurrency}
             onFromCurrencyChange={setAmountCurrency}
-            toCurrency={isEditMode && conversionSnapshot ? selectedAccountCurrency : effectiveSpaceCurrency}
+            toCurrency={amountPickerTargetCurrency}
             amountCurrencyOptions={amountCurrencyOptions}
             accountOptions={accountOptions}
             errors={formSubmitted && formErrors.amount ? formErrors.amount : []}
@@ -583,7 +598,8 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                 ? "border-red-800 focus-visible:ring-red-800"
                 : ""
             }
-            lockFromCurrency={hasEditModeConversion}
+            lockFromCurrency={isEditMode}
+            hideRatePicker={isEditMode}
             onConversionChange={setConversionSnapshot}
             date={date ? format(date, "yyyy-MM-dd") : undefined}
             initialConversion={conversionSnapshot ?? undefined}
@@ -732,6 +748,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             <Label htmlFor="accountName" className="text-sm">Account</Label>
             <Select
               value={formState.accountName}
+              disabled={isEditMode}
               onValueChange={(value) => {
                 if (value === "add_account") {
                   setShowCustomAccountInput(true);
@@ -753,7 +770,9 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                     {acc.label}
                   </SelectItem>
                 ))}
-                <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
+                {!isEditMode && (
+                  <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
+                )}
               </SelectContent>
             </Select>
             {formSubmitted && formErrors.accountName?.map((error) => (

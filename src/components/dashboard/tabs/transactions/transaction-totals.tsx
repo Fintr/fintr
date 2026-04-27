@@ -7,9 +7,15 @@ import { ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from "lucide-react";
 interface TransactionTotalsDisplayProps {
   totals: TransactionTotals | null;
   isLoading?: boolean;
+  /** ISO code used to format totals (space currency, or a single loaded row currency when all match). */
+  totalsCurrency?: string;
 }
 
-export function TransactionTotalsDisplay({ totals, isLoading }: TransactionTotalsDisplayProps) {
+export function TransactionTotalsDisplay({
+  totals,
+  isLoading,
+  totalsCurrency = "PHP",
+}: TransactionTotalsDisplayProps) {
   if (isLoading) {
     return (
       <fieldset className="border border-primary rounded-lg px-4 py-3 mb-4 w-full md:w-fit">
@@ -30,8 +36,9 @@ export function TransactionTotalsDisplay({ totals, isLoading }: TransactionTotal
   }
 
   const hasIncome = totals.income > 0;
-  const hasExpense = totals.expense > 0;
-  const hasTransfer = totals.transfer > 0;
+  // API may send expense totals as positive magnitudes; treat any non-zero as present.
+  const hasExpense = Math.abs(totals.expense) > 0;
+  const hasTransfer = Math.abs(totals.transfer) > 0;
 
   // Don't show if there are no totals
   if (!hasIncome && !hasExpense && !hasTransfer) {
@@ -48,7 +55,7 @@ export function TransactionTotalsDisplay({ totals, isLoading }: TransactionTotal
           <div className="flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-3 py-2 bg-teal-50 rounded-lg flex-1 md:flex-none">
             <ArrowUpRight className="h-4 w-4 text-teal-600" />
             <span className="text-sm font-medium text-teal-600">
-              {formatCurrency(totals.income)}
+              {formatCurrency(totals.income, totalsCurrency)}
             </span>
           </div>
         )}
@@ -57,7 +64,7 @@ export function TransactionTotalsDisplay({ totals, isLoading }: TransactionTotal
           <div className="flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-3 py-2 bg-red-50 rounded-lg flex-1 md:flex-none">
             <ArrowDownLeft className="h-4 w-4 text-red-900" />
             <span className="text-sm font-medium text-red-900">
-              {formatCurrency(totals.expense)}
+              {formatCurrency(Math.abs(totals.expense), totalsCurrency)}
             </span>
           </div>
         )}
@@ -66,7 +73,7 @@ export function TransactionTotalsDisplay({ totals, isLoading }: TransactionTotal
           <div className="flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-3 py-2 bg-blue-100/50 rounded-lg flex-1 md:flex-none">
             <ArrowLeftRight className="h-4 w-4 text-blue-900" />
             <span className="text-sm font-medium text-blue-900">
-              {formatCurrency(totals.transfer)}
+              {formatCurrency(Math.abs(totals.transfer), totalsCurrency)}
             </span>
           </div>
         )}

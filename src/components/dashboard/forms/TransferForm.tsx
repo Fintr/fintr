@@ -450,6 +450,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
           }
           onConversionChange={setConversionSnapshot}
           date={date ? format(date, "yyyy-MM-dd") : undefined}
+          hideRatePicker={isEditMode}
         />
         <div className="space-y-2">
           <Label htmlFor="transfer-transaction-cost" className="text-sm">Transaction Cost</Label>
