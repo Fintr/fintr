@@ -66,6 +66,49 @@ RSpec.describe Transactions::Operations::DeleteThisTransaction do
         end
       end
 
+      context 'when transaction amount currency differs from account balance currency' do
+        let(:usd_account) do
+          create(
+            :account,
+            name: "USD Wallet",
+            space:,
+            balance: Money.from_amount(1000, "USD")
+          )
+        end
+        let(:transaction) do
+          create(
+            :transaction,
+            user:,
+            space:,
+            account: usd_account,
+            category:,
+            amount: Money.from_amount(100, "PHP"),
+            balance_state: "calculated"
+          )
+        end
+
+        before do
+          ExchangeRates::ApiExchangeRate.create!(
+            base_currency: ExchangeRates::ApiExchangeRate::BASE_CURRENCY,
+            target_currency: "PHP",
+            rate: 58,
+            rate_date: transaction.date.to_date
+          )
+        end
+
+        it 'reverts balance using FetchRate, not Money::Bank' do
+          result = operation.call(transaction: transaction)
+          expect(result).to be_success
+
+          expect { transaction.reload }.to raise_error(ActiveRecord::RecordNotFound)
+          usd_account.reload
+          reverted = (
+            BigDecimal("1000") - (BigDecimal("100") / BigDecimal("58")).round(2)
+          ).round(2)
+          expect(usd_account.balance).to eq(Money.from_amount(reverted, "USD"))
+        end
+      end
+
       context 'when transaction has pending balance state' do
         before do
           transaction.update!(balance_state: "pending")

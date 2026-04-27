@@ -55,6 +55,39 @@ RSpec.describe ExchangeRates::Operations::GetRecentRates do
       end
     end
 
+    context "when persisted exchange_rate disagrees with amounts" do
+      let(:account) { create(:account, space:, balance: Money.from_amount(100, "PHP")) }
+      let(:transaction) { create(:transaction, space:, account:) }
+
+      before do
+        ExchangeRates::CurrencyConversion.create!(
+          convertible: transaction,
+          space_id: space.id,
+          original_amount_cents: 606_640,
+          original_currency: "PHP",
+          converted_amount_cents: 10_000,
+          converted_currency: "USD",
+          exchange_rate: 60.664,
+          source: "manual",
+          rate_timestamp: 1.hour.ago
+        )
+      end
+
+      it "returns the rate derived from amounts for the requested direction" do
+        result = operation.call(
+          space_id: space.id,
+          from_currency: "PHP",
+          to_currency: "USD"
+        )
+
+        expect(result).to be_success
+        expected = (
+          BigDecimal("100") / BigDecimal("6066.4")
+        ).round(10).to_f
+        expect(result.value!.first[:rate]).to eq(expected)
+      end
+    end
+
     context "when contract validation fails" do
       it "returns Failure when from_currency is missing" do
         result = operation.call(

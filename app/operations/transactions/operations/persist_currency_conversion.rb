@@ -60,7 +60,7 @@ module Transactions
       def persist_from_conversion_data(transaction:, conversion_data:)
         return Success(transaction) unless conversion_data[:needs_conversion]
 
-        step ::ExchangeRates::Operations::UpsertCurrencyConversion.new.call(
+        result = ::ExchangeRates::Operations::UpsertCurrencyConversion.new.call(
           **conversion_data.slice(
             :original_amount,
             :original_currency,
@@ -71,7 +71,13 @@ module Transactions
             :rate_timestamp
           ).merge(convertible: transaction, space_id: transaction.space_id)
         )
-        Success(transaction)
+        if result.failure? && result.failure[:original_currency] == ["cannot be the same as converted_currency"]
+          Success(transaction)
+        elsif result.failure?
+          result
+        else
+          Success(transaction)
+        end
       end
 
       def persist_from_params(transaction:, params:, account:)

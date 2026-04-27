@@ -40,7 +40,20 @@ module Transactions
 
       def revert_calculated_balance(transaction:)
         account = transaction.account
-        account.balance -= transaction.value
+        effect_result = ::Transactions::Operations::Accounts::ResolveSignedBalanceEffect.new.call(
+          transaction:,
+          account:
+        )
+        return effect_result unless effect_result.success?
+
+        signed_effect = effect_result.value![:amount]
+        old_balance = account.balance.amount
+        new_balance = (
+          BigDecimal(old_balance.to_s) - BigDecimal(signed_effect.to_s)
+        ).round(2)
+        account.assign_attributes(
+          balance: Money.from_amount(new_balance, account.balance_currency)
+        )
         account.save!
         Success(account)
       end

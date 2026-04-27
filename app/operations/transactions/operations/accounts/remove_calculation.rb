@@ -33,7 +33,9 @@ module Transactions
         private
 
         def find_transaction(params:)
-          Success(Transactions::Transaction.find(params[:transaction_id]))
+          Success(
+            Transactions::Transaction.includes(:currency_conversion).find(params[:transaction_id])
+          )
         rescue ActiveRecord::RecordNotFound => e
           Failure(transaction_id: "not found", error: e, expected: true)
         end
@@ -48,10 +50,21 @@ module Transactions
           # Remove the transaction's amount from the account balance
           return Success(transaction) if transaction.balance_state == "pending" # NOTE: Need to be idempotent
 
-          old_balance = account.balance.amount
-          balance = old_balance - transaction.value.amount
+          effect_result = ::Transactions::Operations::Accounts::ResolveSignedBalanceEffect.new.call(
+            transaction:,
+            account:
+          )
+          return effect_result unless effect_result.success?
 
-          account.assign_attributes(balance:)
+          signed_effect = effect_result.value![:amount]
+          old_balance = account.balance.amount
+          balance = (
+            BigDecimal(old_balance.to_s) - BigDecimal(signed_effect.to_s)
+          ).round(2)
+
+          account.assign_attributes(
+            balance: Money.from_amount(balance, account.balance_currency)
+          )
           transaction.assign_attributes(balance_state: "pending")
 
           account.save!

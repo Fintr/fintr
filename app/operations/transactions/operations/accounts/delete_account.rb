@@ -3,6 +3,9 @@
 module Transactions
   module Operations
     module Accounts
+      # Discards the account only. Per-transaction balance reverts use
+      # DeleteThisTransaction (`ResolveSignedBalanceEffect` + Money.from_amount). Bulk space
+      # teardown uses Spaces::Operations::ResetData (destroy_all), not this class.
       class DeleteAccount < Dry::Operation
         class Contract < Dry::Validation::Contract
           params do

@@ -18,7 +18,8 @@ module Transactions
           required(:date).value(:date)
           required(:transaction_type).value(:string, included_in?: %w[income expense])
           required(:category_name).value(:string)
-          required(:account_name).value(:string)
+          optional(:account_id).maybe(:string)
+          optional(:account_name).maybe(:string)
           optional(:description).value(:string)
 
           # Schedule type and related fields
@@ -73,6 +74,12 @@ module Transactions
 
           key.failure("must be a valid interval") if value && !valid_intervals.include?(value)
         end
+
+        rule(:account_name, :account_id) do
+          next if values[:account_id].present?
+
+          key(:account_name).failure("must be filled") unless values[:account_name].to_s.strip.present?
+        end
       end
 
       def validate(params:)
@@ -126,10 +133,24 @@ module Transactions
       end
 
       def find_account(params:)
-        account = Transactions::Account.kept.find_by(name: params[:account_name], space_id: params[:space_id])
-        return Failure(account_name: "not found") unless account
+        account =
+          if params[:account_id].present?
+            Transactions::Account.kept.find_by(id: params[:account_id], space_id: params[:space_id])
+          else
+            Transactions::Account.kept.find_by(name: params[:account_name], space_id: params[:space_id])
+          end
+
+        return Failure(find_account_failure(params)) unless account
 
         Success(account)
+      end
+
+      def find_account_failure(params)
+        if params[:account_id].present?
+          { account_id: "not found" }
+        else
+          { account_name: "not found" }
+        end
       end
 
       def find_skip_calculation(params:)
@@ -154,6 +175,14 @@ module Transactions
         end
 
         if params[:original_currency].present? && params[:exchange_rate].present?
+          if params[:original_currency].to_s == account_currency.to_s
+            return Success(
+              needs_conversion: false,
+              amount: amount_param,
+              amount_currency: account_currency
+            )
+          end
+
           original_amount = BigDecimal(amount_param.to_s)
           exchange_rate = BigDecimal(params[:exchange_rate].to_s)
           converted_amount = (original_amount * exchange_rate).round(2)

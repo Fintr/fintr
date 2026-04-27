@@ -48,6 +48,56 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
       end
     end
 
+    context "when original_currency matches account currency on update" do
+      let!(:usd_account) do
+        create(
+          :account,
+          space:,
+          name: "USD Account",
+          balance_currency: "USD",
+          balance: Money.from_amount(1000, "USD")
+        )
+      end
+
+      let!(:usd_transaction) do
+        create(
+          :expense_transaction,
+          :one_time,
+          user:,
+          space:,
+          account: usd_account,
+          category:,
+          amount: 50.00,
+          amount_currency: "USD",
+          balance_currency: "USD",
+          balance: 50.00,
+          description: "coffee"
+        )
+      end
+
+      it "does not multiply amount by exchange_rate" do
+        result = described_class.new.call(
+          id: usd_transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 80.0,
+          date: usd_transaction.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: usd_account.name,
+          description: "coffee",
+          schedule_type: "one_time",
+          original_currency: "USD",
+          exchange_rate: 99.0,
+          exchange_rate_source: "manual"
+        )
+
+        expect(result).to be_success
+        expect(result.value!.amount.amount).to eq(80.0)
+        expect(result.value!.amount_currency).to eq("USD")
+      end
+    end
+
     context 'with a recurring transaction' do
       let!(:parent_transaction) do
         create(
@@ -1152,7 +1202,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         )
 
         expect(result).to be_failure
-        expect(result.failure).to include(account_name: "not found")
+        expect(result.failure).to include(account_name: "cannot be changed")
       end
     end
 

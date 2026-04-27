@@ -1,6 +1,19 @@
 # frozen_string_literal: true
 
 namespace :currency_conversions do
+  desc "Set exchange_rate to the forward leg multiplier (converted/original) derived from stored amounts"
+  task backfill_exchange_rates: :environment do
+    updated = 0
+    ExchangeRates::CurrencyConversion.find_each(batch_size: 200) do |conversion|
+      forward = conversion.exchange_rate_as_multiplier
+      next if forward <= 0
+
+      conversion.update_columns(exchange_rate: forward.to_f)
+      updated += 1
+    end
+    puts "Updated #{updated} currency_conversion rows."
+  end
+
   desc "Fix JPY currency_conversion amounts in a given created_at window (start_date,end_date, e.g. 2026-03-08,2026-03-10)"
   task :fix_jpy_window, %i[start_date end_date] => :environment do |_t, args|
     unless args[:start_date].present? && args[:end_date].present?

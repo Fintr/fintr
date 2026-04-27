@@ -92,14 +92,26 @@ module Transactions
         records = dates.map.with_index do |date, index|
           new_transaction = template_transaction.amoeba_dup
           new_transaction.schedule = {} # NOTE: Duplicates don't have a schedule
-          account_balance += new_transaction.value.amount if params[:balance_state] == "calculated"
-
           new_transaction.assign_attributes(
             parent_id:,
             effective_parent_id: template_transaction.id,
             date:,
-            balance_state: params[:balance_state], # NOTE: Tells the app whether pending or calculated. We assume that transactions in the past were already reflected in current balances.
-            balance: account_balance # NOTE: Only update balance if balance_state is calculated
+            balance_state: params[:balance_state]
+          )
+          if params[:balance_state] == "calculated"
+            account_for_balance = template_transaction.account
+            rate_day = date.respond_to?(:to_date) ? date.to_date : date
+            effect_result = ::Transactions::Operations::Accounts::ResolveSignedBalanceEffect.new.call(
+              transaction: new_transaction,
+              account: account_for_balance,
+              rate_date: rate_day
+            )
+            return effect_result if effect_result.failure?
+
+            account_balance += effect_result.value![:amount]
+          end
+          new_transaction.assign_attributes(
+            balance: account_balance
           )
           new_transaction.repeat_count = (last_transaction&.repeat_count || 1) + 1 + index if parent_transaction.repeat?
           new_transaction.installment_count = (last_transaction&.installment_count || 1) + 1 + index if parent_transaction.installment?

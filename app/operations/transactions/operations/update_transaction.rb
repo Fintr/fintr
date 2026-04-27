@@ -38,6 +38,7 @@ module Transactions
         transaction = transaction do
           params              = step validate(params:)
           transaction         = step find_transaction(params:)
+          _                   = step ensure_account_unchanged(params:, transaction:)
           space               = step find_space(params:)
           category            = step find_category(params:)
           account             = step find_account(params:)
@@ -71,6 +72,18 @@ module Transactions
         Success(transaction)
       rescue ActiveRecord::RecordNotFound
         Failure(id: "transaction not found")
+      end
+
+      def ensure_account_unchanged(params:, transaction:)
+        requested = params[:account_name].to_s
+        return Success() if requested.blank?
+
+        current_name = Transactions::Account.find_by(id: transaction.account_id)&.name
+        return Success() if current_name.blank?
+
+        return Success() if current_name == requested
+
+        Failure(account_name: "cannot be changed")
       end
 
       def find_space(params:)
@@ -122,6 +135,11 @@ module Transactions
       # When edit sends original_currency + exchange_rate, amount is in original currency; else amount is in space currency.
       def convert_amount_to_account_currency(params:, transaction:, account:, space:)
         if params[:original_currency].present? && params[:exchange_rate].present? && params[:amount].present?
+          account_currency = account.balance_currency.presence || "PHP"
+          if params[:original_currency].to_s == account_currency.to_s
+            return Success(amount: BigDecimal(params[:amount].to_s).round(2))
+          end
+
           amount_account = (BigDecimal(params[:amount].to_s) * params[:exchange_rate]).round(2)
           return Success(amount: amount_account)
         end

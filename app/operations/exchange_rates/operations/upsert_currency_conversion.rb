@@ -52,6 +52,11 @@ module ExchangeRates
             .new(converted_currency)
             .subunit_to_unit
 
+        forward_rate = (
+          BigDecimal(validated[:converted_amount].to_s) /
+            BigDecimal(validated[:original_amount].to_s)
+        ).round(10)
+
         attrs = {
           original_amount_cents: (
             BigDecimal(validated[:original_amount].to_s) * original_subunit
@@ -61,7 +66,7 @@ module ExchangeRates
             BigDecimal(validated[:converted_amount].to_s) * converted_subunit
           ).to_i,
           converted_currency: converted_currency,
-          exchange_rate: validated[:exchange_rate],
+          exchange_rate: forward_rate.to_f,
           source: validated[:source],
           rate_timestamp: rate_timestamp
         }

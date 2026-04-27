@@ -322,5 +322,87 @@ RSpec.describe Transactions::Queries::TotalsByType, type: :query do
         expect(totals[:income]).to eq(100.0) # Only test-space income
       end
     end
+
+    context "when an expense has currency_conversion with original in space currency" do
+      let!(:usd_account) { create(:account, space: space, balance_currency: "USD", name: "USD") }
+      let!(:expense_converted) do
+        create(
+          :expense_transaction,
+          :one_time,
+          space: space,
+          account: usd_account,
+          category: expense_category,
+          date: Date.new(2024, 1, 5),
+          amount: Money.from_amount(16.48, "PHP"),
+          amount_currency: "PHP"
+        )
+      end
+
+      before do
+        ExchangeRates::CurrencyConversion.create!(
+          convertible: expense_converted,
+          space_id: space.id,
+          original_amount_cents: 1000_00,
+          original_currency: "PHP",
+          converted_amount_cents: 1648,
+          converted_currency: "USD",
+          exchange_rate: 0.01648,
+          source: "manual",
+          rate_timestamp: Time.current
+        )
+      end
+
+      it "counts the space-currency original as expense total magnitude" do
+        result = described_class.call(params: default_params)
+
+        expect(result).to be_success
+        expect(result.value![:expense]).to eq(1000.0)
+      end
+    end
+
+    context "when space is PHP and expenses are booked in USD with a cached rate" do
+      let!(:php_space) { create(:personal_space, code: "php-usd-total-space", currency: "PHP") }
+      let!(:usd_account) { create(:account, space: php_space, balance_currency: "USD") }
+      let!(:usd_expense_category) do
+        create(:category, name: "FoodUsd", space: php_space, category_type: "expense")
+      end
+      let(:usd_rate_date) { Date.new(2024, 1, 12) }
+      let(:usd_total_params) do
+        {
+          space_code: php_space.code,
+          start_date: Date.new(2024, 1, 1),
+          end_date: Date.new(2024, 1, 31)
+        }
+      end
+
+      before do
+        ExchangeRates::ApiExchangeRate.create!(
+          base_currency: ExchangeRates::ApiExchangeRate::BASE_CURRENCY,
+          target_currency: "PHP",
+          rate: 56.0,
+          rate_date: usd_rate_date
+        )
+      end
+
+      let!(:usd_expense) do
+        create(
+          :expense_transaction,
+          :one_time,
+          space: php_space,
+          account: usd_account,
+          category: usd_expense_category,
+          date: usd_rate_date,
+          amount: Money.from_amount(100, "USD"),
+          amount_currency: "USD"
+        )
+      end
+
+      it "sums expense totals in space currency (converted PHP), not raw USD numerals" do
+        result = described_class.call(params: usd_total_params)
+
+        expect(result).to be_success
+        expect(result.value![:expense]).to eq(5600.0)
+      end
+    end
   end
 end

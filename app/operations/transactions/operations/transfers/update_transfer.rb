@@ -73,6 +73,7 @@ module Transactions
           transfer = transaction do
             params              = step validate(params:)
             transfer            = step find_transfer(params:)
+            _                   = step ensure_transfer_accounts_unchanged(params:, transfer:)
             from_account        = step find_account(params:, account_name: params[:from_account_name])
             to_account          = step find_account(params:, account_name: params[:to_account_name])
             params              = step transform_params(params:, from_account:, to_account:)
@@ -93,10 +94,24 @@ module Transactions
         private
 
         def find_transfer(params:)
-          transfer = Transactions::Transfer.find_by!(id: params[:id], space_id: params[:space_id])
+          transfer = Transactions::Transfer
+            .includes(:from_account, :to_account)
+            .find_by!(id: params[:id], space_id: params[:space_id])
           Success(transfer)
         rescue ActiveRecord::RecordNotFound
           Failure(id: "transfer not found")
+        end
+
+        def ensure_transfer_accounts_unchanged(params:, transfer:)
+          unless transfer.from_account.name == params[:from_account_name].to_s
+            return Failure(from_account_name: "cannot be changed")
+          end
+
+          unless transfer.to_account.name == params[:to_account_name].to_s
+            return Failure(to_account_name: "cannot be changed")
+          end
+
+          Success()
         end
 
         def find_account(params:, account_name:)
