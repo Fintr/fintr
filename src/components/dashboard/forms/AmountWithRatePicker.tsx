@@ -26,6 +26,43 @@ import {
 const RATE_DISPLAY_DECIMALS = 3;
 const FLAG_NAME_GAP = "\u2002\u2002";
 
+/** Backend returns +from → to+ multiplier (FetchRate, serializers, recent rates). Use as-is. */
+function multiplierFromApi(raw: number): number {
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : raw;
+}
+
+/**
+ * Human-friendly quote from multiplier `m` (to per from: fromAmount * m = toAmount).
+ * Example: m ≈ 0.0165 USD/PHP → “60.606 PHP per 1 USD”.
+ */
+function humanFxQuote(
+  multiplier: number,
+  fromCurrency: string,
+  ledgerTargetCurrency: string
+): { displayValue: number; unitCurrency: string; baseCurrency: string } {
+  const m = multiplier;
+  if (!Number.isFinite(m) || m <= 0) {
+    return {
+      displayValue: m,
+      unitCurrency: ledgerTargetCurrency,
+      baseCurrency: fromCurrency,
+    };
+  }
+  if (m >= 1) {
+    return {
+      displayValue: m,
+      unitCurrency: ledgerTargetCurrency,
+      baseCurrency: fromCurrency,
+    };
+  }
+  return {
+    displayValue: 1 / m,
+    unitCurrency: fromCurrency,
+    baseCurrency: ledgerTargetCurrency,
+  };
+}
+
 function formatRateForLabel(dateStr: string | undefined): string {
   if (!dateStr) return "Today's rate (API)";
   const d = new Date(dateStr);
@@ -51,7 +88,8 @@ interface AmountWithRatePickerProps {
   onAmountChange: (value: string) => void;
   fromCurrency: string;
   onFromCurrencyChange: (code: string) => void;
-  toCurrency: string;
+  /** Ledger / account currency for the conversion leg (CURR1→CURR2). Omit or null until an account is chosen — never substitute space currency here. */
+  toCurrency: string | null;
   amountCurrencyOptions: string[];
   accountOptions: AccountOptionWithCurrency[];
   errors?: string[];
@@ -86,6 +124,11 @@ export function AmountWithRatePicker({
   date,
   initialConversion,
 }: AmountWithRatePickerProps) {
+  const ledgerTargetCurrency =
+    toCurrency != null && String(toCurrency).trim() !== ""
+      ? String(toCurrency).trim()
+      : null;
+
   const { api } = useAuthApi();
   const [currencyPopoverOpen, setCurrencyPopoverOpen] = useState(false);
   const [currencySearchQuery, setCurrencySearchQuery] = useState("");
@@ -96,12 +139,18 @@ export function AmountWithRatePicker({
   const [displayedRateDate, setDisplayedRateDate] = useState<string | undefined>(undefined);
   const [recentRates, setRecentRates] = useState<RecentRateItem[]>([]);
   const ratePopoverContentRef = useRef<HTMLDivElement>(null);
+  /** Ignores stale Promise results when from/to changes (e.g. space PHP → account USD). */
+  const autoRateFetchSeqRef = useRef(0);
+  const popoverRateFetchSeqRef = useRef(0);
   const [conversion, setConversion] = useState<{
     exchangeRate: number;
     exchangeRateSource: "auto" | "manual" | "recent";
   } | null>(() =>
     initialConversion
-      ? { exchangeRate: initialConversion.exchangeRate, exchangeRateSource: initialConversion.exchangeRateSource }
+      ? {
+          exchangeRate: multiplierFromApi(initialConversion.exchangeRate),
+          exchangeRateSource: initialConversion.exchangeRateSource,
+        }
       : null
   );
 
@@ -113,12 +162,22 @@ export function AmountWithRatePicker({
     ratesMatch(conversion.exchangeRate, currentRateDisplay);
   const isManualRateApplied = conversion?.exchangeRateSource === "manual";
   const isRecentRateApplied = (rate: number) =>
-    conversion?.exchangeRateSource === "recent" && ratesMatch(conversion.exchangeRate, rate);
+    conversion?.exchangeRateSource === "recent" &&
+    ratesMatch(
+      conversion.exchangeRate,
+      multiplierFromApi(rate),
+    );
 
   const amountNumeric = numberFormatting.cleanForBackend(amountDisplayValue);
-  const needsConversion = fromCurrency !== toCurrency;
+  /** True when we have an explicit ledger pair (never infer space as the "to" leg). */
+  const pairReady =
+    ledgerTargetCurrency != null && fromCurrency !== ledgerTargetCurrency;
+  /** Show converted line when there is a real pair, or edit mode seeded conversion. */
+  const fxPreviewActive = pairReady || initialConversion != null;
   const convertedAmount =
-    needsConversion && conversion && amountNumeric > 0
+    conversion &&
+    amountNumeric > 0 &&
+    (pairReady || initialConversion != null)
       ? amountNumeric * conversion.exchangeRate
       : 0;
 
@@ -143,7 +202,7 @@ export function AmountWithRatePicker({
     (code: string) => {
       onFromCurrencyChange(code);
       setCurrencyPopoverOpen(false);
-      if (code === toCurrency) {
+      if (code === ledgerTargetCurrency) {
         setConversion(null);
         onConversionChange(null);
       } else {
@@ -152,7 +211,7 @@ export function AmountWithRatePicker({
         setRecentRates([]);
       }
     },
-    [onFromCurrencyChange, toCurrency, onConversionChange]
+    [onFromCurrencyChange, ledgerTargetCurrency, onConversionChange]
   );
 
   const handleOpenPopover = useCallback(
@@ -162,30 +221,37 @@ export function AmountWithRatePicker({
         return;
       }
       setPopoverOpen(true);
-      if (!needsConversion) return;
+      if (!pairReady) return;
+      const seq = ++popoverRateFetchSeqRef.current;
       setLoadingRate("current");
       const todayStr = new Date().toISOString().slice(0, 10);
       Promise.all([
-        getCurrentRate(api, fromCurrency, toCurrency, todayStr),
-        getRecentRates(api, fromCurrency, toCurrency),
+        getCurrentRate(api, fromCurrency, ledgerTargetCurrency, todayStr),
+        getRecentRates(api, fromCurrency, ledgerTargetCurrency),
       ])
         .then(([current, recent]) => {
-          setCurrentRateDisplay(Number(current.rate));
+          if (seq !== popoverRateFetchSeqRef.current) return;
+          setCurrentRateDisplay(multiplierFromApi(Number(current.rate)));
           setDisplayedRateDate(todayStr);
           setRecentRates(recent.rates ?? []);
         })
         .catch(() => {
+          if (seq !== popoverRateFetchSeqRef.current) return;
           setCurrentRateDisplay(null);
           setDisplayedRateDate(undefined);
           setRecentRates([]);
         })
-        .finally(() => setLoadingRate(null));
+        .finally(() => {
+          if (seq !== popoverRateFetchSeqRef.current) return;
+          setLoadingRate(null);
+        });
     },
-    [api, fromCurrency, toCurrency, needsConversion]
+    [api, fromCurrency, ledgerTargetCurrency, pairReady]
   );
 
   const applyConversion = useCallback(
-    (rate: number, source: "auto" | "manual" | "recent") => {
+    (rawRate: number, source: "auto" | "manual" | "recent"): number => {
+      const rate = multiplierFromApi(rawRate);
       const snapshot: ConversionSnapshot = {
         originalCurrency: fromCurrency,
         exchangeRate: rate,
@@ -193,20 +259,21 @@ export function AmountWithRatePicker({
       };
       setConversion({ exchangeRate: rate, exchangeRateSource: source });
       onConversionChange(snapshot);
+      return rate;
     },
     [fromCurrency, onConversionChange]
   );
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-
   const handleUseTodaysRate = useCallback(() => {
+    if (ledgerTargetCurrency == null) return;
     setLoadingRate("current");
-    getCurrentRate(api, fromCurrency, toCurrency, todayStr)
+    const rateDate = new Date().toISOString().slice(0, 10);
+    getCurrentRate(api, fromCurrency, ledgerTargetCurrency, rateDate)
       .then((r) => {
-        const rate = Number(r.rate);
-        setCurrentRateDisplay(rate);
-        setDisplayedRateDate(todayStr);
-        applyConversion(rate, "auto");
+        const raw = Number(r.rate);
+        const n = applyConversion(raw, "auto");
+        setCurrentRateDisplay(n);
+        setDisplayedRateDate(rateDate);
         setPopoverOpen(false);
       })
       .catch(() => {
@@ -214,13 +281,13 @@ export function AmountWithRatePicker({
         setDisplayedRateDate(undefined);
       })
       .finally(() => setLoadingRate(null));
-  }, [api, fromCurrency, toCurrency, applyConversion]);
+  }, [api, fromCurrency, ledgerTargetCurrency, applyConversion]);
 
   const handleUseRecentRate = useCallback(
     (rate: number) => {
       applyConversion(Number(rate), "recent");
     },
-    [applyConversion]
+    [applyConversion],
   );
 
   const handleUseManualRate = useCallback(() => {
@@ -229,52 +296,95 @@ export function AmountWithRatePicker({
     applyConversion(parsed, "manual");
   }, [manualRate, applyConversion]);
 
-  // When parent provides initial conversion (e.g. edit mode), use it and do not overwrite
+  // When parent provides initial conversion (e.g. edit mode), use it and do not overwrite.
+  // Otherwise only auto-fetch when we have a real from→ledger pair (never substitute space).
   useEffect(() => {
-    if (!needsConversion) {
+    if (initialConversion) {
+      const normalized = multiplierFromApi(initialConversion.exchangeRate);
+      setConversion((prev) => {
+        if (
+          prev &&
+          prev.exchangeRateSource === initialConversion.exchangeRateSource &&
+          Math.abs(prev.exchangeRate - normalized) < RATE_TOLERANCE
+        ) {
+          return prev;
+        }
+        return {
+          exchangeRate: normalized,
+          exchangeRateSource: initialConversion.exchangeRateSource,
+        };
+      });
+      // Do not always call onConversionChange: it updates the parent, which passes a new
+      // initialConversion reference and would retrigger this effect → infinite loop.
+      if (
+        Math.abs(normalized - initialConversion.exchangeRate) >= RATE_TOLERANCE
+      ) {
+        onConversionChange({
+          originalCurrency: initialConversion.originalCurrency,
+          exchangeRate: normalized,
+          exchangeRateSource: initialConversion.exchangeRateSource,
+        });
+      }
+      return;
+    }
+
+    if (!pairReady) {
       setConversion(null);
       onConversionChange(null);
+      setCurrentRateDisplay(null);
+      setDisplayedRateDate(undefined);
+      setRecentRates([]);
       return;
     }
-    if (initialConversion) {
-      setConversion({
-        exchangeRate: initialConversion.exchangeRate,
-        exchangeRateSource: initialConversion.exchangeRateSource,
-      });
-      return;
-    }
+
     // Create mode: default to most recent rate used, else today's rate
+    const seq = ++autoRateFetchSeqRef.current;
+    setConversion(null);
+    onConversionChange(null);
     setLoadingRate("currency");
     const todayStr = new Date().toISOString().slice(0, 10);
     Promise.all([
-      getRecentRates(api, fromCurrency, toCurrency),
-      getCurrentRate(api, fromCurrency, toCurrency, todayStr),
+      getRecentRates(api, fromCurrency, ledgerTargetCurrency),
+      getCurrentRate(api, fromCurrency, ledgerTargetCurrency, todayStr),
     ])
       .then(([recent, current]) => {
+        if (seq !== autoRateFetchSeqRef.current) return;
         const rates = recent.rates ?? [];
         if (rates.length > 0) {
           const mostRecent = rates[0];
-          const rate = Number(mostRecent.rate);
-          setCurrentRateDisplay(rate);
+          const raw = Number(mostRecent.rate);
+          const n = applyConversion(raw, "recent");
+          setCurrentRateDisplay(n);
           setDisplayedRateDate(
             mostRecent.usedAt ?? (mostRecent as { timestamp?: string }).timestamp ?? todayStr
           );
           setRecentRates(rates);
-          applyConversion(rate, "recent");
         } else {
-          const rate = Number(current.rate);
-          setCurrentRateDisplay(rate);
+          const raw = Number(current.rate);
+          const n = applyConversion(raw, "auto");
+          setCurrentRateDisplay(n);
           setDisplayedRateDate(todayStr);
-          applyConversion(rate, "auto");
         }
       })
       .catch(() => {
+        if (seq !== autoRateFetchSeqRef.current) return;
         setCurrentRateDisplay(null);
         setDisplayedRateDate(undefined);
         setRecentRates([]);
       })
-      .finally(() => setLoadingRate(null));
-  }, [fromCurrency, toCurrency, needsConversion, api, applyConversion, initialConversion]);
+      .finally(() => {
+        if (seq !== autoRateFetchSeqRef.current) return;
+        setLoadingRate(null);
+      });
+  }, [
+    fromCurrency,
+    ledgerTargetCurrency,
+    pairReady,
+    api,
+    applyConversion,
+    initialConversion,
+    onConversionChange,
+  ]);
 
   return (
     <div className="space-y-3">
@@ -358,7 +468,7 @@ export function AmountWithRatePicker({
           />
         </div>
         <div className="flex flex-nowrap items-center shrink-0">
-          {!hideRatePicker && needsConversion && (
+          {!hideRatePicker && pairReady && (
             <Popover open={popoverOpen} onOpenChange={handleOpenPopover}>
               <PopoverTrigger asChild>
                 <Button
@@ -387,18 +497,29 @@ export function AmountWithRatePicker({
               >
                 <div ref={ratePopoverContentRef} className="space-y-3">
                   <p className="text-sm font-medium">
-                    {fromCurrency} → {toCurrency}
+                    {fromCurrency} → {ledgerTargetCurrency}
                   </p>
-                  {currentRateDisplay != null && (
-                    <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
-                      <span className="text-muted-foreground">
-                        {formatRateForLabel(displayedRateDate)}:{" "}
-                      </span>
-                      <span className="font-medium">
-                        {formatWithDelimiters(Number(currentRateDisplay), { minFractionDigits: RATE_DISPLAY_DECIMALS, maxFractionDigits: RATE_DISPLAY_DECIMALS })} {toCurrency}
-                      </span>
-                    </div>
-                  )}
+                  {currentRateDisplay != null && (() => {
+                    const q = humanFxQuote(
+                      currentRateDisplay,
+                      fromCurrency,
+                      ledgerTargetCurrency,
+                    );
+                    return (
+                      <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+                        <span className="text-muted-foreground">
+                          {formatRateForLabel(displayedRateDate)}:{" "}
+                        </span>
+                        <span className="font-medium">
+                          {formatWithDelimiters(q.displayValue, {
+                            minFractionDigits: RATE_DISPLAY_DECIMALS,
+                            maxFractionDigits: RATE_DISPLAY_DECIMALS,
+                          })}{" "}
+                          {q.unitCurrency} per 1 {q.baseCurrency}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <div className="flex flex-col gap-1.5">
                     <Button
                       type="button"
@@ -435,7 +556,24 @@ export function AmountWithRatePicker({
                             {isRecentRateApplied(Number(r.rate)) ? (
                               <Check className="h-4 w-4 text-primary shrink-0" aria-hidden />
                             ) : null}
-                            {formatWithDelimiters(Number(r.rate), { minFractionDigits: RATE_DISPLAY_DECIMALS, maxFractionDigits: RATE_DISPLAY_DECIMALS })} {toCurrency}
+                            {(() => {
+                              const raw = Number(r.rate);
+                              const m = multiplierFromApi(raw);
+                              const q = humanFxQuote(
+                                m,
+                                fromCurrency,
+                                ledgerTargetCurrency,
+                              );
+                              return (
+                                <>
+                                  {formatWithDelimiters(q.displayValue, {
+                                    minFractionDigits: RATE_DISPLAY_DECIMALS,
+                                    maxFractionDigits: RATE_DISPLAY_DECIMALS,
+                                  })}{" "}
+                                  {q.unitCurrency} per 1 {q.baseCurrency}
+                                </>
+                              );
+                            })()}
                           </span>
                           {(r.usedAt ?? (r as { timestamp?: string }).timestamp) ? (
                             <span className="text-muted-foreground text-xs">
@@ -487,14 +625,14 @@ export function AmountWithRatePicker({
             </Popover>
           )}
         </div>
-        {needsConversion && (
+        {fxPreviewActive && (
           <>
             <div />
             <div className="flex flex-col gap-0.5 min-w-0 pl-3 border-l-2 border-primary/20 py-0.5">
               {conversion && amountNumeric > 0 ? (
                 <>
                   <p className="text-sm font-semibold text-primary tracking-tight">
-                    → {toCurrency}{" "}
+                    → {ledgerTargetCurrency ?? "Account"}{" "}
                     <RollingNumber
                       value={formatWithDelimiters(convertedAmount, {
                         minFractionDigits: 3,
@@ -503,21 +641,43 @@ export function AmountWithRatePicker({
                       className="text-primary"
                     />
                   </p>
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    (rate: {toCurrency}{" "}
-                    <RollingNumber
-                      value={formatWithDelimiters(conversion.exchangeRate, {
-                        minFractionDigits: RATE_DISPLAY_DECIMALS,
-                        maxFractionDigits: RATE_DISPLAY_DECIMALS,
-                      })}
-                      className="text-muted-foreground"
-                    />
-                    {conversion.exchangeRateSource !== "auto" && " · manual/recent"})
-                  </p>
+                  {ledgerTargetCurrency != null ? (
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      (
+                      {(() => {
+                        const q = humanFxQuote(
+                          conversion.exchangeRate,
+                          fromCurrency,
+                          ledgerTargetCurrency,
+                        );
+                        return (
+                          <>
+                            <RollingNumber
+                              value={formatWithDelimiters(q.displayValue, {
+                                minFractionDigits: RATE_DISPLAY_DECIMALS,
+                                maxFractionDigits: RATE_DISPLAY_DECIMALS,
+                              })}
+                              className="text-muted-foreground"
+                            />{" "}
+                            {q.unitCurrency} per 1 {q.baseCurrency}
+                          </>
+                        );
+                      })()}
+                      {conversion.exchangeRateSource !== "auto" && " · manual/recent"})
+                    </p>
+                  ) : null}
                 </>
+              ) : ledgerTargetCurrency != null ? (
+                <p className="text-xs text-muted-foreground">
+                  → {ledgerTargetCurrency} — enter amount and choose a rate
+                </p>
+              ) : initialConversion == null ? (
+                <p className="text-xs text-muted-foreground">
+                  Select an account to preview the amount in the account currency.
+                </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  → {toCurrency} — enter amount and choose a rate
+                  Enter amount to see the converted value.
                 </p>
               )}
             </div>

@@ -18,6 +18,11 @@ export interface IndexTransaction {
   date: string;
   description: string;
   amount: number;
+  /** ISO currency code for `amount` (from API; matches space when converted, else native e.g. USD). */
+  amountCurrency?: string;
+  /** Booked / native leg when different from space display (from API when present). */
+  bookedAmount?: number;
+  bookedAmountCurrency?: string;
   categoryName: string;
   fromAccountName: string;
   toAccountName: string;
@@ -44,6 +49,10 @@ export interface UpdateTransactionType {
   date: string;
   description: string;
   amount: number;
+  /** Booked transaction currency (ISO), aligned with +amount+ from GET /transactions/:id. */
+  amountCurrency?: string;
+  /** Space-normalized display from API when needed for summaries. */
+  amountInSpaceCurrency?: { amount: number; currency: string };
   categoryName: string;
   accountName: string;
   /** Explicit form type sent to API: "income" or "expense" */

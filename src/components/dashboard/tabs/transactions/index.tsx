@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, List, Table2, CalendarDays, Plus, Filter } from "lucide-react";
+import { Search, List, Table2, CalendarDays, Plus, Filter, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   useQueryClient,
@@ -20,7 +20,6 @@ import { SheetsView } from "./sheets-view";
 import { CalendarView } from "./calendar-view";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useInfiniteTransactions } from "@/hooks/async/useInfiniteTransactions";
-import { formatCurrency } from "@/lib/utils";
 import { ArrowUpRight, ArrowDownLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Filters, FilterTypes } from "./filters";
@@ -116,6 +115,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     );
   };
   const [searchInput, setSearchInput] = useState("");
+  const [showBookedCurrencies, setShowBookedCurrencies] = useState(false);
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
 
@@ -734,15 +734,36 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
                 onBlur={handleSearchBlur}
               />
             </div>
-            <div className="flex items-center justify-end w-full md:w-automd:justify-start">
+            <div className="flex items-center justify-end gap-2 w-full md:w-auto md:justify-start flex-wrap">
               <DownloadButton onClick={handleDownloadTransactions} />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5 h-9 text-xs sm:text-sm"
+                onClick={() => setShowBookedCurrencies((v) => !v)}
+                aria-pressed={showBookedCurrencies}
+                aria-label={
+                  showBookedCurrencies ? "Hide currencies" : "Show currencies"
+                }
+              >
+                {showBookedCurrencies ? (
+                  <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
+                ) : (
+                  <Eye className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                <span className="whitespace-nowrap">
+                  {showBookedCurrencies ? "Hide currencies" : "Show currencies"}
+                </span>
+              </Button>
             </div>
           </div>
 
           {/* Transaction Totals Display */}
-          <TransactionTotalsDisplay 
+          <TransactionTotalsDisplay
             totals={data?.pages?.[0]?.totals ?? null}
             isLoading={isFetching && !data}
+            totalsCurrency={spaceCurrency}
           />
 
           {viewMode === "list" ? (
@@ -757,6 +778,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
               onRowEdit={handleEditRow}
               onRowDelete={handleDeleteRow}
               loadMoreRef={loadMoreRef as React.RefObject<HTMLDivElement>}
+              showBookedCurrencies={showBookedCurrencies}
             />
           ) : viewMode === "sheets" ? (
             <SheetsView
@@ -774,6 +796,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
               loadMoreRef={loadMoreRef as React.RefObject<HTMLDivElement>}
               isFetchingNextPage={isFetchingNextPage}
               hasNextPage={!!hasNextPage}
+              showBookedCurrencies={showBookedCurrencies}
             />
           ) : viewMode === "calendar" ? (
             <CalendarView

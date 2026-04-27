@@ -18,6 +18,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { indexTransactionDisplayMoney } from "@/utils/indexTransactionDisplay";
 
 interface SheetsViewProps {
     isPending: boolean;
@@ -34,6 +35,8 @@ interface SheetsViewProps {
     loadMoreRef: React.RefObject<HTMLDivElement>;
     isFetchingNextPage: boolean;
     hasNextPage: boolean;
+    /** When true, amount column uses booked (ledger) currency from the API instead of space-normalized. */
+    showBookedCurrencies?: boolean;
 }
 export function SheetsView({
     isPending,
@@ -50,6 +53,7 @@ export function SheetsView({
     loadMoreRef,
     isFetchingNextPage,
     hasNextPage,
+    showBookedCurrencies = false,
 }: SheetsViewProps) {
     const tableRef = useRef<HTMLTableElement>(null);
     const [hoveredCalculatedId, setHoveredCalculatedId] = useState<string | null>(null);
@@ -152,7 +156,15 @@ export function SheetsView({
                       array.findIndex(t => t.id === transaction.id) === index
                     );
                     
-                    return uniqueTransactions.map((transaction: IndexTransaction, index) => (
+                    return uniqueTransactions.map((transaction: IndexTransaction, index) => {
+                      const { amount: rowAmount, currency: rowCurrencyCode } =
+                        indexTransactionDisplayMoney(
+                          transaction,
+                          spaceCurrency,
+                          showBookedCurrencies,
+                        );
+
+                      return (
                       <tr
                         key={transaction.id}
                         className={`relative ${
@@ -485,16 +497,22 @@ export function SheetsView({
                               }
                               style={{
                                 color:
-                                  transaction.amount > 0
+                                  rowAmount > 0
                                     ? "#16a34a"
                                     : "#dc2626",
                               }}
                             >
                               <div className="flex items-center gap-2">
                                 <span>
-                                  {transaction.amount < 0
-                                    ? `-${formatCurrency(Math.abs(transaction.amount), spaceCurrency)}`
-                                    : formatCurrency(transaction.amount, spaceCurrency)}
+                                  {rowAmount < 0
+                                    ? `-${formatCurrency(
+                                        Math.abs(rowAmount),
+                                        rowCurrencyCode,
+                                      )}`
+                                    : formatCurrency(
+                                        rowAmount,
+                                        rowCurrencyCode,
+                                      )}
                                 </span>
                                 {/* Image icon - only show when hasImage is true */}
                                 {transaction.hasImage && (
@@ -523,7 +541,8 @@ export function SheetsView({
                         >
                         </td>
                       </tr>
-                    ));
+                    );
+                    });
                   })()}
               </tbody>
             </table>

@@ -16,6 +16,7 @@ import { fetchTransactionById } from "@/services/transactions/queries";
 import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import { toast } from "sonner";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { indexTransactionDisplayMoney } from "@/utils/indexTransactionDisplay";
 
 interface ListViewProps {
   isPending: boolean;
@@ -28,6 +29,8 @@ interface ListViewProps {
   onRowEdit: (transaction: IndexTransaction) => void;
   onRowDelete: (transactionId: string) => void;
   loadMoreRef: React.RefObject<HTMLDivElement>;
+  /** When true, row amounts use booked (ledger) currency from the API instead of space-normalized. */
+  showBookedCurrencies?: boolean;
 }
 
 export function ListView({
@@ -41,6 +44,7 @@ export function ListView({
   onRowEdit,
   onRowDelete,
   loadMoreRef,
+  showBookedCurrencies = false,
 }: ListViewProps) {
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -135,8 +139,9 @@ export function ListView({
               array.findIndex(t => t.id === transaction.id) === index
             );
             
-            // Calculate daily net totals (income - expense, transfers don't affect net)
+            // Daily net (income - expense) in space-normalized amounts for a consistent subtotal bar.
             const dailyTotals: Record<string, number> = {};
+            const dailyCurrencies: Record<string, Set<string>> = {};
             uniqueTransactions.forEach((transaction) => {
               const dateKey = new Date(transaction.date).toLocaleDateString('en-US', {
                 year: 'numeric',
@@ -145,14 +150,17 @@ export function ListView({
               });
               if (!dailyTotals[dateKey]) {
                 dailyTotals[dateKey] = 0;
+                dailyCurrencies[dateKey] = new Set();
               }
               const amount = Number(transaction.amount) || 0;
+              const rowCurrency = transaction.amountCurrency ?? spaceCurrency;
               if (transaction.type === CombinedTransactionTypeEnum.INCOME) {
                 dailyTotals[dateKey] += amount;
+                dailyCurrencies[dateKey].add(rowCurrency);
               } else if (transaction.type === CombinedTransactionTypeEnum.EXPENSE) {
                 dailyTotals[dateKey] -= Math.abs(amount);
+                dailyCurrencies[dateKey].add(rowCurrency);
               }
-              // Transfers don't affect net total
             });
             
             return uniqueTransactions.map((transaction: IndexTransaction, idx: number) => {
@@ -170,6 +178,18 @@ export function ListView({
               }
 
               const dailyNet = dailyTotals[currentDate] || 0;
+              const dayCurrencies = dailyCurrencies[currentDate];
+              const dailyFormatCurrency =
+                dayCurrencies && dayCurrencies.size === 1
+                  ? [...dayCurrencies][0]
+                  : spaceCurrency;
+
+              const { amount: rowAmount, currency: rowCurrencyCode } =
+                indexTransactionDisplayMoney(
+                  transaction,
+                  spaceCurrency,
+                  showBookedCurrencies
+                );
 
               return (
                 <React.Fragment key={transaction.id}>
@@ -186,7 +206,8 @@ export function ListView({
                       <span className={`text-xs font-semibold bg-white px-3 ${
                         dailyNet >= 0 ? 'text-teal-600' : 'text-red-900'
                       }`}>
-                        {dailyNet >= 0 ? '+' : ''}{formatCurrency(dailyNet)}
+                        {dailyNet >= 0 ? '+' : ''}
+                        {formatCurrency(dailyNet, dailyFormatCurrency)}
                       </span>
                       <div className="border-t border-gray-300" style={{width: '2rem'}} />
                     </div>
@@ -300,9 +321,15 @@ export function ListView({
                                 : "text-blue-900"
                             }`}
                           >
-                              {transaction.amount < 0
-                                ? `-${formatCurrency(Math.abs(transaction.amount), spaceCurrency)}`
-                                : formatCurrency(transaction.amount, spaceCurrency)}
+                              {rowAmount < 0
+                                ? `-${formatCurrency(
+                                    Math.abs(rowAmount),
+                                    rowCurrencyCode,
+                                  )}`
+                                : formatCurrency(
+                                    rowAmount,
+                                    rowCurrencyCode,
+                                  )}
                           </div>
                           <span
                                   className={`px-1 md:px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 gap-1 ${
