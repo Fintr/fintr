@@ -11,6 +11,38 @@ RSpec.describe Transactions::Operations::Accounts::CreateAccount do
   let(:operation_class) { class_double(described_class).as_stubbed_const }
 
   describe '#call' do
+    context 'with valid parameters end-to-end (initial balance transaction)' do
+      let(:space) { create(:personal_space) }
+      let(:user) { create(:user) }
+
+      before do
+        Transactions::Category.create_default_categories(space)
+      end
+
+      let(:integration_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          name: 'Integration Checking',
+          balance: BigDecimal('100.50'),
+          account_category: 'cash',
+          balance_currency: 'PHP'
+        }
+      end
+
+      it 'creates the account and initial balance income' do
+        result = described_class.new.call(integration_params)
+
+        expect(result).to be_success
+        created = Transactions::Account.find(result.value!.id)
+        initial = Transactions::Income.joins(:category).find_by(
+          transactions_categories: { name: 'Initial Balance' },
+          account_id: created.id
+        )
+        expect(initial).to be_present
+      end
+    end
+
     context 'with valid parameters' do
       let(:params) do
         {

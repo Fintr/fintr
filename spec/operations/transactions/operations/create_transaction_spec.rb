@@ -438,6 +438,56 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         end
       end
 
+      context 'when account_id is valid (no name lookup)' do
+        subject(:call_operation) { operation.call(params_by_account_id) }
+
+        let(:params_by_account_id) do
+          {
+            user_id: user.id,
+            space_id: space.id,
+            amount: 25.0,
+            date: Date.current,
+            description: 'By id',
+            transaction_type: 'income',
+            category_name: income_category.name,
+            account_id: account.id,
+            schedule_type: 'one_time'
+          }
+        end
+
+        it { is_expected.to be_success }
+
+        it 'creates the transaction linked to that account' do
+          expect(call_operation.value!.account_id).to eq(account.id)
+        end
+      end
+
+      context 'when account_id does not exist' do
+        subject(:call_operation) { operation.call(bad_account_id_params) }
+
+        let(:bad_account_id_params) do
+          {
+            user_id: user.id,
+            space_id: space.id,
+            amount: 25.0,
+            date: Date.current,
+            description: 'Bad id',
+            transaction_type: 'income',
+            category_name: income_category.name,
+            account_id: SecureRandom.uuid,
+            schedule_type: 'one_time'
+          }
+        end
+
+        it { is_expected.to be_failure }
+
+        it 'returns an error about the account id' do
+          result = call_operation
+          expect(result.failure).to include(:account_id)
+          expect(result.failure[:account_id]).to eq('not found')
+        end
+      end
+
       # Schedule type validation
       context 'when schedule_type is invalid' do
         subject(:call_operation) { operation.call(invalid_schedule_params) }

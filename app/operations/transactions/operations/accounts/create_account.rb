@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
 module Transactions
   module Operations
     module Accounts
@@ -31,9 +32,10 @@ module Transactions
         end
 
         include FailureHandler
+        include Dry::Operation::Extensions::ActiveRecord
 
         def call(params)
-          ActiveRecord::Base.transaction do
+          transaction do
             _                   = step validate(params:)
             params              = step modify_params(params:)
             account             = step create_account(params:)
@@ -74,7 +76,7 @@ module Transactions
             date: Time.zone.today,
             transaction_type: "income",
             category_name: "Initial Balance",
-            account_name: account.name,
+            account_id: account.id,
             schedule_type: "one_time",
             initial_balance: true
           }
