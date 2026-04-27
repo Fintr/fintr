@@ -53,6 +53,44 @@ RSpec.describe Transactions::Operations::CreateTransaction do
       end
     end
 
+    context "when original_currency matches account currency (manual rate still sent)" do
+      let(:usd_account) do
+        create(
+          :account,
+          space: space,
+          name: "USD Cash",
+          balance_currency: "USD",
+          balance: Money.from_amount(0, "USD")
+        )
+      end
+
+      let(:usd_income_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 100.0,
+          date: Date.current,
+          description: "USD deposit",
+          transaction_type: "income",
+          category_name: income_category.name,
+          account_name: usd_account.name,
+          schedule_type: "one_time",
+          original_currency: "USD",
+          exchange_rate: 0.5,
+          exchange_rate_source: "manual"
+        }
+      end
+
+      it "stores the amount as account currency without a currency_conversion row" do
+        result = operation.call(usd_income_params)
+        expect(result).to be_success
+        tx = result.value!
+        expect(tx.amount_currency).to eq("USD")
+        expect(tx.amount.amount).to eq(100.0)
+        expect(tx.currency_conversion).to be_blank
+      end
+    end
+
     context 'with expense transaction parameters' do
       subject(:call_operation) { operation.call(expense_params) }
 

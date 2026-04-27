@@ -15,7 +15,12 @@ class CurrencyConversionSerializer < Blueprinter::Base
 
   field :converted_currency
 
-  field :exchange_rate
+  field :exchange_rate do |conversion|
+    conversion.multiplier(
+      from_currency: conversion.original_currency,
+      to_currency: conversion.converted_currency
+    ).to_f
+  end
   field :source
   field :rate_timestamp
   field :note

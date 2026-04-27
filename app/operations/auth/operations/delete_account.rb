@@ -63,7 +63,8 @@ module Auth
         return unless space
 
         # Reuse ResetData to delete the bulk of space data (transactions, budgets,
-        # loans, categories, accounts, imports, conversations, etc.)
+        # loans, categories, accounts, imports, conversations, etc.). Rows are
+        # destroyed directly; running balances are not adjusted via ConvertSignedAmount.
         Spaces::Operations::ResetData.new.call(space_id: space_id, user_id: user.id)
 
         space.reload

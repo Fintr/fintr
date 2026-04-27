@@ -34,7 +34,9 @@ module Transactions
         end
 
         def find_transaction(params:)
-          Success(Transactions::Transaction.find(params[:transaction_id]))
+          Success(
+            Transactions::Transaction.includes(:currency_conversion).find(params[:transaction_id])
+          )
         rescue ActiveRecord::RecordNotFound => e
           Failure(transaction_id: "not found", error: e, expected: true)
         end
@@ -53,11 +55,25 @@ module Transactions
             return Success(transaction)
           end
 
-          old_balance = account.balance.amount
-          balance = old_balance + transaction.value.amount
+          effect_result = ::Transactions::Operations::Accounts::ResolveSignedBalanceEffect.new.call(
+            transaction:,
+            account:
+          )
+          return effect_result unless effect_result.success?
 
-          account.assign_attributes(balance:)
-          transaction.assign_attributes(balance:, balance_state: "calculated")
+          signed_effect = effect_result.value![:amount]
+          old_balance = account.balance.amount
+          balance = (
+            BigDecimal(old_balance.to_s) + BigDecimal(signed_effect.to_s)
+          ).round(2)
+
+          account.assign_attributes(
+            balance: Money.from_amount(balance, account.balance_currency)
+          )
+          transaction.assign_attributes(
+            balance: Money.from_amount(balance, account.balance_currency),
+            balance_state: "calculated"
+          )
 
           account.save!
           transaction.save!
@@ -66,7 +82,7 @@ module Transactions
           error = "Balance cannot be negative. " \
                 "Original balance: #{Utils::Number.format_money(old_balance)}. " \
                 "New balance: #{Utils::Number.format_money(balance)}"
-        Failure(account_name: error, error:)
+          Failure(account_name: error, error: e)
         end
       end
     end

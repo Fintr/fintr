@@ -5,6 +5,10 @@ module ExchangeRates
     # Returns the numeric amount and currency when expressing a given amount in the space's currency.
     # Used so the frontend can read a single "display amount" (always in space currency).
     # For past data, uses rate at the given date (FetchRate will use cache or fetch from API and persist).
+    #
+    # When +strict: true+, cross-currency rows require a successful rate; otherwise +Failure+ (for
+    # aggregations that must not mix foreign units into space-currency totals). When +strict+ is
+    # false (default), a missing rate falls back to the booked amount and native currency.
     class AmountInSpaceCurrency < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
@@ -12,6 +16,7 @@ module ExchangeRates
           required(:amount_currency).value(:string)
           required(:date).value(:date)
           required(:space).value(:any)
+          optional(:strict).maybe(:bool)
         end
       end
 
@@ -41,6 +46,8 @@ module ExchangeRates
       end
 
       def compute_display_amount(params:, context:)
+        strict = params[:strict] == true
+
         if context[:same_currency]
           return Success(
             amount: params[:amount].to_d.round(2),
@@ -56,13 +63,20 @@ module ExchangeRates
         )
 
         unless rate_result.success?
+          return Failure(
+            rate: "unavailable",
+            from_currency: context[:from_currency],
+            to_currency: context[:space_currency],
+            message: rate_result.failure
+          ) if strict
+
           return Success(
             amount: params[:amount].to_d.round(2),
             currency: context[:from_currency]
           )
         end
 
-        rate     = rate_result.value![:rate]
+        rate = rate_result.value![:rate]
         converted = (params[:amount].to_d * rate).round(2)
         Success(amount: converted, currency: context[:space_currency])
       end

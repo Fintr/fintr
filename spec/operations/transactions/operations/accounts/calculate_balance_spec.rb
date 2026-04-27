@@ -33,6 +33,39 @@ RSpec.describe Transactions::Operations::Accounts::CalculateBalance do
         expect(transaction.reload.balance_state).to eq('calculated')
       end
 
+      context 'when transaction amount currency differs from account balance currency' do
+        let!(:usd_account) do
+          create(:account, space: space, balance: Money.from_amount(1000, "USD"))
+        end
+        let(:transaction) do
+          create(
+            :transaction,
+            account: usd_account,
+            space: space,
+            amount: Money.from_amount(5800, "PHP"),
+            balance_state: 'pending'
+          )
+        end
+
+        before do
+          ExchangeRates::ApiExchangeRate.create!(
+            base_currency: ExchangeRates::ApiExchangeRate::BASE_CURRENCY,
+            target_currency: "PHP",
+            rate: 58,
+            rate_date: transaction.date.to_date
+          )
+        end
+
+        it 'applies FetchRate so the effect is in account currency' do
+          result = operation.call(params)
+
+          expect(result).to be_success
+          expected = (BigDecimal("1000") + (BigDecimal("5800") / BigDecimal("58")).round(2)).round(2)
+          expect(usd_account.reload.balance.amount).to eq(expected.to_f)
+          expect(transaction.reload.balance_state).to eq('calculated')
+        end
+      end
+
       context 'when skip_calculation is true' do
         let(:params_skip_calculation) do
           {

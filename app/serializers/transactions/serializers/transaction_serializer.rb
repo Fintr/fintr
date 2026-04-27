@@ -14,13 +14,23 @@ module Transactions
              :installment_period,
              :installment_count
 
-      # Single display amount: always in space currency so the frontend reads one field only.
+      # Booked leg (ledger): same as +record.amount+ / +amount_currency+ for edit forms and
+      # foreign-account rows where the user expects the account ISO.
       field :amount do |record|
-        record.amount_in_space_currency[:amount]
+        record.amount.amount
       end
 
       field :amount_currency do |record|
-        record.amount_in_space_currency[:currency]
+        record.amount_currency
+      end
+
+      # Space-context display (list/index uses {FilteredCombinedSerializer} instead).
+      field :amount_in_space_currency do |record|
+        payload = record.amount_in_space_currency
+        {
+          amount: payload[:amount],
+          currency: payload[:currency]
+        }
       end
 
       field :balance do |record|

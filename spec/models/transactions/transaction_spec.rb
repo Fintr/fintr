@@ -122,4 +122,45 @@ RSpec.describe Transactions::Transaction, type: :model do
       expect(transaction.value).to eq(Money.from_amount(100, 'PHP'))
     end
   end
+
+  describe "#amount_in_space_currency" do
+    context "when currency_conversion original matches space currency" do
+      let(:space) { create(:personal_space, currency: "PHP") }
+      let(:usd_account) { create(:account, space:, balance_currency: "USD", name: "USD Account") }
+      let(:category) { create(:category, space:, category_type: "expense", name: "Home") }
+      let(:expense) do
+        create(
+          :expense_transaction,
+          :one_time,
+          space:,
+          account: usd_account,
+          category:,
+          amount: Money.from_amount(16.48, "PHP"),
+          amount_currency: "PHP",
+          date: Date.current
+        )
+      end
+
+      before do
+        ExchangeRates::CurrencyConversion.create!(
+          convertible: expense,
+          space_id: space.id,
+          original_amount_cents: 1000_00,
+          original_currency: "PHP",
+          converted_amount_cents: 1648,
+          converted_currency: "USD",
+          exchange_rate: 0.01648,
+          source: "manual",
+          rate_timestamp: Time.current
+        )
+        expense.reload
+      end
+
+      it "returns the original space amount with expense sign, not the converted number in space ISO" do
+        display = expense.amount_in_space_currency
+        expect(display[:currency]).to eq("PHP")
+        expect(display[:amount]).to eq(-1000)
+      end
+    end
+  end
 end

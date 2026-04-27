@@ -175,6 +175,14 @@ module Transactions
         end
 
         if params[:original_currency].present? && params[:exchange_rate].present?
+          if params[:original_currency].to_s == account_currency.to_s
+            return Success(
+              needs_conversion: false,
+              amount: amount_param,
+              amount_currency: account_currency
+            )
+          end
+
           original_amount = BigDecimal(amount_param.to_s)
           exchange_rate = BigDecimal(params[:exchange_rate].to_s)
           converted_amount = (original_amount * exchange_rate).round(2)

@@ -39,15 +39,16 @@ module Transactions
 
     # Amount and currency to show in UI: always in space currency (same contract as Transaction).
     def amount_in_space_currency
-      @amount_in_space_currency ||= begin
-        result = ::ExchangeRates::Operations::AmountInSpaceCurrency.new.call(
-          amount: amount.amount,
-          amount_currency: amount_currency,
-          date: date,
-          space: space
-        )
-        result.success? ? result.value! : { amount: amount.amount, currency: amount_currency }
-      end
+      @amount_in_space_currency ||= ::ExchangeRates::Operations::AmountInSpaceForTransactable.display_payload(
+        transactable: self
+      )
+    end
+
+    # See {Transactions::Transaction#amount_numeric_for_space_total}.
+    def amount_numeric_for_space_total
+      @amount_numeric_for_space_total ||= ::ExchangeRates::Operations::AmountInSpaceForTransactable.totals_amount_decimal(
+        transactable: self
+      )
     end
 
     def total_cost

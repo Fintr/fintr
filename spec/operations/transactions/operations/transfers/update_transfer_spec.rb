@@ -476,7 +476,7 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
 
         result = operation.call(params)
         expect(result).to be_failure
-        expect(result.failure).to include(account_name: "'NonExistentAccount' not found")
+        expect(result.failure).to include(from_account_name: "cannot be changed")
       end
 
       it 'fails when to_account is not found' do
@@ -484,7 +484,7 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
 
         result = operation.call(params)
         expect(result).to be_failure
-        expect(result.failure).to include(account_name: "'NonExistentAccount' not found")
+        expect(result.failure).to include(to_account_name: "cannot be changed")
       end
 
       it 'fails when account is discarded' do

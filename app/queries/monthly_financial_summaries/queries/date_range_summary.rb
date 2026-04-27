@@ -119,7 +119,7 @@ module MonthlyFinancialSummaries
           date: start_date..end_date.end_of_day
         ).calculated
 
-        totals = aggregate_totals_from_transactions(transactions:, space:)
+        totals = aggregate_totals_from_transactions(transactions:)
         Success(totals)
       rescue ActiveRecord::ActiveRecordError => e
         Failure(transactions: "Failed to fetch transactions", error: e.message)
@@ -160,24 +160,24 @@ module MonthlyFinancialSummaries
         )
       end
 
-      def aggregate_totals_from_transactions(transactions:, space:)
-        currency = space.currency.presence || "PHP"
-        total_income   = Money.new(0, currency)
-        total_expenses = Money.new(0, currency)
+      def aggregate_totals_from_transactions(transactions:)
+        total_income   = 0.0
+        total_expenses = 0.0
 
         transactions.each do |tx|
+          amount = tx.amount_numeric_for_space_total.to_f
           case tx.type
           when "Transactions::Income"
-            total_income += tx.amount
+            total_income += amount
           when "Transactions::Expense"
-            total_expenses += tx.amount
+            total_expenses += amount
           end
         end
 
         {
-          total_income: total_income.amount.to_f,
-          total_expenses: total_expenses.amount.to_f,
-          net_savings: (total_income - total_expenses).amount.to_f
+          total_income:,
+          total_expenses:,
+          net_savings: total_income - total_expenses,
         }
       end
 

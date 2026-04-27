@@ -76,17 +76,18 @@ module Transactions
         totals = { income: 0.0, expense: 0.0, transfer: 0.0 }
 
         relation.includes(:transactable).each do |transaction|
-          amount = if transaction.transactable.respond_to?(:amount_in_space_currency)
-                     transaction.transactable.amount_in_space_currency[:amount]
-          else
+          amount = if transaction.transactable.respond_to?(:amount_numeric_for_space_total)
+                     transaction.transactable.amount_numeric_for_space_total
+                   else
                      transaction.amount.to_f
-          end
+                   end
 
           case transaction.transactable_type
           when "Transactions::Income"
             totals[:income] += amount
           when "Transactions::Expense"
-            totals[:expense] += amount
+            # amount_in_space_currency uses the expense sign (negative); totals expose magnitude.
+            totals[:expense] += amount.abs
           when "Transactions::Transfer"
             totals[:transfer] += amount
           end
