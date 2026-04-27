@@ -142,8 +142,8 @@ module Finance
         described_class.perform_now
 
         new_cycle = subscription.billing_cycles.order(:cycle_number).last
-        expect(new_cycle.metadata["auto_renewed"]).to eq(true)
-        expect(new_cycle.metadata["free_subscription"]).to eq(true)
+        expect(new_cycle.metadata["auto_renewed"]).to be(true)
+        expect(new_cycle.metadata["free_subscription"]).to be(true)
         expect(new_cycle.metadata["previous_cycle_id"]).to eq(first_cycle.id)
       end
 
@@ -226,7 +226,7 @@ module Finance
 
         expect do
           described_class.perform_now
-        end.not_to(change { Finance::BillingCycle.count })
+        end.not_to(change(Finance::BillingCycle, :count))
 
         expect(subscription.billing_cycles.count).to eq(0)
       end

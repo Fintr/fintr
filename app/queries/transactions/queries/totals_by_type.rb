@@ -78,9 +78,9 @@ module Transactions
         relation.includes(:transactable).each do |transaction|
           amount = if transaction.transactable.respond_to?(:amount_numeric_for_space_total)
                      transaction.transactable.amount_numeric_for_space_total
-                   else
+          else
                      transaction.amount.to_f
-                   end
+          end
 
           case transaction.transactable_type
           when "Transactions::Income"

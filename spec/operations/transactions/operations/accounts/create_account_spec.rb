@@ -13,12 +13,6 @@ RSpec.describe Transactions::Operations::Accounts::CreateAccount do
   describe '#call' do
     context 'with valid parameters end-to-end (initial balance transaction)' do
       let(:space) { create(:personal_space) }
-      let(:user) { create(:user) }
-
-      before do
-        Transactions::Category.create_default_categories(space)
-      end
-
       let(:integration_params) do
         {
           user_id: user.id,
@@ -29,6 +23,12 @@ RSpec.describe Transactions::Operations::Accounts::CreateAccount do
           balance_currency: 'PHP'
         }
       end
+      let(:user) { create(:user) }
+
+      before do
+        Transactions::Category.create_default_categories(space)
+      end
+
 
       it 'creates the account and initial balance income' do
         result = described_class.new.call(integration_params)

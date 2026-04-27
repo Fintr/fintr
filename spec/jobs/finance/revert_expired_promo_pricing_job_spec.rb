@@ -136,8 +136,12 @@ module Finance
         it "updates Xendit subscription to original amount" do
           client = instance_double(Integrations::Payments::Xendit::Client)
           allow(Integrations::Payments::Xendit::Client).to receive(:new).and_return(client)
+          allow(client).to receive(:update_subscription_plan)
+            .and_return({ id: "updated", status: "ACTIVE" })
 
-          expect(client).to receive(:update_subscription_plan).with(
+          described_class.perform_now
+
+          expect(client).to have_received(:update_subscription_plan).with(
             plan_id: "plan_expired_123",
             params: hash_including(
               amount: 500.0, # 50000 cents = 500.0
@@ -146,9 +150,7 @@ module Finance
                 original_amount_cents: 50000
               )
             )
-          ).and_return({ id: "updated", status: "ACTIVE" })
-
-          described_class.perform_now
+          )
         end
 
         it "records the reversion timestamp" do
@@ -248,7 +250,7 @@ module Finance
           described_class.perform_now
 
           expired_subscription.reload
-          expect(expired_subscription.metadata["promo_revert_failed"]).to eq(true)
+          expect(expired_subscription.metadata["promo_revert_failed"]).to be(true)
           expect(expired_subscription.metadata["promo_revert_error"]).to eq("API Error")
         end
 
@@ -330,8 +332,8 @@ module Finance
           expired_subscription.reload
           second_expired_subscription.reload
 
-          expect(expired_subscription.metadata["promo_reverted"]).to eq(true)
-          expect(second_expired_subscription.metadata["promo_reverted"]).to eq(true)
+          expect(expired_subscription.metadata["promo_reverted"]).to be(true)
+          expect(second_expired_subscription.metadata["promo_reverted"]).to be(true)
         end
       end
     end

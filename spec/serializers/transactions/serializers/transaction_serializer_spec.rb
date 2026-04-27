@@ -3,6 +3,8 @@
 require "rails_helper"
 
 RSpec.describe Transactions::Serializers::TransactionSerializer do
+  subject(:serialized_hash) { described_class.render_as_hash(transaction) }
+
   let(:space) { create(:personal_space, currency: "PHP") }
   let(:usd_account) do
     create(
@@ -26,7 +28,6 @@ RSpec.describe Transactions::Serializers::TransactionSerializer do
     )
   end
 
-  subject(:serialized_hash) { described_class.render_as_hash(transaction) }
 
   it "serializes booked amount and currency on top-level amount fields" do
     expect(serialized_hash[:amount]).to eq(121_327.97)

@@ -36,7 +36,7 @@ module ExchangeRates
       def self.fallback_payload(transactable:)
         {
           amount: transactable.amount.amount,
-          currency: transactable.amount_currency,
+          currency: transactable.amount_currency
         }
       end
       private_class_method :fallback_payload
@@ -101,7 +101,7 @@ module ExchangeRates
 
         {
           amount: (sign * original.abs).round(2),
-          currency: space_ccy,
+          currency: space_ccy
         }
       end
     end

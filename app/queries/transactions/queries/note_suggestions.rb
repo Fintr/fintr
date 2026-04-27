@@ -51,10 +51,10 @@ module Transactions
 
         # Use STI type column: Transactions::Expense or Transactions::Income
         type_class = case params[:transaction_type].to_s
-                     when "expense" then "Transactions::Expense"
-                     when "income" then "Transactions::Income"
-                     else return Success(relation)
-                     end
+        when "expense" then "Transactions::Expense"
+        when "income" then "Transactions::Income"
+        else return Success(relation)
+        end
 
         relation = relation.where(type: type_class)
         Success(relation)

@@ -33,17 +33,16 @@ RSpec.describe "Performance: N+1 Query Detection", type: :request do
 
     it "eager loads category and account associations" do
       sign_in user
-      
+
       get "/api/v1/transactions", params: { space_code: space.code }
-      
+
       transactions_data = JSON.parse(response.body)["transactions"]
       expect(transactions_data).to be_present
-      
+
       # Verify associations are loaded (would throw if lazy loaded)
-      transactions_data.each do |transaction|
-        expect(transaction).to have_key("category_name")
-        expect(transaction).to have_key("account_name")
-      end
+      expect(transactions_data).to all(
+        a_hash_including("category_name", "account_name")
+      )
     end
   end
 
@@ -61,7 +60,7 @@ RSpec.describe "Performance: N+1 Query Detection", type: :request do
 
       query_count = 0
       callback = ->(*) { query_count += 1 }
-      
+
       ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
         get "/api/v1/spaces/#{space_with_data.code}/dashboard_data"
       end
@@ -84,7 +83,7 @@ RSpec.describe "Performance: N+1 Query Detection", type: :request do
 
       query_count = 0
       callback = ->(*) { query_count += 1 }
-      
+
       ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
         get "/api/v1/loans", params: { space_code: space.code }
       end
@@ -105,7 +104,7 @@ RSpec.describe "Performance: N+1 Query Detection", type: :request do
 
       query_count = 0
       callback = ->(*) { query_count += 1 }
-      
+
       ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
         get "/api/v1/admin/ai/ai_interactions"
       end
@@ -128,7 +127,7 @@ RSpec.describe "Performance: N+1 Query Detection", type: :request do
 
       query_count = 0
       callback = ->(*) { query_count += 1 }
-      
+
       ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
         get "/api/v1/crm/tickets"
       end
@@ -149,7 +148,7 @@ RSpec.describe "Performance: N+1 Query Detection", type: :request do
       # Trigger RAG pipeline via chat
       query_count = 0
       callback = ->(*) { query_count += 1 }
-      
+
       ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
         post "/api/v1/ai/rag", params: {
           query: "Show me spending by category this month",

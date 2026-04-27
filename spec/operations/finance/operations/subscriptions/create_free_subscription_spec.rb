@@ -168,7 +168,7 @@ module Finance
 
                 subscription = result.value!
                 # Zone can be EST or EDT depending on DST
-                expect(%w[EST EDT]).to include(subscription.started_at.zone)
+                expect(subscription.started_at.zone).to satisfy { |z| %w[EST EDT].include?(z) }
               end
             end
 
@@ -269,7 +269,7 @@ module Finance
             metadata = subscription.metadata
             expect(metadata["granted_by"]).to eq(admin.id.to_s)
             expect(metadata["notes"]).to eq("Free subscription for vlogger")
-            expect(metadata["is_free_subscription"]).to eq(true)
+            expect(metadata["is_free_subscription"]).to be(true)
             expect(metadata["space_name"]).to eq(space.name)
             expect(metadata["space_type"]).to eq(space.type)
           end

@@ -10,7 +10,7 @@ RSpec.describe "Performance: Large Dataset Handling", type: :request do
     before do
       categories = create_list(:transactions_category, 5, space: space)
       accounts = create_list(:transactions_account, 5, space: space)
-      
+
       # Create 10,000 transactions to test pagination
       100.times do
         create_list(
@@ -27,20 +27,20 @@ RSpec.describe "Performance: Large Dataset Handling", type: :request do
       sign_in user
 
       start_time = Time.current
-      
-      get "/api/v1/transactions", params: { 
+
+      get "/api/v1/transactions", params: {
         space_code: space.code,
         page: 1,
         per_page: 25
       }
-      
+
       end_time = Time.current
       duration = end_time - start_time
 
       expect(response).to have_http_status(:success)
       expect(duration).to be < 1.0,
         "Transaction list took #{duration}s to load - should be under 1 second with proper pagination"
-      
+
       json = JSON.parse(response.body)
       expect(json["transactions"].length).to eq(25)
       expect(json["pagination"]["total_count"]).to eq(10000)
@@ -51,13 +51,13 @@ RSpec.describe "Performance: Large Dataset Handling", type: :request do
 
       # Monitor memory usage
       initial_memory = GC.stat(:total_allocated_objects)
-      
-      get "/api/v1/transactions", params: { 
+
+      get "/api/v1/transactions", params: {
         space_code: space.code,
         page: 1,
         per_page: 25
       }
-      
+
       final_memory = GC.stat(:total_allocated_objects)
       allocated = final_memory - initial_memory
 
@@ -69,17 +69,17 @@ RSpec.describe "Performance: Large Dataset Handling", type: :request do
       sign_in user
 
       start_time = Time.current
-      
-      get "/api/v1/transactions/generate_csv", params: { 
+
+      get "/api/v1/transactions/generate_csv", params: {
         space_code: space.code
       }
-      
+
       end_time = Time.current
       duration = end_time - start_time
 
       expect(response).to have_http_status(:success)
       expect(response.content_type).to eq("text/csv")
-      
+
       # CSV generation should use streaming, not load all into memory
       expect(duration).to be < 10.0,
         "CSV generation took #{duration}s for 10,000 records - should use find_each/streaming"
@@ -89,7 +89,7 @@ RSpec.describe "Performance: Large Dataset Handling", type: :request do
   describe "GET /api/v1/loans with amortization schedules" do
     before do
       account = create(:transactions_account, space: space)
-      
+
       # Create loans with large amortization schedules
       create_list(:transactions_loan, 50, space: space, account: account) do |loan|
         loan.update!(term_months: 360) # 30-year loan = 360 payments
@@ -100,9 +100,9 @@ RSpec.describe "Performance: Large Dataset Handling", type: :request do
       sign_in user
 
       start_time = Time.current
-      
+
       get "/api/v1/loans", params: { space_code: space.code }
-      
+
       end_time = Time.current
       duration = end_time - start_time
 
@@ -114,7 +114,7 @@ RSpec.describe "Performance: Large Dataset Handling", type: :request do
 
   describe "GET /api/v1/admin/users" do
     let(:admin_user) { create(:auth_user, :admin) }
-    
+
     before do
       # Create 5,000 users
       create_list(:auth_user, 5000)
@@ -124,9 +124,9 @@ RSpec.describe "Performance: Large Dataset Handling", type: :request do
       sign_in admin_user
 
       start_time = Time.current
-      
+
       get "/api/v1/admin/users", params: { page: 1 }
-      
+
       end_time = Time.current
       duration = end_time - start_time
 
@@ -138,7 +138,7 @@ RSpec.describe "Performance: Large Dataset Handling", type: :request do
 
   describe "AI Chat with large conversation history" do
     let(:conversation) { create(:ai_conversation, user: user, space: space) }
-    
+
     before do
       # Create conversation with 500 messages
       create_list(:ai_conversation_message, 500, conversation: conversation)
@@ -148,9 +148,9 @@ RSpec.describe "Performance: Large Dataset Handling", type: :request do
       sign_in user
 
       start_time = Time.current
-      
+
       get "/api/v1/ai/conversations/#{conversation.id}/messages"
-      
+
       end_time = Time.current
       duration = end_time - start_time
 
@@ -179,14 +179,14 @@ RSpec.describe "Performance: Large Dataset Handling", type: :request do
       }
 
       expect(response).to have_http_status(:created)
-      
+
       import = Imports::Import.last
-      
+
       # Process import
       start_time = Time.current
-      
+
       post "/api/v1/imports/#{import.id}/process"
-      
+
       end_time = Time.current
       duration = end_time - start_time
 

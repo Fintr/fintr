@@ -8,7 +8,7 @@ module Finance
 
     describe "validations" do
       it "is valid with valid attributes" do
-        sponsor_code = SponsorCode.new(
+        sponsor_code = described_class.new(
           code: "TEST20",
           name: "Test Promo",
           discount_percentage: 20,
@@ -18,7 +18,7 @@ module Finance
       end
 
       it "is valid with discount_months" do
-        sponsor_code = SponsorCode.new(
+        sponsor_code = described_class.new(
           code: "TEST20",
           name: "Test Promo",
           discount_percentage: 20,
@@ -29,7 +29,7 @@ module Finance
       end
 
       it "is invalid with discount_months less than 1" do
-        sponsor_code = SponsorCode.new(
+        sponsor_code = described_class.new(
           code: "TEST20",
           name: "Test Promo",
           discount_percentage: 20,
@@ -41,7 +41,7 @@ module Finance
       end
 
       it "is valid without discount_months (unlimited duration)" do
-        sponsor_code = SponsorCode.new(
+        sponsor_code = described_class.new(
           code: "TEST20",
           name: "Test Promo",
           discount_percentage: 20,
@@ -54,7 +54,7 @@ module Finance
 
     describe "#limited_duration?" do
       it "returns true when discount_months is present" do
-        sponsor_code = SponsorCode.new(
+        sponsor_code = described_class.new(
           code: "TEST20",
           name: "Test Promo",
           discount_percentage: 20,
@@ -65,7 +65,7 @@ module Finance
       end
 
       it "returns false when discount_months is nil" do
-        sponsor_code = SponsorCode.new(
+        sponsor_code = described_class.new(
           code: "TEST20",
           name: "Test Promo",
           discount_percentage: 20,
@@ -76,7 +76,7 @@ module Finance
       end
 
       it "returns false when discount_months is 0" do
-        sponsor_code = SponsorCode.new(
+        sponsor_code = described_class.new(
           code: "TEST20",
           name: "Test Promo",
           discount_percentage: 20,
@@ -91,7 +91,7 @@ module Finance
       let(:anchor_date) { Time.zone.parse("2026-01-15 10:00:00") }
 
       it "returns expiration date based on discount_months" do
-        sponsor_code = SponsorCode.new(
+        sponsor_code = described_class.new(
           code: "TEST20",
           name: "Test Promo",
           discount_percentage: 20,
@@ -104,7 +104,7 @@ module Finance
       end
 
       it "returns nil when discount_months is nil" do
-        sponsor_code = SponsorCode.new(
+        sponsor_code = described_class.new(
           code: "TEST20",
           name: "Test Promo",
           discount_percentage: 20,
@@ -116,7 +116,7 @@ module Finance
       end
 
       it "uses current time as default" do
-        sponsor_code = SponsorCode.new(
+        sponsor_code = described_class.new(
           code: "TEST20",
           name: "Test Promo",
           discount_percentage: 20,
@@ -131,7 +131,7 @@ module Finance
       end
 
       it "handles year boundary correctly" do
-        sponsor_code = SponsorCode.new(
+        sponsor_code = described_class.new(
           code: "TEST20",
           name: "Test Promo",
           discount_percentage: 20,
@@ -147,20 +147,20 @@ module Finance
 
     describe "scopes" do
       before do
-        @unlimited = SponsorCode.create!(
+        @unlimited = described_class.create!(
           code: "UNLIMITED",
           name: "Unlimited Promo",
           discount_percentage: 20,
           created_by: user
         )
-        @limited_3m = SponsorCode.create!(
+        @limited_3m = described_class.create!(
           code: "3MONTHS",
           name: "3 Month Promo",
           discount_percentage: 20,
           discount_months: 3,
           created_by: user
         )
-        @limited_6m = SponsorCode.create!(
+        @limited_6m = described_class.create!(
           code: "6MONTHS",
           name: "6 Month Promo",
           discount_percentage: 15,
@@ -171,7 +171,7 @@ module Finance
 
       describe ".with_duration" do
         it "returns only promo codes with discount_months set" do
-          results = SponsorCode.with_duration
+          results = described_class.with_duration
           expect(results).to include(@limited_3m, @limited_6m)
           expect(results).not_to include(@unlimited)
         end
