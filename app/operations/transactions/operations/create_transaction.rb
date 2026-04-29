@@ -133,16 +133,28 @@ module Transactions
       end
 
       def find_account(params:)
-        account =
-          if params[:account_id].present?
-            Transactions::Account.kept.find_by(id: params[:account_id], space_id: params[:space_id])
-          else
-            Transactions::Account.kept.find_by(name: params[:account_name], space_id: params[:space_id])
-          end
+        account = find_account_row(params:)
 
         return Failure(find_account_failure(params)) unless account
 
         Success(account)
+      end
+
+      # Load by id when present, then verify space in Ruby. A single `find_by(id, space_id)` can miss
+      # when SQL bind types for UUID do not line up (e.g. after dry-validation coerces :string)
+      # even though the row exists in the same request (e.g. initial balance for a new account).
+      def find_account_row(params:)
+        if params[:account_id].present?
+          found = Transactions::Account.kept.find_by(id: params[:account_id])
+          return found if found && found.space_id.to_s == params[:space_id].to_s
+
+          nil
+        else
+          Transactions::Account.kept.find_by(
+            name: params[:account_name],
+            space_id: params[:space_id]
+          )
+        end
       end
 
       def find_account_failure(params)
