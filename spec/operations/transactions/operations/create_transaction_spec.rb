@@ -500,6 +500,30 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         end
       end
 
+      context 'when account record is passed (priority over id and name)' do
+        subject(:call_operation) { operation.call(params_with_account_record) }
+
+        let(:params_with_account_record) do
+          {
+            user_id: user.id,
+            space_id: space.id,
+            amount: 25.0,
+            date: Date.current,
+            description: "By account object",
+            transaction_type: "income",
+            category_name: income_category.name,
+            account:,
+            schedule_type: "one_time"
+          }
+        end
+
+        it { is_expected.to be_success }
+
+        it "creates the transaction linked to that account" do
+          expect(call_operation.value!.account_id).to eq(account.id)
+        end
+      end
+
       context 'when account_id does not exist' do
         subject(:call_operation) { operation.call(bad_account_id_params) }
 
