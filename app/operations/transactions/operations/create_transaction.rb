@@ -18,6 +18,8 @@ module Transactions
           required(:date).value(:date)
           required(:transaction_type).value(:string, included_in?: %w[income expense])
           required(:category_name).value(:string)
+          # When set, has priority over account_id / account_name; rule validates it is kept and matches space_id
+          optional(:account).maybe(type?: Transactions::Account)
           optional(:account_id).maybe(:string)
           optional(:account_name).maybe(:string)
           optional(:description).value(:string)
@@ -75,7 +77,19 @@ module Transactions
           key.failure("must be a valid interval") if value && !valid_intervals.include?(value)
         end
 
-        rule(:account_name, :account_id) do
+        # account (record) has priority: when present, account_id / account_name are not required
+        rule(:account, :space_id, :account_id, :account_name) do
+          a = values[:account]
+          if a.present?
+            if a.discarded?
+              key(:account).failure("must be active")
+            end
+            if a.space_id.to_s != values[:space_id].to_s
+              key(:account).failure("must belong to the current space")
+            end
+            next
+          end
+
           next if values[:account_id].present?
 
           key(:account_name).failure("must be filled") unless values[:account_name].to_s.strip.present?
@@ -83,39 +97,64 @@ module Transactions
       end
 
       def validate(params:)
-        contract = Contract.new.call(**params)
-        return Failure(contract.errors.to_h) unless contract.success?
+        result = Contract.new.call(**params)
+        return Failure(result.errors.to_h) unless result.success?
 
-        Success(contract.to_h)
+
+        Success(result.to_h)
       end
 
       include FailureHandler
       include Dry::Operation::Extensions::ActiveRecord
 
       def call(params)
-        params             = step validate(params:)
+        params             = step validate(params: params)
 
         skip_embedding     = params[:skip_embedding]
         transaction = transaction do
-          category           = step find_category(params:)
-          account            = step find_account(params:)
+          category           = step find_category(params: params)
+          account            = step find_account(params: params)
           conversion_data    = step prepare_conversion(params:, account:)
-          skip_calculation   = step find_skip_calculation(params:)
-          params             = step transform_params(params:, category:, account:, conversion_data:)
-          params             = step adjust_amount(params:)
-          tx                 = step create_transaction(params:, category:)
-          _                  = step create_conversion_record(transaction: tx, conversion_data:)
-          _                  = step calculate_balance(transaction: tx, skip_calculation:, params:)
-          tx                 = step create_schedule(transaction: tx, params:) if params[:schedule_type] != "one_time"
+          skip_calculation   = step find_skip_calculation(params: params)
+          params             = step transform_params(
+                                    params:,
+                                    category:,
+                                    account:,
+                                    conversion_data:,
+                                    )
+          params             = step adjust_amount(params: params)
+          tx                 = step create_transaction(
+                                    params:,
+                                    category:,
+                                    )
+          _                  = step create_conversion_record(
+                                    transaction: tx,
+                                    conversion_data:,
+                                    )
+          _                  = step calculate_balance(
+                                    transaction: tx,
+                                    skip_calculation:,
+                                    params:,
+                                    )
+          tx                 = step create_schedule(
+                                    transaction: tx,
+                                    params:,
+                                    ) if params[:schedule_type] != "one_time"
           _                  = step create_past_transactions(transaction: tx) if params[:schedule_type] != "one_time"
           _                  = step create_future_transactions(transaction: tx) if params[:schedule_type] != "one_time"
           tx
         end
 
-        transaction          = step attach_file(transaction:, params:) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
-        _                    = step remove_draft(params:)
+        transaction          = step attach_file(
+                                    transaction:,
+                                    params:,
+                                    ) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
+        _                    = step remove_draft(params: params)
         _                    = step update_monthly_summary(transaction:)
-        _                    = step generate_embedding_async(transaction:, skip_embedding:)
+        _                    = step generate_embedding_async(
+                                    transaction:,
+                                    skip_embedding:,
+                                    )
         transaction.reload
       end
 
@@ -133,17 +172,16 @@ module Transactions
       end
 
       def find_account(params:)
-        account = find_account_row(params:)
+        return Success(params[:account]) if params[:account].present?
 
-        return Failure(find_account_failure(params)) unless account
+        account = find_account_by_id_or_name(params:)
 
-        Success(account)
+        return Success(account) if account
+
+        Failure(find_account_failure(params))
       end
 
-      # Load by id when present, then verify space in Ruby. A single `find_by(id, space_id)` can miss
-      # when SQL bind types for UUID do not line up (e.g. after dry-validation coerces :string)
-      # even though the row exists in the same request (e.g. initial balance for a new account).
-      def find_account_row(params:)
+      def find_account_by_id_or_name(params:)
         if params[:account_id].present?
           found = Transactions::Account.kept.find_by(id: params[:account_id])
           return found if found && found.space_id.to_s == params[:space_id].to_s
@@ -257,6 +295,7 @@ module Transactions
         params[:balance_currency] = params[:amount_currency]
         params[:amount] = conversion_data[:converted_amount] if conversion_data[:needs_conversion]
         params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
+        params.delete(:account)
         params.delete(:category_name)
         params.delete(:account_name)
         params.delete(:transaction_type)
@@ -290,7 +329,7 @@ module Transactions
         type_klass = category.income? ? Transactions::Income : Transactions::Expense
         type_klass = Transactions::Draft if params[:draft]
 
-        transaction_params = params.except(:file, :draft, :draft_id, :file_id)
+        transaction_params = params.except(:file, :draft, :draft_id, :file_id, :account)
         transaction = type_klass.new(**transaction_params)
 
         transaction.save!

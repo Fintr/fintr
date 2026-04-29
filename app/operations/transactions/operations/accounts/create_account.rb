@@ -7,6 +7,7 @@ module Transactions
       class CreateAccount < Dry::Operation
         class Contract < Dry::Validation::Contract
           params do
+            required(:user_id).value(:string)
             required(:space_id).value(:string)
             required(:name).value(:string)
             required(:balance).value(:decimal)
@@ -36,13 +37,13 @@ module Transactions
 
         def call(params)
           transaction do
-            _                   = step validate(params:)
+            params              = step validate(params:)
             params              = step modify_params(params:)
             account             = step create_account(params:)
             return account if params[:balance].zero?
 
             transaction_params  = step create_transaction_params(params:, account:)
-            _                   = step create_initial_balance_transaction(transaction_params:, account:)
+            _                   = step create_initial_balance_transaction(transaction_params:)
             account
           end
         end
@@ -70,22 +71,20 @@ module Transactions
 
         def create_transaction_params(params:, account:)
           new_params = {
-            user_id: params[:user_id],
-            # Use the persisted account so space_id always matches (CreateTransaction#find_account
-            # looks up by id + space_id; a mismatch reports account_id: "not found" in Sentry).
+            user_id: params[:user_id].to_s,
             space_id: account.space_id,
+            account:,
             amount: params[:balance],
             date: Time.zone.today,
             transaction_type: "income",
             category_name: "Initial Balance",
-            account_id: account.id.to_s,
             schedule_type: "one_time",
             initial_balance: true
           }
           Success(new_params)
         end
 
-        def create_initial_balance_transaction(transaction_params:, account:)
+        def create_initial_balance_transaction(transaction_params:)
           Transactions::Operations::CreateTransaction.new.call(transaction_params)
         end
       end
