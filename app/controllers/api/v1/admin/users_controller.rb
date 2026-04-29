@@ -19,7 +19,24 @@ module Api
         private
 
         def index_params
-          params.permit(:search_query, :page)
+          p = params.permit(
+            :search_query,
+            :searchQuery,
+            :email_query,
+            :emailQuery,
+            :name_query,
+            :nameQuery,
+            :page,
+            :per_page,
+            :perPage
+          )
+          {
+            email_query: p[:email_query].presence || p[:emailQuery].presence,
+            name_query: p[:name_query].presence || p[:nameQuery].presence,
+            page: p[:page],
+            per_page: p[:per_page].presence || p[:perPage].presence,
+            search_query: p[:search_query].presence || p[:searchQuery].presence
+          }
         end
       end
     end
