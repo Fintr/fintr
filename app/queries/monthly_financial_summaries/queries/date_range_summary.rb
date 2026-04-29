@@ -177,7 +177,7 @@ module MonthlyFinancialSummaries
         {
           total_income:,
           total_expenses:,
-          net_savings: total_income - total_expenses,
+          net_savings: total_income - total_expenses
         }
       end
 

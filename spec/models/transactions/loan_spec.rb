@@ -331,7 +331,7 @@ RSpec.describe Transactions::Loan, type: :model do
     it 'calculates total value as sum of all scheduled payments (principal + interest)' do
       schedule = loan.generate_amortization_schedule
       expected_total = schedule.sum { |entry| entry[:payment_amount] }
-      
+
       expect(loan.total_value.amount).to be_within(0.01).of(expected_total)
     end
 
@@ -339,7 +339,7 @@ RSpec.describe Transactions::Loan, type: :model do
       schedule = loan.generate_amortization_schedule
       total_principal = schedule.sum { |entry| entry[:principal_payment] }
       total_interest = schedule.sum { |entry| entry[:interest_payment] }
-      
+
       expect(loan.total_value.amount).to be_within(0.01).of(total_principal + total_interest)
     end
 
@@ -357,9 +357,9 @@ RSpec.describe Transactions::Loan, type: :model do
       # - Monthly payment: ~78,625.37 PHP
       # - Total value should be ~18,885,832 PHP (principal + ~9,485,836 interest)
       # - Total value = monthly_payment × 240 months
-      
+
       expect(loan.total_value.amount).to be_within(100_000).of(18_885_832)
-      
+
       # Tight bounds for confidence: 18.8M < total_value < 18.9M
       expect(loan.total_value.amount).to be > 18_800_000
       expect(loan.total_value.amount).to be < 18_900_000
@@ -380,7 +380,7 @@ RSpec.describe Transactions::Loan, type: :model do
       it 'reflects remaining schedule including actual payments' do
         schedule = loan.generate_amortization_schedule
         expected_total = schedule.sum { |entry| entry[:payment_amount] }
-        
+
         expect(loan.total_value.amount).to be_within(0.01).of(expected_total)
       end
     end

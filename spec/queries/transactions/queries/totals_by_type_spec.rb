@@ -362,6 +362,18 @@ RSpec.describe Transactions::Queries::TotalsByType, type: :query do
 
     context "when space is PHP and expenses are booked in USD with a cached rate" do
       let!(:php_space) { create(:personal_space, code: "php-usd-total-space", currency: "PHP") }
+      let!(:usd_expense) do
+        create(
+          :expense_transaction,
+          :one_time,
+          space: php_space,
+          account: usd_account,
+          category: usd_expense_category,
+          date: usd_rate_date,
+          amount: Money.from_amount(100, "USD"),
+          amount_currency: "USD"
+        )
+      end
       let!(:usd_account) { create(:account, space: php_space, balance_currency: "USD") }
       let!(:usd_expense_category) do
         create(:category, name: "FoodUsd", space: php_space, category_type: "expense")
@@ -384,18 +396,6 @@ RSpec.describe Transactions::Queries::TotalsByType, type: :query do
         )
       end
 
-      let!(:usd_expense) do
-        create(
-          :expense_transaction,
-          :one_time,
-          space: php_space,
-          account: usd_account,
-          category: usd_expense_category,
-          date: usd_rate_date,
-          amount: Money.from_amount(100, "USD"),
-          amount_currency: "USD"
-        )
-      end
 
       it "sums expense totals in space currency (converted PHP), not raw USD numerals" do
         result = described_class.call(params: usd_total_params)

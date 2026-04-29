@@ -71,12 +71,14 @@ module Transactions
         def create_transaction_params(params:, account:)
           new_params = {
             user_id: params[:user_id],
-            space_id: params[:space_id],
+            # Use the persisted account so space_id always matches (CreateTransaction#find_account
+            # looks up by id + space_id; a mismatch reports account_id: "not found" in Sentry).
+            space_id: account.space_id,
             amount: params[:balance],
             date: Time.zone.today,
             transaction_type: "income",
             category_name: "Initial Balance",
-            account_id: account.id,
+            account_id: account.id.to_s,
             schedule_type: "one_time",
             initial_balance: true
           }
