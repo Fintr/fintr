@@ -55,7 +55,7 @@ module Transactions
         end
 
         def create_account(params:)
-          account = Transactions::Account.find_or_initialize_by(
+          account = Transactions::Account.kept.find_or_initialize_by(
             params.slice(
               :space_id,
               :name,
