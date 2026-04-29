@@ -1,6 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
-import { useAuthApi } from "@/hooks/useAuthApi";
-import { AxiosInstance } from 'axios';
+import { AxiosInstance } from "axios";
 
 export interface UserData {
   id: string;
@@ -8,42 +6,47 @@ export interface UserData {
   email: string;
 }
 
-export const useGetUsers = () => {
-  const { api } = useAuthApi();
-  return useQuery<UserData[], Error>({
-    queryKey: ["admin", "users"],
-    queryFn: async () => {
-      const response = await api.get("/admin/users");
-      return response.data.data.users;
-    },
-  });
-};
-
-interface FetchUsersPageProps {
-  page?: number;
-  queryKey?: any[];
-  searchQuery?: string;
+export interface AdminUsersPagination {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
 }
 
-export const fetchUsersPage = async (
-  api: AxiosInstance,
-  { page = 1, searchQuery = "" }: FetchUsersPageProps
-): Promise<{ users: UserData[]; nextPage: number | undefined; totalCount?: number }> => {
-  const perPage = 25; // Load 25 users per page for better infinite scrolling experience
-  try {
-    const response = await api.get("/admin/users", {
-      params: { page: page, perPage: perPage, searchQuery: searchQuery },
-    });
-    const users = response.data.data.users || [];
-    const totalCount = response.data.data.pagination?.totalCount;
-    // Check if the number of users returned is exactly 'perPage'.
-    // If it's less, it implies this is the last page.
-    const hasMore = users.length === perPage;
-    const nextPage = hasMore ? page + 1 : undefined;
+export interface AdminUsersPagePayload {
+  users: UserData[];
+  pagination: AdminUsersPagination;
+}
 
-    return { users, nextPage, totalCount };
-  } catch (error) {
-    console.error("Error fetching users page:", error);
-    throw error;
-  }
+export const fetchAdminUsersPage = async (
+  api: AxiosInstance,
+  {
+    page = 1,
+    perPage = 25,
+    searchQuery = "",
+  }: {
+    page?: number;
+    perPage?: number;
+    searchQuery?: string;
+  },
+): Promise<AdminUsersPagePayload> => {
+  const response = await api.get(
+    "/admin/users",
+    {
+      params: {
+        page,
+        per_page: perPage,
+        search_query: searchQuery.trim() || undefined,
+      },
+    },
+  );
+  const users = response.data.data.users || [];
+  const p = response.data.data.pagination || {};
+  return {
+    users,
+    pagination: {
+      currentPage: p.currentPage ?? 1,
+      totalPages: p.totalPages ?? 1,
+      totalCount: p.totalCount ?? 0,
+    },
+  };
 };
