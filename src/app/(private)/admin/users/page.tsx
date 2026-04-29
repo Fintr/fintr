@@ -1,6 +1,7 @@
 "use client";
 
-import { useGetUsers, UserData } from "@/services/admin/user/queries";
+import type { ReactNode } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -11,69 +12,67 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import { useAuthApi } from "@/hooks/useAuthApi";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-import { useRef, Fragment, useState } from "react";
-import { useInfiniteUsers } from "@/hooks/async/useInfiniteUsers";
+import { useAdminUsers } from "@/hooks/async/useAdminUsers";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Search } from "lucide-react";
+import { UserData } from "@/services/admin/user/queries";
+
+const PER_PAGE = 25;
 
 export default function UsersPage() {
-  const { api } = useAuthApi();
-  const queryClient = useQueryClient();
-  const loadMoreRef = useRef<HTMLTableRowElement>(null);
   const [searchInput, setSearchInput] = useState("");
-  const [appliedSearchQuery, setAppliedSearchQuery] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const safePage = Math.max(
+    1,
+    parseInt(String(currentPage), 10) || 1,
+  );
+
+  const setSafePage = (page: number | ((prev: number) => number)) => {
+    if (typeof page === "function") {
+      setCurrentPage((prev) => {
+        const next = page(prev);
+        return Math.max(1, parseInt(String(next), 10) || 1);
+      });
+    } else {
+      setCurrentPage(Math.max(1, parseInt(String(page), 10) || 1));
+    }
+  };
 
   const {
     data,
-    isFetching: isLoading,
+    isLoading,
+    isFetching,
     isError,
     error,
-    isFetchingNextPage,
-    hasNextPage,
-  } = useInfiniteUsers({
-    loadMoreRef,
-    searchQuery: appliedSearchQuery,
-  }) as {
-    data: {
-      pages: { users: UserData[]; nextPage: number | undefined; totalCount?: number; }[];
-      pageParams: (number | undefined)[];
-    } | undefined;
-    isFetching: boolean;
-    isError: boolean;
-    error: Error | null;
-    isFetchingNextPage: boolean;
-    hasNextPage: boolean;
+  } = useAdminUsers({
+    page: safePage,
+    perPage: PER_PAGE,
+    searchQuery: appliedSearch,
+  });
+
+  const pagination = data?.pagination;
+  const users = data?.users ?? [];
+  const totalPages = pagination?.totalPages ?? 1;
+  const totalCount = pagination?.totalCount ?? 0;
+
+  const applySearch = () => {
+    setAppliedSearch(searchInput.trim());
+    setSafePage(1);
   };
 
-  // Get total count from the first page
-  const totalCount = data?.pages[0]?.totalCount;
-
-
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchInput(e.target.value);
-  };
-
-  const handleSearch = () => {
-    setAppliedSearchQuery(searchInput);
-  };
-
-  const handleClearSearch = () => {
+  const clearSearch = () => {
     setSearchInput("");
-    setAppliedSearchQuery("");
+    setAppliedSearch("");
+    setSafePage(1);
   };
 
-  const handleSearchBlur = () => {
-    handleSearch();
-  };
+  const initialLoad = isLoading && !data;
 
-  if (isLoading) {
+  if (initialLoad) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <LoadingSpinner />
@@ -83,80 +82,195 @@ export default function UsersPage() {
 
   if (isError) {
     return (
-      <div className="text-destructive">Error loading users: {error?.message}</div>
+      <div className="text-destructive">
+        Error loading users: {error?.message}
+      </div>
     );
   }
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
         <CardTitle>
           Users
-          {totalCount !== undefined && (
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({totalCount} total)
-            </span>
-          )}
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
+            ({totalCount} total)
+          </span>
         </CardTitle>
+        {isFetching && !initialLoad ? (
+          <span className="text-sm text-muted-foreground inline-flex items-center gap-2">
+            <LoadingSpinner size="small" className="!justify-start" />
+            Updating…
+          </span>
+        ) : null}
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-          <div className="relative flex-grow w-full md:w-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search Users"
-              className="pl-10 bg-white"
-              value={searchInput}
-              onChange={handleSearchChange}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleSearch();
-                }
-              }}
-              onBlur={handleSearchBlur}
-            />
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="space-y-2 max-w-xl">
+            <Label htmlFor="admin-users-search">Search by email or name</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="admin-users-search"
+                placeholder="Email or full name"
+                className="pl-10 bg-white"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    applySearch();
+                  }
+                }}
+              />
+            </div>
           </div>
-          <h3 className="text-lg font-medium mr-2">Users List</h3>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={applySearch}>
+              <Search className="h-4 w-4 mr-2" />
+              Search
+            </Button>
+            <Button type="button" variant="outline" onClick={clearSearch}>
+              Clear
+            </Button>
+          </div>
         </div>
+
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Full Name</TableHead>
+              <TableHead>Full name</TableHead>
               <TableHead>Email</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data?.pages.map((page, i) => (
-              <Fragment key={i}>
-                {page.users.map((user: UserData) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="min-w-[120px]">
-                      {user.fullName?.trim() || user.email || "—"}
-                    </TableCell>
-                    <TableCell className="min-w-0 break-all">
-                      {user.email || "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </Fragment>
-            ))}
-            {(isLoading || isFetchingNextPage) && (
+            {users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">
-                  <LoadingSpinner />
+                <TableCell colSpan={2} className="text-center text-muted-foreground">
+                  No users match this search.
                 </TableCell>
               </TableRow>
+            ) : (
+              users.map((user: UserData) => (
+                <TableRow key={user.id}>
+                  <TableCell className="min-w-[120px]">
+                    {user.fullName?.trim() || user.email || "—"}
+                  </TableCell>
+                  <TableCell className="min-w-0 break-all">
+                    {user.email || "—"}
+                  </TableCell>
+                </TableRow>
+              ))
             )}
-            {!hasNextPage && !isLoading && data && data.pages.map((page: { users: UserData[]; nextPage: number | undefined }) => page.users.length).reduce((acc, length) => acc + length, 0) === 0 && (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center">
-                  No users found.
-                </TableCell>
-              </TableRow>
-            )}
-            <TableRow ref={loadMoreRef} />
           </TableBody>
         </Table>
+
+        {totalCount > 0 ? (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
+            <div className="text-sm text-muted-foreground">
+              Page {pagination?.currentPage ?? safePage} of {totalPages} ({totalCount} users)
+            </div>
+            {totalPages > 1 ? (
+              <div className="flex items-center gap-1 flex-wrap justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSafePage(1)}
+                  disabled={safePage === 1}
+                  className="hidden sm:flex"
+                >
+                  First
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSafePage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1 mx-2">
+                  {(() => {
+                    const current = safePage;
+                    const pages: ReactNode[] = [];
+                    if (current > 3) {
+                      pages.push(
+                        <Button
+                          key={1}
+                          variant={1 === current ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setSafePage(1)}
+                          className="w-8 h-8 p-0"
+                        >
+                          1
+                        </Button>,
+                      );
+                      if (current > 4) {
+                        pages.push(
+                          <span key="ellipsis1" className="px-2 text-muted-foreground">
+                            …
+                          </span>,
+                        );
+                      }
+                    }
+                    const start = Math.max(1, current - 1);
+                    const end = Math.min(totalPages, current + 1);
+                    for (let i = start; i <= end; i += 1) {
+                      pages.push(
+                        <Button
+                          key={i}
+                          variant={i === current ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setSafePage(i)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {i}
+                        </Button>,
+                      );
+                    }
+                    if (current < totalPages - 2) {
+                      if (current < totalPages - 3) {
+                        pages.push(
+                          <span key="ellipsis2" className="px-2 text-muted-foreground">
+                            …
+                          </span>,
+                        );
+                      }
+                      pages.push(
+                        <Button
+                          key={totalPages}
+                          variant={totalPages === current ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setSafePage(totalPages)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {totalPages}
+                        </Button>,
+                      );
+                    }
+                    return pages;
+                  })()}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSafePage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                >
+                  Next
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSafePage(totalPages)}
+                  disabled={safePage >= totalPages}
+                  className="hidden sm:flex"
+                >
+                  Last
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
