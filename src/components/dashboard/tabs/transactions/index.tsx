@@ -718,8 +718,8 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             />
           )}
 
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-            <div className="relative flex-grow w-full">
+          <div className="flex flex-col md:flex-row gap-4 mb-6 md:items-center">
+            <div className="relative min-w-0 flex-1 w-full">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search Transactions"
@@ -734,7 +734,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
                 onBlur={handleSearchBlur}
               />
             </div>
-            <div className="flex items-center justify-end gap-2 w-full md:w-auto md:justify-start flex-wrap">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-end w-full md:ml-auto md:w-auto md:self-center">
               <DownloadButton onClick={handleDownloadTransactions} />
               <Button
                 type="button"
