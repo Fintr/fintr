@@ -73,11 +73,17 @@ module Secured
   private
 
   def track_user_activity
-    # Use a background job to avoid blocking the request
-    UserActivityTrackingJob.perform_later(
+    # Use a background job to avoid blocking the request. In development we use Solid Queue;
+    # if no worker is running (common locally), perform_later never runs and analytics stay empty.
+    args = {
       user_id: @current_user.id,
       activity_type: determine_activity_type
-    )
+    }
+    if Rails.env.development?
+      UserActivityTrackingJob.perform_now(**args)
+    else
+      UserActivityTrackingJob.perform_later(**args)
+    end
   rescue StandardError => e
     # Log error but don't fail the request
     Rails.logger.error "Failed to track user activity: #{e.message}"
