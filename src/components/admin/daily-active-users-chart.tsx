@@ -1,6 +1,6 @@
 "use client";
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface DailyActiveUsersChartProps {
@@ -9,27 +9,30 @@ interface DailyActiveUsersChartProps {
     startDate: string;
     endDate: string;
   };
+  onSelectDate?: (isoDate: string) => void;
 }
 
-export const DailyActiveUsersChart = ({ dailyActiveUsers, dateRange }: DailyActiveUsersChartProps) => {
-  // Transform the data into the format needed for recharts
+export const DailyActiveUsersChart = ({
+  dailyActiveUsers,
+  dateRange,
+  onSelectDate,
+}: DailyActiveUsersChartProps) => {
   const chartData = Object.entries(dailyActiveUsers)
     .map(([date, count]) => ({
-      date: new Date(date).toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric' 
+      date: new Date(date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
       }),
       fullDate: date,
-      activeUsers: count
+      activeUsers: count,
     }))
     .sort((a, b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime());
 
-  // If we have no data, show a placeholder
   if (chartData.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Daily Active Users</CardTitle>
+          <CardTitle>Daily active users</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] flex items-center justify-center text-muted-foreground">
@@ -43,43 +46,60 @@ export const DailyActiveUsersChart = ({ dailyActiveUsers, dateRange }: DailyActi
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Daily Active Users</CardTitle>
+        <CardTitle>Daily active users</CardTitle>
         <p className="text-sm text-muted-foreground">
-          {new Date(dateRange.startDate).toLocaleDateString()} - {new Date(dateRange.endDate).toLocaleDateString()}
+          {new Date(dateRange.startDate).toLocaleDateString()} -{" "}
+          {new Date(dateRange.endDate).toLocaleDateString()}
         </p>
+        {onSelectDate ? (
+          <p className="text-xs text-muted-foreground pt-1">
+            Click a point on the line to load the user detail table for that day. Counts are users with
+            authenticated API activity that calendar day.
+          </p>
+        ) : null}
       </CardHeader>
       <CardContent>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
+            <LineChart
+              data={chartData}
+              onClick={(state) => {
+                if (!onSelectDate) {
+                  return;
+                }
+                const payload = state?.activePayload?.[0]?.payload as { fullDate?: string } | undefined;
+                const fullDate = payload?.fullDate;
+                if (fullDate) {
+                  onSelectDate(fullDate);
+                }
+              }}
+            >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
+              <XAxis
+                dataKey="date"
                 tick={{ fontSize: 12 }}
                 angle={-45}
                 textAnchor="end"
                 height={60}
               />
-              <YAxis 
-                tick={{ fontSize: 12 }}
-                domain={[0, 'dataMax + 1']}
-              />
-              <Tooltip 
-                labelFormatter={(value, payload) => {
+              <YAxis tick={{ fontSize: 12 }} domain={[0, "dataMax + 1"]} />
+              <Tooltip
+                labelFormatter={(_value, payload) => {
                   if (payload && payload[0]) {
-                    return `Date: ${payload[0].payload.fullDate}`;
+                    return `Date: ${(payload[0].payload as { fullDate: string }).fullDate}`;
                   }
-                  return value;
+                  return "";
                 }}
-                formatter={(value: number) => [value, 'Active Users']}
+                formatter={(value: number) => [value, "Active users"]}
               />
-              <Line 
-                type="monotone" 
-                dataKey="activeUsers" 
-                stroke="#8884d8" 
+              <Line
+                type="monotone"
+                dataKey="activeUsers"
+                stroke="#8884d8"
                 strokeWidth={2}
-                dot={{ fill: '#8884d8', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: '#8884d8', strokeWidth: 2 }}
+                dot={{ fill: "#8884d8", strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: "#8884d8", strokeWidth: 2 }}
+                style={onSelectDate ? { cursor: "pointer" } : undefined}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -88,4 +108,3 @@ export const DailyActiveUsersChart = ({ dailyActiveUsers, dateRange }: DailyActi
     </Card>
   );
 };
-
