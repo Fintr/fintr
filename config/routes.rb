@@ -36,6 +36,7 @@ Rails.application.routes.draw do
           collection do
             get :analytics
             get :daily_active_users
+            get :activity_drilldown
           end
         end
         namespace :ai do
