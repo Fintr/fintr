@@ -16,15 +16,18 @@ import {
 import { useUserAnalytics, useUserActivityDrilldown } from "@/services/admin/analytics/queries";
 import { DailyActiveUsersChart } from "@/components/admin/daily-active-users-chart";
 import { AnalyticsSummaryCards } from "@/components/admin/analytics-summary-cards";
+import { MonthlyActiveUserOcrSection } from "@/components/admin/monthly-active-user-ocr-section";
 import { UserActivityDrilldownTable } from "@/components/admin/user-activity-drilldown-table";
 
 export default function UserAnalyticsPage() {
+  const [monthlyOcrPage, setMonthlyOcrPage] = useState(1);
   const {
     data: analyticsData,
     isLoading,
+    isFetching,
     isError,
     error,
-  } = useUserAnalytics();
+  } = useUserAnalytics(monthlyOcrPage);
 
   const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
   const [drilldownPickerOpen, setDrilldownPickerOpen] = useState(false);
@@ -63,7 +66,8 @@ export default function UserAnalyticsPage() {
     return null;
   }
 
-  const { summary, dailyActiveUsers, activityBreakdown } = analyticsData.data;
+  const { summary, dailyActiveUsers, activityBreakdown, monthlyActiveUserOcr, monthlyActiveUserOcrMeta, ocrActiveUserSummary } =
+    analyticsData.data;
   const minDate = summary.dateRange.startDate.slice(0, 10);
   const maxDate = summary.dateRange.endDate.slice(0, 10);
   const minDay = parse(minDate, "yyyy-MM-dd", new Date());
@@ -82,6 +86,14 @@ export default function UserAnalyticsPage() {
           <AnalyticsSummaryCards summary={summary} activityBreakdown={activityBreakdown} />
         </CardContent>
       </Card>
+
+      <MonthlyActiveUserOcrSection
+        monthlyRows={monthlyActiveUserOcr}
+        meta={monthlyActiveUserOcrMeta}
+        summary={ocrActiveUserSummary}
+        onMonthlyOcrPageChange={setMonthlyOcrPage}
+        isMonthlyOcrPageLoading={isFetching && !isLoading}
+      />
 
       <DailyActiveUsersChart
         dailyActiveUsers={dailyActiveUsers}
@@ -152,7 +164,10 @@ export default function UserAnalyticsPage() {
                   ? ` (page ${drilldownQuery.data.data.meta.page} of ${drilldownQuery.data.data.meta.totalPages}).`
                   : "."}
               </p>
-              <UserActivityDrilldownTable rows={drilldownQuery.data.data.rows} />
+              <UserActivityDrilldownTable
+                rows={drilldownQuery.data.data.rows}
+                averageRow={drilldownQuery.data.data.averageRow}
+              />
             </>
           ) : null}
         </CardContent>

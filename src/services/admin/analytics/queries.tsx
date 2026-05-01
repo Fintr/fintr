@@ -33,7 +33,32 @@ export interface UserAnalyticsData {
       aiChatUsages: number;
       dashboardViews: number;
     };
+    monthlyActiveUserOcr: MonthlyActiveUserOcrRow[];
+    monthlyActiveUserOcrMeta: MonthlyActiveUserOcrMeta;
+    ocrActiveUserSummary: OcrActiveUserSummary;
   };
+}
+
+export interface MonthlyActiveUserOcrMeta {
+  page: number;
+  perPage: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface MonthlyActiveUserOcrRow {
+  month: string;
+  monthLabel: string;
+  activeUserCount: number;
+  totalOcrTokens: number;
+  averageOcrTokensPerActiveUser: number;
+}
+
+export interface OcrActiveUserSummary {
+  averageMonthlyOcrAcrossMonths: number;
+  minActiveDaysRequired: number;
+  monthsWithActiveUsers: number;
+  monthsInRange: number;
 }
 
 export interface UserActivityDrilldownRow {
@@ -57,6 +82,7 @@ export interface UserActivityDrilldownData {
   message: string;
   data: {
     rows: UserActivityDrilldownRow[];
+    averageRow: UserActivityDrilldownRow | null;
     meta: {
       startDate: string;
       endDate: string;
@@ -68,21 +94,27 @@ export interface UserActivityDrilldownData {
   };
 }
 
-export const useUserAnalytics = () => {
+export const useUserAnalytics = (monthlyOcrPage: number = 1) => {
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:admin",
   });
 
   return useQuery<UserAnalyticsData, Error>({
-    queryKey: ["admin", "user-analytics"],
+    queryKey: ["admin", "user-analytics", monthlyOcrPage],
     queryFn: async () => {
-      const response = await api.get("/admin/user_activity/analytics");
+      const response = await api.get<UserAnalyticsData>("/admin/user_activity/analytics", {
+        params: {
+          monthly_ocr_page: monthlyOcrPage,
+          monthly_ocr_per_page: 12,
+        },
+      });
       return response.data;
     },
+    keepPreviousData: true,
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 300_000,
-    gcTime: 600_000,
+    cacheTime: 600_000,
   });
 };
 
@@ -94,7 +126,7 @@ export const useUserActivityDrilldown = (date: string | null) => {
   return useQuery<UserActivityDrilldownData, Error>({
     queryKey: ["admin", "user-activity-drilldown", date],
     queryFn: async () => {
-      const response = await api.get("/admin/user_activity/activity_drilldown", {
+      const response = await api.get<UserActivityDrilldownData>("/admin/user_activity/activity_drilldown", {
         params: { date },
       });
       return response.data;
@@ -103,15 +135,21 @@ export const useUserActivityDrilldown = (date: string | null) => {
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 60_000,
-    gcTime: 300_000,
+    cacheTime: 300_000,
   });
 };
 
 export const fetchUserAnalytics = async (
-  api: AxiosInstance
+  api: AxiosInstance,
+  monthlyOcrPage: number = 1
 ): Promise<UserAnalyticsData> => {
   try {
-    const response = await api.get("/admin/user_activity/analytics");
+    const response = await api.get<UserAnalyticsData>("/admin/user_activity/analytics", {
+      params: {
+        monthly_ocr_page: monthlyOcrPage,
+        monthly_ocr_per_page: 12,
+      },
+    });
     return response.data;
   } catch (error) {
     console.error("Error fetching user analytics:", error);
