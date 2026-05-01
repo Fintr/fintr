@@ -43,7 +43,9 @@ module Api
           params.permit(
             :start_date,
             :end_date,
-            :group_by
+            :group_by,
+            :monthly_ocr_page,
+            :monthly_ocr_per_page
           ).to_h
         end
 

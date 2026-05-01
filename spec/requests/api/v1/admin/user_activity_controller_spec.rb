@@ -37,6 +37,41 @@ RSpec.describe "Api::V1::Admin::UserActivity", type: :request do
       expect(row["dashboardViewedCount"]).to eq(1)
     end
 
+    it "returns averageRow with mean usage across all users for that day" do
+      u1 = create(:user, email: "avg_one@example.com", full_name: "Avg One")
+      u2 = create(:user, email: "avg_two@example.com", full_name: "Avg Two")
+      UserActivity.create!(
+        user: u1,
+        activity_date: Date.current,
+        api_request_count: 2,
+        total_requests: 2,
+        login_count: 0,
+        dashboard_viewed_count: 0,
+        transaction_created_count: 0
+      )
+      UserActivity.create!(
+        user: u2,
+        activity_date: Date.current,
+        api_request_count: 4,
+        total_requests: 4,
+        login_count: 0,
+        dashboard_viewed_count: 2,
+        transaction_created_count: 0
+      )
+
+      get "/api/v1/admin/user_activity/activity_drilldown",
+          params: { date: Date.current.iso8601 },
+          headers: headers
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      avg = json["data"]["averageRow"]
+      expect(avg["id"]).to eq("average")
+      expect(avg["fullName"]).to eq("Average (all users)")
+      expect(avg["apiRequestCount"]).to eq(3)
+      expect(avg["dashboardViewedCount"]).to eq(1)
+    end
+
     it "includes transaction and AI usage counts for the same calendar day" do
       target = create(:user, email: "metrics_user@example.com", full_name: "Metrics User")
       UserActivity.create!(
@@ -116,6 +151,36 @@ RSpec.describe "Api::V1::Admin::UserActivity", type: :request do
       json = JSON.parse(response.body)
       expect(json["data"]["summary"]["totalTransactionsCreated"]).to eq(1)
       expect(json["data"]["activityBreakdown"]["transactionsCreated"]).to eq(1)
+      expect(json["data"]).to have_key("monthlyActiveUserOcr")
+      expect(json["data"]).to have_key("ocrActiveUserSummary")
+      expect(json["data"]["ocrActiveUserSummary"]["minActiveDaysRequired"]).to eq(15)
+      meta = json["data"]["monthlyActiveUserOcrMeta"]
+      expect(meta["page"]).to eq(1)
+      expect(meta["perPage"]).to eq(12)
+      expect(meta["totalCount"]).to be >= 1
+      expect(meta["totalPages"]).to be >= 1
+    end
+
+    it "paginates monthly OCR rows via monthly_ocr_page" do
+      get "/api/v1/admin/user_activity/analytics",
+          params: {
+            start_date: Date.new(2025, 1, 1).iso8601,
+            end_date: Date.new(2026, 12, 31).iso8601,
+            monthly_ocr_page: 2,
+            monthly_ocr_per_page: 5
+          },
+          headers: headers
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      rows = json["data"]["monthlyActiveUserOcr"]
+      meta = json["data"]["monthlyActiveUserOcrMeta"]
+      expect(rows.size).to eq(5)
+      expect(rows.first["month"]).to eq("2025-06-01")
+      expect(meta["page"]).to eq(2)
+      expect(meta["perPage"]).to eq(5)
+      expect(meta["totalCount"]).to eq(24)
+      expect(meta["totalPages"]).to eq(5)
     end
   end
 end

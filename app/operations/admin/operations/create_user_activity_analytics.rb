@@ -16,10 +16,12 @@ module Admin
         daily_counts = step get_daily_active_users(params:)
         summary_stats = step get_summary_stats(params:)
         activity_breakdown = step get_activity_breakdown(params:)
+        ocr_active_bundle = step get_monthly_active_user_ocr(params:)
         step assemble_analytics(
           daily_counts:,
           summary_stats:,
-          activity_breakdown:
+          activity_breakdown:,
+          ocr_active_bundle:
         )
       end
 
@@ -104,12 +106,36 @@ module Admin
         Success(breakdown)
       end
 
-      def assemble_analytics(daily_counts:, summary_stats:, activity_breakdown:)
+      def get_monthly_active_user_ocr(params:)
+        p = params.with_indifferent_access
+        start_date = p[:start_date].presence || 30.days.ago.to_date
+        end_date = p[:end_date].presence || Date.current
+        page = p[:monthly_ocr_page].presence&.to_i
+        page = 1 unless page&.positive?
+        per_page = (p[:monthly_ocr_per_page].presence&.to_i || 12).clamp(1, 120)
+        query = Admin::Queries::MonthlyActiveUserOcrStatsQuery.new(
+          params: {
+            start_date:,
+            end_date:,
+            page:,
+            per_page:
+          }
+        )
+        result = query.call
+        return Failure(result.failure) unless result.success?
+
+        Success(result.value!)
+      end
+
+      def assemble_analytics(daily_counts:, summary_stats:, activity_breakdown:, ocr_active_bundle:)
         Success(
           {
             daily_active_users: daily_counts,
             summary: summary_stats,
-            activity_breakdown: activity_breakdown
+            activity_breakdown: activity_breakdown,
+            monthly_active_user_ocr: ocr_active_bundle[:monthly_active_user_ocr],
+            monthly_active_user_ocr_meta: ocr_active_bundle[:monthly_active_user_ocr_meta],
+            ocr_active_user_summary: ocr_active_bundle[:ocr_active_user_summary]
           }
         )
       end
