@@ -30,6 +30,7 @@ type SortableKey =
 
 export interface UserActivityDrilldownTableProps {
   rows: UserActivityDrilldownRow[];
+  averageRow?: UserActivityDrilldownRow | null;
 }
 
 function compareRows(
@@ -50,7 +51,17 @@ function compareRows(
   return dir === "asc" ? cmp : -cmp;
 }
 
-export function UserActivityDrilldownTable({ rows }: UserActivityDrilldownTableProps) {
+function formatMetric(value: number, variant: "user" | "average"): string {
+  if (variant === "user") {
+    return String(Math.round(value));
+  }
+  return value.toFixed(2);
+}
+
+export function UserActivityDrilldownTable({
+  rows,
+  averageRow = null,
+}: UserActivityDrilldownTableProps) {
   const [sortKey, setSortKey] = useState<SortableKey>("totalRequests");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
@@ -67,7 +78,7 @@ export function UserActivityDrilldownTable({ rows }: UserActivityDrilldownTableP
     }
   };
 
-  const sorted = useMemo(() => {
+  const sortedUsers = useMemo(() => {
     const copy = [...rows];
     copy.sort((a, b) => compareRows(a, b, sortKey, sortDir));
     return copy;
@@ -86,8 +97,8 @@ export function UserActivityDrilldownTable({ rows }: UserActivityDrilldownTableP
     <TableHead
       className={cn(
         opts?.stickyName
-          ? "sticky left-0 top-0 z-30 min-w-[10rem] max-w-[14rem] border-b border-r border-border bg-muted/95 py-3 backdrop-blur-sm"
-          : "sticky top-0 z-20 whitespace-nowrap border-b border-border bg-muted/95 py-3 backdrop-blur-sm"
+          ? "sticky left-0 top-0 z-30 min-w-[10rem] max-w-[14rem] border-b border-r border-border bg-muted py-3"
+          : "sticky top-0 z-20 whitespace-nowrap border-b border-border bg-muted py-3"
       )}
     >
       <button
@@ -101,7 +112,62 @@ export function UserActivityDrilldownTable({ rows }: UserActivityDrilldownTableP
     </TableHead>
   );
 
-  if (rows.length === 0) {
+  const metricCellClass = (isAverage: boolean) =>
+    cn(
+      "whitespace-nowrap py-3 tabular-nums",
+      isAverage ? "bg-muted group-hover:bg-muted" : "bg-background group-hover:bg-muted"
+    );
+
+  const nameCellClass = (isAverage: boolean) =>
+    cn(
+      "sticky left-0 z-20 min-w-[10rem] max-w-[14rem] border-r border-border py-3",
+      isAverage
+        ? "bg-muted font-medium shadow-[2px_0_6px_-3px_rgba(0,0,0,0.12)] group-hover:bg-muted"
+        : "bg-background font-medium shadow-[2px_0_6px_-3px_rgba(0,0,0,0.12)] group-hover:bg-muted"
+    );
+
+  const emailCellClass = (isAverage: boolean) =>
+    cn(
+      "py-3",
+      isAverage ? "bg-muted group-hover:bg-muted" : "bg-background group-hover:bg-muted"
+    );
+
+  const renderMetricCells = (row: UserActivityDrilldownRow, variant: "user" | "average") => (
+    <>
+      <TableCell className={cn(metricCellClass(variant === "average"))}>
+        {formatMetric(row.apiRequestCount, variant)}
+      </TableCell>
+      <TableCell className={cn(metricCellClass(variant === "average"))}>
+        {formatMetric(row.dashboardViewedCount, variant)}
+      </TableCell>
+      <TableCell className={cn(metricCellClass(variant === "average"))}>
+        {formatMetric(row.totalRequests, variant)}
+      </TableCell>
+      <TableCell className={cn(metricCellClass(variant === "average"))}>
+        {formatMetric(row.transactionsCreated, variant)}
+      </TableCell>
+      <TableCell className={cn(metricCellClass(variant === "average"))}>
+        {formatMetric(row.standaloneTransactions, variant)}
+      </TableCell>
+      <TableCell className={cn(metricCellClass(variant === "average"))}>
+        {formatMetric(row.transferLegTransactions, variant)}
+      </TableCell>
+      <TableCell className={cn(metricCellClass(variant === "average"))}>
+        {formatMetric(row.transfersCreated, variant)}
+      </TableCell>
+      <TableCell className={cn(metricCellClass(variant === "average"))}>
+        {formatMetric(row.receiptScans, variant)}
+      </TableCell>
+      <TableCell className={cn(metricCellClass(variant === "average"))}>
+        {formatMetric(row.aiChatUsages, variant)}
+      </TableCell>
+      <TableCell className={cn(metricCellClass(variant === "average"))}>
+        {formatMetric(row.aiInteractions, variant)}
+      </TableCell>
+    </>
+  );
+
+  if (rows.length === 0 && !averageRow) {
     return (
       <p className="text-sm text-muted-foreground">
         No active users for this date. Active users are accounts with authenticated API activity that
@@ -135,18 +201,26 @@ export function UserActivityDrilldownTable({ rows }: UserActivityDrilldownTableP
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sorted.map((row) => (
-            <TableRow key={row.id} className="group border-b border-border hover:bg-muted/50">
-              <TableCell
-                className={cn(
-                  "sticky left-0 z-10 min-w-[10rem] max-w-[14rem] border-r border-border bg-background py-3",
-                  "font-medium shadow-[2px_0_6px_-3px_rgba(0,0,0,0.12)]",
-                  "group-hover:bg-muted/50"
-                )}
-              >
+          {averageRow ? (
+            <TableRow
+              key="average"
+              className="group border-b border-border text-muted-foreground hover:bg-muted"
+            >
+              <TableCell className={nameCellClass(true)}>
+                <span className="line-clamp-2 break-words text-foreground">{averageRow.fullName}</span>
+              </TableCell>
+              <TableCell className={emailCellClass(true)}>
+                <span className="truncate text-muted-foreground">{averageRow.email}</span>
+              </TableCell>
+              {renderMetricCells(averageRow, "average")}
+            </TableRow>
+          ) : null}
+          {sortedUsers.map((row) => (
+            <TableRow key={row.id} className="group border-b border-border hover:bg-muted">
+              <TableCell className={nameCellClass(false)}>
                 <span className="line-clamp-2 break-words">{row.fullName}</span>
               </TableCell>
-              <TableCell className="whitespace-nowrap bg-background py-3 group-hover:bg-muted/50">
+              <TableCell className={cn(emailCellClass(false), "whitespace-nowrap")}>
                 <div className="flex min-w-0 max-w-[16rem] items-center gap-2">
                   <span className="truncate">{row.email}</span>
                   <Button
@@ -162,36 +236,7 @@ export function UserActivityDrilldownTable({ rows }: UserActivityDrilldownTableP
                   </Button>
                 </div>
               </TableCell>
-              <TableCell className="whitespace-nowrap bg-background py-3 tabular-nums group-hover:bg-muted/50">
-                {row.apiRequestCount}
-              </TableCell>
-              <TableCell className="whitespace-nowrap bg-background py-3 tabular-nums group-hover:bg-muted/50">
-                {row.dashboardViewedCount}
-              </TableCell>
-              <TableCell className="whitespace-nowrap bg-background py-3 tabular-nums group-hover:bg-muted/50">
-                {row.totalRequests}
-              </TableCell>
-              <TableCell className="whitespace-nowrap bg-background py-3 tabular-nums group-hover:bg-muted/50">
-                {row.transactionsCreated}
-              </TableCell>
-              <TableCell className="whitespace-nowrap bg-background py-3 tabular-nums group-hover:bg-muted/50">
-                {row.standaloneTransactions}
-              </TableCell>
-              <TableCell className="whitespace-nowrap bg-background py-3 tabular-nums group-hover:bg-muted/50">
-                {row.transferLegTransactions}
-              </TableCell>
-              <TableCell className="whitespace-nowrap bg-background py-3 tabular-nums group-hover:bg-muted/50">
-                {row.transfersCreated}
-              </TableCell>
-              <TableCell className="whitespace-nowrap bg-background py-3 tabular-nums group-hover:bg-muted/50">
-                {row.receiptScans}
-              </TableCell>
-              <TableCell className="whitespace-nowrap bg-background py-3 tabular-nums group-hover:bg-muted/50">
-                {row.aiChatUsages}
-              </TableCell>
-              <TableCell className="whitespace-nowrap bg-background py-3 tabular-nums group-hover:bg-muted/50">
-                {row.aiInteractions}
-              </TableCell>
+              {renderMetricCells(row, "user")}
             </TableRow>
           ))}
         </TableBody>
