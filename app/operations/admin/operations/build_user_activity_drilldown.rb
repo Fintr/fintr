@@ -79,11 +79,13 @@ module Admin
         page = normalized[:page]
         per_page = normalized[:per_page]
         total_count = rows.size
+        average_row = compute_average_row(rows:)
         sliced = Kaminari.paginate_array(rows).page(page).per(per_page)
 
         Success(
           {
             rows: sliced.to_a,
+            average_row:,
             meta: {
               start_date: normalized[:start_date].to_s,
               end_date: normalized[:end_date].to_s,
@@ -94,6 +96,27 @@ module Admin
             }
           }
         )
+      end
+
+      def compute_average_row(rows:)
+        return if rows.empty?
+
+        n = rows.size.to_f
+        {
+          id: "average",
+          email: "—",
+          full_name: "Average (all users)",
+          api_request_count: (rows.sum { |r| r[:api_request_count] } / n).round(2),
+          dashboard_viewed_count: (rows.sum { |r| r[:dashboard_viewed_count] } / n).round(2),
+          total_requests: (rows.sum { |r| r[:total_requests] } / n).round(2),
+          transactions_created: (rows.sum { |r| r[:transactions_created] } / n).round(2),
+          standalone_transactions: (rows.sum { |r| r[:standalone_transactions] } / n).round(2),
+          transfer_leg_transactions: (rows.sum { |r| r[:transfer_leg_transactions] } / n).round(2),
+          transfers_created: (rows.sum { |r| r[:transfers_created] } / n).round(2),
+          receipt_scans: (rows.sum { |r| r[:receipt_scans] } / n).round(2),
+          ai_chat_usages: (rows.sum { |r| r[:ai_chat_usages] } / n).round(2),
+          ai_interactions: (rows.sum { |r| r[:ai_interactions] } / n).round(2)
+        }
       end
     end
   end
