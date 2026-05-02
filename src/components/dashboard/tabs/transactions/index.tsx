@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -187,6 +187,34 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const { api } = useAuthApi();
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
+
+  const hasNonSpaceCurrencyInLoadedTransactions = useMemo(() => {
+    const pages = data?.pages;
+    if (!pages?.length) return false;
+
+    const spaceUpper = spaceCurrency.trim().toUpperCase();
+    const normalizedIso = (code?: string) => {
+      const trimmed = code != null ? String(code).trim() : "";
+      return trimmed === "" ? null : trimmed.toUpperCase();
+    };
+
+    return pages.some((page) =>
+      (page.transactions ?? []).some((tx) => {
+        const amountCcy = normalizedIso(tx.amountCurrency);
+        const bookedCcy = normalizedIso(tx.bookedAmountCurrency);
+        return (
+          (amountCcy != null && amountCcy !== spaceUpper) ||
+          (bookedCcy != null && bookedCcy !== spaceUpper)
+        );
+      })
+    );
+  }, [data?.pages, spaceCurrency]);
+
+  useEffect(() => {
+    if (!hasNonSpaceCurrencyInLoadedTransactions && showBookedCurrencies) {
+      setShowBookedCurrencies(false);
+    }
+  }, [hasNonSpaceCurrencyInLoadedTransactions, showBookedCurrencies]);
 
   // Delete mutation
   const deleteMutation = useMutation({
@@ -736,26 +764,28 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-end w-full md:ml-auto md:w-auto md:self-center">
               <DownloadButton onClick={handleDownloadTransactions} />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0 gap-1.5 h-9 text-xs sm:text-sm"
-                onClick={() => setShowBookedCurrencies((v) => !v)}
-                aria-pressed={showBookedCurrencies}
-                aria-label={
-                  showBookedCurrencies ? "Hide currencies" : "Show currencies"
-                }
-              >
-                {showBookedCurrencies ? (
-                  <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
-                ) : (
-                  <Eye className="h-4 w-4 shrink-0" aria-hidden />
-                )}
-                <span className="whitespace-nowrap">
-                  {showBookedCurrencies ? "Hide currencies" : "Show currencies"}
-                </span>
-              </Button>
+              {hasNonSpaceCurrencyInLoadedTransactions && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5 h-9 text-xs sm:text-sm"
+                  onClick={() => setShowBookedCurrencies((v) => !v)}
+                  aria-pressed={showBookedCurrencies}
+                  aria-label={
+                    showBookedCurrencies ? "Hide currency" : "Show currency"
+                  }
+                >
+                  {showBookedCurrencies ? (
+                    <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
+                  ) : (
+                    <Eye className="h-4 w-4 shrink-0" aria-hidden />
+                  )}
+                  <span className="whitespace-nowrap">
+                    {showBookedCurrencies ? "Hide currency" : "Show currency"}
+                  </span>
+                </Button>
+              )}
             </div>
           </div>
 

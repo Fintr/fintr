@@ -1,4 +1,5 @@
 import { AxiosInstance } from 'axios';
+import { downloadBlobAsFile } from '@/lib/download-blob';
 
 export interface FetchImportParams {
   api: AxiosInstance;
@@ -87,15 +88,13 @@ export const downloadSampleTemplate = async (api: AxiosInstance) => {
       }
     }
 
-    // Success - create blob URL and trigger download
-    const url = window.URL.createObjectURL(response.data);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'import_template.xlsx');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    const blob =
+      response.data instanceof Blob
+        ? response.data
+        : new Blob([response.data], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          });
+    await downloadBlobAsFile(blob, 'import_template.xlsx');
   } catch (error: any) {
     // If it's already an Error with a message, rethrow it
     if (error instanceof Error && error.message) {

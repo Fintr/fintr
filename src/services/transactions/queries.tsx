@@ -1,4 +1,5 @@
 import { AxiosInstance } from 'axios';
+import { downloadBlobAsFile } from '@/lib/download-blob';
 import { TransactionIndexInputType, TransactionsPage } from '@/types/transactionTypes'; // Use path alias
 
 /**
@@ -120,13 +121,12 @@ export const generateTransactionsCsv = async (
       }
     }
 
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', filename); // Use the extracted filename
-    document.body.appendChild(link);
-    link.click();
-    link.parentNode?.removeChild(link);
+    const blob =
+      response.data instanceof Blob
+        ? response.data
+        : new Blob([response.data], { type: 'text/csv;charset=utf-8' });
+
+    await downloadBlobAsFile(blob, filename);
   } catch (error) {
     console.error("Error generating CSV:", error);
     throw error;
