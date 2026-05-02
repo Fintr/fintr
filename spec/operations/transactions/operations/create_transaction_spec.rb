@@ -332,6 +332,43 @@ RSpec.describe Transactions::Operations::CreateTransaction do
       end
     end
 
+    context 'with repeated expense transaction parameters and a file' do
+      subject(:call_operation) { operation.call(repeat_expense_params_with_file) }
+
+      let(:file) { fixture_file_upload('test.jpg', 'image/jpeg') }
+      let(:repeat_expense_params_with_file) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 50.0,
+          date: Date.current,
+          description: 'Netflix subscription',
+          transaction_type: 'expense',
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: 'repeat',
+          repeat_interval: 'every_2_weeks',
+          repeat_count: 1,
+          file:
+        }
+      end
+
+      it 'copies the receipt blobs to each generated occurrence after attach' do
+        call_operation
+        parent = Transactions::Expense.order(created_at: :desc).find_by!(
+          description: 'Netflix subscription',
+          space_id: space.id
+        )
+        parent_blob_ids = parent.files.blobs.map(&:id).sort
+        expect(parent_blob_ids).not_to be_empty
+
+        parent.children.each do |child|
+          expect(child.files).to be_attached
+          expect(child.files.blobs.map(&:id).sort).to eq(parent_blob_ids)
+        end
+      end
+    end
+
     context 'with installment expense transaction parameters' do
       subject(:call_operation) { operation.call(installment_expense_params) }
 

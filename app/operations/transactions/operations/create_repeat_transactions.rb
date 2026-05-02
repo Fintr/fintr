@@ -130,6 +130,16 @@ module Transactions
           validate: true,
           validate_uniqueness: true
         )
+
+        if records.any? && template_transaction.files.attached?
+          records.each do |record|
+            Utils::ActiveStorage.attach_same_blobs_from(
+              source_record: template_transaction,
+              target_record: record
+            )
+          end
+        end
+
         Success()
       rescue StandardError => e
         account.invalid? ? Failure(account: account.errors.to_hash, error: e) : Failure(error: e)

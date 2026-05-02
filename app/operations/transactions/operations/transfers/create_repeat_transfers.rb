@@ -115,6 +115,15 @@ module Transactions
             validate_uniqueness: true
           )
 
+          if transfer_records.any? && parent_transfer.files.attached?
+            transfer_records.each do |record|
+              Utils::ActiveStorage.attach_same_blobs_from(
+                source_record: parent_transfer,
+                target_record: record
+              )
+            end
+          end
+
           Success({ transfer_records: transfer_records, dates: dates })
         end
 

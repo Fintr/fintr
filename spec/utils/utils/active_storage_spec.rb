@@ -137,4 +137,77 @@ RSpec.describe Utils::ActiveStorage do
       end
     end
   end
+
+  describe '.attach_same_blobs_from' do
+    let(:user) { create(:user) }
+    let(:space) { create(:personal_space) }
+    let(:account) { create(:account, space:, balance: Money.from_amount(1000, 'PHP')) }
+    let(:category) { create(:category, space:, category_type: 'expense', name: 'Regular Expense') }
+    let(:source_record) do
+      create(
+        :expense_transaction,
+        :one_time,
+        user:,
+        space:,
+        account:,
+        category:,
+        date: Time.zone.today
+      )
+    end
+    let(:target_record) do
+      create(
+        :expense_transaction,
+        :one_time,
+        user:,
+        space:,
+        account:,
+        category:,
+        date: Time.zone.today
+      )
+    end
+    let(:fixture_path) { Rails.root.join('spec', 'fixtures', 'files', 'test.jpg') }
+
+    before do
+      source_record.files.attach(
+        io: File.open(fixture_path),
+        filename: 'test.jpg',
+        content_type: 'image/jpeg'
+      )
+    end
+
+    it 'attaches the same blobs as the source without duplicating blob rows for each byte-size copy' do
+      described_class.attach_same_blobs_from(source_record:, target_record:)
+
+      expect(target_record.reload.files).to be_attached
+      expect(target_record.files.blobs.map(&:id)).to eq(source_record.reload.files.blobs.map(&:id))
+    end
+
+    it 'does not duplicate attachments when run twice' do
+      2.times { described_class.attach_same_blobs_from(source_record:, target_record:) }
+
+      expect(target_record.reload.files.blobs.size).to eq(source_record.files.blobs.size)
+    end
+
+    it 'does nothing when the source has no files' do
+      source_record.files.purge
+
+      described_class.attach_same_blobs_from(source_record:, target_record:)
+
+      expect(target_record.reload.files).not_to be_attached
+    end
+
+    it 'does not remove the shared blob from the parent when the child replaces its attachments' do
+      described_class.attach_same_blobs_from(source_record:, target_record:)
+      shared_blob_id = source_record.files.blobs.first.id
+
+      target_record.reload.files.destroy_all
+      target_record.files.attach(
+        io: File.open(fixture_path),
+        filename: 'replacement.jpg',
+        content_type: 'image/jpeg'
+      )
+
+      expect(source_record.reload.files.blobs.map(&:id)).to include(shared_blob_id)
+    end
+  end
 end

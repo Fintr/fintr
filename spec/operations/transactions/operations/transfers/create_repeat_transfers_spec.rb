@@ -410,6 +410,56 @@ RSpec.describe Transactions::Operations::Transfers::CreateRepeatTransfers do
       end
     end
 
+    context 'when the repeat transfer has attached files' do
+      let(:schedule) do
+        s = IceCube::Schedule.new(today)
+        s.add_recurrence_rule(IceCube::Rule.monthly.day_of_month(today.day))
+        s.to_hash
+      end
+
+      let!(:repeat_transfer_with_file) do
+        create(
+          :transfer,
+          :repeat,
+          user:,
+          space:,
+          from_account:,
+          to_account:,
+          date: today,
+          schedule:
+        )
+      end
+
+      before do
+        repeat_transfer_with_file.files.attach(
+          io: File.open(Rails.root.join('spec/fixtures/files/test.jpg')),
+          filename: 'receipt.jpg',
+          content_type: 'image/jpeg'
+        )
+      end
+
+      it 'shares the template blobs with each generated transfer' do
+        parent_blob_ids = repeat_transfer_with_file.files.blobs.map(&:id).sort
+
+        result = operation.call(params: {
+          transfer_id: repeat_transfer_with_file.id,
+          date_start: today + 1.day,
+          date_end: today + 4.months,
+          balance_state: 'pending'
+        })
+
+        expect(result).to be_success
+        children = Transactions::Transfer.where(parent_id: repeat_transfer_with_file.id).order(:date)
+        expect(children).not_to be_empty
+
+        children.each do |child|
+          expect(child.files).to be_attached
+          expect(child.files.blobs.map(&:id).sort).to eq(parent_blob_ids)
+        end
+        expect(repeat_transfer_with_file.reload.files.blobs.map(&:id).sort).to eq(parent_blob_ids)
+      end
+    end
+
     describe '#add_default_values' do
       it 'sets balance_state to pending when not provided' do
         params = { transfer_id: 'test-id', date_start: today, date_end: next_month }
