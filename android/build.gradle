@@ -35,6 +35,18 @@ subprojects {
                 }
             }
         }
+        // Plugins such as @capacitor/filesystem use kotlin { jvmToolchain(21) }; that must match
+        // Java 17 above or Gradle fails with "Inconsistent JVM-target compatibility".
+        def kotlinExt = project.extensions.findByName('kotlin')
+        if (kotlinExt != null) {
+            try {
+                kotlinExt.jvmToolchain(17)
+            } catch (Exception e) {
+                project.logger.warn(
+                    "Could not set Kotlin JVM toolchain to 17 for ${project.path}: ${e.message}"
+                )
+            }
+        }
     }
 }
 

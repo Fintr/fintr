@@ -61,6 +61,7 @@ public class MainActivity extends BridgeActivity {
     registerPlugin(com.fintr.app.CacheControlPlugin.class);
     // NavigationInfoPlugin provides safe area class injection for the web app
     registerPlugin(com.fintr.app.NavigationInfoPlugin.class);
+    registerPlugin(com.fintr.app.FileSharePlugin.class);
     WebView.setWebContentsDebuggingEnabled(true);
     super.onCreate(savedInstanceState);
     WindowCompat.setDecorFitsSystemWindows(getWindow(), false);

@@ -2,10 +2,17 @@
  * Saves a Blob as a downloaded file. On native Capacitor (iOS/Android), WebView
  * `<a download>` is unreliable; we write to cache and open the system share sheet
  * so the user can save to Files / Drive / etc.
+ *
+ * Android: @capacitor/share rejects content:// URLs from Filesystem.getUri(); we use
+ * the Fintr FileShare native plugin for ACTION_SEND.
+ * iOS: @capacitor/share rejects when the user dismisses the sheet and can mishandle file
+ * URIs; FileShare uses UIActivityViewController and always resolves on dismiss.
  */
 
+import { Capacitor } from "@capacitor/core";
 import { initCapacitorBridgeIfNeeded } from "@/lib/capacitor-bridge-init";
-import { isNativeCapacitorAsync } from "@/lib/capacitor";
+import { waitForCapacitor } from "@/lib/capacitor";
+import { FileShare } from "@/plugins/file-share";
 
 function sanitizeFilename(name: string): string {
   const trimmed = name.trim() || "download";
@@ -25,6 +32,35 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+function mimeTypeForFilename(filename: string): string {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".csv")) {
+    return "text/csv";
+  }
+  if (lower.endsWith(".txt")) {
+    return "text/plain";
+  }
+  if (lower.endsWith(".json")) {
+    return "application/json";
+  }
+  if (lower.endsWith(".xlsx")) {
+    return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  }
+  if (lower.endsWith(".xls")) {
+    return "application/vnd.ms-excel";
+  }
+  return "*/*";
+}
+
+async function shouldUseCapacitorFileShare(): Promise<boolean> {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  await waitForCapacitor();
+  const platform = Capacitor.getPlatform();
+  return platform === "ios" || platform === "android";
+}
+
 /**
  * @param blob - File contents
  * @param filename - Suggested filename (e.g. transactions.csv)
@@ -34,41 +70,47 @@ export async function downloadBlobAsFile(
   filename: string
 ): Promise<void> {
   const safeName = sanitizeFilename(filename);
-  const native = await isNativeCapacitorAsync();
+  const mimeType = mimeTypeForFilename(safeName);
+  const nativeShare = await shouldUseCapacitorFileShare();
 
-  if (native) {
+  if (nativeShare) {
     try {
       initCapacitorBridgeIfNeeded();
       const { Directory, Encoding, Filesystem } = await import("@capacitor/filesystem");
-      const { Share } = await import("@capacitor/share");
       const path = `fintr-downloads/${Date.now()}_${safeName}`;
       const isUtf8Text = /\.(csv|txt|json|md|xml)$/i.test(safeName);
 
-      if (isUtf8Text) {
-        await Filesystem.writeFile({
-          path,
-          data: await blob.text(),
+      const writePayload = isUtf8Text
+        ? {
+            path,
+            data: await blob.text(),
+            directory: Directory.Cache,
+            encoding: Encoding.UTF8,
+            recursive: true,
+          }
+        : {
+            path,
+            data: await blobToBase64(blob),
+            directory: Directory.Cache,
+            recursive: true,
+          };
+
+      const writeResult = await Filesystem.writeFile(writePayload);
+      let uri = writeResult.uri;
+
+      if (!uri || String(uri).trim() === "") {
+        const uriResult = await Filesystem.getUri({
           directory: Directory.Cache,
-          encoding: Encoding.UTF8,
-          recursive: true,
-        });
-      } else {
-        await Filesystem.writeFile({
           path,
-          data: await blobToBase64(blob),
-          directory: Directory.Cache,
-          recursive: true,
         });
+        uri = uriResult.uri;
       }
 
-      const { uri } = await Filesystem.getUri({
-        directory: Directory.Cache,
-        path,
-      });
+      const uriStr = String(uri).trim();
 
-      await Share.share({
-        title: safeName,
-        url: uri,
+      await FileShare.shareStream({
+        uri: uriStr,
+        mimeType,
         dialogTitle: "Save or share file",
       });
       return;
