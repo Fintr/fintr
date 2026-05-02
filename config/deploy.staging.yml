@@ -48,6 +48,8 @@ registry:
 # Configure builder setup.
 builder:
   arch: amd64
+  # Avoid BuildKit provenance/attestation uploads; Docker Hub can return 400 on blob PUT for those.
+  provenance: false
   args:
     RUBY_VERSION: "<%= Pathname.pwd.join('.ruby-version').read.strip.delete_prefix('ruby-').delete_prefix('ruby ') %>"
     BUNDLER_VERSION: 2.6.2
