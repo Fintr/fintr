@@ -22,10 +22,14 @@ module Transactions
         record.transactable.respond_to?(:amount_in_space_currency) ? record.transactable.amount_in_space_currency[:currency] : record.transactable.try(:amount_currency)
       end
 
-      # Ledger / native leg (for UI toggle vs space-normalized +amount+ above).
+      # Ledger / native leg (for UI toggle vs space-normalized +amount+ above). When a persisted
+      # +currency_conversion+ exists, use the user's original entry (not the converted account leg).
       field :booked_amount do |record|
         t = record.transactable
-        if t.respond_to?(:amount) && t.amount.present?
+        toggle = t.respond_to?(:booked_display_for_list_toggle) ? t.booked_display_for_list_toggle : nil
+        if toggle
+          toggle[:amount]
+        elsif t.respond_to?(:amount) && t.amount.present?
           t.amount.amount
         else
           record.value&.amount
@@ -34,7 +38,10 @@ module Transactions
 
       field :booked_amount_currency do |record|
         t = record.transactable
-        if t.respond_to?(:amount) && t.amount.present?
+        toggle = t.respond_to?(:booked_display_for_list_toggle) ? t.booked_display_for_list_toggle : nil
+        if toggle
+          toggle[:currency]
+        elsif t.respond_to?(:amount) && t.amount.present?
           t.amount.currency.to_s
         elsif t.respond_to?(:amount_currency)
           t.amount_currency.to_s
