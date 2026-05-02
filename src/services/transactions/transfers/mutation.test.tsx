@@ -9,6 +9,7 @@ import {
   DeleteTransferType 
 } from "@/services/transactions/transfers/mutation";
 import { ScheduleTypeEnum, UpdateScopeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
+import { formDataWithFile } from "@/utils/formUtils";
 
 // Mock formDataWithFile utility
 vi.mock("@/utils/formUtils", () => ({
@@ -144,6 +145,38 @@ describe("Transfer Mutations", () => {
         recurringTransferData
       );
       expect(result).toEqual(mockResponse.data);
+    });
+
+    it("uses multipart for recurring transfer when a receipt file is included", async () => {
+      const file = new File(["receipt"], "receipt.jpg", { type: "image/jpeg" });
+      const recurringWithFile: CreateTransferType = {
+        ...validTransferData,
+        scheduleType: ScheduleTypeEnum.REPEAT,
+        repeatInterval: "every_month",
+        file,
+      };
+      (mockApi.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { id: "recurring-with-receipt" },
+      });
+
+      await createTransfer(mockApi, recurringWithFile);
+
+      expect(mockApi.post).toHaveBeenCalledWith(
+        "/transactions/transfers",
+        expect.any(FormData),
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      expect(formDataWithFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scheduleType: ScheduleTypeEnum.REPEAT,
+          repeatInterval: "every_month",
+          file,
+        })
+      );
     });
 
     it("handles API validation errors", async () => {

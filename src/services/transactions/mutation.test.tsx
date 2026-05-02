@@ -7,6 +7,7 @@ import {
   type UpdateTransactionType,
 } from "@/services/transactions/mutation";
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
+import { formDataWithFile } from "@/utils/formUtils";
 
 vi.mock("@/utils/formUtils", () => ({
   formDataWithFile: vi.fn((data: any) => {
@@ -63,6 +64,76 @@ describe("Transaction Mutations", () => {
         }
       );
       expect(result).toEqual({ id: "tx-1" });
+      expect(formDataWithFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          file,
+          scheduleType: ScheduleTypeEnum.ONE_TIME,
+        })
+      );
+    });
+
+    it("uses multipart for recurring schedule when a receipt file is included", async () => {
+      const file = new File(["receipt"], "receipt.jpg", { type: "image/jpeg" });
+      const recurringWithFile: CreateTransactionType = {
+        ...validTransactionData,
+        scheduleType: ScheduleTypeEnum.REPEAT,
+        repeatInterval: "every_month",
+        file,
+      };
+      (mockApi.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { id: "tx-recurring-file" },
+      });
+
+      await createTransaction(mockApi, recurringWithFile);
+
+      expect(mockApi.post).toHaveBeenCalledWith(
+        "/transactions",
+        expect.any(FormData),
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      expect(formDataWithFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scheduleType: ScheduleTypeEnum.REPEAT,
+          repeatInterval: "every_month",
+          file,
+        })
+      );
+    });
+
+    it("uses multipart for installment schedule when a receipt file is included", async () => {
+      const file = new File(["receipt"], "receipt.jpg", { type: "image/jpeg" });
+      const installmentWithFile: CreateTransactionType = {
+        ...validTransactionData,
+        scheduleType: ScheduleTypeEnum.INSTALLMENT,
+        installmentPeriod: 12,
+        file,
+      };
+      (mockApi.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { id: "tx-installment-file" },
+      });
+
+      await createTransaction(mockApi, installmentWithFile);
+
+      expect(mockApi.post).toHaveBeenCalledWith(
+        "/transactions",
+        expect.any(FormData),
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      expect(formDataWithFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scheduleType: ScheduleTypeEnum.INSTALLMENT,
+          installmentPeriod: 12,
+          file,
+        })
+      );
     });
 
     it("uses JSON when file is a draft placeholder object", async () => {
