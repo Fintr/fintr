@@ -619,6 +619,9 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       await generateTransactionsCsv(api, filterData);
     } catch (error) {
       console.error("Failed to download transactions CSV:", error);
+      toast.error(
+        "Could not export CSV. If you are in the app, try again or update Fintr from the store."
+      );
     }
   };
 

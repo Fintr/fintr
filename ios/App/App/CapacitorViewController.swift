@@ -16,6 +16,11 @@ class CapacitorViewController: CAPBridgeViewController {
 
     private static let layoutEpsilon: CGFloat = 0.5
 
+    override func capacitorDidLoad() {
+        super.capacitorDidLoad()
+        bridge?.registerPluginInstance(FileSharePlugin())
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
