@@ -172,6 +172,8 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       :category_name,
       :amount,
       :amount_currency,
+      :booked_amount,
+      :booked_amount_currency,
       :balance,
       :calculated,
       :type,
@@ -361,6 +363,53 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       it 'returns false' do
         expect(serialized_hash[:has_loan_payment]).to be(false)
       end
+    end
+  end
+
+  context 'when transactable has a persisted currency_conversion' do
+    subject(:serialized_hash) { described_class.render_as_hash(combined_record) }
+
+    let(:space) { create(:personal_space, currency: 'PHP') }
+    let(:usd_account) { create(:account, space:, balance_currency: 'USD', name: 'USD Account') }
+    let(:category) { create(:category, space:, category_type: 'expense', name: 'Home') }
+    let(:expense) do
+      create(
+        :expense_transaction,
+        :one_time,
+        space:,
+        account: usd_account,
+        category:,
+        amount: Money.from_amount(16.48, 'PHP'),
+        amount_currency: 'PHP',
+        date: Date.current
+      )
+    end
+
+    let!(:conversion) do
+      ExchangeRates::CurrencyConversion.create!(
+        convertible: expense,
+        space_id: space.id,
+        original_amount_cents: 1000_00,
+        original_currency: 'PHP',
+        converted_amount_cents: 1648,
+        converted_currency: 'USD',
+        exchange_rate: 0.01648,
+        source: 'manual',
+        rate_timestamp: Time.current
+      )
+    end
+
+    let(:combined_record) do
+      expense.reload
+      Transactions::Combined.find_by!(
+        transactable_id: expense.id,
+        transactable_type: 'Transactions::Expense'
+      )
+    end
+
+    it 'uses original amount and currency for booked_* (list toggle), signed like the expense' do
+      expect(serialized_hash[:booked_amount]).to eq(-1000)
+      expect(serialized_hash[:booked_amount_currency]).to eq('PHP')
     end
   end
 end
