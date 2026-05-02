@@ -85,6 +85,7 @@ module Transactions
             transfer.reload
           end
           _ = step attach_file(transfer:, params:)
+          _ = step sync_series_children_files(transfer:)
           _ = step update_monthly_summary(transfer:)
           _ = step generate_embedding_async(transfer:)
           transfer.reload
@@ -229,6 +230,11 @@ module Transactions
           return Success(transfer) if params[:file].blank?
 
           Utils::ActiveStorage.attach_file(transfer.files, params[:file], params[:space_id])
+          Success(transfer)
+        end
+
+        def sync_series_children_files(transfer:)
+          Utils::ActiveStorage.sync_template_files_to_children(source_record: transfer)
           Success(transfer)
         end
 

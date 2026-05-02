@@ -105,6 +105,24 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
         expect(new_transactions.fourth.repeat_count).to eq(transaction.repeat_count + 4)
       end
 
+      it 're-attaches the parent file blobs to each new occurrence (shared storage, same as template)' do
+        transaction.files.attach(
+          io: File.open(Rails.root.join('spec', 'fixtures', 'files', 'test.jpg')),
+          filename: 'receipt.jpg',
+          content_type: 'image/jpeg'
+        )
+        parent_blob_ids = transaction.files.blobs.map(&:id).sort
+
+        call_operation
+        new_transactions = Transactions::Transaction.where(parent_id: transaction.id).order(:date)
+
+        new_transactions.each do |child|
+          expect(child.files).to be_attached
+          expect(child.files.blobs.map(&:id).sort).to eq(parent_blob_ids)
+        end
+        expect(transaction.reload.files.blobs.map(&:id).sort).to eq(parent_blob_ids)
+      end
+
       it 'handles nil last_transaction when calculating repeat_count' do
         # Mock the fetch_last_transaction to return nil
         allow(operation).to receive(:fetch_last_transaction).and_return(Success(nil))

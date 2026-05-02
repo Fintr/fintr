@@ -149,6 +149,7 @@ module Transactions
                                     transaction:,
                                     params:,
                                     ) # NOTE: ActiveStorage doesn't save the file if inside a transaction block.
+        _                    = step sync_series_children_files(transaction:)
         _                    = step remove_draft(params: params)
         _                    = step update_monthly_summary(transaction:)
         _                    = step generate_embedding_async(
@@ -382,6 +383,11 @@ module Transactions
         return Success(transaction) if params[:file].blank? && params[:file_id].blank?
 
         Utils::ActiveStorage.attach_file(transaction.files, params[:file], params[:space_id], file_id: params[:file_id])
+        Success(transaction)
+      end
+
+      def sync_series_children_files(transaction:)
+        Utils::ActiveStorage.sync_template_files_to_children(source_record: transaction)
         Success(transaction)
       end
 
