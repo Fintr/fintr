@@ -110,6 +110,29 @@ export const useCreateSubscription = () => {
   };
 };
 
+export const useCreateSponsorSubscription = () => {
+  const { api } = useAuthApi({
+    scope: "openid profile email read:current_user read:transactions",
+  });
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (data: CreateSponsorSubscriptionRequest) =>
+      createSponsorSubscription(api, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+      queryClient.invalidateQueries({ queryKey: ["subscriptionPlans"] });
+    },
+  });
+
+  return {
+    createSponsorSubscription: mutation.mutateAsync,
+    isCreating: mutation.isPending,
+    error: mutation.error,
+    data: mutation.data,
+  };
+};
+
 export const useCancelSubscription = () => {
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",

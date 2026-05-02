@@ -2,20 +2,29 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-import { useInfiniteTransactions } from './useInfiniteTransactions';
-import { useInfiniteLoans } from './useInfiniteLoans';
-import { useDashboardData } from './useDashboardData';
+import { useInfiniteTransactions } from '../useInfiniteTransactions';
+import { useInfiniteLoans } from '../useInfiniteLoans';
+import { useDashboardData } from '../useDashboardData';
 
-// Mock dependencies
-vi.mock('../useAuthApi', () => ({
-  default: vi.fn(() => ({
+const { mockUseAuthApi } = vi.hoisted(() => ({
+  mockUseAuthApi: vi.fn(() => ({
     api: { get: vi.fn() },
+    getToken: vi.fn().mockResolvedValue("mock-token"),
     isAuthenticated: true,
+    isLoading: false,
+    error: null,
   })),
 }));
 
-vi.mock('../useLocalStorage', () => ({
-  useLocalStorage: vi.fn(() => ['TEST_SPACE', vi.fn()]),
+// Mock dependencies (paths must match how Vite resolves @/hooks/... and default + named useAuthApi)
+vi.mock("@/hooks/useAuthApi", () => ({
+  __esModule: true,
+  default: mockUseAuthApi,
+  useAuthApi: mockUseAuthApi,
+}));
+
+vi.mock("@/hooks/useLocalStorage", () => ({
+  useLocalStorage: vi.fn(() => ["TEST_SPACE", vi.fn()]),
 }));
 
 vi.mock('@/services/transactions/queries', () => ({
@@ -41,6 +50,12 @@ describe('Performance: Infinite Query Hooks', () => {
         },
       },
     });
+
+    global.IntersectionObserver = vi.fn(() => ({
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+    })) as unknown as typeof IntersectionObserver;
   });
 
   afterEach(() => {
