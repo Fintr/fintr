@@ -42,6 +42,7 @@ import AddTransactionDialog from "../../add-transaction-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateTransactionsCsv } from "@/services/transactions/queries";
+import { getUserFacingExportErrorMessage } from "@/lib/user-facing-export-error";
 import { toast } from "sonner";
 import { useAtom } from "jotai";
 import { dateFilterTypeAtom, dateFilterStartDateAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom } from "@/atoms/dateFilterAtoms";
@@ -619,9 +620,8 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       await generateTransactionsCsv(api, filterData);
     } catch (error) {
       console.error("Failed to download transactions CSV:", error);
-      toast.error(
-        "Could not export CSV. If you are in the app, try again or update Fintr from the store."
-      );
+      const message = await getUserFacingExportErrorMessage(error);
+      toast.error(message);
     }
   };
 

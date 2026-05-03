@@ -1,5 +1,6 @@
 import { AxiosInstance } from 'axios';
 import { downloadBlobAsFile } from '@/lib/download-blob';
+import { getUserFacingExportErrorMessage } from '@/lib/user-facing-export-error';
 import { TransactionIndexInputType, TransactionsPage } from '@/types/transactionTypes'; // Use path alias
 
 /**
@@ -129,7 +130,8 @@ export const generateTransactionsCsv = async (
     await downloadBlobAsFile(blob, filename);
   } catch (error) {
     console.error("Error generating CSV:", error);
-    throw error;
+    const message = await getUserFacingExportErrorMessage(error);
+    throw new Error(message);
   }
 };
 
