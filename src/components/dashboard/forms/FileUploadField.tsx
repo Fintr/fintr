@@ -1,9 +1,16 @@
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useId } from 'react';
 import { Label } from '../../ui/label';
 import { Upload } from 'lucide-react';
 import { Button } from '../../ui/button';
 import ImageLightbox from '@/components/crm/ImageLightbox';
+
+/** Fixed-height crop biased toward upper-center (typical receipt / e-wallet amount area). */
+const RECEIPT_THUMB_FRAME_CLASS =
+  "relative block h-28 w-full overflow-hidden rounded-lg bg-muted/40 sm:h-32 "
+  + "cursor-pointer transition-opacity hover:opacity-95 "
+  + "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring "
+  + "focus-visible:ring-offset-2";
 
 interface FileUploadFieldProps {
   file: File | null;
@@ -18,6 +25,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
   onRemoveFile,
   label = "Attach File (Optional)",
 }) => {
+  const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('');
@@ -74,15 +82,21 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
         <div className="space-y-2">
           <div className="border border-gray-300 rounded-lg p-4">
             {imageUrl ? (
-              <img 
-                src={imageUrl}
-                alt="Receipt preview" 
-                className="w-full h-48 object-contain rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+              <button
+                type="button"
+                className={RECEIPT_THUMB_FRAME_CLASS}
                 onClick={handleImageClick}
-                title="Click to view full size"
-              />
+                aria-label="View full receipt"
+                title="Tap to view full image"
+              >
+                <img
+                  src={imageUrl}
+                  alt=""
+                  className="pointer-events-none h-full w-full min-h-full min-w-full object-cover object-[50%_28%]"
+                />
+              </button>
             ) : (
-              <div className="w-full h-48 flex items-center justify-center bg-gray-50 rounded-lg">
+              <div className="flex h-28 w-full items-center justify-center rounded-lg bg-gray-50 sm:h-32">
                 <p className="text-sm text-gray-500">Loading image...</p>
               </div>
             )}
@@ -121,7 +135,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
             )}
           </div>
           <input
-            id="file-upload-input"
+            id={`file-upload-input-${inputId}`}
             ref={fileInputRef}
             type="file"
             className="hidden"
