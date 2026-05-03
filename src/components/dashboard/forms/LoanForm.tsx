@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "../../ui/select";
 import { Button } from "../../ui/button";
-import { Upload, CalendarIcon } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Calendar } from "../../ui/calendar";
 import { format } from "date-fns";
@@ -29,6 +29,7 @@ import EntityCreationForm from "./EntityCreationForm";
 import { useAtomValue } from "jotai";
 import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
 import AccountCreationForm from "./AccountCreationForm";
+import FileUploadField from "./FileUploadField";
 
 interface LoanFormProps {
   date?: Date | undefined;
@@ -539,38 +540,14 @@ const LoanForm: React.FC<LoanFormProps> = ({
       </div>
 
       {/* Sixth row: Attachment field (full width) */}
-      <div className="space-y-2">
-        <Label className="text-sm">Attach Doc (Optional)</Label>
-        <div
-          className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-          onClick={() =>
-            document.getElementById("loan-receipt-upload")?.click()
-          }
-        >
-          <div className="flex flex-col items-center">
-            <Upload className="h-8 w-8 text-gray-400 mb-2" />
-            <p className="text-sm text-gray-500">
-              Drag & drop your document here or{" "}
-              <span className="text-primary font-medium">browse files</span>
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Supports: JPG, PNG, PDF (Max 5MB)
-            </p>
-            {loanForm.receipt && (
-              <p className="text-sm text-teal-600 mt-2">
-                File selected: {loanForm.receipt.name}
-              </p>
-            )}
-          </div>
-          <input
-            id="loan-receipt-upload"
-            type="file"
-            className="hidden"
-            accept="image/jpeg,image/png,application/pdf"
-            onChange={handleFileUpload}
-          />
-        </div>
-      </div>
+      <FileUploadField
+        file={loanForm.receipt}
+        onFileChange={handleFileUpload}
+        onRemoveFile={() =>
+          setLoanForm((prev) => ({ ...prev, receipt: null }))
+        }
+        label="Attach Doc (Optional)"
+      />
 
       {/* Submit and Cancel Buttons */}
       <div className="flex justify-end gap-2 pt-4 border-t">

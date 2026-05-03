@@ -9,11 +9,12 @@ import {
   SelectValue,
 } from "../../ui/select";
 import { Button } from "../../ui/button";
-import { Upload, CalendarIcon } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Calendar } from "../../ui/calendar";
 import { format } from "date-fns";
 import ExpandableTextarea from "../../ui/expandable-textarea";
+import FileUploadField from "./FileUploadField";
 
 interface InvestmentFormProps {
   date: Date | undefined;
@@ -262,38 +263,14 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
         />
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-sm">Attach Doc (Optional)</Label>
-        <div
-          className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-          onClick={() =>
-            document.getElementById("investment-receipt-upload")?.click()
-          }
-        >
-          <div className="flex flex-col items-center">
-            <Upload className="h-8 w-8 text-gray-400 mb-2" />
-            <p className="text-sm text-gray-500">
-              Drag & drop your document here or{" "}
-              <span className="text-primary font-medium">browse files</span>
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Supports: JPG, PNG, PDF (Max 5MB)
-            </p>
-            {investmentForm.receipt && (
-              <p className="text-sm text-teal-600 mt-2">
-                File selected: {investmentForm.receipt.name}
-              </p>
-            )}
-          </div>
-          <input
-            id="investment-receipt-upload"
-            type="file"
-            className="hidden"
-            accept="image/jpeg,image/png,application/pdf"
-            onChange={handleFileUpload}
-          />
-        </div>
-      </div>
+      <FileUploadField
+        file={investmentForm.receipt}
+        onFileChange={handleFileUpload}
+        onRemoveFile={() =>
+          setInvestmentForm((prev) => ({ ...prev, receipt: null }))
+        }
+        label="Attach Doc (Optional)"
+      />
     </div>
   );
 };
