@@ -11,8 +11,7 @@
 
 import { Capacitor } from "@capacitor/core";
 import { initCapacitorBridgeIfNeeded } from "@/lib/capacitor-bridge-init";
-import { waitForCapacitor } from "@/lib/capacitor";
-import { FileShare } from "@/plugins/file-share";
+import { isNativeCapacitor, waitForCapacitor } from "@/lib/capacitor";
 
 function sanitizeFilename(name: string): string {
   const trimmed = name.trim() || "download";
@@ -52,11 +51,33 @@ function mimeTypeForFilename(filename: string): string {
   return "*/*";
 }
 
-async function shouldUseCapacitorFileShare(): Promise<boolean> {
+/**
+ * Waits until Capacitor reports ios/android (native plugins), or gives up with false for
+ * real browsers. On Android remote-URL mode the bridge can lag behind FintrNativeApp UA;
+ * partial manual bridge init must list Filesystem/FileShare in PluginHeaders before import.
+ */
+async function waitForNativeExportSupport(): Promise<boolean> {
   if (typeof window === "undefined") {
     return false;
   }
-  await waitForCapacitor();
+
+  initCapacitorBridgeIfNeeded();
+
+  const maxMs = 8000;
+  const start = Date.now();
+
+  while (Date.now() - start < maxMs) {
+    await waitForCapacitor();
+    const platform = Capacitor.getPlatform();
+    if (platform === "ios" || platform === "android") {
+      return true;
+    }
+    if (platform === "web" && !isNativeCapacitor()) {
+      return false;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
   const platform = Capacitor.getPlatform();
   return platform === "ios" || platform === "android";
 }
@@ -71,12 +92,15 @@ export async function downloadBlobAsFile(
 ): Promise<void> {
   const safeName = sanitizeFilename(filename);
   const mimeType = mimeTypeForFilename(safeName);
-  const nativeShare = await shouldUseCapacitorFileShare();
+  const nativeExport = await waitForNativeExportSupport();
 
-  if (nativeShare) {
+  if (nativeExport) {
     try {
       initCapacitorBridgeIfNeeded();
-      const { Directory, Encoding, Filesystem } = await import("@capacitor/filesystem");
+      const [{ Directory, Encoding, Filesystem }, { FileShare }] = await Promise.all([
+        import("@capacitor/filesystem"),
+        import("@/plugins/file-share"),
+      ]);
       const path = `fintr-downloads/${Date.now()}_${safeName}`;
       const isUtf8Text = /\.(csv|txt|json|md|xml)$/i.test(safeName);
 
@@ -115,11 +139,15 @@ export async function downloadBlobAsFile(
       });
       return;
     } catch (err) {
-      console.error(
-        "[downloadBlobAsFile] Native share failed; falling back to anchor download",
-        err
-      );
+      console.error("[downloadBlobAsFile] Native export failed", err);
+      throw err instanceof Error ? err : new Error(String(err));
     }
+  }
+
+  if (isNativeCapacitor() && !nativeExport) {
+    throw new Error(
+      "Could not connect to the device export feature. Try again in a few seconds, or restart the app."
+    );
   }
 
   const url = window.URL.createObjectURL(blob);
