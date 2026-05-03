@@ -29,9 +29,69 @@
  *
  * MUST be called (awaited) before the first dynamic import of
  * @capacitor/browser or @capacitor/app.
+ *
+ * Partial injection: when native-bridge lists Browser/App but omits Filesystem/FileShare,
+ * mergeFilesystemAndFileShareIfMissing() appends those entries so export/download uses
+ * native plugins instead of web shims.
  */
 
 let bridgeInitialized = false;
+
+type PluginHeaderEntry = {
+  name: string;
+  methods: Array<{ name: string; rtype: string }>;
+};
+
+/**
+ * Must match @capacitor/filesystem native plugin methods so registerPlugin() routes
+ * to Android instead of the web shim (IndexedDB).
+ */
+const FILESYSTEM_PLUGIN_HEADER: PluginHeaderEntry = {
+  name: 'Filesystem',
+  methods: [
+    { name: 'readFile', rtype: 'promise' },
+    { name: 'readFileInChunks', rtype: 'callback' },
+    { name: 'writeFile', rtype: 'promise' },
+    { name: 'appendFile', rtype: 'promise' },
+    { name: 'deleteFile', rtype: 'promise' },
+    { name: 'mkdir', rtype: 'promise' },
+    { name: 'rmdir', rtype: 'promise' },
+    { name: 'readdir', rtype: 'promise' },
+    { name: 'getUri', rtype: 'promise' },
+    { name: 'stat', rtype: 'promise' },
+    { name: 'rename', rtype: 'promise' },
+    { name: 'copy', rtype: 'promise' },
+    { name: 'checkPermissions', rtype: 'promise' },
+    { name: 'requestPermissions', rtype: 'promise' },
+    { name: 'downloadFile', rtype: 'promise' },
+  ],
+};
+
+const FILESHARE_PLUGIN_HEADER: PluginHeaderEntry = {
+  name: 'FileShare',
+  methods: [{ name: 'shareStream', rtype: 'promise' }],
+};
+
+/**
+ * When native-bridge injection succeeds partially, PluginHeaders can list Browser/App
+ * but omit Filesystem/FileShare — we used to return early and never append them, so
+ * registerPlugin() kept the web shims (shareStream no-op). Merge missing entries only.
+ */
+function mergeFilesystemAndFileShareIfMissing(cap: {
+  PluginHeaders?: PluginHeaderEntry[];
+}): void {
+  if (!cap.PluginHeaders) {
+    cap.PluginHeaders = [];
+  }
+  const headers = cap.PluginHeaders;
+  const names = new Set(headers.map((h) => h.name));
+  if (!names.has('Filesystem')) {
+    headers.push(FILESYSTEM_PLUGIN_HEADER);
+  }
+  if (!names.has('FileShare')) {
+    headers.push(FILESHARE_PLUGIN_HEADER);
+  }
+}
 
 export const initCapacitorBridgeIfNeeded = (): void => {
   if (typeof window === 'undefined') return;
@@ -46,8 +106,13 @@ export const initCapacitorBridgeIfNeeded = (): void => {
 
   const cap = (win.Capacitor = win.Capacitor || {});
 
-  // If PluginHeaders already populated by normal injection, nothing to do.
-  if (cap.PluginHeaders && cap.PluginHeaders.length > 0) return;
+  const hadInjectionHeaders =
+    Array.isArray(cap.PluginHeaders) && cap.PluginHeaders.length > 0;
+
+  if (hadInjectionHeaders) {
+    mergeFilesystemAndFileShareIfMissing(cap);
+    return;
+  }
 
   // Guard against double initialisation
   if (bridgeInitialized) return;
@@ -261,6 +326,8 @@ export const initCapacitorBridgeIfNeeded = (): void => {
         { name: 'applySafeAreaClasses', rtype: 'promise' },
       ],
     },
+    FILESYSTEM_PLUGIN_HEADER,
+    FILESHARE_PLUGIN_HEADER,
   ];
 
   // --- Plugins object (legacy compatibility) ---
