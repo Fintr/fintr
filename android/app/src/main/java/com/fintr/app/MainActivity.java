@@ -13,6 +13,7 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
+import com.capacitorjs.plugins.filesystem.FilesystemPlugin;
 
 public class MainActivity extends BridgeActivity {
 
@@ -62,6 +63,10 @@ public class MainActivity extends BridgeActivity {
     // NavigationInfoPlugin provides safe area class injection for the web app
     registerPlugin(com.fintr.app.NavigationInfoPlugin.class);
     registerPlugin(com.fintr.app.FileSharePlugin.class);
+    // Ensure Filesystem is on the bridge (required for CSV export / share). If
+    // capacitor.plugins.json fails to load a class on some devices, the plugin
+    // would be missing and native calls return "unable to find plugin: Filesystem".
+    registerPlugin(FilesystemPlugin.class);
     WebView.setWebContentsDebuggingEnabled(true);
     super.onCreate(savedInstanceState);
     WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
