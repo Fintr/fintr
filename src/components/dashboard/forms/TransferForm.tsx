@@ -11,8 +11,8 @@ import {
 } from "../../ui/select";
 import { Button } from "../../ui/button";
 import { Upload, CalendarIcon } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Calendar } from "../../ui/calendar";
+import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { format, endOfMonth } from "date-fns";
 import { useAtomValue } from "jotai";
 import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
@@ -405,12 +405,11 @@ const TransferForm: React.FC<TransferFormProps> = ({
       <div className="flex flex-wrap">
         <div className="space-y-2 w-full md:w-1/2">
           <Label htmlFor="transfer-date" className="text-sm">Date</Label>
-          <Popover
+          <CalendarPopover
             modal
             open={datePickerOpen}
             onOpenChange={setDatePickerOpen}
-          >
-            <PopoverTrigger asChild>
+            trigger={
               <Button
                 type="button"
                 variant={"outline"}
@@ -419,22 +418,21 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {date ? format(date, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(d) => {
-                  setDate?.(d);
-                  if (d) setDatePickerOpen(false);
-                }}
-                initialFocus
-                toDate={endOfMonth(new Date())}
-                toYear={new Date().getFullYear()}
-                defaultMonth={date || new Date()}
-              />
-            </PopoverContent>
-          </Popover>
+            }
+          >
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={(d) => {
+                setDate?.(d);
+                if (d) setDatePickerOpen(false);
+              }}
+              initialFocus
+              toDate={endOfMonth(new Date())}
+              toYear={new Date().getFullYear()}
+              defaultMonth={date || new Date()}
+            />
+          </CalendarPopover>
         </div>
       </div>
 

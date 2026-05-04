@@ -16,8 +16,7 @@ import {
 } from "@/components/ui/select";
 import ComboBox from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { DateRangeFullscreenSheet } from "@/components/ui/date-range-fullscreen-sheet";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
@@ -96,7 +95,6 @@ export function Filters({
     return undefined;
   });
   const [dateRangePickerOpen, setDateRangePickerOpen] = useState(false);
-  
   // Sync dateRange with atoms when they change externally
   useEffect(() => {
     if (startDate && endDate) {
@@ -158,8 +156,16 @@ export function Filters({
         from: range.from,
         to: range.to,
       };
+      const hadIncompleteSelection =
+        dateRange?.from != null && dateRange?.to == null;
+      const nowComplete =
+        updatedRange.from != null && updatedRange.to != null;
+
       setDateRange(updatedRange);
-      if (updatedRange.from && updatedRange.to) {
+
+      // With an existing full range, react-day-picker can set both ends in one
+      // click ({ from, to: clickedDay }). Only close after a real two-tap flow.
+      if (hadIncompleteSelection && nowComplete) {
         setDateRangePickerOpen(false);
       }
       // Don't update date atoms immediately - wait for Apply Filters button
@@ -358,11 +364,12 @@ export function Filters({
             ) : (
               <div className="space-y-2 md:w-auto md:flex-shrink-0">
                 <Label>Date Range</Label>
-                <Popover
+                <DateRangeFullscreenSheet
                   open={dateRangePickerOpen}
                   onOpenChange={setDateRangePickerOpen}
-                >
-                  <PopoverTrigger asChild>
+                  selected={dateRange}
+                  onSelect={handleDateRangeSelect}
+                  trigger={
                     <Button
                       variant="outline"
                       className="w-full md:w-auto md:min-w-[250px] justify-start text-left font-normal text-sm"
@@ -381,17 +388,8 @@ export function Filters({
                         <span>Pick a date range</span>
                       )}
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="range"
-                      selected={dateRange}
-                      onSelect={handleDateRangeSelect}
-                      initialFocus
-                      numberOfMonths={2}
-                    />
-                  </PopoverContent>
-                </Popover>
+                  }
+                />
               </div>
             )}
 

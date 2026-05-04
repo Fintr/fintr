@@ -10,8 +10,8 @@ import {
 } from "../../ui/select";
 import { Button } from "../../ui/button";
 import { Upload, CalendarIcon, Receipt } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Calendar } from "../../ui/calendar";
+import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { format, endOfMonth } from "date-fns";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { expenseCategoryOptionsAtom, accountOptionsAtom } from "@/atoms/dashboardAtoms";
@@ -825,32 +825,30 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2 min-w-0">
             <Label htmlFor="date" className="text-sm">Date</Label>
-            <Popover
+            <CalendarPopover
               modal
               open={datePickerOpen}
               onOpenChange={setDatePickerOpen}
-            >
-              <PopoverTrigger asChild>
+              trigger={
                 <Button variant={"outline"} className="w-full justify-start text-left font-normal text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(d) => {
-                    setDate(d);
-                    if (d) setDatePickerOpen(false);
-                  }}
-                  initialFocus
-                  toDate={maxDate}
-                  toYear={currentYear}
-                  defaultMonth={date || new Date()}
-                />
-              </PopoverContent>
-            </Popover>
+              }
+            >
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(d) => {
+                  setDate(d);
+                  if (d) setDatePickerOpen(false);
+                }}
+                initialFocus
+                toDate={maxDate}
+                toYear={currentYear}
+                defaultMonth={date || new Date()}
+              />
+            </CalendarPopover>
             {suggestedDate && date && suggestedDate.toDateString() !== date.toDateString() && (
               <div className="flex justify-end">
                 <button
