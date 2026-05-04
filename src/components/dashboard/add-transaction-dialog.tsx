@@ -10,8 +10,10 @@ import GoalForm from "@/components/dashboard/forms/GoalForm";
 import InvestmentForm from "@/components/dashboard/forms/InvestmentForm";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import {
   UpdateTransactionType,
+  CombinedTransactionTypeEnum,
 } from "@/types/transactionTypes";
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
 import { shouldShowV2Features } from "@/lib/utils";
@@ -62,21 +64,66 @@ const AddTransactionDialog = ({
     (open: boolean) => !open && controlledOnClose() : setInternalOpen;
 
   // Memoize initialData for ExpenseForm to prevent infinite re-renders
+  // Apply OCR data to ALL forms - user chooses which tab to use
   const expenseInitialData = useMemo(() => {
-    if (prefilledData?.type === 'expense') {
+    if (prefilledData) {
       return {
         id: '',
-        // Note: date is not included here - parent component always sets date to today
-        // and passes suggestedDate separately for the suggestion pill
+        date: prefilledData.date || format(new Date(), 'yyyy-MM-dd'),
+        transactionType: 'expense' as const,
+        type: CombinedTransactionTypeEnum.EXPENSE,
         amount: prefilledData.amount || 0,
         description: prefilledData.description || '',
         categoryName: prefilledData.categoryName || '',
         accountName: prefilledData.accountName || '',
-        type: 'expense' as any,
         scheduleType: prefilledData.scheduleType as any || 'one_time',
         repeatInterval: '',
         installmentPeriod: 0,
         file: prefilledData.receiptImage || null,
+        draftId: prefilledData.draftId,
+      };
+    }
+    return undefined;
+  }, [prefilledData]);
+
+  // Memoize initialData for IncomeForm
+  // Apply OCR data to ALL forms - user chooses which tab to use
+  const incomeInitialData = useMemo(() => {
+    if (prefilledData) {
+      return {
+        id: '',
+        date: prefilledData.date || format(new Date(), 'yyyy-MM-dd'),
+        transactionType: 'income' as const,
+        type: CombinedTransactionTypeEnum.INCOME,
+        amount: prefilledData.amount || 0,
+        description: prefilledData.description || '',
+        categoryName: prefilledData.categoryName || '',
+        accountName: prefilledData.accountName || '',
+        scheduleType: prefilledData.scheduleType as any || 'one_time',
+        repeatInterval: '',
+        installmentPeriod: 0,
+        file: prefilledData.receiptImage || null,
+        draftId: prefilledData.draftId,
+      };
+    }
+    return undefined;
+  }, [prefilledData]);
+
+  // Memoize initialData for TransferForm
+  // Apply OCR data to ALL forms - user chooses which tab to use
+  const transferInitialData = useMemo(() => {
+    if (prefilledData) {
+      return {
+        id: '',
+        date: prefilledData.date || format(new Date(), 'yyyy-MM-dd'),
+        amount: prefilledData.amount || 0,
+        transactionCost: 0,
+        description: prefilledData.description || '',
+        fromAccountName: prefilledData.accountName || '',
+        toAccountName: '',
+        scheduleType: prefilledData.scheduleType as any || 'one_time',
+        repeatInterval: '',
+        file: prefilledData.receiptImage || undefined,
         draftId: prefilledData.draftId,
       };
     }
@@ -96,16 +143,14 @@ const AddTransactionDialog = ({
     return undefined;
   }, [prefilledData?.date]);
 
-  // Set initial tab and data based on prefilledData
+  // Set initial date when dialog opens
   // Always use today's date, never the AI-suggested date
+  // User manually chooses which tab (expense/income/transfer) to use
   useEffect(() => {
-    if (prefilledData?.type) {
-      setActiveTab(prefilledData.type);
-    }
     if (isDialogOpen) {
       setDate(new Date());
     }
-  }, [prefilledData, isDialogOpen]);
+  }, [isDialogOpen]);
 
   // Ensure TabsList scrolls to left-most on dialog open
   useEffect(() => {
@@ -398,7 +443,8 @@ const AddTransactionDialog = ({
               onAddCustomAccount={handleAddCustomAccount}
               onSubmitSuccess={onTransactionSuccess}
               onCancel={() => setDialogOpen(false)}
-              // No specific initialData for income yet
+              initialData={incomeInitialData}
+              key={JSON.stringify(incomeInitialData?.file?.name || 'no-file')}
             />
           </TabsContent>
 
@@ -410,6 +456,8 @@ const AddTransactionDialog = ({
               spaceCurrency={spaceCurrency}
               onSubmitSuccess={onTransactionSuccess}
               onCancel={() => setDialogOpen(false)}
+              initialData={transferInitialData}
+              key={JSON.stringify(transferInitialData?.file?.name || 'no-file')}
             />
           </TabsContent>
 
