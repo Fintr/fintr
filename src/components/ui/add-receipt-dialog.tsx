@@ -2,9 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { useAtomValue } from "jotai";
 import { isTutorialActiveAtom } from "@/atoms/tutorialAtoms";
 
@@ -276,16 +274,6 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
         {title && (
           <div className="px-6 pt-6 pb-4 flex items-center justify-between flex-shrink-0">
             <h2 className="text-lg font-semibold">{title}</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-6 w-6"
-              data-tutorial-target="close-add-receipt-modal"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         )}
         <div 
