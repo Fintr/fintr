@@ -8,11 +8,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { useUserAnalytics, useUserActivityDrilldown } from "@/services/admin/analytics/queries";
 import { DailyActiveUsersChart } from "@/components/admin/daily-active-users-chart";
 import { AnalyticsSummaryCards } from "@/components/admin/analytics-summary-cards";
@@ -113,8 +109,12 @@ export default function UserAnalyticsPage() {
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-2 max-w-xs">
             <Label htmlFor="drilldown-date">Date</Label>
-            <Popover modal open={drilldownPickerOpen} onOpenChange={setDrilldownPickerOpen}>
-              <PopoverTrigger asChild>
+            <CalendarPopover
+              modal
+              open={drilldownPickerOpen}
+              onOpenChange={setDrilldownPickerOpen}
+              align="start"
+              trigger={
                 <Button
                   id="drilldown-date"
                   type="button"
@@ -128,24 +128,23 @@ export default function UserAnalyticsPage() {
                     <span className="text-muted-foreground">Pick a date</span>
                   )}
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={drilldownSelected}
-                  onSelect={(date) => {
-                    if (date) {
-                      setDrilldownDate(format(date, "yyyy-MM-dd"));
-                      setDrilldownPickerOpen(false);
-                    }
-                  }}
-                  initialFocus
-                  defaultMonth={drilldownSelected ?? maxDay}
-                  fromDate={minDay}
-                  toDate={maxDay}
-                />
-              </PopoverContent>
-            </Popover>
+              }
+            >
+              <Calendar
+                mode="single"
+                selected={drilldownSelected}
+                onSelect={(date) => {
+                  if (date) {
+                    setDrilldownDate(format(date, "yyyy-MM-dd"));
+                    setDrilldownPickerOpen(false);
+                  }
+                }}
+                initialFocus
+                defaultMonth={drilldownSelected ?? maxDay}
+                fromDate={minDay}
+                toDate={maxDay}
+              />
+            </CalendarPopover>
           </div>
 
           {drilldownQuery.isLoading ? (

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { CalculatorInput } from '@/components/ui/calculator-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarPopover } from '@/components/ui/calendar-popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useUpdateImportRecord, useImportSingleRecord } from '@/hooks/async/useImport';
 import { Loader2, X, Check, CalendarIcon } from 'lucide-react';
@@ -60,6 +60,7 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     parseInitialDate(initialData.date)
   );
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     date: initialData.date || '',
@@ -215,8 +216,11 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="date">Date *</Label>
-          <Popover modal>
-            <PopoverTrigger asChild>
+          <CalendarPopover
+            modal
+            open={datePickerOpen}
+            onOpenChange={setDatePickerOpen}
+            trigger={
               <Button
                 variant="outline"
                 className={`w-full justify-start text-left font-normal text-sm ${
@@ -230,17 +234,19 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
                   <span className="text-sm">Pick a date</span>
                 )}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                initialFocus
-                defaultMonth={selectedDate || new Date()}
-              />
-            </PopoverContent>
-          </Popover>
+            }
+          >
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(d) => {
+                setSelectedDate(d);
+                if (d) setDatePickerOpen(false);
+              }}
+              initialFocus
+              defaultMonth={selectedDate || new Date()}
+            />
+          </CalendarPopover>
           {validationErrors.date && (
             <p className="text-sm text-red-900">{validationErrors.date}</p>
           )}

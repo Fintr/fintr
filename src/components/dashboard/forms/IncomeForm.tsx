@@ -10,8 +10,8 @@ import {
 } from "../../ui/select";
 import { Button } from "../../ui/button";
 import { Upload, CalendarIcon } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Calendar } from "../../ui/calendar";
+import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { PhilippinesTaxCalculator } from "../../ui/philippines-tax-calculator";
 import { format, endOfMonth } from "date-fns";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -132,6 +132,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   // Local state for UI elements and form handling
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [fileState, setFileState] = useState<File | null>(null);
   const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(
     ScheduleTypeEnum.ONE_TIME
@@ -562,25 +563,30 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         <div data-tutorial-target="income-form" className="grid grid-cols-1 gap-4">
           <div className="space-y-2 min-w-0">
             <Label htmlFor="date" className="text-sm">Date</Label>
-            <Popover modal>
-              <PopoverTrigger asChild>
+            <CalendarPopover
+              modal
+              open={datePickerOpen}
+              onOpenChange={setDatePickerOpen}
+              trigger={
                 <Button variant={"outline"} className="w-full justify-start text-left font-normal text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                  toDate={maxDate}
-                  toYear={currentYear}
-                  defaultMonth={date || new Date()}
-                />
-              </PopoverContent>
-            </Popover>
+              }
+            >
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(d) => {
+                  setDate(d);
+                  if (d) setDatePickerOpen(false);
+                }}
+                initialFocus
+                toDate={maxDate}
+                toYear={currentYear}
+                defaultMonth={date || new Date()}
+              />
+            </CalendarPopover>
           </div>
 
           {/* Amount + currency + rates - own row */}

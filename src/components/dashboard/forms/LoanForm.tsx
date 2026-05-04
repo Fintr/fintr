@@ -11,8 +11,8 @@ import {
 } from "../../ui/select";
 import { Button } from "../../ui/button";
 import { CalendarIcon } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Calendar } from "../../ui/calendar";
+import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { format } from "date-fns";
 import ExpandableTextarea from "../../ui/expandable-textarea";
 import { toast } from "sonner";
@@ -61,6 +61,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
 
   const accountOptions = useAtomValue(accountOptionsAtom);
   const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   // Number input hook for principal amount field
   const principalAmountInput = useNumberInput({
@@ -264,8 +265,10 @@ const LoanForm: React.FC<LoanFormProps> = ({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="loan-date" className="text-sm">Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
+          <CalendarPopover
+            open={datePickerOpen}
+            onOpenChange={setDatePickerOpen}
+            trigger={
               <Button
                 variant={"outline"}
                 className="w-full justify-start text-left font-normal text-sm"
@@ -273,16 +276,18 @@ const LoanForm: React.FC<LoanFormProps> = ({
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {date ? format(date, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+            }
+          >
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={(d) => {
+                setDate?.(d);
+                if (d) setDatePickerOpen(false);
+              }}
+              initialFocus
+            />
+          </CalendarPopover>
         </div>
                 <div className="space-y-2">
                   <Label htmlFor="loan-amount" className="text-sm">Principal Amount</Label>

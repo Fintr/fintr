@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus, Calendar as CalendarLucide, Percent, FileText, ChevronDown, ChevronUp, Info, Wallet, CalendarIcon, Receipt, Edit, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarPopover } from "@/components/ui/calendar-popover";
 import {
   Dialog,
   DialogContent,
@@ -514,6 +515,8 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
   const [notes, setNotes] = React.useState<string>("");
   const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
   const [formSubmitted, setFormSubmitted] = React.useState(false);
+  const [recordPaymentDatePickerOpen, setRecordPaymentDatePickerOpen] = React.useState(false);
+  const [editPaymentDatePickerOpen, setEditPaymentDatePickerOpen] = React.useState(false);
   
   const totalPaymentInput = useNumberInput({
     initialValue: "",
@@ -737,8 +740,11 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="payment-date" className="text-sm">Payment Date</Label>
-                  <Popover modal>
-                    <PopoverTrigger asChild>
+                  <CalendarPopover
+                    modal
+                    open={recordPaymentDatePickerOpen}
+                    onOpenChange={setRecordPaymentDatePickerOpen}
+                    trigger={
                       <Button 
                         variant="outline" 
                         className={`w-full justify-start text-left font-normal text-sm ${formSubmitted && validationErrors.date ? "border-red-800 focus-visible:ring-red-800" : ""}`}
@@ -746,23 +752,23 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {paymentDate ? format(paymentDate, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar 
-                        mode="single" 
-                        selected={paymentDate} 
-                        onSelect={(date) => {
-                          setPaymentDate(date);
-                          if (formSubmitted && validationErrors.date) {
-                            setValidationErrors({ ...validationErrors, date: "" });
-                          }
-                        }} 
-                        initialFocus 
-                        defaultMonth={paymentDate || new Date()}
-                        toDate={new Date()}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                    }
+                  >
+                    <Calendar 
+                      mode="single" 
+                      selected={paymentDate} 
+                      onSelect={(date) => {
+                        setPaymentDate(date);
+                        if (date) setRecordPaymentDatePickerOpen(false);
+                        if (formSubmitted && validationErrors.date) {
+                          setValidationErrors({ ...validationErrors, date: "" });
+                        }
+                      }} 
+                      initialFocus 
+                      defaultMonth={paymentDate || new Date()}
+                      toDate={new Date()}
+                    />
+                  </CalendarPopover>
                   {formSubmitted && validationErrors.date && (
                     <FormError message={validationErrors.date} />
                   )}
@@ -867,8 +873,11 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-payment-date" className="text-sm">Payment Date</Label>
-                <Popover modal>
-                  <PopoverTrigger asChild>
+                <CalendarPopover
+                  modal
+                  open={editPaymentDatePickerOpen}
+                  onOpenChange={setEditPaymentDatePickerOpen}
+                  trigger={
                     <Button 
                       variant="outline" 
                       className={`w-full justify-start text-left font-normal text-sm ${formSubmitted && validationErrors.date ? "border-red-800 focus-visible:ring-red-800" : ""}`}
@@ -876,23 +885,23 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {paymentDate ? format(paymentDate, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar 
-                      mode="single" 
-                      selected={paymentDate} 
-                      onSelect={(date) => {
-                        setPaymentDate(date);
-                        if (formSubmitted && validationErrors.date) {
-                          setValidationErrors({ ...validationErrors, date: "" });
-                        }
-                      }} 
-                      initialFocus 
-                      defaultMonth={paymentDate || new Date()}
-                      toDate={new Date()}
-                    />
-                  </PopoverContent>
-                </Popover>
+                  }
+                >
+                  <Calendar 
+                    mode="single" 
+                    selected={paymentDate} 
+                    onSelect={(date) => {
+                      setPaymentDate(date);
+                      if (date) setEditPaymentDatePickerOpen(false);
+                      if (formSubmitted && validationErrors.date) {
+                        setValidationErrors({ ...validationErrors, date: "" });
+                      }
+                    }} 
+                    initialFocus 
+                    defaultMonth={paymentDate || new Date()}
+                    toDate={new Date()}
+                  />
+                </CalendarPopover>
                 {formSubmitted && validationErrors.date && (
                   <FormError message={validationErrors.date} />
                 )}

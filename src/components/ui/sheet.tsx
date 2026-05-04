@@ -1,7 +1,6 @@
 import * as React from "react"
 import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -13,7 +12,7 @@ const SheetClose = SheetPrimitive.Close
 
 const SheetPortal = SheetPrimitive.Portal
 
-const SheetOverlay = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Overlay>, React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>>(({ className, onPointerDown, onClick, ...props }, ref) => {
+const SheetOverlay = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Overlay>, React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>>(({ className, onClick, ...props }, ref) => {
   const [hasLightbox, setHasLightbox] = React.useState(false);
   const overlayRef = React.useRef<HTMLDivElement>(null);
 
@@ -51,40 +50,9 @@ const SheetOverlay = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Ove
     };
   }, []);
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    const lightbox = document.querySelector('.lightbox-container');
-    
-    if (lightbox && (lightbox.contains(target) || target.closest('.lightbox-container'))) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-
-    if (hasLightbox) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-
-    if (onPointerDown) {
-      (onPointerDown as (e: React.PointerEvent) => void)(e);
-    }
-  };
-
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    const lightbox = document.querySelector('.lightbox-container');
-    
-    if (lightbox && (lightbox.contains(target) || target.closest('.lightbox-container'))) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-
-    if (onClick) {
-      (onClick as (e: React.MouseEvent) => void)(e);
-    }
+  const handleClick = (e: React.MouseEvent) => {
+    if (hasLightbox) return;
+    onClick?.(e);
   };
 
   return (
@@ -102,7 +70,6 @@ const SheetOverlay = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Ove
         hasLightbox && "pointer-events-none",
         className
       )}
-      onPointerDown={handlePointerDown}
       onClick={handleClick}
       {...props}
     />
@@ -133,24 +100,44 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  /** Merged into `SheetOverlay` (e.g. higher z-index when opening a sheet from a dialog). */
+  overlayClassName?: string
+}
+
+interface SheetContentProps
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
+    VariantProps<typeof sheetVariants> {
+  /** Merged into `SheetOverlay` (e.g. higher z-index when opening a sheet from a dialog). */
+  overlayClassName?: string
+  /** Called when user clicks the overlay (outside the sheet content). Default: closes the sheet. */
+  onOverlayClick?: () => void
+}
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
-  ({ side = "right", className, children, ...props }, ref) => {
-    const closeButtonPosition = side === "bottom" ? "absolute right-4 top-4" : "absolute right-4 top-4";
-    
+  (
+    {
+      side = "right",
+      className,
+      overlayClassName,
+      onOverlayClick,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const handleOverlayClick = () => {
+      if (onOverlayClick) {
+        onOverlayClick()
+      }
+      // If no custom handler, let Radix handle it (default behavior)
+    }
+
     return (
       <SheetPortal>
-        <SheetOverlay />
+        <SheetOverlay className={overlayClassName} onClick={handleOverlayClick} />
         <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
           {children}
-          <SheetPrimitive.Close className={cn(
-            closeButtonPosition,
-            "rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary z-10"
-          )}>
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </SheetPrimitive.Close>
         </SheetPrimitive.Content>
       </SheetPortal>
     );

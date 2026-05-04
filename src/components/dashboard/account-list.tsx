@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { format } from "date-fns";
@@ -457,8 +457,11 @@ const AccountList: React.FC<AccountListProps> = ({
             </div>
             <div className="space-y-2">
               <Label htmlFor="adjustment-date">Adjustment Date</Label>
-              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                <PopoverTrigger asChild>
+              <CalendarPopover
+                open={calendarOpen}
+                onOpenChange={setCalendarOpen}
+                align="start"
+                trigger={
                   <Button
                     id="adjustment-date"
                     variant="outline"
@@ -471,21 +474,20 @@ const AccountList: React.FC<AccountListProps> = ({
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {adjustmentDate ? format(new Date(adjustmentDate), "MMM d, yyyy") : <span>Pick a date</span>}
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={adjustmentDate ? new Date(adjustmentDate) : undefined}
-                    onSelect={(date) => {
-                      if (date) {
-                        setAdjustmentDate(format(date, "yyyy-MM-dd"));
-                        setCalendarOpen(false);
-                      }
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+                }
+              >
+                <Calendar
+                  mode="single"
+                  selected={adjustmentDate ? new Date(adjustmentDate) : undefined}
+                  onSelect={(date) => {
+                    if (date) {
+                      setAdjustmentDate(format(date, "yyyy-MM-dd"));
+                      setCalendarOpen(false);
+                    }
+                  }}
+                  initialFocus
+                />
+              </CalendarPopover>
             </div>
             {activeAccount && newBalance && parseFloat(newBalance) !== parseBalance(activeAccount.balance) && (
               <div className="text-sm p-3 rounded-md bg-blue-50 border border-blue-200">

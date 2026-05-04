@@ -2,11 +2,7 @@ import React, { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { format } from "date-fns";
 import { CalendarIcon, Upload } from "lucide-react";
 import {
@@ -42,6 +38,8 @@ const GoalForm: React.FC<GoalFormProps> = ({
     monthlyContribution: "",
     priority: "",
   });
+  const [goalDatePickerOpen, setGoalDatePickerOpen] = useState(false);
+  const [targetDatePickerOpen, setTargetDatePickerOpen] = useState(false);
 
   // Handle file upload for this form
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,25 +57,31 @@ const GoalForm: React.FC<GoalFormProps> = ({
         {/* Date Picker */}
         <div>
           <Label htmlFor="goal-date" className="text-sm">Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
+          <CalendarPopover
+            open={goalDatePickerOpen}
+            onOpenChange={setGoalDatePickerOpen}
+            align="start"
+            trigger={
               <button
                 id="goal-date"
+                type="button"
                 className="w-full flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
               >
                 {date ? format(date, "PP") : <span className="text-sm">Pick a date</span>}
                 <CalendarIcon className="h-4 w-4 opacity-50" />
               </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+            }
+          >
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={(d) => {
+                setDate(d);
+                if (d) setGoalDatePickerOpen(false);
+              }}
+              initialFocus
+            />
+          </CalendarPopover>
         </div>
 
         {/* Goal Name */}
@@ -173,10 +177,14 @@ const GoalForm: React.FC<GoalFormProps> = ({
         {/* Target Date and Notes on the same row */}
         <div>
           <Label htmlFor="goal-target-date" className="text-sm">Goal Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
+          <CalendarPopover
+            open={targetDatePickerOpen}
+            onOpenChange={setTargetDatePickerOpen}
+            align="start"
+            trigger={
               <button
                 id="goal-target-date"
+                type="button"
                 className="w-full flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
               >
                 {goalForm.targetDate ? (
@@ -186,18 +194,18 @@ const GoalForm: React.FC<GoalFormProps> = ({
                 )}
                 <CalendarIcon className="h-4 w-4 opacity-50" />
               </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={goalForm.targetDate}
-                onSelect={(date) =>
-                  setGoalForm({ ...goalForm, targetDate: date || new Date() })
-                }
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+            }
+          >
+            <Calendar
+              mode="single"
+              selected={goalForm.targetDate}
+              onSelect={(d) => {
+                setGoalForm({ ...goalForm, targetDate: d || new Date() });
+                if (d) setTargetDatePickerOpen(false);
+              }}
+              initialFocus
+            />
+          </CalendarPopover>
         </div>
 
         {/* Description Field */}
