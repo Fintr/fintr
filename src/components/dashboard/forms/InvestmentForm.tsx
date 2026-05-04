@@ -82,6 +82,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
   const setShowCustomCategoryInput = externalSetShowCustomCategoryInput || setInternalShowCustomCategoryInput;
   const customCategory = externalCustomCategory !== undefined ? externalCustomCategory : internalCustomCategory;
   const setCustomCategory = externalSetCustomCategory || setInternalCustomCategory;
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   // Handle file upload for this form
   const handleFileUpload = externalHandleFileUpload ? 
@@ -102,7 +103,10 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="date" className="text-sm">Date</Label>
-          <Popover>
+          <Popover
+            open={datePickerOpen}
+            onOpenChange={setDatePickerOpen}
+          >
             <PopoverTrigger asChild>
               <Button
                 variant={"outline"}
@@ -116,7 +120,10 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={setDate}
+                onSelect={(d) => {
+                  setDate(d);
+                  if (d) setDatePickerOpen(false);
+                }}
                 initialFocus
               />
             </PopoverContent>

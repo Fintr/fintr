@@ -180,6 +180,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Local state for UI elements not directly part of the form data
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   // Removed fileState, will use formState.file directly
   const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(
     initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME
@@ -824,7 +825,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2 min-w-0">
             <Label htmlFor="date" className="text-sm">Date</Label>
-            <Popover modal>
+            <Popover
+              modal
+              open={datePickerOpen}
+              onOpenChange={setDatePickerOpen}
+            >
               <PopoverTrigger asChild>
                 <Button variant={"outline"} className="w-full justify-start text-left font-normal text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
@@ -835,7 +840,10 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={setDate}
+                  onSelect={(d) => {
+                    setDate(d);
+                    if (d) setDatePickerOpen(false);
+                  }}
                   initialFocus
                   toDate={maxDate}
                   toYear={currentYear}

@@ -77,7 +77,8 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     }
     return undefined;
   });
-  
+  const [dateRangePickerOpen, setDateRangePickerOpen] = useState(false);
+
   // Local state for month/year selection
   const [selectedMonth, setSelectedMonth] = useState(monthYear.selectedMonth);
   const [selectedYear, setSelectedYear] = useState(monthYear.selectedYear);
@@ -202,6 +203,9 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
         to: range.to,
       };
       setDateRange(updatedRange);
+      if (updatedRange.from && updatedRange.to) {
+        setDateRangePickerOpen(false);
+      }
       // Don't update date atoms immediately - wait for Apply Filters button
     } else {
       setDateRange(undefined);
@@ -398,7 +402,10 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                   ) : (
                     <div className="space-y-2 md:w-auto md:min-w-[280px]">
                       <Label>Date Range</Label>
-                      <Popover>
+                      <Popover
+                        open={dateRangePickerOpen}
+                        onOpenChange={setDateRangePickerOpen}
+                      >
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"

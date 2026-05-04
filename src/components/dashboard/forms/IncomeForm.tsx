@@ -132,6 +132,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   // Local state for UI elements and form handling
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [fileState, setFileState] = useState<File | null>(null);
   const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(
     ScheduleTypeEnum.ONE_TIME
@@ -562,7 +563,11 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         <div data-tutorial-target="income-form" className="grid grid-cols-1 gap-4">
           <div className="space-y-2 min-w-0">
             <Label htmlFor="date" className="text-sm">Date</Label>
-            <Popover modal>
+            <Popover
+              modal
+              open={datePickerOpen}
+              onOpenChange={setDatePickerOpen}
+            >
               <PopoverTrigger asChild>
                 <Button variant={"outline"} className="w-full justify-start text-left font-normal text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
@@ -573,7 +578,10 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={setDate}
+                  onSelect={(d) => {
+                    setDate(d);
+                    if (d) setDatePickerOpen(false);
+                  }}
                   initialFocus
                   toDate={maxDate}
                   toYear={currentYear}

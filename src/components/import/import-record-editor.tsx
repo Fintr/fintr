@@ -60,6 +60,7 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     parseInitialDate(initialData.date)
   );
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     date: initialData.date || '',
@@ -215,7 +216,11 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="date">Date *</Label>
-          <Popover modal>
+          <Popover
+            modal
+            open={datePickerOpen}
+            onOpenChange={setDatePickerOpen}
+          >
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -235,7 +240,10 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
               <Calendar
                 mode="single"
                 selected={selectedDate}
-                onSelect={setSelectedDate}
+                onSelect={(d) => {
+                  setSelectedDate(d);
+                  if (d) setDatePickerOpen(false);
+                }}
                 initialFocus
                 defaultMonth={selectedDate || new Date()}
               />

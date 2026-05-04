@@ -42,6 +42,8 @@ const GoalForm: React.FC<GoalFormProps> = ({
     monthlyContribution: "",
     priority: "",
   });
+  const [goalDatePickerOpen, setGoalDatePickerOpen] = useState(false);
+  const [targetDatePickerOpen, setTargetDatePickerOpen] = useState(false);
 
   // Handle file upload for this form
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,7 +61,10 @@ const GoalForm: React.FC<GoalFormProps> = ({
         {/* Date Picker */}
         <div>
           <Label htmlFor="goal-date" className="text-sm">Date</Label>
-          <Popover>
+          <Popover
+            open={goalDatePickerOpen}
+            onOpenChange={setGoalDatePickerOpen}
+          >
             <PopoverTrigger asChild>
               <button
                 id="goal-date"
@@ -73,7 +78,10 @@ const GoalForm: React.FC<GoalFormProps> = ({
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={setDate}
+                onSelect={(d) => {
+                  setDate(d);
+                  if (d) setGoalDatePickerOpen(false);
+                }}
                 initialFocus
               />
             </PopoverContent>
@@ -173,7 +181,10 @@ const GoalForm: React.FC<GoalFormProps> = ({
         {/* Target Date and Notes on the same row */}
         <div>
           <Label htmlFor="goal-target-date" className="text-sm">Goal Date</Label>
-          <Popover>
+          <Popover
+            open={targetDatePickerOpen}
+            onOpenChange={setTargetDatePickerOpen}
+          >
             <PopoverTrigger asChild>
               <button
                 id="goal-target-date"
@@ -191,9 +202,10 @@ const GoalForm: React.FC<GoalFormProps> = ({
               <Calendar
                 mode="single"
                 selected={goalForm.targetDate}
-                onSelect={(date) =>
-                  setGoalForm({ ...goalForm, targetDate: date || new Date() })
-                }
+                onSelect={(d) => {
+                  setGoalForm({ ...goalForm, targetDate: d || new Date() });
+                  if (d) setTargetDatePickerOpen(false);
+                }}
                 initialFocus
               />
             </PopoverContent>

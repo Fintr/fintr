@@ -514,6 +514,8 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
   const [notes, setNotes] = React.useState<string>("");
   const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
   const [formSubmitted, setFormSubmitted] = React.useState(false);
+  const [recordPaymentDatePickerOpen, setRecordPaymentDatePickerOpen] = React.useState(false);
+  const [editPaymentDatePickerOpen, setEditPaymentDatePickerOpen] = React.useState(false);
   
   const totalPaymentInput = useNumberInput({
     initialValue: "",
@@ -737,7 +739,11 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="payment-date" className="text-sm">Payment Date</Label>
-                  <Popover modal>
+                  <Popover
+                    modal
+                    open={recordPaymentDatePickerOpen}
+                    onOpenChange={setRecordPaymentDatePickerOpen}
+                  >
                     <PopoverTrigger asChild>
                       <Button 
                         variant="outline" 
@@ -753,6 +759,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                         selected={paymentDate} 
                         onSelect={(date) => {
                           setPaymentDate(date);
+                          if (date) setRecordPaymentDatePickerOpen(false);
                           if (formSubmitted && validationErrors.date) {
                             setValidationErrors({ ...validationErrors, date: "" });
                           }
@@ -867,7 +874,11 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-payment-date" className="text-sm">Payment Date</Label>
-                <Popover modal>
+                <Popover
+                  modal
+                  open={editPaymentDatePickerOpen}
+                  onOpenChange={setEditPaymentDatePickerOpen}
+                >
                   <PopoverTrigger asChild>
                     <Button 
                       variant="outline" 
@@ -883,6 +894,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                       selected={paymentDate} 
                       onSelect={(date) => {
                         setPaymentDate(date);
+                        if (date) setEditPaymentDatePickerOpen(false);
                         if (formSubmitted && validationErrors.date) {
                           setValidationErrors({ ...validationErrors, date: "" });
                         }

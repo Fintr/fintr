@@ -61,6 +61,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
 
   const accountOptions = useAtomValue(accountOptionsAtom);
   const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   // Number input hook for principal amount field
   const principalAmountInput = useNumberInput({
@@ -264,7 +265,10 @@ const LoanForm: React.FC<LoanFormProps> = ({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="loan-date" className="text-sm">Date</Label>
-          <Popover>
+          <Popover
+            open={datePickerOpen}
+            onOpenChange={setDatePickerOpen}
+          >
             <PopoverTrigger asChild>
               <Button
                 variant={"outline"}
@@ -278,7 +282,10 @@ const LoanForm: React.FC<LoanFormProps> = ({
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={setDate}
+                onSelect={(d) => {
+                  setDate?.(d);
+                  if (d) setDatePickerOpen(false);
+                }}
                 initialFocus
               />
             </PopoverContent>

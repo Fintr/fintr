@@ -95,6 +95,7 @@ export function Filters({
     }
     return undefined;
   });
+  const [dateRangePickerOpen, setDateRangePickerOpen] = useState(false);
   
   // Sync dateRange with atoms when they change externally
   useEffect(() => {
@@ -158,6 +159,9 @@ export function Filters({
         to: range.to,
       };
       setDateRange(updatedRange);
+      if (updatedRange.from && updatedRange.to) {
+        setDateRangePickerOpen(false);
+      }
       // Don't update date atoms immediately - wait for Apply Filters button
     } else {
       setDateRange(undefined);
@@ -354,7 +358,10 @@ export function Filters({
             ) : (
               <div className="space-y-2 md:w-auto md:flex-shrink-0">
                 <Label>Date Range</Label>
-                <Popover>
+                <Popover
+                  open={dateRangePickerOpen}
+                  onOpenChange={setDateRangePickerOpen}
+                >
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"

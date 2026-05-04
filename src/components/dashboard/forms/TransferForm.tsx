@@ -223,6 +223,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
   const [showToAccountCreation, setShowToAccountCreation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   
   // Handle field changes
   const handleFieldChange = (field: keyof typeof formState, value: any) => {
@@ -404,7 +405,11 @@ const TransferForm: React.FC<TransferFormProps> = ({
       <div className="flex flex-wrap">
         <div className="space-y-2 w-full md:w-1/2">
           <Label htmlFor="transfer-date" className="text-sm">Date</Label>
-          <Popover modal>
+          <Popover
+            modal
+            open={datePickerOpen}
+            onOpenChange={setDatePickerOpen}
+          >
             <PopoverTrigger asChild>
               <Button
                 type="button"
@@ -419,7 +424,10 @@ const TransferForm: React.FC<TransferFormProps> = ({
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={setDate}
+                onSelect={(d) => {
+                  setDate?.(d);
+                  if (d) setDatePickerOpen(false);
+                }}
                 initialFocus
                 toDate={endOfMonth(new Date())}
                 toYear={new Date().getFullYear()}
