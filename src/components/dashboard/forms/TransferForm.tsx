@@ -71,7 +71,7 @@ interface TransferFormProps {
   onSubmitSuccess?: (data: any) => void;
   onCancel?: () => void;
   // Edit mode props
-  initialData?: UpdateTransferType;
+  initialData?: UpdateTransferType & { draftId?: string };
   isEditMode?: boolean;
   onFileUpdate?: (file: File | null) => void; // New prop for file updates
   onDelete?: () => void; // New prop for delete action
@@ -151,6 +151,9 @@ const TransferForm: React.FC<TransferFormProps> = ({
   
   // Track form submission state
   const [formSubmitted, setFormSubmitted] = useState(false);
+  
+  // Store draftId separately since it's not part of the form values
+  const [draftId, setDraftId] = useState<string | undefined>(initialData?.draftId);
   
   // Initialize formState from initialData
   const prevInitialDataRef = React.useRef<UpdateTransferType | undefined>(initialData);
@@ -312,6 +315,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
           repeatInterval: formState.repeatInterval
         }),
         file: formState.file ?? undefined,
+        ...(draftId && { draftId }),
         ...(conversionSnapshot && {
           exchange_rate: conversionSnapshot.exchangeRate,
           exchange_rate_source: conversionSnapshot.exchangeRateSource,

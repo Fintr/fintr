@@ -101,13 +101,12 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
 
   const handleReceiptSuccess = (suggestedTransactionPayload: any, receiptImage: File, draftId?: string) => {
     const prefilledData = {
-      type: 'expense' as const,
       amount: suggestedTransactionPayload?.amount,
       description: suggestedTransactionPayload?.description,
-      categoryName: suggestedTransactionPayload?.categoryName,
-      accountName: suggestedTransactionPayload?.accountName,
+      categoryName: suggestedTransactionPayload?.categoryName || suggestedTransactionPayload?.category_name,
+      accountName: suggestedTransactionPayload?.accountName || suggestedTransactionPayload?.account_name,
       date: suggestedTransactionPayload?.date,
-      scheduleType: suggestedTransactionPayload?.scheduleType,
+      scheduleType: suggestedTransactionPayload?.scheduleType || suggestedTransactionPayload?.schedule_type,
       receiptImage: receiptImage,
       draftId: draftId,
     };

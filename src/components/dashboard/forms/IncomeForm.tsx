@@ -80,7 +80,7 @@ interface IncomeFormProps {
   onCancel?: () => void;
   formRef?: React.RefObject<HTMLFormElement>;
   // Edit mode props
-  initialData?: UpdateTransactionType;
+  initialData?: UpdateTransactionType & { draftId?: string };
   isEditMode?: boolean;
   onFileUpdate?: (file: File | null) => void; // New prop for file updates
   onDelete?: () => void; // New prop for delete action
@@ -140,6 +140,9 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   
   // Track whether form has been submitted (for validation display)
   const [formSubmitted, setFormSubmitted] = useState(false);
+  
+  // Store draftId separately since it's not part of the form values
+  const [draftId, setDraftId] = useState<string | undefined>(initialData?.draftId);
   
   // Helper function to filter schedule types for income
   const getValidIncomeScheduleType = (scheduleType?: ScheduleTypeEnum): ScheduleTypeEnum.ONE_TIME | ScheduleTypeEnum.REPEAT => {
@@ -456,6 +459,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           repeatInterval: formState.repeatInterval
         }),
         ...(fileState && { file: fileState }),
+        ...(draftId && { draftId }),
         ...(conversionSnapshot && {
           original_currency: conversionSnapshot.originalCurrency,
           exchange_rate: conversionSnapshot.exchangeRate,
