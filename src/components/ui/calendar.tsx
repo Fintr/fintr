@@ -367,20 +367,20 @@ function Calendar({
         ),
         nav_button_previous: "static",
         nav_button_next: "static",
-        table: "w-full border-collapse",
-        head_row: "flex w-full justify-between",
+        table: "w-full border-collapse table-fixed",
+        head_row: "",
         head_cell:
-          "text-muted-foreground flex-1 basis-0 min-w-0 py-1 text-center text-xs font-normal sm:text-[0.8rem]",
-        row: "mt-3 flex w-full sm:mt-2",
+          "text-muted-foreground w-[14.285%] py-1 text-center text-xs font-normal sm:text-[0.8rem]",
+        row: "mt-3 sm:mt-2",
         cell: cn(
-          "relative flex-1 basis-0 p-0 text-center text-sm focus-within:relative focus-within:z-20 min-w-0 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md sm:flex-none sm:basis-auto",
+          "relative w-[14.285%] p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md",
           props.mode === "range"
             ? "[&:has(>.day-range-end)]:rounded-r-md [&:has(>.day-range-start)]:rounded-l-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md"
             : "[&:has([aria-selected])]:rounded-md",
         ),
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "mx-auto flex h-14 min-h-14 w-14 min-w-14 max-w-full items-center justify-center p-0 text-base font-normal aria-selected:opacity-100 sm:size-8 sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0 sm:text-sm",
+          "mx-auto flex h-14 w-full max-w-full items-center justify-center p-0 text-base font-normal aria-selected:opacity-100 sm:size-8 sm:h-8 sm:min-h-0 sm:w-8 sm:text-sm",
         ),
         day_range_start:
           "day-range-start aria-selected:bg-primary aria-selected:text-primary-foreground",
