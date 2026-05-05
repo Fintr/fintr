@@ -367,10 +367,10 @@ function Calendar({
         ),
         nav_button_previous: "static",
         nav_button_next: "static",
-        table: "w-full border-collapse space-x-1 flex flex-col items-center",
-        head_row: "flex w-full",
+        table: "w-full border-collapse",
+        head_row: "flex w-full justify-between",
         head_cell:
-          "text-muted-foreground flex-1 rounded-md py-1 text-center text-xs font-normal sm:w-8 sm:flex-none sm:text-[0.8rem]",
+          "text-muted-foreground flex-1 basis-0 min-w-0 py-1 text-center text-xs font-normal sm:text-[0.8rem]",
         row: "mt-3 flex w-full sm:mt-2",
         cell: cn(
           "relative flex-1 basis-0 p-0 text-center text-sm focus-within:relative focus-within:z-20 min-w-0 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md sm:flex-none sm:basis-auto",
