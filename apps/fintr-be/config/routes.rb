@@ -7,6 +7,12 @@ Rails.application.routes.draw do
   # API routes
   namespace :api do
     namespace :v1 do
+      # E2E test endpoints (development only)
+      namespace :e2e do
+        post "/setup", to: "test_setup#setup"
+        post "/reset", to: "test_setup#reset"
+      end
+
       # Public endpoint for mobile app cache version check (no auth)
       get "/cache_version", to: "cache_version#show"
 

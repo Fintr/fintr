@@ -19,6 +19,16 @@ module Secured
   }.freeze
 
   def authorize
+    # E2E test bypass: allows Playwright tests to authenticate without Auth0
+    # in development environment. This header is injected by Playwright e2e tests.
+    if Rails.env.development? && request.headers["X-E2E-Test-Auth"] == "playwright"
+      test_user_id = request.headers["X-E2E-Test-User-Id"]
+      if test_user_id.present?
+        @current_user = Auth::User.find_by(id: test_user_id)
+        return if @current_user.present?
+      end
+    end
+
     token = token_from_request
 
     return if performed?

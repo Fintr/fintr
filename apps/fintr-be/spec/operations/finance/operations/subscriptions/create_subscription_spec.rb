@@ -11,7 +11,8 @@ RSpec.describe Finance::Operations::Subscriptions::CreateSubscription, :vcr, typ
   let(:valid_params) do
     {
       space_id: space.id.to_s,
-      subscription_plan_id: subscription_plan.id.to_s
+      subscription_plan_id: subscription_plan.id.to_s,
+      user_id: user.id.to_s
     }
   end
 

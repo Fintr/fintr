@@ -10,11 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_23_100000) do
-
+ActiveRecord::Schema[8.1].define(version: 2026_05_06_175645) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
+  enable_extension "timescaledb"
   enable_extension "timescaledb_toolkit"
   enable_extension "vector"
   enable_extension "vectorscale"
@@ -270,7 +270,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_100000) do
     t.uuid "space_subscription_id", null: false
     t.enum "status", default: "pending", null: false, enum_type: "finance_payment_status"
     t.datetime "updated_at", null: false
-    t.string "xendit_cycle_id", null: false
+    t.string "xendit_cycle_id"
     t.jsonb "xendit_data", default: {}, null: false
     t.string "xendit_reference_id", null: false
     t.index ["biling_cycle_id"], name: "index_finance_payments_on_biling_cycle_id"
@@ -682,6 +682,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_100000) do
   add_foreign_key "finance_billing_cycles", "finance_space_subscriptions", column: "space_subscription_id"
   add_foreign_key "finance_payments", "finance_billing_cycles", column: "biling_cycle_id"
   add_foreign_key "finance_payments", "finance_space_subscriptions", column: "space_subscription_id"
+  add_foreign_key "finance_space_subscriptions", "finance_sponsor_codes", column: "sponsor_code_id"
   add_foreign_key "finance_space_subscriptions", "finance_subscription_plans", column: "subscription_plan_id"
   add_foreign_key "finance_space_subscriptions", "spaces"
   add_foreign_key "finance_sponsor_codes", "users", column: "created_by_id"

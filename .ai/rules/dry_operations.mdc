@@ -1,6 +1,6 @@
 ---
 description: 
-globs: 
+globs: apps/fintr-be/**/*
 alwaysApply: true
 ---
 # Operation Pattern Rule

@@ -448,8 +448,7 @@ RSpec.describe Finance::SpaceSubscriptionSerializer do
         :actionUrl,
         :billingCycles,
         :canChangePlan,
-        :subscriptionType,
-        :isSponsorSubscription
+        :subscriptionType
       )
     end
 
@@ -467,9 +466,7 @@ RSpec.describe Finance::SpaceSubscriptionSerializer do
         :action_url,
         :billing_cycles,
         :can_change_plan,
-        :subscription_type,
-        :is_sponsor_subscription,
-        :sponsor_metadata
+        :subscription_type
       )
     end
 
@@ -498,7 +495,6 @@ RSpec.describe Finance::SpaceSubscriptionSerializer do
         :subscriptionPlan,
         :status,
         :subscriptionType,
-        :isSponsorSubscription,
         :startedAt,
         :endedAt,
         :currentCycleCount,
@@ -630,96 +626,7 @@ RSpec.describe Finance::SpaceSubscriptionSerializer do
     end
   end
 
-  describe "isSponsorSubscription field" do
-    context "when subscription type is sponsor" do
-      let(:space_subscription) do
-        create(
-          :space_subscription,
-          space: space,
-          subscription_plan: subscription_plan,
-          subscription_type: "sponsor"
-        )
-      end
-
-      it "returns true" do
-        expect(serialized_hash[:isSponsorSubscription]).to be(true)
-      end
-    end
-
-    context "when subscription type is paid" do
-      let(:space_subscription) do
-        create(
-          :space_subscription,
-          space: space,
-          subscription_plan: subscription_plan,
-          subscription_type: "paid"
-        )
-      end
-
-      it "returns false" do
-        expect(serialized_hash[:isSponsorSubscription]).to be(false)
-      end
-    end
-
-    context "when subscription type is free" do
-      let(:space_subscription) do
-        create(
-          :space_subscription,
-          space: space,
-          subscription_plan: subscription_plan,
-          subscription_type: "free"
-        )
-      end
-
-      it "returns false" do
-        expect(serialized_hash[:isSponsorSubscription]).to be(false)
-      end
-    end
-  end
-
   describe "sponsorMetadata field" do
-    context "when subscription is sponsor with metadata" do
-      let(:space_subscription) do
-        create(
-          :space_subscription,
-          space: space,
-          subscription_plan: subscription_plan,
-          subscription_type: "sponsor",
-          metadata: {
-            "sponsor_code" => "TECH_CORP_2024",
-            "sponsor_notes" => "Jane from TechCorp - YouTube sponsorship",
-            "created_by" => "admin-123"
-          }
-        )
-      end
-
-      it "includes sponsor metadata" do
-        expect(serialized_hash[:sponsorMetadata]).to be_present
-        expect(serialized_hash[:sponsorMetadata][:sponsorCode]).to eq("TECH_CORP_2024")
-        expect(serialized_hash[:sponsorMetadata][:sponsorNotes]).to eq("Jane from TechCorp - YouTube sponsorship")
-        expect(serialized_hash[:sponsorMetadata][:createdBy]).to eq("admin-123")
-      end
-    end
-
-    context "when subscription is sponsor without metadata" do
-      let(:space_subscription) do
-        create(
-          :space_subscription,
-          space: space,
-          subscription_plan: subscription_plan,
-          subscription_type: "sponsor",
-          metadata: {}
-        )
-      end
-
-      it "returns sponsor metadata with nil values" do
-        expect(serialized_hash[:sponsorMetadata]).to be_present
-        expect(serialized_hash[:sponsorMetadata][:sponsorCode]).to be_nil
-        expect(serialized_hash[:sponsorMetadata][:sponsorNotes]).to be_nil
-        expect(serialized_hash[:sponsorMetadata][:createdBy]).to be_nil
-      end
-    end
-
     context "when subscription is not sponsor" do
       let(:space_subscription) do
         create(
@@ -733,48 +640,6 @@ RSpec.describe Finance::SpaceSubscriptionSerializer do
 
       it "returns nil for sponsor metadata" do
         expect(serialized_hash[:sponsorMetadata]).to be_nil
-      end
-    end
-  end
-
-  describe "field name transformations for new fields" do
-    context "when subscription is sponsor" do
-      let(:space_subscription) do
-        create(
-          :space_subscription,
-          space: space,
-          subscription_plan: subscription_plan,
-          subscription_type: "sponsor",
-          metadata: {
-            "sponsor_code" => "CODE123",
-            "sponsor_notes" => "Notes",
-            "created_by" => "admin-123"
-          }
-        )
-      end
-
-      it "uses camelCase for sponsor-related fields" do
-        expect(serialized_hash.keys).to include(
-          :subscriptionType,
-          :isSponsorSubscription,
-          :sponsorMetadata
-        )
-        expect(serialized_hash.keys).not_to include(
-          :subscription_type,
-          :is_sponsor_subscription,
-          :sponsor_metadata
-        )
-      end
-
-      it "uses camelCase for sponsorMetadata sub-fields" do
-        metadata = serialized_hash[:sponsorMetadata]
-        expect(metadata).to be_present
-        expect(metadata).to have_key(:sponsorCode)
-        expect(metadata).to have_key(:sponsorNotes)
-        expect(metadata).to have_key(:createdBy)
-        expect(metadata).not_to have_key(:sponsor_code)
-        expect(metadata).not_to have_key(:sponsor_notes)
-        expect(metadata).not_to have_key(:created_by)
       end
     end
   end

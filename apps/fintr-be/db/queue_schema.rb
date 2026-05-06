@@ -12,6 +12,7 @@
 
 ActiveRecord::Schema[8.1].define(version: 2025_10_10_040000) do
 
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "timescaledb"

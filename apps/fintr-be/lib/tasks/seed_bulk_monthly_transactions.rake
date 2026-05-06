@@ -81,7 +81,7 @@ namespace :transactions do
             category_name:,
             schedule_type: "one_time",
             description: "Bulk seed #{tx_date.iso8601} ##{i + 1}",
-            skip_embedding: true,
+            skip_embedding: true
           }
 
           outcome = op.call(params)

@@ -90,13 +90,13 @@ module Admin
 
         total_tokens = if active_user_ids.empty?
                          0
-                       else
+        else
                          Ai::Usage.where(
                            user_id: active_user_ids,
                            ai_type: :pure_ai_ocr,
                            created_at: time_range
                          ).sum(:tokens_used)
-                       end
+        end
 
         count = active_user_ids.size
         avg = count.positive? ? (total_tokens.to_f / count).round(2) : 0.0

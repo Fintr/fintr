@@ -29,6 +29,9 @@ export default defineConfig({
     /* Base URL to use in actions like `await page.goto('/')` */
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:5173",
 
+    /* Backend API URL for e2e tests that hit the real backend */
+    /* Set E2E_BE_URL env var if backend runs on a different port/host */
+
     /* Collect trace when retrying the failed test */
     trace: "on-first-retry",
 

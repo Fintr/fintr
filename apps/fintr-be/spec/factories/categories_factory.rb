@@ -3,7 +3,7 @@
 FactoryBot.define do
   factory :category, class: "Transactions::Category" do
     association :space
-    name { "Category" }
+    sequence(:name) { |n| "Category #{n}" }
     category_type { "income" }
   end
 end

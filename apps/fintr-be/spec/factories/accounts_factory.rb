@@ -2,7 +2,7 @@
 
 FactoryBot.define do
   factory :account, class: "Transactions::Account" do
-    sequence(:name) { |n| "Test Account #{n}" }
+    sequence(:name) { |n| "Account #{n}" }
     association :space
     balance_cents { 10000 }
     balance_currency { "PHP" }

@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
-require "oj" # you can skip this if OJ has already been required.
+require "oj"
+
+unless Rails.env.production?
+  Oj::Rails.mimic_JSON
+end
 
 Blueprinter.configure do |config|
-  config.generator = Oj # default is JSON
+  config.generator = Oj
 end
