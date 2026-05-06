@@ -1,0 +1,67 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.xendit.co/customers
+    body:
+      encoding: UTF-8
+      string: '{"individual_detail":{"given_names":"John","surname":"Doe"},"reference_id":"cust-b6951e95-964b-4eea-a402-66f060b87e23","email":"invalid-email","type":"INDIVIDUAL","metadata":{}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.xendit.co
+      Authorization:
+      - "<XENDIT_API_KEY>"
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 400
+      message: Bad Request
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '503'
+      Rate-Limit-Limit:
+      - '60'
+      Rate-Limit-Reset:
+      - '60'
+      Etag:
+      - W/"1f7-dqyMHCoTnMW2SzRaUbXWmxkUoqw"
+      Rate-Limit-Remaining:
+      - '59'
+      Request-Id:
+      - 693265c0000000002f281e6eaa404721
+      Content-Type:
+      - application/json; charset=utf-8
+      Accept-Ranges:
+      - bytes
+      Date:
+      - Fri, 05 Dec 2025 04:55:28 GMT
+      Via:
+      - 1.1 varnish
+      X-Served-By:
+      - cache-mnl9723-MNL, cache-mnl9730-MNL
+      X-Cache:
+      - MISS, MISS
+      X-Cache-Hits:
+      - 0, 0
+      X-Timer:
+      - S1764910528.116220,VS0,VE116
+      Vary:
+      - Origin
+      Strict-Transport-Security:
+      - max-age=300
+    body:
+      encoding: UTF-8
+      string: '{"error_code":"API_VALIDATION_ERROR","message":"There was an error
+        with the format submitted to the server.","errors":[{"message":"\"body.email\"
+        with value \"invalid-email\" fails to match the required pattern: /^[-a-z0-9~!$%^&*_=+}{\\''?]+[-a-z0-9~!$%^&*_=+}{\\''?.]*@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$/i","path":["body","email"],"type":"string.pattern.base","context":{"regex":{},"value":"invalid-email","label":"body.email","key":"email"}}]}'
+  recorded_at: Fri, 05 Dec 2025 04:55:28 GMT
+recorded_with: VCR 6.2.0

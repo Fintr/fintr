@@ -1,0 +1,18 @@
+---
+description: 
+globs: spec/requests/**/*_spec.rb
+alwaysApply: false
+---
+# Request Specs
+
+# Location of request specs
+Request specs came from controllers. So unlike other files, these one doesn't really follow structure. When we have a file with the Location `app/controllers/api/v1/budgets_controller.rb`, its specs should be located at `spec/requests/api/v1/budgets_spec.rb`. Notice that it removes the `_controller` suffix. So that's how we deal with the request specs.
+
+# Take note of the authorization
+In all our request specs, we should require authorization. In order to do that, you should add these in your `let` definitions. Adding these to your specs will allow the user to login and have the needed headers for the request.
+
+```
+  let!(:auth) { setup_authentication(user:, space:) }
+  let(:headers) { auth[:headers] }
+```
+

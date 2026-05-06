@@ -1,0 +1,371 @@
+---
+alwaysApply: true
+---
+
+# Don't Repeat Yourself (DRY) Principle
+
+**Goal:** Eliminate code duplication at every opportunity. Look for patterns, repeated logic, and similar implementations that can be extracted, abstracted, or consolidated.
+
+## Core Principle
+
+Every piece of knowledge should have a single, unambiguous representation within the codebase. If you find yourself writing the same or similar code in multiple places, extract it.
+
+## When to Extract Code
+
+### 1. Repeated Logic
+- **Extract to private methods** when the same logic appears in multiple places within a class
+- **Extract to operations** when the same logic appears across multiple classes and involves business logic
+- **Extract to model methods** when the logic is closely tied to the model's data or behavior (see "When to Put Logic in Models" below)
+- **Extract to utility classes** when the logic is domain-agnostic and reusable
+
+```ruby
+# Bad - Repeated validation logic
+def create_transaction
+  return Failure("Amount must be positive") if params[:amount] <= 0
+  return Failure("Amount must be positive") if params[:amount].nil?
+  # ...
+end
+
+def update_transaction
+  return Failure("Amount must be positive") if params[:amount] <= 0
+  return Failure("Amount must be positive") if params[:amount].nil?
+  # ...
+end
+
+# Good - Extracted to method
+def validate_positive_amount(amount:)
+  return Failure("Amount must be positive") if amount.nil? || amount <= 0
+  Success(amount)
+end
+```
+
+### 2. Repeated Queries
+- **Extract to query objects** in `app/queries/` when the same query appears in multiple operations
+- **Use scopes** on models for commonly used query patterns
+- **Create reusable query methods** when queries are similar but differ slightly
+
+```ruby
+# Bad - Repeated query
+def step1(params:)
+  transactions = Transaction.where(space_id: params[:space_id])
+                            .where(created_at: params[:date_range])
+                            .order(created_at: :desc)
+end
+
+def step2(params:)
+  transactions = Transaction.where(space_id: params[:space_id])
+                            .where(created_at: params[:date_range])
+                            .order(created_at: :desc)
+end
+
+# Good - Extracted to query object or scope
+# In app/queries/transactions/queries/by_space_and_date_range.rb
+module Transactions
+  module Queries
+    class BySpaceAndDateRange
+      def self.call(space_id:, date_range:)
+        Transaction.where(space_id:)
+                  .where(created_at: date_range)
+                  .order(created_at: :desc)
+      end
+    end
+  end
+end
+```
+
+### 3. Repeated Validation Logic
+- **Reuse contracts from other operations** when multiple operations validate the same parameters (use sparingly, only when the contracts are truly shared)
+- **Keep separate contracts** when operations have different validation needs, even if some parameters overlap
+- **Put validations in models** when they enforce data integrity rules that belong to the model itself
+
+```ruby
+# Bad - Repeated validation
+class CreateTransaction < Dry::Operation
+  class Contract < Dry::Validation::Contract
+    params do
+      required(:amount).filled(:decimal, gt?: 0)
+      required(:space_id).filled(:integer)
+      required(:category_name).filled(:string)
+    end
+  end
+end
+
+class UpdateTransaction < Dry::Operation
+  class Contract < Dry::Validation::Contract
+    params do
+      required(:amount).filled(:decimal, gt?: 0)
+      required(:space_id).filled(:integer)
+      required(:category_name).filled(:string)
+    end
+  end
+end
+
+# Good - Reuse contract from another operation (use sparingly)
+module Transactions
+  module Operations
+    class UpdateTransaction < Dry::Operation
+      class Contract < Dry::Validation::Contract
+        params do
+          required(:id).value(:string)
+          optional(:update_scope).value(:string)
+        end
+      end
+
+      def validate(params:)
+        contract_id = Contract.new.call(**params)
+        return Failure(contract_id.errors.to_h) if contract_id.failure?
+
+        # Reuse the contract from CreateTransaction for shared validations
+        contract_other_params = CreateTransaction::Contract.new.call(**params)
+        return Failure(contract_other_params.errors.to_h) if contract_other_params.failure?
+
+        Success(contract_id.to_h.merge(contract_other_params.to_h))
+      end
+    end
+  end
+end
+
+# Also acceptable - Keep contracts separate if they differ significantly
+# It's better to have some duplication than force shared contracts that don't fit well
+```
+
+### 4. Repeated Operation Steps
+- **Extract common steps to separate operations** when multiple operations share the same step
+- **Call operations from other operations** using `step` to compose them
+- **Reuse contracts from other operations** by referencing their `Contract` class
+- **Use composition** to combine smaller operations into larger ones
+
+```ruby
+# Bad - Repeated step logic
+class CreateTransaction
+  def find_space(params:)
+    space = Spaces::Space.find_by(id: params[:space_id])
+    return Failure(space_id: "not found") unless space
+    Success(space)
+  end
+end
+
+class UpdateTransaction
+  def find_space(params:)
+    space = Spaces::Space.find_by(id: params[:space_id])
+    return Failure(space_id: "not found") unless space
+    Success(space)
+  end
+end
+
+# Good - Extract to separate operation
+module Spaces
+  module Operations
+    class FindSpace < Dry::Operation
+      def call(params)
+        space = Spaces::Space.find_by(id: params[:space_id])
+        return Failure(space_id: "not found") unless space
+        Success(space)
+      end
+    end
+  end
+end
+
+# Then use it in other operations by calling the operation directly
+module Transactions
+  module Operations
+    class CreateTransaction < Dry::Operation
+      def call(params)
+        space = step Spaces::Operations::FindSpace.new.call(space_id: params[:space_id])
+        # ... rest of the operation
+      end
+    end
+  end
+end
+
+# Or extract the step logic to a private method that calls the operation
+module Transactions
+  module Operations
+    class CreateTransaction < Dry::Operation
+      def call(params)
+        space = step find_space(params:)
+        # ... rest of the operation
+      end
+
+      private
+
+      def find_space(params:)
+        Spaces::Operations::FindSpace.new.call(space_id: params[:space_id])
+      end
+    end
+  end
+end
+```
+
+### 5. Repeated Serialization Patterns
+- **Reuse existing serializers** instead of creating new ones for similar data
+- **Use serializer inheritance** or composition when serializers share fields
+- **Extract common serialization logic** to base serializers
+
+```ruby
+# Bad - Duplicate serializer fields
+class TransactionSerializer < Blueprinter::Base
+  field :id
+  field :amount
+  field :created_at
+end
+
+class LoanTransactionSerializer < Blueprinter::Base
+  field :id
+  field :amount
+  field :created_at
+end
+
+# Good - Shared base or inheritance
+class TransactionSerializer < Blueprinter::Base
+  field :id
+  field :amount
+  field :created_at
+end
+
+class LoanTransactionSerializer < TransactionSerializer
+  # Only add loan-specific fields
+end
+```
+
+### 6. Repeated Error Handling
+- **Use shared error handling** from base operation classes
+- **Extract error messages** to constants or I18n
+- **Create reusable error handling methods** in base operations
+- **Call operations** that handle error cases instead of duplicating error logic
+
+```ruby
+# Bad - Repeated error messages
+def step1(params:)
+  transaction = Transaction.find_by(id: params[:transaction_id])
+  return Failure(transaction_id: "not found") unless transaction
+end
+
+def step2(params:)
+  transaction = Transaction.find_by(id: params[:transaction_id])
+  return Failure(transaction_id: "not found") unless transaction
+end
+
+# Good - Extract to operation or base class
+module Transactions
+  module Operations
+    class FindTransaction < Dry::Operation
+      def call(params)
+        transaction = Transaction.find_by(id: params[:transaction_id])
+        return Failure(transaction_id: "not found") unless transaction
+        Success(transaction)
+      end
+    end
+
+    class Base < Dry::Operation
+      private
+
+      def transaction_not_found_error
+        Failure(transaction_id: "not found")
+      end
+    end
+  end
+end
+```
+
+### 7. Repeated Database Operations
+- **Extract to model methods** when the same database operations appear in multiple places and are closely tied to the model
+- **Use scopes** on models for commonly used query patterns
+- **Extract to operations** when database operations involve business logic or multiple steps
+- **Use ActiveRecord callbacks** only for data integrity and simple transformations, not business logic
+
+## Guidelines for DRY Implementation
+
+1. **Always Look for Patterns**: Before writing new code, search for similar existing code that can be reused or extended
+
+2. **Extract Early**: If you find yourself copying code, extract it immediately rather than waiting for it to appear in a third place
+
+3. **Use Appropriate Abstractions**:
+   - **Methods** for logic within a single class
+   - **Operations** for business logic shared across multiple classes
+   - **Model methods/scopes** for data access patterns and simple computed attributes
+   - **Query objects** for complex, reusable queries
+   - **Utility classes** for domain-agnostic helpers
+   - **Base operation classes** for shared behavior in operation hierarchies
+
+4. **Balance with Readability**: While DRY is important, don't over-abstract. Code should remain readable and understandable. If extracting code makes it harder to understand, consider keeping it explicit.
+
+5. **Search Before Writing**: Always search the codebase (`codebase_search`, `grep`) to find existing solutions before implementing new ones
+
+6. **Refactor Existing Code**: When adding new features, look for opportunities to refactor existing similar code to be more DRY
+
+7. **Use Existing Patterns**: Leverage the existing patterns in the codebase (operations, queries, serializers) rather than creating new ad-hoc solutions
+
+8. **Compose Operations**: Operations can call other operations using `step` to reuse functionality. Extract repeated step logic into separate operations that can be composed.
+
+## Anti-Patterns to Avoid
+
+- **Copy-paste programming**: Don't copy entire methods/classes and modify them
+- **Magic numbers/strings**: Extract constants for repeated values
+- **Repeated calculations**: Extract to methods or constants
+- **Duplicate test setup**: Use factories, fixtures, or shared examples
+- **Repeated validations**: Share validation logic through contracts by reusing Contract classes from other operations (use sparingly)
+
+## Checklist When Writing Code
+
+- [ ] Have I searched for existing code that does something similar?
+- [ ] Am I repeating any logic from elsewhere in this class?
+- [ ] Am I repeating any logic from other classes?
+- [ ] Can this validation/query/operation be shared?
+- [ ] Can I reuse an existing serializer/query/operation?
+- [ ] Are there any constants or shared methods I should use?
+- [ ] Is there a pattern here that should be extracted?
+- [ ] Should this logic be in the model or in an operation?
+
+## When to Put Logic in Models vs Operations
+
+### Put Logic in Models When:
+1. **Data integrity validations**: Validations that enforce constraints on the model's data (presence, uniqueness, format, etc.)
+2. **Scopes**: Common query patterns that belong to the model's data access interface
+3. **Simple computed attributes**: Methods that return computed values based on the model's own attributes (e.g., `def value; amount; end`)
+4. **Associations**: ActiveRecord associations (`belongs_to`, `has_many`, etc.)
+5. **Simple data transformations**: Methods that transform or format the model's own data for display
+
+### Put Logic in Operations When:
+1. **Business logic**: Any logic that involves workflow, validation beyond data integrity, or orchestration
+2. **Cross-model interactions**: Logic that involves multiple models or external services
+3. **Complex validations**: Validations that depend on other records, external state, or business rules
+4. **Transaction management**: Operations that need database transactions
+5. **Error handling with context**: When errors need to be contextual and provide specific failure information
+6. **Composable workflows**: Logic that needs to be reused across multiple operations
+
+### Example: Model vs Operation
+
+```ruby
+# Model - Data integrity and simple access
+module Transactions
+  class Transaction < ApplicationRecord
+    validates :amount_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
+    validates :date, presence: true
+    
+    scope :calculated, -> { where(balance_state: :calculated) }
+    scope :ordered, ->(direction: :asc) { order(date: direction, created_at: :desc) }
+    
+    def value
+      amount
+    end
+  end
+end
+
+# Operation - Business logic
+module Transactions
+  module Operations
+    class CalculateBalance < Dry::Operation
+      def call(params)
+        transaction = step find_transaction(params:)
+        account = step find_account(params:)
+        _ = step validate_account_balance(transaction:, account:)
+        _ = step update_balances(transaction:, account:)
+        transaction.reload
+      end
+      
+      # ... implementation
+    end
+  end
+end
+```

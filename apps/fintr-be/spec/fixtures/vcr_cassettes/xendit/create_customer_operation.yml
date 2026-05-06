@@ -1,0 +1,61 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.xendit.co/customers
+    body:
+      encoding: UTF-8
+      string: '{"individual_detail":{"given_names":"John","surname":"Doe"},"reference_id":"cust-b6951e95-964b-4eea-a402-66f060b87e23","email":"test@example.com","type":"INDIVIDUAL","metadata":{}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.xendit.co
+      Authorization:
+      - "<XENDIT_API_KEY>"
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 24 Nov 2025 06:25:07 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Etag:
+      - W/"2a6-OpXmWVwzc2z71OMNUVjR9SJ/2Hk"
+      Rate-Limit-Limit:
+      - '60'
+      Rate-Limit-Remaining:
+      - '59'
+      Rate-Limit-Reset:
+      - '60'
+      Request-Id:
+      - 6923fa43000000002d006d5e4d7073ef
+      Vary:
+      - Origin
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - __cf_bm=IDNC4Yc4XTPEXhLSAdu.JF_jjtKKln00iH1deIjze6Y-1763965507.5694442-1.0.1.1-VmdYjLCkwaBGO7DOXl5cahTFbryvgHSUnX70w9i_LOkv0.uimZSLuzYknWRk5M9z9FIjv_xHUxozeEg71eG4x1xoE9cBYz7fo6y4_LLCWaLRjpB3Ma1D5aphnB8CjfPU;
+        HttpOnly; Secure; Path=/; Domain=xendit.co; Expires=Mon, 24 Nov 2025 06:55:07
+        GMT
+      Cf-Ray:
+      - 9a36d3c64d27cb79-HKG
+    body:
+      encoding: ASCII-8BIT
+      string: '{"type":"INDIVIDUAL","date_of_registration":null,"email":"test@example.com","mobile_number":null,"phone_number":null,"created":"2025-11-24T06:25:07.640Z","updated":"2025-11-24T06:25:07.640Z","description":null,"hashed_phone_number":null,"domicile_of_registration":null,"kyc_documents":[],"id":"cust-1a07199b-7691-4b3b-9112-dd10a5bed2db","reference_id":"cust-b6951e95-964b-4eea-a402-66f060b87e23","metadata":{},"individual_detail":{"given_names":"John","given_names_non_roman":null,"surname":"Doe","surname_non_roman":null,"nationality":null,"date_of_birth":null,"place_of_birth":null,"gender":null,"employment":null},"business_detail":null,"addresses":[],"identity_accounts":[]}'
+  recorded_at: Mon, 24 Nov 2025 06:25:07 GMT
+recorded_with: VCR 6.2.0

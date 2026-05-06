@@ -1,0 +1,10 @@
+---
+description: 
+globs: spec/**/*_spec.rb,.cursor/playbooks/create_specs.md
+alwaysApply: false
+---
+# General rules
+- As much as possible, use 1 `it` block per expectation. We want to ensure that we are only testing a certain change. It will also make it more understandable for the user to deal with only 1 expectation per it block.
+- Do not use `allow_any_instance_of`. While using this will help us get more spec successes. Please avoid this. It's very important, we let the user understand the specs they're reading. When using this, it becomes difficult to understand the scenarios being tested.
+- When using mocks or stubs, it's only because we're calling other models, operations, queries, and etc. We should make sure that we only test the code that is being shown in the corresponding files.
+

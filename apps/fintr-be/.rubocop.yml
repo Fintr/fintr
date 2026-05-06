@@ -1,0 +1,81 @@
+# Omakase Ruby styling for Rails
+inherit_gem: { rubocop-rails-omakase: rubocop.yml }
+
+plugins:
+  - rubocop-rspec
+  - rubocop-performance
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+
+Rails/TimeZone:
+  Enabled: true
+  EnforcedStyle: strict
+
+Layout/ArrayAlignment:
+  Enabled: true
+
+Layout/HashAlignment:
+  Enabled: true
+
+RSpec/NestedGroups:
+  Enabled: false
+
+RSpec/ExampleLength:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Enabled: false
+
+RSpec/LetSetup:
+  Enabled: false
+
+RSpec/ChangeByZero:
+  Enabled: false
+
+RSpec/MultipleMemoizedHelpers:
+  Enabled: false
+
+RSpec/AnyInstance:
+  Enabled: false
+
+Style/HashSyntax:
+  Enabled: false
+
+RSpec/ReceiveMessages:
+  Enabled: false
+
+RSpec/RepeatedSubjectCall:
+  Enabled: false
+
+RSpec/IndexedLet:
+  Enabled: false
+
+RSpec/MessageSpies:
+  Enabled: false
+
+RSpec/NamedSubject:
+  Enabled: true
+  Exclude:
+    - spec/operations/insights/operations/create_summary_structure_spec.rb
+    - spec/operations/insights/operations/create_weekly_spending_spec.rb
+    - spec/operations/insights/operations/create_insights_data_spec.rb
+
+RSpec/StubbedMock:
+  Enabled: true
+  Exclude:
+    - spec/operations/insights/operations/create_insights_data_spec.rb
+    - spec/operations/insights/operations/create_summary_structure_spec.rb
+    - spec/operations/insights/operations/create_weekly_spending_spec.rb
+    - spec/operations/transactions/operations/transfers/delete_all_in_series_transfers_spec.rb
+    - spec/operations/transactions/operations/transfers/update_this_and_future_transfers_spec.rb
+    - spec/operations/transactions/operations/delete_transaction_spec.rb
+
+RSpec/MessageChain:
+  Enabled: true
+  Exclude:
+    - spec/operations/budgets/operations/update_budget_spec.rb
+
+Layout/SpaceInsideArrayLiteralBrackets:
+  Enabled: true
+  EnforcedStyle: no_space

@@ -1,0 +1,154 @@
+<% require "dotenv"; Dotenv.load(".env.production", overwrite: true) %>
+# Name of your application. Used to uniquely configure containers.
+service: fintr-be
+
+# Name of the container image.
+image: adminfintr/fintr-be
+
+# Deploy to these servers.
+servers:
+  web:
+    hosts:
+      - api.fintr.ai
+    options:
+      network: 'private'
+  job:
+    hosts:
+      - api.fintr.ai
+    cmd: bin/jobs
+    options:
+      network: 'private'
+
+# Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
+# Remove this section when using multiple web servers and ensure you terminate SSL at your load balancer.
+#
+# Note: If using Cloudflare, set encryption mode in SSL/TLS setting to "Full" to enable CF-to-app encryption.
+proxy:
+  ssl: true
+  host: api.fintr.ai
+  app_port: 3000 # The port your application container listens on (default: 80)
+  healthcheck:
+    path: /up # The path for the health check endpoint in your app (default: /up)
+    interval: 1 # How often to check (default: 1s)
+    timeout: 15 # Timeout for the health check request (default: 5s)
+  response_timeout: 30
+  # Other options like buffering, logging, response_timeout, etc.
+
+# Credentials for your image host.
+registry:
+  # Specify the registry server, if you're not using Docker Hub
+  # server: registry.digitalocean.com / ghcr.io / ...
+  username: 
+    - KAMAL_REGISTRY_USERNAME
+
+  # Always use an access token rather than real password (pulled from .kamal/secrets).
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# Configure builder setup.
+builder:
+  arch: amd64
+  # Avoid BuildKit provenance/attestation uploads; Docker Hub can return 400 on blob PUT for those.
+  provenance: false
+  args:
+    RUBY_VERSION: "<%= Pathname.pwd.join('.ruby-version').read.strip.delete_prefix('ruby-').delete_prefix('ruby ') %>"
+    BUNDLER_VERSION: 2.6.2
+    RAILS_MASTER_KEY:
+      - RAILS_MASTER_KEY
+
+  # Pass in additional build args needed for your Dockerfile.
+  # args:
+  #   RUBY_VERSION: <%= ENV["RBENV_VERSION"] || ENV["rvm_ruby_string"] || "#{RUBY_ENGINE}-#{RUBY_ENGINE_VERSION}" %>
+
+# Inject ENV variables into containers (secrets come from .kamal/secrets).
+env:
+  clear:
+    DATABASE_HOST: fintr-be-postgres
+    DATABASE_USER: fintr_rails
+    DATABASE_NAME: fintr_production
+  secret:
+    - RAILS_MASTER_KEY
+    - AUTH0_URL
+    - AUTH0_AUDIENCE
+    - CLIENT_URL
+    - CORS_ORIGINS
+    - RACK_ENV
+    - RAILS_ENV
+    - PORT
+    - USER_AUTH0_ID
+    - DATABASE_PASSWORD
+    - DB_BASE_URL
+    - SENTRY_DSN
+    - OPENAI_API_KEY
+    - OPENROUTER_API_KEY
+    - AI_VISION_PROVIDER
+    - AI_VISION_MODEL
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - M2M_AUTH0_CLIENT_ID
+    - M2M_AUTH0_CLIENT_SECRET
+    - M2M_AUTH0_DOMAIN
+    - AUTH0_CLIENT_ID
+    - AUTH0_CLIENT_SECRET
+    - NEXT_PUBLIC_APP_BASE_URL
+    - AUTH0_DOMAIN
+    - XENDIT_API_KEY
+    - XENDIT_WEBHOOK_TOKEN
+    - BREVO_API_KEY
+
+# Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
+# "bin/kamal app logs -r job" will tail logs from the first server in the job section.
+#
+# aliases:
+#   shell: app exec --interactive --reuse "bash"
+
+# Use a different ssh user than root
+#
+ssh:
+  user: ec2-user
+
+# Use a persistent storage volume.
+#
+# volumes:
+#   - "app_storage:/app/storage"
+
+# Bridge fingerprinted assets, like JS and CSS, between versions to avoid
+# hitting 404 on in-flight requests. Combines all files from new and old
+# version inside the asset_path.
+#
+# asset_path: /app/public/assets
+
+# Configure rolling deploys by setting a wait time between batches of restarts.
+#
+# boot:
+#   limit: 10 # Can also specify as a percentage of total hosts, such as "25%"
+#   wait: 2
+
+# Use accessory services (secrets come from .kamal/secrets).
+accessories:
+  postgres:
+    image: timescale/timescaledb-ha:pg17
+    host: api.fintr.ai
+    env:
+      clear:
+        POSTGRES_DB: fintr_production
+        POSTGRES_USER: fintr_admin
+        POSTGRES_PASSWORD: <%= ENV['DATABASE_PASSWORD'] %>
+        POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      secret:
+        - DATABASE_PASSWORD
+    files:
+      - config/postgresql.conf:/etc/postgresql/postgresql.conf
+      - config/init-pgvectorscale.sh:/docker-entrypoint-initdb.d/init-pgvectorscale.sh
+    directories:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_logs:/var/log/postgresql
+    options:
+      memory: 1g
+      cpus: 1.0
+      network: 'private'
+# Rails can take 60–90s+ to boot on constrained hosts; health check must pass within this window.
+deploy_timeout: 120
+boot:
+  limit: 1     # Deploy one container at a time
+  wait: 10  

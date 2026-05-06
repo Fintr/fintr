@@ -1,0 +1,156 @@
+# Database configuration for all environments
+#
+# Connection Pool Sizing:
+# - Each Puma worker process has its own connection pool
+# - Pool size should be: RAILS_MAX_THREADS + 2 (for background jobs, migrations, etc.)
+# - With multiple workers (WEB_CONCURRENCY), total connections = pool_size * WEB_CONCURRENCY
+# - Each database (primary, cache, queue, cable) needs its own pool
+# - Example: 2 workers, 5 threads each = 2 * (5+2) = 14 connections per database
+# - Total: 14 * 4 databases = 56 connections minimum
+# - PostgreSQL max_connections should be set to accommodate this
+
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  # Pool size = threads + 2 (for background jobs, console, migrations)
+  # This ensures we have enough connections even when background jobs run
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i + 2 %>
+
+development:
+  primary: &primary_development
+    <<: *default
+    database: fintr_development
+    host: localhost
+    port: 5433  # Different port to avoid conflict with local PostgreSQL
+    username: fintr_rails
+    password: <%= ENV['DATABASE_PASSWORD'] || 'postgres' %>
+    # Basic settings for local development with TimescaleDB
+    variables:
+      work_mem: '4MB'
+      maintenance_work_mem: '64MB'
+      effective_cache_size: '1GB'
+    # Connection pooling - RAILS_MAX_THREADS + 2 for overhead
+    # Each cache/queue/cable connection also uses this pool
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i + 2 %>
+    timeout: 5000
+    checkout_timeout: 5
+  cache:
+    <<: *primary_development
+    database: fintr_development_cache
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_development_cache" %>
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *primary_development
+    database: fintr_development_queue
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_development_queue" %>
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *primary_development
+    database: fintr_development_cable
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD'] || 'postgres'}@localhost:5433/fintr_development_cable" %>
+    migrations_paths: db/cable_migrate
+
+test:
+  primary: &primary_test
+    <<: *default
+    database: fintr_test
+    host: localhost
+    port: 5433
+    username: <%= ENV['DATABASE_USER'] || 'postgres' %>
+    password: <%= ENV['DATABASE_PASSWORD'] || 'postgres' %>
+    # Basic settings for local development with TimescaleDB
+    variables:
+      work_mem: '4MB'
+      maintenance_work_mem: '64MB'
+      effective_cache_size: '1GB'
+    pool: 10
+    timeout: 5000
+
+staging:
+  primary: &primary_staging
+    <<: *default
+    database: fintr_staging
+    host: <%= ENV['DATABASE_HOST'] || 'staging-api.fintr.ai' %>
+    port: 5432
+    username: fintr_rails
+    password: <%= ENV['DATABASE_PASSWORD'] %>
+    # pgvectorscale specific settings
+    variables:
+      work_mem: '256MB'
+      maintenance_work_mem: '1GB'
+      effective_cache_size: '4GB'
+    # Connection pooling - RAILS_MAX_THREADS + 2 for overhead
+    # Each cache/queue/cable connection also uses this pool
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i + 2 %>
+    timeout: 5000
+    checkout_timeout: 5
+  cache:
+    <<: *primary_staging
+    database: fintr_staging_cache
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_cache" %>
+    migrations_paths: db/cache_migrate
+    # Cache database needs fewer connections
+    pool: <%= ENV.fetch("CACHE_POOL_SIZE") { 2 } %>
+    timeout: 5000
+  queue:
+    <<: *primary_staging
+    database: fintr_staging_queue
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_queue" %>
+    migrations_paths: db/queue_migrate
+    # Queue database pool must be >= total threads across all workers (3 + 2 = 5)
+    pool: <%= ENV.fetch("QUEUE_POOL_SIZE") { 6 } %>
+    timeout: 5000
+  cable:
+    <<: *primary_staging
+    database: fintr_staging_cable
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'staging-api.fintr.ai'}:5432/fintr_staging_cable" %>
+    migrations_paths: db/cable_migrate
+    # Cable database needs fewer connections
+    pool: <%= ENV.fetch("CABLE_POOL_SIZE") { 2 } %>
+    timeout: 5000
+
+production:
+  primary: &primary_production
+    <<: *default
+    database: fintr_production
+    host: <%= ENV['DATABASE_HOST'] || 'api.fintr.ai' %>
+    port: 5432
+    username: fintr_rails
+    password: <%= ENV['DATABASE_PASSWORD'] %>
+    # pgvectorscale specific settings
+    variables:
+      work_mem: '256MB'
+      maintenance_work_mem: '1GB'
+      effective_cache_size: '4GB'
+    # Connection pooling - RAILS_MAX_THREADS + 2 for overhead
+    # Each cache/queue/cable connection also uses this pool
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i + 2 %>
+    timeout: 5000
+    # Connection checkout timeout - how long to wait for a connection
+    checkout_timeout: 5
+  cache:
+    <<: *primary_production
+    database: fintr_production_cache
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'api.fintr.ai'}:5432/fintr_production_cache" %>
+    migrations_paths: db/cache_migrate
+    # Cache database needs fewer connections
+    pool: <%= ENV.fetch("CACHE_POOL_SIZE") { 2 } %>
+    timeout: 5000
+  queue:
+    <<: *primary_production
+    database: fintr_production_queue
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'api.fintr.ai'}:5432/fintr_production_queue" %>
+    migrations_paths: db/queue_migrate
+    # Queue database pool must be >= total threads across all workers (3 + 2 = 5)
+    pool: <%= ENV.fetch("QUEUE_POOL_SIZE") { 6 } %>
+    timeout: 5000
+  cable:
+    <<: *primary_production
+    database: fintr_production_cable
+    url: <%= "postgresql://fintr_rails:#{ENV['DATABASE_PASSWORD']}@#{ENV['DATABASE_HOST'] || 'api.fintr.ai'}:5432/fintr_production_cable" %>
+    migrations_paths: db/cable_migrate
+    # Cable database needs fewer connections
+    pool: <%= ENV.fetch("CABLE_POOL_SIZE") { 2 } %>
+    timeout: 5000
+
+

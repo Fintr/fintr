@@ -1,0 +1,54 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.xendit.co/linked_accounts/auth
+    body:
+      encoding: UTF-8
+      string: '{"customer_id":"invalid","type":"DEBIT_CARD","metadata":{}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.xendit.co
+      Authorization:
+      - "<XENDIT_API_KEY>"
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 404
+      message: Not Found
+    headers:
+      Date:
+      - Fri, 05 Dec 2025 07:08:53 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Request-Id:
+      - 69328505000000004aa5d27402b9887e
+      Vary:
+      - Origin
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=o88lOWW2Bf_KXWCK4DuwimiHCc3CYw5CB5.2XRMbwY4-1764918532.9935212-1.0.1.1-pdFpcO2TsPQ2S5CcPDhelk3rDs6c8rAJ5wHnS_XmxvOAO1L7Q5XRR.lPj.wgFrOl9JiLPcIl_byvRz7a3gOkORkKAJwc2qnEpAk7UTPcCoxSXDnptI_v6deX9rrwG23s;
+        HttpOnly; Secure; Path=/; Domain=xendit.co; Expires=Fri, 05 Dec 2025 07:38:53
+        GMT
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 9a91b6ff3be220f0-HKG
+    body:
+      encoding: ASCII-8BIT
+      string: '{"error_code":"NOT_FOUND","message":"The requested resource was not
+        found"}'
+  recorded_at: Fri, 05 Dec 2025 07:08:53 GMT
+recorded_with: VCR 6.2.0

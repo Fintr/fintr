@@ -1,0 +1,6 @@
+---
+description: 
+globs: spec/models/**/*_spec.rb
+alwaysApply: false
+---
+# Model specs
