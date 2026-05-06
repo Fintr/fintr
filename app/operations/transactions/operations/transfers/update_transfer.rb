@@ -73,9 +73,21 @@ module Transactions
           transfer = transaction do
             params              = step validate(params:)
             transfer            = step find_transfer(params:)
-            _                   = step ensure_transfer_accounts_unchanged(params:, transfer:)
-            from_account        = step find_account(params:, account_name: params[:from_account_name])
-            to_account          = step find_account(params:, account_name: params[:to_account_name])
+            from_account        = step find_account(
+                                    params:,
+                                    account_name: params[:from_account_name].to_s,
+                                    error_key: :from_account_name
+                                  )
+            to_account          = step find_account(
+                                    params:,
+                                    account_name: params[:to_account_name].to_s,
+                                    error_key: :to_account_name
+                                  )
+            _                   = step ensure_transfer_account_currencies_match_original(
+                                    transfer:,
+                                    from_account:,
+                                    to_account:
+                                  )
             params              = step transform_params(params:, from_account:, to_account:)
             changed_transfer    = step initialize_update_transfer(transfer:, params:)
             _                   = step adjust_balances(transfer: changed_transfer)
@@ -102,23 +114,23 @@ module Transactions
           Failure(id: "transfer not found")
         end
 
-        def ensure_transfer_accounts_unchanged(params:, transfer:)
-          unless transfer.from_account.name == params[:from_account_name].to_s
-            return Failure(from_account_name: "cannot be changed")
+        def ensure_transfer_account_currencies_match_original(transfer:, from_account:, to_account:)
+          unless from_account.balance_currency == transfer.from_account.balance_currency
+            return Failure(from_account_name: "currency cannot be changed")
           end
 
-          unless transfer.to_account.name == params[:to_account_name].to_s
-            return Failure(to_account_name: "cannot be changed")
+          unless to_account.balance_currency == transfer.to_account.balance_currency
+            return Failure(to_account_name: "currency cannot be changed")
           end
 
           Success()
         end
 
-        def find_account(params:, account_name:)
+        def find_account(params:, account_name:, error_key: :account_name)
           account = Transactions::Account.kept.find_by!(name: account_name, space_id: params[:space_id])
           Success(account)
         rescue ActiveRecord::RecordNotFound
-          Failure(account_name: "'#{account_name}' not found")
+          Failure(error_key => "'#{account_name}' not found")
         end
 
         def transform_params(params:, from_account:, to_account:)

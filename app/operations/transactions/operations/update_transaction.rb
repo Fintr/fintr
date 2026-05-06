@@ -38,10 +38,10 @@ module Transactions
         transaction = transaction do
           params              = step validate(params:)
           transaction         = step find_transaction(params:)
-          _                   = step ensure_account_unchanged(params:, transaction:)
           space               = step find_space(params:)
           category            = step find_category(params:)
           account             = step find_account(params:)
+          _                   = step ensure_account_currency_matches_original(transaction:, account:)
           params              = step transform_params(params:, transaction:, category:, account:, space:)
           changed_transaction = step initialize_update_transaction(transaction:, params:)
           _                   = step validate_installment_not_changed(transaction: changed_transaction)
@@ -74,16 +74,15 @@ module Transactions
         Failure(id: "transaction not found")
       end
 
-      def ensure_account_unchanged(params:, transaction:)
-        requested = params[:account_name].to_s
-        return Success() if requested.blank?
+      def ensure_account_currency_matches_original(transaction:, account:)
+        original = Transactions::Account.find_by(id: transaction.account_id)
+        return Success() unless original
 
-        current_name = Transactions::Account.find_by(id: transaction.account_id)&.name
-        return Success() if current_name.blank?
+        original_currency = original.balance_currency.presence || "PHP"
+        new_currency = account.balance_currency.presence || "PHP"
+        return Success() if original_currency == new_currency
 
-        return Success() if current_name == requested
-
-        Failure(account_name: "cannot be changed")
+        Failure(account_name: "currency cannot be changed")
       end
 
       def find_space(params:)

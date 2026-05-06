@@ -98,6 +98,71 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
       end
     end
 
+    context "when changing account on update" do
+      let!(:other_php_account) do
+        create(:account, space:, name: "Other PHP", balance: Money.from_amount(500, "PHP"))
+      end
+
+      let!(:eur_account) do
+        create(
+          :account,
+          space:,
+          name: "EUR Account",
+          balance_currency: "EUR",
+          balance: Money.from_amount(100, "EUR")
+        )
+      end
+
+      let!(:transaction) do
+        create(
+          :expense_transaction,
+          :one_time,
+          user:,
+          space:,
+          account:,
+          category:,
+          amount: 100.00,
+          description: "Test"
+        )
+      end
+
+      it "allows switching to another account with the same currency" do
+        result = described_class.new.call(
+          id: transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 100.00,
+          date: transaction.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: other_php_account.name,
+          description: "Test",
+          schedule_type: "one_time"
+        )
+
+        expect(result).to be_success
+        expect(result.value!.account_id).to eq(other_php_account.id)
+      end
+
+      it "rejects switching to an account with a different currency" do
+        result = described_class.new.call(
+          id: transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 100.00,
+          date: transaction.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: eur_account.name,
+          description: "Test",
+          schedule_type: "one_time"
+        )
+
+        expect(result).to be_failure
+        expect(result.failure).to include(account_name: "currency cannot be changed")
+      end
+    end
+
     context 'with a recurring transaction' do
       let!(:parent_transaction) do
         create(
@@ -1202,7 +1267,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         )
 
         expect(result).to be_failure
-        expect(result.failure).to include(account_name: "cannot be changed")
+        expect(result.failure).to include(account_name: "not found")
       end
     end
 
