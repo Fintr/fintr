@@ -35,6 +35,7 @@ import { UpdateTransactionType } from "@/types/transactionTypes";
 import NotesAutocomplete from '@/components/ui/notes-autocomplete';
 import FileUploadField from "./FileUploadField";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
+import CategoryGridPicker from "./CategoryGridPicker";
 import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
 import {
   AmountWithRatePicker,
@@ -134,7 +135,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   }, [accountOptions, defaultTransactionCurrency]);
 
   // Local state for UI elements and form handling
-  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [fileState, setFileState] = useState<File | null>(null);
@@ -390,7 +390,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       // Reset number input hook
       amountInput.reset();
       setDate(undefined);
-      setShowCustomCategoryInput(false);
       setShowCustomAccountInput(false);
       setScheduleType(ScheduleTypeEnum.ONE_TIME);
       setFormSubmitted(false);
@@ -517,7 +516,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         setConversionSnapshot(null);
         setDate(undefined);
         setFileState(null);
-        setShowCustomCategoryInput(false);
         setShowCustomAccountInput(false);
         setScheduleType(ScheduleTypeEnum.ONE_TIME);
         setFormSubmitted(false); // Reset the form submission flag
@@ -556,7 +554,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       handleFieldChange("categoryName", categoryName);
       if (onAddCustomCategory) onAddCustomCategory(categoryName);
     }
-    setShowCustomCategoryInput(false);
   };
 
   // Handle account creation
@@ -726,45 +723,15 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           </div>
           
           {/* Category Field */}
-          <div className="space-y-2 min-w-0">
-            <Label htmlFor="categoryName" className="text-sm">Income Category</Label>
-            <Select
-              value={formState.categoryName}
-              onValueChange={(value) => {
-                if (value === "add_category") {
-                  setShowCustomCategoryInput(true);
-                } else {
-                  setShowCustomCategoryInput(false);
-                  handleFieldChange("categoryName", value);
-                }
-              }}
-            >
-              <SelectTrigger 
-                id="categoryName" 
-                className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.categoryName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-              >
-                <SelectValue placeholder="Select category" className="text-sm" />
-              </SelectTrigger>
-              <SelectContent>
-                {categoryOptions.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value} className="text-sm">
-                    {cat.label}
-                  </SelectItem>
-                ))}
-                <SelectItem value="add_category" className="text-sm">+ Add Income Category</SelectItem>
-              </SelectContent>
-            </Select>
-            {formSubmitted && formErrors.categoryName?.map((error) => (
-              <FormError key={error}>{error}</FormError>
-            ))}
-
-            {showCustomCategoryInput && (
-              <CategoryCreationForm 
-                onSuccess={handleCategoryCreated}
-                categoryType={CategoryTypeEnum.INCOME}
-              />
-            )}
-          </div>
+          <CategoryGridPicker
+            label="Income Category"
+            value={formState.categoryName}
+            onChange={(value) => handleFieldChange("categoryName", value)}
+            categories={categoryOptions}
+            error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
+            categoryType={CategoryTypeEnum.INCOME}
+            onCategoryCreated={handleCategoryCreated}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

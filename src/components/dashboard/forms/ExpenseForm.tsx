@@ -34,6 +34,7 @@ import { UpdateTransactionType } from "@/types/transactionTypes";
 import NotesAutocomplete from '@/components/ui/notes-autocomplete';
 import FileUploadField from "./FileUploadField";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
+import CategoryGridPicker from "./CategoryGridPicker";
 import { createDisplayFileFromDraft } from "@/utils/fileUtils";
 import { useTransactionDrafts } from "@/hooks/async/useTransactionDrafts";
 import DraftItems from "./DraftItems";
@@ -182,7 +183,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const { api } = useAuthApi();
 
   // Local state for UI elements not directly part of the form data
-  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   // Removed fileState, will use formState.file directly
@@ -445,7 +445,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       // Reset number input hook
       amountInput.reset();
       setDate(undefined);
-      setShowCustomCategoryInput(false);
       setShowCustomAccountInput(false);
       setScheduleType(ScheduleTypeEnum.ONE_TIME);
       setFormSubmitted(false);
@@ -592,7 +591,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         setFileId(null);
         setDate(undefined);
         // setFileState(null); // Removed
-        setShowCustomCategoryInput(false);
         setShowCustomAccountInput(false);
         setScheduleType(ScheduleTypeEnum.ONE_TIME);
         setFormSubmitted(false); // Reset the form submission flag
@@ -772,8 +770,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       
       
     }
-    // Close the category creation form
-    setShowCustomCategoryInput(false);
   };
 
   // Handle account creation
@@ -975,48 +971,16 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           </div>
           
           {/* Category Field */}
-          <div className="space-y-2 min-w-0">
-            <Label htmlFor="categoryName" className="text-sm">Expense Category</Label>
-            <Select
-              value={formState.categoryName}
-              onValueChange={(value) => {
-                if (value === "add_category") {
-                  setShowCustomCategoryInput(true);
-                } else {
-                  setShowCustomCategoryInput(false);
-                  handleFieldChange("categoryName", value);
-                }
-              }}
-              disabled={isEditMode && formState.categoryName === TRANSFER_FEE_CATEGORY_NAME}
-            >
-              <SelectTrigger 
-                id="categoryName" 
-                className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.categoryName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-              >
-                <SelectValue placeholder="Select category" className="text-sm" />
-              </SelectTrigger>
-              <SelectContent>
-                {categoryOptions.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value} className="text-sm">
-                    {cat.label}
-                  </SelectItem>
-                ))}
-                {!(isEditMode && formState.categoryName === TRANSFER_FEE_CATEGORY_NAME) && (
-                  <SelectItem value="add_category" className="text-sm">+ Add Expense Category</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-            {formSubmitted && formErrors.categoryName?.map((error) => (
-              <FormError key={error}>{error}</FormError>
-            ))}
-
-            {showCustomCategoryInput && (
-              <CategoryCreationForm 
-                onSuccess={handleCategoryCreated}
-                categoryType={CategoryTypeEnum.EXPENSE}
-              />
-            )}
-          </div>
+          <CategoryGridPicker
+            label="Expense Category"
+            value={formState.categoryName}
+            onChange={(value) => handleFieldChange("categoryName", value)}
+            categories={categoryOptions}
+            error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
+            categoryType={CategoryTypeEnum.EXPENSE}
+            onCategoryCreated={handleCategoryCreated}
+            disabled={isEditMode && formState.categoryName === TRANSFER_FEE_CATEGORY_NAME}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
