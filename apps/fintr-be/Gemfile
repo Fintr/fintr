@@ -65,7 +65,7 @@ gem "ruby-openai", "~> 8.3"
 # OpenRouter uses OpenAI SDK with custom base URL, no separate gem needed
 
 # Documentation
-gem "rdoc", "6.17.0"
+gem "rdoc", "7.2.0"
 
 # Time-based grouping
 gem "groupdate", "~> 6.5"
