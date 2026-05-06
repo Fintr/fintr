@@ -19,6 +19,10 @@ import { incomeCategoryOptionsAtom, accountOptionsAtom } from "@/atoms/dashboard
 import * as z from "zod"; 
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import {
+  editLockedAccountLedgerCurrency,
+  isAccountSelectOptionDisabledForEdit,
+} from "@/utils/accountSelectEditLocks";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import { numberFormatting } from "@/lib/utils";
@@ -181,6 +185,17 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const accountCurrencyDiffersFromSpace =
     accountLedgerCurrency != null &&
     accountLedgerCurrency !== effectiveSpaceCurrency;
+
+  const editLockedAccountLedgerCurrencyValue = useMemo(
+    () =>
+      editLockedAccountLedgerCurrency(
+        isEditMode,
+        initialData?.accountName,
+        accountOptions,
+        effectiveSpaceCurrency,
+      ),
+    [isEditMode, initialData?.accountName, accountOptions, effectiveSpaceCurrency],
+  );
 
   const selectedAccountCurrencyForChip =
     accountLedgerCurrency ?? effectiveSpaceCurrency;
@@ -758,7 +773,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             <Label htmlFor="accountName" className="text-sm">Account</Label>
             <Select
               value={formState.accountName}
-              disabled={isEditMode}
               onValueChange={(value) => {
                 if (value === "add_account") {
                   setShowCustomAccountInput(true);
@@ -776,7 +790,17 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
               </SelectTrigger>
               <SelectContent>
                 {accountOptions.map((acc) => (
-                  <SelectItem key={acc.value} value={acc.value} className="text-sm">
+                  <SelectItem
+                    key={acc.value}
+                    value={acc.value}
+                    className="text-sm"
+                    disabled={isAccountSelectOptionDisabledForEdit(
+                      isEditMode,
+                      editLockedAccountLedgerCurrencyValue,
+                      acc,
+                      effectiveSpaceCurrency,
+                    )}
+                  >
                     {acc.label}
                   </SelectItem>
                 ))}

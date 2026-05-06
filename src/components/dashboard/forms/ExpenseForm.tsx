@@ -44,6 +44,10 @@ import {
   type ConversionSnapshot,
 } from "./AmountWithRatePicker";
 import { resolvePrefillAmountCurrency, isUploadableFile } from "@/utils/formUtils";
+import {
+  editLockedAccountLedgerCurrency,
+  isAccountSelectOptionDisabledForEdit,
+} from "@/utils/accountSelectEditLocks";
 
 /** System category for transfer-fee expenses; when editing such a transaction, the category is shown and disabled. */
 const TRANSFER_FEE_CATEGORY_NAME = "Transfer Fee";
@@ -237,6 +241,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const accountCurrencyDiffersFromSpace =
     accountLedgerCurrency != null &&
     accountLedgerCurrency !== effectiveSpaceCurrency;
+
+  const editLockedAccountLedgerCurrencyValue = useMemo(
+    () =>
+      editLockedAccountLedgerCurrency(
+        isEditMode,
+        initialData?.accountName,
+        accountOptions,
+        effectiveSpaceCurrency,
+      ),
+    [isEditMode, initialData?.accountName, accountOptions, effectiveSpaceCurrency],
+  );
 
   const initialAmountCurrency = resolvePrefillAmountCurrency({
     defaultTransactionCurrency,
@@ -1010,7 +1025,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <Label htmlFor="accountName" className="text-sm">Account</Label>
             <Select
               value={formState.accountName}
-              disabled={isEditMode}
               onValueChange={(value) => {
                 if (value === "add_account") {
                   setShowCustomAccountInput(true);
@@ -1028,7 +1042,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
               </SelectTrigger>
               <SelectContent>
                 {accountOptions.map((acc) => (
-                  <SelectItem key={acc.value} value={acc.value} className="text-sm">
+                  <SelectItem
+                    key={acc.value}
+                    value={acc.value}
+                    className="text-sm"
+                    disabled={isAccountSelectOptionDisabledForEdit(
+                      isEditMode,
+                      editLockedAccountLedgerCurrencyValue,
+                      acc,
+                      effectiveSpaceCurrency,
+                    )}
+                  >
                     {acc.label}
                   </SelectItem>
                 ))}
