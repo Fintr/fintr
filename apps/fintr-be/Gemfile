@@ -72,7 +72,7 @@ gem "groupdate", "~> 6.5"
 
 # Excel processing
 gem "fast_excel", "~> 0.5"
-gem "xsv", "~> 1.1"
+gem "xsv", "~> 1.4"
 
 # Errors
 gem "sentry-ruby"
