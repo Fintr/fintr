@@ -1,0 +1,28 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install -g pnpm
+        - pnpm config set store-dir .pnpm-store
+        # Clear Next.js cache to free memory
+        - rm -rf .next/cache || true
+        - rm -rf .next/standalone || true
+        # Set Node.js memory limits (conservative to avoid OOM)
+        - export NODE_OPTIONS="--max-old-space-size=4096"
+        # Create swap file for additional memory
+        - sudo dd if=/dev/zero of=swapfile bs=1M count=2048
+        - sudo chmod 600 swapfile
+        - sudo mkswap swapfile
+        - sudo swapon swapfile
+    build:
+      commands:
+        # Install with memory-efficient flags
+        - pnpm install --frozen-lockfile --prefer-offline
+        # Build with memory optimizations and reduced parallelism
+        - NODE_OPTIONS="--max-old-space-size=4096" pnpm build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+

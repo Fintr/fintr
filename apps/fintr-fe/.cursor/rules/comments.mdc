@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Guidelines to do when adding comments.
+
+## DONT's
+1. Dont add comments to imports
+2. Dont add comments to exports
+3. Dont add comments to config files
+4. Don't add comments to variables
+5. Don't add comments to React States
+6. Don't add comments per line of code
+
+## DO's
+1. Add comments to explain function logic
+2. Add comments to explain a block of code / multiple lines of code

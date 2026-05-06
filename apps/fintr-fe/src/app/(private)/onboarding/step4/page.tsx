@@ -1,0 +1,274 @@
+"use client";
+
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAtom } from "jotai";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FloatingInput } from "@/components/ui/floating-input";
+import { FloatingSelect } from "@/components/ui/floating-select";
+import { useOnboarding } from "@/hooks/async/useOnboarding";
+import { onboardingAccountsDataAtom, onboardingAccountCategoriesAtom, AccountData } from "@/atoms/budgetAtoms";
+import { onboardingDataAtom } from "@/atoms/onboardingAtoms";
+import { numberFormatting } from "@/lib/utils";
+import { toast } from "sonner";
+import { CreditCard, ArrowRight, ArrowLeft, X } from "lucide-react";
+
+export default function OnboardingStep4() {
+  const router = useRouter();
+  const { saveStep3Data, isUpdating, onboardingData } = useOnboarding("accounts");
+  
+  // Use Jotai atoms for state management
+  const [accountsData, setAccountsData] = useAtom(onboardingAccountsDataAtom);
+  const [accountCategories] = useAtom(onboardingAccountCategoriesAtom);
+  const [errors, setErrors] = useState<{ [key: number]: { name?: string; accountCategory?: string; balance?: string } }>({});
+  
+  // Display values for balance fields to handle formatting
+  const [displayBalances, setDisplayBalances] = useState<{ [key: number]: string }>({});
+
+  const validateForm = () => {
+    const newErrors: { [key: number]: { name?: string; accountCategory?: string; balance?: string } } = {};
+    
+    accountsData.forEach((account, index) => {
+      const accountErrors: { name?: string; accountCategory?: string; balance?: string } = {};
+      
+      if (!account.name.trim()) {
+        accountErrors.name = "Account name is required";
+      }
+      
+      if (!account.accountCategory) {
+        accountErrors.accountCategory = "Account category is required";
+      }
+      
+      if (isNaN(Number(account.balance)) || Number(account.balance) < 0) {
+        accountErrors.balance = "Please enter a valid balance";
+      }
+      
+      if (Object.keys(accountErrors).length > 0) {
+        newErrors[index] = accountErrors;
+      }
+    });
+    
+    setErrors(newErrors);
+    
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNext = async () => {
+    if (validateForm()) {
+      try {
+        // Process account data for backend
+        const processedAccountsData = accountsData.map(account => ({
+          name: account.name,
+          accountCategory: account.accountCategory,
+          balance: account.balance
+        }));
+        
+        // Save step 3 data to backend
+        await saveStep3Data({
+          step: 'accounts',
+          accounts: processedAccountsData,
+        });
+        
+        // Navigate to step 5 (import) on success
+        router.push('/onboarding/step5');
+      } catch (error) {
+        console.error('Error saving step 3 data:', error);
+        toast.error('Error saving accounts. Please try again.');
+      }
+    } else {
+      // Show toast when validation fails
+      toast.error('Please fix the errors before continuing.');
+    }
+  };
+
+  const handleBack = () => {
+    router.push('/onboarding/step3');
+  };
+
+  const updateAccount = (index: number, field: 'name' | 'accountCategory' | 'balance', value: string | number) => {
+    const updatedAccounts = [...accountsData];
+    if (field === 'balance') {
+      // For balance field, use handleInputChange for formatting and store clean value
+      const formattedValue = numberFormatting.handleInputChange(value.toString());
+      const cleanValue = numberFormatting.cleanForBackend(formattedValue);
+      updatedAccounts[index] = { ...updatedAccounts[index], [field]: cleanValue };
+      setDisplayBalances(prev => ({ ...prev, [index]: formattedValue }));
+    } else {
+      updatedAccounts[index] = { ...updatedAccounts[index], [field]: value };
+    }
+    setAccountsData(updatedAccounts);
+  };
+
+  const deleteAccount = (index: number) => {
+    const updatedAccounts = accountsData.filter((_, i) => i !== index);
+    setAccountsData(updatedAccounts);
+    
+    // Clear any errors for this account
+    const newErrors = { ...errors };
+    delete newErrors[index];
+    
+    // Reindex errors for remaining accounts
+    const reindexedErrors: { [key: number]: { name?: string; accountCategory?: string; balance?: string } } = {};
+    Object.keys(newErrors).forEach(key => {
+      const oldIndex = parseInt(key);
+      if (oldIndex > index) {
+        reindexedErrors[oldIndex - 1] = newErrors[oldIndex];
+      } else if (oldIndex < index) {
+        reindexedErrors[oldIndex] = newErrors[oldIndex];
+      }
+    });
+    
+    setErrors(reindexedErrors);
+  };
+
+  const addAccount = () => {
+    const newAccount: AccountData = {
+      name: "",
+      accountCategory: "",
+      balance: 0,
+      forSalary: false,
+      forBusiness: false
+    };
+    setAccountsData([...accountsData, newAccount]);
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Progress indicator */}
+        <div className="mb-8">
+          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+            <span>Step 4 of 5</span>
+            <span>Accounts Setup</span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-2">
+            <div className="bg-primary h-2 rounded-full transition-all duration-500 ease-out w-4/5"></div>
+          </div>
+        </div>
+
+        <Card className="shadow-lg border-border">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 p-3 bg-primary/30 rounded-full w-fit">
+              <CreditCard className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Accounts Set-Up</CardTitle>
+            <CardDescription>
+              Add your bank accounts, cards, and other financial accounts to track your finances
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="space-y-6">
+            {/* Accounts List */}
+            <div className="space-y-4">
+              {accountsData.map((account, index) => (
+                <div key={index} className="border border-border rounded-lg p-4 space-y-4 bg-card relative">
+                  {/* Delete button */}
+                  {accountsData.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteAccount(index)}
+                      className="z-20 absolute top-2 right-2 h-6 w-6 p-0 text-muted-foreground bg-white hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                  
+                  <div className="space-y-3">
+                    {/* First row: Account Name and Category */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <FloatingInput
+                          type="text"
+                          label="Account Name"
+                          value={account.name}
+                          onChange={(e) => updateAccount(index, 'name', e.target.value)}
+                          className={errors[index]?.name ? "border-destructive" : ""}
+                        />
+                        {errors[index]?.name && (
+                          <p className="text-destructive text-sm mt-1">{errors[index].name}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <FloatingSelect
+                          label="Account Category"
+                          value={account.accountCategory}
+                          onValueChange={(value) => updateAccount(index, 'accountCategory', value)}
+                          options={accountCategories}
+                          className={errors[index]?.accountCategory ? "border-destructive" : ""}
+                        />
+                        {errors[index]?.accountCategory && (
+                          <p className="text-destructive text-sm mt-1">{errors[index].accountCategory}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Second row: Balance */}
+                    <div className="space-y-3">
+                      <div>
+                        <FloatingInput
+                          type="text"
+                          label="Balance (₱)"
+                          value={displayBalances[index] || numberFormatting.formatForInput(account.balance)}
+                          onChange={(e) => updateAccount(index, 'balance', e.target.value)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          className={errors[index]?.balance ? "border-destructive" : ""}
+                        />
+                        {errors[index]?.balance && (
+                          <p className="text-destructive text-sm mt-1">{errors[index].balance}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+
+            {/* Add new account button */}
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                onClick={addAccount}
+                className="border-dashed border-2 hover:border-primary hover:text-primary"
+              >
+                + Add New Account
+              </Button>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-3 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={handleBack}
+                className="flex-1"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              
+              <Button 
+                onClick={handleNext}
+                disabled={isUpdating}
+                className="flex-1 bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-800"
+              >
+                {isUpdating ? "Completing..." : "Complete Setup"}
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Help text */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            You can add more accounts later from your dashboard
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
