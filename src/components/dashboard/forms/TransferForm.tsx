@@ -33,6 +33,10 @@ import {
   AmountWithRatePicker,
   type ConversionSnapshot,
 } from "./AmountWithRatePicker";
+import {
+  editLockedAccountLedgerCurrency,
+  isAccountSelectOptionDisabledForEdit,
+} from "@/utils/accountSelectEditLocks";
 
 // Transfer form schema using Zod
 const transferFormSchema = z.object({
@@ -130,6 +134,28 @@ const TransferForm: React.FC<TransferFormProps> = ({
     fromAccount?.currency != null && fromAccount.currency !== effectiveSpaceCurrency;
   const toAccountCurrencyDiffersFromSpace =
     toAccount?.currency != null && toAccount.currency !== effectiveSpaceCurrency;
+
+  const editFromLedgerCurrencyLock = useMemo(
+    () =>
+      editLockedAccountLedgerCurrency(
+        isEditMode,
+        initialData?.fromAccountName,
+        accountOptions,
+        effectiveSpaceCurrency,
+      ),
+    [isEditMode, initialData?.fromAccountName, accountOptions, effectiveSpaceCurrency],
+  );
+
+  const editToLedgerCurrencyLock = useMemo(
+    () =>
+      editLockedAccountLedgerCurrency(
+        isEditMode,
+        initialData?.toAccountName,
+        accountOptions,
+        effectiveSpaceCurrency,
+      ),
+    [isEditMode, initialData?.toAccountName, accountOptions, effectiveSpaceCurrency],
+  );
 
   const [conversionSnapshot, setConversionSnapshot] =
     useState<ConversionSnapshot | null>(null);
@@ -496,7 +522,6 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 handleFieldChange("fromAccountName", value);
               }
             }}
-            disabled={isEditMode}
           >
             <SelectTrigger 
               id="transfer-from"
@@ -510,7 +535,17 @@ const TransferForm: React.FC<TransferFormProps> = ({
             </SelectTrigger>
             <SelectContent>
               {accountOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value} className="text-sm">
+                <SelectItem
+                  key={option.value}
+                  value={option.value}
+                  className="text-sm"
+                  disabled={isAccountSelectOptionDisabledForEdit(
+                    isEditMode,
+                    editFromLedgerCurrencyLock,
+                    option,
+                    effectiveSpaceCurrency,
+                  )}
+                >
                   {option.label}
                 </SelectItem>
               ))}
@@ -544,7 +579,6 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 handleFieldChange("toAccountName", value);
               }
             }}
-            disabled={isEditMode}
           >
             <SelectTrigger 
               id="transfer-to"
@@ -558,7 +592,17 @@ const TransferForm: React.FC<TransferFormProps> = ({
             </SelectTrigger>
             <SelectContent>
               {accountOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value} className="text-sm">
+                <SelectItem
+                  key={option.value}
+                  value={option.value}
+                  className="text-sm"
+                  disabled={isAccountSelectOptionDisabledForEdit(
+                    isEditMode,
+                    editToLedgerCurrencyLock,
+                    option,
+                    effectiveSpaceCurrency,
+                  )}
+                >
                   {option.label}
                 </SelectItem>
               ))}
