@@ -195,6 +195,63 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
         expect(updated_transfer.description).to eq("Updated transfer")
       end
 
+      it "allows changing from and to accounts when each stays in the same leg currency" do
+        other_from = create(
+          :account,
+          space:,
+          name: "Other Savings",
+          balance: Money.from_amount(2000, "PHP")
+        )
+        other_to = create(
+          :account,
+          space:,
+          name: "Other Checking",
+          balance: Money.from_amount(300, "PHP")
+        )
+
+        params = valid_params.merge(
+          from_account_name: other_from.name,
+          to_account_name: other_to.name
+        )
+
+        result = operation.call(params)
+        expect(result).to be_success
+        expect(result.value!.from_account_id).to eq(other_from.id)
+        expect(result.value!.to_account_id).to eq(other_to.id)
+      end
+
+      it "rejects a from account whose currency differs from the original from leg" do
+        usd_from = create(
+          :account,
+          space:,
+          name: "USD Pocket",
+          balance_currency: "USD",
+          balance: Money.from_amount(100, "USD")
+        )
+
+        params = valid_params.merge(from_account_name: usd_from.name)
+
+        result = operation.call(params)
+        expect(result).to be_failure
+        expect(result.failure).to include(from_account_name: "currency cannot be changed")
+      end
+
+      it "rejects a to account whose currency differs from the original to leg" do
+        eur_to = create(
+          :account,
+          space:,
+          name: "EUR Jar",
+          balance_currency: "EUR",
+          balance: Money.from_amount(50, "EUR")
+        )
+
+        params = valid_params.merge(to_account_name: eur_to.name)
+
+        result = operation.call(params)
+        expect(result).to be_failure
+        expect(result.failure).to include(to_account_name: "currency cannot be changed")
+      end
+
       it 'updates account balances when transfer is calculated' do
         update_calculate_balances_operation = instance_double(Transactions::Operations::Transfers::UpdateCalculateBalances)
         allow(Transactions::Operations::Transfers::UpdateCalculateBalances).to receive(:new).and_return(update_calculate_balances_operation)
@@ -476,7 +533,7 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
 
         result = operation.call(params)
         expect(result).to be_failure
-        expect(result.failure).to include(from_account_name: "cannot be changed")
+        expect(result.failure).to include(from_account_name: "'NonExistentAccount' not found")
       end
 
       it 'fails when to_account is not found' do
@@ -484,7 +541,7 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
 
         result = operation.call(params)
         expect(result).to be_failure
-        expect(result.failure).to include(to_account_name: "cannot be changed")
+        expect(result.failure).to include(to_account_name: "'NonExistentAccount' not found")
       end
 
       it 'fails when account is discarded' do
@@ -493,7 +550,7 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
 
         result = operation.call(params)
         expect(result).to be_failure
-        expect(result.failure).to include(account_name: "'#{from_account.name}' not found")
+        expect(result.failure).to include(from_account_name: "'#{from_account.name}' not found")
       end
     end
 
