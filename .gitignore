@@ -1,0 +1,12 @@
+# Root
+.DS_Store
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies (if any at root)
+node_modules/
