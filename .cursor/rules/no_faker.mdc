@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Don't make any suggestions that has Faker on it
+
+In this project, we are not relying on Faker gem. Do not make suggestions that has the Faker gem on it.

@@ -1,0 +1,1 @@
+Fintr v1.8 — AI chat with memory, Excel bulk import, loan tracking & amortization, List/Sheets/Calendar views, receipt scanning (OCR+AI or Vision), multi-space, native iOS & Android with biometrics, self-service subscriptions & prorated billing. Your AI-powered personal finance assistant.

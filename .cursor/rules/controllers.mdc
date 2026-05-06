@@ -1,0 +1,12 @@
+---
+alwaysApply: true
+---
+
+When making controllers, make sure that the controllers don't have business logic. In order to do that, anything you write should be an operation. The only thing that the controller actions need to know is whether the operation succeeded or not, then respond appropriately.
+
+Make sure that the responses use this `app/controllers/concerns/api_responses.rb` instead of making your own. This is good because it translate all snake case keys into lower camel case instead. 
+
+Make sure when serializing your responses, ensure that you use the serialzer pattern, but we're using Blueprinter, you can check serializers in `app/serializers`
+
+
+Important, when using classes inside the controllers, make sure to use `::` prepended to those classes to avoid conflicts with rails prepending your class with `Api::V1`

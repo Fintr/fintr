@@ -1,0 +1,95 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Operation Pattern Rule
+
+## Primary Pattern: Dry::Operation
+
+1. **When to Use**:
+   - For all business logic operations
+   - When handling complex workflows
+   - When dealing with multiple steps or validations
+   - When database transactions are needed
+   - When error handling needs to be consistent
+
+2. **Contracts (required for operations that take params)**:
+   - Every operation that accepts params **must** define a `Contract` (nested `class Contract < Dry::Validation::Contract`) with `params do ... end` declaring all expected keys (required/optional) and types.
+   - Contracts document what is inside params so developers don't have to guess. They also validate input and coerce types.
+   - In `call`, start with `params = step validate(params:)`; the validate step runs the Contract and returns `Failure(errors)` or `Success(contract.to_h)`.
+   - Example: `required(:space_id).value(:string)`, `optional(:date).value(:date)`, `optional(:from_currency).value(:string)`.
+
+3. **Structure: `call` contains only steps**:
+   - The **`call` method must contain only `step` invocations**. No inline logic, conditionals, or assignments other than capturing the return of a step (e.g. `params = step validate(params:)`).
+   - Each **step** is a **private** method that performs **one atomic action** (e.g. validate input, resolve currencies, fetch a rate, compute a value, persist a record). The step name should describe that action (e.g. `resolve_currencies`, `compute_display_amount`).
+   - Reading `call` alone should tell you the full flow; all implementation details live in the private step methods.
+
+   ```ruby
+   module Domain
+     module Operations
+       class OperationName < Dry::Operation
+         class Contract < Dry::Validation::Contract
+           params do
+             required(:space_id).value(:string)
+             optional(:date).value(:date)
+           end
+         end
+
+         def call(params)
+           params  = step validate(params:)
+           context = step resolve_some_data(params:)
+           step perform_action(params:, context:)
+         end
+
+         private
+
+         def validate(params:)
+           result = Contract.new.call(**params)
+           return Failure(result.errors.to_h) unless result.success?
+           Success(result.to_h)
+         end
+
+         def resolve_some_data(params:)
+           # One atomic action: e.g. load space, derive currencies, etc.
+           Success(space_currency: "...", from_currency: "...")
+         end
+
+         def perform_action(params:, context:)
+           # One atomic action: e.g. convert amount, persist record, etc.
+           Success(amount: 1.0, currency: "PHP")
+         end
+       end
+     end
+   end
+   ```
+
+4. **Guidelines**:
+   - Keep operations focused on a single responsibility
+   - **`call` only runs steps** – no business logic in `call`; every action is a named step method
+   - **Each step = one atomic action** – e.g. “resolve currencies”, “fetch rate”, “compute display amount”, “persist conversion”
+   - **Domain-specific logic lives in that domain** – e.g. exchange-rate conversion belongs in `ExchangeRates::Operations::*`; call it as a step from current the operation (e.g. `conversion = step apply_exchange_rate_conversion(...)` or `step SomeOtherDomain::Operations::SomeOp.new.call(...)`). Do not inline another domain’s rules (rates, pricing, etc.) into the current operation.
+   - Use `step` for sequential operations; pass data between steps via return values (e.g. `context = step resolve_currencies(params:)` then `step compute_amount(params:, context:)`)
+   - Validate input using the operation's **Contract** in a `validate` step
+   - For database transactions use the Dry::Operation extension: `require "dry/operation/extensions/active_record"`, `include Dry::Operation::Extensions::ActiveRecord`, and use `transaction do ... end` (not `ActiveRecord::Base.transaction`)
+   - **Do not return `Success(...)` from `call`** – the framework wraps the return value; the last step’s return value is the operation result
+   - Step methods return `Success` or `Failure`; `call` returns the plain result of the last step or the value from inside a `transaction do ... end` block
+   - Include clear error messages in failures
+
+5. **When Not to Use**:
+   - Simple CRUD operations that don't need validation
+   - Utility methods that don't involve business logic
+   - View helpers or presentation logic
+   - Background jobs (use ActiveJob instead)
+
+6. **Naming Convention**:
+   - Use descriptive names that indicate the operation's purpose
+   - Follow the pattern: `Domain::Operations::OperationName`
+   - Use verbs for the operation class (e.g. `Create`, `Update`, `Delete`)
+   - Use verb or verb-phrase names for step methods (e.g. `resolve_currencies`, `compute_display_amount`, `persist_conversion`)
+
+7. **Testing**:
+   - Test both success and failure cases
+   - Mock external dependencies
+   - Verify error messages
+   - Test transaction rollbacks

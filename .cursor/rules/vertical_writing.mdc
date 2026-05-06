@@ -1,0 +1,119 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Vertical Code Formatting Rule
+
+**Goal:** Prefer vertical alignment over horizontal compactness for improved readability, especially for method calls, definitions, data structures, and long lines.
+
+### Principle: Break and Align
+
+When a line of code becomes long or contains multiple distinct arguments/elements/options, break it into multiple lines, typically after commas or logical separators. Align subsequent lines consistently relative to the start of the block or the first element.
+
+### Method Calls & Instantiation
+
+-   **Break after opening parenthesis (if arguments are multiline):** Place the first argument on the line after the opening parenthesis.
+-   **One argument per line:** Each subsequent argument should be on its own line.
+-   **Indentation:** Indent arguments one level deeper than the line with the method call.
+-   **Closing parenthesis:** Place the closing parenthesis on a new line, aligned with the start of the line containing the method call.
+
+**Example:**
+
+```ruby
+# Good (Vertical)
+new_user = Auth::User.create(
+             email: params[:email],
+             full_name: params[:full_name],
+             auth_id: params[:auth_id],
+             photo_url: params[:photo_url]
+           )
+
+render_error(
+  message: "Specific error occurred",
+  status: :unprocessable_content,
+  details: { field: "value", issue: "too long" }
+)
+
+# Avoid (Horizontal)
+new_user = Auth::User.create(email: params[:email], full_name: params[:full_name], auth_id: params[:auth_id], photo_url: params[:photo_url])
+render_error(message: "Specific error occurred", status: :unprocessable_content, details: { field: "value", issue: "too long" })
+```
+
+### Method Definitions (Including Rails Declarations like `has_many`, `validates`)
+
+-   **Break after first argument/option:** If multiple options or arguments are provided, place subsequent ones on new lines.
+-   **Alignment:** Align the start of subsequent lines with the start of the first argument/option on the previous line.
+
+**Example:**
+
+```ruby
+# Good (Vertical)
+has_many :space_users,
+         class_name: "Spaces::SpaceUser",
+         dependent: :destroy
+
+validates :email,
+          presence: true,
+          uniqueness: { case_insensitive: true },
+          format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }
+
+def process_data(user:,
+                 settings:,
+                 timeout: 30,
+                 retries: 3)
+  # ... method body ...
+end
+
+# Avoid (Horizontal)
+has_many :space_users, class_name: "Spaces::SpaceUser", dependent: :destroy
+validates :email, presence: true, uniqueness: { case_insensitive: true }, format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }
+def process_data(user:, settings:, timeout: 30, retries: 3) # ...
+```
+
+### Arrays and Hashes
+
+-   **One element per line:** For multi-line arrays or hashes, place each element/key-value pair on its own line.
+-   **Indentation:** Indent elements one level deeper than the line with the opening bracket/brace.
+-   **Closing bracket/brace:** Place the closing bracket/brace on a new line, aligned with the start of the line containing the opening one.
+-   **Trailing Commas:** Use trailing commas for multi-line arrays and hashes to make adding new elements cleaner.
+
+**Example:**
+
+```ruby
+# Good (Vertical)
+DEFAULT_ACCOUNT_NAMES = [
+  "Cash",
+  "Credit Card",
+  "Debit Card",
+  "Bank Transfer",
+  "E-Wallet",
+]
+
+error_payload = {
+  message: message,
+  details: details,
+}
+
+# Avoid (Horizontal)
+DEFAULT_ACCOUNT_NAMES = ["Cash", "Credit Card", "Debit Card", "Bank Transfer", "E-Wallet",]
+error_payload = { message: message, details: details, }
+```
+
+### Chained Method Calls
+
+-   **Break before the dot (`.`):** When chaining multiple method calls vertically, place each subsequent call on a new line, starting with the dot.
+-   **Alignment:** Align the dots vertically.
+
+**Example:**
+
+```ruby
+# Good (Vertical)
+result = User.where(active: true)
+             .order(:created_at)
+             .limit(10)
+             .select(:id, :name)
+
+# Avoid (Horizontal)
+result = User.where(active: true).order(:created_at).limit(10).select(:id, :name)
+```
