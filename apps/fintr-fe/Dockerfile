@@ -1,56 +1,40 @@
-# Dockerfile for Next.js application
+FROM node:20-alpine AS base
 
-# 1. Builder Stage
-# This stage builds the Next.js application.
-FROM node:20-alpine AS builder
-
-# Set working directory
+FROM base AS deps
 WORKDIR /app
-
-# Install pnpm
-RUN npm install -g pnpm
-
-# Copy dependency files
 COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
-# Install dependencies
-# We install all dependencies including devDependencies to build the app
-RUN pnpm install
-
-# Copy the rest of the source code
+FROM base AS builder
+WORKDIR /app
+ARG NEXT_PUBLIC_APP_BASE_URL
+ARG NEXT_PUBLIC_BE_URL
+ARG NEXT_PUBLIC_AUTH0_DOMAIN
+ARG NEXT_PUBLIC_AUTH0_CLIENT_ID
+ARG NEXT_PUBLIC_AUTH0_AUDIENCE
+ARG NEXT_PUBLIC_ENVIRONMENT
+ARG SENTRY_AUTH_TOKEN
+ENV NEXT_PUBLIC_APP_BASE_URL=${NEXT_PUBLIC_APP_BASE_URL}
+ENV NEXT_PUBLIC_BE_URL=${NEXT_PUBLIC_BE_URL}
+ENV NEXT_PUBLIC_AUTH0_DOMAIN=${NEXT_PUBLIC_AUTH0_DOMAIN}
+ENV NEXT_PUBLIC_AUTH0_CLIENT_ID=${NEXT_PUBLIC_AUTH0_CLIENT_ID}
+ENV NEXT_PUBLIC_AUTH0_AUDIENCE=${NEXT_PUBLIC_AUTH0_AUDIENCE}
+ENV NEXT_PUBLIC_ENVIRONMENT=${NEXT_PUBLIC_ENVIRONMENT}
+ENV SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+RUN npm install -g pnpm
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# Build the Next.js application
 RUN pnpm build
 
-# 2. Runner Stage
-# This stage creates the final, lean production image.
-FROM node:20-alpine AS runner
-
+FROM base AS runner
 WORKDIR /app
-
-# Set production environment
 ENV NODE_ENV=production
-# Disable telemetry
-ENV NEXT_TELEMETRY_DISABLED 1
-
-# Create a non-root user for security
-RUN addgroup --system --gid 1001 nextjs
-RUN adduser --system --uid 1001 nextjs
-
-# Copy standalone output from the builder stage
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN addgroup -g 1001 nextjs && adduser -u 1001 -G nextjs -s /bin/sh -D nextjs
 COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nextjs /app/public ./public
 COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
-
-# Switch to the non-root user
 USER nextjs
-
-# Expose the port the app runs on
 EXPOSE 3000
-
-# Set the port environment variable
 ENV PORT=3000
-
-# Start the Next.js server
-CMD ["node", "server.js"] 
+CMD ["node", "server.js"]

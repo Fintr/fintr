@@ -6,18 +6,8 @@ const isProductionLike =
   process.env.NODE_ENV === "staging";
 
 const nextConfig: NextConfig = {
-  // Only enable static export for production/staging builds (slows down dev server)
-  output: isProductionLike ? "export" : undefined,
+  output: "standalone",
   typescript: { ignoreBuildErrors: true },
-  // App Router only: do not add `src/pages/*` (hybrid Pages+App breaks "Collecting
-  // page data" with PageNotFoundError for app routes like /admin). These flags
-  // reduce races on internal pages/_document during static export builds.
-  // Only apply throttling in production/staging builds
-  experimental: isProductionLike ? {
-    cpus: 1,
-    staticGenerationMaxConcurrency: 1,
-    staticGenerationRetryCount: 3,
-  } : undefined,
   images: {
     unoptimized: true,
     domains: [
