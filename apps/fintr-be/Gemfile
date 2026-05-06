@@ -91,7 +91,7 @@ group :development, :test do
   gem "shoulda-matchers"
   gem "factory_bot_rails"
   gem "simplecov", "~> 0.22.0"
-  gem "parallel_tests", "~> 5.5"
+  gem "parallel_tests", "~> 5.7"
   gem "timecop", "~> 0.9.10"
   gem "vcr", "~> 6.3"
   gem "webmock", "~> 3.18"
