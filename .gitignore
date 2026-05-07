@@ -10,3 +10,6 @@
 
 # Dependencies (if any at root)
 node_modules/
+browser-outputs/
+
+*.png
