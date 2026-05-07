@@ -1,3 +1,6 @@
+s:
+	bundle exec rails s -p 3001
+
 mmigrate:
 	mise exec -- bundle exec rails db:migrate
 	mise exec -- bundle exec rake db:clean_timescaledb_schemas

@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
-/** Portrait phone: bottom sheet spans the screen like an on-screen keyboard. */
-const PORTRAIT_CALENDAR_SHEET_QUERY = "(max-width: 639px) and (orientation: portrait)"
+/** Small screens (< md / 768px): bottom sheet spans the screen like an on-screen keyboard. */
+const BELOW_MD_CALENDAR_SHEET_QUERY = "(max-width: 767px)"
 
 const CALENDAR_POPOVER_HISTORY_KEY = "__fintrCalendarPopover"
 
@@ -33,8 +33,8 @@ export type CalendarPopoverProps = {
 }
 
 /**
- * Date picker shell: on portrait phones uses a full-width bottom `Sheet` (keyboard-style);
- * otherwise uses `Popover` + `PopoverContent`.
+ * Date picker shell: on small screens (< md / 768px) uses a full-width bottom `Sheet`
+ * (keyboard-style); otherwise uses `Popover` + `PopoverContent`.
  */
 export function CalendarPopover({
   open,
@@ -47,7 +47,7 @@ export function CalendarPopover({
 }: CalendarPopoverProps) {
   useCloseOnPopStateWhenOpen(open, onOpenChange, CALENDAR_POPOVER_HISTORY_KEY)
 
-  const useBottomSheet = useMediaQuery(PORTRAIT_CALENDAR_SHEET_QUERY)
+  const useBottomSheet = useMediaQuery(BELOW_MD_CALENDAR_SHEET_QUERY)
 
   if (useBottomSheet) {
     return (
@@ -68,7 +68,7 @@ export function CalendarPopover({
   return (
     <Popover modal={modal} open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align={align} className={cn("w-auto p-0", contentClassName)}>
+      <PopoverContent align={align} className={cn("p-0", contentClassName)}>
         {children}
       </PopoverContent>
     </Popover>

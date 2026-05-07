@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DateRangeFullscreenSheet } from "@/components/ui/date-range-fullscreen-sheet";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { monthNames, getYearOptions, getCurrentMonthDates } from "@/utils/dateUtils";
@@ -409,7 +409,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                   ) : (
                     <div className="space-y-2 md:w-auto md:min-w-[280px]">
                       <Label>Date Range</Label>
-                      <DateRangeFullscreenSheet
+                      <DateRangePicker
                         open={dateRangePickerOpen}
                         onOpenChange={setDateRangePickerOpen}
                         selected={dateRange}

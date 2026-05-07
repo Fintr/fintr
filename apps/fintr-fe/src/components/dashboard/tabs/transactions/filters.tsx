@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import ComboBox from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import { DateRangeFullscreenSheet } from "@/components/ui/date-range-fullscreen-sheet";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
@@ -364,7 +364,7 @@ export function Filters({
             ) : (
               <div className="space-y-2 md:w-auto md:flex-shrink-0">
                 <Label>Date Range</Label>
-                <DateRangeFullscreenSheet
+                <DateRangePicker
                   open={dateRangePickerOpen}
                   onOpenChange={setDateRangePickerOpen}
                   selected={dateRange}

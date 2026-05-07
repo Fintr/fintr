@@ -64,7 +64,7 @@ import {
   dateFilterTypeAtom,
   monthYearToDateRange,
 } from "@/atoms/dateFilterAtoms";
-import { DateRangeFullscreenSheet } from "@/components/ui/date-range-fullscreen-sheet";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
@@ -579,7 +579,7 @@ const InsightsTab = () => {
                   ) : (
                     <div className="space-y-2 md:w-auto md:min-w-[280px]">
                       <Label>Date Range</Label>
-                      <DateRangeFullscreenSheet
+                      <DateRangePicker
                         open={dateRangePickerOpen}
                         onOpenChange={setDateRangePickerOpen}
                         selected={dateRange}

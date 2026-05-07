@@ -19,7 +19,7 @@ const DATE_RANGE_HISTORY_KEY = "__fintrDateRangeSheet"
  * keeps the old start and sets `to` to the clicked day. For filters we want the
  * first tap after a complete range to always be the new **range start**.
  */
-function normalizeFirstClickAfterFullRange(
+export function normalizeFirstClickAfterFullRange(
   prior: DateRange | undefined,
   range: DateRange | undefined,
   clickedDay: Date,

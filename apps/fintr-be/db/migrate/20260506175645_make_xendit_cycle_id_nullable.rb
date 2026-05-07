@@ -14,10 +14,11 @@ class MakeXenditCycleIdNullable < ActiveRecord::Migration[8.1]
   private
 
   def column_is_not_nullable?(table, column)
-    !ActiveRecord::Base.connection.columns(table).find { |c| c.name == column }.null
+    col = ActiveRecord::Base.connection.columns(table).find { |c| c.name == column.to_s }
+    col.present? && !col.null
   end
 
   def column_is_nullable?(table, column)
-    ActiveRecord::Base.connection.columns(table).find { |c| c.name == column }.null
+    ActiveRecord::Base.connection.columns(table).find { |c| c.name == column.to_s }&.null
   end
 end
