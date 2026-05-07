@@ -100,18 +100,19 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
                 <p className="text-sm text-gray-500">Loading image...</p>
               </div>
             )}
-            <div className="mt-2 flex items-center justify-between">
-              <div className="flex items-center">
-                <p className="text-sm text-teal-600">
+            <div className="mt-2 flex items-start justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1">
+                <p className="text-sm text-teal-600 break-all">
                   Receipt attached: {file?.name}
                 </p>
-                {(file as any).isRemoteFile && <span className="text-xs text-gray-500 ml-2">(From Draft)</span>}
+                {(file as any).isRemoteFile && <span className="text-xs text-gray-500">(From Draft)</span>}
               </div>
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 size="sm"
                 onClick={handleInternalRemoveFile}
+                className="shrink-0"
               >
                 Remove
               </Button>
