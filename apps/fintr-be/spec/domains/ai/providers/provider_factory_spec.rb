@@ -6,19 +6,19 @@ RSpec.describe Ai::Providers::ProviderFactory do
   describe '.create' do
     context 'with valid provider name' do
       it 'creates OpenRouter provider' do
-        provider = described_class.create(:openrouter)
+        provider = described_class.create(:openrouter, api_key: 'test')
         expect(provider).to be_a(Ai::Providers::OpenrouterProvider)
       end
 
       it 'creates OpenAI fallback provider' do
-        provider = described_class.create(:openai)
+        provider = described_class.create(:openai, api_key: 'test')
         expect(provider).to be_a(Ai::Providers::OpenaiFallbackProvider)
       end
     end
 
     context 'with string provider name' do
       it 'creates provider' do
-        provider = described_class.create('openrouter')
+        provider = described_class.create('openrouter', api_key: 'test')
         expect(provider).to be_a(Ai::Providers::OpenrouterProvider)
       end
     end

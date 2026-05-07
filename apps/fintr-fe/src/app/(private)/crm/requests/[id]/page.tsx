@@ -129,7 +129,7 @@ export default function TicketDetailPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="flex justify-center items-center py-12">
+        <div className="flex justify-center items-center py-16">
           <LoadingSpinner size="medium" />
         </div>
       </div>
@@ -144,7 +144,7 @@ export default function TicketDetailPage() {
           Back to Tickets
         </Button>
         <Card>
-          <CardContent className="p-4 text-center">
+          <CardContent className="p-8 text-center">
             <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
             <p className="text-red-900 mb-4">Failed to load ticket. Please try again.</p>
             <Button onClick={() => refetch()} variant="outline">
@@ -157,15 +157,15 @@ export default function TicketDetailPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 pb-24 md:pb-12 max-w-4xl">
       {/* Back Button */}
-      <Button variant="outline" onClick={() => router.push("/crm/requests")} className="mb-4">
+      <Button variant="outline" onClick={() => router.push("/crm/requests")} className="mb-6">
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Tickets
       </Button>
 
       {/* Ticket Header */}
-      <div className="mb-6">
+      <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold break-words">
           {ticket.title || "Untitled Ticket"}
         </h1>
@@ -182,14 +182,14 @@ export default function TicketDetailPage() {
 
       {/* Admin Controls */}
       {isAdmin && (
-        <Card className="mb-6 py-0">
-          <CardHeader className="pb-2">
+        <Card className="mb-8">
+          <CardHeader className="p-5 md:p-6 pb-3">
             <CardTitle className="text-lg">Admin Controls</CardTitle>
           </CardHeader>
-          <CardContent className="p-4">
+          <CardContent className="p-5 md:p-6">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <label className="text-sm font-medium mb-1 block">Status</label>
+                <label className="text-sm font-medium mb-2 block">Status</label>
                 <Select value={ticket.status} onValueChange={handleStatusChange}>
                   <SelectTrigger>
                     <SelectValue />
@@ -203,7 +203,7 @@ export default function TicketDetailPage() {
                 </Select>
               </div>
               <div className="flex-1">
-                <label className="text-sm font-medium mb-1 block">Priority</label>
+                <label className="text-sm font-medium mb-2 block">Priority</label>
                 <Select value={ticket.priority} onValueChange={handlePriorityChange}>
                   <SelectTrigger>
                     <SelectValue />
@@ -222,9 +222,9 @@ export default function TicketDetailPage() {
       )}
 
       {/* Ticket Details */}
-      <Card className="mb-6 py-0">
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-sm text-gray-500 mb-4">
+      <Card className="mb-8">
+        <CardContent className="p-5 md:p-6">
+          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-sm text-gray-500 mb-5">
             <div className="flex items-center gap-1">
               <User className="h-4 w-4" />
               {isAdmin && ticket.userInfo ? ticket.userInfo.fullName : ticket.userName || "You"}
@@ -260,25 +260,25 @@ export default function TicketDetailPage() {
       </Card>
 
       {/* Responses */}
-      <div className="mb-6">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+      <div className="mb-8">
+        <h2 className="text-xl font-bold mb-5 flex items-center gap-2">
           <MessageCircle className="h-5 w-5" />
           Responses ({ticket.responses?.length || 0})
         </h2>
 
         {(!ticket.responses || ticket.responses.length === 0) ? (
-          <Card className="py-0">
-            <CardContent className="p-4 text-center text-gray-500">
-              <MessageCircle className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+          <Card>
+            <CardContent className="p-6 md:p-8 text-center text-gray-500">
+              <MessageCircle className="h-8 w-8 mx-auto mb-3 text-gray-300" />
               <p>No responses yet. Be the first to reply!</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-5">
             {ticket.responses.map((response, index) => (
-              <Card key={response.id || index} className="py-0">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-2">
+              <Card key={response.id || index}>
+                <CardContent className="p-5 md:p-6">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className={getResponseTypeColor(response.responseType)}>
                         {response.responseType?.replace("_", " ") || "Reply"}
@@ -291,7 +291,7 @@ export default function TicketDetailPage() {
                   </div>
                   <p className="text-gray-700 whitespace-pre-wrap break-words">{response.message}</p>
                   {response.images && response.images.length > 0 && (
-                    <div className="mt-3">
+                    <div className="mt-4">
                       <ImageGallery images={response.images} title="" variant="compact" />
                     </div>
                   )}
@@ -303,21 +303,18 @@ export default function TicketDetailPage() {
       </div>
 
       {/* Reply Form */}
-      <Card className="py-0">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Add a Response</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4">
-          <div className="space-y-4">
-            <div className="relative">
-              <ExpandableTextarea
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Type your response..."
-                className="min-h-[80px] max-h-[200px]"
-                rows={3}
-              />
-            </div>
+      <Card>
+        <CardContent className="p-4 md:p-5">
+          <h3 className="text-lg font-semibold mb-3">Add a Response</h3>
+
+          <div className="space-y-3">
+            <ExpandableTextarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Type your response..."
+              className="min-h-[80px] max-h-[200px]"
+              rows={3}
+            />
 
             <ImageUploadInput
               images={replyImages}

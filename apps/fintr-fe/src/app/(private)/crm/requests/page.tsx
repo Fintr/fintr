@@ -96,11 +96,11 @@ export default function CRMRequestsPage() {
   if (showCreateForm) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="mb-6">
-          <Button 
-            variant="outline" 
+        <div className="mb-8">
+          <Button
+            variant="outline"
             onClick={() => setShowCreateForm(false)}
-            className="mb-4"
+            className="mb-6"
           >
             ← Back to Tickets
           </Button>
@@ -109,9 +109,9 @@ export default function CRMRequestsPage() {
             Describe your issue or request and we'll help you as soon as possible.
           </p>
         </div>
-        
+
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-5 md:p-6">
             <CreateTicketForm onSuccess={handleCreateSuccess} />
           </CardContent>
         </Card>
@@ -120,7 +120,7 @@ export default function CRMRequestsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl">
+    <div className="container mx-auto px-4 py-8 pb-24 md:pb-12 max-w-6xl">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
         <div>
@@ -129,8 +129,8 @@ export default function CRMRequestsPage() {
             View and manage your support requests
           </p>
         </div>
-        
-        <Button 
+
+        <Button
           onClick={() => setShowCreateForm(true)}
           className="mt-4 md:mt-0 bg-primary hover:bg-primary/90"
         >
@@ -140,8 +140,8 @@ export default function CRMRequestsPage() {
       </div>
 
       {/* Filters */}
-      <Card className="mb-6 py-0">
-        <CardContent className="p-4">
+      <Card className="mb-8">
+        <CardContent className="p-5 md:p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -156,7 +156,7 @@ export default function CRMRequestsPage() {
                 />
               </div>
             </div>
-            
+
             <div className="flex gap-2">
               <Select value={statusFilter} onValueChange={(value) => {
                 setStatusFilter(value);
@@ -200,12 +200,12 @@ export default function CRMRequestsPage() {
 
       {/* Tickets List */}
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
+        <div className="flex justify-center items-center py-16">
           <LoadingSpinner size="medium" />
         </div>
       ) : isError ? (
-        <Card className="py-4">
-          <CardContent className="p-4 text-center">
+        <Card>
+          <CardContent className="p-6 md:p-8 text-center">
             <p className="text-red-900 mb-4">Failed to load tickets. Please try again.</p>
             <Button onClick={() => refetch()} variant="outline">
               Retry
@@ -214,10 +214,10 @@ export default function CRMRequestsPage() {
         </Card>
       ) : !ticketsData?.tickets?.length ? (
         <Card>
-          <CardContent className="p-4 text-center">
+          <CardContent className="p-6 md:p-8 text-center">
             <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No tickets found</h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-gray-500 mb-5">
               {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
                 ? 'Try adjusting your filters or search query to see more results.'
                 : 'You haven\'t created any support tickets yet.'}
@@ -228,19 +228,19 @@ export default function CRMRequestsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {ticketsData.tickets.map((ticket) => (
             <Link key={ticket.id} href={`/crm/requests/${ticket.id}`}>
-              <Card className="py-0 hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="p-4">
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-5 md:p-6">
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex-1">
                       {/* Title */}
-                      <div className="mb-3">
+                      <div className="mb-4">
                         <h3 className="text-lg font-semibold text-gray-900 hover:text-primary mb-2">
                           {ticket.title || 'Untitled'}
                         </h3>
-                        
+
                         {/* Badges below title for mobile, inline for desktop */}
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge className={getStatusColor(ticket.status || 'open')}>
@@ -259,27 +259,27 @@ export default function CRMRequestsPage() {
                           )}
                         </div>
                       </div>
-                      
+
                       {/* User details - responsive layout */}
                       <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
                           <User className="h-4 w-4" />
                           {isAdmin && ticket.userInfo ? ticket.userInfo.fullName : ticket.userName}
                         </div>
-                        
+
                         {isAdmin && ticket.userInfo && (
                           <div className="flex items-center gap-1">
                             <Mail className="h-4 w-4" />
                             {ticket.userInfo.email}
                           </div>
                         )}
-                        
+
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           {formatDateTime(ticket.createdAt)}
                         </div>
-                        
-                        
+
+
                         {ticket.responses && ticket.responses.length > 0 && (
                           <div className="flex items-center gap-1">
                             <MessageCircle className="h-4 w-4" />

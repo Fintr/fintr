@@ -3,7 +3,8 @@
 require "rails_helper"
 
 RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operation do
-  subject(:operation) { described_class.new }
+  let(:mock_provider) { instance_double(Ai::Providers::BaseProvider) }
+  subject(:operation) { described_class.new(provider: mock_provider) }
 
   let(:user) { create(:user) }
   let(:space) { create(:personal_space) }
@@ -63,45 +64,35 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
       }
     end
 
-    let(:openai_response) do
+    let(:llm_response) do
       {
-        "output" => [
-          {
-            "content" => [
-              {
-                "text" => '{
-                  "query_type": "spending_analysis",
-                  "data_sources": ["transactions"],
-                  "aggregations": {
-                    "group_by": ["category"],
-                    "metrics": ["sum", "count"]
-                  },
-                  "filters": {
-                    "transaction_type": ["expense"]
-                  },
-                  "time_range": {
-                    "period": "this_month"
-                  },
-                  "sorting": {
-                    "field": "amount",
-                    "direction": "desc"
-                  },
-                  "limit": 1
-                }'
-              }
-            ]
-          }
-        ]
+        content: '{
+          "query_type": "spending_analysis",
+          "data_sources": ["transactions"],
+          "aggregations": {
+            "group_by": ["category"],
+            "metrics": ["sum", "count"]
+          },
+          "filters": {
+            "transaction_type": ["expense"]
+          },
+          "time_range": {
+            "period": "this_month"
+          },
+          "sorting": {
+            "field": "amount",
+            "direction": "desc"
+          },
+          "limit": 10
+        }',
+        role: "assistant"
       }
     end
 
     before do
       category1
       category2
-      # Mock OpenAI client
-      openai_client = instance_double(OpenAI::Client)
-      allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-      allow(openai_client).to receive(:chat).and_return(openai_response)
+      allow(mock_provider).to receive(:chat).and_return(llm_response)
     end
 
     context "when all steps succeed" do
@@ -161,31 +152,22 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
 
     context "when analyze_query_intent fails" do
       before do
-        openai_client = instance_double(OpenAI::Client)
-        allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-        allow(openai_client).to receive(:chat).and_raise(StandardError.new("API error"))
+        allow(mock_provider).to receive(:chat).and_raise(StandardError.new("API error"))
       end
 
       it "returns a failure" do
         result = operation.call(params)
         expect(result).to be_failure
         expect(result.failure).to have_key(:llm_error)
-        expect(result.failure[:llm_error]).to include("Provider error")
+        expect(result.failure[:llm_error]).to eq("API error")
       end
     end
 
     context "when OpenAI returns invalid JSON" do
-      let(:openai_response) do
+      let(:llm_response) do
         {
-          "output" => [
-            {
-              "content" => [
-                {
-                  "text" => "Invalid JSON response"
-                }
-              ]
-            }
-          ]
+          content: "Invalid JSON response",
+          role: "assistant"
         }
       end
 

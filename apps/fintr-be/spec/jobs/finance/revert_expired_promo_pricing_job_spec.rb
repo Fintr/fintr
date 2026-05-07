@@ -4,6 +4,17 @@ require "rails_helper"
 
 module Finance
   RSpec.describe RevertExpiredPromoPricingJob, type: :job do
+    let(:xendit_client) do
+      instance_double(
+        Integrations::Payments::Xendit::Client,
+        update_subscription_plan: { id: "updated", status: "ACTIVE" }
+      )
+    end
+
+    before do
+      allow(Integrations::Payments::Xendit::Client).to receive(:new).and_return(xendit_client)
+    end
+
     describe "#perform" do
       let(:user) { create(:user) }
       let(:admin) { create(:user) }
@@ -119,13 +130,6 @@ module Finance
       end
 
       context "with expired promo subscriptions" do
-        before do
-          # Mock Xendit client
-          allow_any_instance_of(Integrations::Payments::Xendit::Client)
-            .to receive(:update_subscription_plan)
-            .and_return({ id: "updated_plan", status: "ACTIVE" })
-        end
-
         it "reverts expired promo subscriptions" do
           expect do
             described_class.perform_now
