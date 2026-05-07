@@ -60,6 +60,9 @@ jobs:
       DATABASE_HOST: localhost
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
+      OPENROUTER_API_KEY: dummy-openrouter-key-for-ci
+      OPENAI_API_KEY: dummy-openai-key-for-ci
+      XENDIT_API_KEY: dummy-xendit-key-for-ci
     services:
       postgres:
         image: timescale/timescaledb-ha:pg17
