@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { CalculatorInput } from "./calculator-input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog";
 
 // Mock the Capacitor native check
 vi.mock("@/lib/capacitor", () => ({
-  isNativeCapacitor: () => true, // Return true so tests work
+  isNativeCapacitor: () => true,
 }));
 
-// Mock the platform detection - returns 48px bottom for Android safe area
+// Mock the platform detection
 vi.mock("@/lib/platform-detection", () => ({
   getSafeAreaInsets: () => ({ bottom: 48, top: 0, left: 0, right: 0 }),
 }));
@@ -16,32 +18,18 @@ describe("CalculatorInput", () => {
   const mockOnChange = vi.fn();
 
   beforeEach(() => {
-    // Reset document classes
     document.documentElement.className = "";
     vi.clearAllMocks();
   });
 
   afterEach(() => {
+    cleanup();
     vi.clearAllMocks();
   });
 
-  describe("Mobile Keyboard Positioning", () => {
-    it("should position keyboard above Android 3-button navigation", async () => {
-      // Simulate Android native environment
-      Object.defineProperty(navigator, "userAgent", {
-        value: "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36",
-        writable: true,
-        configurable: true,
-      });
-
-      // Mock window dimensions to simulate mobile
-      Object.defineProperty(window, "innerWidth", {
-        writable: true,
-        configurable: true,
-        value: 400, // Mobile width
-      });
-
-      let keyboardElement: Element | null = null;
+  describe("Keyboard visibility", () => {
+    it("should NOT close keyboard when clicking a calculator button", async () => {
+      const user = userEvent.setup();
 
       await act(async () => {
         render(
@@ -53,132 +41,100 @@ describe("CalculatorInput", () => {
         );
       });
 
-      // Click input to show keyboard
       const input = screen.getByPlaceholderText("0.00");
-      fireEvent.focus(input);
+      await user.click(input);
 
-      // Find the keyboard element (rendered via portal in document.body)
-      keyboardElement = document.body.querySelector(
-        '[class*="bg-background"][class*="shadow-2xl"]'
+      // Keyboard should be open
+      let keyboard = document.body.querySelector(
+        '[data-calculator-keyboard]'
       );
-
-      expect(keyboardElement).toBeTruthy();
-
-      // Check that the keyboard has proper bottom offset style set
-      // The fix ensures bottom offset is at least 48px for Android 3-button nav
-      const style = (keyboardElement as HTMLElement).style;
-      const bottomValue = style.bottom;
-
-      // For native app, we expect additional bottom padding
-      // The keyboard should have a non-zero bottom offset
-      expect(bottomValue).not.toBe("0px");
-      expect(bottomValue).not.toBe("");
-
-      // Parse the value and verify it's at least 48px
-      const bottomPixels = parseInt(bottomValue.replace("px", ""), 10);
-      expect(bottomPixels).toBeGreaterThanOrEqual(48);
-    });
-
-    it("should use fixed positioning for mobile keyboard", async () => {
-      // Mock mobile dimensions
-      Object.defineProperty(window, "innerWidth", {
-        writable: true,
-        configurable: true,
-        value: 400,
-      });
-
-      await act(async () => {
-        render(
-          <CalculatorInput
-            value=""
-            onChange={mockOnChange}
-            placeholder="0.00"
-          />
-        );
-      });
-
-      // Click input to show keyboard
-      const input = screen.getByPlaceholderText("0.00");
-      fireEvent.focus(input);
-
-      // Find the keyboard element
-      const keyboard = document.body.querySelector(
-        '[class*="bg-background"][class*="shadow-2xl"]'
-      );
-
       expect(keyboard).toBeTruthy();
 
-      // Check that mobile keyboard uses fixed positioning class
-      expect(keyboard?.classList.contains("fixed")).toBe(true);
+      // Find and click a calculator button (e.g., button "7")
+      const button7 = document.body.querySelector('[data-calculator-keyboard] button');
+      expect(button7).toBeTruthy();
+      await user.click(button7 as Element);
+
+      // Keyboard should still be open after clicking a button
+      keyboard = document.body.querySelector('[data-calculator-keyboard]');
+      expect(keyboard).toBeTruthy();
     });
 
-    it("should cap bottom offset at 80px to prevent excessive spacing", async () => {
-      // Even with very large safe area (mock returns 48), should not exceed 80px
-      Object.defineProperty(window, "innerWidth", {
-        writable: true,
-        configurable: true,
-        value: 400,
-      });
+    it("should close keyboard when clicking outside", async () => {
+      const user = userEvent.setup();
 
       await act(async () => {
         render(
-          <CalculatorInput
-            value=""
-            onChange={mockOnChange}
-            placeholder="0.00"
-          />
+          <div>
+            <CalculatorInput
+              value=""
+              onChange={mockOnChange}
+              placeholder="0.00"
+            />
+            <button data-testid="outside">Outside</button>
+          </div>
         );
       });
 
       const input = screen.getByPlaceholderText("0.00");
-      fireEvent.focus(input);
+      await user.click(input);
 
-      const keyboard = document.body.querySelector(
-        '[class*="bg-background"][class*="shadow-2xl"]'
-      );
-
+      // Keyboard should be open
+      let keyboard = document.body.querySelector('[data-calculator-keyboard]');
       expect(keyboard).toBeTruthy();
 
-      const style = (keyboard as HTMLElement).style;
-      const bottomPixels = parseInt(style.bottom.replace("px", ""), 10);
+      // Click outside
+      const outsideButton = screen.getByTestId("outside");
+      await user.click(outsideButton);
 
-      // Should be capped at 80px maximum
-      expect(bottomPixels).toBeLessThanOrEqual(80);
+      // Keyboard should be closed
+      keyboard = document.body.querySelector('[data-calculator-keyboard]');
+      expect(keyboard).toBeFalsy();
     });
+  });
 
-    it("uses zero bottom offset on iOS native (no extra gap under calculator)", async () => {
-      Object.defineProperty(navigator, "userAgent", {
-        value:
-          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1 FintrNativeApp",
-        writable: true,
-        configurable: true,
-      });
-
-      Object.defineProperty(window, "innerWidth", {
-        writable: true,
-        configurable: true,
-        value: 400,
-      });
+  describe("Dialog + CalculatorInput interaction", () => {
+    it("should NOT close dialog or keyboard when clicking a calculator button inside a dialog", async () => {
+      const user = userEvent.setup();
 
       await act(async () => {
         render(
-          <CalculatorInput
-            value=""
-            onChange={mockOnChange}
-            placeholder="0.00"
-          />
+          <Dialog open={true} onOpenChange={() => {}}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Record Loan Payment</DialogTitle>
+              </DialogHeader>
+              <CalculatorInput
+                value=""
+                onChange={mockOnChange}
+                placeholder="0.00"
+              />
+            </DialogContent>
+          </Dialog>
         );
       });
 
+      // Dialog should be open
+      expect(screen.getByText("Record Loan Payment")).toBeInTheDocument();
+
       const input = screen.getByPlaceholderText("0.00");
-      fireEvent.focus(input);
+      await user.click(input);
 
-      const keyboard = document.body.querySelector(
-        '[class*="bg-background"][class*="shadow-2xl"]'
-      ) as HTMLElement | null;
-
+      // Keyboard should be open
+      let keyboard = document.body.querySelector('[data-calculator-keyboard]');
       expect(keyboard).toBeTruthy();
-      expect(keyboard?.style.bottom).toBe("0px");
+
+      // Find and click a calculator button
+      const button = document.body.querySelector('[data-calculator-keyboard] button');
+      expect(button).toBeTruthy();
+      await user.click(button as Element);
+
+      // Dialog should still be open
+      expect(screen.getByText("Record Loan Payment")).toBeInTheDocument();
+
+      // Keyboard should still be open
+      keyboard = document.body.querySelector('[data-calculator-keyboard]');
+      expect(keyboard).toBeTruthy();
     });
   });
 

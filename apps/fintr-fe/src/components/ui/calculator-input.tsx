@@ -190,10 +190,10 @@ export function CalculatorInput({
   // Handle clicks outside to close keyboard
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
+      const target = event.target as HTMLElement;
       const clickedInsideContainer = containerRef.current?.contains(target);
-      const clickedInsideKeyboard = keyboardRef.current?.contains(target);
-      
+      const clickedInsideKeyboard = target.closest("[data-calculator-keyboard]") != null;
+
       if (!clickedInsideContainer && !clickedInsideKeyboard) {
         setShowKeyboard(false);
         // Auto-evaluate on close if there's a valid expression
@@ -373,8 +373,9 @@ export function CalculatorInput({
   const renderKeyboard = () => (
     <div
       ref={keyboardRef}
+      data-calculator-keyboard
       className={cn(
-        "bg-background border shadow-2xl z-[9999]",
+        "bg-background border shadow-2xl z-[9999] pointer-events-auto",
         isMobile
           ? "fixed left-0 right-0 border-t rounded-t-xl p-3"
           : "fixed rounded-xl p-4"
@@ -392,6 +393,8 @@ export function CalculatorInput({
               width: keyboardPosition.width,
             }
       }
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
     >
       <div className={cn("flex flex-col", isMobile ? "h-full gap-1.5" : "space-y-2")}>
         {/* Calculator buttons - iOS style layout */}
@@ -414,6 +417,7 @@ export function CalculatorInput({
                 // Plus/minus toggle - orange accent
                 btn === "±" && "bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-400"
               )}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => handleButtonClick(btn)}
             >
               {btn}
