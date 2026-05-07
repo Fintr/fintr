@@ -24,7 +24,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ./apps/fintr-be/.ruby-version
+          working-directory: ./apps/fintr-be
           bundler-cache: true
 
       - name: Scan for common Rails security vulnerabilities using static analysis
@@ -42,7 +42,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ./apps/fintr-be/.ruby-version
+          working-directory: ./apps/fintr-be
           bundler-cache: true
 
       - name: Lint code for consistent style
@@ -74,16 +74,16 @@ jobs:
           --health-interval=10s --health-timeout=5s --health-retries=5
 
     steps:
-      - name: Install packages
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y build-essential git libpq-dev libyaml-dev pkg-config libvips-dev
-
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y build-essential git libpq-dev libyaml-dev pkg-config libvips-dev
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ./apps/fintr-be/.ruby-version
+          working-directory: ./apps/fintr-be
           bundler-cache: true
 
       - name: Wait for PostgreSQL
