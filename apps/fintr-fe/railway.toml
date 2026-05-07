@@ -1,6 +1,6 @@
 [build]
-builder = "docker"
-dockerfile = "Dockerfile"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [build.args]
 NEXT_PUBLIC_APP_BASE_URL = "${NEXT_PUBLIC_APP_BASE_URL}"
