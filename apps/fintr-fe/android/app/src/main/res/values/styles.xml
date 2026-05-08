@@ -23,7 +23,7 @@
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
+        <item name="android:background">#ffffff</item>
         <item name="android:statusBarColor">@color/fintr_top_bar</item>
         <item name="android:navigationBarColor">@color/fintr_top_bar</item>
         <!-- Dark nav icons on a light nav bar background -->
