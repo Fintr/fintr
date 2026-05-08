@@ -380,7 +380,7 @@ function Calendar({
         ),
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "mx-auto flex h-14 w-full max-w-full items-center justify-center p-0 text-base font-normal aria-selected:opacity-100 sm:size-8 sm:h-8 sm:min-h-0 sm:w-8 sm:text-sm",
+          "h-14 w-full max-w-full items-center justify-center p-0 text-base font-normal aria-selected:opacity-100 sm:size-8 sm:h-8 sm:min-h-0 sm:w-8 sm:text-sm",
         ),
         day_range_start:
           "day-range-start aria-selected:bg-primary aria-selected:text-primary-foreground",
