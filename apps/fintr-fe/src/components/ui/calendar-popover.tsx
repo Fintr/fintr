@@ -68,7 +68,7 @@ export function CalendarPopover({
   return (
     <Popover modal={modal} open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align={align} className={cn("p-0", contentClassName)}>
+      <PopoverContent align={align} className={cn("min-w-80 p-0", contentClassName)}>
         {children}
       </PopoverContent>
     </Popover>
