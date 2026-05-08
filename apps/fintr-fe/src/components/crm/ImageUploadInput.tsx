@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Upload, X, Paperclip } from 'lucide-react';
-import ImageLightbox from './ImageLightbox';
+import ImageLightbox from '@/components/ui/ImageLightbox';
 
 interface ImageUploadInputProps {
   images: File[];

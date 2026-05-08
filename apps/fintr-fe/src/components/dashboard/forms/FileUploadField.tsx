@@ -3,7 +3,7 @@ import React, { useRef, useState, useEffect, useId } from 'react';
 import { Label } from '../../ui/label';
 import { Upload } from 'lucide-react';
 import { Button } from '../../ui/button';
-import ImageLightbox from '@/components/crm/ImageLightbox';
+import ImageLightbox from '@/components/ui/ImageLightbox';
 
 /** Fixed-height crop biased toward upper-center (typical receipt / e-wallet amount area). */
 const RECEIPT_THUMB_FRAME_CLASS =

@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { AuthStorage } from '@/lib/auth-storage';
+import { downloadBlobAsFile } from '@/lib/download-blob';
 
 const ALLOWED_S3_PREFIXES = [
   'https://s3.ap-southeast-1.amazonaws.com/fintr-production/',
@@ -330,20 +331,6 @@ export default function ImageLightbox({
       : `image-${currentIndex + 1}`;
     const filename = extension ? `${baseFilename}.${extension}` : baseFilename;
 
-    const downloadBlob = (blob: Blob, name: string) => {
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 100);
-    };
-
     const backendUrl = process.env.NEXT_PUBLIC_BE_URL;
     const token = AuthStorage.getAuthData()?.tokens?.access_token;
     const isS3Url = ALLOWED_S3_PREFIXES.some((p) => currentImage.url.startsWith(p));
@@ -368,7 +355,7 @@ export default function ImageLightbox({
         return false;
       }
       const blob = await response.blob();
-      downloadBlob(blob, filename);
+      await downloadBlobAsFile(blob, filename);
       return true;
     };
 
@@ -395,7 +382,7 @@ export default function ImageLightbox({
       });
       if (response.ok) {
         const blob = await response.blob();
-        downloadBlob(blob, filename);
+        await downloadBlobAsFile(blob, filename);
         console.log('[ImageLightbox] Direct S3 download successful');
         return;
       }
@@ -440,7 +427,7 @@ export default function ImageLightbox({
           );
         });
         if (blob) {
-          downloadBlob(blob, filename);
+          await downloadBlobAsFile(blob, filename);
           console.log('[ImageLightbox] Canvas download successful');
           return;
         }
@@ -554,6 +541,7 @@ export default function ImageLightbox({
             type="button"
             variant="ghost"
             size="icon"
+            aria-label="Zoom out"
             className="text-white hover:bg-white/20 bg-black/30"
             onClick={(e) => handleButtonClick(e, zoomOut)}
             disabled={scale <= 0.5}
@@ -564,6 +552,7 @@ export default function ImageLightbox({
             type="button"
             variant="ghost"
             size="icon"
+            aria-label="Zoom in"
             className="text-white hover:bg-white/20 bg-black/30"
             onClick={(e) => handleButtonClick(e, zoomIn)}
             disabled={scale >= 5}
@@ -574,6 +563,7 @@ export default function ImageLightbox({
             type="button"
             variant="ghost"
             size="icon"
+            aria-label="Reset zoom"
             className="text-white hover:bg-white/20 bg-black/30"
             onClick={(e) => handleButtonClick(e, resetZoom)}
           >
@@ -583,6 +573,7 @@ export default function ImageLightbox({
             type="button"
             variant="ghost"
             size="icon"
+            aria-label="Download"
             className="text-white hover:bg-white/20 bg-black/30"
             onClick={(e) => handleButtonClick(e, handleDownload)}
           >
@@ -592,6 +583,7 @@ export default function ImageLightbox({
             type="button"
             variant="ghost"
             size="icon"
+            aria-label="Close"
             className="text-white hover:bg-white/20 bg-black/30"
             onClick={(e) => handleButtonClick(e, onClose)}
           >
@@ -606,6 +598,7 @@ export default function ImageLightbox({
               type="button"
               variant="ghost"
               size="icon"
+              aria-label="Previous image"
               className={`absolute ${showThumbnailsOnSide ? 'left-24 md:left-36' : 'left-4'} top-1/2 -translate-y-1/2 text-white hover:bg-white/20 bg-black/30 z-[100] pointer-events-auto`}
               onClick={(e) => handleButtonClick(e, navigatePrevious)}
             >
@@ -615,6 +608,7 @@ export default function ImageLightbox({
               type="button"
               variant="ghost"
               size="icon"
+              aria-label="Next image"
               className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 bg-black/30 z-[100] pointer-events-auto"
               onClick={(e) => handleButtonClick(e, navigateNext)}
             >

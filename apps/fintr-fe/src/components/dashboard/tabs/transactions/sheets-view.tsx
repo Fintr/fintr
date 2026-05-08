@@ -7,7 +7,7 @@ import { formatCurrency, truncateText } from "@/lib/utils";
 import { InfiniteData } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import ImageLightbox from "@/components/crm/ImageLightbox";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { fetchTransactionById } from "@/services/transactions/queries";
 import { fetchTransferById } from "@/services/transactions/transfers/queries";

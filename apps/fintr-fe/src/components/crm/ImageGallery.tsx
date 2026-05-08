@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ImageIcon } from 'lucide-react';
-import ImageLightbox from './ImageLightbox';
+import ImageLightbox from '@/components/ui/ImageLightbox';
 
 interface ImageData {
   url: string;
