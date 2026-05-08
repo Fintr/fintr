@@ -108,6 +108,7 @@ echo ""
 # Step 4: Sync to Android (app will load from PRODUCTION_WEB_URL)
 echo "Step 4: Syncing to Android..."
 export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
+mkdir -p android/app/src/main/assets
 npx cap sync android
 echo "Capacitor sync complete"
 echo ""

@@ -1,12 +1,12 @@
 /**
  * Saves a Blob as a downloaded file. On native Capacitor (iOS/Android), WebView
- * `<a download>` is unreliable; we write to cache and open the system share sheet
- * so the user can save to Files / Drive / etc.
+ * `<a download>` is unreliable; we write to the app's / public Documents directory
+ * so the file persists on the device.
  *
- * Android: @capacitor/share rejects content:// URLs from Filesystem.getUri(); we use
- * the Fintr FileShare native plugin for ACTION_SEND.
- * iOS: @capacitor/share rejects when the user dismisses the sheet and can mishandle file
- * URIs; FileShare uses UIActivityViewController and always resolves on dismiss.
+ * Android: @capacitor/filesystem maps Directory.Documents to the public Documents
+ * folder via MediaStore (Android 10+) or external storage.
+ * iOS: Directory.Documents maps to the app’s Documents container, visible in the
+ * Files app. A fallback share sheet is used only when the Documents write fails.
  */
 
 import { Capacitor } from "@capacitor/core";
@@ -97,50 +97,89 @@ export async function downloadBlobAsFile(
   if (nativeExport) {
     try {
       initCapacitorBridgeIfNeeded();
-      const [{ Directory, Encoding, Filesystem }, { FileShare }] = await Promise.all([
-        import("@capacitor/filesystem"),
-        import("@/plugins/file-share"),
-      ]);
-      const path = `fintr-downloads/${Date.now()}_${safeName}`;
+      const [{ Directory, Encoding, Filesystem }] = await import(
+        "@capacitor/filesystem"
+      );
+      const path = `Downloads/${Date.now()}_${safeName}`;
       const isUtf8Text = /\.(csv|txt|json|md|xml)$/i.test(safeName);
 
       const writePayload = isUtf8Text
         ? {
             path,
             data: await blob.text(),
-            directory: Directory.Cache,
+            directory: Directory.Documents,
             encoding: Encoding.UTF8,
             recursive: true,
           }
         : {
             path,
             data: await blobToBase64(blob),
-            directory: Directory.Cache,
+            directory: Directory.Documents,
             recursive: true,
           };
 
-      const writeResult = await Filesystem.writeFile(writePayload);
-      let uri = writeResult.uri;
-
-      if (!uri || String(uri).trim() === "") {
-        const uriResult = await Filesystem.getUri({
-          directory: Directory.Cache,
-          path,
-        });
-        uri = uriResult.uri;
-      }
-
-      const uriStr = String(uri).trim();
-
-      await FileShare.shareStream({
-        uri: uriStr,
-        mimeType,
-        dialogTitle: "Save or share file",
-      });
+      await Filesystem.writeFile(writePayload);
+      console.log(`[downloadBlobAsFile] Saved to Documents/Downloads: ${path}`);
       return;
     } catch (err) {
-      console.error("[downloadBlobAsFile] Native export failed", err);
-      throw err instanceof Error ? err : new Error(String(err));
+      console.error(
+        "[downloadBlobAsFile] Documents write failed, falling back to share",
+        err
+      );
+      // Graceful fallback: write to Cache and open share sheet so the user
+      // can still save the file rather than getting a hard error.
+      try {
+        const [{ Directory, Encoding, Filesystem }, { FileShare }] =
+          await Promise.all([
+            import("@capacitor/filesystem"),
+            import("@/plugins/file-share"),
+          ]);
+        const fallbackPath = `fintr-downloads/${Date.now()}_${safeName}`;
+        const isUtf8Text = /\.(csv|txt|json|md|xml)$/i.test(safeName);
+
+        const writePayload = isUtf8Text
+          ? {
+              path: fallbackPath,
+              data: await blob.text(),
+              directory: Directory.Cache,
+              encoding: Encoding.UTF8,
+              recursive: true,
+            }
+          : {
+              path: fallbackPath,
+              data: await blobToBase64(blob),
+              directory: Directory.Cache,
+              recursive: true,
+            };
+
+        const writeResult = await Filesystem.writeFile(writePayload);
+        let uri = writeResult.uri;
+
+        if (!uri || String(uri).trim() === "") {
+          const uriResult = await Filesystem.getUri({
+            directory: Directory.Cache,
+            path: fallbackPath,
+          });
+          uri = uriResult.uri;
+        }
+
+        const uriStr = String(uri).trim();
+
+        await FileShare.shareStream({
+          uri: uriStr,
+          mimeType,
+          dialogTitle: "Save or share file",
+        });
+        return;
+      } catch (fallbackErr) {
+        console.error(
+          "[downloadBlobAsFile] Fallback share also failed",
+          fallbackErr
+        );
+        throw fallbackErr instanceof Error
+          ? fallbackErr
+          : new Error(String(fallbackErr));
+      }
     }
   }
 

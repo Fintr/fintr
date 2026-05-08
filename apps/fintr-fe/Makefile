@@ -100,6 +100,7 @@ android-dev:
 	@echo ""
 	@sleep 2
 	@echo "🔄 Step 1/2: Syncing Capacitor to Android..."
+	@mkdir -p android/app/src/main/assets
 	@CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR) pnpm cap sync android || (echo "❌ Capacitor sync failed"; exit 1)
 	@echo "✅ Capacitor sync complete"
 	@echo ""
@@ -124,6 +125,7 @@ android-live:
 	@echo "🔨 Building Next.js app..."
 	@pnpm build || (echo "❌ Build failed"; exit 1)
 	@echo "🔄 Syncing Capacitor..."
+	@mkdir -p android/app/src/main/assets
 	@pnpm cap sync android
 	@echo "📱 Starting Android with livereload..."
 	@pnpm cap run android --livereload --external
@@ -293,6 +295,7 @@ install:
 
 # Sync Capacitor (after web build)
 sync-android:
+	@mkdir -p android/app/src/main/assets
 	@pnpm cap sync android
 
 sync-ios:
