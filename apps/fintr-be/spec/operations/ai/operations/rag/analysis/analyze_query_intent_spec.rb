@@ -3,9 +3,9 @@
 require "rails_helper"
 
 RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operation do
-  let(:mock_provider) { instance_double(Ai::Providers::BaseProvider) }
   subject(:operation) { described_class.new(provider: mock_provider) }
 
+  let(:mock_provider) { instance_double(Ai::Providers::BaseProvider) }
   let(:user) { create(:user) }
   let(:space) { create(:personal_space) }
   let!(:space_user) { create(:space_user, user: user, space: space) }
@@ -13,6 +13,10 @@ RSpec.describe Ai::Operations::Rag::Analysis::AnalyzeQueryIntent, type: :operati
   let(:category2) { create(:category, space: space, name: "Transportation", category_type: "expense") }
   let(:query) { "What's my biggest expense this month?" }
   let(:space_id) { space.id.to_s }
+
+  before do
+    allow(Ai::Providers::ProviderFactory).to receive(:create).and_return(mock_provider)
+  end
 
   describe "Contract" do
     let(:params) do

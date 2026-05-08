@@ -4,6 +4,12 @@ require 'rails_helper'
 
 RSpec.describe Ai::Providers::ProviderFactory do
   describe '.create' do
+    let(:mock_openai_client) { instance_double(OpenAI::Client) }
+
+    before do
+      allow(OpenAI::Client).to receive(:new).and_return(mock_openai_client)
+    end
+
     context 'with valid provider name' do
       it 'creates OpenRouter provider' do
         provider = described_class.create(:openrouter, api_key: 'test')
