@@ -1,5 +1,6 @@
 s:
-	bundle exec rails s -p 3001
+	PORT=$$(awk -F= '/^PORT=/ { gsub(/"/,""); gsub(/'\''/,""); print $$2; exit }' .env 2>/dev/null || echo 3000); \
+	bundle exec rails s -p $$PORT
 
 mmigrate:
 	mise exec -- bundle exec rails db:migrate

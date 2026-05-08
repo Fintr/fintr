@@ -215,13 +215,13 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   const handleOverlayClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     const lightbox = document.querySelector(".lightbox-container");
-    
+
     if (lightbox && (lightbox.contains(target) || target.closest(".lightbox-container"))) {
       return;
     }
 
     if (target === e.currentTarget) {
-      return;
+      onCloseRef.current();
     }
   };
 
@@ -247,6 +247,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         />
       )}
       <div
+        data-testid="custom-modal-backdrop"
         className={cn(
           "fixed left-0 right-0 top-0 bg-black/50 z-[100]",
           "transition-opacity duration-200"
@@ -261,13 +262,13 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         onClick={(e) => {
           const target = e.target as HTMLElement;
           const lightbox = document.querySelector(".lightbox-container");
-          
+
           if (lightbox && (lightbox.contains(target) || target.closest(".lightbox-container"))) {
             return;
           }
 
           if (e.target === e.currentTarget) {
-            return;
+            onCloseRef.current();
           }
         }}
       />
