@@ -4,21 +4,15 @@ require "rails_helper"
 
 module Finance
   RSpec.describe RevertExpiredPromoPricingJob, type: :job do
-    let(:xendit_client) do
-      instance_double(
-        Integrations::Payments::Xendit::Client,
-        update_subscription_plan: { id: "updated", status: "ACTIVE" }
-      )
-    end
-
-    before do
-      allow(Integrations::Payments::Xendit::Client).to receive(:new).and_return(xendit_client)
-    end
-
     describe "#perform" do
+      let(:xendit_client) do
+        instance_double(
+          Integrations::Payments::Xendit::Client,
+          update_subscription_plan: { id: "updated", status: "ACTIVE" }
+        )
+      end
       let(:user) { create(:user) }
       let(:admin) { create(:user) }
-
       let!(:subscription_plan) do
         create(
           :subscription_plan,
@@ -28,7 +22,6 @@ module Finance
           price_cents: 50000
         )
       end
-
       let!(:sponsor_code) do
         SponsorCode.create!(
           code: "3MONTHS20",
@@ -38,8 +31,6 @@ module Finance
           created_by: admin
         )
       end
-
-      # Create a subscription with expired promo
       let!(:expired_subscription) do
         space = create(:personal_space, owner: user)
         sub = SpaceSubscription.create!(
@@ -65,8 +56,6 @@ module Finance
         )
         sub
       end
-
-      # Create a subscription with active promo (not expired)
       let!(:active_promo_subscription) do
         space = create(:personal_space, owner: create(:user))
         sub = SpaceSubscription.create!(
@@ -92,8 +81,6 @@ module Finance
         )
         sub
       end
-
-      # Create a subscription with no promo
       let!(:no_promo_subscription) do
         space = create(:personal_space, owner: create(:user))
         sub = SpaceSubscription.create!(
@@ -107,8 +94,6 @@ module Finance
         )
         sub
       end
-
-      # Create a subscription that was already reverted
       let!(:already_reverted_subscription) do
         space = create(:personal_space, owner: create(:user))
         sub = SpaceSubscription.create!(
@@ -127,6 +112,10 @@ module Finance
           }
         )
         sub
+      end
+
+      before do
+        allow(Integrations::Payments::Xendit::Client).to receive(:new).and_return(xendit_client)
       end
 
       context "with expired promo subscriptions" do
