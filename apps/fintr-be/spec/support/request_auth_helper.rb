@@ -37,9 +37,9 @@ module RequestAuthHelper
     # Mock the user cache
     allow(Rails.cache).to receive(:fetch).with("current_user_#{Digest::MD5.hexdigest(auth_id)}", expires_in: 1.hour).and_return(user)
 
-    # Mock the CreateUserAndSpace operation directly
-    operation_double = instance_double(Auth::Operations::CreateUserAndSpace)
-    allow(Auth::Operations::CreateUserAndSpace).to receive(:new).and_return(operation_double)
+    # Mock EnsureAuthenticatedUser (resolves user without full provisioning on each request)
+    operation_double = instance_double(Auth::Operations::EnsureAuthenticatedUser)
+    allow(Auth::Operations::EnsureAuthenticatedUser).to receive(:new).and_return(operation_double)
     allow(operation_double).to receive(:call).and_return(Dry::Monads::Result::Success.new(user))
 
     # Mock space caching

@@ -69,9 +69,9 @@ module ApplicationCable
         data = {
           auth_id: auth_id,
           email: token_data["email"],
-          full_name: token_data["full_name"]
+          full_name: token_data["full_name"].presence || token_data["name"].presence
         }
-        result = Auth::Operations::CreateUserAndSpace.new.call(data)
+        result = Auth::Operations::EnsureAuthenticatedUser.new.call(data)
         result.success? ? result.value! : nil
       end
     end
