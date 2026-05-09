@@ -764,7 +764,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                           setValidationErrors({ ...validationErrors, date: "" });
                         }
                       }} 
-                      initialFocus 
+                      autoFocus 
                       defaultMonth={paymentDate || new Date()}
                       toDate={new Date()}
                     />
@@ -897,7 +897,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                         setValidationErrors({ ...validationErrors, date: "" });
                       }
                     }} 
-                    initialFocus 
+                    autoFocus 
                     defaultMonth={paymentDate || new Date()}
                     toDate={new Date()}
                   />

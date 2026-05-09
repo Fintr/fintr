@@ -1,6 +1,6 @@
 "use client"
 
-import type { DateRange } from "react-day-picker"
+import type { DateRange } from "@daypicker/react"
 
 import { Calendar } from "@/components/ui/calendar"
 import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen"
@@ -13,27 +13,6 @@ import {
 } from "@/components/ui/sheet"
 
 const DATE_RANGE_HISTORY_KEY = "__fintrDateRangeSheet"
-
-/**
- * When a full range is already selected, react-day-picker's next click often
- * keeps the old start and sets `to` to the clicked day. For filters we want the
- * first tap after a complete range to always be the new **range start**.
- */
-export function normalizeFirstClickAfterFullRange(
-  prior: DateRange | undefined,
-  range: DateRange | undefined,
-  clickedDay: Date,
-): DateRange | undefined {
-  const hadFullRange =
-    prior?.from != null && prior?.to != null;
-  if (!hadFullRange) {
-    return range;
-  }
-  if (range === undefined) {
-    return undefined;
-  }
-  return { from: clickedDay, to: undefined };
-}
 
 export type DateRangeFullscreenSheetProps = {
   open: boolean
@@ -110,16 +89,10 @@ export function DateRangeFullscreenSheet({
         >
           <Calendar
             mode="range"
+            resetOnSelect
             selected={selected}
-            onSelect={(range, clickedDay) => {
-              const next = normalizeFirstClickAfterFullRange(
-                selected,
-                range,
-                clickedDay,
-              );
-              onSelect(next);
-            }}
-            initialFocus
+            onSelect={onSelect}
+            autoFocus
             numberOfMonths={1}
             className={cn(
               "mx-auto w-full max-w-full",

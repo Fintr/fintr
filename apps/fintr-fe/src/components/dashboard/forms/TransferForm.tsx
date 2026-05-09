@@ -453,7 +453,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
                 setDate?.(d);
                 if (d) setDatePickerOpen(false);
               }}
-              initialFocus
+              autoFocus
               toDate={endOfMonth(new Date())}
               toYear={new Date().getFullYear()}
               defaultMonth={date || new Date()}

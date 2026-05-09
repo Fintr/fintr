@@ -163,8 +163,8 @@ export function Filters({
 
       setDateRange(updatedRange);
 
-      // With an existing full range, react-day-picker can set both ends in one
-      // click ({ from, to: clickedDay }). Only close after a real two-tap flow.
+      // With resetOnSelect, the first click after a full range starts a new from;
+      // a second click completes { from, to }. Only close after that two-step flow.
       if (hadIncompleteSelection && nowComplete) {
         setDateRangePickerOpen(false);
       }

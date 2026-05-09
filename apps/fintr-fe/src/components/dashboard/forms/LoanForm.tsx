@@ -285,7 +285,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
                 setDate?.(d);
                 if (d) setDatePickerOpen(false);
               }}
-              initialFocus
+              autoFocus
             />
           </CalendarPopover>
         </div>

@@ -123,7 +123,7 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({
                 setDate(d);
                 if (d) setDatePickerOpen(false);
               }}
-              initialFocus
+              autoFocus
             />
           </CalendarPopover>
         </div>
