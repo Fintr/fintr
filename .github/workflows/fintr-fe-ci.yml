@@ -1,0 +1,51 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - "apps/fintr-fe/**"
+      - ".github/workflows/fintr-fe-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/fintr-fe/**"
+      - ".github/workflows/fintr-fe-ci.yml"
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/fintr-fe
+    env:
+      CI: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: apps/fintr-fe/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Vitest
+        run: pnpm test:ci
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Playwright (Chromium)
+        run: pnpm exec playwright test --project=chromium
