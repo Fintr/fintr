@@ -5,7 +5,9 @@ module Api
     module Transactions
       class LoansController < ApiController
         def index
-          loans = current_space.loans.order(date: :desc, created_at: :desc)
+          loans = current_space.loans
+                                .includes(:entity, :account, :loan_payments, { files_attachments: :blob })
+                                .order(date: :desc, created_at: :desc)
 
           per_page = params[:per_page]&.to_i || 10
           per_page = [per_page, 100].min

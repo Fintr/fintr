@@ -1,11 +1,33 @@
 #!/bin/bash
 
 # Wrapper script to load .env and run Sentry MCP server
-# This ensures the SENTRY_ACCESS_TOKEN is loaded from .env
-# Also ensures the latest Node.js version (v20+) is used via mise
+# Sources repo root, backend, and frontend .env files (see load_env_files).
+# Also prefers Node.js v20+ via mise using apps/fintr-be/.tool-versions
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+MONOREPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+# Load .env files from common locations (repo root, backend, frontend).
+# Later files override earlier keys; put SENTRY_ACCESS_TOKEN where it fits your setup.
+load_env_files() {
+  local env_file
+
+  for env_file in \
+    "${MONOREPO_ROOT}/.env" \
+    "${PROJECT_ROOT}/.env" \
+    "${MONOREPO_ROOT}/apps/fintr-fe/.env"
+  do
+    if [ -f "$env_file" ]; then
+      set -a
+      # shellcheck disable=SC1090
+      source "$env_file"
+      set +a
+    fi
+  done
+}
+
+load_env_files
 
 # Try to use the latest Node.js via mise if available
 if command -v mise &> /dev/null; then
@@ -20,20 +42,15 @@ if command -v mise &> /dev/null; then
   # If Node.js is not in .tool-versions, mise will use system Node.js
 fi
 
-# Load .env file if it exists
-if [ -f "$PROJECT_ROOT/.env" ]; then
-  # Source the .env file properly
-  set -a
-  source "$PROJECT_ROOT/.env"
-  set +a
-fi
-
-# Use the token from environment
+# Use the token from environment (after sourcing .env files above)
 TOKEN="${SENTRY_ACCESS_TOKEN}"
 
 if [ -z "$TOKEN" ]; then
-  echo "Error: SENTRY_ACCESS_TOKEN not found in .env file or environment" >&2
-  echo "Please add SENTRY_ACCESS_TOKEN=your-token to your .env file" >&2
+  echo "Error: SENTRY_ACCESS_TOKEN not found in environment or in any of these .env files:" >&2
+  echo "  - ${MONOREPO_ROOT}/.env" >&2
+  echo "  - ${PROJECT_ROOT}/.env" >&2
+  echo "  - ${MONOREPO_ROOT}/apps/fintr-fe/.env" >&2
+  echo "Add SENTRY_ACCESS_TOKEN=your-token to one of them (same token works for MCP and org API)." >&2
   exit 1
 fi
 

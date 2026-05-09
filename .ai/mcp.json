@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
+    "sentry-fintr": {
+      "command": "${workspaceFolder}/apps/fintr-be/bin/sentry-mcp-wrapper.sh",
+      "cwd": "${workspaceFolder}/apps/fintr-be"
     }
   }
 }

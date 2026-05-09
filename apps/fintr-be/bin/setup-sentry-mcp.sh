@@ -5,6 +5,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+MONOREPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 echo "🚀 Setting up Sentry MCP for fintr-be..."
 echo ""
@@ -71,21 +72,36 @@ else
   exit 1
 fi
 
-# Check for .env file
+# Ensure backend .env exists (optional place for the token)
 ENV_FILE="$PROJECT_ROOT/.env"
 if [ ! -f "$ENV_FILE" ]; then
-  echo "📝 Creating .env file..."
+  echo "📝 Creating apps/fintr-be/.env (you can use repo root or apps/fintr-fe/.env instead)"
   touch "$ENV_FILE"
-  echo "   Please add your SENTRY_ACCESS_TOKEN to .env"
 fi
 
-# Check if SENTRY_ACCESS_TOKEN is in .env
-if grep -q "SENTRY_ACCESS_TOKEN" "$ENV_FILE" 2>/dev/null; then
-  echo "✅ SENTRY_ACCESS_TOKEN found in .env"
+TOKEN_FOUND=false
+ENV_CANDIDATES=(
+  "${MONOREPO_ROOT}/.env"
+  "${PROJECT_ROOT}/.env"
+  "${MONOREPO_ROOT}/apps/fintr-fe/.env"
+)
+
+for candidate in "${ENV_CANDIDATES[@]}"; do
+  if grep -q "^SENTRY_ACCESS_TOKEN=" "$candidate" 2>/dev/null; then
+    TOKEN_FOUND=true
+    break
+  fi
+done
+
+if [ "$TOKEN_FOUND" = true ]; then
+  echo "✅ SENTRY_ACCESS_TOKEN found in a repo .env file"
 else
-  echo "⚠️  SENTRY_ACCESS_TOKEN not found in .env"
+  echo "⚠️  SENTRY_ACCESS_TOKEN not found in any of:"
+  echo "     ${MONOREPO_ROOT}/.env"
+  echo "     ${PROJECT_ROOT}/.env"
+  echo "     ${MONOREPO_ROOT}/apps/fintr-fe/.env"
   echo ""
-  echo "   Please add the following to your .env file:"
+  echo "   Add this line to one of those files (same auth token for MCP and Sentry API):"
   echo "   SENTRY_ACCESS_TOKEN=your-sentry-access-token-here"
   echo ""
   echo "   To get your access token:"
