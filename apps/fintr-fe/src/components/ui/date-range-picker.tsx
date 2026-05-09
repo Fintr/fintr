@@ -1,13 +1,10 @@
 "use client"
 
-import type { DateRange } from "react-day-picker"
+import type { DateRange } from "@daypicker/react"
 
 import { Calendar } from "@/components/ui/calendar"
 import { CalendarPopover } from "@/components/ui/calendar-popover"
-import {
-  DateRangeFullscreenSheet,
-  normalizeFirstClickAfterFullRange,
-} from "@/components/ui/date-range-fullscreen-sheet"
+import { DateRangeFullscreenSheet } from "@/components/ui/date-range-fullscreen-sheet"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 
 const BELOW_MD_QUERY = "(max-width: 767px)"
@@ -61,16 +58,10 @@ export function DateRangePicker({
     >
       <Calendar
         mode="range"
+        resetOnSelect
         selected={selected}
-        onSelect={(range, clickedDay) => {
-          const next = normalizeFirstClickAfterFullRange(
-            selected,
-            range,
-            clickedDay,
-          )
-          onSelect(next)
-        }}
-        initialFocus
+        onSelect={onSelect}
+        autoFocus
         numberOfMonths={2}
       />
     </CalendarPopover>

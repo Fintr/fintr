@@ -139,7 +139,7 @@ export default function UserAnalyticsPage() {
                     setDrilldownPickerOpen(false);
                   }
                 }}
-                initialFocus
+                autoFocus
                 defaultMonth={drilldownSelected ?? maxDay}
                 fromDate={minDay}
                 toDate={maxDay}

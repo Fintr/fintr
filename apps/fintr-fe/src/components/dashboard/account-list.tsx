@@ -485,7 +485,7 @@ const AccountList: React.FC<AccountListProps> = ({
                       setCalendarOpen(false);
                     }
                   }}
-                  initialFocus
+                  autoFocus
                 />
               </CalendarPopover>
             </div>

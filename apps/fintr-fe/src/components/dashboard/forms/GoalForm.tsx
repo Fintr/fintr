@@ -79,7 +79,7 @@ const GoalForm: React.FC<GoalFormProps> = ({
                 setDate(d);
                 if (d) setGoalDatePickerOpen(false);
               }}
-              initialFocus
+              autoFocus
             />
           </CalendarPopover>
         </div>
@@ -203,7 +203,7 @@ const GoalForm: React.FC<GoalFormProps> = ({
                 setGoalForm({ ...goalForm, targetDate: d || new Date() });
                 if (d) setTargetDatePickerOpen(false);
               }}
-              initialFocus
+              autoFocus
             />
           </CalendarPopover>
         </div>

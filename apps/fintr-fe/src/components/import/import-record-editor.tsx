@@ -243,7 +243,7 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
                 setSelectedDate(d);
                 if (d) setDatePickerOpen(false);
               }}
-              initialFocus
+              autoFocus
               defaultMonth={selectedDate || new Date()}
             />
           </CalendarPopover>

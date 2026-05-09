@@ -854,7 +854,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                   setDate(d);
                   if (d) setDatePickerOpen(false);
                 }}
-                initialFocus
+                autoFocus
                 toDate={maxDate}
                 toYear={currentYear}
                 defaultMonth={date || new Date()}

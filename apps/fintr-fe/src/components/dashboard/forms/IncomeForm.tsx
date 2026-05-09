@@ -593,7 +593,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                   setDate(d);
                   if (d) setDatePickerOpen(false);
                 }}
-                initialFocus
+                autoFocus
                 toDate={maxDate}
                 toYear={currentYear}
                 defaultMonth={date || new Date()}
