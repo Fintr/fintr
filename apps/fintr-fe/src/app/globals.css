@@ -12,6 +12,13 @@ body {
   overflow-x: hidden;
 }
 
+/*
+ * rack-mini-profiler UI defaults below Radix/tutorial/modals (~10k). Keep the badge usable in dev.
+ */
+body > .profiler-results {
+  z-index: 2147483646 !important;
+}
+
 /* Remove forced max-width from containers to restore desktop centering */
 /* #__next, main, .max-w-7xl, .w-full, .container {
   max-width: 100vw !important;

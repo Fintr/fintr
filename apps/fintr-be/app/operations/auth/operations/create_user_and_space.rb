@@ -23,24 +23,18 @@ module Auth
       private
 
       def create_user(params)
-        # First try to find user by auth_id
-        user = Auth::User.find_by(auth_id: params[:auth_id])
+        match = Auth::User.find_for_token(
+          auth_id: params[:auth_id],
+          email: params[:email]
+        )
+        user = match[:user]
 
-        # If not found by auth_id, try to find by email (for users who logged in with different methods)
-        if user.nil? && params[:email].present?
-          user = Auth::User.find_by(email: params[:email])
-
-          if user.present?
-            # Return the existing user without updating auth_id
-            # This allows the same user to authenticate with different methods
-            return Success(user)
-          end
+        if match[:matched_by] == :email
+          # Existing account matched by email only: never overwrite auth_id (alternate login methods).
+          return Success(user)
         end
 
-        # If still not found, create a new user
-        if user.nil?
-          user = Auth::User.new(auth_id: params[:auth_id])
-        end
+        user = Auth::User.new(auth_id: params[:auth_id]) if user.nil?
 
         # Only assign attributes from token; do not overwrite full_name or email with nil
         # so existing users keep their names when Auth0 token omits them

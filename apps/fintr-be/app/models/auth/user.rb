@@ -31,6 +31,29 @@ module Auth
               uniqueness: true,
               format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }
 
+    # Resolves a user from Auth0-style token claims. Prefer +auth_id+; if missing in DB, fall back to +email+.
+    # When matched by email only, callers must not overwrite +auth_id+ (alternate login providers).
+    #
+    # @return [Hash] +:user+ (Auth::User or nil), +:matched_by+ (:auth_id, :email, or nil)
+    def self.find_for_token(auth_id:, email: nil)
+      user = find_by(auth_id: auth_id)
+      return { user:, matched_by: :auth_id } if user.present?
+
+      return { user: nil, matched_by: nil } if email.blank?
+
+      normalized = normalize_email_for_lookup(email)
+      return { user: nil, matched_by: nil } if normalized.blank?
+
+      user = find_by(email: normalized)
+      return { user: nil, matched_by: nil } unless user.present?
+
+      { user:, matched_by: :email }
+    end
+
+    def self.normalize_email_for_lookup(email)
+      email.to_s.downcase.strip
+    end
+
     before_validation :downcase_email
 
     after_create :create_onboarding

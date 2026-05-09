@@ -79,4 +79,29 @@ RSpec.describe Auth::User, type: :model do
       end
     end
   end
+
+  describe '.find_for_token' do
+    let!(:user) { create(:user, auth_id: 'google-oauth2|1', email: 'u@example.com') }
+
+    it 'prefers auth_id when the user exists with that auth_id' do
+      result = described_class.find_for_token(auth_id: 'google-oauth2|1', email: 'other@example.com')
+
+      expect(result[:user]).to eq(user)
+      expect(result[:matched_by]).to eq(:auth_id)
+    end
+
+    it 'falls back to normalized email when auth_id is unknown' do
+      result = described_class.find_for_token(auth_id: 'unknown|x', email: 'U@example.com')
+
+      expect(result[:user]).to eq(user)
+      expect(result[:matched_by]).to eq(:email)
+    end
+
+    it 'returns no user when neither auth_id nor email match' do
+      result = described_class.find_for_token(auth_id: 'unknown|x', email: 'none@example.com')
+
+      expect(result[:user]).to be_nil
+      expect(result[:matched_by]).to be_nil
+    end
+  end
 end

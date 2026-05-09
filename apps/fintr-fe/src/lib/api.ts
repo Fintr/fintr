@@ -1,6 +1,20 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { triggerSessionExpiration } from './session-expiration-handler';
 
+/**
+ * rack-mini-profiler patches `window.fetch` to read `X-MiniProfiler-Ids` from API responses.
+ * Its XMLHttpRequest hook explicitly ignores cross-origin responses (SPA on :5173 vs API on :3001),
+ * so Axios must use the fetch adapter in the browser during development; default is XHR-first.
+ *
+ * @see https://github.com/MiniProfiler/rack-mini-profiler/blob/main/lib/html/includes.js (XHR load handler)
+ */
+if (
+  typeof window !== "undefined" &&
+  process.env.NODE_ENV === "development"
+) {
+  axios.defaults.adapter = ["fetch", "xhr", "http"];
+}
+
 // Shared response error handler
 const handleResponseError = (error: AxiosError) => {
   const status = error.response?.status;

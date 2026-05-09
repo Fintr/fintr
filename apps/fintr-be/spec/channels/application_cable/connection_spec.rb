@@ -164,13 +164,13 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
     end
 
     context "when user is not cached" do
-      let(:operation) { instance_double(Auth::Operations::CreateUserAndSpace) }
+      let(:operation) { instance_double(Auth::Operations::EnsureAuthenticatedUser) }
       let(:success_result) { Dry::Monads::Result::Success.new(user) }
 
       before do
         cache_key = "current_user_#{Digest::MD5.hexdigest(auth_id)}"
         allow(Rails.cache).to receive(:fetch).with(cache_key, expires_in: 1.hour).and_yield
-        allow(Auth::Operations::CreateUserAndSpace).to receive(:new).and_return(operation)
+        allow(Auth::Operations::EnsureAuthenticatedUser).to receive(:new).and_return(operation)
         allow(operation).to receive(:call).with(
           hash_including(
             auth_id: auth_id,
@@ -180,7 +180,7 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
         ).and_return(success_result)
       end
 
-      it "calls CreateUserAndSpace operation" do
+      it "calls EnsureAuthenticatedUser operation" do
         expect(operation).to receive(:call).with(
           hash_including(
             auth_id: auth_id,

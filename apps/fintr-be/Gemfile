@@ -96,3 +96,11 @@ group :development, :test do
   gem "vcr", "~> 6.3"
   gem "webmock", "~> 3.18"
 end
+
+group :development do
+  # After ActiveRecord adapter gems (e.g. pg) so SQL instrumentation hooks apply.
+  # https://github.com/MiniProfiler/rack-mini-profiler
+  gem "rack-mini-profiler"
+  # Optional: flamegraphs via ?pp=flamegraph / async-flamegraph
+  gem "stackprof", require: false
+end

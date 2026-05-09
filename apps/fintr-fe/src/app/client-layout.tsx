@@ -7,6 +7,8 @@ import { PerformanceMonitor } from "@/components/performance-monitor";
 import CapacitorLoader from "@/components/capacitor-loader";
 import CacheVersionChecker from "@/components/cache-version-checker";
 import ErudaDevTools from "@/components/eruda-devtools";
+import RackMiniProfilerPendingFlush from "@/components/rack-mini-profiler-pending-flush";
+import RackMiniProfilerSpa from "@/components/rack-mini-profiler-spa";
 
 type GlobalErrorBoundaryProps = {
   children: ReactNode;
@@ -109,6 +111,8 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       <CapacitorLoader />
       <CacheVersionChecker />
       <ErudaDevTools />
+      <RackMiniProfilerPendingFlush />
+      <RackMiniProfilerSpa />
       <PerformanceMonitor>
         <Providers>
           {children}

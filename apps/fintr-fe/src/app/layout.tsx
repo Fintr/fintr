@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { League_Spartan } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "./client-layout";
+import {
+  miniProfilerEarlyFetchQueueScript,
+  miniProfilerInlineBootstrapScript,
+} from "@/lib/rack-mini-profiler-inline-bootstrap";
 
 const leagueSpartan = League_Spartan({
   variable: "--font-league-spartan",
@@ -104,6 +108,23 @@ export default function RootLayout({
       <body
         className={`${leagueSpartan.variable} antialiased ${leagueSpartan.className}`}
       >
+        {process.env.NODE_ENV === "development" &&
+          process.env.NEXT_PUBLIC_BE_URL && (
+          <>
+            <script
+              dangerouslySetInnerHTML={{
+                __html: miniProfilerEarlyFetchQueueScript(),
+              }}
+            />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: miniProfilerInlineBootstrapScript(
+                  process.env.NEXT_PUBLIC_BE_URL,
+                ),
+              }}
+            />
+          </>
+        )}
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

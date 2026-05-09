@@ -75,7 +75,9 @@ module Transactions
       def calculate_totals(relation)
         totals = { income: 0.0, expense: 0.0, transfer: 0.0 }
 
-        relation.includes(:transactable).each do |transaction|
+        relation = PreloadsCombinedTransactableAssociations.apply(relation)
+
+        relation.each do |transaction|
           amount = if transaction.transactable.respond_to?(:amount_numeric_for_space_total)
                      transaction.transactable.amount_numeric_for_space_total
           else

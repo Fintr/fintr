@@ -69,7 +69,7 @@ module Secured
       full_name:
     }
 
-    result = Auth::Operations::CreateUserAndSpace.new.call(data)
+    result = Auth::Operations::EnsureAuthenticatedUser.new.call(data)
     return render_not_found(details: result.failure) unless result.success?
 
     @current_user = result.value!
