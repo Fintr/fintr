@@ -1,0 +1,15 @@
+default_install_hook_types = ["pre-push"]
+
+[[repos]]
+repo = "local"
+hooks = [
+  {
+    id = "frontend-pre-push",
+    name = "Frontend Vitest / Playwright (scoped)",
+    language = "system",
+    entry = "bash scripts/git-hooks/pre-push-frontend.sh",
+    stages = ["pre-push"],
+    pass_filenames = false,
+    always_run = true,
+  },
+]
