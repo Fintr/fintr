@@ -31,6 +31,7 @@ gem "dry-validation", "~> 1.11"
 # Serialization
 gem "blueprinter", "~> 1.2"
 gem "oj", "~> 3.16"
+gem "panko_serializer", "~> 0.8"
 
 # Authentication
 gem "jwt", "~> 2.7"

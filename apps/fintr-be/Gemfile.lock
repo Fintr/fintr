@@ -337,6 +337,9 @@ GEM
       ostruct (>= 0.2)
     openssl (3.3.2)
     ostruct (0.6.3)
+    panko_serializer (0.8.5)
+      activesupport
+      oj (> 3.11.0, < 4.0.0)
     parallel (2.1.0)
     parallel_tests (5.7.0)
       parallel
@@ -596,6 +599,7 @@ DEPENDENCIES
   neighbor (~> 0.6.0)
   oj (~> 3.16)
   openssl (~> 3.3.2)
+  panko_serializer (~> 0.8)
   parallel_tests (~> 5.7)
   pg (~> 1.6)
   pry-rails (~> 0.3.11)
@@ -628,4 +632,4 @@ DEPENDENCIES
   xsv (~> 1.4)
 
 BUNDLED WITH
-   4.0.11
+  4.0.11
