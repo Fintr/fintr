@@ -31,7 +31,7 @@ module Transactions
         relation      = step by_account(relation, params)
         relation      = step order(relation)
         relation      = step paginate(relation, params) if params[:paginate] != false
-        relation      = step eager_load_transactable_currency_conversions(relation)
+        relation      = step eager_load_transactable_associations(relation)
         relation
       end
 
@@ -84,12 +84,8 @@ module Transactions
         Success(relation)
       end
 
-      # One query batch for polymorphic transactables that may need +currency_conversion+ for
-      # serializer +booked_*+ fields (avoids N+1 on the transactions index / CSV export).
-      def eager_load_transactable_currency_conversions(relation)
-        return Success(relation) unless relation.respond_to?(:includes)
-
-        Success(relation.includes(transactable: :currency_conversion))
+      def eager_load_transactable_associations(relation)
+        Success(PreloadsCombinedTransactableAssociations.apply(relation))
       end
     end
   end

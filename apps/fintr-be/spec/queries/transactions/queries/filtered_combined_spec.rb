@@ -108,6 +108,7 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
         allow(mock_relation).to receive(:order).and_return(mock_relation)
         allow(mock_relation).to receive(:page).and_return(mock_relation)
         allow(mock_relation).to receive(:per).and_return(mock_relation)
+        allow(mock_relation).to receive(:includes).and_return(mock_relation)
 
         # Set default expectations for optional filters not being applied
         allow(mock_relation).to receive(:where).with(date: any_args).and_return(mock_relation)
