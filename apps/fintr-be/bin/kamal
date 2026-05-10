@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Kamal entrypoint for apps/fintr-be inside the fintr monorepo.
+# - cd here so Kamal lockfiles, relative paths, and Git discovery behave consistently.
+# - FINTR_BE_ROOT lets config/deploy*.yml resolve Dotenv, hooks, secrets, and accessory mounts
+#   when Kamal is invoked from the repository root (see config/deploy.yml ERB).
+# - VERSION tags images with the monorepo commit when Git is unavailable inside the Kamal CLI
+#   environment (e.g. Docker-packaged Kamal with only this directory mounted).
+
+set -euo pipefail
+
+app_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$app_root"
+
+export FINTR_BE_ROOT="$app_root"
+
+if [[ -z "${VERSION:-}" ]] && git -C "$app_root" rev-parse HEAD &>/dev/null
+then
+  export VERSION="$(git -C "$app_root" rev-parse HEAD)"
+fi
+
+exec bundle exec kamal "$@"
