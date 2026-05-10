@@ -1,4 +1,18 @@
-<% require "dotenv"; Dotenv.load(".env.production", overwrite: true) %>
+<% require "pathname" %>
+<% 
+  fintr_be_root =
+    if ENV["FINTR_BE_ROOT"] && !ENV["FINTR_BE_ROOT"].strip.empty?
+      Pathname(ENV["FINTR_BE_ROOT"]).expand_path
+    elsif Pathname.pwd.join("config/deploy.yml").exist?
+      Pathname.pwd
+    elsif Pathname.pwd.join("apps/fintr-be/config/deploy.yml").exist?
+      Pathname.pwd.join("apps/fintr-be")
+    else
+      Pathname.pwd
+    end
+%>
+<% require "dotenv"; Dotenv.load(fintr_be_root.join(".env.production").to_s, overwrite: true) %>
+# Omit hooks_path/secrets_path so Docker-packaged Kamal (often older) validates; run from apps/fintr-be (./bin/kamal) so `.kamal/*` resolves.
 # Name of your application. Used to uniquely configure containers.
 service: fintr-be
 
@@ -29,11 +43,14 @@ proxy:
   app_port: 3000 # The port your application container listens on (default: 80)
   healthcheck:
     path: /up # The path for the health check endpoint in your app (default: /up)
-    interval: 1 # How often to check (default: 1s)
-    timeout: 15 # Timeout for the health check request (default: 5s)
+    interval: 1 # How often to probe (default: 1s); keeps tries frequent once each request completes.
+    timeout: 5 # Per-request cap (default: 5s). Lower than 15s so failed/hung probes retry sooner with interval above.
   response_timeout: 30
   # Other options like buffering, logging, response_timeout, etc.
 
+# If deploy sits on "docker login" on the host, the instance likely cannot reach Docker Hub (VPC NAT,
+# outbound 443, or DNS). SSH there and try: docker login … ; curl -sSI https://registry-1.docker.io/v2/
+#
 # Credentials for your image host.
 registry:
   # Specify the registry server, if you're not using Docker Hub
@@ -51,7 +68,7 @@ builder:
   # Avoid BuildKit provenance/attestation uploads; Docker Hub can return 400 on blob PUT for those.
   provenance: false
   args:
-    RUBY_VERSION: "<%= Pathname.pwd.join('.ruby-version').read.strip.delete_prefix('ruby-').delete_prefix('ruby ') %>"
+    RUBY_VERSION: "<%= fintr_be_root.join('.ruby-version').read.strip.delete_prefix('ruby-').delete_prefix('ruby ') %>"
     BUNDLER_VERSION: 2.6.2
     RAILS_MASTER_KEY:
       - RAILS_MASTER_KEY
@@ -106,6 +123,12 @@ env:
 #
 ssh:
   user: ec2-user
+  config:
+    - <%= fintr_be_root.join("config/kamal_ssh.config").to_s %>
+
+sshkit:
+  # Default Kamal pool idle is 900s; shorter recycle avoids stale SSH during long local builds before remote pull.
+  pool_idle_timeout: 180
 
 # Use a persistent storage volume.
 #
@@ -138,8 +161,8 @@ accessories:
       secret:
         - DATABASE_PASSWORD
     files:
-      - config/postgresql.conf:/etc/postgresql/postgresql.conf
-      - config/init-pgvectorscale.sh:/docker-entrypoint-initdb.d/init-pgvectorscale.sh
+      - <%= fintr_be_root.join("config/postgresql.conf") %>:/etc/postgresql/postgresql.conf
+      - <%= fintr_be_root.join("config/init-pgvectorscale.sh") %>:/docker-entrypoint-initdb.d/init-pgvectorscale.sh
     directories:
       - postgres_data:/var/lib/postgresql/data
       - postgres_logs:/var/log/postgresql
@@ -147,8 +170,8 @@ accessories:
       memory: 1g
       cpus: 1.0
       network: 'private'
-# Rails can take 60–90s+ to boot on constrained hosts; health check must pass within this window.
-deploy_timeout: 120
+# Rails can take 60–90s+ to boot on constrained hosts; deploy fails only after this many seconds without a passing healthcheck.
+deploy_timeout: 30
 boot:
   limit: 1     # Deploy one container at a time
-  wait: 10  
+  wait: 5      # Seconds between rolling batches (was 10)
