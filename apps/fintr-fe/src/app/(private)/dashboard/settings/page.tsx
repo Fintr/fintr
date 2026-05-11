@@ -10,7 +10,11 @@ import { toast } from 'sonner';
 import { updateUser, requestPasswordReset } from '@/services/auth/user/mutations';
 import { getUserAuth0Settings } from '@/services/auth/user/queries';
 import { useAuthApi } from '@/hooks/useAuthApi';
-import { CheckCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Users } from 'lucide-react';
+import {
+  FINTR_FACEBOOK_COMMUNITY_URL,
+  FintrSocialIconLinks,
+} from '@/components/social/fintr-social';
 import ResetDataDialog from '../../../../components/dashboard/reset-data-dialog';
 import DeleteUserAccountDialog from '../../../../components/dashboard/delete-user-account-dialog';
 import SpaceAccessCard from '../../../../components/dashboard/space-access-card';
@@ -166,6 +170,47 @@ const SettingsPage = () => {
 
         {/* Space Access Management */}
         <SpaceAccessCard />
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                <Users className="h-5 w-5 text-muted-foreground" aria-hidden />
+              </div>
+              <div>
+                <CardTitle>Community and social</CardTitle>
+                <CardDescription>
+                  Join our public Facebook group and follow Fintr on social media.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <p className="text-sm font-medium text-foreground mb-1">
+                Fintr community on Facebook
+              </p>
+              <p className="text-sm text-muted-foreground mb-3">
+                This is a public Facebook group anyone can join to connect with other Fintr users,
+                ask questions, and share tips.
+              </p>
+              <Button variant="outline" asChild>
+                <a
+                  href={FINTR_FACEBOOK_COMMUNITY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Open Fintr Facebook community group in a new tab"
+                >
+                  Join the community
+                </a>
+              </Button>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground mb-3">Follow Fintr</p>
+              <FintrSocialIconLinks variant="dashboard" />
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="border-red-300">
           <CardHeader className="px-4">
