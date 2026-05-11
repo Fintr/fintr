@@ -152,7 +152,7 @@ const SettingsPage = () => {
         </Card>
 
         {usesEmail && (
-          <Card>
+          <Card className="px-2">
             <CardHeader>
               <CardTitle>Password Management</CardTitle>
               <CardDescription>Reset your password securely.</CardDescription>
@@ -169,9 +169,9 @@ const SettingsPage = () => {
         )}
 
         {/* Space Access Management */}
-        <SpaceAccessCard />
+        <SpaceAccessCard className="px-2" />
 
-        <Card>
+        <Card className="px-2">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
@@ -212,8 +212,8 @@ const SettingsPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-red-300">
-          <CardHeader className="px-4">
+        <Card className="border-red-300 px-2">
+          <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-900/20">
                 <AlertTriangle className="h-5 w-5 text-red-900" />
@@ -226,7 +226,7 @@ const SettingsPage = () => {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="px-4">
+          <CardContent>
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
                 This will permanently delete all your financial data, including transactions, 
