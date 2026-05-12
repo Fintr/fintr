@@ -102,7 +102,6 @@ export default function BottomNavigation() {
           {/* Transactions */}
           <Link
             href="/dashboard/"
-            prefetch={false}
             className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2 min-w-0 ${
               activeValue === "transactions"
                 ? "text-white"
@@ -126,7 +125,6 @@ export default function BottomNavigation() {
           {/* Budget */}
           <Link
             href="/dashboard/budgets"
-            prefetch={false}
             className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2 min-w-0 ${
               activeValue === "budgets" ? "text-white" : "text-white/70"
             }`}
@@ -221,7 +219,6 @@ export default function BottomNavigation() {
           {/* Dashboard */}
           <Link
             href="/dashboard/insights"
-            prefetch={false}
             data-tutorial-target="mobile-dashboard-button"
             className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2 min-w-0 ${
               activeValue === "insights" ? "text-white" : "text-white/70"
@@ -244,7 +241,6 @@ export default function BottomNavigation() {
           {/* Settings */}
           <Link
             href="/dashboard/app_settings"
-            prefetch={false}
             data-tutorial-target="mobile-menu-button"
             className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2 min-w-0 ${
               activeValue === "space_settings" ? "text-white" : "text-white/70"

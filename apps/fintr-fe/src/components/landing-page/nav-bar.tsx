@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Navbar() {
   const { isAuthenticated } = useAuth();
-  const router = useRouter();
 
   return (
     <nav className="fixed top-0 w-full z-[100] border-b border-[#E8E6E3]/80 bg-[#FAF9F7]/95 backdrop-blur-[12px]">
@@ -49,13 +47,12 @@ export default function Navbar() {
             Team
           </Link>
           {isAuthenticated ? (
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard")}
-              className="bg-[#0A2540] text-white px-4 sm:px-5 py-2 rounded-lg font-semibold text-[13px] sm:text-[14px] transition-opacity hover:opacity-90"
+            <Link
+              href="/dashboard"
+              className="bg-[#0A2540] text-white px-4 sm:px-5 py-2 rounded-lg font-semibold text-[13px] sm:text-[14px] transition-opacity hover:opacity-90 inline-flex items-center justify-center no-underline"
             >
               Dashboard
-            </button>
+            </Link>
           ) : (
             <div className="flex items-center gap-2 pr-6 md:pr-0">
               <Link
