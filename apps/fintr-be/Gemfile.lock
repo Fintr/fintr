@@ -340,7 +340,7 @@ GEM
     parallel (2.1.0)
     parallel_tests (5.7.0)
       parallel
-    parser (3.3.10.0)
+    parser (3.3.11.1)
       ast (~> 2.4.1)
       racc
     pg (1.6.2)
@@ -415,7 +415,7 @@ GEM
       erb
       psych (>= 4.0.0)
       tsort
-    regexp_parser (2.11.3)
+    regexp_parser (2.12.0)
     reline (0.6.3)
       io-console (~> 0.5)
     rest-client (2.1.0)
@@ -471,7 +471,7 @@ GEM
       rubocop (>= 1.72)
       rubocop-performance (>= 1.24)
       rubocop-rails (>= 2.30)
-    rubocop-rspec (3.8.0)
+    rubocop-rspec (3.9.0)
       lint_roller (~> 1.1)
       rubocop (~> 1.81)
     ruby-openai (8.3.0)
@@ -542,7 +542,7 @@ GEM
       concurrent-ruby (~> 1.0)
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
-    unicode-emoji (4.1.0)
+    unicode-emoji (4.2.0)
     uri (1.1.1)
     useragent (0.16.11)
     vcr (6.3.1)
