@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +35,6 @@ import { ButtonLoader } from "@/components/ui/loading";
 
 export default function TicketDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const ticketId = params.id as string;
 
   const isAdmin = useAtomValue(isAdminAtom);
@@ -139,9 +139,11 @@ export default function TicketDetailPage() {
   if (isError || !ticket) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Button variant="outline" onClick={() => router.push("/crm/requests")} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Tickets
+        <Button variant="outline" className="mb-4" asChild>
+          <Link href="/crm/requests">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Tickets
+          </Link>
         </Button>
         <Card>
           <CardContent className="p-8 text-center">
@@ -159,9 +161,11 @@ export default function TicketDetailPage() {
   return (
     <div className="container mx-auto px-4 py-8 pb-24 md:pb-12 max-w-4xl">
       {/* Back Button */}
-      <Button variant="outline" onClick={() => router.push("/crm/requests")} className="mb-6">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Tickets
+      <Button variant="outline" className="mb-6" asChild>
+        <Link href="/crm/requests">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Tickets
+        </Link>
       </Button>
 
       {/* Ticket Header */}
