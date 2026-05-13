@@ -14,6 +14,14 @@ import {
 
 const DATE_RANGE_HISTORY_KEY = "__fintrDateRangeSheet"
 
+const rangeSheetCalendarClassName = cn(
+  "flex max-h-[min(92dvh,44rem)] flex-col overflow-y-auto rounded-none rounded-t-3xl",
+  "border-x-0 border-b-0 border-t bg-popover p-0",
+  "pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl",
+  "w-full min-w-full max-w-none",
+  "z-[130]",
+)
+
 export type DateRangeFullscreenSheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -26,9 +34,8 @@ export type DateRangeFullscreenSheetProps = {
 }
 
 /**
- * Full-viewport range picker: calendar docked at the bottom; upper area is a
- * frosted strip over the page (via overlay + local blur). Respects safe-area
- * for notches and Android system / gesture nav. Pushes history so back closes first.
+ * Mobile range picker shell. Mirrors the single-date picker sheet backdrop and
+ * bottom-sheet treatment, while rendering a range-mode calendar inside.
  */
 export function DateRangeFullscreenSheet({
   open,
@@ -45,46 +52,17 @@ export function DateRangeFullscreenSheet({
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="bottom"
-        overlayClassName={cn(
-          "bg-background/50 backdrop-blur-md",
-          overlayClassName,
-        )}
-        className={cn(
-          "flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden",
-          "rounded-none border-0 bg-transparent p-0 shadow-none",
-        )}
+        overlayClassName={cn("z-[125]", overlayClassName)}
+        onOverlayClick={() => onOpenChange(false)}
+        className={rangeSheetCalendarClassName}
       >
         <SheetTitle className="sr-only">Select date range</SheetTitle>
 
-        <button
-          type="button"
-          aria-label="Dismiss calendar"
-          className={cn(
-            "flex min-h-0 flex-1 touch-manipulation appearance-none",
-            "w-full cursor-pointer border-0 bg-background/30 p-0 outline-none",
-            "backdrop-blur-xl backdrop-saturate-150",
-            "pl-[max(0px,env(safe-area-inset-left))]",
-            "pr-[max(0px,env(safe-area-inset-right))]",
-            "pt-[max(0.5rem,env(safe-area-inset-top))]",
-          )}
-          onClick={(e) => {
-            e.stopPropagation()
-            onOpenChange(false)
-          }}
-          onPointerDown={(e) => {
-            e.stopPropagation()
-          }}
-        />
-
         <div
           className={cn(
-            "relative shrink-0",
-            "rounded-t-3xl border-t border-border/80 bg-background",
-            "shadow-[0_-12px_40px_rgba(0,0,0,0.12)]",
+            "relative shrink-0 bg-popover",
             "pl-[max(1rem,env(safe-area-inset-left))]",
             "pr-[max(1rem,env(safe-area-inset-right))]",
-            "pb-[max(1rem,env(safe-area-inset-bottom))]",
-            "pt-3",
           )}
         >
           <Calendar

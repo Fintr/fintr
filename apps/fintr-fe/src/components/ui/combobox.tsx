@@ -2,6 +2,7 @@ import * as Ariakit from "@ariakit/react";
 import { matchSorter } from "match-sorter";
 import { startTransition, useMemo, useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
 import { OptionType } from "@/types/generalTypes";
 
 /**
@@ -97,7 +98,7 @@ export const ComboBox = ({
   value,
   onChange,
   minSearchLength = 1,
-  debounceTime = 300,
+  debounceTime = SEARCH_DEBOUNCE_MS,
   className,
   popoverClassName,
   itemClassName,

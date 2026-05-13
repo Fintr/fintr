@@ -105,6 +105,7 @@ export const performanceUtils = {
 };
 
 // Function to check if V2 features should be shown
+/** When false (default), Goals / Investments dashboard surfaces are hidden; see docs/CURRENT_PRODUCT_SCOPE.md. */
 export const shouldShowV2Features = (): boolean => {
   return process.env.NEXT_PUBLIC_SHOW_V2 === 'true';
 };

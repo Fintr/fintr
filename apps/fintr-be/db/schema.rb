@@ -10,8 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_06_175645) do
-
+ActiveRecord::Schema[8.1].define(version: 2026_05_13_102531) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -478,6 +477,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_06_175645) do
     t.index ["user_id"], name: "index_onboardings_on_user_id"
   end
 
+  create_table "product_pulse_feedbacks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "improve_areas", default: [], null: false
+    t.jsonb "liked_areas", default: [], null: false
+    t.text "notes"
+    t.string "period_key", null: false
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["created_at"], name: "index_product_pulse_feedbacks_on_created_at", order: :desc
+    t.index ["space_id"], name: "index_product_pulse_feedbacks_on_space_id"
+    t.index ["user_id", "space_id", "period_key"], name: "index_product_pulse_feedbacks_on_user_space_period", unique: true
+    t.index ["user_id"], name: "index_product_pulse_feedbacks_on_user_id"
+  end
+
   create_table "rag_embeddings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.text "content", null: false
     t.datetime "created_at", null: false
@@ -703,6 +717,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_06_175645) do
   add_foreign_key "loans", "users"
   add_foreign_key "monthly_financial_summaries", "spaces"
   add_foreign_key "onboardings", "users"
+  add_foreign_key "product_pulse_feedbacks", "spaces"
+  add_foreign_key "product_pulse_feedbacks", "users"
   add_foreign_key "rag_embeddings", "spaces"
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"

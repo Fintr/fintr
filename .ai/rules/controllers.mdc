@@ -6,6 +6,8 @@ When making controllers, make sure that the controllers don't have business logi
 
 Make sure that the responses use this `app/controllers/concerns/api_responses.rb` instead of making your own. This is good because it translate all snake case keys into lower camel case instead. 
 
+**Request bodies and query params:** Clients may send lowerCamelCase keys, but `SnakeCaseParameters` middleware (`app/middlewares/snake_case_parameters.rb`) rewrites them to snake_case before the controller runs. **Do not** `permit` or read both styles (e.g. `search_query` and `searchQuery`); use **snake_case only** in controllers. See `docs/API_REQUEST_PARAMETERS.md` in the monorepo root.
+
 Make sure when serializing your responses, ensure that you use the serialzer pattern, but we're using Blueprinter, you can check serializers in `app/serializers`
 
 

@@ -19,6 +19,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:e2e": "playwright test",
+    "test:weekly-feedback": "vitest run src/config/weekly-feedback.test.ts src/components/feedback/weekly-feedback-ui.test.tsx src/services/product-pulse/mutations.test.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:all": "pnpm test:coverage && pnpm test:e2e",

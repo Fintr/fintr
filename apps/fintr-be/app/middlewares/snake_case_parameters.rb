@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+# Underscores all keys on incoming request and query parameters so controllers
+# only ever see snake_case. Do not duplicate camelCase keys in controllers; see
+# docs/API_REQUEST_PARAMETERS.md
 class SnakeCaseParameters
   def initialize(app)
     @app = app
