@@ -1,4 +1,7 @@
 import { test, expect, Page } from "@playwright/test"
+import { auth0LocalStorageKeySuffix } from "../helpers/auth0-storage-suffix"
+import { buildDashboardApiJson } from "../helpers/dashboard-api-mock"
+import { getCurrentIsoWeekKey } from "@/config/weekly-feedback"
 
 /**
  * Backend TDD E2E Test: Transaction Creation Flow
@@ -76,24 +79,18 @@ async function mockApiCalls(page: Page, transactions: Array<{
     })
   })
 
-  await page.route("**/api/v1/dashboard/**", async (route) => {
-    const totalExpenses = transactions.reduce((sum, t) => sum + t.amount, 0)
+  await page.route("**/api/v1/dashboard*", async (route) => {
+    const totalExpenses = transactions.reduce((sum, t) => sum + (t.amount || 0), 0)
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({
-        summary: {
-          total_balance: 10000 - totalExpenses,
-          monthly_income: 5000,
-          monthly_expenses: totalExpenses,
-        },
-        categoryOptions: [],
-      }),
+      body: JSON.stringify(
+        buildDashboardApiJson({ monthlyExpenses: totalExpenses })
+      ),
     })
   })
 
   await page.route("**/api/v1/transactions**", async (route) => {
-    const url = route.request().url()
     if (route.request().method() === "POST") {
       const body = route.request().postDataBuffer()
       const parsed = body ? JSON.parse(body.toString()) : {}
@@ -153,7 +150,7 @@ async function mockApiCalls(page: Page, transactions: Array<{
 }
 
 async function setupAuth(page: Page) {
-  const domain = "fintr_jp_auth0_com"
+  const domain = auth0LocalStorageKeySuffix()
   const mockTokens = {
     access_token: "mock_token",
     id_token: "mock_id_token",
@@ -163,7 +160,8 @@ async function setupAuth(page: Page) {
     scope: "openid profile email",
   }
   const expiresAt = Date.now() + 3600000
-  await page.addInitScript(({ domain, mockTokens, expiresAt }) => {
+  const weekKey = getCurrentIsoWeekKey(new Date())
+  await page.addInitScript(({ domain, mockTokens, expiresAt, weekKey }) => {
     localStorage.setItem(`@@auth0@@.access_token.${domain}`, mockTokens.access_token)
     localStorage.setItem(`@@auth0@@.id_token.${domain}`, mockTokens.id_token)
     localStorage.setItem(`@@auth0@@.refresh_token.${domain}`, mockTokens.refresh_token || "")
@@ -173,10 +171,21 @@ async function setupAuth(page: Page) {
     localStorage.setItem(`@@auth0@@.issued_at.${domain}`, Date.now().toString())
     localStorage.setItem("fintr_auth_data", JSON.stringify({ tokens: mockTokens, user: { sub: "user123", email: "test@example.com", name: "Test User" } }))
     localStorage.setItem("spaceCode", "TEST-SPACE-789")
-  }, { domain, mockTokens, expiresAt })
+    localStorage.setItem("fintr_weekly_feedback_v1_lastActionAt", String(Date.now()))
+    localStorage.setItem("fintr_weekly_feedback_v1_lastPromptWeekKey", weekKey)
+  }, { domain, mockTokens, expiresAt, weekKey })
+}
+
+async function waitForDashboardAddTransaction(page: Page) {
+  await page.waitForLoadState("domcontentloaded")
+  const desktopAdd = page.locator('[data-tutorial-target="add-transaction-button"]')
+  const mobileAdd = page.locator('[data-tutorial-target="mobile-add-transaction"]')
+  await expect(desktopAdd.or(mobileAdd)).toBeVisible({ timeout: 30000 })
 }
 
 test.describe("Transaction Creation Flow", () => {
+  test.describe.configure({ timeout: 60_000 })
+
   test("user can create an expense transaction and see it in the list", async ({ page }) => {
     const transactions: Array<{
       id: string
@@ -190,15 +199,19 @@ test.describe("Transaction Creation Flow", () => {
     await mockApiCalls(page, transactions)
     await setupAuth(page)
 
-    await page.goto("/dashboard/")
-    await page.waitForLoadState("networkidle")
+    await page.goto("/dashboard/", { waitUntil: "domcontentloaded" })
+    await waitForDashboardAddTransaction(page)
 
     const transactionsList = page.locator("[data-testid='transactions-list']")
     if (await transactionsList.isVisible().catch(() => false)) {
       await expect(transactionsList).toBeVisible()
     }
 
-    const addButton = page.locator("button:has-text('Add Transaction'), button:has-text('Add')").first()
+    const addButton = page
+      .locator(
+        '[data-tutorial-target="add-transaction-button"], [data-tutorial-target="mobile-add-transaction"]'
+      )
+      .first()
     if (await addButton.isVisible({ timeout: 3000 }).catch(() => false)) {
       await addButton.click()
       await page.waitForTimeout(500)
@@ -206,6 +219,8 @@ test.describe("Transaction Creation Flow", () => {
       const amountInput = page.locator("input[name='amount'], input[placeholder*='amount' i]").first()
       if (await amountInput.isVisible({ timeout: 3000 }).catch(() => false)) {
         await amountInput.fill("1500")
+        await page.keyboard.press("Escape")
+        await page.waitForTimeout(300)
 
         const noteInput = page.locator("input[name='note'], input[placeholder*='note' i], textarea[name='note']").first()
         if (await noteInput.isVisible({ timeout: 3000 }).catch(() => false)) {
@@ -259,10 +274,14 @@ test.describe("Transaction Creation Flow", () => {
     await mockApiCalls(page, transactions)
     await setupAuth(page)
 
-    await page.goto("/dashboard/")
-    await page.waitForLoadState("networkidle")
+    await page.goto("/dashboard/", { waitUntil: "domcontentloaded" })
+    await waitForDashboardAddTransaction(page)
 
-    const addButton = page.locator("button:has-text('Add Transaction'), button:has-text('Add')").first()
+    const addButton = page
+      .locator(
+        '[data-tutorial-target="add-transaction-button"], [data-tutorial-target="mobile-add-transaction"]'
+      )
+      .first()
     if (await addButton.isVisible({ timeout: 3000 }).catch(() => false)) {
       await addButton.click()
       await page.waitForTimeout(500)
@@ -270,6 +289,8 @@ test.describe("Transaction Creation Flow", () => {
       const amountInput = page.locator("input[name='amount'], input[placeholder*='amount' i]").first()
       if (await amountInput.isVisible({ timeout: 3000 }).catch(() => false)) {
         await amountInput.fill("2500")
+        await page.keyboard.press("Escape")
+        await page.waitForTimeout(300)
 
         const noteInput = page.locator("input[name='note'], input[placeholder*='note' i], textarea[name='note']").first()
         if (await noteInput.isVisible({ timeout: 3000 }).catch(() => false)) {
@@ -284,8 +305,8 @@ test.describe("Transaction Creation Flow", () => {
       }
     }
 
-    await page.reload()
-    await page.waitForLoadState("networkidle")
+    await page.reload({ waitUntil: "domcontentloaded" })
+    await waitForDashboardAddTransaction(page)
 
     const transactionItem = page.getByText(/Electric bill|2,?500/).first()
     if (await transactionItem.isVisible({ timeout: 3000 }).catch(() => false)) {

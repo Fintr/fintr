@@ -1,4 +1,8 @@
 import { test, expect, Page } from "@playwright/test"
+import { auth0LocalStorageKeySuffix } from "./helpers/auth0-storage-suffix"
+import { routeDashboardApi } from "./helpers/dashboard-api-mock"
+import { getCurrentIsoWeekKey } from "@/config/weekly-feedback"
+import { primeWeeklyFeedbackDismissed } from "./helpers/prime-weekly-feedback-dismissed"
 
 /**
  * E2E tests for CalendarPopover overlay close in Add/Edit Transaction flows.
@@ -32,16 +36,7 @@ async function mockApiCalls(page: Page) {
     })
   })
 
-  await page.route("**/api/v1/dashboard/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        summary: { total_balance: 10000, monthly_income: 5000, monthly_expenses: 3000 },
-        categoryOptions: [],
-      }),
-    })
-  })
+  await routeDashboardApi(page)
 
   await page.route("**/api/v1/transactions**", async (route) => {
     await route.fulfill({
@@ -82,7 +77,7 @@ async function mockApiCalls(page: Page) {
 }
 
 async function setupAuth(page: Page) {
-  const domain = "fintr_jp_auth0_com"
+  const domain = auth0LocalStorageKeySuffix()
   const mockUser = { sub: "user123", email: "test@example.com", name: "Test User" }
   const mockTokens = {
     access_token: "mock_token",
@@ -93,7 +88,8 @@ async function setupAuth(page: Page) {
     scope: "openid profile email",
   }
   const expiresAt = Date.now() + 3600000
-  await page.evaluate(({ domain, mockUser, mockTokens, expiresAt }) => {
+  const weekKey = getCurrentIsoWeekKey(new Date())
+  await page.evaluate(({ domain, mockUser, mockTokens, expiresAt, weekKey }) => {
     localStorage.setItem(`@@auth0@@.access_token.${domain}`, mockTokens.access_token)
     localStorage.setItem(`@@auth0@@.id_token.${domain}`, mockTokens.id_token)
     localStorage.setItem(`@@auth0@@.refresh_token.${domain}`, mockTokens.refresh_token || "")
@@ -102,11 +98,15 @@ async function setupAuth(page: Page) {
     localStorage.setItem(`@@auth0@@.scope.${domain}`, mockTokens.scope)
     localStorage.setItem(`@@auth0@@.issued_at.${domain}`, Date.now().toString())
     localStorage.setItem("fintr_auth_data", JSON.stringify({ tokens: mockTokens, user: mockUser }))
-  }, { domain, mockUser, mockTokens, expiresAt })
+    localStorage.setItem("spaceCode", "test-space")
+    localStorage.setItem("fintr_weekly_feedback_v1_lastActionAt", String(Date.now()))
+    localStorage.setItem("fintr_weekly_feedback_v1_lastPromptWeekKey", weekKey)
+  }, { domain, mockUser, mockTokens, expiresAt, weekKey })
 }
 
 test.describe("CalendarPopover in Add Transaction", () => {
   test("closes date picker when tapping outside on mobile", async ({ page }) => {
+    await primeWeeklyFeedbackDismissed(page)
     await mockApiCalls(page)
     await page.goto("/dashboard/")
     await page.waitForLoadState("domcontentloaded")
