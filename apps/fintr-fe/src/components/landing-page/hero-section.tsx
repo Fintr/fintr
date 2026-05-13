@@ -42,11 +42,23 @@ export default function HeroSection() {
             <div className="flex gap-6 mt-12 flex-wrap">
               <span className="flex items-center gap-2 text-[13px] font-medium text-[#78716C]">
                 <span className="w-[6px] h-[6px] rounded-full bg-[#0D9488]"></span>
+                NVIDIA Inception Member
+              </span>
+              <span className="flex items-center gap-2 text-[13px] font-medium text-[#78716C]">
+                <span className="w-[6px] h-[6px] rounded-full bg-[#0D9488]"></span>
+                AWS Activate Founders Member
+              </span>
+              <span className="flex items-center gap-2 text-[13px] font-medium text-[#78716C]">
+                <span className="w-[6px] h-[6px] rounded-full bg-[#0D9488]"></span>
+                Google for Startups Member
+              </span>
+              <span className="flex items-center gap-2 text-[13px] font-medium text-[#78716C]">
+                <span className="w-[6px] h-[6px] rounded-full bg-[#0D9488]"></span>
                 Live on the App Store
               </span>
               <span className="flex items-center gap-2 text-[13px] font-medium text-[#78716C]">
                 <span className="w-[6px] h-[6px] rounded-full bg-[#0D9488]"></span>
-                NVIDIA Inception Member
+                DTI-Registered Business
               </span>
             </div>
           </div>
