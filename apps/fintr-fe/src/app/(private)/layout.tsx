@@ -22,6 +22,7 @@ import {
   calculateHeaderSpacerHeight,
 } from "@/lib/platform-detection";
 import { isDashboardShellRoute } from "@/lib/dashboard-shell-route";
+import { WeeklyFeedbackPrompt } from "@/components/feedback/weekly-feedback-prompt";
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const { api, isLoading: isApiLoading } = useAuthApi({
@@ -51,6 +52,12 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   // Show mobile sticky header in private layout only for non-dashboard pages (CRM, Admin)
 
   const { spaceCode } = useGetSpaceCode(api);
+  const weeklyFeedbackEnabled =
+    Boolean(spaceCode) &&
+    !isOnOnboardingPage &&
+    !isStandalonePage &&
+    !transitionState.isTransitioning &&
+    !pathname.startsWith("/admin");
   const { setSettings: setToastSettings } = useToastSettings();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -162,6 +169,9 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
         workspaceName={transitionState.destinationSpace?.name}
         isOrganization={transitionState.destinationSpace?.isOrganization}
       />
+      {weeklyFeedbackEnabled ? (
+        <WeeklyFeedbackPrompt api={api} enabled={weeklyFeedbackEnabled} />
+      ) : null}
     </div>
   );
 };

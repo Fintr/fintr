@@ -47,6 +47,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: "/admin/free-subscriptions",
     },
     {
+      title: "Weekly check in",
+      href: "/admin/weekly-check-in",
+    },
+    {
       title: "App cache",
       href: "/admin/cache",
     },

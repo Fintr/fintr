@@ -37,6 +37,7 @@ import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
 import { shouldShowV2Features } from "@/lib/utils";
 import AddTransactionDialog from "../../add-transaction-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -116,7 +117,18 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     );
   };
   const [searchInput, setSearchInput] = useState("");
+  const debouncedSearchInput = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
   const [showBookedCurrencies, setShowBookedCurrencies] = useState(false);
+  useEffect(() => {
+    setAppliedFilters((prev) => {
+      if (prev.searchQuery === debouncedSearchInput) return prev;
+      return {
+        ...prev,
+        searchQuery: debouncedSearchInput,
+      };
+    });
+  }, [debouncedSearchInput]);
+
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
 
@@ -270,7 +282,8 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   });
 
   function applyFilters(a: FilterTypes) {
-    setAppliedFilters(a)
+    setAppliedFilters(a);
+    setSearchInput(a.searchQuery);
   }
 
   // Handle search input changes

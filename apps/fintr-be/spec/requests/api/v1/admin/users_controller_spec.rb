@@ -66,7 +66,7 @@ RSpec.describe "Api::V1::Admin::Users", type: :request do
       expect(json["data"]["users"].length).to eq(1)
     end
 
-    it "accepts camelCase searchQuery param" do
+    it "filters via middleware-normalized camelCase query key (searchQuery -> search_query)" do
       target = create(:user, email: "camel_case_admin@example.com")
 
       get "/api/v1/admin/users",

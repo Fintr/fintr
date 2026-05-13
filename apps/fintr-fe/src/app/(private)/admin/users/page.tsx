@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -18,12 +18,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Search } from "lucide-react";
 import { UserData } from "@/services/admin/user/queries";
+import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
 
 const PER_PAGE = 25;
 
 export default function UsersPage() {
   const [searchInput, setSearchInput] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
+  const debouncedSearchInput = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
+  const [searchForApi, setSearchForApi] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const safePage = Math.max(
@@ -51,8 +53,17 @@ export default function UsersPage() {
   } = useAdminUsers({
     page: safePage,
     perPage: PER_PAGE,
-    searchQuery: appliedSearch,
+    searchQuery: searchForApi,
   });
+
+  useEffect(() => {
+    const next = debouncedSearchInput.trim();
+    setSearchForApi((prev) => (prev === next ? prev : next));
+  }, [debouncedSearchInput]);
+
+  useEffect(() => {
+    setSafePage(1);
+  }, [debouncedSearchInput]);
 
   const pagination = data?.pagination;
   const users = data?.users ?? [];
@@ -60,13 +71,13 @@ export default function UsersPage() {
   const totalCount = pagination?.totalCount ?? 0;
 
   const applySearch = () => {
-    setAppliedSearch(searchInput.trim());
+    setSearchForApi(searchInput.trim());
     setSafePage(1);
   };
 
   const clearSearch = () => {
     setSearchInput("");
-    setAppliedSearch("");
+    setSearchForApi("");
     setSafePage(1);
   };
 

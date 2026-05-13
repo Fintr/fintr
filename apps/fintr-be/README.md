@@ -1,6 +1,10 @@
 # Fintr AI - Backend
 Fintr is a personal finance application with heavy integration with AI. Fintr will act as your personal financial instructor, wherein it recommend when you're free to buy your wants while hitting your budgets and goals.
 
+**Product scope:** Dedicated in-app **Goals** and **Investments** products are not first-class for typical users today (frontend is gated with `NEXT_PUBLIC_SHOW_V2`). See the monorepo **[docs/CURRENT_PRODUCT_SCOPE.md](../../docs/CURRENT_PRODUCT_SCOPE.md)** so API and pulse payloads stay aligned with that reality.
+
+**Request parameters:** Incoming JSON/query keys are normalized to **snake_case** by `SnakeCaseParameters` middleware before controllers run. Controllers must **`permit` and read snake_case only**—do not accept duplicate camelCase keys. See **[docs/API_REQUEST_PARAMETERS.md](../../docs/API_REQUEST_PARAMETERS.md)**.
+
 ## Infrastructure
 - Rails API Backend
 - Postgresql 17 (We should get the latest version as much as possible)

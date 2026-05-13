@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,11 +15,12 @@ import { formatDateTime } from '@/utils/dateUtils';
 import Link from 'next/link';
 import { useAtomValue } from 'jotai';
 import { isAdminAtom } from '@/atoms/dashboardAtoms';
+import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from '@/hooks/useDebouncedValue';
 
 export default function CRMRequestsPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchTerm, setSearchTerm] = useState(''); // The actual search term sent to API
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -50,8 +51,12 @@ export default function CRMRequestsPage() {
     page: safePage,
     status: statusFilter !== 'all' ? statusFilter : undefined,
     type: typeFilter !== 'all' ? typeFilter : undefined,
-    searchQuery: searchTerm || undefined,
+    searchQuery: debouncedSearchQuery.trim() || undefined,
   });
+
+  useEffect(() => {
+    setSafePage(1);
+  }, [debouncedSearchQuery]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -76,21 +81,6 @@ export default function CRMRequestsPage() {
   const handleCreateSuccess = () => {
     setShowCreateForm(false);
     refetch();
-  };
-
-  const handleSearch = () => {
-    setSearchTerm(searchQuery);
-    setSafePage(1); // Reset to first page when searching
-  };
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
-
-  const handleSearchBlur = () => {
-    handleSearch();
   };
 
   if (showCreateForm) {
@@ -150,8 +140,6 @@ export default function CRMRequestsPage() {
                   placeholder="Search tickets..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={handleSearchKeyDown}
-                  onBlur={handleSearchBlur}
                   className="pl-10"
                 />
               </div>
@@ -218,7 +206,7 @@ export default function CRMRequestsPage() {
             <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No tickets found</h3>
             <p className="text-gray-500 mb-5">
-              {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
+              {debouncedSearchQuery.trim() || statusFilter !== 'all' || typeFilter !== 'all'
                 ? 'Try adjusting your filters or search query to see more results.'
                 : 'You haven\'t created any support tickets yet.'}
             </p>

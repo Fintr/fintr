@@ -8,6 +8,15 @@ const isProductionLike =
 const nextConfig: NextConfig = {
   output: "standalone",
   typescript: { ignoreBuildErrors: true },
+  async redirects() {
+    return [
+      {
+        source: "/admin/product-pulse",
+        destination: "/admin/weekly-check-in",
+        permanent: false,
+      },
+    ];
+  },
   images: {
     unoptimized: true,
     domains: [

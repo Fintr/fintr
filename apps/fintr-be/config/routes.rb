@@ -37,6 +37,7 @@ Rails.application.routes.draw do
       end
 
       namespace :admin do
+        resources :product_pulse_feedbacks, only: %i[index]
         resources :users, only: %i[index]
         resources :user_activity, only: [] do
           collection do
@@ -154,6 +155,8 @@ Rails.application.routes.draw do
           post :reset_data
         end
       end
+
+      resources :product_pulse_feedbacks, only: %i[create]
 
       namespace :imports do
         resources :imports, only: [:index, :show, :create] do

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useAiInteractions, AiInteraction, AiInteractionStats } from "@/services/admin/ai-interactions";
 import { formatDistanceToNow } from "date-fns";
 import { Eye, Search, Filter, BarChart3, Users, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
 
 export default function AiInteractionsPage() {
   const { fetchAiInteractions, fetchAiInteractionStats } = useAiInteractions();
@@ -26,6 +27,7 @@ export default function AiInteractionsPage() {
     status: "all",
     search: "",
   });
+  const debouncedSearch = useDebouncedValue(filters.search, SEARCH_DEBOUNCE_MS);
 
   useEffect(() => {
     const loadData = async () => {
@@ -47,14 +49,35 @@ export default function AiInteractionsPage() {
     loadData();
   }, []);
 
-  const handleFilterChange = async (newFilters: Partial<typeof filters>) => {
-    const updatedFilters = { ...filters, ...newFilters };
-    setFilters(updatedFilters);
-    
+  const filteredInteractions = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    if (!q) return interactions;
+
+    return interactions.filter((interaction) => {
+      const request = (interaction.request ?? "").toLowerCase();
+      const userName = (interaction.user?.name ?? "").toLowerCase();
+      const userEmail = (interaction.user?.email ?? "").toLowerCase();
+      const spaceName = (interaction.space?.name ?? "").toLowerCase();
+      const spaceCode = (interaction.space?.code ?? "").toLowerCase();
+
+      return (
+        request.includes(q) ||
+        userName.includes(q) ||
+        userEmail.includes(q) ||
+        spaceName.includes(q) ||
+        spaceCode.includes(q)
+      );
+    });
+  }, [debouncedSearch, interactions]);
+
+  const handleStatusChange = async (statusValue: string) => {
+    const normalized = statusValue === "all" ? "all" : statusValue;
+    setFilters((prev) => ({ ...prev, status: normalized }));
+
     try {
       setIsLoading(true);
       const response = await fetchAiInteractions({
-        status: updatedFilters.status === "all" ? undefined : updatedFilters.status,
+        status: normalized === "all" ? undefined : normalized,
       });
       setInteractions(response.data);
     } catch (error) {
@@ -62,6 +85,10 @@ export default function AiInteractionsPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSearchChange = (search: string) => {
+    setFilters((prev) => ({ ...prev, search }));
   };
 
   const getStatusIcon = (status: string) => {
@@ -107,10 +134,13 @@ export default function AiInteractionsPage() {
           <Input
             placeholder="Search interactions..."
             value={filters.search}
-            onChange={(e) => handleFilterChange({ search: e.target.value })}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full sm:w-64"
           />
-          <Select value={filters.status} onValueChange={(value) => handleFilterChange({ status: value === "all" ? "" : value })}>
+          <Select
+            value={filters.status === "" ? "all" : filters.status}
+            onValueChange={(value) => void handleStatusChange(value)}
+          >
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
@@ -228,7 +258,7 @@ export default function AiInteractionsPage() {
                 <>
                   {/* Mobile Card View */}
                   <div className="block lg:hidden space-y-4">
-                    {interactions.map((interaction) => (
+                    {filteredInteractions.map((interaction) => (
                       <Card key={interaction.id}>
                         <CardContent className="p-4">
                           <div className="space-y-3">
@@ -380,7 +410,7 @@ export default function AiInteractionsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {interactions.map((interaction) => (
+                      {filteredInteractions.map((interaction) => (
                         <TableRow key={interaction.id}>
                           <TableCell>
                             <div>

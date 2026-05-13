@@ -1,5 +1,9 @@
 # Fintr Frontend
 
+## Product scope
+
+Dedicated **Goals** and **Investments** experiences are **not** part of the default app today; they are behind `NEXT_PUBLIC_SHOW_V2` (`shouldShowV2Features()` in `src/lib/utils.ts`). In-app weekly pulse chips do **not** list those areas. See the monorepo **[docs/CURRENT_PRODUCT_SCOPE.md](../../docs/CURRENT_PRODUCT_SCOPE.md)**.
+
 ## Project Structure
 
 **⚠️ Important:** This folder contains both web and mobile-responsive versions of the app.

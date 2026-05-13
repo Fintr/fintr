@@ -34,6 +34,7 @@ import {
   useRemoveFreeSubscription,
   useSubscriptionPlans,
 } from "@/hooks/async/useSubscriptions";
+import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -59,6 +60,7 @@ const FreeSubscriptionsPage = () => {
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [notes, setNotes] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
 
   const handleGrant = async () => {
     if (!selectedSpace || !selectedPlanId) {
@@ -108,9 +110,9 @@ const FreeSubscriptionsPage = () => {
   };
 
   const filteredSpaces = spaces.filter((space) =>
-    space.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    space.ownerEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    space.code.toLowerCase().includes(searchQuery.toLowerCase())
+    space.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+    space.ownerEmail?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+    space.code.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
   );
 
   const activePlans = plans.filter((plan) => plan.active);
