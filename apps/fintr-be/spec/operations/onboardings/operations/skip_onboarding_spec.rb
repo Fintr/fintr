@@ -83,7 +83,7 @@ RSpec.describe Onboardings::Operations::SkipOnboarding do
 
       it "stores default budgets in onboarding data" do
         skip_onboarding_operation.call(valid_params)
-        expected_budgets = described_class::DEFAULT_CATEGORIES.map do |name|
+        expected_budgets = Transactions::Category::DEFAULT_EXPENSE_CATEGORIES.map do |name|
           { "name" => name, "amount" => "0" }
         end
         expect(onboarding).to have_received(:update!).with(
@@ -100,28 +100,35 @@ RSpec.describe Onboardings::Operations::SkipOnboarding do
         skip_onboarding_operation.call(valid_params)
         expect(Transactions::Operations::Categories::CreateCategory)
           .to have_received(:new)
-          .exactly(described_class::DEFAULT_CATEGORIES.length).times
+          .exactly(Transactions::Category::DEFAULT_EXPENSE_CATEGORIES.length).times
       end
 
       it "creates a budget for each default category" do
         skip_onboarding_operation.call(valid_params)
         expect(Budgets::Operations::CreateBudget)
           .to have_received(:new)
-          .exactly(described_class::DEFAULT_CATEGORIES.length).times
+          .exactly(Transactions::Category::DEFAULT_EXPENSE_CATEGORIES.length).times
       end
 
-      it "creates the default Cash account" do
+      it "creates all default accounts" do
         skip_onboarding_operation.call(valid_params)
         expect(Transactions::Operations::Accounts::CreateAccount)
-          .to have_received(:new).once
-        expect(Transactions::Operations::Accounts::CreateAccount.new)
-          .to have_received(:call).with(
-            user_id: user.id,
-            space_id: space.id,
-            name: described_class::DEFAULT_ACCOUNT_NAME,
-            balance: 0.to_d,
-            account_category: described_class::DEFAULT_ACCOUNT_CATEGORY
-          )
+          .to have_received(:new)
+          .exactly(Transactions::Account::DEFAULT_ACCOUNT_MAPPING.length).times
+      end
+
+      it "creates each default account with correct name and category" do
+        skip_onboarding_operation.call(valid_params)
+        Transactions::Account::DEFAULT_ACCOUNT_MAPPING.each do |category_key, account_name|
+          expect(Transactions::Operations::Accounts::CreateAccount.new)
+            .to have_received(:call).with(
+              user_id: user.id,
+              space_id: space.id,
+              name: account_name,
+              balance: 0.to_d,
+              account_category: Transactions::Account.account_categories[category_key.to_s]
+            )
+        end
       end
     end
 

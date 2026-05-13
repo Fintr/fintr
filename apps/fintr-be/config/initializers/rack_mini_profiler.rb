@@ -24,11 +24,13 @@
 # AI / tooling: profiles under tmp/miniprofiler/ (FileStore); response headers include x-miniprofiler-ids.
 if Rails.env.development? && defined?(Rack::MiniProfiler)
   Rack::MiniProfiler.config.tap do |c|
-    c.enabled = false
+    # Easier to spot than bottom-right on a blank page.
     c.position = "top-left"
-    c.start_hidden = true
+    c.start_hidden = false
     c.show_total_sql_count = true
+    # Match README default; use Alt+P to toggle if you enable HTML responses elsewhere.
     c.toggle_shortcut = "alt+p"
+    # Keep schema dumps out of SQL lists unless you need them.
     c.skip_schema_queries = true
   end
 end

@@ -3,21 +3,6 @@
 module Onboardings
   module Operations
     class SkipOnboarding < Dry::Operation
-      DEFAULT_CATEGORIES = [
-        "Home",
-        "Food & Groceries",
-        "Utilities",
-        "Transportation",
-        "Insurance",
-        "Dine Out & Entertainment",
-        "Shopping",
-        "Subscriptions & Hobbies",
-        "Travel & Vacations"
-      ].freeze
-
-      DEFAULT_ACCOUNT_NAME = "Cash"
-      DEFAULT_ACCOUNT_CATEGORY = "cash"
-
       class Contract < Dry::Validation::Contract
         params do
           required(:user_id).value(:string)
@@ -57,7 +42,7 @@ module Onboardings
       end
 
       def store_default_budgets(onboarding)
-        default_budgets = DEFAULT_CATEGORIES.map do |name|
+        default_budgets = Transactions::Category::DEFAULT_EXPENSE_CATEGORIES.map do |name|
           { "name" => name, "amount" => "0" }
         end
 
@@ -68,7 +53,7 @@ module Onboardings
       end
 
       def create_default_categories(params)
-        DEFAULT_CATEGORIES.each do |name|
+        Transactions::Category::DEFAULT_EXPENSE_CATEGORIES.each do |name|
           step Transactions::Operations::Categories::CreateCategory.new.call(
             **params,
             name: name,
@@ -79,7 +64,7 @@ module Onboardings
       end
 
       def create_default_budgets(params)
-        DEFAULT_CATEGORIES.each do |name|
+        Transactions::Category::DEFAULT_EXPENSE_CATEGORIES.each do |name|
           step Budgets::Operations::CreateBudget.new.call(
             **params,
             category_name: name,
@@ -91,13 +76,15 @@ module Onboardings
       end
 
       def create_default_account(params)
-        step Transactions::Operations::Accounts::CreateAccount.new.call(
-          user_id: params[:user_id],
-          space_id: params[:space_id],
-          name: DEFAULT_ACCOUNT_NAME,
-          balance: 0.to_d,
-          account_category: DEFAULT_ACCOUNT_CATEGORY
-        )
+        Transactions::Account::DEFAULT_ACCOUNT_MAPPING.each do |category_key, account_name|
+          step Transactions::Operations::Accounts::CreateAccount.new.call(
+            user_id: params[:user_id],
+            space_id: params[:space_id],
+            name: account_name,
+            balance: 0.to_d,
+            account_category: Transactions::Account.account_categories[category_key.to_s]
+          )
+        end
         Success(nil)
       end
 
