@@ -101,6 +101,12 @@ export default function TeamSection() {
             🏆 NVIDIA Inception Member (Jan 2026)
           </div>
           <div className="flex items-center gap-2 bg-[#FAF9F7] px-5 py-2.5 rounded-[10px] text-[14px] font-medium text-[#44403C] border border-black/[0.04]">
+            ☁️ AWS Activate Founders Member
+          </div>
+          <div className="flex items-center gap-2 bg-[#FAF9F7] px-5 py-2.5 rounded-[10px] text-[14px] font-medium text-[#44403C] border border-black/[0.04]">
+            🚀 Google for Startups Member
+          </div>
+          <div className="flex items-center gap-2 bg-[#FAF9F7] px-5 py-2.5 rounded-[10px] text-[14px] font-medium text-[#44403C] border border-black/[0.04]">
             📱 Live on Apple App Store
           </div>
           <div className="flex items-center gap-2 bg-[#FAF9F7] px-5 py-2.5 rounded-[10px] text-[14px] font-medium text-[#44403C] border border-black/[0.04]">
