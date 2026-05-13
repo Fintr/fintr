@@ -1,4 +1,7 @@
 import { test, expect, Page } from "@playwright/test"
+import { auth0LocalStorageKeySuffix } from "./helpers/auth0-storage-suffix"
+import { routeDashboardApi } from "./helpers/dashboard-api-mock"
+import { primeWeeklyFeedbackDismissed } from "./helpers/prime-weekly-feedback-dismissed"
 
 /**
  * Test clicking directly on the Sheet overlay element
@@ -32,16 +35,7 @@ async function mockApiCalls(page: Page) {
     })
   })
 
-  await page.route("**/api/v1/dashboard/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        summary: { total_balance: 10000, monthly_income: 5000, monthly_expenses: 3000 },
-        categoryOptions: [],
-      }),
-    })
-  })
+  await routeDashboardApi(page)
 
   await page.route("**/api/v1/transactions**", async (route) => {
     await route.fulfill({
@@ -80,8 +74,8 @@ async function mockApiCalls(page: Page) {
 }
 
 async function setAuthStorage(page: Page) {
-  await page.addInitScript(() => {
-    const domain = "fintr_jp_auth0_com"
+  const domainSuffix = auth0LocalStorageKeySuffix()
+  await page.addInitScript((domain) => {
     const mockUser = { sub: "user123", email: "test@example.com", name: "Test User" }
     const mockTokens = {
       access_token: "mock_token",
@@ -100,12 +94,14 @@ async function setAuthStorage(page: Page) {
     localStorage.setItem(`@@auth0@@.scope.${domain}`, mockTokens.scope)
     localStorage.setItem(`@@auth0@@.issued_at.${domain}`, Date.now().toString())
     localStorage.setItem("fintr_auth_data", JSON.stringify({ tokens: mockTokens, user: mockUser }))
-  })
+    localStorage.setItem("spaceCode", "test-space")
+  }, domainSuffix)
 }
 
 test.describe("CalendarPopover overlay click", () => {
   test("click directly on overlay element", async ({ page }) => {
     await setAuthStorage(page)
+    await primeWeeklyFeedbackDismissed(page)
     await mockApiCalls(page)
     await page.goto("/dashboard/")
     await page.waitForLoadState("domcontentloaded")
