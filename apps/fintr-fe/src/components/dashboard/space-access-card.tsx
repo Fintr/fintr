@@ -48,8 +48,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { CURRENCY_CODES } from "@/data/currencies";
+import { cn } from "@/lib/utils";
 
-const SpaceAccessCard = () => {
+type SpaceAccessCardProps = {
+  className?: string;
+};
+
+const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
   const { api } = useAuthApi();
   const { currentSpace, spaceContext } = useSpaceContext(api);
   const { canManageUsers } = useSpacePermissions();
@@ -330,7 +335,7 @@ const SpaceAccessCard = () => {
   }
 
   return (
-    <Card>
+    <Card className={cn(className)}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
