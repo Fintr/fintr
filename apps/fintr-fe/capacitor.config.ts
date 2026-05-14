@@ -103,7 +103,12 @@ const config: CapacitorConfig = {
       presentationStyle: 'fullscreen',
       toolbarColor: '#ffffff',
       showTitle: true
-    }
+    },
+    // Keep WebView layout full-screen on iOS; keyboard overlays. JS uses keyboardHeight
+    // from this plugin when visualViewport does not shrink (WKWebView + custom frame).
+    Keyboard: {
+      resize: 'none',
+    },
   }
 };
 

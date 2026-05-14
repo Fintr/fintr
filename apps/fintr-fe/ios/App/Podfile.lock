@@ -9,6 +9,8 @@ PODS:
   - CapacitorFilesystem (7.1.8):
     - Capacitor
     - IONFilesystemLib (~> 1.1.1)
+  - CapacitorKeyboard (7.0.6):
+    - Capacitor
   - CapacitorShare (7.0.4):
     - Capacitor
   - IONFilesystemLib (1.1.2)
@@ -22,6 +24,7 @@ DEPENDENCIES:
   - "CapacitorBrowser (from `../../node_modules/.pnpm/@capacitor+browser@7.0.2_@capacitor+core@7.4.4/node_modules/@capacitor/browser`)"
   - "CapacitorCordova (from `../../node_modules/.pnpm/@capacitor+ios@7.4.4_@capacitor+core@7.4.4/node_modules/@capacitor/ios`)"
   - "CapacitorFilesystem (from `../../node_modules/.pnpm/@capacitor+filesystem@7.1.8_@capacitor+core@7.4.4/node_modules/@capacitor/filesystem`)"
+  - "CapacitorKeyboard (from `../../node_modules/.pnpm/@capacitor+keyboard@7.0.6_@capacitor+core@7.4.4/node_modules/@capacitor/keyboard`)"
   - "CapacitorShare (from `../../node_modules/.pnpm/@capacitor+share@7.0.4_@capacitor+core@7.4.4/node_modules/@capacitor/share`)"
   - Sentry
 
@@ -41,6 +44,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/.pnpm/@capacitor+ios@7.4.4_@capacitor+core@7.4.4/node_modules/@capacitor/ios"
   CapacitorFilesystem:
     :path: "../../node_modules/.pnpm/@capacitor+filesystem@7.1.8_@capacitor+core@7.4.4/node_modules/@capacitor/filesystem"
+  CapacitorKeyboard:
+    :path: "../../node_modules/.pnpm/@capacitor+keyboard@7.0.6_@capacitor+core@7.4.4/node_modules/@capacitor/keyboard"
   CapacitorShare:
     :path: "../../node_modules/.pnpm/@capacitor+share@7.0.4_@capacitor+core@7.4.4/node_modules/@capacitor/share"
 
@@ -50,10 +55,11 @@ SPEC CHECKSUMS:
   CapacitorBrowser: 22541e48442de44dc629c214388290d6eecc6ae9
   CapacitorCordova: bf648a636f3c153f652d312ae145fb508b6ffced
   CapacitorFilesystem: c63fc54df41e5a6761785a7f3c49dc696c22e296
+  CapacitorKeyboard: a2e0869edd229490ce36aed2549c0d6b95e27ee8
   CapacitorShare: 25f7fc5dd0e4edbde5d6801c6de5d14a8b450a41
   IONFilesystemLib: 21a63377696b2d8fab5632ecfb7d2ac67bddb68a
   Sentry: d587a8fe91ca13503ecd69a1905f3e8a0fcf61be
 
-PODFILE CHECKSUM: b77a9974b91ad54c583c659af29acd5117c2744c
+PODFILE CHECKSUM: 5db1849ba3840ecb1fa3a3664e9e0187252c8867
 
 COCOAPODS: 1.16.2

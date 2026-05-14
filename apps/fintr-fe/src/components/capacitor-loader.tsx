@@ -2,11 +2,14 @@
 
 import { useEffect } from 'react';
 import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
+import { initCapacitorKeyboardInsetBridge } from '@/lib/capacitor-keyboard-inset';
 import { initializeSafeAreas } from '@/lib/navigation-info';
 
 export default function CapacitorLoader() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    initCapacitorKeyboardInsetBridge();
 
     const ua = navigator.userAgent || "";
     const uaLower = ua.toLowerCase();

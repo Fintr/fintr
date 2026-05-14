@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  getCapacitorKeyboardInsetPx,
+  subscribeCapacitorKeyboardInset,
+} from "@/lib/capacitor-keyboard-inset";
 
 export interface KeyboardState {
   isOpen: boolean;
@@ -37,7 +41,8 @@ export function useKeyboardDetector(): KeyboardState {
     const detectKeyboard = () => {
       const vv = window.visualViewport;
       const layoutHeight = window.innerHeight;
-      
+      const nativeKb = getCapacitorKeyboardInsetPx();
+
       // Get visual viewport height (the actually visible area)
       const visualHeight = vv != null && Number.isFinite(vv.height) 
         ? vv.height 
@@ -47,10 +52,14 @@ export function useKeyboardDetector(): KeyboardState {
       const heightDiff = layoutHeight - visualHeight;
       
       // Keyboard is likely open if:
-      // 1. Visual viewport is significantly smaller than layout viewport (>150px difference)
-      // 2. Visual viewport height is small (< 400px typical for mobile with keyboard)
-      const isKeyboardOpen = heightDiff > KEYBOARD_HEIGHT_THRESHOLD_PX || 
-                             (visualHeight < SMALL_VIEWPORT_HEIGHT_PX && layoutHeight > SMALL_VIEWPORT_HEIGHT_PX);
+      // 1. Capacitor reported an open keyboard (iOS overlay WKWebView)
+      // 2. Visual viewport is significantly smaller than layout viewport (>150px difference)
+      // 3. Visual viewport height is small (< 400px typical for mobile with keyboard)
+      const isKeyboardOpen =
+        nativeKb > 0 ||
+        heightDiff > KEYBOARD_HEIGHT_THRESHOLD_PX ||
+        (visualHeight < SMALL_VIEWPORT_HEIGHT_PX &&
+          layoutHeight > SMALL_VIEWPORT_HEIGHT_PX);
 
       setState({
         isOpen: isKeyboardOpen,
@@ -76,7 +85,12 @@ export function useKeyboardDetector(): KeyboardState {
     window.addEventListener("resize", handleResize);
     window.addEventListener("orientationchange", handleResize);
 
+    const unsubInset = subscribeCapacitorKeyboardInset(() => {
+      requestAnimationFrame(detectKeyboard);
+    });
+
     return () => {
+      unsubInset();
       vv?.removeEventListener("resize", handleResize);
       vv?.removeEventListener("scroll", handleResize);
       window.removeEventListener("resize", handleResize);

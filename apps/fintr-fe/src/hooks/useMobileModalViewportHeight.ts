@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { subscribeCapacitorKeyboardInset } from "@/lib/capacitor-keyboard-inset";
 import { getMobileModalViewportHeight } from "@/lib/mobile-modal-viewport-height";
 
 /**
@@ -30,7 +31,10 @@ export function useMobileModalViewportHeight(isOpen: boolean): number | null {
     window.addEventListener("resize", sync);
     window.addEventListener("orientationchange", sync);
 
+    const unsubInset = subscribeCapacitorKeyboardInset(sync);
+
     return () => {
+      unsubInset();
       vv?.removeEventListener("resize", sync);
       vv?.removeEventListener("scroll", sync);
       window.removeEventListener("resize", sync);

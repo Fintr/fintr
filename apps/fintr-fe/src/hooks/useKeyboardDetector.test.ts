@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
+import * as capacitorKeyboardInset from "@/lib/capacitor-keyboard-inset";
 import { useKeyboardDetector } from "./useKeyboardDetector";
 
 describe("useKeyboardDetector", () => {
@@ -42,7 +43,7 @@ describe("useKeyboardDetector", () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("returns initial state with keyboard closed", () => {
@@ -157,6 +158,14 @@ describe("useKeyboardDetector", () => {
       "scroll",
       expect.any(Function)
     );
+  });
+
+  it("treats keyboard as open when Capacitor reports native keyboard inset", () => {
+    vi.spyOn(capacitorKeyboardInset, "getCapacitorKeyboardInsetPx").mockReturnValue(280);
+
+    const { result } = renderHook(() => useKeyboardDetector());
+
+    expect(result.current.isOpen).toBe(true);
   });
 
   it("handles orientation change events", () => {
