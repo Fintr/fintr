@@ -140,9 +140,21 @@ describe("useKeyboardDetector", () => {
 
     unmount();
 
-    // Should remove event listeners
     expect(visualViewportMock.removeEventListener).toHaveBeenCalledWith(
       "resize",
+      expect.any(Function)
+    );
+    expect(visualViewportMock.removeEventListener).toHaveBeenCalledWith(
+      "scroll",
+      expect.any(Function)
+    );
+  });
+
+  it("subscribes to visual viewport scroll for iOS keyboard transitions", () => {
+    renderHook(() => useKeyboardDetector());
+
+    expect(visualViewportMock.addEventListener).toHaveBeenCalledWith(
+      "scroll",
       expect.any(Function)
     );
   });

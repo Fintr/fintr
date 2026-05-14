@@ -299,17 +299,24 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           isMobile && mobileViewportHeight != null
             ? isAndroidNative
               ? {
-                  // Android native: use full viewport height when keyboard is open
-                  // When keyboard is closed: subtract safe area from viewport height
-                  ...(isKeyboardOpen 
-                    ? { height: "100vh" }
-                    : { maxHeight: `calc(${mobileViewportHeight}px - ${safeAreaInsetBottom > 0 ? safeAreaInsetBottom + 'px' : 'var(--safe-area-inset-bottom, 0px)' } - 20px + 2px)` }
+                  // Keyboard open: use visual viewport height — 100vh does not shrink with the
+                  // soft keyboard on iOS WKWebView (and can mis-size Android WebViews).
+                  ...(isKeyboardOpen
+                    ? {
+                        height: `${mobileViewportHeight}px`,
+                        maxHeight: `${mobileViewportHeight}px`,
+                      }
+                    : {
+                        maxHeight: `calc(${mobileViewportHeight}px - ${safeAreaInsetBottom > 0 ? safeAreaInsetBottom + 'px' : 'var(--safe-area-inset-bottom, 0px)' } - 20px + 2px)`,
+                      }
                   ),
                 }
               : {
-                  // iOS and mobile browsers: use full viewport height when keyboard is open
-                  ...(isKeyboardOpen 
-                    ? { height: "100vh" }
+                  ...(isKeyboardOpen
+                    ? {
+                        height: `${mobileViewportHeight}px`,
+                        maxHeight: `${mobileViewportHeight}px`,
+                      }
                     : { maxHeight: `${mobileViewportHeight}px` }
                   ),
                 }
