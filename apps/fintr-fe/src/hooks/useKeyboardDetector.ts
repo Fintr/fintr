@@ -63,20 +63,22 @@ export function useKeyboardDetector(): KeyboardState {
     // Initial detection
     detectKeyboard();
 
-    // Listen for viewport changes
+    // Listen for viewport changes. iOS WKWebView often fires `scroll` on visualViewport
+    // when the keyboard shows or the visible rect shifts, without a separate `resize`.
     const vv = window.visualViewport;
-    
+
     const handleResize = () => {
-      // Small delay to let viewport settle
       requestAnimationFrame(detectKeyboard);
     };
 
     vv?.addEventListener("resize", handleResize);
+    vv?.addEventListener("scroll", handleResize);
     window.addEventListener("resize", handleResize);
     window.addEventListener("orientationchange", handleResize);
 
     return () => {
       vv?.removeEventListener("resize", handleResize);
+      vv?.removeEventListener("scroll", handleResize);
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("orientationchange", handleResize);
     };
