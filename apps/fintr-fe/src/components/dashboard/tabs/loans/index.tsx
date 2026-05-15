@@ -7,17 +7,11 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Calendar as CalendarLucide, Percent, FileText, ChevronDown, ChevronUp, Info, Wallet, CalendarIcon, Receipt, Edit, Trash2 } from "lucide-react";
+import { Plus, Calendar as CalendarLucide, Percent, FileText, ChevronDown, Info, Wallet, CalendarIcon, Receipt, Edit, Trash2 } from "lucide-react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarPopover } from "@/components/ui/calendar-popover";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { CustomModal } from "@/components/ui/custom-modal";
 import { Input } from "@/components/ui/input";
 import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
+import { AdjustAccountBalanceSwitchRow } from "@/components/dashboard/forms/adjust-account-balance-switch-row";
 import { useInfiniteLoans } from "@/hooks/async/useInfiniteLoans";
 import { useLoanPayments } from "@/hooks/async/useLoanPayments";
 import { formatCurrency } from "@/lib/utils";
@@ -243,9 +238,12 @@ const calculateAmortizationSchedule = (loan: Loan): PaymentScheduleItem[] => {
   return schedule;
 };
 
+const LOAN_EXPAND_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
 const LoansTab = ({}: LoansTabProps) => {
   const [isAddLoanOpen, setIsAddLoanOpen] = React.useState(false);
   const [expandedLoanId, setExpandedLoanId] = React.useState<string | null>(null);
+  const reduceMotion = useReducedMotion();
   const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
   const { 
     loans, 
@@ -401,11 +399,19 @@ const LoansTab = ({}: LoansTabProps) => {
                             <div className={`font-semibold text-sm ${textColorClass} flex-shrink-0`}>
                               {formatCurrency(loan.outstandingBalance, loan.outstandingBalanceCurrency)}
                             </div>
-                            {expandedLoanId === loan.id ? (
-                              <ChevronUp className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                            )}
+                            <motion.span
+                              className="inline-flex flex-shrink-0"
+                              animate={{
+                                rotate: expandedLoanId === loan.id ? 180 : 0,
+                              }}
+                              transition={
+                                reduceMotion
+                                  ? { duration: 0 }
+                                  : { duration: 0.22, ease: LOAN_EXPAND_EASE }
+                              }
+                            >
+                              <ChevronDown className="h-4 w-4 text-gray-500" />
+                            </motion.span>
                           </div>
                         </div>
                         
@@ -462,9 +468,32 @@ const LoansTab = ({}: LoansTabProps) => {
                       </div>
                     </div>
                     
-                    {expandedLoanId === loan.id && (
-                      <LoanDetailsExpanded loan={loan} isBorrowed={isBorrowed} textColorClass={textColorClass} />
-                    )}
+                    <AnimatePresence initial={false}>
+                      {expandedLoanId === loan.id && (
+                        <motion.div
+                          key={`loan-expanded-${loan.id}`}
+                          initial={
+                            reduceMotion
+                              ? false
+                              : { height: 0, opacity: 0 }
+                          }
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={
+                            reduceMotion
+                              ? { duration: 0 }
+                              : { duration: 0.28, ease: LOAN_EXPAND_EASE }
+                          }
+                          style={{ overflow: "hidden" }}
+                        >
+                          <LoanDetailsExpanded
+                            loan={loan}
+                            isBorrowed={isBorrowed}
+                            textColorClass={textColorClass}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </React.Fragment>
               );
@@ -518,6 +547,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
   const [formSubmitted, setFormSubmitted] = React.useState(false);
   const [recordPaymentDatePickerOpen, setRecordPaymentDatePickerOpen] = React.useState(false);
   const [editPaymentDatePickerOpen, setEditPaymentDatePickerOpen] = React.useState(false);
+  const [adjustsAccountBalance, setAdjustsAccountBalance] = React.useState(true);
   
   const totalPaymentInput = useNumberInput({
     initialValue: "",
@@ -549,6 +579,33 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
     return Math.round((totalPayments - totalPrincipalPaid) * 100) / 100;
   }, [totalPayments, totalPrincipalPaid]);
 
+  const resetRecordPaymentFormFields = () => {
+    setPaymentDate(new Date());
+    setAccountName("");
+    setNotes("");
+    totalPaymentInput.reset();
+    setFormSubmitted(false);
+    setValidationErrors({});
+    setAdjustsAccountBalance(true);
+  };
+
+  const closeRecordPaymentModal = () => {
+    setIsPaymentDialogOpen(false);
+    resetRecordPaymentFormFields();
+  };
+
+  const closeEditPaymentModal = () => {
+    setIsEditPaymentDialogOpen(false);
+    setEditingPayment(null);
+    setPaymentDate(new Date());
+    setAccountName("");
+    setNotes("");
+    totalPaymentInput.reset();
+    setFormSubmitted(false);
+    setValidationErrors({});
+    setAdjustsAccountBalance(true);
+  };
+
   const handleAddPayment = async () => {
     setFormSubmitted(true);
     setValidationErrors({});
@@ -579,16 +636,11 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
         date: paymentDate ? format(paymentDate, "yyyy-MM-dd") : "",
         totalPayment: totalPaymentValue,
         notes: notes || undefined,
+        adjustsAccountBalance,
       });
-      
-              toast.success("Payment recorded successfully");
-              setIsPaymentDialogOpen(false);
-              setPaymentDate(new Date());
-              setAccountName("");
-              setNotes("");
-              totalPaymentInput.reset();
-              setFormSubmitted(false);
-              setValidationErrors({});
+
+      toast.success("Payment recorded successfully");
+      closeRecordPaymentModal();
     } catch (error: any) {
       const fieldErrors = extractFieldErrors(error);
       // Convert string[] to string for validation errors
@@ -601,6 +653,61 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
       
       if (Object.keys(stringErrors).length === 0) {
         toast.error("Failed to record payment. Please try again.");
+      }
+    }
+  };
+
+  const handleUpdatePayment = async () => {
+    if (!editingPayment) return;
+
+    setFormSubmitted(true);
+    setValidationErrors({});
+
+    const errors: Record<string, string> = {};
+
+    const totalPaymentValue = numberFormatting.cleanForBackend(totalPaymentInput.displayValue);
+    if (!totalPaymentInput.displayValue || totalPaymentValue <= 0) {
+      errors.totalPayment = "Payment amount must be a positive number";
+    }
+
+    if (!accountName) {
+      errors.accountName = "Account is required";
+    }
+
+    if (!paymentDate) {
+      errors.date = "Payment date is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    try {
+      await updatePayment({
+        paymentId: editingPayment.id,
+        paymentData: {
+          accountName,
+          date: paymentDate ? format(paymentDate, "yyyy-MM-dd") : "",
+          totalPayment: totalPaymentValue,
+          notes: notes || undefined,
+          adjustsAccountBalance,
+        },
+      });
+
+      toast.success("Payment updated successfully");
+      closeEditPaymentModal();
+    } catch (error: any) {
+      const fieldErrors = extractFieldErrors(error);
+      const stringErrors: Record<string, string> = {};
+      Object.keys(fieldErrors).forEach((key) => {
+        const errorValue = fieldErrors[key];
+        stringErrors[key] = Array.isArray(errorValue) ? errorValue[0] || "" : errorValue || "";
+      });
+      setValidationErrors(stringErrors);
+
+      if (Object.keys(stringErrors).length === 0) {
+        toast.error("Failed to update payment. Please try again.");
       }
     }
   };
@@ -700,11 +807,11 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
       </div>
 
       <div className="mb-2">
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3 flex flex-col gap-2">
           <h5 className="text-sm font-semibold text-primary">
             {showPaymentsView ? "Payments Made" : "Payment Schedule"}
           </h5>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button 
               size="sm" 
               variant="outline" 
@@ -724,155 +831,180 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                 </>
               )}
             </Button>
-            <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline" className="text-xs">
-                  <Wallet className="h-3 w-3 mr-1" />
-                  Add Payment
-                </Button>
-              </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Record Loan Payment</DialogTitle>
-                <DialogDescription>
-                  Record a payment for this loan. Principal and interest will be calculated automatically.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="payment-date" className="text-sm">Payment Date</Label>
-                  <CalendarPopover
-                    modal
-                    open={recordPaymentDatePickerOpen}
-                    onOpenChange={setRecordPaymentDatePickerOpen}
-                    trigger={
-                      <Button 
-                        variant="outline" 
-                        className={`w-full justify-start text-left font-normal text-sm ${formSubmitted && validationErrors.date ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {paymentDate ? format(paymentDate, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
-                      </Button>
-                    }
-                  >
-                    <Calendar 
-                      mode="single" 
-                      selected={paymentDate} 
-                      onSelect={(date) => {
-                        setPaymentDate(date);
-                        if (date) setRecordPaymentDatePickerOpen(false);
-                        if (formSubmitted && validationErrors.date) {
-                          setValidationErrors({ ...validationErrors, date: "" });
-                        }
-                      }} 
-                      autoFocus 
-                      defaultMonth={paymentDate || new Date()}
-                      toDate={new Date()}
-                    />
-                  </CalendarPopover>
-                  {formSubmitted && validationErrors.date && (
-                    <FormError message={validationErrors.date} />
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="payment-account" className="text-sm">Account</Label>
-                  <Select
-                    value={accountName}
-                    onValueChange={(value) => {
-                      setAccountName(value);
-                      if (formSubmitted && validationErrors.accountName) {
-                        setValidationErrors({ ...validationErrors, accountName: "" });
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs"
+              type="button"
+              onClick={() => setIsPaymentDialogOpen(true)}
+            >
+              <Wallet className="h-3 w-3 mr-1" />
+              Add Payment
+            </Button>
+            <CustomModal
+              isOpen={isPaymentDialogOpen}
+              onClose={closeRecordPaymentModal}
+              title="Record Loan Payment"
+              maxWidth="2xl"
+              className="p-0"
+            >
+              <div className="px-6 pb-6">
+                <div className="space-y-4">
+                  <p className="text-left text-sm text-muted-foreground">
+                    {adjustsAccountBalance
+                      ? "Record a payment for this loan. The amount is split into principal and interest using daily simple interest, and your selected account balance is updated to match the cash movement."
+                      : "Record a past payment that is already reflected in your account balances. The loan schedule and outstanding principal still update from the amount you enter, but no money is moved in or out of the selected account."}
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-date" className="text-sm">Payment Date</Label>
+                    <CalendarPopover
+                      modal
+                      open={recordPaymentDatePickerOpen}
+                      onOpenChange={setRecordPaymentDatePickerOpen}
+                      trigger={
+                        <Button 
+                          variant="outline" 
+                          className={`w-full justify-start text-left font-normal text-sm ${formSubmitted && validationErrors.date ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {paymentDate ? format(paymentDate, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
+                        </Button>
                       }
-                    }}
-                  >
-                    <SelectTrigger 
-                      id="payment-account"
-                      className={`text-sm ${formSubmitted && validationErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
                     >
-                      <SelectValue placeholder="Select Account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accountOptions.map((account) => (
-                        <SelectItem key={account.value} value={account.value} className="text-sm">
-                          {account.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formSubmitted && validationErrors.accountName && (
-                    <FormError message={validationErrors.accountName} />
-                  )}
-                </div>
+                      <Calendar 
+                        mode="single" 
+                        selected={paymentDate} 
+                        onSelect={(date) => {
+                          setPaymentDate(date);
+                          if (date) setRecordPaymentDatePickerOpen(false);
+                          if (formSubmitted && validationErrors.date) {
+                            setValidationErrors({ ...validationErrors, date: "" });
+                          }
+                        }} 
+                        autoFocus 
+                        defaultMonth={paymentDate || new Date()}
+                        toDate={new Date()}
+                      />
+                    </CalendarPopover>
+                    {formSubmitted && validationErrors.date && (
+                      <FormError message={validationErrors.date} />
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-account" className="text-sm">Account</Label>
+                    <Select
+                      value={accountName}
+                      onValueChange={(value) => {
+                        setAccountName(value);
+                        if (formSubmitted && validationErrors.accountName) {
+                          setValidationErrors({ ...validationErrors, accountName: "" });
+                        }
+                      }}
+                    >
+                      <SelectTrigger 
+                        id="payment-account"
+                        className={`text-sm ${formSubmitted && validationErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                      >
+                        <SelectValue placeholder="Select Account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accountOptions.map((account) => (
+                          <SelectItem key={account.value} value={account.value} className="text-sm">
+                            {account.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formSubmitted && validationErrors.accountName && (
+                      <FormError message={validationErrors.accountName} />
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="payment-amount" className="text-sm">Total Payment Amount</Label>
-                  <CalculatorInput
-                    id="payment-amount"
-                    value={totalPaymentInput.displayValue}
-                    onChange={(value) => {
-                      totalPaymentInput.handleInputChange(value);
-                      if (formSubmitted && validationErrors.totalPayment) {
-                        setValidationErrors({ ...validationErrors, totalPayment: "" });
-                      }
-                    }}
-                    placeholder="0.00"
-                    className={`text-sm ${formSubmitted && validationErrors.totalPayment ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                  />
-                  {formSubmitted && validationErrors.totalPayment && (
-                    <FormError message={validationErrors.totalPayment} />
-                  )}
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-amount" className="text-sm">Total Payment Amount</Label>
+                    <CalculatorInput
+                      id="payment-amount"
+                      value={totalPaymentInput.displayValue}
+                      onChange={(value) => {
+                        totalPaymentInput.handleInputChange(value);
+                        if (formSubmitted && validationErrors.totalPayment) {
+                          setValidationErrors({ ...validationErrors, totalPayment: "" });
+                        }
+                      }}
+                      placeholder="0.00"
+                      className={`text-sm ${formSubmitted && validationErrors.totalPayment ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                    />
+                    {formSubmitted && validationErrors.totalPayment && (
+                      <FormError message={validationErrors.totalPayment} />
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="payment-notes" className="text-sm">Notes (Optional)</Label>
-                  <Textarea
-                    id="payment-notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    onKeyDown={handleMultilineNotesKeyDown}
-                    placeholder="Add any additional notes..."
-                    className="text-sm min-h-[80px]"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsPaymentDialogOpen(false);
-                      setPaymentDate(new Date());
-                      setAccountName("");
-                      setNotes("");
-                      totalPaymentInput.reset();
-                      setFormSubmitted(false);
-                      setValidationErrors({});
-                    }}
+                  <AdjustAccountBalanceSwitchRow
+                    id="adjusts-account-balance"
+                    checked={adjustsAccountBalance}
+                    onCheckedChange={setAdjustsAccountBalance}
+                    label="Update account balance"
+                    infoAriaLabel="Help: update account balance for this payment"
+                    switchAriaLabel="Update account balance for this payment"
+                    popoverTitle="Account balance and this payment"
                   >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleAddPayment}
-                    disabled={isCreating}
-                  >
-                    {isCreating ? "Recording..." : "Record Payment"}
-                  </Button>
+                    <p>
+                      When <span className="font-medium">on</span>, Fintr changes the selected account balance to match this payment (the usual repayment flow).
+                    </p>
+                    <p>
+                      When <span className="font-medium">off</span>, use this for money you have already booked in your accounts (for example catching up an ongoing loan). The loan still splits principal and interest from your amount, but the account balance is not moved again.
+                    </p>
+                  </AdjustAccountBalanceSwitchRow>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-notes" className="text-sm">Notes (Optional)</Label>
+                    <Textarea
+                      id="payment-notes"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      onKeyDown={handleMultilineNotesKeyDown}
+                      placeholder="Add any additional notes..."
+                      className="text-sm min-h-[80px]"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={closeRecordPaymentModal}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleAddPayment}
+                      disabled={isCreating}
+                    >
+                      {isCreating ? "Recording..." : "Record Payment"}
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </DialogContent>
-          </Dialog>
+            </CustomModal>
           </div>
         </div>
         
-        <Dialog open={isEditPaymentDialogOpen} onOpenChange={setIsEditPaymentDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Edit Loan Payment</DialogTitle>
-              <DialogDescription>
-                Update payment details. Principal and interest will be recalculated automatically.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
+        <CustomModal
+          isOpen={isEditPaymentDialogOpen}
+          onClose={closeEditPaymentModal}
+          title="Edit Loan Payment"
+          maxWidth="2xl"
+          className="p-0"
+        >
+          <div className="px-6 pb-6">
+            <div className="space-y-4">
+              <p className="text-left text-sm text-muted-foreground">
+                {adjustsAccountBalance
+                  ? "Update payment details. Principal and interest are recalculated from the amount, and the account balance change is kept in sync."
+                  : "This payment is treated as already reflected in accounts. You can edit the amount and dates for the loan schedule; the selected account balance is not changed."}
+              </p>
               <div className="space-y-2">
                 <Label htmlFor="edit-payment-date" className="text-sm">Payment Date</Label>
                 <CalendarPopover
@@ -880,8 +1012,9 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                   open={editPaymentDatePickerOpen}
                   onOpenChange={setEditPaymentDatePickerOpen}
                   trigger={
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       className={`w-full justify-start text-left font-normal text-sm ${formSubmitted && validationErrors.date ? "border-red-800 focus-visible:ring-red-800" : ""}`}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -889,17 +1022,17 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                     </Button>
                   }
                 >
-                  <Calendar 
-                    mode="single" 
-                    selected={paymentDate} 
+                  <Calendar
+                    mode="single"
+                    selected={paymentDate}
                     onSelect={(date) => {
                       setPaymentDate(date);
                       if (date) setEditPaymentDatePickerOpen(false);
                       if (formSubmitted && validationErrors.date) {
                         setValidationErrors({ ...validationErrors, date: "" });
                       }
-                    }} 
-                    autoFocus 
+                    }}
+                    autoFocus
                     defaultMonth={paymentDate || new Date()}
                     toDate={new Date()}
                   />
@@ -908,7 +1041,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                   <FormError message={validationErrors.date} />
                 )}
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-payment-account" className="text-sm">Account</Label>
                 <Select
@@ -920,7 +1053,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                     }
                   }}
                 >
-                  <SelectTrigger 
+                  <SelectTrigger
                     id="edit-payment-account"
                     className={`text-sm ${formSubmitted && validationErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
                   >
@@ -958,6 +1091,23 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                 )}
               </div>
 
+              <AdjustAccountBalanceSwitchRow
+                id="edit-adjusts-account-balance"
+                checked={adjustsAccountBalance}
+                onCheckedChange={setAdjustsAccountBalance}
+                label="Update account balance"
+                infoAriaLabel="Help: update account balance for this payment"
+                switchAriaLabel="Update account balance for this payment"
+                popoverTitle="Account balance and this payment"
+              >
+                <p>
+                  When <span className="font-medium">on</span>, Fintr changes the selected account balance to match this payment (the usual repayment flow).
+                </p>
+                <p>
+                  When <span className="font-medium">off</span>, use this for money you have already booked in your accounts (for example catching up an ongoing loan). The loan still splits principal and interest from your amount, but the account balance is not moved again.
+                </p>
+              </AdjustAccountBalanceSwitchRow>
+
               <div className="space-y-2">
                 <Label htmlFor="edit-payment-notes" className="text-sm">Notes (Optional)</Label>
                 <Textarea
@@ -970,91 +1120,25 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    setIsEditPaymentDialogOpen(false);
-                    setEditingPayment(null);
-                    setPaymentDate(new Date());
-                    setAccountName("");
-                    setNotes("");
-                    totalPaymentInput.reset();
-                    setFormSubmitted(false);
-                    setValidationErrors({});
-                  }}
+                  type="button"
+                  onClick={closeEditPaymentModal}
                 >
                   Cancel
                 </Button>
                 <Button
-                  onClick={async () => {
-                    if (!editingPayment) return;
-                    
-                    setFormSubmitted(true);
-                    setValidationErrors({});
-
-                    const errors: Record<string, string> = {};
-                    
-                    const totalPaymentValue = numberFormatting.cleanForBackend(totalPaymentInput.displayValue);
-                    if (!totalPaymentInput.displayValue || totalPaymentValue <= 0) {
-                      errors.totalPayment = "Payment amount must be a positive number";
-                    }
-                    
-                    if (!accountName) {
-                      errors.accountName = "Account is required";
-                    }
-                    
-                    if (!paymentDate) {
-                      errors.date = "Payment date is required";
-                    }
-                    
-                    if (Object.keys(errors).length > 0) {
-                      setValidationErrors(errors);
-                      return;
-                    }
-
-                    try {
-                      await updatePayment({
-                        paymentId: editingPayment.id,
-                        paymentData: {
-                          accountName,
-                          date: paymentDate ? format(paymentDate, "yyyy-MM-dd") : "",
-                          totalPayment: totalPaymentValue,
-                          notes: notes || undefined,
-                        }
-                      });
-                      
-                      toast.success("Payment updated successfully");
-                      setIsEditPaymentDialogOpen(false);
-                      setEditingPayment(null);
-                      setPaymentDate(new Date());
-                      setAccountName("");
-                      setNotes("");
-                      totalPaymentInput.reset();
-                      setFormSubmitted(false);
-                      setValidationErrors({});
-                    } catch (error: any) {
-                      const fieldErrors = extractFieldErrors(error);
-                      const stringErrors: Record<string, string> = {};
-                      Object.keys(fieldErrors).forEach(key => {
-                        const errorValue = fieldErrors[key];
-                        stringErrors[key] = Array.isArray(errorValue) ? errorValue[0] || "" : errorValue || "";
-                      });
-                      setValidationErrors(stringErrors);
-                      
-                      if (Object.keys(stringErrors).length === 0) {
-                        toast.error("Failed to update payment. Please try again.");
-                      }
-                    }
-                  }}
+                  type="button"
+                  onClick={handleUpdatePayment}
                   disabled={isUpdating}
                 >
                   {isUpdating ? "Updating..." : "Update Payment"}
                 </Button>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+        </CustomModal>
         
         <DeleteLoanPaymentModal
           isOpen={isDeletePaymentModalOpen}
@@ -1144,6 +1228,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                                     setAccountName(payment.accountName);
                                     setNotes(payment.notes || "");
                                     totalPaymentInput.handleInputChange(payment.totalPayment.toString());
+                                    setAdjustsAccountBalance(payment.adjustsAccountBalance !== false);
                                     setIsEditPaymentDialogOpen(true);
                                   }}
                                 >

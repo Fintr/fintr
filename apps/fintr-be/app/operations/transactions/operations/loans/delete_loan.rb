@@ -55,6 +55,8 @@ module Transactions
           account = loan.account
           account.reload
 
+          return Success(account) unless loan.adjusts_account_balance
+
           # Reverse the initial loan amount based on loan type
           balance_reversal = case loan.loan_type
           when "borrowed"

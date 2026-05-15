@@ -12,7 +12,8 @@ module Loans
              :maturity_date,
              :status,
              :paid_off_date,
-             :interest_rate
+             :interest_rate,
+             :adjusts_account_balance
 
       field :entity_name do |record|
         record.entity.full_name
@@ -74,7 +75,8 @@ module Loans
             principal_payment: payment.principal_payment.amount,
             interest_payment: payment.interest_payment.amount,
             total_payment: payment.total_payment.amount,
-            currency: payment.currency
+            currency: payment.currency,
+            adjusts_account_balance: payment.adjusts_account_balance
           }
         end
       end

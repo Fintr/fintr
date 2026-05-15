@@ -97,6 +97,40 @@ RSpec.describe Transactions::Operations::Loans::CreateLoanPayment do
       end
     end
 
+    context 'when adjusts_account_balance is false' do
+      subject(:call_operation) { operation.call(params) }
+
+      let(:params) { valid_params.merge(adjusts_account_balance: false) }
+
+      it { is_expected.to be_success }
+
+      it 'persists adjusts_account_balance as false' do
+        expect(call_operation.value!.adjusts_account_balance).to be(false)
+      end
+
+      it 'still splits principal and interest from the payment amount' do
+        payment = call_operation.value!
+        expect(payment.principal_payment.amount).to be > 0
+        expect(payment.interest_payment.amount).to be > 0
+        expect(payment.total_payment.amount).to eq(params[:total_payment])
+      end
+
+      it 'does not change the paying account balance' do
+        initial_balance = Transactions::Account.find(account.id).balance.amount
+        call_operation
+        expect(Transactions::Account.find(account.id).balance.amount).to eq(initial_balance)
+      end
+
+      it 'still reduces loan outstanding balance by principal paid' do
+        before_balance = loan.reload.outstanding_balance.amount
+        payment = call_operation.value!
+        expect(loan.reload.outstanding_balance.amount).to be < before_balance
+        expect(loan.reload.outstanding_balance.amount).to be_within(0.02).of(
+          before_balance - payment.principal_payment.amount
+        )
+      end
+    end
+
     context 'when calculating interest for various scenarios' do
       context 'when creating the first payment' do
         subject(:call_operation) { operation.call(params) }

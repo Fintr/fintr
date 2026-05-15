@@ -64,6 +64,8 @@ module Transactions
         end
 
         def reverse_account_balance(loan_payment:, loan:, account:)
+          return Success(nil) unless loan_payment.adjusts_account_balance
+
           operation = ReverseAccountBalanceForLoanPayment.new.call(
             loan_payment:,
             loan:,

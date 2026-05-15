@@ -32,6 +32,10 @@ module Loans
       field :total_payment do |record|
         record.total_payment.amount
       end
+
+      field :adjusts_account_balance do |record|
+        record.adjusts_account_balance
+      end
     end
   end
 end

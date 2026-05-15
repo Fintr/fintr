@@ -20,6 +20,7 @@ module Transactions
             required(:account_name).value(:string)
             required(:loan_term_months).value(:integer, gt?: 0)
             optional(:description).value(:string)
+            optional(:adjusts_account_balance).maybe(:bool)
             optional(:file)
             optional(:file_id).maybe(:string)
           end
@@ -93,6 +94,7 @@ module Transactions
           params[:currency] = account.space.currency.presence || "PHP"
           params[:maturity_date] = params[:date] + params[:loan_term_months].months
           params[:status] = "active"
+          params[:adjusts_account_balance] = adjusts_account_balance?(params)
           params.delete(:principal_amount)
           params.delete(:entity_name)
           params.delete(:account_name)
@@ -100,6 +102,12 @@ module Transactions
           params.delete(:file_id)
 
           Success(params)
+        end
+
+        def adjusts_account_balance?(params)
+          return true unless params.key?(:adjusts_account_balance)
+
+          ActiveModel::Type::Boolean.new.cast(params[:adjusts_account_balance]) != false
         end
 
         def create_loan(params:)
@@ -113,6 +121,8 @@ module Transactions
         end
 
         def update_account_balance(loan:, account:)
+          return Success(account.reload) unless loan.adjusts_account_balance
+
           # Reload account to get latest balance
           account.reload
 

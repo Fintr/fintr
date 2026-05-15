@@ -327,7 +327,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       >
         {title && (
           <div className="px-6 pt-6 pb-4 flex items-center justify-between flex-shrink-0">
-            <h2 className="text-lg font-semibold">{title}</h2>
+            <h2 className="text-lg font-semibold text-primary">{title}</h2>
           </div>
         )}
         <div
