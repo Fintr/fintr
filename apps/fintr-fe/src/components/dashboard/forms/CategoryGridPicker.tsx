@@ -43,6 +43,8 @@ const CategoryGridPicker: React.FC<CategoryGridPickerProps> = ({
   };
 
   const selectedCategory = categories.find((cat) => cat.value === value);
+  const displayLabel =
+    value && selectedCategory ? selectedCategory.label : value ? value : "";
 
   return (
     <div className="space-y-2 min-w-0">
@@ -53,16 +55,21 @@ const CategoryGridPicker: React.FC<CategoryGridPickerProps> = ({
         variant="outline"
         onClick={() => !disabled && setIsOpen(true)}
         disabled={disabled}
+        title={value ? displayLabel : undefined}
         className={cn(
-          "w-full justify-start text-left font-normal text-sm h-10",
+          "w-full min-w-0 justify-start gap-0 overflow-hidden text-left font-normal text-sm h-10 px-3",
           !value && "text-muted-foreground",
           error && error.length > 0 && "border-red-800 focus-visible:ring-red-800"
         )}
       >
         {value ? (
-          <span className="font-medium">{selectedCategory?.label}</span>
+          <span className="min-w-0 flex-1 overflow-hidden text-clip whitespace-nowrap text-left font-medium">
+            {displayLabel}
+          </span>
         ) : (
-          <span>Select category</span>
+          <span className="min-w-0 flex-1 overflow-hidden text-clip whitespace-nowrap text-left">
+            Select category
+          </span>
         )}
       </Button>
 
