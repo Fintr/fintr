@@ -17,6 +17,7 @@ module Transactions
             required(:date).value(:date)
             required(:total_payment).value(:decimal, gt?: 0)
             optional(:principal_payment).value(:decimal, gteq?: 0)
+            optional(:adjusts_account_balance).maybe(:bool)
             optional(:notes).value(:string)
           end
         end
@@ -76,26 +77,19 @@ module Transactions
         def transform_params(params:, loan:, account:, calculated_interest:)
           params = params.dup
 
-          # Convert total payment to cents
           params[:total_payment_cents] = (params[:total_payment] * 100).to_i
-
-          # Calculate interest payment from calculated interest
           params[:interest_payment_cents] = calculated_interest.cents
 
-          # Calculate principal payment
-          # If principal_payment is explicitly provided, use it
-          # Otherwise, calculate it from total_payment - interest_payment
           if params[:principal_payment].present?
             params[:principal_payment_cents] = (params[:principal_payment] * 100).to_i
           else
-            # Principal = Total Payment - Interest Payment
             principal_cents = params[:total_payment_cents] - params[:interest_payment_cents]
             params[:principal_payment_cents] = [0, principal_cents].max
           end
 
           params[:currency] = loan.currency
+          params[:adjusts_account_balance] = adjusts_account_balance?(params)
 
-          # Remove transformed fields
           params.delete(:total_payment)
           params.delete(:principal_payment)
           params.delete(:loan_id)
@@ -103,11 +97,16 @@ module Transactions
           params.delete(:user_id)
           params.delete(:space_id)
 
-          # Add associations
           params[:loan] = loan
           params[:account] = account
 
           Success(params)
+        end
+
+        def adjusts_account_balance?(params)
+          return true unless params.key?(:adjusts_account_balance)
+
+          ActiveModel::Type::Boolean.new.cast(params[:adjusts_account_balance]) != false
         end
 
         def create_loan_payment(params:)

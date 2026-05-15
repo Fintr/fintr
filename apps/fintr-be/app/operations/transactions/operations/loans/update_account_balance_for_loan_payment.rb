@@ -26,13 +26,28 @@ module Transactions
         include FailureHandler
 
         def call(params)
-          params                = step validate(params:)
-          old_account           = step find_old_account(params:)
-          new_account           = step find_new_account(params:)
-          _                     = step reverse_old_account_balance(params:, old_account:)
-          balance_change        = step calculate_balance_change(params:)
-          account               = step update_new_account_balance(params:, account: new_account, balance_change:)
-          account
+          params         = step validate(params:)
+          loan_payment   = params[:loan_payment]
+          old_account    = step find_old_account(params:)
+          new_account    = step find_new_account(params:)
+
+          if loan_payment.adjusts_account_balance_in_database
+            _ = step reverse_old_account_balance(params:, old_account:)
+          else
+            _ = Success(nil)
+          end
+
+          if loan_payment.adjusts_account_balance
+            balance_change = step calculate_balance_change(params:)
+            account        = step update_new_account_balance(
+              params:,
+              account: new_account,
+              balance_change:
+            )
+            account
+          else
+            new_account
+          end
         end
 
         private

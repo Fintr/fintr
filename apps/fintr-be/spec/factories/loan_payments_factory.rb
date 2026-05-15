@@ -9,5 +9,6 @@ FactoryBot.define do
     interest_payment_cents { 849_32 } # 849.32 PHP
     total_payment_cents { 8_791_59 } # 8,791.59 PHP
     currency { "PHP" }
+    adjusts_account_balance { true }
   end
 end

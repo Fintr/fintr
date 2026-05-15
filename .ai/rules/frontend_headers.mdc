@@ -1,0 +1,13 @@
+---
+globs: apps/fintr-fe/**/*.tsx,apps/fintr-fe/**/*.ts
+---
+
+## UI headers: use primary blue, not black
+
+For **prominent headers** — titles that introduce a page section, modal, sheet, card region, or primary `DialogTitle` / `CustomModal` title — use the brand primary color so copy does not read as black.
+
+- **Do:** Tailwind `text-primary` on the heading element (often with `font-semibold` or `font-bold`).
+- **Avoid:** `text-black`, bare default heading color that resolves to near-black on light backgrounds, and heavy neutrals such as `text-gray-900` / `text-neutral-900` for these **hero-style** titles.
+- **Exceptions:** Destructive or warning titles may use semantic colors (e.g. `text-red-900`). Eyebrows / labels / table column headers may use `text-muted-foreground`, `text-gray-600`, etc.
+
+`CustomModal` (`apps/fintr-fe/src/components/ui/custom-modal.tsx`) applies `text-primary` to the built-in `title` prop; new modals should rely on that or match it when implementing a custom title row.

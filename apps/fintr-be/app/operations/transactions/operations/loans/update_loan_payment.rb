@@ -16,6 +16,7 @@ module Transactions
             optional(:date).value(:date)
             optional(:total_payment).value(:decimal, gt?: 0)
             optional(:principal_payment).value(:decimal, gteq?: 0)
+            optional(:adjusts_account_balance).maybe(:bool)
             optional(:notes).value(:string)
           end
         end
@@ -40,7 +41,13 @@ module Transactions
 
             payment_date = params[:date] || loan_payment.date
             calculated_interest = step calculate_interest(loan:, payment_date:, exclude_payment_id: loan_payment.id)
-            update_params       = step transform_params(params:, loan:, account:, calculated_interest:)
+            update_params       = step transform_params(
+              params:,
+              loan:,
+              account:,
+              calculated_interest:,
+              loan_payment:
+            )
             loan_payment        = step assign_loan_payment_attributes(loan_payment:, params: update_params)
             _                   = step update_account_balance(loan_payment:, loan:, account:)
             loan_payment        = step save_loan_payment(loan_payment:)
@@ -95,7 +102,7 @@ module Transactions
           )
         end
 
-        def transform_params(params:, loan:, account:, calculated_interest:)
+        def transform_params(params:, loan:, account:, calculated_interest:, loan_payment:)
           update_params = {}
 
           if params[:total_payment].present?
@@ -108,6 +115,11 @@ module Transactions
               principal_cents = update_params[:total_payment_cents] - update_params[:interest_payment_cents]
               update_params[:principal_payment_cents] = [0, principal_cents].max
             end
+          end
+
+          if params.key?(:adjusts_account_balance)
+            update_params[:adjusts_account_balance] =
+              ActiveModel::Type::Boolean.new.cast(params[:adjusts_account_balance]) != false
           end
 
           update_params[:date] = params[:date] if params[:date].present?

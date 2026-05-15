@@ -203,6 +203,73 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoan do
           expect(final_balance).to eq(expected_balance)
         end
       end
+
+      context 'when borrowed loan did not adjust account balance on creation' do
+        before do
+          borrowed_loan.update!(adjusts_account_balance: false)
+          account.update(balance: Money.from_amount(50_000, 'PHP'))
+        end
+
+        subject(:call_operation) { operation.call(valid_params) }
+
+        it 'is successful' do
+          expect(call_operation).to be_success
+        end
+
+        it 'does not change the account balance when deleting' do
+          initial_balance = account.reload.balance
+          call_operation
+          expect(account.reload.balance).to eq(initial_balance)
+        end
+      end
+
+      context 'when lent loan did not adjust account balance on creation' do
+        before do
+          lent_loan.update!(adjusts_account_balance: false)
+          account.update(balance: Money.from_amount(40_000, 'PHP'))
+        end
+
+        subject(:call_operation) { operation.call(valid_params.merge(loan_id: lent_loan.id.to_s)) }
+
+        it 'is successful' do
+          expect(call_operation).to be_success
+        end
+
+        it 'does not change the account balance when deleting' do
+          initial_balance = account.reload.balance
+          call_operation
+          expect(account.reload.balance).to eq(initial_balance)
+        end
+      end
+
+      context 'when loan did not adjust balance and has payments that also did not adjust balance' do
+        subject(:call_operation) { operation.call(valid_params) }
+
+        before do
+          borrowed_loan.update!(adjusts_account_balance: false)
+          account.update(balance: Money.from_amount(20_000, 'PHP'))
+        end
+
+        let!(:balance_neutral_payment) do
+          create(
+            :loan_payment,
+            loan: borrowed_loan,
+            account: account,
+            adjusts_account_balance: false
+          )
+        end
+
+        it 'succeeds without changing account balance' do
+          initial_balance = account.reload.balance
+          expect(call_operation).to be_success
+          expect(account.reload.balance).to eq(initial_balance)
+        end
+
+        it 'deletes the loan and its payments' do
+          expect { call_operation }.to change(Transactions::Loan, :count).by(-1)
+            .and change(Transactions::LoanPayment, :count).by(-1)
+        end
+      end
     end
 
     context 'with loan payments' do

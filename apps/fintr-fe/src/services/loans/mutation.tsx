@@ -11,6 +11,8 @@ export interface CreateLoanType {
   accountName: string;
   loanTermMonths: number;
   description?: string;
+  /** When false, the loan is tracked but the selected account balance is not changed (e.g. backdating an existing loan). */
+  adjustsAccountBalance?: boolean;
   file?: File;
   fileId?: string;
 }
@@ -44,6 +46,7 @@ export const createLoan = async (
       account_name: loanData.accountName,
       loan_term_months: loanData.loanTermMonths,
       description: loanData.description || '',
+      adjusts_account_balance: loanData.adjustsAccountBalance !== false,
       ...(loanData.fileId && { file_id: loanData.fileId }),
       ...(shouldUseMultipart && { file: loanData.file })
     };

@@ -69,6 +69,7 @@ module Api
             :account_name,
             :loan_term_months,
             :description,
+            :adjusts_account_balance,
             :file,
             :file_id
           )

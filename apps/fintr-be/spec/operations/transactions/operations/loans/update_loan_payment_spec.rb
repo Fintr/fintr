@@ -86,6 +86,22 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
           expect(result.value!).to eq(params_with_optional)
         end
       end
+
+      context 'with adjusts_account_balance' do
+        let(:params_with_flag) do
+          {
+            user_id: user.id.to_s,
+            space_id: space.id.to_s,
+            loan_payment_id: loan_payment.id.to_s,
+            adjusts_account_balance: false
+          }
+        end
+
+        it 'returns a successful result' do
+          result = operation.validate(params: params_with_flag)
+          expect(result).to be_success
+        end
+      end
     end
 
     context 'when invalid params' do
@@ -222,6 +238,23 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
         it 'updates the notes' do
           result = call_operation.value!
           expect(result.notes).to eq('Updated payment notes')
+        end
+      end
+
+      context 'when updating adjusts_account_balance to false' do
+        let(:params) { valid_params.merge(adjusts_account_balance: false) }
+
+        it { is_expected.to be_success }
+
+        it 'persists adjusts_account_balance as false' do
+          expect(call_operation.value!.adjusts_account_balance).to be(false)
+        end
+
+        it 'keeps a normal principal and interest split for the existing total' do
+          payment = call_operation.value!
+          expect(payment.principal_payment.amount).to be > 0
+          expect(payment.interest_payment.amount).to be > 0
+          expect(payment.total_payment.amount).to eq(loan_payment.total_payment.amount)
         end
       end
 

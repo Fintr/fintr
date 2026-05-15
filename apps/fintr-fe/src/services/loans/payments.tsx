@@ -11,6 +11,7 @@ export interface LoanPayment {
   totalPayment: number;
   currency: string;
   notes?: string;
+  adjustsAccountBalance?: boolean;
 }
 
 export interface CreateLoanPaymentType {
@@ -20,6 +21,7 @@ export interface CreateLoanPaymentType {
   totalPayment: number;
   principalPayment?: number;
   notes?: string;
+  adjustsAccountBalance?: boolean;
 }
 
 /**
@@ -65,6 +67,9 @@ export const createLoanPayment = async (
       date: paymentData.date,
       total_payment: paymentData.totalPayment,
       ...(paymentData.principalPayment !== undefined && { principal_payment: paymentData.principalPayment }),
+      ...(paymentData.adjustsAccountBalance !== undefined && {
+        adjusts_account_balance: paymentData.adjustsAccountBalance,
+      }),
       ...(paymentData.notes && { notes: paymentData.notes })
     };
 
@@ -103,6 +108,9 @@ export const updateLoanPayment = async (
     if (paymentData.date) backendData.date = paymentData.date;
     if (paymentData.totalPayment !== undefined) backendData.total_payment = paymentData.totalPayment;
     if (paymentData.principalPayment !== undefined) backendData.principal_payment = paymentData.principalPayment;
+    if (paymentData.adjustsAccountBalance !== undefined) {
+      backendData.adjusts_account_balance = paymentData.adjustsAccountBalance;
+    }
     if (paymentData.notes !== undefined) backendData.notes = paymentData.notes;
 
     const response = await api.put(`/transactions/loans/${loanId}/loan_payments/${paymentId}`, backendData);

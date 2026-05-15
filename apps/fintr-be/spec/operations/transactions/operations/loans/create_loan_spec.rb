@@ -444,6 +444,22 @@ RSpec.describe Transactions::Operations::Loans::CreateLoan do
       end
     end
 
+    context 'when adjusts_account_balance is false' do
+      subject(:call_operation) { operation.call(valid_params.merge(adjusts_account_balance: false)) }
+
+      it { is_expected.to be_success }
+
+      it 'does not change the account balance' do
+        initial_balance = account.reload.balance.amount
+        call_operation
+        expect(account.reload.balance.amount).to eq(initial_balance)
+      end
+
+      it 'persists adjusts_account_balance on the loan' do
+        expect(call_operation.value!.adjusts_account_balance).to be(false)
+      end
+    end
+
     context 'when entity already exists' do
       let!(:existing_entity) do
         create(:entity, space: space, entity_type: 'loan', full_name: 'Test Lender')
@@ -814,6 +830,30 @@ RSpec.describe Transactions::Operations::Loans::CreateLoan do
         loan_type: 'borrowed',
         currency: 'PHP'
       )
+    end
+
+    context 'when loan does not adjust account balance' do
+      let(:loan_no_balance_adjust) do
+        create(
+          :loan,
+          user: user,
+          space: space,
+          entity: entity,
+          account: account,
+          principal_amount_cents: 10_000_000,
+          outstanding_balance_cents: 10_000_000,
+          loan_type: 'borrowed',
+          currency: 'PHP',
+          adjusts_account_balance: false
+        )
+      end
+
+      it 'returns success without changing the account balance' do
+        initial_balance = account.reload.balance.amount
+        result = operation.send(:update_account_balance, loan: loan_no_balance_adjust, account: account)
+        expect(result).to be_success
+        expect(account.reload.balance.amount).to eq(initial_balance)
+      end
     end
 
     context 'when loan type is borrowed' do

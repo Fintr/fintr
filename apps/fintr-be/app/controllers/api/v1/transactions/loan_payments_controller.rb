@@ -58,6 +58,7 @@ module Api
             :date,
             :total_payment,
             :principal_payment,
+            :adjusts_account_balance,
             :notes
           )
         end
@@ -68,6 +69,7 @@ module Api
             :date,
             :total_payment,
             :principal_payment,
+            :adjusts_account_balance,
             :notes
           )
         end

@@ -30,6 +30,7 @@ import { useAtomValue } from "jotai";
 import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
 import AccountCreationForm from "./AccountCreationForm";
 import FileUploadField from "./FileUploadField";
+import { AdjustAccountBalanceSwitchRow } from "@/components/dashboard/forms/adjust-account-balance-switch-row";
 
 interface LoanFormProps {
   date?: Date | undefined;
@@ -76,6 +77,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
   const [validationErrors, setValidationErrors] = useState<Record<string, string | string[]>>({});
   const [showEntityCreation, setShowEntityCreation] = useState(false);
   const [isCreatingEntity, setIsCreatingEntity] = useState(false);
+  const [adjustsAccountBalance, setAdjustsAccountBalance] = useState(true);
 
   const fetchEntityOptions = useCallback(async (query: string): Promise<Array<{ label: string; value: string }>> => {
     try {
@@ -222,6 +224,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
                 accountName: loanForm.accountName.trim(),
                 loanTermMonths: parseInt(loanForm.loanTerm),
                 description: loanForm.description || "",
+                adjustsAccountBalance,
                 ...(loanForm.receipt && { file: loanForm.receipt })
               };
 
@@ -245,6 +248,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
               });
               setShowCustomAccountInput(false);
               principalAmountInput.reset();
+              setAdjustsAccountBalance(true);
               setFormSubmitted(false);
     } catch (error) {
       console.error("Failed to create loan:", error);
@@ -531,6 +535,23 @@ const LoanForm: React.FC<LoanFormProps> = ({
           />
         )}
       </div>
+
+      <AdjustAccountBalanceSwitchRow
+        id="loan-adjusts-account-balance"
+        checked={adjustsAccountBalance}
+        onCheckedChange={setAdjustsAccountBalance}
+        label="Update account balance"
+        infoAriaLabel="Help: update account balance when creating this loan"
+        switchAriaLabel="Update account balance when creating this loan"
+        popoverTitle="Account balance and this loan"
+      >
+        <p>
+          When <span className="font-medium">on</span>, Fintr updates the selected account by the principal (borrowed adds funds you received; lent subtracts funds you put out).
+        </p>
+        <p>
+          When <span className="font-medium">off</span>, use this for a loan that already exists in your books. The loan is still tracked with principal, rate, and schedule, but the account balance is not changed.
+        </p>
+      </AdjustAccountBalanceSwitchRow>
 
       {/* Fifth row: Description */}
       <div className="w-full">

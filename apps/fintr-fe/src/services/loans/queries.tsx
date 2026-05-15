@@ -7,6 +7,7 @@ export interface LoanPayment {
   interestPayment: number;
   totalPayment: number;
   currency: string;
+  adjustsAccountBalance?: boolean;
 }
 
 export interface AmortizationScheduleItem {
@@ -29,6 +30,8 @@ export interface Loan {
   status: 'active' | 'paid_off' | 'defaulted';
   paidOffDate: string | null;
   interestRate: number;
+  /** When false, creating this loan did not move the linked account balance. */
+  adjustsAccountBalance?: boolean;
   entityName: string;
   accountName: string;
   principalAmount: number;

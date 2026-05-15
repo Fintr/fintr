@@ -6,6 +6,7 @@ FactoryBot.define do
     association :space
     association :entity
     association :account
+    adjusts_account_balance { true }
     principal_amount_cents { 100_000_00 } # 100,000 PHP
     outstanding_balance_cents { 100_000_00 }
     interest_rate { 10.0 }

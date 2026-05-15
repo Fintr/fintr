@@ -353,4 +353,46 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoanPayment do
       end
     end
   end
+
+  describe 'deleting a loan payment that did not adjust account balance' do
+    let(:loan_payment_no_balance_adj) do
+      create(
+        :loan_payment,
+        loan: loan,
+        account: account,
+        date: Date.new(2024, 2, 1),
+        principal_payment: Money.from_amount(7_942.27, 'PHP'),
+        interest_payment: Money.from_amount(849.32, 'PHP'),
+        total_payment: Money.from_amount(8_791.59, 'PHP'),
+        currency: 'PHP',
+        adjusts_account_balance: false
+      )
+    end
+
+    let(:params_no_adj) do
+      {
+        user_id: user.id.to_s,
+        space_id: space.id.to_s,
+        loan_payment_id: loan_payment_no_balance_adj.id.to_s
+      }
+    end
+
+    it 'succeeds and leaves account balance unchanged' do
+      initial_balance = account.reload.balance
+      result = operation.call(params_no_adj)
+      expect(result).to be_success
+      expect(account.reload.balance).to eq(initial_balance)
+    end
+
+    it 'does not invoke ReverseAccountBalanceForLoanPayment' do
+      expect(Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment).not_to receive(:new)
+      operation.call(params_no_adj)
+    end
+
+    it 'deletes the loan payment' do
+      payment_id = loan_payment_no_balance_adj.id
+      operation.call(params_no_adj)
+      expect(Transactions::LoanPayment.find_by(id: payment_id)).to be_nil
+    end
+  end
 end
