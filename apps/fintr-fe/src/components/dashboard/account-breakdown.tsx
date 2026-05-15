@@ -14,7 +14,7 @@ import {
   ChevronDown,
   ChevronRight
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useAccountTransactions } from "@/hooks/async/useAccountTransactions";
 import { IndexTransaction, CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import DayDivider from "@/components/ui/day-divider";
@@ -25,6 +25,10 @@ interface AccountBreakdownProps {
   isLoading?: boolean;
   /** ISO 4217 currency code for the current space (e.g. "PLN"). */
   currencyCode?: string;
+  /** YYYY-MM-DD — must match insights / dashboard date filter when provided. */
+  transactionsStartDate?: string;
+  /** YYYY-MM-DD — must match insights / dashboard date filter when provided. */
+  transactionsEndDate?: string;
 }
 
 const getAccountIcon = (category: string) => {
@@ -70,9 +74,16 @@ interface AccountTransactionsProps {
   accountName: string;
   /** Currency code used for formatting amounts. */
   currencyCode?: string;
+  transactionsStartDate?: string;
+  transactionsEndDate?: string;
 }
 
-const AccountTransactions = ({ accountName, currencyCode }: AccountTransactionsProps) => {
+const AccountTransactions = ({
+  accountName,
+  currencyCode,
+  transactionsStartDate,
+  transactionsEndDate,
+}: AccountTransactionsProps) => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [displayedTransactions, setDisplayedTransactions] = useState<IndexTransaction[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -85,30 +96,40 @@ const AccountTransactions = ({ accountName, currencyCode }: AccountTransactionsP
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
-  } = useAccountTransactions({ 
-    accountName, 
-    enabled: true 
+  } = useAccountTransactions({
+    accountName,
+    startDate: transactionsStartDate,
+    endDate: transactionsEndDate,
+    enabled: true,
   });
 
-  // Initialize displayed transactions when data changes
-  useEffect(() => {
-    if (data?.pages) {
-      const allTransactions = data.pages.flatMap(page => page.transactions);
-      const uniqueTransactions = allTransactions.filter((transaction, index, array) => 
-        array.findIndex(t => t.id === transaction.id) === index
-      );
-      
-      // Show only first 10 transactions initially
-      setDisplayedTransactions(uniqueTransactions.slice(0, 10));
-      setHasMore(uniqueTransactions.length > 10 || !!hasNextPage);
+  // Keep displayed rows in sync with query data before paint. A separate "reset on
+  // account/dates" effect used to run after this and clear the list while `data` still
+  // held rows, which caused a persistent empty state despite a successful API response.
+  useLayoutEffect(() => {
+    if (!data?.pages?.length) {
+      setDisplayedTransactions([]);
+      setHasMore(true);
+      return;
     }
-  }, [data, hasNextPage]);
 
-  // Reset displayed transactions when account changes
-  useEffect(() => {
-    setDisplayedTransactions([]);
-    setHasMore(true);
-  }, [accountName]);
+    const allTransactions = data.pages.flatMap(
+      (page) => page.transactions ?? [],
+    );
+    const uniqueTransactions = allTransactions.filter(
+      (transaction, index, array) =>
+        array.findIndex((t) => t.id === transaction.id) === index,
+    );
+
+    setDisplayedTransactions(uniqueTransactions.slice(0, 10));
+    setHasMore(uniqueTransactions.length > 10 || !!hasNextPage);
+  }, [
+    data,
+    hasNextPage,
+    accountName,
+    transactionsStartDate,
+    transactionsEndDate,
+  ]);
 
   // Infinite scroll implementation
   useEffect(() => {
@@ -120,7 +141,9 @@ const AccountTransactions = ({ accountName, currencyCode }: AccountTransactionsP
           } else {
             // Load more from current data - exactly 10 items per page
             if (data?.pages) {
-              const allTransactions = data.pages.flatMap(page => page.transactions);
+              const allTransactions = data.pages.flatMap(
+                (page) => page.transactions ?? [],
+              );
               const uniqueTransactions = allTransactions.filter((transaction, index, array) => 
                 array.findIndex(t => t.id === transaction.id) === index
               );
@@ -170,7 +193,9 @@ const AccountTransactions = ({ accountName, currencyCode }: AccountTransactionsP
   if (!data || !data.pages || data.pages.length === 0) {
     return (
       <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-        <p className="text-sm text-gray-500">No transactions found for this account this month.</p>
+        <p className="text-sm text-gray-500">
+          No transactions found for this account in the selected period.
+        </p>
       </div>
     );
   }
@@ -178,7 +203,9 @@ const AccountTransactions = ({ accountName, currencyCode }: AccountTransactionsP
   if (displayedTransactions.length === 0) {
     return (
       <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-        <p className="text-sm text-gray-500">No transactions found for this account this month.</p>
+        <p className="text-sm text-gray-500">
+          No transactions found for this account in the selected period.
+        </p>
       </div>
     );
   }
@@ -311,7 +338,13 @@ const AccountTransactions = ({ accountName, currencyCode }: AccountTransactionsP
   );
 };
 
-const AccountBreakdownComponent = ({ data, isLoading = false, currencyCode }: AccountBreakdownProps) => {
+const AccountBreakdownComponent = ({
+  data,
+  isLoading = false,
+  currencyCode,
+  transactionsStartDate,
+  transactionsEndDate,
+}: AccountBreakdownProps) => {
   const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
 
   const formatAmount = (value: number) =>
@@ -409,6 +442,8 @@ const AccountBreakdownComponent = ({ data, isLoading = false, currencyCode }: Ac
                     <AccountTransactions
                       accountName={account.name}
                       currencyCode={currencyCode}
+                      transactionsStartDate={transactionsStartDate}
+                      transactionsEndDate={transactionsEndDate}
                     />
                   </div>
                 </div>

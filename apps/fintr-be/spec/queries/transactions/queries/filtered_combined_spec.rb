@@ -367,6 +367,78 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
       end
     end
 
+    context 'with investment and loan accounts (join-based account filter)' do
+      let!(:investment_account) { create(:account, space: space1, name: 'Growth Portfolio', account_category: :investment) }
+      let!(:loan_account) { create(:account, space: space1, name: 'Student Loan', account_category: :loan) }
+      let!(:cash_peer) { create(:account, space: space1, name: 'Everyday Cash', account_category: :cash) }
+
+      let!(:expense_on_investment) do
+        create(
+          :expense_transaction,
+          space: space1,
+          account: investment_account,
+          category: category2_s1,
+          date: Date.new(2024, 3, 1),
+          amount_cents: 400
+        )
+      end
+      let!(:expense_on_cash) do
+        create(
+          :expense_transaction,
+          space: space1,
+          account: cash_peer,
+          category: category2_s1,
+          date: Date.new(2024, 3, 2),
+          amount_cents: 900
+        )
+      end
+      let!(:income_to_loan) do
+        create(
+          :income_transaction,
+          space: space1,
+          account: loan_account,
+          category: category1_s1,
+          date: Date.new(2024, 3, 3),
+          amount_cents: 600
+        )
+      end
+      let!(:transfer_cash_to_investment) do
+        create(
+          :transfer,
+          space: space1,
+          from_account: cash_peer,
+          to_account: investment_account,
+          date: Date.new(2024, 3, 4),
+          amount_cents: 200
+        )
+      end
+
+      it 'returns only rows tied to the investment account by underlying ids' do
+        params = default_params.merge(
+          account_name: 'Growth Portfolio',
+          start_date: Date.new(2024, 3, 1),
+          end_date: Date.new(2024, 3, 31)
+        )
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(
+          expense_on_investment,
+          transfer_cash_to_investment
+        )
+      end
+
+      it 'returns only rows tied to the loan account by underlying ids' do
+        params = default_params.merge(
+          account_name: 'Student Loan',
+          start_date: Date.new(2024, 3, 1),
+          end_date: Date.new(2024, 3, 31)
+        )
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(income_to_loan)
+      end
+    end
+
     # New contexts for real data amount filtering tests
     context 'with amount filtering (real data)' do
       # Need to create transactions with varying amounts in Space 1

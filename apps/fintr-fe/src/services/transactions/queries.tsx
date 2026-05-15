@@ -1,7 +1,94 @@
 import { AxiosInstance } from 'axios';
 import { downloadBlobAsFile } from '@/lib/download-blob';
 import { getUserFacingExportErrorMessage } from '@/lib/user-facing-export-error';
-import { TransactionIndexInputType, TransactionsPage } from '@/types/transactionTypes'; // Use path alias
+import { TransactionsPage, TransactionIndexInputType } from '@/types/transactionTypes'; // Use path alias
+
+/** Only include min/max in the request when the client intends a bound (backend skips both if absent). */
+function optionalAmountQueryParam(raw: unknown): number | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  if (typeof raw === 'string' && raw.trim() === '') {
+    return undefined;
+  }
+  const n = typeof raw === 'number' ? raw : Number(String(raw).trim());
+  if (Number.isNaN(n)) {
+    return undefined;
+  }
+  return n;
+}
+
+function omitUndefinedParams(
+  record: Record<string, string | number | undefined>,
+): Record<string, string | number> {
+  return Object.fromEntries(
+    Object.entries(record).filter(([, v]) => v !== undefined),
+  ) as Record<string, string | number>;
+}
+
+export type FetchAccountTransactionsPageParams = {
+  spaceCode: string;
+  accountName: string;
+  startDate: string;
+  endDate: string;
+  categoryName: string;
+  searchQuery: string;
+  page: number;
+  minAmount?: number;
+  maxAmount?: number;
+};
+
+export const fetchAccountTransactionsPage = async (
+  api: AxiosInstance,
+  params: FetchAccountTransactionsPageParams,
+): Promise<TransactionsPage> => {
+  const {
+    spaceCode,
+    accountName,
+    startDate,
+    endDate,
+    categoryName,
+    searchQuery,
+    page,
+    minAmount,
+    maxAmount,
+  } = params;
+
+  const requestParams = omitUndefinedParams({
+    spaceCode,
+    accountName,
+    startDate,
+    endDate,
+    categoryName,
+    searchQuery,
+    page,
+    ...(minAmount !== undefined ? { minAmount } : {}),
+    ...(maxAmount !== undefined ? { maxAmount } : {}),
+  });
+
+  try {
+    const response = await api.get('/transactions', {
+      params: requestParams,
+    });
+
+    const transactions = response?.data?.data?.transactions || [];
+    const totalPages = response?.data?.data?.pagination?.totalPages || 1;
+    const totalCount = response?.data?.data?.pagination?.totalCount || 0;
+    const totals = response?.data?.data?.totals || null;
+    const currentPage = page;
+    const nextPage = currentPage < totalPages ? currentPage + 1 : null;
+
+    if (!Array.isArray(transactions)) {
+      console.error('Invalid transaction data structure received:', response?.data);
+      return { transactions: [], nextPage: null, totalPages: null, totalCount: null, totals: null };
+    }
+
+    return { transactions, nextPage, totalPages, totalCount, totals };
+  } catch (error) {
+    console.error('Error fetching account transactions page:', error);
+    throw error;
+  }
+};
 
 /**
  * Fetches a single page of transactions for infinite scrolling.
@@ -28,28 +115,32 @@ export const fetchTransactionsPage = async (
     string,
     string,
     string,
-    number,
-    number,
+    unknown,
+    unknown,
     string,
-    string?
+    string?,
   ];
 
-  const input: Omit<TransactionIndexInputType, 'page'> & { page: number; accountName?: string } = {
+  const minIncluded = optionalAmountQueryParam(minAmount);
+  const maxIncluded = optionalAmountQueryParam(maxAmount);
+
+  const requestParams = omitUndefinedParams({
     spaceCode,
     startDate,
     categoryName,
     endDate,
-    minAmount,
-    maxAmount,
     page: pageParam,
     searchQuery,
-    ...(accountName && { accountName }),
-  };
-  console.log('Fetching transactions page:', input);
+    ...(accountName ? { accountName } : {}),
+    ...(minIncluded !== undefined ? { minAmount: minIncluded } : {}),
+    ...(maxIncluded !== undefined ? { maxAmount: maxIncluded } : {}),
+  });
+
+  console.log('Fetching transactions page:', requestParams);
 
   try {
     const response = await api.get('/transactions', {
-      params: input,
+      params: requestParams,
     });
     
     // Adapt this based on your actual API response structure
@@ -57,7 +148,7 @@ export const fetchTransactionsPage = async (
     const totalPages = response?.data?.data?.pagination?.totalPages || 1;
     const totalCount = response?.data?.data?.pagination?.totalCount || 0;
     const totals = response?.data?.data?.totals || null;
-    const currentPage = input.page;
+    const currentPage = pageParam;
 
     // Determine the next page number
     const nextPage = currentPage < totalPages ? currentPage + 1 : null;

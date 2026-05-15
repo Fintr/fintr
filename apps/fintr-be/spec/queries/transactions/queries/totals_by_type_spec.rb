@@ -291,6 +291,44 @@ RSpec.describe Transactions::Queries::TotalsByType, type: :query do
       end
     end
 
+    context 'with investment account and another cash account (join-based account filter)' do
+      let!(:investment_account) { create(:account, name: 'ETF Broker', space: space, account_category: :investment) }
+      let!(:wallet_account) { create(:account, name: 'Wallet', space: space, account_category: :cash) }
+
+      let!(:expense_investment) do
+        create(
+          :expense_transaction,
+          space: space,
+          account: investment_account,
+          category: expense_category,
+          date: Date.new(2024, 1, 5),
+          amount_cents: 10_000
+        )
+      end
+
+      let!(:expense_wallet) do
+        create(
+          :expense_transaction,
+          space: space,
+          account: wallet_account,
+          category: expense_category,
+          date: Date.new(2024, 1, 6),
+          amount_cents: 5_000
+        )
+      end
+
+      it 'totals expenses only for the named investment account' do
+        params = default_params.merge(account_name: 'ETF Broker')
+        result = described_class.call(params: params)
+
+        expect(result).to be_success
+        totals = result.value!
+        expect(totals[:expense]).to eq(100.0)
+        expect(totals[:income]).to eq(0.0)
+        expect(totals[:transfer]).to eq(0.0)
+      end
+    end
+
     context 'with different spaces' do
       let!(:other_space) { create(:personal_space, code: 'other-space') }
       let!(:other_account) { create(:account, space: other_space) }

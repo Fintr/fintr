@@ -52,6 +52,22 @@ export const getCurrentMonthDates = () => {
   };
 };
 
+/**
+ * Wide range for account detail / history views (API requires start and end dates).
+ */
+export function getWideAccountHistoryDateRange(): {
+  startDate: string;
+  endDate: string;
+} {
+  const end = new Date();
+  const start = new Date();
+  start.setFullYear(end.getFullYear() - 30);
+  return {
+    startDate: getFirstDayOfMonth(start.getFullYear(), start.getMonth() + 1),
+    endDate: getLastDayOfMonth(end.getFullYear(), end.getMonth() + 1),
+  };
+}
+
 export const monthNames = [
   { value: "january", label: "January" },
   { value: "february", label: "February" },

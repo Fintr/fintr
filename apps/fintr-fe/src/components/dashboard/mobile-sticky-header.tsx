@@ -64,6 +64,9 @@ export default function MobileStickyHeader({ title }: MobileStickyHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const pageTitle = title || getPageTitle(pathname);
 
+  const showBackButton =
+    isScrolled || pathname.includes("/space_settings/accounts/detail");
+
   const { isAndroidNative } = usePlatformDetection();
 
   useEffect(() => {
@@ -114,8 +117,8 @@ export default function MobileStickyHeader({ title }: MobileStickyHeaderProps) {
               transition-all
               duration-300
               ease-in-out
-              ${isScrolled ? "opacity-100" : "opacity-0 pointer-events-none"}
-              ${isScrolled ? "mr-2" : "mr-0 w-0"}
+              ${showBackButton ? "opacity-100" : "opacity-0 pointer-events-none"}
+              ${showBackButton ? "mr-2" : "mr-0 w-0"}
             `}
             aria-label="Go back"
           >

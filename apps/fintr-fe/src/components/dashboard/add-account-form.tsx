@@ -28,11 +28,15 @@ export interface NewAccountData {
 interface AddAccountFormProps {
   onAddAccount?: (accountData: NewAccountData) => void;
   currencySymbol?: string;
+  showHeading?: boolean;
+  onSuccessClose?: () => void;
 }
 
 const AddAccountForm: React.FC<AddAccountFormProps> = ({
   onAddAccount,
-  currencySymbol = "₱",
+  currencySymbol: _currencySymbol = "₱",
+  showHeading = true,
+  onSuccessClose,
 }) => {
   const { api } = useAuthApi();
   const { currentSpace } = useSpaceContext(api);
@@ -71,6 +75,7 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
       if (onAddAccount) {
         onAddAccount(accountData);
       }
+      onSuccessClose?.();
     } catch (error) {
       console.error('Failed to create account:', error);
       // Error handling is already done in the hook with toast
@@ -79,7 +84,9 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
 
   return (
     <div>
-      <h3 className="text-xl font-medium mb-4">Add New Account</h3>
+      {showHeading ? (
+        <h3 className="text-xl font-medium mb-4">Add New Account</h3>
+      ) : null}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="account-name">Account Name</Label>

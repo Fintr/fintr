@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_13_102531) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_16_120001) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
@@ -410,6 +410,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_13_102531) do
 
   create_table "loan_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "account_id", null: false
+    t.boolean "adjusts_account_balance", default: true, null: false
     t.datetime "created_at", null: false
     t.string "currency", default: "PHP", null: false
     t.date "date", null: false
