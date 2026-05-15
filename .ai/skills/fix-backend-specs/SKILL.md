@@ -1,11 +1,11 @@
 ---
 name: fix-backend-specs
-description: Fix failing RSpec tests in the Rails backend. Use when bundle exec rspec shows failures, specs are red, or when tests fail in the fintr-be directory. Follows the create_specs playbook for test creation and fixing.
+description: Fix failing RSpec tests in the Rails backend. Use when bundle exec rspec shows failures, specs are red, or when tests fail in apps/fintr-be. Follows the create_specs playbook for test creation and fixing.
 ---
 
 # Fix Backend Specs
 
-Fixes failing RSpec tests in the Rails backend (`fintr-be`).
+Fixes failing RSpec tests in the Rails backend (`apps/fintr-be`).
 
 ## When to Use
 
@@ -20,7 +20,7 @@ Fixes failing RSpec tests in the Rails backend (`fintr-be`).
 ### 1. Run Tests First
 
 ```bash
-cd /Users/mikodagatan/Programming/fintr/fintr-be
+cd /Users/mikodagatan/Programming/fintr/apps/fintr-be
 mise exec -- bundle exec rspec --format progress 2>&1 | tail -50
 ```
 
