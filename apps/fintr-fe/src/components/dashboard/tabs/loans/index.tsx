@@ -45,6 +45,7 @@ import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import { toast } from "sonner";
 import { numberFormatting } from "@/lib/utils";
+import { handleMultilineNotesKeyDown } from "@/lib/multiline-notes-keydown";
 import { Calendar } from "@/components/ui/calendar";
 import { format, endOfMonth } from "date-fns";
 import DeleteLoanPaymentModal from "@/components/dashboard/forms/DeleteLoanPaymentModal";
@@ -829,6 +830,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                     id="payment-notes"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
+                    onKeyDown={handleMultilineNotesKeyDown}
                     placeholder="Add any additional notes..."
                     className="text-sm min-h-[80px]"
                   />
@@ -962,6 +964,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                   id="edit-payment-notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  onKeyDown={handleMultilineNotesKeyDown}
                   placeholder="Add any additional notes..."
                   className="text-sm min-h-[80px]"
                 />

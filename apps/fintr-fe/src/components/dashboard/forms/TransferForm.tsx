@@ -694,6 +694,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
           value={formState.description || ""}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange("description", e.target.value)}
           className="mt-1"
+          blurOnEnterKey
         />
       </div>
 
