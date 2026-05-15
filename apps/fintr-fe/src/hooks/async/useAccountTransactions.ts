@@ -6,19 +6,27 @@ import { fetchTransactionsPage } from "@/services/transactions/queries";
 
 interface UseAccountTransactionsParams {
   accountName: string;
+  /** Inclusive YYYY-MM-DD; defaults to calendar current month when omitted. */
+  startDate?: string;
+  /** Inclusive YYYY-MM-DD; defaults to calendar current month when omitted. */
+  endDate?: string;
   enabled?: boolean;
 }
 
-export const useAccountTransactions = ({ 
-  accountName, 
-  enabled = true 
+export const useAccountTransactions = ({
+  accountName,
+  startDate: startDateProp,
+  endDate: endDateProp,
+  enabled = true,
 }: UseAccountTransactionsParams) => {
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
 
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const { firstDay: startDate, lastDay: endDate } = getCurrentMonthDates();
+  const { firstDay: defaultStart, lastDay: defaultEnd } = getCurrentMonthDates();
+  const startDate = startDateProp ?? defaultStart;
+  const endDate = endDateProp ?? defaultEnd;
 
   return useInfiniteQuery({
     queryKey: [
@@ -37,8 +45,8 @@ export const useAccountTransactions = ({
           "", // categoryName - empty for all categories
           startDate,
           endDate,
-          0, // minAmount
-          999999, // maxAmount
+          undefined,
+          undefined,
           "", // searchQuery
           accountName, // accountName filter
         ]

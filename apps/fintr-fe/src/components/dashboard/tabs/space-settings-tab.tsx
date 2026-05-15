@@ -28,7 +28,7 @@ import { Folder, Users, Settings, Upload, Download, Pencil, Plus, CreditCard, X,
 import CategoryToggle, { CategoryToggleType } from "../category-toggle";
 import CategoryListCard from "../category-list-card";
 import AccountList from "../account-list";
-import AddAccountForm, { NewAccountData } from "../add-account-form";
+import AddAccountSheet from "../add-account-sheet";
 import CategoryFormDialog from "../category-form-dialog";
 import DeleteCategoryDialog from "../delete-category-dialog";
 import { ImportWizard } from "@/components/import/import-wizard";
@@ -45,7 +45,6 @@ import Link from "next/link";
 import { getColor, shouldShowV2Features, formatCurrency } from "@/lib/utils";
 import { shouldShowSimulatePaymentButton } from "@/lib/capacitor";
 import { TransactionCategory } from "@/types/transactionCategoryTypes";
-import { Account } from "@/types/accountTypes";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -482,22 +481,6 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
     // Implement add investment category functionality
   };
 
-  const handleAddAccount = (accountData: NewAccountData) => {
-    // Account creation is now handled by the AddAccountForm component with useAccounts hook
-    console.log("Account added:", accountData);
-  };
-
-  const handleEditAccount = (account: Account) => {
-    console.log("Edit account:", account);
-    // Implement edit functionality
-    // For now, we'll just log the account to be edited
-  };
-
-  const handleDeleteAccount = (account: Account) => {
-    // Remove the account from the accounts array
-    // This will now be handled by the useAccounts hook
-  };
-
   const handleUpdateCategory = async (categoryId: string, newName: string) => {
     try {
       await updateCategoryMutation.mutateAsync({
@@ -767,33 +750,30 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
             <h3 className="hidden md:block text-2xl font-bold mb-4 text-primary">
               Account Management
             </h3>
-            <p className="text-gray-500 mb-4">
-              Manage your financial accounts, track balances, and organize
-              your money
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <p className="text-gray-500">
+                Manage your financial accounts, track balances, and organize
+                your money
+              </p>
+              <AddAccountSheet />
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-1 bg-white p-4 rounded-md border border-gray-200 h-fit">
-                <AddAccountForm onAddAccount={handleAddAccount} />
-              </div>
-
-              <div className="md:col-span-2">
-                {accountsLoading ? (
-                  <div className="text-center py-8 w-full">
-                    <LoadingSpinner size="medium" />
-                  </div>
-                ) : accountsError ? (
-                  <p className="bg-red-800 text-center py-4">
-                    Error loading accounts. Please try again.
-                  </p>
-                ) : accounts.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">
-                    No accounts found. Add your first account to get started.
-                  </p>
-                ) : (
-                  <AccountList accounts={accounts} />
-                )}
-              </div>
+            <div className="w-full">
+              {accountsLoading ? (
+                <div className="text-center py-8 w-full">
+                  <LoadingSpinner size="medium" />
+                </div>
+              ) : accountsError ? (
+                <p className="bg-red-800 text-center py-4">
+                  Error loading accounts. Please try again.
+                </p>
+              ) : accounts.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">
+                  No accounts found. Add your first account to get started.
+                </p>
+              ) : (
+                <AccountList accounts={accounts} />
+              )}
             </div>
           </>
         )}

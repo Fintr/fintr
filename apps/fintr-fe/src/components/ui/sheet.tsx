@@ -103,16 +103,21 @@ interface SheetContentProps
     VariantProps<typeof sheetVariants> {
   /** Merged into `SheetOverlay` (e.g. higher z-index when opening a sheet from a dialog). */
   overlayClassName?: string
-}
-
-interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {
-  /** Merged into `SheetOverlay` (e.g. higher z-index when opening a sheet from a dialog). */
-  overlayClassName?: string
   /** Called when user clicks the overlay (outside the sheet content). Default: closes the sheet. */
   onOverlayClick?: () => void
+  /**
+   * When `side` is `right`, allow closing by dragging the panel to the right (touch / pointer).
+   * Parent should set `onSwipeToClose` to e.g. `() => setOpen(false)`.
+   */
+  swipeToClose?: boolean
+  /** Invoked after a successful swipe-to-dismiss gesture (typically close the sheet). */
+  onSwipeToClose?: () => void
 }
+
+const SWIPE_LOCK_MIN_PX = 28
+const SWIPE_HORIZONTAL_RATIO = 1.25
+const SWIPE_CLOSE_MIN_PX = 96
+const SWIPE_CLOSE_WIDTH_RATIO = 0.22
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
   (
@@ -121,22 +126,188 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
       className,
       overlayClassName,
       onOverlayClick,
+      swipeToClose = false,
+      onSwipeToClose,
       children,
+      style,
+      onTouchStart: onTouchStartProp,
+      onTouchMove: onTouchMoveProp,
+      onTouchEnd: onTouchEndProp,
+      onTouchCancel: onTouchCancelProp,
       ...props
     },
     ref
   ) => {
+    const contentRef = React.useRef<HTMLDivElement | null>(null)
+    const startXRef = React.useRef(0)
+    const startYRef = React.useRef(0)
+    const swipeActiveRef = React.useRef(false)
+    const dragXRef = React.useRef(0)
+    const [dragX, setDragX] = React.useState(0)
+
+    const setRefs = React.useCallback(
+      (node: HTMLDivElement | null) => {
+        contentRef.current = node
+        if (typeof ref === "function") {
+          ref(node)
+        } else if (ref) {
+          ref.current = node
+        }
+      },
+      [ref],
+    )
+
+    const resetSwipe = React.useCallback(() => {
+      swipeActiveRef.current = false
+      dragXRef.current = 0
+      setDragX(0)
+    }, [])
+
+    const handleTouchStart = React.useCallback(
+      (e: React.TouchEvent<HTMLDivElement>) => {
+        onTouchStartProp?.(e)
+        if (!swipeToClose || side !== "right" || !onSwipeToClose) return
+        if (e.touches.length !== 1) return
+        dragXRef.current = 0
+        setDragX(0)
+        swipeActiveRef.current = false
+        startXRef.current = e.touches[0].clientX
+        startYRef.current = e.touches[0].clientY
+      },
+      [onSwipeToClose, onTouchStartProp, side, swipeToClose],
+    )
+
+    const handleTouchMove = React.useCallback(
+      (e: React.TouchEvent<HTMLDivElement>) => {
+        onTouchMoveProp?.(e)
+        if (!swipeToClose || side !== "right" || !onSwipeToClose) return
+        if (e.touches.length !== 1) return
+        const x = e.touches[0].clientX
+        const y = e.touches[0].clientY
+        const dx = x - startXRef.current
+        const dy = y - startYRef.current
+
+        if (!swipeActiveRef.current) {
+          if (
+            dx > SWIPE_LOCK_MIN_PX &&
+            dx > Math.abs(dy) * SWIPE_HORIZONTAL_RATIO
+          ) {
+            swipeActiveRef.current = true
+          } else {
+            return
+          }
+        }
+
+        if (swipeActiveRef.current && dx > 0) {
+          const w = contentRef.current?.offsetWidth ?? 320
+          const next = Math.min(dx, w)
+          dragXRef.current = next
+          setDragX(next)
+        }
+      },
+      [onSwipeToClose, onTouchMoveProp, side, swipeToClose],
+    )
+
+    const handleTouchEnd = React.useCallback(
+      (e: React.TouchEvent<HTMLDivElement>) => {
+        onTouchEndProp?.(e)
+        if (!swipeToClose || side !== "right" || !onSwipeToClose) return
+        if (!swipeActiveRef.current) return
+        const w = contentRef.current?.offsetWidth ?? 320
+        const threshold = Math.max(
+          SWIPE_CLOSE_MIN_PX,
+          Math.floor(w * SWIPE_CLOSE_WIDTH_RATIO),
+        )
+        if (dragXRef.current >= threshold) {
+          onSwipeToClose()
+        }
+        resetSwipe()
+      },
+      [
+        onSwipeToClose,
+        onTouchEndProp,
+        resetSwipe,
+        side,
+        swipeToClose,
+      ],
+    )
+
+    const handleTouchCancel = React.useCallback(
+      (e: React.TouchEvent<HTMLDivElement>) => {
+        onTouchCancelProp?.(e)
+        resetSwipe()
+      },
+      [onTouchCancelProp, resetSwipe],
+    )
+
     const handleOverlayClick = () => {
       if (onOverlayClick) {
         onOverlayClick()
       }
-      // If no custom handler, let Radix handle it (default behavior)
     }
+
+    const swipeEnabled = Boolean(swipeToClose && side === "right" && onSwipeToClose)
+
+    React.useLayoutEffect(() => {
+      if (!swipeEnabled) return
+
+      let cancelled = false
+      let detach: (() => void) | undefined
+      let raf = 0
+
+      const tryAttach = () => {
+        if (cancelled) return
+        const el = contentRef.current
+        if (!el) {
+          raf = requestAnimationFrame(tryAttach)
+          return
+        }
+        const onMove = (e: TouchEvent) => {
+          if (!swipeActiveRef.current) return
+          if (e.touches.length !== 1) return
+          const dx = e.touches[0].clientX - startXRef.current
+          if (dx > 0) {
+            e.preventDefault()
+          }
+        }
+        el.addEventListener("touchmove", onMove, { passive: false })
+        detach = () => {
+          el.removeEventListener("touchmove", onMove)
+        }
+      }
+
+      tryAttach()
+
+      return () => {
+        cancelled = true
+        cancelAnimationFrame(raf)
+        detach?.()
+      }
+    }, [swipeEnabled])
 
     return (
       <SheetPortal>
         <SheetOverlay className={overlayClassName} onClick={handleOverlayClick} />
-        <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
+        <SheetPrimitive.Content
+          ref={setRefs}
+          className={cn(sheetVariants({ side }), className)}
+          style={{
+            ...style,
+            transform:
+              swipeEnabled && dragX > 0
+                ? `translateX(${dragX}px)`
+                : undefined,
+            transition:
+              swipeEnabled && dragX === 0
+                ? "transform 0.2s ease-out"
+                : undefined,
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchCancel}
+          {...props}
+        >
           {children}
         </SheetPrimitive.Content>
       </SheetPortal>

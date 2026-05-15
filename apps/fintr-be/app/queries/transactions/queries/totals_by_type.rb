@@ -3,6 +3,8 @@
 module Transactions
   module Queries
     class TotalsByType < Transactions::Queries::BaseQuery
+      include CombinedAccountJoinFilter
+
       def initialize(relation: Transactions::Combined.non_draft, params: {})
         super(relation:, params:)
       end
@@ -50,11 +52,7 @@ module Transactions
       end
 
       def by_account(relation, params)
-        return Success(relation) if ["all", "", nil].include?(params[:account_name])
-
-        relation = relation.where(to_account_name: params[:account_name])
-                           .or(relation.where(from_account_name: params[:account_name]))
-        Success(relation)
+        filter_combined_relation_by_account(relation, params)
       end
 
       def by_search_query(relation, params)

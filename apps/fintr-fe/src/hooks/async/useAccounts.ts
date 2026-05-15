@@ -4,6 +4,10 @@ import { fetchAccounts } from '@/services/transactions/accounts/queries';
 import { createAccount, updateAccount, deleteAccount, adjustAccountBalance, CreateAccountType, UpdateAccountType, AdjustAccountBalanceType } from '@/services/transactions/accounts/mutation';
 import { Account } from '@/types/accountTypes';
 import { toast } from 'sonner';
+import {
+  ACCOUNT_ADJUSTMENT_HISTORY_KEY,
+  ACCOUNT_DETAIL_TRANSACTIONS_KEY,
+} from "@/hooks/async/useAccountDetailTransactions";
 
 export const useAccounts = () => {
   const { api } = useAuthApi({
@@ -33,6 +37,9 @@ export const useAccounts = () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
       // Invalidate dashboard query to refresh account options
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
       toast.success(`Account "${variables.name}" created successfully`);
     },
     onError: (error: any) => {
@@ -48,6 +55,9 @@ export const useAccounts = () => {
     onSuccess: (updatedAccount, variables) => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
       // Don't show toast here since the edit dialog handles it
     },
     onError: (error: any) => {
@@ -66,6 +76,9 @@ export const useAccounts = () => {
         queryClient.invalidateQueries({ queryKey: ['accounts'] });
         // Invalidate dashboard query to refresh account options
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
+        queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
+        queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
         toast.success(`Account deleted successfully`);
       } else {
         // If backend returns success: false, re-throw to display error from dialog
@@ -90,6 +103,9 @@ export const useAccounts = () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['filteredTransactions'] });
+      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
     },
     onError: (error: any) => {
       console.error('Error adjusting account balance:', error);

@@ -978,10 +978,12 @@ const InsightsTab = () => {
         </div>
 
         {/* Account Breakdown */}
-        <AccountBreakdownComponent 
-          data={insightsData?.accountBreakdown || { totalBalance: 0, breakdown: [] }} 
+        <AccountBreakdownComponent
+          data={insightsData?.accountBreakdown || { totalBalance: 0, breakdown: [] }}
           isLoading={isLoading}
           currencyCode={spaceCurrency}
+          transactionsStartDate={startDate}
+          transactionsEndDate={endDate}
         />
 
         <Card className="border-0 mt-6">
