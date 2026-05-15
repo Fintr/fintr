@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNoteSuggestions } from '@/hooks/async/useNoteSuggestions';
+import { handleMultilineNotesKeyDown } from '@/lib/multiline-notes-keydown';
 import { cn } from '@/lib/utils';
 
 interface NotesAutocompleteProps {
@@ -85,6 +86,22 @@ const NotesAutocomplete: React.FC<NotesAutocompleteProps> = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && e.shiftKey) {
+        return;
+      }
+
+      if (e.key === "Enter" && !e.shiftKey) {
+        if (isOpen && filteredSuggestions.length > 0 && highlightedIndex >= 0) {
+          e.preventDefault();
+          handleSelect(filteredSuggestions[highlightedIndex]);
+          return;
+        }
+        handleMultilineNotesKeyDown(e);
+        setIsOpen(false);
+        setHighlightedIndex(-1);
+        return;
+      }
+
       if (!isOpen || filteredSuggestions.length === 0) return;
 
       switch (e.key) {
@@ -99,12 +116,6 @@ const NotesAutocomplete: React.FC<NotesAutocompleteProps> = ({
           setHighlightedIndex((prev) =>
             prev > 0 ? prev - 1 : filteredSuggestions.length - 1
           );
-          break;
-        case 'Enter':
-          if (highlightedIndex >= 0) {
-            e.preventDefault();
-            handleSelect(filteredSuggestions[highlightedIndex]);
-          }
           break;
         case 'Escape':
           setIsOpen(false);

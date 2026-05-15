@@ -1,14 +1,27 @@
 import React, { useRef, useEffect, forwardRef, TextareaHTMLAttributes } from 'react';
+import { handleMultilineNotesKeyDown } from '@/lib/multiline-notes-keydown';
 
 interface ExpandableTextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   className?: string;
   onImagePaste?: (files: File[]) => void;
+  blurOnEnterKey?: boolean;
 }
 
 const ExpandableTextarea = forwardRef<HTMLTextAreaElement, ExpandableTextareaProps>(
-  ({ value, onChange, className = '', onImagePaste, ...props }, ref) => {
+  (
+    {
+      value,
+      onChange,
+      className = '',
+      onImagePaste,
+      blurOnEnterKey = false,
+      onKeyDown,
+      ...props
+    },
+    ref,
+  ) => {
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     // Allow parent to pass a ref
     const combinedRef = (node: HTMLTextAreaElement) => {
@@ -55,12 +68,20 @@ const ExpandableTextarea = forwardRef<HTMLTextAreaElement, ExpandableTextareaPro
       }
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (blurOnEnterKey && e.key === 'Enter' && !e.shiftKey) {
+        handleMultilineNotesKeyDown(e);
+      }
+      onKeyDown?.(e);
+    };
+
     return (
       <textarea
         ref={combinedRef}
         value={value}
         onChange={onChange}
         onPaste={handlePaste}
+        onKeyDown={handleKeyDown}
         className={`resize-none w-full min-h-[40px] max-h-48 overflow-auto rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-all outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] ${className}`}
         rows={1}
         {...props}

@@ -541,6 +541,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setLoanForm({ ...loanForm, description: e.target.value })}
           placeholder="Add additional details"
           className="mt-1"
+          blurOnEnterKey
         />
       </div>
 
