@@ -6,6 +6,13 @@ import { defineConfig, devices } from "@playwright/test"
  *
  * @see https://playwright.dev/docs/test-configuration
  */
+const defaultBaseUrl = "http://127.0.0.1:5173"
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || defaultBaseUrl
+const webServerHealthUrl = new URL(
+  "/playwright-webserver-health.txt",
+  baseURL
+).toString()
+
 export default defineConfig({
   testDir: "./e2e",
 
@@ -27,7 +34,7 @@ export default defineConfig({
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:5173",
+    baseURL,
 
     /* Backend API URL for e2e tests that hit the real backend */
     /* Set E2E_BE_URL env var if backend runs on a different port/host */
@@ -103,8 +110,8 @@ export default defineConfig({
 
   /* Run local dev server before starting the tests */
   webServer: {
-    command: "pnpm dev",
-    url: "http://localhost:5173",
+    command: "pnpm dev:e2e",
+    url: webServerHealthUrl,
     reuseExistingServer: !process.env.CI,
     timeout: 180000,
   },
