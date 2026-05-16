@@ -33,7 +33,7 @@
     "@capacitor/app": "^7.1.0",
     "@capacitor/browser": "^7.0.2",
     "@capacitor/cli": "^7.4.3",
-    "@capacitor/core": "^7.4.3",
+    "@capacitor/core": "^7.6.2",
     "@capacitor/filesystem": "^7.1.8",
     "@capacitor/ios": "^7.4.3",
     "@capacitor/keyboard": "7.0.6",
