@@ -68,7 +68,7 @@ gem "ruby-openai", "~> 8.3"
 gem "rdoc", "7.2.0"
 
 # Time-based grouping
-gem "groupdate", "~> 6.5"
+gem "groupdate", "~> 6.8"
 
 # Excel processing
 gem "fast_excel", "~> 0.5"
