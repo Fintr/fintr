@@ -34,6 +34,11 @@ const maxWidthClasses = {
 // Minimum viewport height to consider content usable (not too squished)
 const MIN_USABLE_VIEWPORT_HEIGHT_PX = 300;
 
+// When `getMobileModalViewportHeight()` is this much shorter than `innerHeight`, the visible
+// area is already compressed (keyboard, or WebView resize). Size the modal to match even if
+// `useKeyboardDetector` has not flipped yet (Capacitor inset lag, simulator quirks).
+const MOBILE_MODAL_VIEWPORT_SHRINK_THRESHOLD_PX = 80;
+
 export const CustomModal: React.FC<CustomModalProps> = ({
   isOpen,
   onClose,
@@ -59,8 +64,14 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   // Use the shared platform detection hook for real-time updates
   const { isAndroidNative, isIOSNative, isMobileBrowser, safeAreaInsetBottom, safeAreaInsetTop } = usePlatformDetection();
   
-  // Detect keyboard state based on viewport dimensions
-  const { isOpen: isKeyboardOpen, visualViewportHeight } = useKeyboardDetector();
+  const { isOpen: isKeyboardOpen } = useKeyboardDetector();
+
+  const isViewportVisiblyReduced =
+    mobileViewportHeight != null &&
+    typeof window !== "undefined" &&
+    mobileViewportHeight < window.innerHeight - MOBILE_MODAL_VIEWPORT_SHRINK_THRESHOLD_PX;
+
+  const useKeyboardSizedMobileFrame = isKeyboardOpen || isViewportVisiblyReduced;
 
   useEffect(() => {
     setMounted(true);
@@ -301,7 +312,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
               ? {
                   // Keyboard open: use visual viewport height — 100vh does not shrink with the
                   // soft keyboard on iOS WKWebView (and can mis-size Android WebViews).
-                  ...(isKeyboardOpen
+                  ...(useKeyboardSizedMobileFrame
                     ? {
                         height: `${mobileViewportHeight}px`,
                         maxHeight: `${mobileViewportHeight}px`,
@@ -312,7 +323,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
                   ),
                 }
               : {
-                  ...(isKeyboardOpen
+                  ...(useKeyboardSizedMobileFrame
                     ? {
                         height: `${mobileViewportHeight}px`,
                         maxHeight: `${mobileViewportHeight}px`,
@@ -336,7 +347,9 @@ export const CustomModal: React.FC<CustomModalProps> = ({
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",
             // Ensure minimum height when keyboard is open to prevent content from being too small
-            minHeight: isKeyboardOpen ? `max(200px, calc(100% - ${title ? '80px' : '0px'}))` : undefined,
+            minHeight: useKeyboardSizedMobileFrame
+              ? `max(200px, calc(100% - ${title ? '80px' : '0px'}))`
+              : undefined,
             // No padding needed here - safe area is handled by:
             // 1. Modal maxHeight using visual viewport (accounts for keyboard)
             // 2. White spacer div at bottom for system nav background

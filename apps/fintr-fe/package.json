@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "dotenv -e .env -- sh -c 'if [ -z \"$$PORT\" ]; then export PORT=5173; fi; exec next dev --turbopack'",
-    "dev:e2e": "dotenv -e .env -- next dev --turbopack --hostname 127.0.0.1 --port 5173",
+    "dev": "npx --no-install dotenv-cli -e .env -- sh -c 'if [ -z \"$$PORT\" ]; then export PORT=5173; fi; exec next dev --turbopack'",
+    "dev:e2e": "npx --no-install dotenv-cli -e .env -- next dev --turbopack --hostname 127.0.0.1 --port 5173",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
