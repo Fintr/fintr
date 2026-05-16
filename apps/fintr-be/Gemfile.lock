@@ -545,8 +545,7 @@ GEM
     unicode-emoji (4.1.0)
     uri (1.1.1)
     useragent (0.16.11)
-    vcr (6.3.1)
-      base64
+    vcr (6.4.0)
     webmock (3.19.1)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
@@ -628,7 +627,7 @@ DEPENDENCIES
   thruster
   timecop (~> 0.9.11)
   tzinfo-data
-  vcr (~> 6.3)
+  vcr (~> 6.4)
   webmock (~> 3.18)
   xsv (~> 1.4)
 
