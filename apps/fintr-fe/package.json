@@ -69,7 +69,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.38.0",
     "import-in-the-middle": "^3.0.1",
-    "jotai": "^2.12.4",
+    "jotai": "^2.20.0",
     "jotai-tanstack-query": "^0.9.0",
     "lucide-react": "^0.511.0",
     "match-sorter": "^8.0.1",
