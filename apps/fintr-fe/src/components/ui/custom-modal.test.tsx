@@ -4,6 +4,7 @@ import { CustomModal } from "./custom-modal";
 
 const mockUsePlatformDetection = vi.fn(() => ({
   isAndroidNative: false,
+  isAndroidBrowser: false,
   isIOSNative: false,
   isIOSBrowser: false,
   isNative: false,
@@ -36,6 +37,7 @@ describe("CustomModal mobile positioning", () => {
     mockUsePlatformDetection.mockReset();
     mockUsePlatformDetection.mockReturnValue({
       isAndroidNative: false,
+      isAndroidBrowser: false,
       isIOSNative: false,
       isIOSBrowser: false,
       isNative: false,
@@ -79,6 +81,47 @@ describe("CustomModal mobile positioning", () => {
     expect(wrapper?.className).toContain("justify-start");
   });
 
+  it("anchors mobile overlay to the visual viewport on Android native (no inset-0)", async () => {
+    mockUsePlatformDetection.mockReturnValue({
+      isAndroidNative: true,
+      isAndroidBrowser: false,
+      isIOSNative: false,
+      isIOSBrowser: false,
+      isNative: true,
+      isMobileBrowser: false,
+      safeAreaInsetBottom: 0,
+      safeAreaInsetTop: 0,
+      hasAndroid3ButtonNav: false,
+    });
+
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 390,
+    });
+
+    render(
+      <CustomModal
+        isOpen
+        onClose={() => {}}
+        title="Add Transaction"
+      >
+        <div>content</div>
+      </CustomModal>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Add Transaction")).toBeInTheDocument();
+    });
+
+    const backdrop = screen.getByTestId("custom-modal-backdrop");
+    const outer = backdrop.parentElement as HTMLElement | null;
+    expect(outer).toBeTruthy();
+    expect(outer?.className).not.toContain("inset-0");
+    expect(outer?.style.top).toBe("0px");
+    expect(outer?.style.left).toBe("0px");
+  });
+
   it("keeps desktop modal container centered", async () => {
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
@@ -110,6 +153,7 @@ describe("CustomModal mobile positioning", () => {
   it("does not use history state handling on mobile browser", async () => {
     mockUsePlatformDetection.mockReturnValue({
       isAndroidNative: false,
+      isAndroidBrowser: false,
       isIOSNative: false,
       isIOSBrowser: false,
       isNative: false,

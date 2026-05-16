@@ -36,10 +36,11 @@ function readVisualViewportRect(): VisualViewportRect {
 }
 
 /**
- * Tracks the visible viewport rectangle (offset + size). On iOS WKWebView, when the
- * keyboard is shown, `visualViewport` can move relative to the layout viewport while
- * `position: fixed; inset: 0` stays layout-aligned — anchoring overlays to this rect
- * keeps modals aligned with what the user actually sees.
+ * Tracks the visible viewport rectangle (offset + size). On mobile WebViews (iOS
+ * WKWebView, Android WebView) and mobile browsers, when the keyboard is shown,
+ * `visualViewport` can move relative to the layout viewport while `position: fixed;
+ * inset: 0` stays layout-aligned — anchoring overlays to this rect keeps modals aligned
+ * with what the user actually sees.
  */
 export function useVisualViewportRect(enabled: boolean): VisualViewportRect {
   const [rect, setRect] = useState<VisualViewportRect>(() =>

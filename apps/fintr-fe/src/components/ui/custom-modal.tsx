@@ -65,6 +65,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   // Use the shared platform detection hook for real-time updates
   const {
     isAndroidNative,
+    isAndroidBrowser,
     isIOSNative,
     isIOSBrowser,
     isMobileBrowser,
@@ -80,13 +81,16 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
   const useKeyboardSizedMobileFrame = isKeyboardOpen || isViewportVisiblyReduced;
 
-  const anchorOverlayToIosVisualViewport =
+  const anchorOverlayToVisualViewport =
     isOpen &&
     mounted &&
     isMobile &&
-    (isIOSNative || isIOSBrowser);
+    (isIOSNative ||
+      isIOSBrowser ||
+      isAndroidNative ||
+      isAndroidBrowser);
 
-  const iosVisualViewportRect = useVisualViewportRect(anchorOverlayToIosVisualViewport);
+  const visualViewportRect = useVisualViewportRect(anchorOverlayToVisualViewport);
 
   const modalBodyScrollRef = useRef<HTMLDivElement>(null);
 
@@ -111,10 +115,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     isOpen,
     mobileViewportHeight,
     useKeyboardSizedMobileFrame,
-    iosVisualViewportRect.top,
-    iosVisualViewportRect.left,
-    iosVisualViewportRect.width,
-    iosVisualViewportRect.height,
+    visualViewportRect.top,
+    visualViewportRect.left,
+    visualViewportRect.width,
+    visualViewportRect.height,
   ]);
 
   useEffect(() => {
@@ -284,18 +288,18 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     <div
       className={cn(
         "fixed z-[100] flex",
-        anchorOverlayToIosVisualViewport ? "" : "inset-0",
+        anchorOverlayToVisualViewport ? "" : "inset-0",
         isMobile ? "items-start justify-start" : "items-center justify-center",
         isMobile ? "p-0" : "p-4",
-        isAndroidNative ? "pt-[20px]" : ""
+        isAndroidNative && !anchorOverlayToVisualViewport ? "pt-[20px]" : "",
       )}
       style={
-        anchorOverlayToIosVisualViewport
+        anchorOverlayToVisualViewport
           ? {
-              top: iosVisualViewportRect.top,
-              left: iosVisualViewportRect.left,
-              width: iosVisualViewportRect.width,
-              height: iosVisualViewportRect.height,
+              top: visualViewportRect.top,
+              left: visualViewportRect.left,
+              width: visualViewportRect.width,
+              height: visualViewportRect.height,
             }
           : undefined
       }
