@@ -46,7 +46,7 @@ importers:
         version: 10.0.0(react@19.2.0)
       '@hookform/resolvers':
         specifier: ^5.0.1
-        version: 5.2.2(react-hook-form@7.66.0(react@19.2.0))
+        version: 5.2.2(react-hook-form@7.75.0(react@19.2.0))
       '@radix-ui/react-accordion':
         specifier: ^1.2.10
         version: 1.2.12(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -159,8 +159,8 @@ importers:
         specifier: ^19.0.0
         version: 19.2.0(react@19.2.0)
       react-hook-form:
-        specifier: ^7.56.4
-        version: 7.66.0(react@19.2.0)
+        specifier: ^7.75.0
+        version: 7.75.0(react@19.2.0)
       react-joyride:
         specifier: ^3.0.0-7
         version: 3.0.0-7(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -4603,8 +4603,8 @@ packages:
       react: 16.8 - 19
       react-dom: 16.8 - 19
 
-  react-hook-form@7.66.0:
-    resolution: {integrity: sha512-xXBqsWGKrY46ZqaHDo+ZUYiMUgi8suYu5kdrS20EG8KiL7VRQitEbNjm+UcrDYrNi1YLyfpmAeGjCZYXLT9YBw==}
+  react-hook-form@7.75.0:
+    resolution: {integrity: sha512-Ovv94H+0p3sJ7B9B5QxPuCP1u8V/cHuVGyH55cSwodYDtoJwK+fqk3vjfIgSX59I2U/bU4z0nRJ9HMLpNiWEmw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
@@ -5956,10 +5956,10 @@ snapshots:
     dependencies:
       type-fest: 4.41.0
 
-  '@hookform/resolvers@5.2.2(react-hook-form@7.66.0(react@19.2.0))':
+  '@hookform/resolvers@5.2.2(react-hook-form@7.75.0(react@19.2.0))':
     dependencies:
       '@standard-schema/utils': 0.3.0
-      react-hook-form: 7.66.0(react@19.2.0)
+      react-hook-form: 7.75.0(react@19.2.0)
 
   '@humanfs/core@0.19.1': {}
 
@@ -10299,7 +10299,7 @@ snapshots:
       react-dom: 19.2.0(react@19.2.0)
       tree-changes-hook: 0.11.3(react@19.2.0)
 
-  react-hook-form@7.66.0(react@19.2.0):
+  react-hook-form@7.75.0(react@19.2.0):
     dependencies:
       react: 19.2.0
 
