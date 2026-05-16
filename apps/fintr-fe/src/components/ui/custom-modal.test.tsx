@@ -5,6 +5,7 @@ import { CustomModal } from "./custom-modal";
 const mockUsePlatformDetection = vi.fn(() => ({
   isAndroidNative: false,
   isIOSNative: false,
+  isIOSBrowser: false,
   isNative: false,
   isMobileBrowser: false,
   safeAreaInsetBottom: 0,
@@ -36,6 +37,7 @@ describe("CustomModal mobile positioning", () => {
     mockUsePlatformDetection.mockReturnValue({
       isAndroidNative: false,
       isIOSNative: false,
+      isIOSBrowser: false,
       isNative: false,
       isMobileBrowser: false,
       safeAreaInsetBottom: 0,
@@ -109,6 +111,7 @@ describe("CustomModal mobile positioning", () => {
     mockUsePlatformDetection.mockReturnValue({
       isAndroidNative: false,
       isIOSNative: false,
+      isIOSBrowser: false,
       isNative: false,
       isMobileBrowser: true,
       safeAreaInsetBottom: 0,

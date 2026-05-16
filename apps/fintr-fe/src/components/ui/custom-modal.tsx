@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useMobileModalViewportHeight } from "@/hooks/useMobileModalViewportHeight";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import { useKeyboardDetector } from "@/hooks/useKeyboardDetector";
+import { useVisualViewportRect } from "@/hooks/useVisualViewportRect";
 
 interface CustomModalProps {
   isOpen: boolean;
@@ -62,7 +63,13 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   const mobileViewportHeight = useMobileModalViewportHeight(isOpen);
   
   // Use the shared platform detection hook for real-time updates
-  const { isAndroidNative, isIOSNative, isMobileBrowser, safeAreaInsetBottom, safeAreaInsetTop } = usePlatformDetection();
+  const {
+    isAndroidNative,
+    isIOSNative,
+    isIOSBrowser,
+    isMobileBrowser,
+    safeAreaInsetBottom,
+  } = usePlatformDetection();
   
   const { isOpen: isKeyboardOpen } = useKeyboardDetector();
 
@@ -72,6 +79,43 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     mobileViewportHeight < window.innerHeight - MOBILE_MODAL_VIEWPORT_SHRINK_THRESHOLD_PX;
 
   const useKeyboardSizedMobileFrame = isKeyboardOpen || isViewportVisiblyReduced;
+
+  const anchorOverlayToIosVisualViewport =
+    isOpen &&
+    mounted &&
+    isMobile &&
+    (isIOSNative || isIOSBrowser);
+
+  const iosVisualViewportRect = useVisualViewportRect(anchorOverlayToIosVisualViewport);
+
+  const modalBodyScrollRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !isMobile) {
+      return;
+    }
+
+    const shell = modalBodyScrollRef.current;
+    if (shell == null) {
+      return;
+    }
+
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !shell.contains(active)) {
+      return;
+    }
+
+    active.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [
+    isMobile,
+    isOpen,
+    mobileViewportHeight,
+    useKeyboardSizedMobileFrame,
+    iosVisualViewportRect.top,
+    iosVisualViewportRect.left,
+    iosVisualViewportRect.width,
+    iosVisualViewportRect.height,
+  ]);
 
   useEffect(() => {
     setMounted(true);
@@ -239,11 +283,22 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   const modalContent = (
     <div
       className={cn(
-        "fixed inset-0 z-[100] flex",
+        "fixed z-[100] flex",
+        anchorOverlayToIosVisualViewport ? "" : "inset-0",
         isMobile ? "items-start justify-start" : "items-center justify-center",
         isMobile ? "p-0" : "p-4",
         isAndroidNative ? "pt-[20px]" : ""
       )}
+      style={
+        anchorOverlayToIosVisualViewport
+          ? {
+              top: iosVisualViewportRect.top,
+              left: iosVisualViewportRect.left,
+              width: iosVisualViewportRect.width,
+              height: iosVisualViewportRect.height,
+            }
+          : undefined
+      }
       onClick={handleOverlayClick}
       onPointerDown={handleOverlayClick}
     >
@@ -342,6 +397,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           </div>
         )}
         <div
+          ref={modalBodyScrollRef}
           className="flex-1 overflow-y-auto"
           style={{
             WebkitOverflowScrolling: "touch",
