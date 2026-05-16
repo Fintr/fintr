@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { CustomModal } from "./custom-modal";
 
+const mobileViewportHeightState = vi.hoisted(() => ({ value: null as number | null }));
+
 const mockUsePlatformDetection = vi.fn(() => ({
   isAndroidNative: false,
   isAndroidBrowser: false,
@@ -23,7 +25,7 @@ vi.mock("@/hooks/useKeyboardDetector", () => ({
 }));
 
 vi.mock("@/hooks/useMobileModalViewportHeight", () => ({
-  useMobileModalViewportHeight: () => null,
+  useMobileModalViewportHeight: () => mobileViewportHeightState.value,
 }));
 
 vi.mock("@/lib/capacitor", () => ({
@@ -34,6 +36,7 @@ describe("CustomModal mobile positioning", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
     vi.stubGlobal("scrollTo", vi.fn());
+    mobileViewportHeightState.value = null;
     mockUsePlatformDetection.mockReset();
     mockUsePlatformDetection.mockReturnValue({
       isAndroidNative: false,
@@ -120,6 +123,73 @@ describe("CustomModal mobile positioning", () => {
     expect(outer?.className).not.toContain("inset-0");
     expect(outer?.style.top).toBe("0px");
     expect(outer?.style.left).toBe("0px");
+  });
+
+  it("extends anchored overlay to layout bottom on Android native (gesture nav)", async () => {
+    const vvHeight = 752;
+    const innerH = 800;
+
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 390,
+    });
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      writable: true,
+      value: innerH,
+    });
+
+    const addEventListener = vi.fn();
+    const removeEventListener = vi.fn();
+
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      writable: true,
+      value: {
+        offsetTop: 0,
+        offsetLeft: 0,
+        width: 390,
+        height: vvHeight,
+        addEventListener,
+        removeEventListener,
+      },
+    });
+
+    mobileViewportHeightState.value = vvHeight;
+
+    mockUsePlatformDetection.mockReturnValue({
+      isAndroidNative: true,
+      isAndroidBrowser: false,
+      isIOSNative: false,
+      isIOSBrowser: false,
+      isNative: true,
+      isMobileBrowser: false,
+      safeAreaInsetBottom: 24,
+      safeAreaInsetTop: 0,
+      hasAndroid3ButtonNav: false,
+    });
+
+    render(
+      <CustomModal
+        isOpen
+        onClose={() => {}}
+        title="Add Transaction"
+      >
+        <div>content</div>
+      </CustomModal>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Add Transaction")).toBeInTheDocument();
+    });
+
+    const backdrop = screen.getByTestId("custom-modal-backdrop");
+    const outer = backdrop.parentElement as HTMLElement | null;
+    expect(outer?.style.height).toBe(`${innerH}px`);
+
+    const modal = document.querySelector("[data-modal-content]") as HTMLElement | null;
+    expect(modal?.style.height).toBe(`${innerH}px`);
   });
 
   it("keeps desktop modal container centered", async () => {

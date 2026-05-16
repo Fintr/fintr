@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import { getPublicBackendUrl } from '@/lib/public-backend-url';
 import { triggerSessionExpiration } from './session-expiration-handler';
 
 /**
@@ -99,6 +100,14 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const resolved = getPublicBackendUrl();
+  if (resolved) {
+    config.baseURL = resolved;
+  }
+  return config;
+});
+
 // Response interceptor for global error handling
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
@@ -124,6 +133,11 @@ export const createAuthenticatedClient = (getToken: () => Promise<string>): Axio
   // Add auth token to all requests from this client
   authClient.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
+      const resolved = getPublicBackendUrl() ?? process.env.NEXT_PUBLIC_BE_URL;
+      if (resolved) {
+        config.baseURL = `${resolved}/api/v1`;
+      }
+
       console.log('📤 API Request:', {
         method: config.method?.toUpperCase(),
         url: config.url,

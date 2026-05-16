@@ -1,4 +1,5 @@
 import { createConsumer, Consumer, Subscription } from '@rails/actioncable';
+import { getPublicBackendUrl } from '@/lib/public-backend-url';
 
 let consumer: Consumer | null = null;
 
@@ -36,7 +37,10 @@ export const createActionCableConsumer = async (
   }
 
   const token = await getToken();
-  const baseUrl = process.env.NEXT_PUBLIC_BE_URL || 'http://localhost:3000';
+  const baseUrl =
+    getPublicBackendUrl() ||
+    process.env.NEXT_PUBLIC_BE_URL ||
+    'http://localhost:3000';
 
   // Convert http to ws and https to wss
   // Action Cable uses query parameters for authentication, not headers

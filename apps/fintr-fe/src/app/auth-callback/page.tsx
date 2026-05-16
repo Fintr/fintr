@@ -9,6 +9,7 @@ import { verifyState, getOriginalRedirectPath } from '@/services/auth/google-sig
 import { AuthStorage, AuthStorageData, AuthTokens } from '@/lib/auth-storage';
 import { resetGlobalAuthLock } from '@/components/deep-link-handler';
 import { isNativeCapacitor } from '@/lib/capacitor';
+import { getPublicBackendUrl } from '@/lib/public-backend-url';
 import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
 
 // Helper function to detect if we're on iOS mobile
@@ -111,7 +112,7 @@ export default function AuthCallback() {
         }
 
         // Exchange code for tokens via backend
-        const backendUrl = process.env.NEXT_PUBLIC_BE_URL;
+        const backendUrl = getPublicBackendUrl();
         if (!backendUrl) {
           console.error('❌ Backend URL is not configured');
           throw new Error('Backend URL is not configured');

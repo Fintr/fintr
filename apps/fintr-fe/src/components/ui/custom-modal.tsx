@@ -92,6 +92,23 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
   const visualViewportRect = useVisualViewportRect(anchorOverlayToVisualViewport);
 
+  const extendAndroidShellToLayoutBottom =
+    isAndroidNative && !useKeyboardSizedMobileFrame;
+
+  const layoutExtentBelowVisualTop =
+    typeof window !== "undefined"
+      ? Math.round(window.innerHeight - visualViewportRect.top)
+      : visualViewportRect.height;
+
+  const anchoredOverlayHeight = extendAndroidShellToLayoutBottom
+    ? Math.max(visualViewportRect.height, layoutExtentBelowVisualTop)
+    : visualViewportRect.height;
+
+  const backdropUsesAbsoluteLayout = anchorOverlayToVisualViewport;
+
+  const androidBackdropFillsShell =
+    isAndroidNative && extendAndroidShellToLayoutBottom;
+
   const modalBodyScrollRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -119,6 +136,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     visualViewportRect.left,
     visualViewportRect.width,
     visualViewportRect.height,
+    anchoredOverlayHeight,
   ]);
 
   useEffect(() => {
@@ -284,12 +302,44 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     }
   };
 
+  const androidBackdropBottomInset =
+    safeAreaInsetBottom > 0
+      ? `${safeAreaInsetBottom - 1}px`
+      : "calc(var(--safe-area-inset-bottom, 0px) - 2px)";
+
+  const backdropStyle: React.CSSProperties = backdropUsesAbsoluteLayout
+      ? isAndroidNative
+      ? androidBackdropFillsShell
+        ? { top: 0, left: 0, right: 0, bottom: 0 }
+        : {
+            top: 20,
+            left: 0,
+            right: 0,
+            bottom: androidBackdropBottomInset,
+          }
+      : { top: 0, left: 0, right: 0, bottom: 0 }
+    : isAndroidNative
+      ? {
+          top: 20,
+          left: 0,
+          right: 0,
+          bottom: androidBackdropBottomInset,
+        }
+      : { top: 0, left: 0, right: 0, bottom: 0 };
+
   const modalContent = (
     <div
       className={cn(
-        "fixed z-[100] flex",
+        "fixed z-[100]",
+        anchorOverlayToVisualViewport && isMobile
+          ? "flex min-h-0 flex-col"
+          : "flex",
         anchorOverlayToVisualViewport ? "" : "inset-0",
-        isMobile ? "items-start justify-start" : "items-center justify-center",
+        anchorOverlayToVisualViewport && isMobile
+          ? ""
+          : isMobile
+            ? "items-start justify-start"
+            : "items-center justify-center",
         isMobile ? "p-0" : "p-4",
         isAndroidNative && !anchorOverlayToVisualViewport ? "pt-[20px]" : "",
       )}
@@ -299,7 +349,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
               top: visualViewportRect.top,
               left: visualViewportRect.left,
               width: visualViewportRect.width,
-              height: visualViewportRect.height,
+              height: anchoredOverlayHeight,
             }
           : undefined
       }
@@ -309,7 +359,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       {/* Android native only: Paint the 3-button nav background so the backdrop doesn't make it look white. */}
       {isAndroidNative && (
         <div
-          className="fixed left-0 right-0 top-0 z-[100.5] pointer-events-none"
+          className={cn(
+            "left-0 right-0 top-0 z-[100.5] pointer-events-none",
+            backdropUsesAbsoluteLayout ? "absolute" : "fixed",
+          )}
           style={{
             height: "20px",
             backgroundColor: "#FAFAF9",
@@ -319,16 +372,11 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       <div
         data-testid="custom-modal-backdrop"
         className={cn(
-          "fixed left-0 right-0 top-0 bg-black/50 z-[100]",
-          "transition-opacity duration-200"
+          "z-[100] bg-black/50",
+          "transition-opacity duration-200",
+          backdropUsesAbsoluteLayout ? "absolute" : "fixed",
         )}
-        style={{
-          // Only apply safe area adjustment for Android native
-          // iOS and mobile browsers handle this natively via env()
-          ...(isAndroidNative 
-            ? { top: 20, bottom: safeAreaInsetBottom > 0 ? `${safeAreaInsetBottom - 1}px` : "calc(var(--safe-area-inset-bottom, 0px) - 2px)" } 
-            : { bottom: 0 }),
-        }}
+        style={backdropStyle}
         onClick={(e) => {
           const target = e.target as HTMLElement;
           const lightbox = document.querySelector(".lightbox-container");
@@ -343,9 +391,12 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         }}
       />
       {/* Android native only: Paint the 3-button nav background so the backdrop doesn't make it look white. */}
-      {isAndroidNative && (
+      {isAndroidNative && !androidBackdropFillsShell && (
         <div
-          className="fixed left-0 right-0 bottom-0 z-[100.5] pointer-events-none"
+          className={cn(
+            "left-0 right-0 bottom-0 z-[100.5] pointer-events-none",
+            backdropUsesAbsoluteLayout ? "absolute" : "fixed",
+          )}
           style={{
             height: safeAreaInsetBottom > 0 ? `${safeAreaInsetBottom - 1}px` : "calc(var(--safe-area-inset-bottom, 0px) - 2px)",
             backgroundColor: "#FAFAF9",
@@ -358,7 +409,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           "relative z-[101] bg-background ",
           "w-full",
           isMobile 
-            ? "h-full rounded-none" 
+            ? "min-h-0 flex-1 rounded-none" 
             : cn("rounded-lg", maxWidthClasses[maxWidth], "max-h-[90vh]"),
           "overflow-hidden flex flex-col",
           "transition-opacity duration-200",
@@ -369,16 +420,19 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           isMobile && mobileViewportHeight != null
             ? isAndroidNative
               ? {
-                  // Keyboard open: use visual viewport height — 100vh does not shrink with the
-                  // soft keyboard on iOS WKWebView (and can mis-size Android WebViews).
                   ...(useKeyboardSizedMobileFrame
                     ? {
                         height: `${mobileViewportHeight}px`,
                         maxHeight: `${mobileViewportHeight}px`,
                       }
-                    : {
-                        maxHeight: `calc(${mobileViewportHeight}px - ${safeAreaInsetBottom > 0 ? safeAreaInsetBottom + 'px' : 'var(--safe-area-inset-bottom, 0px)' } - 20px + 2px)`,
-                      }
+                    : extendAndroidShellToLayoutBottom
+                      ? {
+                          height: `${anchoredOverlayHeight}px`,
+                          maxHeight: `${anchoredOverlayHeight}px`,
+                        }
+                      : {
+                          maxHeight: `calc(${mobileViewportHeight}px - ${safeAreaInsetBottom > 0 ? safeAreaInsetBottom + "px" : "var(--safe-area-inset-bottom, 0px)"} - 20px + 2px)`,
+                        }
                   ),
                 }
               : {
