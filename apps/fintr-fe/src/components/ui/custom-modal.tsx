@@ -40,6 +40,8 @@ const MIN_USABLE_VIEWPORT_HEIGHT_PX = 300;
 // `useKeyboardDetector` has not flipped yet (Capacitor inset lag, simulator quirks).
 const MOBILE_MODAL_VIEWPORT_SHRINK_THRESHOLD_PX = 80;
 
+const ANDROID_MODAL_HEADER_TOP_PADDING_PX = 24;
+
 export const CustomModal: React.FC<CustomModalProps> = ({
   isOpen,
   onClose,
@@ -70,6 +72,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     isIOSBrowser,
     isMobileBrowser,
     safeAreaInsetBottom,
+    hasAndroid3ButtonNav,
   } = usePlatformDetection();
   
   const { isOpen: isKeyboardOpen } = useKeyboardDetector();
@@ -103,6 +106,20 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   const anchoredOverlayHeight = extendAndroidShellToLayoutBottom
     ? Math.max(visualViewportRect.height, layoutExtentBelowVisualTop)
     : visualViewportRect.height;
+
+  const androidModalTopPaddingPx =
+    isMobile && isAndroidNative
+      ? Math.max(
+          0,
+          ANDROID_MODAL_HEADER_TOP_PADDING_PX -
+            (anchorOverlayToVisualViewport ? visualViewportRect.top : 0)
+        )
+      : 0;
+
+  const mobileModalPanelBottomPaddingPx =
+    isMobile && isAndroidNative
+      ? Math.max(safeAreaInsetBottom, hasAndroid3ButtonNav ? 48 : 16)
+      : 0;
 
   const backdropUsesAbsoluteLayout = anchorOverlayToVisualViewport;
 
@@ -327,6 +344,56 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         }
       : { top: 0, left: 0, right: 0, bottom: 0 };
 
+  const modalPanelStyle: React.CSSProperties | undefined = (() => {
+    if (!isMobile) {
+      return undefined;
+    }
+
+    const insetStyle: React.CSSProperties = {};
+
+    if (isAndroidNative && androidModalTopPaddingPx > 0) {
+      insetStyle.paddingTop = androidModalTopPaddingPx;
+    }
+
+    if (mobileModalPanelBottomPaddingPx > 0) {
+      insetStyle.paddingBottom = mobileModalPanelBottomPaddingPx;
+    }
+
+    if (mobileViewportHeight == null) {
+      return Object.keys(insetStyle).length > 0 ? insetStyle : undefined;
+    }
+
+    if (isAndroidNative) {
+      return {
+        ...insetStyle,
+        ...(useKeyboardSizedMobileFrame
+          ? {
+              height: `${mobileViewportHeight}px`,
+              maxHeight: `${mobileViewportHeight}px`,
+            }
+          : extendAndroidShellToLayoutBottom
+            ? {
+                height: `${anchoredOverlayHeight}px`,
+                maxHeight: `${anchoredOverlayHeight}px`,
+              }
+            : {
+                maxHeight: `calc(${mobileViewportHeight}px - ${safeAreaInsetBottom > 0 ? safeAreaInsetBottom + "px" : "var(--safe-area-inset-bottom, 0px)"} - 20px + 2px)`,
+              }
+        ),
+      };
+    }
+
+    return {
+      ...insetStyle,
+      ...(useKeyboardSizedMobileFrame
+        ? {
+            height: `${mobileViewportHeight}px`,
+            maxHeight: `${mobileViewportHeight}px`,
+          }
+        : { maxHeight: `${mobileViewportHeight}px` }),
+    };
+  })();
+
   const modalContent = (
     <div
       className={cn(
@@ -411,41 +478,13 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           isMobile 
             ? "min-h-0 flex-1 rounded-none" 
             : cn("rounded-lg", maxWidthClasses[maxWidth], "max-h-[90vh]"),
+          isMobile && !isAndroidNative && "pt-safe-top",
           "overflow-hidden flex flex-col",
           "transition-opacity duration-200",
           isAndroidNative ? "shadow-none  " : "shadow-lg",
           className
         )}
-        style={
-          isMobile && mobileViewportHeight != null
-            ? isAndroidNative
-              ? {
-                  ...(useKeyboardSizedMobileFrame
-                    ? {
-                        height: `${mobileViewportHeight}px`,
-                        maxHeight: `${mobileViewportHeight}px`,
-                      }
-                    : extendAndroidShellToLayoutBottom
-                      ? {
-                          height: `${anchoredOverlayHeight}px`,
-                          maxHeight: `${anchoredOverlayHeight}px`,
-                        }
-                      : {
-                          maxHeight: `calc(${mobileViewportHeight}px - ${safeAreaInsetBottom > 0 ? safeAreaInsetBottom + "px" : "var(--safe-area-inset-bottom, 0px)"} - 20px + 2px)`,
-                        }
-                  ),
-                }
-              : {
-                  ...(useKeyboardSizedMobileFrame
-                    ? {
-                        height: `${mobileViewportHeight}px`,
-                        maxHeight: `${mobileViewportHeight}px`,
-                      }
-                    : { maxHeight: `${mobileViewportHeight}px` }
-                  ),
-                }
-            : undefined
-        }
+        style={modalPanelStyle}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
@@ -460,14 +499,9 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           style={{
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",
-            // Ensure minimum height when keyboard is open to prevent content from being too small
             minHeight: useKeyboardSizedMobileFrame
               ? `max(200px, calc(100% - ${title ? '80px' : '0px'}))`
               : undefined,
-            // No padding needed here - safe area is handled by:
-            // 1. Modal maxHeight using visual viewport (accounts for keyboard)
-            // 2. White spacer div at bottom for system nav background
-            // 3. Native env() CSS for iOS/mobile browsers
           }}
         >
           {children}

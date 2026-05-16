@@ -79,6 +79,10 @@ describe("CustomModal mobile positioning", () => {
 
     const content = document.querySelector("[data-modal-content]") as HTMLElement | null;
     expect(content).toBeTruthy();
+    expect(content?.className).toContain("pt-safe-top");
+    expect(content?.style.paddingBottom).toBe("");
+    const scrollRegion = content?.querySelector(".flex-1.overflow-y-auto");
+    expect(scrollRegion?.className).toBe("flex-1 overflow-y-auto");
     const wrapper = content?.parentElement as HTMLElement | null;
     expect(wrapper?.className).toContain("items-start");
     expect(wrapper?.className).toContain("justify-start");
@@ -215,6 +219,9 @@ describe("CustomModal mobile positioning", () => {
 
     const content = document.querySelector("[data-modal-content]") as HTMLElement | null;
     expect(content).toBeTruthy();
+    expect(content?.className).not.toContain("pt-safe-top");
+    expect(content?.style.paddingBottom).toBe("");
+    expect(content?.style.paddingTop).toBe("");
     const wrapper = content?.parentElement as HTMLElement | null;
     expect(wrapper?.className).toContain("items-center");
     expect(wrapper?.className).toContain("justify-center");
