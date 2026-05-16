@@ -87,8 +87,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.13(@types/react-dom@19.2.2(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@rails/actioncable':
-        specifier: ^7.1.0
-        version: 7.2.300
+        specifier: ^8.1.300
+        version: 8.1.300
       '@sentry/nextjs':
         specifier: ^10
         version: 10.46.0(@opentelemetry/context-async-hooks@2.6.1(@opentelemetry/api@1.9.1))(@opentelemetry/core@2.6.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(next@15.3.9(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react@19.2.6)(webpack@5.105.4)
@@ -1704,8 +1704,8 @@ packages:
   '@radix-ui/rect@1.1.1':
     resolution: {integrity: sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw==}
 
-  '@rails/actioncable@7.2.300':
-    resolution: {integrity: sha512-bmrp+HgCPd2BlhDfJ81hJ6Nvd6yh0B2hIW8ThOmUdOr3L+sFjU1glpBmn+MoQF2K0HLvnWCGqF3TxT/S0jj3QA==}
+  '@rails/actioncable@8.1.300':
+    resolution: {integrity: sha512-zOENQsq3NM2jyBY6Z2qtZa3V/R/6OEqA+LGKixQbBMl7kk/J3FXDRcszPe74LsHNgB01jCl/DXu/xA8sHt4I/g==}
 
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
@@ -7027,7 +7027,7 @@ snapshots:
 
   '@radix-ui/rect@1.1.1': {}
 
-  '@rails/actioncable@7.2.300': {}
+  '@rails/actioncable@8.1.300': {}
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
