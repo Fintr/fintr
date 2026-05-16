@@ -1,4 +1,4 @@
-const BASE = process.env.NEXT_PUBLIC_BE_URL;
+import { getPublicBackendUrl } from '@/lib/public-backend-url';
 
 export interface CacheVersionResponse {
   success: boolean;
@@ -24,7 +24,8 @@ export async function getAdminCacheVersion(
   getToken: () => Promise<string>
 ): Promise<CacheVersionResponse["data"]> {
   const token = await getToken();
-  const res = await fetch(`${BASE}/api/v1/admin/cache`, {
+  const base = getPublicBackendUrl() ?? process.env.NEXT_PUBLIC_BE_URL;
+  const res = await fetch(`${base}/api/v1/admin/cache`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("Failed to fetch cache version");
@@ -40,7 +41,8 @@ export async function clearAppCache(
   getToken: () => Promise<string>
 ): Promise<ClearCacheResponse["data"]> {
   const token = await getToken();
-  const res = await fetch(`${BASE}/api/v1/admin/cache/clear`, {
+  const base = getPublicBackendUrl() ?? process.env.NEXT_PUBLIC_BE_URL;
+  const res = await fetch(`${base}/api/v1/admin/cache/clear`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -57,7 +59,8 @@ export async function getPublicCacheVersion(): Promise<{
   cacheVersion: string;
   updatedAt: string | null;
 }> {
-  const res = await fetch(`${BASE}/api/v1/cache_version`);
+  const base = getPublicBackendUrl() ?? process.env.NEXT_PUBLIC_BE_URL;
+  const res = await fetch(`${base}/api/v1/cache_version`);
   if (!res.ok) throw new Error("Failed to fetch cache version");
   const json = (await res.json()) as { success: boolean; data: { cacheVersion: string; updatedAt: string | null } };
   return json.data;

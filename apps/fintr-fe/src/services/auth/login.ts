@@ -3,6 +3,8 @@
  * This allows direct username/password authentication without redirects
  */
 
+import { getPublicBackendUrl } from '@/lib/public-backend-url';
+
 export interface LoginCredentials {
   username: string; // Can be email or username
   password: string;
@@ -41,7 +43,7 @@ export const loginWithCredentials = async (
   credentials: LoginCredentials
 ): Promise<LoginResponse> => {
   console.log('🔐 loginWithCredentials: Starting...', { username: credentials.username });
-  const backendUrl = process.env.NEXT_PUBLIC_BE_URL;
+  const backendUrl = getPublicBackendUrl();
 
   if (!backendUrl) {
     console.error('❌ loginWithCredentials: Backend URL not configured');
@@ -124,7 +126,7 @@ export const getUserProfile = async (accessToken: string) => {
 export const signupWithCredentials = async (
   credentials: SignupCredentials
 ): Promise<SignupResponse> => {
-  const backendUrl = process.env.NEXT_PUBLIC_BE_URL;
+  const backendUrl = getPublicBackendUrl();
 
   if (!backendUrl) {
     throw new Error('Backend URL is not configured. Please check your environment variables.');
@@ -163,7 +165,7 @@ export const signupWithCredentials = async (
  * Refresh access token using refresh token via backend
  */
 export const refreshAccessToken = async (refreshToken: string): Promise<LoginResponse> => {
-  const backendUrl = process.env.NEXT_PUBLIC_BE_URL;
+  const backendUrl = getPublicBackendUrl();
 
   if (!backendUrl) {
     throw new Error('Backend URL is not configured');
