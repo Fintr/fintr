@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { useAtomValue } from 'jotai';
 import { isAdminAtom } from '@/atoms/dashboardAtoms';
 import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from '@/hooks/useDebouncedValue';
+import { supportTicketDetailHref } from '@/lib/support-ticket-routes';
 
 export default function CRMRequestsPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -218,7 +219,7 @@ export default function CRMRequestsPage() {
       ) : (
         <div className="flex flex-col gap-5">
           {ticketsData.tickets.map((ticket) => (
-            <Link key={ticket.id} href={`/crm/requests/${ticket.id}`}>
+            <Link key={ticket.id} href={supportTicketDetailHref(ticket.id)}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardContent className="p-5 md:p-6">
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">

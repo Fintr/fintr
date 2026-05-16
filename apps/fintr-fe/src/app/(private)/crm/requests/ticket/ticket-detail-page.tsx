@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,8 +34,8 @@ import { formatDateTime } from "@/utils/dateUtils";
 import { ButtonLoader } from "@/components/ui/loading";
 
 export default function TicketDetailPage() {
-  const params = useParams();
-  const ticketId = params.id as string;
+  const searchParams = useSearchParams();
+  const ticketId = searchParams.get("id")?.trim() ?? "";
 
   const isAdmin = useAtomValue(isAdminAtom);
 
@@ -125,6 +125,30 @@ export default function TicketDetailPage() {
         return "bg-blue-50 text-blue-800 border-blue-200";
     }
   };
+
+  if (!ticketId) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <Button variant="outline" className="mb-4" asChild>
+          <Link href="/crm/requests">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Tickets
+          </Link>
+        </Button>
+        <Card>
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <p className="text-gray-800 mb-2">This support link is missing a ticket id.</p>
+            <p className="text-sm text-gray-500">
+              Open a ticket from the list so the address includes{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">?id=…</code>
+              .
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
