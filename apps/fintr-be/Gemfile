@@ -37,7 +37,7 @@ gem "jwt", "~> 2.7"
 gem "auth0", "~> 5.12"
 
 # Money
-gem "money-rails", "~> 1.15"
+gem "money-rails", "~> 3.0"
 
 # Roles
 gem "rolify", "~> 7.0.0", github: "mikodagatan/rolify"
