@@ -16,6 +16,7 @@ describe("isDashboardShellRoute", () => {
 
   it("returns false for non-dashboard private routes", () => {
     expect(isDashboardShellRoute("/crm/requests")).toBe(false);
+    expect(isDashboardShellRoute("/crm/requests/ticket")).toBe(false);
     expect(isDashboardShellRoute("/admin/users")).toBe(false);
     expect(isDashboardShellRoute("/onboarding")).toBe(false);
   });
