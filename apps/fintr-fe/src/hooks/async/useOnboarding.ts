@@ -14,7 +14,6 @@ import {
 import { getOnboardingData } from '@/services/onboarding/queries';
 import { onboardingBudgetCategoriesAtom, onboardingAccountsDataAtom, onboardingAccountCategoriesAtom, incomeRequirementsAtom } from '@/atoms/budgetAtoms';
 import { toast } from 'sonner';
-import { set } from 'date-fns';
 import { onboardingDataAtom } from '@/atoms/onboardingAtoms';
 
 export const useOnboarding = (step?: string) => {
@@ -81,6 +80,8 @@ export const useOnboarding = (step?: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       queryClient.invalidateQueries({ queryKey: ['onboarding'] });
+      queryClient.invalidateQueries({ queryKey: ['spaces'] });
+      queryClient.invalidateQueries({ queryKey: ['space-context'] });
       toast.success('Currency set successfully');
     },
     onError: (error: any) => {

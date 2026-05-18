@@ -49,6 +49,8 @@ const ResetDataDialog = ({ isOpen, onClose }: ResetDataDialogProps) => {
     try {
       await resetData({ api });
       await queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      await queryClient.invalidateQueries({ queryKey: ['spaces'] });
+      await queryClient.invalidateQueries({ queryKey: ['space-context'] });
       toast.success('Data reset successfully. Redirecting to onboarding...');
       onClose();
       router.push('/onboarding/step1');
