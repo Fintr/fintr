@@ -128,6 +128,61 @@ RSpec.describe Transactions::Operations::Transfers::DeleteThisTransfer do
           end
         end
 
+        context "when both accounts are USD but amount_currency was mislabeled (legacy)" do
+          let(:from_usd) do
+            create(
+              :account,
+              space:,
+              name: "From USD",
+              balance: Money.from_amount(900, "USD"),
+              balance_currency: "USD"
+            )
+          end
+          let(:to_usd) do
+            create(
+              :account,
+              space:,
+              name: "To USD",
+              balance: Money.from_amount(600, "USD"),
+              balance_currency: "USD"
+            )
+          end
+          let(:legacy_transfer) do
+            t = Transactions::Transfer.new(
+              user:,
+              space:,
+              from_account: from_usd,
+              to_account: to_usd,
+              amount_cents: 100_00,
+              amount_currency: "PHP",
+              transaction_cost_cents: 0,
+              transaction_cost_currency: "PHP",
+              date: Time.zone.today,
+              balance_state: "calculated",
+              schedule_type: "one_time",
+              schedule: {},
+              description: "Legacy mis-tag"
+            )
+            t.save!(validate: false)
+            t
+          end
+
+          it "reverts using the numeric magnitude as USD" do
+            legacy_transfer
+
+            expect {
+              result = operation.call(transfer: legacy_transfer)
+              expect(result).to be_success
+            }.to change(Transactions::Transfer, :count).by(-1)
+
+            from_usd.reload
+            to_usd.reload
+
+            expect(from_usd.balance).to eq(Money.from_amount(1000, "USD"))
+            expect(to_usd.balance).to eq(Money.from_amount(500, "USD"))
+          end
+        end
+
         it 'calls revert_calculated_balances when balance_state is calculated' do
           allow(operation).to receive(:revert_calculated_balances).with(transfer: transfer).and_return(Success([from_account, to_account]))
           allow(operation).to receive(:delete_transfer_fee_transaction).with(transfer: transfer).and_return(Success())

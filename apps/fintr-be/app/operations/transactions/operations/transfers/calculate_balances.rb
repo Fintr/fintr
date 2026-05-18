@@ -32,21 +32,36 @@ module Transactions
         private
 
         def find_transfer(params:)
-          Success(Transactions::Transfer.find(params[:transfer_id]))
+          Success(
+            Transactions::Transfer
+              .includes(:currency_conversion, :from_account, :to_account)
+              .find(params[:transfer_id])
+          )
         rescue ActiveRecord::RecordNotFound => e
           Failure(transfer_id: "not found", error: e, expected: true)
         end
-
 
         def update_from_account_balance(transfer:)
           return Success() if transfer.balance_state == "calculated"
 
           from_account = transfer.from_account
-          # Debit in from-account currency: use original_amount when conversion exists, else amount
-          amount_to_debit = transfer.original_amount
-          from_new_balance = from_account.balance - amount_to_debit
+          rate_date = transfer.date.respond_to?(:to_date) ? transfer.date.to_date : transfer.date
+          debit_result = ::Transactions::Operations::Transfers::BookedTransferLegMagnitude.debit_magnitude(
+            transfer:,
+            account: from_account,
+            rate_date:
+          )
+          return debit_result if debit_result.failure?
 
-          from_account.assign_attributes(balance: from_new_balance)
+          debit = debit_result.value!
+          old_balance = from_account.balance.amount
+          from_new_balance = (
+            BigDecimal(old_balance.to_s) - BigDecimal(debit.to_s)
+          ).round(2)
+
+          from_account.assign_attributes(
+            balance: Money.from_amount(from_new_balance, from_account.balance_currency)
+          )
           from_account.save!
 
           Success(from_account)
@@ -58,10 +73,23 @@ module Transactions
           return Success() if transfer.balance_state == "calculated"
 
           to_account = transfer.to_account
-          # Credit in to-account currency: transfer.amount is already in that currency
-          to_new_balance = to_account.balance + transfer.amount
+          rate_date = transfer.date.respond_to?(:to_date) ? transfer.date.to_date : transfer.date
+          credit_result = ::Transactions::Operations::Transfers::BookedTransferLegMagnitude.credit_magnitude(
+            transfer:,
+            account: to_account,
+            rate_date:
+          )
+          return credit_result if credit_result.failure?
 
-          to_account.assign_attributes(balance: to_new_balance)
+          credit = credit_result.value!
+          old_balance = to_account.balance.amount
+          to_new_balance = (
+            BigDecimal(old_balance.to_s) + BigDecimal(credit.to_s)
+          ).round(2)
+
+          to_account.assign_attributes(
+            balance: Money.from_amount(to_new_balance, to_account.balance_currency)
+          )
           to_account.save!
 
           Success(to_account)

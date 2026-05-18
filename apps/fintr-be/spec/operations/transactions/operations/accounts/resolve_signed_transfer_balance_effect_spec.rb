@@ -76,6 +76,56 @@ RSpec.describe Transactions::Operations::Accounts::ResolveSignedTransferBalanceE
       end
     end
 
+    context "when both accounts are USD but amount_currency was mislabeled (legacy, no conversion)" do
+      let(:from_account) do
+        create(
+          :account,
+          space:,
+          name: "From USD",
+          balance: Money.from_amount(900, "USD"),
+          balance_currency: "USD"
+        )
+      end
+      let(:to_account) do
+        create(
+          :account,
+          space:,
+          name: "To USD",
+          balance: Money.from_amount(600, "USD"),
+          balance_currency: "USD"
+        )
+      end
+      let(:transfer) do
+        t = Transactions::Transfer.new(
+          user:,
+          space:,
+          from_account:,
+          to_account:,
+          amount_cents: 100_00,
+          amount_currency: "PHP",
+          transaction_cost_cents: 0,
+          transaction_cost_currency: "PHP",
+          date: Time.zone.today,
+          balance_state: "calculated",
+          schedule_type: "one_time",
+          schedule: {},
+          description: "Legacy mis-tag"
+        )
+        t.save!(validate: false)
+        t
+      end
+
+      it "returns signed effects using the numeric as USD without FetchRate" do
+        expect(ExchangeRates::Operations::FetchRate).not_to receive(:new)
+
+        from_result = operation.call(transfer:, account: from_account)
+        to_result = operation.call(transfer:, account: to_account)
+
+        expect(from_result.value![:amount]).to eq(BigDecimal("-100"))
+        expect(to_result.value![:amount]).to eq(BigDecimal("100"))
+      end
+    end
+
     context "when there is no currency_conversion and currencies match" do
       let(:from_account) { create(:account, space:, balance: Money.from_amount(1000, "PHP")) }
       let(:to_account) { create(:account, space:, name: "Checking", balance: Money.from_amount(500, "PHP")) }
