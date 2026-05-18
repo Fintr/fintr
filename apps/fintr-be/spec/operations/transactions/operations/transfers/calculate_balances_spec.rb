@@ -36,6 +36,59 @@ RSpec.describe Transactions::Operations::Transfers::CalculateBalances do
         expect(transfer.balance_state).to eq("calculated")
       end
 
+      context "when both accounts are USD but amount_currency was mislabeled PHP (legacy)" do
+        let(:from_usd) do
+          create(
+            :account,
+            space:,
+            name: "From USD",
+            balance: Money.from_amount(1000, "USD"),
+            balance_currency: "USD"
+          )
+        end
+        let(:to_usd) do
+          create(
+            :account,
+            space:,
+            name: "To USD",
+            balance: Money.from_amount(500, "USD"),
+            balance_currency: "USD"
+          )
+        end
+        let(:transfer) do
+          t = Transactions::Transfer.new(
+            user:,
+            space:,
+            from_account: from_usd,
+            to_account: to_usd,
+            amount_cents: 100_00,
+            amount_currency: "PHP",
+            transaction_cost_cents: 0,
+            transaction_cost_currency: "PHP",
+            date: Time.zone.today,
+            balance_state: "pending",
+            schedule_type: "one_time",
+            schedule: {},
+            description: "Legacy"
+          )
+          t.save!(validate: false)
+          t
+        end
+
+        it "applies debit and credit using the numeric as USD" do
+          result = operation.call(transfer_id: transfer.id)
+          expect(result).to be_success
+
+          from_usd.reload
+          to_usd.reload
+          transfer.reload
+
+          expect(from_usd.balance).to eq(Money.from_amount(900, "USD"))
+          expect(to_usd.balance).to eq(Money.from_amount(600, "USD"))
+          expect(transfer.balance_state).to eq("calculated")
+        end
+      end
+
       it 'is idempotent' do
         # First call
         result1 = operation.call(transfer_id: transfer.id)
