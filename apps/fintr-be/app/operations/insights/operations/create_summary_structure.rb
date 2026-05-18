@@ -6,6 +6,7 @@ module Insights
       class Contract < Dry::Validation::Contract
         params do
           required(:transactions)
+          required(:space).value(:any)
         end
 
         rule(:transactions) do
@@ -41,19 +42,39 @@ module Insights
       def get_total_income(params:)
         return Success(0) if params[:transactions].blank?
 
-        result = params[:transactions]&.sum(&:income)&.amount
-        Success(result)
+        space = params[:space]
+        total = params[:transactions].inject(0.to_d) do |memo, tx|
+          next memo unless tx.is_a?(Transactions::Income)
+
+          memo + Insights::SpaceCurrencyAmount.to_space_decimal(
+            money: tx.income,
+            date: tx.date.to_date,
+            space: space,
+            strict: true
+          )
+        end
+        Success(total)
       end
 
       def get_total_expenses(params:)
         return Success(0) if params[:transactions].blank?
 
-        result = params[:transactions]&.sum(&:expense)&.amount
-        Success(result)
+        space = params[:space]
+        total = params[:transactions].inject(0.to_d) do |memo, tx|
+          next memo unless tx.is_a?(Transactions::Expense)
+
+          memo + Insights::SpaceCurrencyAmount.to_space_decimal(
+            money: tx.expense,
+            date: tx.date.to_date,
+            space: space,
+            strict: true
+          )
+        end
+        Success(total)
       end
 
       def get_net_savings(total_income:, total_expenses:)
-        result = total_income - total_expenses
+        result = total_income.to_d - total_expenses.to_d
         Success(result)
       end
 

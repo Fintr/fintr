@@ -29,10 +29,10 @@ module Insights
         params                 = step validate(params:)
         transactions           = step find_transactions(params:)
         budgets                = step find_budgets(params:)
-        summary_structure      = step create_summary_structure(transactions:)
+        summary_structure      = step create_summary_structure(transactions:, space:)
         health_scores          = step create_health_scores(summary_structure:, budgets:)
-        expense_breakdown      = step create_expense_breakdown(transactions:)
-        weekly_spending        = step create_weekly_spending(transactions:)
+        expense_breakdown      = step create_expense_breakdown(transactions:, space:)
+        weekly_spending        = step create_weekly_spending(transactions:, space:)
         monthly_spending       = step create_monthly_spending(params:)
         account_breakdown      = step create_account_breakdown(space:)
         insights_data          =  {
@@ -62,20 +62,29 @@ module Insights
         )
       end
 
-      def create_summary_structure(transactions:)
-        Insights::Operations::CreateSummaryStructure.new.call(transactions:)
+      def create_summary_structure(transactions:, space:)
+        Insights::Operations::CreateSummaryStructure.new.call(
+          transactions:,
+          space:
+        )
       end
 
       def create_health_scores(summary_structure:, budgets:)
         Insights::Operations::CreateHealthScores.new.call(summary_structure:, budgets:)
       end
 
-      def create_expense_breakdown(transactions:)
-        Insights::Operations::CreateExpenseBreakdown.new.call(transactions:)
+      def create_expense_breakdown(transactions:, space:)
+        Insights::Operations::CreateExpenseBreakdown.new.call(
+          transactions:,
+          space:
+        )
       end
 
-      def create_weekly_spending(transactions:)
-        Insights::Operations::CreateWeeklySpending.new.call(transactions:)
+      def create_weekly_spending(transactions:, space:)
+        Insights::Operations::CreateWeeklySpending.new.call(
+          transactions:,
+          space:
+        )
       end
 
       def create_monthly_spending(params:)

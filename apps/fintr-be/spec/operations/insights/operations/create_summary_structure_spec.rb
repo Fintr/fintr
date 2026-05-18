@@ -58,7 +58,7 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'with valid transactions' do
-      subject(:call_operation) { operation.call(transactions: actual_transactions) }
+      subject(:call_operation) { operation.call(transactions: actual_transactions, space: space) }
 
       let(:income_transaction1) { create_transaction(type: :income, amount_value: 1000) }
       let(:income_transaction2) { create_transaction(type: :income, amount_value: 500) }
@@ -84,7 +84,7 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'with only income transactions' do
-      subject(:call_operation) { operation.call(transactions: actual_transactions) }
+      subject(:call_operation) { operation.call(transactions: actual_transactions, space: space) }
 
       let(:income_transaction1) { create_transaction(type: :income, amount_value: 700) }
       let(:actual_transactions) { [income_transaction1] }
@@ -100,7 +100,7 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'with only expense transactions' do
-      subject(:call_operation) { operation.call(transactions: actual_transactions) }
+      subject(:call_operation) { operation.call(transactions: actual_transactions, space: space) }
 
       let(:expense_transaction1) { create_transaction(type: :expense, amount_value: 400) }
       let(:actual_transactions) { [expense_transaction1] }
@@ -116,7 +116,7 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'when transactions is an empty ActiveRecord::Relation' do
-      subject(:call_operation) { operation.call(transactions: Transactions::Transaction.none) }
+      subject(:call_operation) { operation.call(transactions: Transactions::Transaction.none, space: space) }
 
       it { is_expected.to be_success }
 
@@ -129,7 +129,7 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'when transactions is nil' do
-      subject(:call_operation) { operation.call(transactions: nil) }
+      subject(:call_operation) { operation.call(transactions: nil, space: space) }
 
       it { is_expected.to be_success }
 

@@ -6,6 +6,7 @@ module Insights
       class Contract < Dry::Validation::Contract
         params do
           required(:transactions)
+          required(:space).value(:any)
         end
 
         rule(:transactions) do
@@ -25,7 +26,7 @@ module Insights
       def call(params)
         params                = step validate(params:)
         expenses              = step get_expenses(params:)
-        expense_breakdown     = step create_expense_breakdown(expenses:)
+        expense_breakdown     = step create_expense_breakdown(params:, expenses:)
         expense_breakdown
       end
 
@@ -36,26 +37,32 @@ module Insights
         Success(result)
       end
 
-      def create_expense_breakdown(expenses:)
-        # Handle the case where there are no expenses or transfers
+      def create_expense_breakdown(params:, expenses:)
         return Success([]) if expenses.empty?
 
-        total_expenses = expenses.sum(&:expense).amount
+        space = params[:space]
+        total_expenses = Insights::SpaceCurrencyAmount.sum_booked_expenses_in_space(
+          expenses:,
+          space:
+        )
 
-        # Handle case where total_expenses is zero (e.g., only transfers, which have expense: Money.zero)
         return Success([]) if total_expenses.zero?
+
+        display_currency = space.currency.presence || "PHP"
 
         result = expenses
                   .group_by { |t| t.respond_to?(:category_name) ? t.category_name : t.category.name }
                   .map do |category_name, transactions|
-          amount = transactions.sum(&:expense).amount
-          # Handle division by zero if amount is > 0 but total_expenses is 0 (shouldn't happen with above guard)
-          percentage = Utils::Number.format_percentage((amount.to_d / total_expenses) * 100)
+          amount = Insights::SpaceCurrencyAmount.sum_booked_expenses_in_space(
+            expenses: transactions,
+            space:
+          )
+          percentage = Utils::Number.format_percentage((amount / total_expenses) * 100)
           {
             category_name:,
             amount: Utils::Number.format_number(amount),
             percentage:,
-            currency: transactions.first.amount_currency
+            currency: display_currency
           }
         end
         Success(result)

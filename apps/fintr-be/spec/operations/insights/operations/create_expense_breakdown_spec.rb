@@ -62,7 +62,7 @@ RSpec.describe Insights::Operations::CreateExpenseBreakdown do
     end
 
     context 'with valid expense transactions' do
-      subject(:call_operation) { operation.call(transactions:) }
+      subject(:call_operation) { operation.call(transactions:, space: space) }
 
       let!(:groceries_category) { create(:category, space: space, name: 'Groceries', category_type: 'expense') }
       let!(:utilities_category) { create(:category, space: space, name: 'Utilities', category_type: 'expense') }
@@ -128,7 +128,7 @@ RSpec.describe Insights::Operations::CreateExpenseBreakdown do
     end
 
     context 'with no expense transactions' do
-      subject(:call_operation) { operation.call(transactions:) }
+      subject(:call_operation) { operation.call(transactions:, space: space) }
 
       let!(:income_category) { create(:category, space: space, name: 'Salary', category_type: 'income') }
       let(:income_transaction) { create_transaction(type: :income, amount_value: 1000, category: income_category) }
