@@ -36,17 +36,29 @@ module Transactions
         private
 
         def revert_calculated_balances(transfer:)
-          # Revert both account balances if transfer was calculated
           from_account = transfer.from_account
           to_account = transfer.to_account
 
-          # Revert from_account: add back the transfer amount (it was subtracted)
-          from_account.balance += transfer.amount
-          from_account.save!
+          from_effect = ::Transactions::Operations::Accounts::ResolveSignedTransferBalanceEffect.new.call(
+            transfer:,
+            account: from_account
+          )
+          return from_effect unless from_effect.success?
 
-          # Revert to_account: subtract the transfer amount (it was added)
-          to_account.balance -= transfer.amount
-          to_account.save!
+          to_effect = ::Transactions::Operations::Accounts::ResolveSignedTransferBalanceEffect.new.call(
+            transfer:,
+            account: to_account
+          )
+          return to_effect unless to_effect.success?
+
+          revert_transfer_balance!(
+            account: from_account,
+            signed_effect: from_effect.value![:amount]
+          )
+          revert_transfer_balance!(
+            account: to_account,
+            signed_effect: to_effect.value![:amount]
+          )
 
           Success([from_account, to_account])
         rescue StandardError => e
@@ -54,6 +66,17 @@ module Transactions
             accounts: "failed to revert balances",
             error: e
           )
+        end
+
+        def revert_transfer_balance!(account:, signed_effect:)
+          old_balance = account.balance.amount
+          new_balance = (
+            BigDecimal(old_balance.to_s) - BigDecimal(signed_effect.to_s)
+          ).round(2)
+          account.assign_attributes(
+            balance: Money.from_amount(new_balance, account.balance_currency)
+          )
+          account.save!
         end
 
         def delete_transfer_fee_transaction(transfer:)
