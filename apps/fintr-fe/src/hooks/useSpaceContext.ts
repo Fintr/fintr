@@ -166,6 +166,24 @@ export function useSpaceContext(api: AxiosInstance) {
     }
   }, [spaces, currentSpace, setCurrentSpace]);
 
+  useEffect(() => {
+    if (!spaces?.length || !currentSpace?.code) return;
+    const fresh = spaces.find((s) => s.code === currentSpace.code);
+    if (!fresh) return;
+
+    const defaultTxEqual =
+      (fresh.defaultTransactionCurrency ?? null) ===
+      (currentSpace.defaultTransactionCurrency ?? null);
+
+    if (
+      fresh.currency !== currentSpace.currency ||
+      fresh.name !== currentSpace.name ||
+      !defaultTxEqual
+    ) {
+      setCurrentSpace(fresh);
+    }
+  }, [spaces, currentSpace, setCurrentSpace]);
+
   return {
     spaces,
     currentSpace,
