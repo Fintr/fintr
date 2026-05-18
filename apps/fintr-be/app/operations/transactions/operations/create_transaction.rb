@@ -42,7 +42,12 @@ module Transactions
           optional(:exchange_rate).value(:decimal, gt?: 0)
           optional(:exchange_rate_source).value(:string, included_in?: %w[auto manual recent])
 
-          # When true (e.g. initial balance for new account), amount is already in account currency; no conversion.
+          # ISO code for the currency +amount+ is expressed in (account or space). When it matches the account’s
+          # +balance_currency+, no FX is applied. When it matches the space currency and the account differs,
+          # +amount+ is treated as space currency and converted to the account (same as omitting this field).
+          optional(:amount_in_currency).value(:string)
+
+          # When true (e.g. new account opening), marks the initial-balance transaction; amount is in account currency.
           optional(:initial_balance).value(:bool)
         end
 
@@ -210,7 +215,9 @@ module Transactions
 
       # When frontend sends original_currency + exchange_rate, amount is in original currency; convert to account.
       # When initial_balance is true (e.g. new account), amount is already in account currency; no conversion.
-      # Otherwise treat amount as space currency and convert to account when account != space.
+      # When amount_in_currency matches the account currency, amount is already in account currency; no conversion.
+      # When amount_in_currency matches the space currency (or is omitted), amount is treated as space currency
+      # and converted to the account when account currency differs from the space.
       def prepare_conversion(params:, account:)
         space = account.space
         space_currency = space.currency.presence || "PHP"
@@ -218,20 +225,12 @@ module Transactions
         amount_param = params[:amount]
 
         if params[:initial_balance]
-          return Success(
-            needs_conversion: false,
-            amount: amount_param,
-            amount_currency: account_currency
-          )
+          return book_amount_without_fx(amount_param:, account_currency:)
         end
 
         if params[:original_currency].present? && params[:exchange_rate].present?
           if params[:original_currency].to_s == account_currency.to_s
-            return Success(
-              needs_conversion: false,
-              amount: amount_param,
-              amount_currency: account_currency
-            )
+            return book_amount_without_fx(amount_param:, account_currency:)
           end
 
           original_amount = BigDecimal(amount_param.to_s)
@@ -251,12 +250,26 @@ module Transactions
           )
         end
 
+        if params[:amount_in_currency].present?
+          incoming = normalize_currency_code(params[:amount_in_currency])
+          allowed_account = normalize_currency_code(account_currency)
+          allowed_space = normalize_currency_code(space_currency)
+
+          unless incoming == allowed_account || incoming == allowed_space
+            return Failure(
+              amount_in_currency: [
+                "must match the account currency (#{account_currency}) or the space currency (#{space_currency})",
+              ]
+            )
+          end
+
+          if incoming == allowed_account
+            return book_amount_without_fx(amount_param:, account_currency:)
+          end
+        end
+
         if account_currency == space_currency
-          return Success(
-            needs_conversion: false,
-            amount: amount_param,
-            amount_currency: account_currency
-          )
+          return book_amount_without_fx(amount_param:, account_currency:)
         end
 
         # Rate: 1 account unit = rate space units. So amount_in_space = amount_account * rate => amount_account = amount_in_space / rate.
@@ -306,8 +319,21 @@ module Transactions
         params.delete(:exchange_rate)
         params.delete(:exchange_rate_source)
         params.delete(:initial_balance)
+        params.delete(:amount_in_currency)
 
         Success(params)
+      end
+
+      def book_amount_without_fx(amount_param:, account_currency:)
+        Success(
+          needs_conversion: false,
+          amount: amount_param,
+          amount_currency: account_currency
+        )
+      end
+
+      def normalize_currency_code(code)
+        code.to_s.strip.upcase
       end
 
       def create_conversion_record(transaction:, conversion_data:)
