@@ -106,7 +106,10 @@ RSpec.describe Insights::Operations::CreateInsightsData do
       end
 
       it 'calls Insights::Operations::CreateSummaryStructure with transactions' do
-        expect(mock_create_summary_structure_op).to receive(:call).with(transactions: mocked_transactions_result.value!).and_return(mocked_summary_structure_result)
+        expect(mock_create_summary_structure_op).to receive(:call).with(
+          transactions: mocked_transactions_result.value!,
+          space: space
+        ).and_return(mocked_summary_structure_result)
         call_operation
       end
 
@@ -116,12 +119,18 @@ RSpec.describe Insights::Operations::CreateInsightsData do
       end
 
       it 'calls Insights::Operations::CreateExpenseBreakdown with transactions' do
-        expect(mock_create_expense_breakdown_op).to receive(:call).with(transactions: mocked_transactions_result.value!).and_return(mocked_expense_breakdown_result)
+        expect(mock_create_expense_breakdown_op).to receive(:call).with(
+          transactions: mocked_transactions_result.value!,
+          space: space
+        ).and_return(mocked_expense_breakdown_result)
         call_operation
       end
 
       it 'calls Insights::Operations::CreateWeeklySpending with transactions' do
-        expect(mock_create_weekly_spending_op).to receive(:call).with(transactions: mocked_transactions_result.value!).and_return(mocked_weekly_spending_result)
+        expect(mock_create_weekly_spending_op).to receive(:call).with(
+          transactions: mocked_transactions_result.value!,
+          space: space
+        ).and_return(mocked_weekly_spending_result)
         call_operation
       end
 

@@ -6,6 +6,7 @@ module Insights
       class Contract < Dry::Validation::Contract
         params do
           required(:transactions)
+          required(:space).value(:any)
         end
 
         rule(:transactions) do
@@ -23,18 +24,23 @@ module Insights
       end
 
       def call(params)
-        params                = step validate(params:)
-        expenses              = step get_expenses(params:)
-        return [] if expenses.blank? || expenses.sum(&:expense).amount.zero?
+        params   = step validate(params:)
+        expenses = step get_expenses(params:)
+        return [] if expenses.blank?
 
-        weekly_spending       = step create_weekly_spending(expenses:)
-        weekly_spending
+        space = params[:space]
+        total_expenses = Insights::SpaceCurrencyAmount.sum_booked_expenses_in_space(
+          expenses:,
+          space:
+        )
+        return [] if total_expenses.zero?
+
+        step create_weekly_spending(params:, expenses:, total_expenses:)
       end
 
       private
 
       def get_expenses(params:)
-        # Get exactly 7 days: from (1.week - 1.day) ago to today
         start_date = (1.week - 1.day).ago.beginning_of_day
         end_date = Time.zone.today.end_of_day
 
@@ -44,49 +50,40 @@ module Insights
         Success(result)
       end
 
-      def create_weekly_spending(expenses:)
-        total_expenses = expenses.sum(&:expense).amount
+      def create_weekly_spending(params:, expenses:, total_expenses:)
+        space = params[:space]
+        display_currency = space.currency.presence || "PHP"
 
-        # Create date range for exactly 7 days: from 6 days ago to today
         start_date = 6.days.ago.beginning_of_day.to_date
         end_date = Date.current
         date_range = start_date..end_date
 
-        # Order expenses by date and convert to array for grouping
         ordered_expenses = expenses.order(date: :asc)
         expenses_array = ordered_expenses.is_a?(Array) ? ordered_expenses : ordered_expenses.to_a
-        # Group by date only, not datetime
         expenses_by_date = expenses_array.group_by { |transaction| transaction.date.to_date }
 
-        # Create result for all 7 days, including days with no transactions
         result = date_range.map do |date|
           transactions_for_date = expenses_by_date[date] || []
           amount = if transactions_for_date.any?
-                     transactions_for_date.sum(&:expense).amount
+                     Insights::SpaceCurrencyAmount.sum_booked_expenses_in_space(
+                       expenses: transactions_for_date,
+                       space:
+                     )
           else
-                     0
+                     0.to_d
           end
 
           percentage = if total_expenses.zero?
                          0.0
           else
-                         (amount.to_d / total_expenses.to_d) * 100
-          end
-
-          # Get currency from first expense transaction, or space currency, or PHP as last resort
-          currency = if transactions_for_date.any?
-                       transactions_for_date.first.amount_currency
-          else
-                       expenses_array.first&.amount_currency ||
-                         expenses.first&.space&.currency ||
-                         "PHP"
+                         (amount / total_expenses) * 100
           end
 
           {
             date: date.strftime("%a"),
             amount: Utils::Number.format_number(amount),
             percentage: Utils::Number.format_percentage(percentage),
-            currency: currency
+            currency: display_currency
           }
         end
 
