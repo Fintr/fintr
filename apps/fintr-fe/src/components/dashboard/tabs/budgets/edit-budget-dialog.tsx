@@ -7,15 +7,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Budget, BudgetCategory, BudgetsPage } from "@/types/budgetTypes";
-import { transformBudgetsToCategories } from "@/services/budgets/queries";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { BudgetCategory } from "@/types/budgetTypes";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,6 +25,8 @@ import { useState } from "react";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import { useAtomValue } from "jotai";
 import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
+import GridPicker from "@/components/dashboard/forms/GridPicker";
+import { CategoryTypeEnum } from "@/types/categoryTypes";
 
 const formSchema = z.object({
   category: z.string(),
@@ -49,13 +43,9 @@ export function EditBudgetDialog({
   >["updateBudgetMutation"];
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [customExpenseCategories, setCustomExpenseCategories] = useState<
-    string[]
-  >([]);
-  
-  // Get expense categories from dashboard data
+
   const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -79,7 +69,7 @@ export function EditBudgetDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Budget</DialogTitle>
+          <DialogTitle className="text-primary">Edit Budget</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -88,29 +78,17 @@ export function EditBudgetDialog({
               name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
                   <FormControl>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      disabled={true} // Disable category selection when editing
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {expenseCategoryOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                        {customExpenseCategories.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <GridPicker
+                      pickerKind="category"
+                      label="Category"
+                      value={field.value}
+                      onChange={field.onChange}
+                      categories={expenseCategoryOptions}
+                      categoryType={CategoryTypeEnum.EXPENSE}
+                      disabled
+                      allowInlineCreate={false}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -24,7 +24,7 @@ import { numberFormatting } from "@/lib/utils";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import * as z from "zod";
 import { ScheduleTypeEnum, REPEAT_INTERVALS } from "@/constants/transactionConstants";
-import AccountCreationForm from "./AccountCreationForm";
+import GridPicker from "./GridPicker";
 import { updateTransfer, UpdateTransferType } from "@/services/transactions/transfers/mutation";
 import ExpandableTextarea from "@/components/ui/expandable-textarea";
 import FileUploadField from "./FileUploadField";
@@ -235,8 +235,6 @@ const TransferForm: React.FC<TransferFormProps> = ({
       amountInput.reset();
       transactionCostInput.reset();
       if (setDate) setDate(undefined); // Conditionally call setDate
-      setShowFromAccountCreation(false);
-      setShowToAccountCreation(false);
       setFormSubmitted(false);
       setConversionSnapshot(null);
       prevInitialDataRef.current = undefined;
@@ -245,8 +243,6 @@ const TransferForm: React.FC<TransferFormProps> = ({
   
   // Local state
   const [fileState, setFileState] = useState<File | null>(null);
-  const [showFromAccountCreation, setShowFromAccountCreation] = useState(false);
-  const [showToAccountCreation, setShowToAccountCreation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -415,14 +411,12 @@ const TransferForm: React.FC<TransferFormProps> = ({
     if (accountName) {
       handleFieldChange("fromAccountName", accountName);
     }
-    setShowFromAccountCreation(false);
   };
-  
+
   const handleToAccountCreated = (accountName: string) => {
     if (accountName) {
       handleFieldChange("toAccountName", accountName);
     }
-    setShowToAccountCreation(false);
   };
 
   return (
@@ -510,117 +504,65 @@ const TransferForm: React.FC<TransferFormProps> = ({
       {/* Third row: From Account and To Account */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2 min-w-0">
-          <Label htmlFor="transfer-from" className="text-sm">From Account</Label>
-          <Select
+          <GridPicker
+            pickerKind="account"
+            label="From Account"
+            triggerId="transfer-from"
+            modalTitle="From account"
             value={formState.fromAccountName}
-            onValueChange={(value) => {
-              if (value === "add_account") {
-                setShowFromAccountCreation(true);
-                handleFieldChange("fromAccountName", "");
-              } else {
-                setShowFromAccountCreation(false);
-                handleFieldChange("fromAccountName", value);
-              }
-            }}
-          >
-            <SelectTrigger 
-              id="transfer-from"
-              className={`w-full min-w-0 text-sm ${
-                (formSubmitted && formErrors.fromAccountName)
-                  ? "border-red-800 focus-visible:ring-red-800"
-                  : ""
-              }`}
-            >
-              <SelectValue placeholder="Select account" className="text-sm" />
-            </SelectTrigger>
-            <SelectContent>
-              {accountOptions.map((option) => (
-                <SelectItem
-                  key={option.value}
-                  value={option.value}
-                  className="text-sm"
-                  disabled={isAccountSelectOptionDisabledForEdit(
-                    isEditMode,
-                    editFromLedgerCurrencyLock,
-                    option,
-                    effectiveSpaceCurrency,
-                  )}
-                >
-                  {option.label}
-                </SelectItem>
-              ))}
-              {!isEditMode && (
-                <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-          {formSubmitted && formErrors.fromAccountName && (
-            <FormError>{formErrors.fromAccountName}</FormError>
-          )}
+            onChange={(name) => handleFieldChange("fromAccountName", name)}
+            accounts={accountOptions}
+            error={
+              formSubmitted && formErrors.fromAccountName
+                ? [formErrors.fromAccountName]
+                : undefined
+            }
+            onAccountCreated={handleFromAccountCreated}
+            allowInlineCreate={!isEditMode}
+            isOptionDisabled={(option) =>
+              isAccountSelectOptionDisabledForEdit(
+                isEditMode,
+                editFromLedgerCurrencyLock,
+                option,
+                effectiveSpaceCurrency,
+              )
+            }
+          />
           {fromAccountCurrencyDiffersFromSpace && fromAccount?.currency && (
             <p className="text-xs text-muted-foreground mt-1">
               From account currency: {fromAccount.currency} (differs from space: {effectiveSpaceCurrency})
             </p>
           )}
-          {showFromAccountCreation && (
-            <AccountCreationForm onSuccess={handleFromAccountCreated} />
-          )}
         </div>
         <div className="space-y-2 min-w-0">
-          <Label htmlFor="transfer-to" className="text-sm">To Account</Label>
-          <Select
+          <GridPicker
+            pickerKind="account"
+            label="To Account"
+            triggerId="transfer-to"
+            modalTitle="To account"
             value={formState.toAccountName}
-            onValueChange={(value) => {
-              if (value === "add_account") {
-                setShowToAccountCreation(true);
-                handleFieldChange("toAccountName", "");
-              } else {
-                setShowToAccountCreation(false);
-                handleFieldChange("toAccountName", value);
-              }
-            }}
-          >
-            <SelectTrigger 
-              id="transfer-to"
-              className={`w-full min-w-0 text-sm ${
-                (formSubmitted && formErrors.toAccountName)
-                  ? "border-red-800 focus-visible:ring-red-800"
-                  : ""
-              }`}
-            >
-              <SelectValue placeholder="Select account" className="text-sm" />
-            </SelectTrigger>
-            <SelectContent>
-              {accountOptions.map((option) => (
-                <SelectItem
-                  key={option.value}
-                  value={option.value}
-                  className="text-sm"
-                  disabled={isAccountSelectOptionDisabledForEdit(
-                    isEditMode,
-                    editToLedgerCurrencyLock,
-                    option,
-                    effectiveSpaceCurrency,
-                  )}
-                >
-                  {option.label}
-                </SelectItem>
-              ))}
-              {!isEditMode && (
-                <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-          {formSubmitted && formErrors.toAccountName && (
-            <FormError>{formErrors.toAccountName}</FormError>
-          )}
+            onChange={(name) => handleFieldChange("toAccountName", name)}
+            accounts={accountOptions}
+            error={
+              formSubmitted && formErrors.toAccountName
+                ? [formErrors.toAccountName]
+                : undefined
+            }
+            onAccountCreated={handleToAccountCreated}
+            allowInlineCreate={!isEditMode}
+            isOptionDisabled={(option) =>
+              isAccountSelectOptionDisabledForEdit(
+                isEditMode,
+                editToLedgerCurrencyLock,
+                option,
+                effectiveSpaceCurrency,
+              )
+            }
+          />
           {toAccountCurrencyDiffersFromSpace && toAccount?.currency && (
             <p className="text-xs text-muted-foreground mt-1">
               To account currency: {toAccount.currency} (differs from space: {effectiveSpaceCurrency})
             </p>
-          )}
-          {showToAccountCreation && (
-            <AccountCreationForm onSuccess={handleToAccountCreated} />
           )}
         </div>
       </div>

@@ -28,7 +28,7 @@ import { fetchEntities, createEntity } from "@/services/entities/mutation";
 import EntityCreationForm from "./EntityCreationForm";
 import { useAtomValue } from "jotai";
 import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
-import AccountCreationForm from "./AccountCreationForm";
+import GridPicker from "./GridPicker";
 import FileUploadField from "./FileUploadField";
 import { AdjustAccountBalanceSwitchRow } from "@/components/dashboard/forms/adjust-account-balance-switch-row";
 
@@ -61,7 +61,6 @@ const LoanForm: React.FC<LoanFormProps> = ({
   });
 
   const accountOptions = useAtomValue(accountOptionsAtom);
-  const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   // Number input hook for principal amount field
@@ -491,49 +490,31 @@ const LoanForm: React.FC<LoanFormProps> = ({
 
       {/* Fourth row: Account */}
       <div className="space-y-2">
-        <Label htmlFor="loan-account" className="text-sm">Account</Label>
-        <Select
+        <GridPicker
+          pickerKind="account"
+          label="Account"
+          triggerId="loan-account"
           value={loanForm.accountName}
-          onValueChange={(value) => {
-            if (value === "add_account") {
-              setShowCustomAccountInput(true);
-            } else {
-              setShowCustomAccountInput(false);
-              setLoanForm((prev) => ({ ...prev, accountName: value }));
-              if (formSubmitted && validationErrors.accountName) {
-                setValidationErrors({ ...validationErrors, accountName: "" });
-              }
+          onChange={(accountName) => {
+            setLoanForm((prev) => ({ ...prev, accountName }));
+            if (formSubmitted && validationErrors.accountName) {
+              setValidationErrors({ ...validationErrors, accountName: "" });
             }
           }}
-        >
-          <SelectTrigger
-            id="loan-account"
-            className={`text-sm w-full ${formSubmitted && validationErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-          >
-            <SelectValue placeholder="Select Account" />
-          </SelectTrigger>
-          <SelectContent>
-            {accountOptions.map((acc) => (
-              <SelectItem key={acc.value} value={acc.value} className="text-sm">
-                {acc.label}
-              </SelectItem>
-            ))}
-            <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
-          </SelectContent>
-        </Select>
-        {formSubmitted && validationErrors.accountName && (
-          <FormError message={Array.isArray(validationErrors.accountName) ? validationErrors.accountName[0] : validationErrors.accountName} />
-        )}
-
-        {showCustomAccountInput && (
-          <AccountCreationForm
-            onSuccess={(accountName) => {
-              setLoanForm((prev) => ({ ...prev, accountName }));
-              setShowCustomAccountInput(false);
-              queryClient.invalidateQueries({ queryKey: ['accounts'] });
-            }}
-          />
-        )}
+          accounts={accountOptions}
+          error={
+            formSubmitted && validationErrors.accountName
+              ? [
+                  Array.isArray(validationErrors.accountName)
+                    ? validationErrors.accountName[0]
+                    : String(validationErrors.accountName),
+                ]
+              : undefined
+          }
+          onAccountCreated={() => {
+            queryClient.invalidateQueries({ queryKey: ["accounts"] });
+          }}
+        />
       </div>
 
       <AdjustAccountBalanceSwitchRow

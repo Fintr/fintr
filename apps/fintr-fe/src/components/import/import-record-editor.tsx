@@ -15,6 +15,8 @@ import { useAtomValue } from 'jotai';
 import { expenseCategoryOptionsAtom, incomeCategoryOptionsAtom } from '@/atoms/dashboardAtoms';
 import { numberFormatting } from '@/lib/utils';
 import { format } from 'date-fns';
+import GridPicker from '@/components/dashboard/forms/GridPicker';
+import { CategoryTypeEnum } from '@/types/categoryTypes';
 
 interface ImportRecordEditorProps {
   importId: string;
@@ -302,28 +304,19 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="category">Category *</Label>
-          <Select
+          <GridPicker
+            pickerKind="category"
+            label="Category *"
             value={formData.category}
-            onValueChange={(value) => setFormData({ ...formData, category: value })}
-          >
-            <SelectTrigger 
-              id="category" 
-              className={validationErrors.category ? 'border-red-500' : ''}
-            >
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categoryOptions.map((cat) => (
-                <SelectItem key={cat.value} value={cat.value}>
-                  {cat.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {validationErrors.category && (
-            <p className="text-sm text-red-900">{validationErrors.category}</p>
-          )}
+            onChange={(value) => setFormData({ ...formData, category: value })}
+            categories={categoryOptions}
+            error={validationErrors.category ? [validationErrors.category] : undefined}
+            categoryType={
+              formData.type === 'income'
+                ? CategoryTypeEnum.INCOME
+                : CategoryTypeEnum.EXPENSE
+            }
+          />
         </div>
       </div>
 

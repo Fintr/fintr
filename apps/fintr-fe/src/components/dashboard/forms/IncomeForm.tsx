@@ -29,13 +29,11 @@ import { numberFormatting } from "@/lib/utils";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import { createTransaction, updateTransaction } from "@/services/transactions/mutation";
 import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum } from "@/constants/transactionConstants";
-import AccountCreationForm from "./AccountCreationForm";
-import CategoryCreationForm from "./CategoryCreationForm";
-import { UpdateTransactionType } from "@/types/transactionTypes";
-import NotesAutocomplete from '@/components/ui/notes-autocomplete';
-import FileUploadField from "./FileUploadField";
+import GridPicker from "./GridPicker";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
-import CategoryGridPicker from "./CategoryGridPicker";
+import { UpdateTransactionType } from "@/types/transactionTypes";
+import NotesAutocomplete from "@/components/ui/notes-autocomplete";
+import FileUploadField from "./FileUploadField";
 import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
 import {
   AmountWithRatePicker,
@@ -135,7 +133,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   }, [accountOptions, defaultTransactionCurrency]);
 
   // Local state for UI elements and form handling
-  const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [fileState, setFileState] = useState<File | null>(null);
   const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(
@@ -562,7 +559,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       handleFieldChange("accountName", accountName);
       if (onAddCustomAccount) onAddCustomAccount(accountName);
     }
-    setShowCustomAccountInput(false);
   };
 
   const maxDate = endOfMonth(new Date());
@@ -723,10 +719,11 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           </div>
           
           {/* Category Field */}
-          <CategoryGridPicker
+          <GridPicker
+            pickerKind="category"
             label="Income Category"
             value={formState.categoryName}
-            onChange={(value) => handleFieldChange("categoryName", value)}
+            onChange={(v) => handleFieldChange("categoryName", v)}
             categories={categoryOptions}
             error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
             categoryType={CategoryTypeEnum.INCOME}
@@ -737,55 +734,33 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         <div className="grid grid-cols-2 gap-4">
           {/* Account Field */}
           <div className="space-y-2 min-w-0">
-            <Label htmlFor="accountName" className="text-sm">Account</Label>
-            <Select
+            <GridPicker
+              pickerKind="account"
+              label="Account"
+              triggerId="accountName"
               value={formState.accountName}
-              onValueChange={(value) => {
-                if (value === "add_account") {
-                  setShowCustomAccountInput(true);
-                } else {
-                  setShowCustomAccountInput(false);
-                  handleFieldChange("accountName", value);
-                }
-              }}
-            >
-              <SelectTrigger 
-                id="accountName" 
-                className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-              >
-                <SelectValue placeholder="Select Account" className="text-sm" />
-              </SelectTrigger>
-              <SelectContent>
-                {accountOptions.map((acc) => (
-                  <SelectItem
-                    key={acc.value}
-                    value={acc.value}
-                    className="text-sm"
-                    disabled={isAccountSelectOptionDisabledForEdit(
-                      isEditMode,
-                      editLockedAccountLedgerCurrencyValue,
-                      acc,
-                      effectiveSpaceCurrency,
-                    )}
-                  >
-                    {acc.label}
-                  </SelectItem>
-                ))}
-                {!isEditMode && (
-                  <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-            {formSubmitted && formErrors.accountName?.map((error) => (
-              <FormError key={error}>{error}</FormError>
-            ))}
+              onChange={(accountName) => handleFieldChange("accountName", accountName)}
+              accounts={accountOptions}
+              error={
+                formSubmitted && formErrors.accountName
+                  ? formErrors.accountName
+                  : undefined
+              }
+              onAccountCreated={handleAccountCreated}
+              allowInlineCreate={!isEditMode}
+              isOptionDisabled={(acc) =>
+                isAccountSelectOptionDisabledForEdit(
+                  isEditMode,
+                  editLockedAccountLedgerCurrencyValue,
+                  acc,
+                  effectiveSpaceCurrency,
+                )
+              }
+            />
             {accountCurrencyDiffersFromSpace && selectedAccount?.currency && (
               <p className="text-xs text-muted-foreground mt-1">
                 Account currency: {selectedAccount.currency} (differs from space: {effectiveSpaceCurrency})
               </p>
-            )}
-            {showCustomAccountInput && (
-              <AccountCreationForm onSuccess={handleAccountCreated} />
             )}
           </div>
 
