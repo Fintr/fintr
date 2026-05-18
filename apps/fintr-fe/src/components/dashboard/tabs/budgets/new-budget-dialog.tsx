@@ -7,15 +7,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Budget, BudgetsPage } from "@/types/budgetTypes";
+import { BudgetsPage } from "@/types/budgetTypes";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,12 +24,11 @@ import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
-import { ComboBox } from "@/components/ui/combobox";
-import { OptionType } from "@/types/generalTypes";
 import { useAtomValue } from "jotai";
 import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
 import { createTransactionCategory } from "@/services/transactions/categories/mutation";
 import { AxiosInstance } from "axios";
+import GridPicker from "@/components/dashboard/forms/GridPicker";
 
 const formSchema = z.object({
   category: z.string().min(1, { message: "Category cannot be empty." }),
@@ -60,9 +52,6 @@ export function NewBudgetDialog({
   api: AxiosInstance;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [customExpenseCategories, setCustomExpenseCategories] = useState<
-    string[]
-  >([]);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -76,12 +65,6 @@ export function NewBudgetDialog({
       amount: 0,
     },
   });
-
-  // Use categories from dashboard data instead of hardcoded ones
-  const allCategoryOptions: OptionType[] = [
-    ...expenseCategoryOptions,
-    ...customExpenseCategories.map((cat) => ({ value: cat, label: cat })),
-  ];
 
   const extractFieldErrors = (error: any): FieldErrors => {
     const fieldErrors: FieldErrors = {};
@@ -113,25 +96,17 @@ async function onSubmit(values: z.infer<typeof formSchema>) {
   try {
     // Step 1: Check if category exists in the current options
     const categoryExists = expenseCategoryOptions.find(
-      (cat) => cat.value === values.category
+      (cat) => cat.value === values.category,
     );
-    
-    // Step 2: If category doesn't exist, create it first
-    if (!categoryExists && !customExpenseCategories.includes(values.category)) {
-      console.log(`Creating new expense category: ${values.category}`);
-      
+
+    if (!categoryExists) {
       await createTransactionCategory(api, {
         name: values.category,
-        categoryType: CategoryTypeEnum.EXPENSE // Budgets only work with expense categories
+        categoryType: CategoryTypeEnum.EXPENSE,
       });
-      
-      // Add to local custom categories list for UI
-      setCustomExpenseCategories((prev) => [...prev, values.category]);
     }
-    
-    // Step 3: Now create the budget (category is guaranteed to exist)
+
     const today = new Date().toISOString().split("T")[0];
-    
     await createBudgetMutation.mutateAsync({
       categoryName: values.category,
       amount: values.amount,
@@ -183,7 +158,7 @@ async function onSubmit(values: z.infer<typeof formSchema>) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New Budget</DialogTitle>
+          <DialogTitle className="text-primary">New Budget</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -192,40 +167,34 @@ async function onSubmit(values: z.infer<typeof formSchema>) {
               name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
                   <FormControl>
-                    <ComboBox
-                      filterType="frontend"
-                      data={allCategoryOptions}
+                    <GridPicker
+                      pickerKind="category"
+                      label="Category"
                       value={field.value}
                       onChange={(value) => {
                         field.onChange(value);
-                        // Clear category error when user changes selection
                         if (fieldErrors.category) {
-                          setFieldErrors(prev => ({ ...prev, category: undefined }));
+                          setFieldErrors((prev) => ({ ...prev, category: undefined }));
                         }
                       }}
-                      placeholder="Select or create category"
-                      renderNotFound={(searchValue, selectValueAndClose) => (
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start p-2 h-auto"
-                          onClick={() => {
-                            field.onChange(searchValue); // Set the form value
-                            // Clear category error when user changes selection
-                            if (fieldErrors.category) {
-                              setFieldErrors(prev => ({ ...prev, category: undefined }));
-                            }
-                          }}
-                        >
-                          Create "{searchValue}" budget category
-                        </Button>
-                      )}
+                      categories={expenseCategoryOptions}
+                      error={
+                        getCategoryErrorMessage()
+                          ? [getCategoryErrorMessage() as string]
+                          : form.formState.errors.category?.message
+                            ? [form.formState.errors.category.message]
+                            : undefined
+                      }
+                      categoryType={CategoryTypeEnum.EXPENSE}
+                      onCategoryCreated={(name) => {
+                        field.onChange(name);
+                        if (fieldErrors.category) {
+                          setFieldErrors((prev) => ({ ...prev, category: undefined }));
+                        }
+                      }}
                     />
                   </FormControl>
-                  <FormMessage>
-                    {getCategoryErrorMessage() || form.formState.errors.category?.message}
-                  </FormMessage>
                 </FormItem>
               )}
             />

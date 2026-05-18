@@ -77,7 +77,7 @@ export const createCategoryAtom = atom(
         
         // Check if category already exists in options
         const categoryExists = currentOptions.some(
-          option => option.value === newCategory.name
+          option => option.value === categoryData.name
         );
         
         // Only add if it doesn't exist already

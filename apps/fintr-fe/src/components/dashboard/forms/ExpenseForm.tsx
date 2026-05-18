@@ -15,10 +15,6 @@ import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { format, endOfMonth } from "date-fns";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { expenseCategoryOptionsAtom, accountOptionsAtom } from "@/atoms/dashboardAtoms";
-import { 
-  createCategoryAtom, 
-  categoryValidationErrorsAtom
-} from "@/atoms/transactionCategoryAtoms";
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { extractFieldErrors } from "@/utils/errorUtils";
@@ -28,13 +24,11 @@ import { useNumberInput } from "@/hooks/useNumberInput";
 import * as z from "zod"; 
 import { createTransaction, updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
 import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
-import AccountCreationForm from "./AccountCreationForm";
-import CategoryCreationForm from "./CategoryCreationForm";
-import { UpdateTransactionType } from "@/types/transactionTypes";
-import NotesAutocomplete from '@/components/ui/notes-autocomplete';
-import FileUploadField from "./FileUploadField";
+import GridPicker from "./GridPicker";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
-import CategoryGridPicker from "./CategoryGridPicker";
+import { UpdateTransactionType } from "@/types/transactionTypes";
+import NotesAutocomplete from "@/components/ui/notes-autocomplete";
+import FileUploadField from "./FileUploadField";
 import { createDisplayFileFromDraft } from "@/utils/fileUtils";
 import { useTransactionDrafts } from "@/hooks/async/useTransactionDrafts";
 import DraftItems from "./DraftItems";
@@ -183,7 +177,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const { api } = useAuthApi();
 
   // Local state for UI elements not directly part of the form data
-  const [showCustomAccountInput, setShowCustomAccountInput] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   // Removed fileState, will use formState.file directly
   const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(
@@ -209,7 +202,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     file: initialData?.file || null,
   });
 
-  // Ensure "Transfer Fee" is in the list when editing a transfer-fee expense so the Select can display it
+  // Ensure "Transfer Fee" is in the list when editing a transfer-fee expense so the picker can display it
   const categoryOptions = useMemo(() => {
     const isTransferFee = formState.categoryName === TRANSFER_FEE_CATEGORY_NAME;
     const hasTransferFee = categoryOptionsRaw.some((c) => c.value === TRANSFER_FEE_CATEGORY_NAME);
@@ -786,8 +779,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       
       
     }
-    // Close the account creation form
-    setShowCustomAccountInput(false);
   };
 
   const maxDate = endOfMonth(new Date());
@@ -971,10 +962,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           </div>
           
           {/* Category Field */}
-          <CategoryGridPicker
+          <GridPicker
+            pickerKind="category"
             label="Expense Category"
             value={formState.categoryName}
-            onChange={(value) => handleFieldChange("categoryName", value)}
+            onChange={(v) => handleFieldChange("categoryName", v)}
             categories={categoryOptions}
             error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
             categoryType={CategoryTypeEnum.EXPENSE}
@@ -986,55 +978,33 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         <div className="grid grid-cols-2 gap-4">
           {/* Account Field */}
           <div className="space-y-2 min-w-0">
-            <Label htmlFor="accountName" className="text-sm">Account</Label>
-            <Select
+            <GridPicker
+              pickerKind="account"
+              label="Account"
+              triggerId="accountName"
               value={formState.accountName}
-              onValueChange={(value) => {
-                if (value === "add_account") {
-                  setShowCustomAccountInput(true);
-                } else {
-                  setShowCustomAccountInput(false);
-                  handleFieldChange("accountName", value);
-                }
-              }}
-            >
-              <SelectTrigger 
-                id="accountName" 
-                className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-              >
-                <SelectValue placeholder="Select Account" className="text-sm" />
-              </SelectTrigger>
-              <SelectContent>
-                {accountOptions.map((acc) => (
-                  <SelectItem
-                    key={acc.value}
-                    value={acc.value}
-                    className="text-sm"
-                    disabled={isAccountSelectOptionDisabledForEdit(
-                      isEditMode,
-                      editLockedAccountLedgerCurrencyValue,
-                      acc,
-                      effectiveSpaceCurrency,
-                    )}
-                  >
-                    {acc.label}
-                  </SelectItem>
-                ))}
-                {!isEditMode && (
-                  <SelectItem value="add_account" className="text-sm">+ Add Account</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-            {formSubmitted && formErrors.accountName?.map((error) => (
-              <FormError key={error}>{error}</FormError>
-            ))}
+              onChange={(accountName) => handleFieldChange("accountName", accountName)}
+              accounts={accountOptions}
+              error={
+                formSubmitted && formErrors.accountName
+                  ? formErrors.accountName
+                  : undefined
+              }
+              onAccountCreated={handleAccountCreated}
+              allowInlineCreate={!isEditMode}
+              isOptionDisabled={(acc) =>
+                isAccountSelectOptionDisabledForEdit(
+                  isEditMode,
+                  editLockedAccountLedgerCurrencyValue,
+                  acc,
+                  effectiveSpaceCurrency,
+                )
+              }
+            />
             {accountCurrencyDiffersFromSpace && selectedAccount?.currency && (
               <p className="text-xs text-muted-foreground mt-1">
                 Account currency: {selectedAccount.currency} (differs from space: {effectiveSpaceCurrency})
               </p>
-            )}
-            {showCustomAccountInput && (
-              <AccountCreationForm onSuccess={handleAccountCreated} />
             )}
           </div>
 

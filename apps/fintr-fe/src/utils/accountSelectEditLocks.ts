@@ -3,6 +3,10 @@
  * options whose ledger currency matches the original transaction / transfer leg.
  */
 
+/** Shown when an account tile is disabled because of edit-mode currency locking. */
+export const ACCOUNT_EDIT_LOCK_DISABLED_HINT =
+  "When editing, only accounts with the same currency as the original account can be selected.";
+
 export type AccountOptionForEditLock = {
   value: string;
   currency?: string;
