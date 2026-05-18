@@ -119,7 +119,11 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
       if (selectContent) {
         return;
       }
-      
+
+      if (target.closest("[data-calculator-keyboard]")) {
+        return;
+      }
+
       const modal = document.querySelector('[data-add-receipt-dialog-content]');
       if (modal && !modal.contains(target)) {
         e.preventDefault();

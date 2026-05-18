@@ -207,14 +207,14 @@ export function CalculatorInput({
     }
   }, [expression, isExpressionMode, onChange, value]);
 
-  const handleKeyboardOverlayOpenChange = useCallback(
-    (nextOpen: boolean) => {
-      if (!nextOpen) {
-        dismissKeyboard();
-      }
-    },
-    [dismissKeyboard],
-  );
+  const dismissKeyboardRef = useRef(dismissKeyboard);
+  dismissKeyboardRef.current = dismissKeyboard;
+
+  const handleKeyboardOverlayOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
+      dismissKeyboardRef.current();
+    }
+  }, []);
 
   useCloseOnPopStateWhenOpen(
     showKeyboard && !disabled,
@@ -230,13 +230,13 @@ export function CalculatorInput({
       const clickedInsideKeyboard = target.closest("[data-calculator-keyboard]") != null;
 
       if (!clickedInsideContainer && !clickedInsideKeyboard) {
-        dismissKeyboard();
+        dismissKeyboardRef.current();
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [dismissKeyboard]);
+  }, []);
 
   const previewResult = hasOperator(expression) ? safeEvaluate(expression) : null;
 
@@ -429,8 +429,10 @@ export function CalculatorInput({
               type="button"
               variant={isOperatorButton(btn) ? "secondary" : isActionButton(btn) ? "secondary" : "outline"}
               className={cn(
-                "font-semibold",
-                isMobile ? "h-full min-h-[2.5rem] text-lg" : "h-12 text-xl",
+                "touch-manipulation [-webkit-tap-highlight-color:transparent] font-semibold",
+                "transition-colors duration-100 ease-out",
+                "active:bg-primary active:text-primary-foreground active:border-primary",
+                isMobile ? "h-full min-h-11 text-lg" : "h-12 text-xl",
                 // Operators column (right side) - primary/orange color
                 isOperatorButton(btn) && "bg-primary/10 hover:bg-primary/20 text-primary",
                 // Action buttons (top row except ÷) - muted style
@@ -438,7 +440,6 @@ export function CalculatorInput({
                 // Plus/minus toggle - orange accent
                 btn === "±" && "bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-400"
               )}
-              onMouseDown={(e) => e.preventDefault()}
               onClick={() => handleButtonClick(btn)}
             >
               {btn}

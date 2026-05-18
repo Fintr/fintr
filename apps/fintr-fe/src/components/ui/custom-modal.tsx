@@ -239,7 +239,11 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       if (selectContent) {
         return;
       }
-      
+
+      if (target.closest("[data-calculator-keyboard]")) {
+        return;
+      }
+
       const modal = document.querySelector('[data-modal-content]');
       if (modal && !modal.contains(target)) {
         e.preventDefault();
