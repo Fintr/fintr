@@ -107,7 +107,8 @@ module Api
           :file_id,
           :original_currency,
           :exchange_rate,
-          :exchange_rate_source
+          :exchange_rate_source,
+          :amount_in_currency
         )
       end
 
@@ -129,7 +130,8 @@ module Api
           :update_scope,
           :original_currency,
           :exchange_rate,
-          :exchange_rate_source
+          :exchange_rate_source,
+          :amount_in_currency
         )
       end
 

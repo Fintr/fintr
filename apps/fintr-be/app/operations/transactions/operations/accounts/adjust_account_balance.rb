@@ -26,7 +26,7 @@ module Transactions
         def call(params)
           params              = step validate(params:)
           params              = step parse_adjustment_date(params:)
-          user                = step find_user(params:)
+          _                   = step find_user(params:)
           account             = step find_account(params:)
           adjustment_amount   = step calculate_adjustment(account:, params:)
           category            = step find_or_create_category(adjustment_amount:, params:)
@@ -88,7 +88,8 @@ module Transactions
             category_name: category.name,
             account_name: account.name,
             description: "Balance adjustment",
-            schedule_type: "one_time"
+            schedule_type: "one_time",
+            amount_in_currency: account.balance_currency,
           }
 
           result = CreateTransaction.new.call(transaction_params)

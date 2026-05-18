@@ -91,6 +91,89 @@ RSpec.describe Transactions::Operations::CreateTransaction do
       end
     end
 
+    context "when amount_in_currency matches the account currency while the space currency differs" do
+      let(:usd_account) do
+        create(
+          :account,
+          space: space,
+          name: "USD Pocket",
+          balance_currency: "USD",
+          balance: Money.from_amount(100, "USD")
+        )
+      end
+
+      let(:account_currency_amount_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 25.0,
+          date: Date.current,
+          description: "Top up",
+          transaction_type: "income",
+          category_name: income_category.name,
+          account_name: usd_account.name,
+          schedule_type: "one_time",
+          amount_in_currency: "USD"
+        }
+      end
+
+      subject(:call_result) { operation.call(account_currency_amount_params) }
+
+      it { expect(call_result).to be_success }
+
+      it "persists the amount in the account currency" do
+        expect(call_result.value!.amount_currency).to eq("USD")
+      end
+
+      it "does not create a currency_conversion row" do
+        expect(call_result.value!.currency_conversion).to be_blank
+      end
+
+      it "stores the numeric amount without space-currency conversion" do
+        expect(call_result.value!.amount.amount).to eq(25.0)
+      end
+
+      it "updates the account balance by the amount in account currency" do
+        expect { call_result }.to change { usd_account.reload.balance.amount }.by(25.0)
+      end
+    end
+
+    context "when amount_in_currency is neither the account nor the space currency" do
+      let(:usd_account) do
+        create(
+          :account,
+          space: space,
+          name: "USD Err",
+          balance_currency: "USD",
+          balance: Money.from_amount(0, "USD")
+        )
+      end
+
+      let(:invalid_currency_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 10.0,
+          date: Date.current,
+          description: "Bad currency hint",
+          transaction_type: "income",
+          category_name: income_category.name,
+          account_name: usd_account.name,
+          schedule_type: "one_time",
+          amount_in_currency: "EUR"
+        }
+      end
+
+      it "returns a failure" do
+        expect(operation.call(invalid_currency_params)).to be_failure
+      end
+
+      it "returns errors for amount_in_currency" do
+        result = operation.call(invalid_currency_params)
+        expect(result.failure).to include(:amount_in_currency)
+      end
+    end
+
     context 'with expense transaction parameters' do
       subject(:call_operation) { operation.call(expense_params) }
 

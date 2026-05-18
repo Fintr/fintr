@@ -59,9 +59,10 @@ Do not reuse a serialized `exchangeRate` from a row for the opposite `(from, to)
 
 `Transactions::Operations::CreateTransaction#prepare_conversion` decides how incoming `amount` maps to the account:
 
-1. **Initial balance** (`initial_balance: true`): amount is already in **account currency**; no FX.
-2. **Manual path:** `original_currency` + `exchange_rate` present → amount is in **original** currency; converted amount and rate metadata are computed for storage.
-3. **Space vs account:** if account currency ≠ space currency and no manual override, **FetchRate** is used (account → space direction internally) to derive the amount stored on the transaction in **account currency**, and conversion metadata for persistence.
+1. **Initial balance** (`initial_balance: true`): marks the opening-balance transaction from onboarding; `amount` is already in **account currency**; no FX.
+2. **Manual path:** `original_currency` + `exchange_rate` present → `amount` is in **original** currency; converted amount and rate metadata are computed for storage.
+3. **Explicit amount currency** (`amount_in_currency` ISO code): when it equals the account’s `balance_currency`, `amount` is treated as **account currency** (no FX). When it equals the space currency and the account differs, `amount` is treated as **space currency** and converted with **FetchRate** (same as omitting this field for that case).
+4. **Space vs account (inferred):** if account currency ≠ space currency and none of the above apply, **FetchRate** is used to derive the amount stored on the transaction in **account currency**, and conversion metadata for persistence.
 
 ### `transform_params`
 

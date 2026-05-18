@@ -91,6 +91,101 @@ RSpec.describe Transactions::Operations::Accounts::AdjustAccountBalance do
       end
     end
 
+    context 'when account currency differs from space currency' do
+      let(:space) { create(:personal_space, currency: 'PHP') }
+      let(:usd_account) do
+        create(
+          :account,
+          space: space,
+          name: 'USD Wallet',
+          balance: Money.from_amount(1000, 'USD'),
+          balance_currency: 'USD'
+        )
+      end
+      let(:cross_currency_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          id: usd_account.id,
+          new_balance: 1500.0,
+          adjustment_date: adjustment_date
+        }
+      end
+
+      subject(:call_result) { operation.call(cross_currency_params) }
+
+      it { expect(call_result).to be_success }
+
+      it 'persists the adjustment amount in the account currency' do
+        expect(call_result.value!.amount_currency).to eq('USD')
+      end
+
+      it 'persists the raw delta without treating it as space currency' do
+        expect(call_result.value!.amount.amount).to eq(500.0)
+      end
+
+      it 'updates the account balance to the requested amount' do
+        call_result
+        expect(usd_account.reload.balance.amount).to eq(1500.0)
+      end
+
+      it 'does not create a currency_conversion row on the adjustment transaction' do
+        expect(call_result.value!.currency_conversion).to be_blank
+      end
+
+      context 'when a PHP exchange rate exists for the adjustment date' do
+        let(:usd_account) do
+          create(
+            :account,
+            space: space,
+            name: 'USD Wallet FX',
+            balance: Money.from_amount(1000, 'USD'),
+            balance_currency: 'USD'
+          )
+        end
+        let(:cross_currency_params) do
+          {
+            user_id: user.id,
+            space_id: space.id,
+            id: usd_account.id,
+            new_balance: 1100.0,
+            adjustment_date: adjustment_date
+          }
+        end
+
+        before do
+          ExchangeRates::ApiExchangeRate.create!(
+            base_currency: ExchangeRates::ApiExchangeRate::BASE_CURRENCY,
+            target_currency: 'PHP',
+            rate: 58,
+            rate_date: Date.current
+          )
+        end
+
+        subject(:call_result) { operation.call(cross_currency_params) }
+
+        it { expect(call_result).to be_success }
+
+        it 'books the delta in USD on the transaction' do
+          expect(call_result.value!.amount.amount).to eq(100.0)
+        end
+
+        it 'sets transaction amount_currency to USD' do
+          expect(call_result.value!.amount_currency).to eq('USD')
+        end
+
+        it 'exposes amount_in_space_currency in the space currency using FX' do
+          payload = call_result.value!.amount_in_space_currency
+          expect(payload[:currency]).to eq('PHP')
+        end
+
+        it 'converts the booked USD delta to PHP for space-context display' do
+          payload = call_result.value!.amount_in_space_currency
+          expect(payload[:amount]).to eq(5800.0)
+        end
+      end
+    end
+
     context 'with custom adjustment date' do
       subject(:call_operation) { operation.call(custom_date_params) }
 

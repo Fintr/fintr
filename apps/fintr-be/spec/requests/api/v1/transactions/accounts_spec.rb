@@ -465,4 +465,100 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
       end
     end
   end
+
+  describe "POST /api/v1/transactions/accounts/:id/adjust_balance (integration)" do
+    context "when the account uses the same currency as the space" do
+      let!(:php_account) do
+        create(:account, space: space, name: "Integration PHP", balance: Money.from_amount(800, "PHP"))
+      end
+
+      before do
+        post(
+          "/api/v1/transactions/accounts/#{php_account.id}/adjust_balance",
+          params: {
+            id: php_account.id,
+            new_balance: 950.0,
+            adjustment_date: Date.current.to_s
+          },
+          headers: headers
+        )
+      end
+
+      it { expect(response).to have_http_status(:ok) }
+
+      it "updates the account balance" do
+        expect(php_account.reload.balance.amount).to eq(950.0)
+      end
+
+      it "creates an adjustment transaction in PHP for the delta" do
+        tx = Transactions::Transaction.where(
+          account_id: php_account.id,
+          description: "Balance adjustment"
+        ).order(created_at: :desc).first
+        expect(tx.amount_currency).to eq("PHP")
+      end
+
+      it "persists the signed delta on the transaction" do
+        tx = Transactions::Transaction.where(
+          account_id: php_account.id,
+          description: "Balance adjustment"
+        ).order(created_at: :desc).first
+        expect(tx.amount.amount).to eq(150.0)
+      end
+    end
+
+    context "when the account currency differs from the space currency" do
+      let!(:usd_account) do
+        create(
+          :account,
+          space: space,
+          name: "Integration USD",
+          balance: Money.from_amount(200, "USD"),
+          balance_currency: "USD"
+        )
+      end
+
+      before do
+        post(
+          "/api/v1/transactions/accounts/#{usd_account.id}/adjust_balance",
+          params: {
+            id: usd_account.id,
+            new_balance: 250.0,
+            adjustment_date: Date.current.to_s
+          },
+          headers: headers
+        )
+      end
+
+      it { expect(response).to have_http_status(:ok) }
+
+      it "updates the account balance in USD" do
+        expect(usd_account.reload.balance.amount).to eq(250.0)
+      end
+
+      it "books the adjustment amount in USD" do
+        tx = Transactions::Transaction.where(
+          account_id: usd_account.id,
+          description: "Balance adjustment"
+        ).order(created_at: :desc).first
+        expect(tx.amount_currency).to eq("USD")
+      end
+
+      it "persists the raw delta without a currency_conversion row" do
+        tx = Transactions::Transaction.where(
+          account_id: usd_account.id,
+          description: "Balance adjustment"
+        ).order(created_at: :desc).first
+        expect(tx.amount.amount).to eq(50.0)
+      end
+
+      it "does not persist currency_conversion on the adjustment" do
+        tx = Transactions::Transaction.where(
+          account_id: usd_account.id,
+          description: "Balance adjustment"
+        ).order(created_at: :desc).first
+        expect(tx.currency_conversion).to be_blank
+      end
+    end
+  end
 end
