@@ -65,6 +65,69 @@ RSpec.describe Transactions::Operations::Transfers::DeleteThisTransfer do
           expect(to_account.balance).to eq(Money.from_amount(400, "PHP")) # 500 - 100
         end
 
+        context "when transfer is cross-currency with a persisted currency_conversion" do
+          let(:from_usd) do
+            create(
+              :account,
+              space:,
+              name: "USD wallet",
+              balance: Money.from_amount(400, "USD"),
+              balance_currency: "USD"
+            )
+          end
+          let(:to_php) do
+            create(
+              :account,
+              space:,
+              name: "PHP wallet",
+              balance: Money.from_amount(15_600, "PHP"),
+              balance_currency: "PHP"
+            )
+          end
+          let(:cross_transfer) do
+            t = Transactions::Transfer.new(
+              user:,
+              space:,
+              from_account: from_usd,
+              to_account: to_php,
+              amount: Money.from_amount(5600, "PHP"),
+              transaction_cost: Money.from_amount(0, "PHP"),
+              date: Time.zone.today,
+              balance_state: "calculated",
+              schedule_type: "one_time",
+              schedule: {},
+              description: "USD to PHP"
+            )
+            t.build_currency_conversion(
+              space_id: space.id,
+              original_amount_cents: 100_00,
+              original_currency: "USD",
+              converted_amount_cents: 5600_00,
+              converted_currency: "PHP",
+              exchange_rate: 56.0,
+              source: "manual",
+              rate_timestamp: Time.current
+            )
+            t.save!
+            t
+          end
+
+          it "reverts each account using the booked debit and credit magnitudes" do
+            cross_transfer
+
+            expect {
+              result = operation.call(transfer: cross_transfer)
+              expect(result).to be_success
+            }.to change(Transactions::Transfer, :count).by(-1)
+
+            from_usd.reload
+            to_php.reload
+
+            expect(from_usd.balance).to eq(Money.from_amount(500, "USD"))
+            expect(to_php.balance).to eq(Money.from_amount(10_000, "PHP"))
+          end
+        end
+
         it 'calls revert_calculated_balances when balance_state is calculated' do
           allow(operation).to receive(:revert_calculated_balances).with(transfer: transfer).and_return(Success([from_account, to_account]))
           allow(operation).to receive(:delete_transfer_fee_transaction).with(transfer: transfer).and_return(Success())
