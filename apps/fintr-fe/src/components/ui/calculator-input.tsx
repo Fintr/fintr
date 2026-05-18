@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isNativeCapacitor } from "@/lib/capacitor";
 import { getSafeAreaInsets } from "@/lib/platform-detection";
+import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen";
 
 interface CalculatorInputProps {
   id?: string;
@@ -41,6 +42,8 @@ const OPERATOR_MAP: Record<string, string> = {
 
 // Breakpoints for responsive behavior
 const MOBILE_BREAKPOINT = 768; // md breakpoint
+
+const CALCULATOR_KEYBOARD_HISTORY_KEY = "__fintrCalculatorKeyboard";
 
 function safeEvaluate(expression: string): number | null {
   try {
@@ -187,6 +190,38 @@ export function CalculatorInput({
     }
   }, [value, isExpressionMode]);
 
+  const dismissKeyboard = useCallback(() => {
+    setShowKeyboard(false);
+    if (isExpressionMode && hasOperator(expression)) {
+      const result = safeEvaluate(expression);
+      if (result !== null) {
+        const rounded = Math.round(result * 100) / 100;
+        const resultStr = rounded.toString();
+        setExpression(resultStr);
+        setIsExpressionMode(false);
+        onChange(resultStr);
+      } else {
+        setIsExpressionMode(false);
+        setExpression(value);
+      }
+    }
+  }, [expression, isExpressionMode, onChange, value]);
+
+  const handleKeyboardOverlayOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        dismissKeyboard();
+      }
+    },
+    [dismissKeyboard],
+  );
+
+  useCloseOnPopStateWhenOpen(
+    showKeyboard && !disabled,
+    handleKeyboardOverlayOpenChange,
+    CALCULATOR_KEYBOARD_HISTORY_KEY,
+  );
+
   // Handle clicks outside to close keyboard
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -195,27 +230,13 @@ export function CalculatorInput({
       const clickedInsideKeyboard = target.closest("[data-calculator-keyboard]") != null;
 
       if (!clickedInsideContainer && !clickedInsideKeyboard) {
-        setShowKeyboard(false);
-        // Auto-evaluate on close if there's a valid expression
-        if (isExpressionMode && hasOperator(expression)) {
-          const result = safeEvaluate(expression);
-          if (result !== null) {
-            const rounded = Math.round(result * 100) / 100;
-            const resultStr = rounded.toString();
-            setExpression(resultStr);
-            setIsExpressionMode(false);
-            onChange(resultStr);
-          } else {
-            setIsExpressionMode(false);
-            setExpression(value);
-          }
-        }
+        dismissKeyboard();
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [expression, isExpressionMode, onChange, value]);
+  }, [dismissKeyboard]);
 
   const previewResult = hasOperator(expression) ? safeEvaluate(expression) : null;
 

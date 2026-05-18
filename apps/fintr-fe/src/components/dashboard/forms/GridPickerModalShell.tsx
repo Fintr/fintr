@@ -3,6 +3,10 @@
 import React, { useCallback, useEffect } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen";
+import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+
+const GRID_PICKER_MODAL_HISTORY_KEY = "__fintrGridPickerModal";
 
 export type GridPickerModalShellProps = {
   open: boolean;
@@ -18,6 +22,16 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
   panelClassName,
 }) => {
   const reduceMotion = useReducedMotion();
+  const {
+    isAndroidNative,
+    safeAreaInsetBottom,
+    hasAndroid3ButtonNav,
+  } = usePlatformDetection();
+
+  const androidPanelBottomInsetPx =
+    isAndroidNative
+      ? Math.max(safeAreaInsetBottom, hasAndroid3ButtonNav ? 48 : 16)
+      : 0;
 
   const handleBackdropPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -27,6 +41,17 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
     },
     [onRequestClose],
   );
+
+  const handleHistoryOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        onRequestClose();
+      }
+    },
+    [onRequestClose],
+  );
+
+  useCloseOnPopStateWhenOpen(open, handleHistoryOpenChange, GRID_PICKER_MODAL_HISTORY_KEY);
 
   useEffect(() => {
     if (!open) {
@@ -56,7 +81,10 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
       {open && (
         <motion.div
           key="grid-picker-backdrop"
-          className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden bg-black/50 pb-[env(safe-area-inset-bottom,0px)]"
+          className={cn(
+            "fixed inset-0 z-50 flex items-end justify-center overflow-hidden bg-black/50",
+            !isAndroidNative && "pb-[env(safe-area-inset-bottom,0px)]",
+          )}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -66,9 +94,15 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
         >
           <motion.div
             className={cn(
-              "mx-auto flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-lg",
+              "relative z-[2] mx-auto flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl shadow-lg",
+              isAndroidNative ? "bg-background" : "bg-white",
               panelClassName,
             )}
+            style={
+              androidPanelBottomInsetPx > 0
+                ? { paddingBottom: androidPanelBottomInsetPx }
+                : undefined
+            }
             initial={reduceMotion ? { opacity: 0 } : { y: "100%" }}
             animate={{ y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { y: "100%" }}
