@@ -27,7 +27,7 @@
     "test:mobile": "playwright test --project='Mobile Chrome - Small' --project='Mobile Safari - iPhone 14'"
   },
   "dependencies": {
-    "@ariakit/react": "^0.4.17",
+    "@ariakit/react": "^0.4.26",
     "@auth0/auth0-react": "^2.3.0",
     "@capacitor/android": "7.4.4",
     "@capacitor/app": "^7.1.0",
