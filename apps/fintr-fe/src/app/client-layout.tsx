@@ -6,9 +6,14 @@ import Providers from "@/lib/providers";
 import { PerformanceMonitor } from "@/components/performance-monitor";
 import CapacitorLoader from "@/components/capacitor-loader";
 import CacheVersionChecker from "@/components/cache-version-checker";
+import ChunkLoadRecovery from "@/components/chunk-load-recovery";
 import ErudaDevTools from "@/components/eruda-devtools";
 import RackMiniProfilerPendingFlush from "@/components/rack-mini-profiler-pending-flush";
 import RackMiniProfilerSpa from "@/components/rack-mini-profiler-spa";
+import {
+  isChunkLoadError,
+  recoverFromChunkLoadError,
+} from "@/utils/chunkLoadError";
 
 type GlobalErrorBoundaryProps = {
   children: ReactNode;
@@ -33,8 +38,11 @@ class GlobalErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    if (recoverFromChunkLoadError(error)) {
+      return;
+    }
+
     console.error("[GlobalErrorBoundary]", error, errorInfo);
-    // Capture error with Sentry including component stack
     Sentry.captureException(error, {
       extra: {
         componentStack: errorInfo.componentStack,
@@ -45,9 +53,11 @@ class GlobalErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      const errorMsg = this.state.error?.message || "Unknown error";
-      const errorStack = this.state.error?.stack || "";
-      
+      const error = this.state.error;
+      const errorMsg = error?.message || "Unknown error";
+      const errorStack = error?.stack || "";
+      const isStaleChunkError = isChunkLoadError(error);
+
       return (
         <div style={{
           display: 'flex',
@@ -63,8 +73,11 @@ class GlobalErrorBoundary extends React.Component<
             Critical Error
           </h1>
           <p style={{ color: '#666', marginBottom: '24px', maxWidth: '400px', textAlign: 'center' }}>
-            {errorMsg}
+            {isStaleChunkError
+              ? "A new version of Fintr is available. Reload the page to continue."
+              : errorMsg}
           </p>
+          {!isStaleChunkError && (
           <pre style={{
             fontSize: '12px',
             backgroundColor: '#f1f1f1',
@@ -78,6 +91,7 @@ class GlobalErrorBoundary extends React.Component<
           }}>
             {errorStack}
           </pre>
+          )}
           <button
             onClick={() => window.location.reload()}
             style={{
@@ -109,6 +123,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <GlobalErrorBoundary>
       <CapacitorLoader />
+      <ChunkLoadRecovery />
       <CacheVersionChecker />
       <ErudaDevTools />
       <RackMiniProfilerPendingFlush />

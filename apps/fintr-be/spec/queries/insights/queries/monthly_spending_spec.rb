@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe Insights::Queries::MonthlySpending, type: :query do
   subject(:query_call_result) { described_class.new(params: query_params).call }
 
-  let!(:space) { create(:space) }
+  let!(:space) { create(:space, currency: "USD") }
   let!(:other_space) { create(:space) }
 
   let!(:income_category) { create(:category, space: space, name: "Salary", category_type: :income) }
@@ -93,15 +93,14 @@ RSpec.describe Insights::Queries::MonthlySpending, type: :query do
 
       it "returns monthly spending data" do
         result = query_call_result.value!
-        expect(result).to be_an(ActiveRecord::Relation)
-        expect(result.to_a.size).to eq(1) # Should only have data for the current month
+        expect(result).to be_an(Array)
+        expect(result.size).to eq(1) # Should only have data for the current month
 
-        monthly_data = result.first # Access the first ActiveRecord object
+        monthly_data = result.first
         expect(monthly_data.month_year.to_date).to eq(start_of_month)
         expect(monthly_data.total_income).to eq(500.00) # Only calculated income, excluding initial balance
         expect(monthly_data.total_expense).to eq(200.00) # Only calculated expense
         expect(monthly_data.net_amount).to eq(300.00) # Income - Expense
-        expect(monthly_data.amount_currency).to eq("USD")
       end
 
       it "filters by calculated state" do
@@ -123,17 +122,70 @@ RSpec.describe Insights::Queries::MonthlySpending, type: :query do
         expect(result.first.total_income).to eq(600.00) # 500 (initial) + 100 (new)
       end
 
-      it "groups by month and currency" do
-        # Create another transaction in the same month but different currency (if applicable, though currency might be fixed)
-        # For now, assume single currency
-        expect(query_call_result.value!.to_a.size).to eq(1)
-      end
-
       it "orders by month_year ascending" do
         # Create a transaction for a previous month to test ordering
         create(:income_transaction, space: space, category: income_category, date: start_of_month.prev_month + 1.day, amount_cents: 10000, amount_currency: "USD", balance_state: :calculated)
         result = described_class.new(params: { space_id: space.id, date_from: start_of_month.prev_month }).call.value!
         expect(result.map { |r| r.month_year.to_date }).to eq([start_of_month.prev_month, start_of_month])
+      end
+    end
+
+    context "when the same month has transactions in multiple currencies" do
+      let!(:php_space) { create(:space, currency: "PHP") }
+      let!(:php_account) { create(:account, space: php_space, balance_currency: "PHP") }
+      let!(:usd_account) { create(:account, space: php_space, balance_currency: "USD") }
+      let!(:php_income_category) { create(:category, space: php_space, name: "Salary", category_type: :income) }
+      let!(:php_expense_category) { create(:category, space: php_space, name: "Rent", category_type: :expense) }
+      let(:usd_expense_date) { start_of_month + 12.days }
+      let(:query_params) { { space_id: php_space.id, date_from: current_date } }
+
+      before do
+        ExchangeRates::ApiExchangeRate.create!(
+          base_currency: ExchangeRates::ApiExchangeRate::BASE_CURRENCY,
+          target_currency: "PHP",
+          rate: 50.0,
+          rate_date: usd_expense_date
+        )
+
+        create(
+          :income_transaction,
+          space: php_space,
+          account: php_account,
+          category: php_income_category,
+          date: start_of_month + 5.days,
+          amount_cents: 100_000,
+          amount_currency: "PHP",
+          balance_state: :calculated
+        )
+        create(
+          :expense_transaction,
+          space: php_space,
+          account: php_account,
+          category: php_expense_category,
+          date: start_of_month + 10.days,
+          amount_cents: 20_000,
+          amount_currency: "PHP",
+          balance_state: :calculated
+        )
+        create(
+          :expense_transaction,
+          space: php_space,
+          account: usd_account,
+          category: php_expense_category,
+          date: usd_expense_date,
+          amount: Money.from_amount(10, "USD"),
+          amount_currency: "USD",
+          balance_state: :calculated
+        )
+      end
+
+      it "returns one row per month with amounts converted to the space currency" do
+        result = query_call_result.value!
+
+        expect(result.size).to eq(1)
+        expect(result.first.total_income).to eq(1_000.00)
+        expect(result.first.total_expense).to eq(700.00)
+        expect(result.first.net_amount).to eq(300.00)
       end
     end
 

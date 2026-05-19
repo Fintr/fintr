@@ -48,9 +48,19 @@ const EarlyErrorDetection = () => {
               return;
             }
             
-            // Skip chunk loading errors - they're handled by Next.js
+            // Stale chunk after deploy: reload once so the user gets the new build
             if (e.target && e.target.tagName === 'SCRIPT' && e.target.src && e.target.src.includes('_next/static/chunks')) {
-              console.warn('[EarlyError] Next.js chunk load error (usually recovers):', e.target.src);
+              try {
+                var key = 'fintr_chunk_reload_at';
+                var last = sessionStorage.getItem(key);
+                var now = Date.now();
+                if (!last || now - Number(last) >= 60000) {
+                  sessionStorage.setItem(key, String(now));
+                  window.location.reload();
+                }
+              } catch (err) {
+                window.location.reload();
+              }
               return;
             }
             

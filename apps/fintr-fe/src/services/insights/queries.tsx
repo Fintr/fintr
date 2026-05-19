@@ -329,7 +329,10 @@ export const fetchInsights = async (
       })) || [],
       weeklySpending: aggregateWeeklySpending(apiData.weeklySpending),
       monthlySpending: apiData.monthlySpending?.map(item => ({
-        month: new Date(item.month_year).toLocaleString('default', { month: 'short' }),
+        month: new Date(item.month_year).toLocaleString('default', {
+          month: 'short',
+          timeZone: 'UTC',
+        }),
         income: item.total_income,
         expenses: -Math.abs(item.total_expense), // Convert to negative for chart visualization
         savings: item.net_amount,

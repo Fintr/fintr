@@ -3,6 +3,14 @@
 module Insights
   module Queries
     class MonthlySpending < BaseQuery
+      Row = Struct.new(
+        :month_year,
+        :total_income,
+        :total_expense,
+        :net_amount,
+        keyword_init: true
+      )
+
       class Contract < Dry::Validation::Contract
         params do
           required(:space_id).value(:string)
@@ -18,18 +26,23 @@ module Insights
       end
 
       def call
-        params    = step validate(params: @params)
-        relation  = step by_space(relation: @relation, params:)
-        relation  = step by_calculated_state(relation:)
-        relation  = step without_initial_balance(relation:)
-        relation  = step by_date(relation:, params:)
-        relation  = step group_by_month(relation:)
-        relation  = step select_data(relation:)
-        relation  = step order(relation:)
-        relation
+        params   = step validate(params: @params)
+        space    = step load_space(params:)
+        relation = step by_space(relation: @relation, params:)
+        relation = step by_calculated_state(relation:)
+        relation = step without_initial_balance(relation:)
+        relation = step by_date(relation:, params:)
+        step aggregate_by_month(relation:, space:)
       end
 
       private
+
+      def load_space(params:)
+        space = Spaces::Space.find_by(id: params[:space_id])
+        return Failure(space_id: "Not found") if space.blank?
+
+        Success(space)
+      end
 
       def by_space(relation:, params:)
         relation = relation.where(space_id: params[:space_id])
@@ -54,28 +67,36 @@ module Insights
         Success(relation)
       end
 
-      def group_by_month(relation:)
-        relation = relation.group("DATE_TRUNC('month', date)", "amount_currency")
-        Success(relation)
-      end
+      def aggregate_by_month(relation:, space:)
+        buckets = Hash.new { |h, k| h[k] = { income: 0.to_d, expense: 0.to_d } }
 
-      def select_data(relation:)
-        relation = relation
-                    .select(
-                      "DATE_TRUNC('month', date) AS month_year",
-                      "SUM(CASE WHEN type = 'Transactions::Income' THEN amount_cents ELSE 0 END) / 100 AS total_income",
-                      "SUM(CASE WHEN type = 'Transactions::Expense' THEN amount_cents ELSE 0 END) / 100 AS total_expense",
-                      "SUM(CASE WHEN type = 'Transactions::Income' THEN amount_cents ELSE -amount_cents END) / 100 AS net_amount",
-                      "amount_currency"
-                    )
-        Success(relation)
+        relation.includes(:space, :currency_conversion).find_each do |transaction|
+          month_start = transaction.date.to_date.beginning_of_month
+          amount = transaction.amount_numeric_for_space_total.to_d
+
+          case transaction.type
+          when "Transactions::Income"
+            buckets[month_start][:income] += amount
+          when "Transactions::Expense"
+            buckets[month_start][:expense] += amount
+          end
+        end
+
+        rows = buckets.sort_by { |(month, _)| month }.map do |month_start, totals|
+          income = totals[:income]
+          expense = totals[:expense]
+
+          Row.new(
+            month_year: month_start.in_time_zone,
+            total_income: income.round(2),
+            total_expense: expense.round(2),
+            net_amount: (income - expense).round(2)
+          )
+        end
+
+        Success(rows)
       rescue StandardError => e
-        Failure(group_by_month: "Failed to group by month", error: e.message)
-      end
-
-      def order(relation:)
-        relation = relation.order(Arel.sql("DATE_TRUNC('month', date) ASC"))
-        Success(relation)
+        Failure(aggregate_by_month: "Failed to aggregate monthly spending", error: e.message)
       end
     end
   end

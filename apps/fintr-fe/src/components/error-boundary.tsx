@@ -1,6 +1,10 @@
 "use client";
 
 import React, { type ReactNode } from "react";
+import {
+  isChunkLoadError,
+  recoverFromChunkLoadError,
+} from "@/utils/chunkLoadError";
 
 type ErrorBoundaryProps = {
   children: ReactNode;
@@ -27,9 +31,12 @@ export class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    if (recoverFromChunkLoadError(error)) {
+      return;
+    }
+
     this.setState({ error, errorInfo });
-    
-    // Log to console for debugging
+
     console.error("[ErrorBoundary] Caught error:", error);
     console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
   }
@@ -68,7 +75,8 @@ export class ErrorBoundary extends React.Component<
     if (this.state.hasError) {
       const errorDetails = this.getErrorDetails();
       const isDev = process.env.NODE_ENV === "development";
-      
+      const isStaleChunkError = isChunkLoadError(this.state.error);
+
       return (
         <div
           className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-center"
@@ -79,14 +87,17 @@ export class ErrorBoundary extends React.Component<
         >
           <p className="text-lg font-semibold">Something went wrong</p>
           <p className="max-w-md text-sm text-muted-foreground">
-            {this.state.error?.message || "Unknown error"}
+            {isStaleChunkError
+              ? "A new version of Fintr is available. Reload the page to continue."
+              : this.state.error?.message || "Unknown error"}
           </p>
           
-          {/* Show error details in development or for reporting */}
+          {!isStaleChunkError && (
           <div className="max-w-full overflow-auto rounded-md bg-gray-100 p-4 text-left text-xs">
             <pre className="whitespace-pre-wrap break-all">{errorDetails}</pre>
           </div>
-          
+          )}
+
           <div className="flex gap-2">
             <button
               type="button"
