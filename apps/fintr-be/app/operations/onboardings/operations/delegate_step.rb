@@ -42,6 +42,8 @@ module Onboardings
           return BudgetsStep.new.call(params)
         when "accounts"
           return AccountsStep.new.call(params)
+        when "skip"
+          return SkipOnboarding.new.call(params)
         end
         Failure("Invalid step for create action")
       end

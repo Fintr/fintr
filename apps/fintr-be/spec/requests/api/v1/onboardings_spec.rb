@@ -106,6 +106,28 @@ RSpec.describe "Api::V1::Onboardings", type: :request do
       end
     end
 
+    context "when step is skip" do
+      let(:mock_operation) { instance_double(Onboardings::Operations::DelegateStep) }
+
+      before do
+        allow(Onboardings::Operations::DelegateStep).to receive(:new).and_return(mock_operation)
+        allow(mock_operation).to receive(:call).and_return(Dry::Monads::Success({}))
+        post api_v1_onboardings_path,
+             params: { step: "skip", space_code: space.code },
+             headers: headers
+      end
+
+      it "returns ok" do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "calls delegate with skip params" do
+        expect(mock_operation).to have_received(:call).with(
+          hash_including(step: "skip")
+        )
+      end
+    end
+
     context "when operation fails" do
       before do
         allow(Onboardings::Operations::DelegateStep).to receive(:new).and_return(

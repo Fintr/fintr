@@ -200,6 +200,32 @@ RSpec.describe Onboardings::Operations::DelegateStep do
           expect(Onboardings::Operations::BudgetsStep).to have_received(:new)
         end
       end
+
+      context "when step is 'skip'" do
+        let(:params) { { user_id: user.id, space_id: "some-space-id", step: "skip", action: "create" }.with_indifferent_access }
+
+        before do
+          skip_onboarding_operation = instance_double(Onboardings::Operations::SkipOnboarding)
+          allow(Onboardings::Operations::SkipOnboarding)
+            .to receive(:new)
+            .and_return(skip_onboarding_operation)
+          allow(skip_onboarding_operation)
+            .to receive(:call)
+            .with(params)
+            .and_return(Dry::Monads::Success({}))
+        end
+
+        it "returns a successful result" do
+          result = delegate_step_operation.call(params)
+          expect(result).to be_success
+          expect(result.value!).to eq({})
+        end
+
+        it "calls SkipOnboarding operation" do
+          delegate_step_operation.call(params)
+          expect(Onboardings::Operations::SkipOnboarding).to have_received(:new)
+        end
+      end
     end
 
     context "when invalid action" do

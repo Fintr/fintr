@@ -99,3 +99,14 @@ export const saveStep3Data = async ({ api, step, accounts }: SaveStep3DataArgs) 
   });
   return response.data;
 };
+
+export interface SkipOnboardingArgs {
+  api: AxiosInstance;
+}
+
+export const skipOnboardingSetup = async ({ api }: SkipOnboardingArgs) => {
+  const response = await api.post('/onboardings', {
+    step: 'skip',
+  });
+  return response.data;
+};

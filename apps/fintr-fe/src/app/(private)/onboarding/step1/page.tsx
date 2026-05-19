@@ -23,7 +23,7 @@ export default function OnboardingStep1() {
         step: "currency",
         currency: selectedCurrency,
       });
-      router.push("/onboarding/step2");
+      router.push("/onboarding/choice");
     } catch (error) {
       console.error("Error saving currency:", error);
       toast.error("Failed to save currency. Please try again.");
