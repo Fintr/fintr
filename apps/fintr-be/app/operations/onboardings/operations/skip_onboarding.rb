@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
 module Onboardings
   module Operations
     class SkipOnboarding < Dry::Operation
@@ -18,10 +19,11 @@ module Onboardings
       end
 
       include FailureHandler
+      include Dry::Operation::Extensions::ActiveRecord
 
       def call(params)
-        ActiveRecord::Base.transaction do
-          params     = step validate(params)
+        params = step validate(params)
+        transaction do
           onboarding = step find_onboarding(params)
           onboarding = step store_default_budgets(onboarding)
           _          = step create_default_categories(params)
