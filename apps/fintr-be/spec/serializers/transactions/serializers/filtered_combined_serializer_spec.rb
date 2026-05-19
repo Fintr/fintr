@@ -366,6 +366,72 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
     end
   end
 
+  context 'when transfer is USD–USD on a PHP space (paginated index row)' do
+    subject(:serialized_hash) { described_class.render_as_hash(combined_record) }
+
+    let(:space) { create(:personal_space, currency: 'PHP') }
+    let(:user) { create(:user) }
+    let(:from_usd) do
+      create(
+        :account,
+        space:,
+        name: 'From USD',
+        balance: Money.from_amount(1000, 'USD'),
+        balance_currency: 'USD'
+      )
+    end
+    let(:to_usd) do
+      create(
+        :account,
+        space:,
+        name: 'To USD',
+        balance: Money.from_amount(500, 'USD'),
+        balance_currency: 'USD'
+      )
+    end
+    let(:rate_date) { Date.new(2024, 6, 1) }
+
+    let!(:transfer) do
+      create(
+        :transfer,
+        user:,
+        space:,
+        from_account: from_usd,
+        to_account: to_usd,
+        date: rate_date,
+        amount: Money.from_amount(500, 'USD'),
+        amount_currency: 'USD'
+      )
+    end
+
+    let(:combined_record) do
+      transfer.reload
+      Transactions::Combined.find_by!(
+        transactable_id: transfer.id,
+        transactable_type: 'Transactions::Transfer'
+      )
+    end
+
+    before do
+      ExchangeRates::ApiExchangeRate.create!(
+        base_currency: ExchangeRates::ApiExchangeRate::BASE_CURRENCY,
+        target_currency: 'PHP',
+        rate: 50.0,
+        rate_date: rate_date
+      )
+    end
+
+    it 'returns space-normalized amount and currency on amount fields' do
+      expect(serialized_hash[:amount]).to eq(25_000.0)
+      expect(serialized_hash[:amount_currency]).to eq('PHP')
+    end
+
+    it 'returns booked USD on booked_* for the list currency toggle' do
+      expect(serialized_hash[:booked_amount]).to eq(500.0)
+      expect(serialized_hash[:booked_amount_currency]).to eq('USD')
+    end
+  end
+
   context 'when transactable has a persisted currency_conversion' do
     subject(:serialized_hash) { described_class.render_as_hash(combined_record) }
 

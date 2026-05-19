@@ -137,6 +137,77 @@ RSpec.describe "Api::V1::Transactions", type: :request do
         expect(totals["transfer"]).to eq(0.0)
       end
     end
+
+    context "when paginating USD–USD transfers on a PHP space" do
+      let!(:usd_from) do
+        create(
+          :account,
+          space:,
+          name: "USD From",
+          balance: Money.from_amount(10_000, "USD"),
+          balance_currency: "USD"
+        )
+      end
+      let!(:usd_to) do
+        create(
+          :account,
+          space:,
+          name: "USD To",
+          balance: Money.from_amount(5_000, "USD"),
+          balance_currency: "USD"
+        )
+      end
+      let(:fx_date) { Date.new(2024, 1, 1) }
+
+      before do
+        ExchangeRates::ApiExchangeRate.create!(
+          base_currency: ExchangeRates::ApiExchangeRate::BASE_CURRENCY,
+          target_currency: "PHP",
+          rate: 50.0,
+          rate_date: fx_date
+        )
+
+        27.times do |i|
+          create(
+            :income_transaction,
+            space:,
+            user:,
+            account: create(:account, space:),
+            category: income_category,
+            date: Date.new(2024, 1, 27) - i,
+            amount_cents: 100
+          )
+        end
+
+        create(
+          :transfer,
+          user:,
+          space:,
+          from_account: usd_from,
+          to_account: usd_to,
+          date: Date.new(2024, 1, 1),
+          amount: Money.from_amount(500, "USD"),
+          amount_currency: "USD"
+        )
+      end
+
+      it "returns converted PHP amount on page 2, not the raw USD numeric as PHP" do
+        get api_v1_transactions_path,
+            params: valid_filter_params.merge(page: 2, per_page: 25),
+            headers: headers
+
+        expect(response).to have_http_status(:ok)
+
+        json = JSON.parse(response.body)
+        transfer_row = json["data"]["transactions"].find { |row| row["type"] == "transfer" }
+
+        expect(transfer_row).to be_present
+        expect(transfer_row["amount"]).to eq(25_000.0)
+        expect(transfer_row["amountCurrency"]).to eq("PHP")
+        expect(transfer_row["bookedAmount"]).to eq(500.0)
+        expect(transfer_row["bookedAmountCurrency"]).to eq("USD")
+      end
+    end
   end
 
   describe "POST /api/v1/transactions" do

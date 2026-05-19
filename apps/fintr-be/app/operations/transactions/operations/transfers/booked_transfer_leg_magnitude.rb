@@ -16,6 +16,21 @@ module Transactions
         class << self
           include Dry::Monads[:result]
 
+          # ISO code for the numeric stored on +transfer.amount+ when +amount_currency+ was
+          # mis-tagged with the space default (e.g. PHP on a USD–USD transfer). +nil+ when the
+          # row should use +transfer.amount_currency+ as-is.
+          def effective_stored_amount_currency(transfer:)
+            return nil unless transfer.is_a?(Transactions::Transfer)
+            return nil if transfer.currency_conversion.present?
+            return nil unless transfer.from_account && transfer.to_account
+
+            shared = transfer.from_account.balance_currency
+            return nil unless shared == transfer.to_account.balance_currency
+            return nil unless transfer.amount_currency != shared
+
+            shared
+          end
+
           def debit_magnitude(transfer:, account:, rate_date:)
             conv = transfer.currency_conversion
 
@@ -79,9 +94,8 @@ module Transactions
           private
 
           def legacy_mislabeled_shared_currency?(transfer:, account:)
-            transfer.currency_conversion.blank? &&
-              transfer.from_account.balance_currency == transfer.to_account.balance_currency &&
-              transfer.amount_currency != account.balance_currency
+            stored = effective_stored_amount_currency(transfer:)
+            stored.present? && stored == account.balance_currency
           end
 
           def convert_amount(amount:, from_currency:, to_currency:, space_id:, date:)

@@ -63,6 +63,36 @@ module Transactions
       transaction_cost
     end
 
+    # List "Show currencies" toggle: expose the shared account currency when it differs from
+    # the space currency, even without a +currency_conversion+ row (e.g. USD–USD on a PHP space).
+    def booked_display_for_list_toggle
+      return super if has_currency_conversion?
+
+      shared_account_booked_display_for_list_toggle
+    end
+
+    def shared_account_booked_display_for_list_toggle
+      shared = ::Transactions::Operations::Transfers::BookedTransferLegMagnitude
+        .effective_stored_amount_currency(transfer: self)
+      shared ||= from_account&.balance_currency if from_account&.balance_currency == to_account&.balance_currency
+      space_ccy = space.currency.presence || "PHP"
+      return nil if shared.blank? || shared == space_ccy
+
+      sign =
+        if value.amount.negative?
+          -1
+        elsif value.amount.positive?
+          1
+        else
+          1
+        end
+
+      {
+        amount: (sign * amount.amount.to_d.abs).round(2),
+        currency: shared.to_s
+      }
+    end
+
     private
 
     def accounts_belong_to_same_space

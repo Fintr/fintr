@@ -20,7 +20,7 @@ services:
       postgres
       -c config_file=/etc/postgresql/postgresql.conf
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fintr_admin -d fintr_development"]
+      test: ["CMD-SHELL", "pg_isready -U fintr_rails -d fintr_development"]
       interval: 30s
       timeout: 10s
       retries: 3

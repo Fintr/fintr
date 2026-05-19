@@ -64,7 +64,7 @@ module ExchangeRates
 
         fx_result = ::ExchangeRates::Operations::AmountInSpaceCurrency.new.call(
           amount: transactable.amount.amount,
-          amount_currency: transactable.amount_currency,
+          amount_currency: booked_amount_currency_for(transactable:),
           date: transactable.date.to_date,
           space: transactable.space,
           strict: strict
@@ -77,6 +77,16 @@ module ExchangeRates
           amount: transactable.amount.amount,
           currency: transactable.amount_currency
         )
+      end
+
+      def booked_amount_currency_for(transactable:)
+        if transactable.is_a?(Transactions::Transfer)
+          resolved = ::Transactions::Operations::Transfers::BookedTransferLegMagnitude
+            .effective_stored_amount_currency(transfer: transactable)
+          return resolved if resolved.present?
+        end
+
+        transactable.amount_currency
       end
 
       def original_in_space_payload(transactable:)

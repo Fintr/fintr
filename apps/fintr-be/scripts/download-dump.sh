@@ -5,43 +5,88 @@
 # 1. Creates a database dump on the remote server and downloads it locally
 # 2. Automatically imports it into the local Docker instance (fintr-pgvectorscale-local)
 #
-# Usage: ./scripts/download-dump.sh [environment]
-# Example: ./scripts/download-dump.sh production
+# Usage (from apps/fintr-be):
+#   ./scripts/download-dump.sh [production|staging]
+#
+# Usage (from monorepo root):
+#   apps/fintr-be/scripts/download-dump.sh [production|staging]
 #
 # Requirements:
-# - Kamal installed and configured
+# - Kamal (use apps/fintr-be/bin/kamal or gem install kamal)
 # - Docker installed and running
 # - Local container 'fintr-pgvectorscale-local' (will be started if stopped)
-# - .env file with DATABASE_PASSWORD (or defaults to 'postgres')
+# - apps/fintr-be/.env with DATABASE_PASSWORD (or defaults to 'postgres')
 #
 # Environment Variables (from .env):
 # - DATABASE_PASSWORD: Password for local database (defaults to 'postgres')
 # - LOCAL_DB_CONTAINER: Container name (defaults to 'fintr-pgvectorscale-local')
 # - LOCAL_DB_NAME: Database name (defaults to 'fintr_development')
-# - LOCAL_DB_USER: Database user (defaults to 'fintr_admin')
+# - LOCAL_DB_USER: Database user (defaults to 'fintr_rails')
 # - LOCAL_DB_PORT: Database port (defaults to '5433')
+# - FINTR_BE_ROOT: Override backend app root (optional)
 
-set -e
+set -euo pipefail
 
-# Get script directory and project root
+# Resolve apps/fintr-be and monorepo roots (same rules as config/deploy.yml and bin/kamal)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Load .env file if it exists
-if [ -f "$PROJECT_ROOT/.env" ]; then
-  echo "📄 Loading environment variables from .env file..."
-  set -a
-  source "$PROJECT_ROOT/.env"
-  set +a
+resolve_fintr_be_root() {
+  if [ -n "${FINTR_BE_ROOT:-}" ]; then
+    cd "${FINTR_BE_ROOT}" && pwd
+    return
+  fi
+
+  if [ -f "$SCRIPT_DIR/../config/deploy.yml" ]; then
+    cd "$SCRIPT_DIR/.." && pwd
+    return
+  fi
+
+  if [ -f "$(pwd)/config/deploy.yml" ]; then
+    pwd
+    return
+  fi
+
+  if [ -f "$(pwd)/apps/fintr-be/config/deploy.yml" ]; then
+    cd "$(pwd)/apps/fintr-be" && pwd
+    return
+  fi
+
+  echo "❌ Could not find apps/fintr-be (config/deploy.yml missing)."
+  echo "   Run from the monorepo root or apps/fintr-be, or set FINTR_BE_ROOT."
+  exit 1
+}
+
+FINTR_BE_ROOT="$(resolve_fintr_be_root)"
+export FINTR_BE_ROOT
+
+# Monorepo root: parent of apps/ when backend lives at apps/fintr-be
+FINTR_BE_PARENT="$(basename "$(dirname "$FINTR_BE_ROOT")")"
+if [ "$FINTR_BE_PARENT" = "apps" ]; then
+  MONOREPO_ROOT="$(cd "$FINTR_BE_ROOT/../.." && pwd)"
+else
+  MONOREPO_ROOT="$FINTR_BE_ROOT"
 fi
 
-# Also try loading .env.local if it exists (common pattern for local overrides)
-if [ -f "$PROJECT_ROOT/.env.local" ]; then
-  echo "📄 Loading environment variables from .env.local file..."
-  set -a
-  source "$PROJECT_ROOT/.env.local"
-  set +a
-fi
+cd "$FINTR_BE_ROOT"
+
+# Back-compat alias used throughout this script
+PROJECT_ROOT="$FINTR_BE_ROOT"
+
+load_env_file() {
+  local env_file="$1"
+  if [ -f "$env_file" ]; then
+    echo "📄 Loading environment variables from ${env_file#$MONOREPO_ROOT/}..."
+    set -a
+    # shellcheck source=/dev/null
+    source "$env_file"
+    set +a
+  fi
+}
+
+# Load env in override order (later files win)
+load_env_file "$MONOREPO_ROOT/.env"
+load_env_file "$FINTR_BE_ROOT/.env"
+load_env_file "$FINTR_BE_ROOT/.env.local"
 
 # Configuration
 ENVIRONMENT="${1:-production}"
@@ -49,7 +94,7 @@ CONFIG_FILE="config/deploy.yml"
 
 if [ "$ENVIRONMENT" != "production" ] && [ "$ENVIRONMENT" != "staging" ]; then
   echo "❌ Error: Environment must be 'production' or 'staging'"
-  echo "Usage: ./scripts/download-dump.sh [production|staging]"
+  echo "Usage: apps/fintr-be/scripts/download-dump.sh [production|staging]"
   exit 1
 fi
 
@@ -58,10 +103,16 @@ if [ "$ENVIRONMENT" == "staging" ]; then
   CONFIG_FILE="config/deploy.staging.yml"
 fi
 
-# Check if Kamal is available
-if ! command -v kamal &> /dev/null; then
+# Prefer monorepo bin/kamal (sets FINTR_BE_ROOT and runs from apps/fintr-be)
+KAMAL_CMD=""
+if [ -x "$FINTR_BE_ROOT/bin/kamal" ]; then
+  KAMAL_CMD="$FINTR_BE_ROOT/bin/kamal"
+elif command -v kamal &> /dev/null; then
+  KAMAL_CMD="kamal"
+else
   echo "❌ Error: Kamal is not installed or not in PATH"
-  echo "Please install Kamal: gem install kamal"
+  echo "   From apps/fintr-be: bundle install && ./bin/kamal version"
+  echo "   Or: gem install kamal"
   exit 1
 fi
 
@@ -76,6 +127,8 @@ fi
 CONFIG_FILE="$CONFIG_FILE_PATH"
 
 echo "📦 Downloading database dump from $ENVIRONMENT environment..."
+echo "   Backend root: $FINTR_BE_ROOT"
+echo "   Monorepo root: $MONOREPO_ROOT"
 echo ""
 
 # Generate dump filename with timestamp
@@ -291,20 +344,6 @@ fi
 
 echo ""
 
-# Step 1c: Clean up remote dump file
-echo "🧹 Step 1c: Cleaning up remote dump file..."
-if kamal accessory exec "$ACCESSORY_NAME" \
-  -c "$CONFIG_FILE" \
-  -- rm -f "$REMOTE_DUMP_PATH" 2>&1 | grep -v "Launching\|INFO\|Finished\|App Host" > /dev/null; then
-  echo "   ✅ Remote dump file cleaned up"
-else
-  echo "   ⚠️  Warning: Could not clean up remote dump file"
-  echo "   You may want to remove it manually: $REMOTE_DUMP_PATH"
-fi
-
-echo ""
-
-echo ""
 echo "🎉 Database dump download completed!"
 echo ""
 echo "📁 Local dump location: $LOCAL_DUMP_PATH"
@@ -315,7 +354,7 @@ echo ""
 # Load local database configuration from environment variables (with defaults)
 LOCAL_CONTAINER="${LOCAL_DB_CONTAINER:-fintr-pgvectorscale-local}"
 LOCAL_DB_NAME="${LOCAL_DB_NAME:-fintr_development}"
-LOCAL_DB_USER="${LOCAL_DB_USER:-fintr_admin}"
+LOCAL_DB_USER="${LOCAL_DB_USER:-fintr_rails}"
 LOCAL_DB_PORT="${LOCAL_DB_PORT:-5433}"
 LOCAL_DB_PASSWORD="${DATABASE_PASSWORD:-postgres}"
 
@@ -326,7 +365,11 @@ echo "   Container: $LOCAL_CONTAINER"
 echo "   Database: $LOCAL_DB_NAME"
 echo "   User: $LOCAL_DB_USER"
 echo "   Port: $LOCAL_DB_PORT"
-echo "   Password: ${LOCAL_DB_PASSWORD:+**** (set)}${LOCAL_DB_PASSWORD:-**** (using default: postgres)}"
+if [ -n "${DATABASE_PASSWORD:-}" ]; then
+  echo "   Password: **** (from DATABASE_PASSWORD)"
+else
+  echo "   Password: **** (default: postgres)"
+fi
 echo ""
 
 # Check if Docker is available
@@ -341,7 +384,8 @@ fi
 # Check if container exists
 if ! docker ps -a --format '{{.Names}}' | grep -q "^${LOCAL_CONTAINER}$"; then
   echo "⚠️  Container '$LOCAL_CONTAINER' not found"
-  echo "   Please start it with: docker compose -f $PROJECT_ROOT/docker-compose.local.yml up -d"
+  echo "   Please start it with:"
+  echo "   cd $FINTR_BE_ROOT && docker compose -f docker-compose.local.yml up -d"
   echo "   Or import manually later:"
   echo "   docker exec -i $LOCAL_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME < $LOCAL_DUMP_PATH"
   echo ""
@@ -620,5 +664,5 @@ echo "   docker exec -it $LOCAL_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NA
 echo "   Or via Rails: rails db"
 echo ""
 echo "💡 If you need to run migrations after import:"
-echo "   rails db:migrate"
+echo "   cd $FINTR_BE_ROOT && bundle exec rails db:migrate"
 echo ""
