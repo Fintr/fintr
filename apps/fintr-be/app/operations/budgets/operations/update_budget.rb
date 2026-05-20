@@ -22,10 +22,13 @@ module Budgets
         params = step validate(params:)
         budget = step find_budget(params:)
         budget = step validate_budget(budget:, params:)
+        _      = step validate_allocation(budget:, params:)
         params = step update_params(params:, budget:)
         budget = step update_budget(budget:, params:)
         budget.reload
       end
+
+      private
 
       def find_budget(params:)
         budget = Budget.find(params[:id])
@@ -38,6 +41,17 @@ module Budgets
         return Failure(id: "budget not for workspace") unless budget.space_id == params[:space_id]
 
         Success(budget)
+      end
+
+      def validate_allocation(budget:, params:)
+        ValidateCategoryBudgetAllocation.new.call(
+          space_id: budget.space_id,
+          category_id: budget.category_id,
+          subcategory_id: budget.subcategory_id,
+          date: budget.date,
+          amount: params[:amount],
+          exclude_budget_id: budget.id
+        )
       end
 
       def update_params(params:, budget:)

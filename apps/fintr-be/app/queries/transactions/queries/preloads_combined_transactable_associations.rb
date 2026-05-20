@@ -18,6 +18,8 @@ module Transactions
           transactable: [
             :currency_conversion,
             :space,
+            :category,
+            :subcategory,
             { files_attachments: :blob },
           ]
         )

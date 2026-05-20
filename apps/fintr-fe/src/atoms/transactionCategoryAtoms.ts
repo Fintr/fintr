@@ -20,6 +20,7 @@ export const categoryValidationErrorsAtom = atom<Record<string, string[]>>({});
 interface CategoryData {
   name: string;
   categoryType: CategoryTypeEnum;
+  parentId?: string | null;
 }
 
 // Interface for createCategory parameters
@@ -96,8 +97,7 @@ export const createCategoryAtom = atom(
       // Reset the category name input
       set(newCategoryNameAtom, '');
       
-      // Return the name of the new category for selection in the form
-      return categoryData.name;
+      return newCategory;
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
         console.error('Error creating category:', error.response?.data);

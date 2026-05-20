@@ -10,6 +10,7 @@ import {
   categoryOptionsAtom
 } from "@/atoms/dashboardAtoms";
 import { useEffect } from "react";
+import { mapApiCategoryTree } from "@/utils/categoryTreeOptions";
 
 export const useDashboardData = (startDate?: string, endDate?: string) => {
   const { api, isAuthenticated } = useAuthApi({
@@ -37,8 +38,12 @@ export const useDashboardData = (startDate?: string, endDate?: string) => {
   useEffect(() => {
     if (isSuccess && data) {
       setAccountOptions(data.accountOptions || []);
-      setExpenseCategoryOptions(data.expenseCategoryOptions || []);
-      setIncomeCategoryOptions(data.incomeCategoryOptions || []);
+      setExpenseCategoryOptions(
+        mapApiCategoryTree(data.expenseCategoryOptions as Array<Record<string, unknown>>),
+      );
+      setIncomeCategoryOptions(
+        mapApiCategoryTree(data.incomeCategoryOptions as Array<Record<string, unknown>>),
+      );
       setCategoryOptions(data.categoryOptions || []);
     }
   }, [isSuccess, data, setAccountOptions, setExpenseCategoryOptions, setIncomeCategoryOptions, setCategoryOptions]);

@@ -1,5 +1,10 @@
 import { AxiosInstance, AxiosError } from 'axios';
 import { CreateTransactionCategoryType } from '@/types/transactionCategoryTypes';
+import {
+  CategoryConversionPreview,
+  CategoryConversionResult,
+  CategoryConversionType,
+} from '@/types/categoryConversionTypes';
 
 
 /**
@@ -90,6 +95,42 @@ export const deleteTransactionCategory = async (
  * @param api - The authenticated API client
  * @returns List of transaction categories with { expenseCategories, incomeCategories }
  */
+export const previewCategoryConversion = async (
+  api: AxiosInstance,
+  categoryId: string,
+  payload: {
+    conversionType: CategoryConversionType;
+    newParentId?: string | null;
+  },
+) => {
+  const response = await api.post(
+    `/transactions/categories/${categoryId}/preview_conversion`,
+    {
+      conversionType: payload.conversionType,
+      newParentId: payload.newParentId ?? null,
+    },
+  );
+  return response.data?.data as CategoryConversionPreview;
+};
+
+export const convertCategoryHierarchy = async (
+  api: AxiosInstance,
+  categoryId: string,
+  payload: {
+    conversionType: CategoryConversionType;
+    newParentId?: string | null;
+  },
+) => {
+  const response = await api.post(
+    `/transactions/categories/${categoryId}/convert`,
+    {
+      conversionType: payload.conversionType,
+      newParentId: payload.newParentId ?? null,
+    },
+  );
+  return response.data?.data as CategoryConversionResult;
+};
+
 export const fetchTransactionCategories = async (api: AxiosInstance) => {
   try {
     const response = await api.get('/transactions/categories');

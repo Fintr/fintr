@@ -11,30 +11,15 @@ module Spaces
       end
 
       field :category_options do |space|
-        space.categories.map do |category|
-          {
-            label: category.name,
-            value: category.name
-          }
-        end
+        serialize_category_tree(space.categories.roots.order(:name))
       end
 
       field :expense_category_options do |space|
-        space.expense_categories.map do |category|
-          {
-            label: category.name,
-            value: category.name
-          }
-        end
+        serialize_category_tree(space.expense_categories.roots.order(:name))
       end
 
       field :income_category_options do |space|
-        space.income_categories.map do |category|
-          {
-            label: category.name,
-            value: category.name
-          }
-        end
+        serialize_category_tree(space.income_categories.roots.order(:name))
       end
 
       field :account_options do |space|
@@ -49,6 +34,27 @@ module Spaces
 
       field :financial_summary do |dashboard_data|
         dashboard_data[:financial_summary]
+      end
+
+      def self.serialize_category_tree(roots)
+        roots.map do |parent|
+          {
+            id: parent.id,
+            label: parent.name,
+            value: parent.id,
+            name: parent.name,
+            parent_id: nil,
+            children: parent.children.order(:name).map do |child|
+              {
+                id: child.id,
+                label: child.name,
+                value: child.id,
+                name: child.name,
+                parent_id: parent.id
+              }
+            end
+          }
+        end
       end
     end
   end

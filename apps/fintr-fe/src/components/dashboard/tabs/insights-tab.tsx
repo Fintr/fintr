@@ -53,7 +53,11 @@ import {
 } from "recharts";
 import { formatCurrency, getColor, getColorByIndex, shouldShowV2Features } from "@/lib/utils";
 import { useMemo, useEffect, useState } from "react";
-import { useAtom } from "jotai";
+import { parseCategoryPickerValue } from "@/types/categoryTreeTypes";
+import { useAtom, useAtomValue } from "jotai";
+import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
+import GridPicker from "@/components/dashboard/forms/GridPicker";
+import { CategoryTypeEnum } from "@/types/categoryTypes";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ScoreTag from "@/components/ui/score-tag";
 import AccountBreakdownComponent from "@/components/dashboard/account-breakdown";
@@ -146,6 +150,14 @@ const InsightsTab = () => {
   const [startDate, setStartDate] = useAtom(dateFilterStartDateAtom);
   const [endDate, setEndDate] = useAtom(dateFilterEndDateAtom);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  const selectedCategoryAssignment = useMemo(
+    () =>
+      selectedCategory === "all"
+        ? null
+        : parseCategoryPickerValue(selectedCategory),
+    [selectedCategory],
+  );
   
   // Local state for filter type selector (single month vs custom)
   const [filterTypeSelector, setFilterTypeSelector] = useState<"single" | "custom">(() => {
@@ -209,7 +221,9 @@ const InsightsTab = () => {
         startYear: monthYear.selectedYear,
         endMonth: monthYear.selectedMonth,
         endYear: monthYear.selectedYear,
-        selectedCategory: "all",
+        selectedCategory: selectedCategory === "all" ? "all" : selectedCategory,
+        selectedCategoryId: selectedCategoryAssignment?.categoryId ?? null,
+        selectedSubcategoryId: selectedCategoryAssignment?.subcategoryId ?? null,
       };
     } else {
       // For range, use monthYear from atoms
@@ -221,10 +235,12 @@ const InsightsTab = () => {
         startYear: monthYear.startYear,
         endMonth: monthYear.endMonth,
         endYear: monthYear.endYear,
-        selectedCategory: "all",
+        selectedCategory: selectedCategory === "all" ? "all" : selectedCategory,
+        selectedCategoryId: selectedCategoryAssignment?.categoryId ?? null,
+        selectedSubcategoryId: selectedCategoryAssignment?.subcategoryId ?? null,
       };
     }
-  }, [filterType, monthYear]);
+  }, [filterType, monthYear, selectedCategory, selectedCategoryAssignment]);
   
   // Fetch insights data from API
   const { data: insightsData, isLoading, isError, refetch } = useInsightsData(getInsightsParams);
@@ -607,6 +623,28 @@ const InsightsTab = () => {
                       />
                     </div>
                   )}
+
+                  <div className="space-y-2 md:min-w-[240px] md:flex-1">
+                    <Label>Category</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={selectedCategory === "all" ? "default" : "outline"}
+                        onClick={() => setSelectedCategory("all")}
+                      >
+                        All
+                      </Button>
+                    </div>
+                    <GridPicker
+                      pickerKind="category"
+                      label="Filter by category"
+                      value={selectedCategory === "all" ? "" : selectedCategory}
+                      onChange={(value) => setSelectedCategory(value || "all")}
+                      categories={expenseCategoryOptions}
+                      categoryType={CategoryTypeEnum.EXPENSE}
+                      allowInlineCreate={false}
+                    />
+                  </div>
                 </div>
 
                 <div className="md:self-end md:ml-auto">

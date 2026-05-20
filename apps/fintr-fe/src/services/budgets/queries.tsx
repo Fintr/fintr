@@ -1,15 +1,7 @@
 import { AxiosInstance } from 'axios';
 import { BudgetIndexInputType, BudgetsPage, Budget, BudgetCategory } from '@/types/budgetTypes';
+import { CategoryTreeOption } from '@/types/categoryTreeTypes';
 
-/**
- * Fetches monthly budgets from the API.
- * 
- * @param api - The authenticated Axios instance.
- * @param options - Query options object with pageParam and queryKey.
- * @param options.pageParam - The page number to fetch (default: 1)
- * @param options.queryKey - Query key array containing [queryName, spaceCode, startDate, endDate]
- * @returns A promise resolving to a BudgetsPage containing budgets and pagination info
- */
 export const fetchBudgetsPage = async (
   api: AxiosInstance,
   {
@@ -20,7 +12,6 @@ export const fetchBudgetsPage = async (
     queryKey: readonly unknown[];
   }
 ): Promise<BudgetsPage> => {
-  // Extract parameters from queryKey
   const [_key, spaceCode, startDate, endDate] = queryKey as [
     string,
     string,
@@ -49,106 +40,216 @@ export const fetchBudgetsPage = async (
     const response = await api.get('/budgets', {
       params: input,
     });
-    
-    // Parse API response - new structure: response.data.data.budgets and response.data.data.summary
+
     const budgets = response?.data?.data?.budgets || [];
     const summary = response?.data?.data?.summary || null;
-    
-    // This endpoint doesn't support pagination anymore, so set pagination fields to null
-    const totalPages = null;
-    const totalCount = null;
-    const nextPage = null;
 
     if (!Array.isArray(budgets)) {
       console.error('Invalid budget data structure received:', response?.data);
       return { budgets: [], summary: null, nextPage: null, totalPages: null, totalCount: null };
     }
 
-    // Transform budgets to ensure totalSpent is a number (API returns it as string)
-    const transformedBudgets = budgets.map((budget: any) => ({
-      ...budget,
-      total_spent: typeof budget.totalSpent === 'string' 
-        ? parseFloat(budget.totalSpent) || 0 
-        : budget.totalSpent || 0,
-      // Map camelCase keys back to snake_case for consistency with existing code
-      category_name: budget.categoryName || budget.category_name,
-      amount_currency: budget.amountCurrency || budget.amount_currency,
+    const transformedBudgets = budgets.map((budget: Record<string, unknown>) => ({
+      id: String(budget.id ?? ''),
+      date: String(budget.date ?? ''),
+      category_name: String(budget.categoryName ?? budget.category_name ?? ''),
+      category_id: String(budget.categoryId ?? budget.category_id ?? ''),
+      subcategory_id: budget.subcategoryId ?? budget.subcategory_id ?? null,
+      total_spent:
+        typeof budget.totalSpent === 'string'
+          ? parseFloat(budget.totalSpent) || 0
+          : Number(budget.totalSpent ?? budget.total_spent ?? 0),
+      amount_currency: String(budget.amountCurrency ?? budget.amount_currency ?? 'PHP'),
+      amount: Number(budget.amount ?? budget.budget ?? 0),
+      has_explicit_parent_budget: Boolean(
+        budget.hasExplicitParentBudget ?? budget.has_explicit_parent_budget,
+      ),
+      parent_only_spent: Number(
+        budget.parentOnlySpent ?? budget.parent_only_spent ?? 0,
+      ),
+      subcategories: Array.isArray(budget.subcategories)
+        ? budget.subcategories.map((sub: Record<string, unknown>) => ({
+            id: String(sub.id ?? ''),
+            subcategoryId: String(sub.subcategoryId ?? sub.subcategory_id ?? ''),
+            subcategoryName: String(
+              sub.subcategoryName ?? sub.subcategory_name ?? sub.name ?? '',
+            ),
+            name: String(sub.subcategoryName ?? sub.subcategory_name ?? sub.name ?? ''),
+            spent: Number(sub.spent ?? sub.total_spent ?? 0),
+            budget: Number(sub.amount ?? sub.budget ?? 0),
+          }))
+        : [],
     }));
 
-    // Transform summary keys from camelCase to snake_case for consistency
-    const transformedSummary = summary ? {
-      total_budget: summary.totalBudget ?? summary.total_budget ?? 0,
-      total_spent: summary.totalSpent ?? summary.total_spent ?? 0,
-      total_spent_percentage: typeof summary.totalSpentPercentage === 'string'
-        ? parseFloat(summary.totalSpentPercentage)
-        : summary.totalSpentPercentage ?? summary.total_spent_percentage ?? null,
-      remaining: summary.remaining ?? 0,
-    } : null;
+    const transformedSummary = summary
+      ? {
+          total_budget: summary.totalBudget ?? summary.total_budget ?? 0,
+          total_spent: summary.totalSpent ?? summary.total_spent ?? 0,
+          total_spent_percentage:
+            summary.totalSpentPercentage ?? summary.total_spent_percentage ?? null,
+          remaining: summary.remaining ?? 0,
+        }
+      : null;
 
-    return { budgets: transformedBudgets, summary: transformedSummary, nextPage, totalPages, totalCount };
+    return {
+      budgets: transformedBudgets,
+      summary: transformedSummary,
+      nextPage: null,
+      totalPages: null,
+      totalCount: null,
+    };
   } catch (error) {
     console.error("Error fetching budgets page:", error);
     throw error;
   }
 };
 
-/**
- * Transforms raw budget data from API into the format expected by BudgetsTab component
- * 
- * @param budgets - Array of budget objects from the API
- * @returns Transformed budget categories with calculated spent and budget amounts
- */
-export const transformBudgetsToCategories = (budgets: Budget[]) => {
+export const enrichCategoriesWithSubcategoryTree = (
+  categories: BudgetCategory[],
+  expenseOptions: CategoryTreeOption[],
+): BudgetCategory[] => {
+  return categories.map((category) => {
+    if (!category.categoryId) {
+      return category;
+    }
+
+    const parentOption = expenseOptions.find(
+      (option) => option.id === category.categoryId,
+    );
+
+    if (!parentOption?.children?.length) {
+      return category;
+    }
+
+    const existingBySubId = new Map(
+      category.subcategories
+        .filter((sub) => sub.subcategoryId)
+        .map((sub) => [String(sub.subcategoryId), sub]),
+    );
+
+    const subcategories = parentOption.children.map((child) => {
+      const existing = existingBySubId.get(child.id);
+
+      if (existing) {
+        return existing;
+      }
+
+      return {
+        id: "",
+        subcategoryId: child.id,
+        subcategoryName: child.label,
+        name: child.label,
+        spent: 0,
+        budget: 0,
+      };
+    });
+
+    return {
+      ...category,
+      subcategories,
+    };
+  });
+};
+
+export const transformBudgetsToCategories = (
+  budgets: Array<Record<string, unknown>>,
+) => {
+  if (budgets.length > 0 && budgets[0].subcategories) {
+    return budgets.map((row) => mapBudgetRowToCategory(row));
+  }
+
   const categoryMap = new Map<string, BudgetCategory>();
-  
-  // Group budgets by category and calculate totals
-  budgets.forEach(budget => {
-    if (!categoryMap.has(budget.category_name)) {
-      categoryMap.set(budget.category_name, {
-        id: budget.id,
-        name: budget.category_name,
-        spent: budget.total_spent || 0,
-        budget: budget.amount,
-        color: getColor(budget.category_name), // Assign a color based on category name
-        subcategories: []
+
+  budgets.forEach((budget) => {
+    const categoryName = String(budget.category_name ?? '');
+    if (!categoryMap.has(categoryName)) {
+      categoryMap.set(categoryName, {
+        id: String(budget.id ?? ''),
+        name: categoryName,
+        spent: Number(budget.total_spent ?? 0),
+        budget: Number(budget.amount ?? 0),
+        color: getColor(categoryName),
+        subcategories: [],
       });
     } else {
-      const category = categoryMap.get(budget.category_name)!;
-      category.spent = (category.spent || 0) + (budget.total_spent || 0);
-      category.budget = (category.budget || 0) + budget.amount;
+      const category = categoryMap.get(categoryName)!;
+      category.spent = (category.spent || 0) + Number(budget.total_spent ?? 0);
+      category.budget = (category.budget || 0) + Number(budget.amount ?? 0);
     }
   });
-  
+
   return Array.from(categoryMap.values());
 };
 
-/**
- * Returns category options that do not already have a budget in the fetched period.
- */
-export const filterCategoryOptionsWithoutBudgets = (
-  options: Array<{ label: string; value: string }>,
-  budgets: Budget[] | undefined,
-): Array<{ label: string; value: string }> => {
-  const usedCategoryNames = new Set(
-    budgets?.map((budget) => budget.category_name) ?? [],
-  );
+const mapBudgetRowToCategory = (row: Record<string, unknown>): BudgetCategory => {
+  const categoryName = String(row.categoryName ?? row.category_name ?? '');
+  const subcategories = Array.isArray(row.subcategories)
+    ? row.subcategories.map((sub: Record<string, unknown>) => ({
+        id: String(sub.id ?? ''),
+        subcategoryId: String(sub.subcategoryId ?? sub.subcategory_id ?? ''),
+        subcategoryName: String(sub.subcategoryName ?? sub.subcategory_name ?? sub.name ?? ''),
+        name: String(sub.subcategoryName ?? sub.subcategory_name ?? sub.name ?? ''),
+        spent: Number(sub.spent ?? sub.total_spent ?? 0),
+        budget: Number(sub.budget ?? sub.amount ?? 0),
+      }))
+    : [];
 
-  return options.filter((option) => !usedCategoryNames.has(option.value));
+  return {
+    id: String(row.id ?? ''),
+    name: categoryName,
+    categoryId: String(row.categoryId ?? row.category_id ?? ''),
+    hasExplicitParentBudget: Boolean(
+      row.hasExplicitParentBudget ?? row.has_explicit_parent_budget,
+    ),
+    parentOnlySpent: Number(row.parentOnlySpent ?? row.parent_only_spent ?? 0),
+    spent: Number(row.totalSpent ?? row.total_spent ?? 0),
+    budget: Number(row.amount ?? row.budget ?? 0),
+    color: getColor(categoryName),
+    subcategories,
+  };
 };
 
-// Helper function to generate consistent colors for categories
+/**
+ * Returns category options that do not already have a parent budget in the fetched period.
+ */
+export const filterCategoryOptionsWithoutBudgets = <
+  T extends { label: string; value: string; id?: string },
+>(
+  options: T[],
+  budgets: Array<Record<string, unknown>> | undefined,
+): T[] => {
+  const usedParentCategoryIds = new Set(
+    budgets
+      ?.filter((budget) => !budget.subcategory_id && !budget.subcategoryId)
+      .map((budget) => String(budget.category_id ?? budget.categoryId ?? ""))
+      .filter(Boolean) ?? [],
+  );
+
+  const usedCategoryNames = new Set(
+    budgets?.map((budget) => String(budget.category_name ?? budget.categoryName ?? "")) ?? [],
+  );
+
+  return options.filter((option) => {
+    const categoryId = option.id ?? option.value;
+
+    if (usedParentCategoryIds.has(categoryId)) {
+      return false;
+    }
+
+    return !usedCategoryNames.has(option.value) && !usedCategoryNames.has(option.label);
+  });
+};
+
 const getColor = (categoryName: string) => {
-  // Generate a color based on the category name for consistency
   const colors = [
     '#0A3D62', '#3c6382', '#60a3bc', '#0c2461',
     '#1e3799', '#4a69bd', '#6a89cc', '#82ccdd',
     '#b8e994', '#78e08f', '#3c40c6', '#575fcf'
   ];
-  
-  // Simple hash function to pick a color
+
   const hash = categoryName.split('').reduce((acc, char) => {
     return acc + char.charCodeAt(0);
   }, 0);
-  
+
   return colors[hash % colors.length];
-}; 
+};

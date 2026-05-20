@@ -41,7 +41,9 @@ export interface BudgetIndexInputType {
 
 // Budget creation payload for POST /budgets
 export interface CreateBudgetPayload {
-  categoryName: string;
+  categoryName?: string;
+  categoryId?: string;
+  subcategoryId?: string | null;
   amount: number;
   date: string;
 }
@@ -50,10 +52,20 @@ export interface CreateBudgetPayload {
 export interface BudgetCategory {
   id: string;
   name: string;
+  categoryId?: string;
+  subcategoryId?: string | null;
+  isSubcategoryBudget?: boolean;
+  parentCategoryName?: string;
+  hasExplicitParentBudget?: boolean;
+  /** Spending on the parent category without a subcategory (only when subcategories exist). */
+  parentOnlySpent?: number;
   spent: number;
   budget: number;
   color: string;
   subcategories: Array<{
+    id?: string;
+    subcategoryId?: string;
+    subcategoryName?: string;
     name: string;
     spent: number;
     budget: number;

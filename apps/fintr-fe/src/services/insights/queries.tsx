@@ -242,6 +242,8 @@ export const fetchInsights = async (
     endMonth?: string;
     endYear?: string;
     selectedCategory?: string;
+    selectedCategoryId?: string | null;
+    selectedSubcategoryId?: string | null;
   }
 ): Promise<InsightsData> => {
   try {
@@ -249,6 +251,8 @@ export const fetchInsights = async (
     let startDate: string;
     let endDate: string;
     let categoryName: string;
+    let categoryId: string | undefined;
+    let subcategoryId: string | undefined;
 
     // Handle date formatting based on filter type
     if (params?.filterType === 'range') {
@@ -274,15 +278,23 @@ export const fetchInsights = async (
       endDate = formatDateForAPI(year, month, getLastDayOfMonth(year, month));
     }
 
-    // Handle category
-    categoryName = params?.selectedCategory === 'all' || !params?.selectedCategory 
-      ? '' 
-      : params.selectedCategory;
+    if (params?.selectedCategoryId) {
+      categoryId = params.selectedCategoryId;
+      subcategoryId = params.selectedSubcategoryId ?? undefined;
+      categoryName = '';
+    } else {
+      categoryName =
+        params?.selectedCategory === 'all' || !params?.selectedCategory
+          ? ''
+          : params.selectedCategory;
+    }
 
     const apiParams = {
       startDate,
       endDate,
       categoryName,
+      categoryId,
+      subcategoryId,
     };
 
     console.log('Sending insights API request with params:', apiParams);

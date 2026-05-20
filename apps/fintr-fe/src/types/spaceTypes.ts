@@ -1,4 +1,5 @@
 import { OptionType, AccountOptionWithCurrency } from "./generalTypes";
+import { CategoryTreeOption } from "./categoryTreeTypes";
 
 export interface FinancialSummary {
   totalIncome: string;
@@ -12,8 +13,8 @@ export interface DashboardData {
   id: string;
   categoryOptions: OptionType[];
   accountOptions: AccountOptionWithCurrency[];
-  expenseCategoryOptions: OptionType[];
-  incomeCategoryOptions: OptionType[];
+  expenseCategoryOptions: CategoryTreeOption[];
+  incomeCategoryOptions: CategoryTreeOption[];
   goalDescription: string;
   financialSummary: FinancialSummary;
 }

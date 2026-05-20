@@ -7,6 +7,8 @@ module Transactions
         params do
           required(:space_code).value(:string)
           optional(:category_name).maybe(:string)
+          optional(:category_id).maybe(:string)
+          optional(:subcategory_id).maybe(:string)
           optional(:account_name).maybe(:string)
           required(:start_date).value(:date)
           required(:end_date).value(:date)
@@ -40,6 +42,12 @@ module Transactions
             key.failure("should be one of #{valid_types}") unless valid_types.include?(value)
           end
         end
+
+        rule(:category_id, :subcategory_id) do
+          if values[:subcategory_id].present? && values[:category_id].blank?
+            key(:category_id).failure("is required when subcategory_id is provided")
+          end
+        end
       end
 
       attr_reader :space
@@ -50,6 +58,15 @@ module Transactions
 
         @space = Spaces::Space.find_by(code: params[:space_code])
         return Failure({ space_code: "Not found" }) if @space.blank?
+
+        if params[:category_id].present?
+          assignment = Transactions::Operations::ResolveCategoryAssignment.new.call(
+            space_id: space.id,
+            category_id: params[:category_id],
+            subcategory_id: params[:subcategory_id]
+          )
+          return Failure(assignment.failure) if assignment.failure?
+        end
 
         Success(contract.to_h)
       end
@@ -75,7 +92,8 @@ module Transactions
         relation = relation.joins(
           "INNER JOIN accounts ON accounts.id = transactions.account_id",
           "INNER JOIN spaces ON spaces.id = transactions.space_id",
-          "INNER JOIN transactions_categories ON transactions_categories.id = transactions.category_id"
+          "INNER JOIN transactions_categories ON transactions_categories.id = transactions.category_id",
+          "LEFT JOIN transactions_categories subcategories ON subcategories.id = transactions.subcategory_id"
         )
         Success(relation)
       rescue StandardError
@@ -94,7 +112,10 @@ module Transactions
           "transactions.type as type",
           "NULL as from_account_name",
           "accounts.name as to_account_name",
-          "transactions_categories.name as category_name"
+          "transactions_categories.name as category_name",
+          "transactions.category_id as category_id",
+          "transactions.subcategory_id as subcategory_id",
+          "subcategories.name as subcategory_name"
         )
         Success(relation)
       rescue StandardError
@@ -102,10 +123,23 @@ module Transactions
       end
 
       def by_category(relation, params)
-        return Success(relation) if ["all", "", nil].include?(params[:category_name])
+        return Success(relation) if category_filter_blank?(params)
+
+        if params[:category_id].present?
+          relation = relation.where(category_id: params[:category_id])
+          if params[:subcategory_id].present?
+            relation = relation.where(subcategory_id: params[:subcategory_id])
+          end
+          return Success(relation)
+        end
 
         relation = relation.where(transactions_categories: { name: params[:category_name] })
         Success(relation)
+      end
+
+      def category_filter_blank?(params)
+        ["all", "", nil].include?(params[:category_name]) &&
+          params[:category_id].blank?
       end
 
       def by_search_query(relation, params)

@@ -46,7 +46,11 @@ module Budgets
         date_range                 = step calculate_date_range(params:)
         monthly_budgets_query      = step fetch_monthly_budgets(params:, date_range:)
         monthly_transactions_query = step fetch_monthly_transactions(params:, date_range:)
-        output                     = step process_monthly_budgets(monthly_budgets_query, monthly_transactions_query)
+        output                     = step process_monthly_budgets(
+                                        monthly_budgets_query,
+                                        monthly_transactions_query,
+                                        date_range:
+                                      )
 
         output
       end
@@ -86,22 +90,35 @@ module Budgets
         )
       end
 
-      def process_monthly_budgets(monthly_budgets_query, monthly_transactions_query)
-        monthly_budgets_array = monthly_budgets_query.to_a
-        # currency_code = monthly_budgets_array.first&.amount_currency
+      def process_monthly_budgets(_monthly_budgets_query, monthly_transactions_query, date_range:)
+        start_month = date_range[:start_date].to_date.beginning_of_month
+        end_month = date_range[:end_date].to_date.end_of_month
+
+        monthly_budgets_array = Budget
+          .where(space_id: space.id, date: start_month..end_month)
+          .includes(:category, :subcategory)
+          .to_a
+
+        budget_rows_result = BuildMonthlyBudgetRows.new.call(
+          budgets: monthly_budgets_array,
+          space_id: space.id,
+          start_date: date_range[:start_date],
+          end_date: date_range[:end_date]
+        )
+        return budget_rows_result unless budget_rows_result.success?
+
+        budget_rows = budget_rows_result.value!
 
         total_budget = monthly_budgets_array.sum(&:amount_cents) / 100.to_d
-
         total_spent = monthly_transactions_query.sum(:amount_cents) / 100.to_d
-
         remaining = total_budget - total_spent
 
         output = {
-          budgets: Budgets::Serializers::MonthlyBudgetsSerializer.render_as_hash(monthly_budgets_array),
+          budgets: budget_rows,
           summary: {
             total_budget: total_budget.round.to_i,
             total_spent: total_spent.round.to_i,
-            total_spent_percentage: (total_spent / total_budget * 100).round(2),
+            total_spent_percentage: total_budget.zero? ? nil : (total_spent / total_budget * 100).round(2),
             remaining: remaining.round.to_i
           }
         }

@@ -39,9 +39,15 @@ module Transactions
         end
 
         def validate_can_delete_category(category:)
-          return Success(category) if category.transactions.empty?
+          if category.children.exists?
+            return Failure(category: "Cannot delete category. It has subcategories.")
+          end
 
-          Failure(category: "Cannot delete category. There are transactions associated with the category.")
+          if category.transactions.exists? || category.subcategory_transactions.exists?
+            return Failure(category: "Cannot delete category. There are transactions associated with the category.")
+          end
+
+          Success(category)
         end
 
         def delete_category(category:)

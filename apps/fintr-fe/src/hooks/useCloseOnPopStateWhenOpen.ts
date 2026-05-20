@@ -14,6 +14,11 @@ export function useCloseOnPopStateWhenOpen(
   historyKey: string,
 ) {
   const historyEntryActiveRef = React.useRef(false)
+  const onOpenChangeRef = React.useRef(onOpenChange)
+
+  React.useEffect(() => {
+    onOpenChangeRef.current = onOpenChange
+  }, [onOpenChange])
 
   React.useEffect(() => {
     if (!open) {
@@ -25,7 +30,7 @@ export function useCloseOnPopStateWhenOpen(
 
     const handlePopState = () => {
       historyEntryActiveRef.current = false
-      onOpenChange(false)
+      onOpenChangeRef.current(false)
     }
 
     window.addEventListener("popstate", handlePopState)
@@ -37,5 +42,5 @@ export function useCloseOnPopStateWhenOpen(
         window.history.back()
       }
     }
-  }, [open, onOpenChange, historyKey])
+  }, [open, historyKey])
 }

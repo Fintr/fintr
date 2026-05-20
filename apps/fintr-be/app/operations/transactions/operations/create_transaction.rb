@@ -17,7 +17,9 @@ module Transactions
           required(:amount).value(:decimal)
           required(:date).value(:date)
           required(:transaction_type).value(:string, included_in?: %w[income expense])
-          required(:category_name).value(:string)
+          optional(:category_name).maybe(:string)
+          optional(:category_id).maybe(:string)
+          optional(:subcategory_id).maybe(:string)
           # When set, has priority over account_id / account_name; rule validates it is kept and matches space_id
           optional(:account).maybe(type?: Transactions::Account)
           optional(:account_id).maybe(:string)
@@ -83,6 +85,18 @@ module Transactions
         end
 
         # account (record) has priority: when present, account_id / account_name are not required
+        rule(:category_name, :category_id) do
+          if values[:category_name].blank? && values[:category_id].blank?
+            key(:category_id).failure("category_id or category_name is required")
+          end
+        end
+
+        rule(:category_id, :subcategory_id) do
+          if values[:subcategory_id].present? && values[:category_id].blank?
+            key(:category_id).failure("is required when subcategory_id is provided")
+          end
+        end
+
         rule(:account, :space_id, :account_id, :account_name) do
           a = values[:account]
           if a.present?
@@ -117,21 +131,18 @@ module Transactions
 
         skip_embedding     = params[:skip_embedding]
         transaction = transaction do
-          category           = step find_category(params: params)
+          assignment         = step resolve_category_assignment(params:)
           account            = step find_account(params: params)
           conversion_data    = step prepare_conversion(params:, account:)
           skip_calculation   = step find_skip_calculation(params: params)
           params             = step transform_params(
                                     params:,
-                                    category:,
+                                    assignment:,
                                     account:,
                                     conversion_data:,
                                     )
           params             = step adjust_amount(params: params)
-          tx                 = step create_transaction(
-                                    params:,
-                                    category:,
-                                    )
+          tx                 = step create_transaction_record(params:)
           _                  = step create_conversion_record(
                                     transaction: tx,
                                     conversion_data:,
@@ -166,15 +177,27 @@ module Transactions
 
       private
 
-      def find_category(params:)
+      def resolve_category_assignment(params:)
+        if params[:category_id].present?
+          return Transactions::Operations::ResolveCategoryAssignment.new.call(
+            space_id: params[:space_id],
+            category_id: params[:category_id],
+            subcategory_id: params[:subcategory_id]
+          )
+        end
+
         category = Transactions::Category.find_by(
           name: params[:category_name],
           space_id: params[:space_id],
-          category_type: params[:transaction_type]
+          category_type: params[:transaction_type],
+          parent_id: nil
         )
         return Failure(category_name: "not found") unless category
 
-        Success(category)
+        Success(
+          category_id: category.id,
+          subcategory_id: nil
+        )
       end
 
       def find_account(params:)
@@ -298,9 +321,10 @@ module Transactions
       end
 
       # Note: Add default values for currencies and repeat_count; use conversion_data when conversion happened
-      def transform_params(params:, category:, account:, conversion_data:)
+      def transform_params(params:, assignment:, account:, conversion_data:)
         params = params.dup
-        params[:category_id] = category.id
+        params[:category_id] = assignment[:category_id]
+        params[:subcategory_id] = assignment[:subcategory_id]
         params[:account_id] = account.id
         params[:repeat_count] = 1 if params[:schedule_type] == "repeat"
         params[:installment_count] = 1 if params[:schedule_type] == "installment"
@@ -311,6 +335,7 @@ module Transactions
         params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
         params.delete(:account)
         params.delete(:category_name)
+        params.delete(:subcategory_id) if params[:subcategory_id].blank?
         params.delete(:account_name)
         params.delete(:transaction_type)
         params.delete(:skip_calculation)
@@ -352,7 +377,8 @@ module Transactions
         Success(params)
       end
 
-      def create_transaction(params:, category:)
+      def create_transaction_record(params:)
+        category = Transactions::Category.find(params[:category_id])
         type_klass = category.income? ? Transactions::Income : Transactions::Expense
         type_klass = Transactions::Draft if params[:draft]
 

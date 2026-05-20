@@ -8,6 +8,8 @@ module Transactions
     belongs_to :user, class_name: "Auth::User"
     belongs_to :space, class_name: "Spaces::Space"
     belongs_to :category, class_name: "Transactions::Category"
+
+    include CategoryAssignable
     belongs_to :account, class_name: "Transactions::Account"
     belongs_to :parent, class_name: "Transactions::Transaction", optional: true
     belongs_to :effective_parent, class_name: "Transactions::Transaction", optional: true

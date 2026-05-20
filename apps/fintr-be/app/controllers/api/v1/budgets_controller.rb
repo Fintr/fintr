@@ -39,7 +39,14 @@ module Api
       end
 
       def create_params
-        params.permit(:category_name, :space_id, :amount, :date)
+        params.permit(
+          :category_name,
+          :category_id,
+          :subcategory_id,
+          :space_id,
+          :amount,
+          :date
+        )
       end
 
       def update_params

@@ -542,6 +542,40 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         end
       end
 
+      context 'when subcategory does not belong to category_id' do
+        subject(:call_operation) { operation.call(mismatched_subcategory_params) }
+
+        let!(:parent_category) { create(:category, :expense, space:, name: 'Travel') }
+        let!(:other_parent) { create(:category, :expense, space:, name: 'Food') }
+        let!(:subcategory) do
+          create(:category, :expense, space:, name: 'Flights', parent: parent_category)
+        end
+
+        let(:mismatched_subcategory_params) do
+          {
+            user_id: user.id,
+            space_id: space.id,
+            amount: 100.0,
+            date: Date.current,
+            description: 'Test',
+            transaction_type: 'expense',
+            category_id: other_parent.id,
+            subcategory_id: subcategory.id,
+            account_name: account.name,
+            schedule_type: 'one_time'
+          }
+        end
+
+        it { is_expected.to be_failure }
+
+        it 'returns a subcategory assignment error' do
+          result = call_operation
+          expect(result.failure[:subcategory_id]).to eq(
+            'must belong to the selected parent category'
+          )
+        end
+      end
+
       # Non-existent category
       context 'when category does not exist' do
         subject(:call_operation) { operation.call(nonexistent_category_params) }

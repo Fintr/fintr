@@ -1,6 +1,7 @@
 import { AxiosInstance } from 'axios';
 import { downloadBlobAsFile } from '@/lib/download-blob';
 import { getUserFacingExportErrorMessage } from '@/lib/user-facing-export-error';
+import { parseCategoryPickerValue } from '@/types/categoryTreeTypes';
 import { TransactionsPage, TransactionIndexInputType } from '@/types/transactionTypes'; // Use path alias
 
 /** Only include min/max in the request when the client intends a bound (backend skips both if absent). */
@@ -109,7 +110,7 @@ export const fetchTransactionsPage = async (
   }
 ): Promise<TransactionsPage> => {
   // Extract other parameters from the queryKey
-  const [_key, spaceCode, categoryName, startDate, endDate, minAmount, maxAmount, searchQuery, accountName] = queryKey as [
+  const [_key, spaceCode, categoryFilter, startDate, endDate, minAmount, maxAmount, searchQuery, accountName] = queryKey as [
     string,
     string,
     string,
@@ -124,16 +125,30 @@ export const fetchTransactionsPage = async (
   const minIncluded = optionalAmountQueryParam(minAmount);
   const maxIncluded = optionalAmountQueryParam(maxAmount);
 
+  const categoryAssignment = parseCategoryPickerValue(
+    categoryFilter && categoryFilter !== "all" ? categoryFilter : "",
+  );
+
   const requestParams = omitUndefinedParams({
     spaceCode,
     startDate,
-    categoryName,
     endDate,
     page: pageParam,
     searchQuery,
     ...(accountName ? { accountName } : {}),
     ...(minIncluded !== undefined ? { minAmount: minIncluded } : {}),
     ...(maxIncluded !== undefined ? { maxAmount: maxIncluded } : {}),
+    ...(categoryAssignment?.categoryId
+      ? { categoryId: categoryAssignment.categoryId }
+      : {}),
+    ...(categoryAssignment?.subcategoryId
+      ? { subcategoryId: categoryAssignment.subcategoryId }
+      : {}),
+    ...(!categoryAssignment?.categoryId &&
+    categoryFilter &&
+    categoryFilter !== "all"
+      ? { categoryName: categoryFilter }
+      : {}),
   });
 
   console.log('Fetching transactions page:', requestParams);

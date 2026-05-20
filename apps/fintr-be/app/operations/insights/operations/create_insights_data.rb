@@ -7,9 +7,11 @@ module Insights
         params do
           required(:space_id).value(:string)
           required(:space_code).value(:string)
-          required(:category_name).value(:string)
           required(:start_date).value(:date)
           required(:end_date).value(:date)
+          optional(:category_name).maybe(:string)
+          optional(:category_id).maybe(:string)
+          optional(:subcategory_id).maybe(:string)
         end
       end
 
@@ -35,26 +37,30 @@ module Insights
         weekly_spending        = step create_weekly_spending(transactions:, space:)
         monthly_spending       = step create_monthly_spending(params:)
         account_breakdown      = step create_account_breakdown(space:)
-        insights_data          =  {
-                                    summary_structure:,
-                                    health_scores:,
-                                    expense_breakdown:,
-                                    weekly_spending:,
-                                    monthly_spending:,
-                                    account_breakdown:
-                                  }
-        insights_data
+        {
+          summary_structure:,
+          health_scores:,
+          expense_breakdown:,
+          weekly_spending:,
+          monthly_spending:,
+          account_breakdown:
+        }
       end
 
       private
 
       def find_transactions(params:)
-        params_for_calculated_transactions = params.merge(balance_state: "calculated", paginate: false, without_initial_balance: true)
+        params_for_calculated_transactions = params.merge(
+          balance_state: "calculated",
+          paginate: false,
+          without_initial_balance: true
+        )
         Transactions::Queries::FilteredTransactions.call(params: params_for_calculated_transactions)
       end
 
       def find_budgets(params:)
-        Budgets::Queries::MonthlyBudgets.call(params: {
+        Budgets::Queries::MonthlyBudgets.call(
+          params: {
             space_code: params[:space_code],
             start_date: params[:start_date],
             end_date: params[:end_date]

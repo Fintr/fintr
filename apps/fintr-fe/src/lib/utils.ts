@@ -215,8 +215,40 @@ export function getNumberColor(value: number): string {
   return "text-gray-500"; // zero
 }
 
+const expressionHasMathOperator = (value: string): boolean => {
+  if (/[+*/]/.test(value)) {
+    return true;
+  }
+
+  return value.indexOf("-", 1) > 0;
+};
+
 // Number formatting utilities
 export const numberFormatting = {
+  stripDelimiters: (value: string): string => value.replace(/,/g, ""),
+
+  formatExpressionForDisplay: (expression: string): string => {
+    const raw = expression.replace(/,/g, "");
+
+    if (raw === "") {
+      return "";
+    }
+
+    if (!expressionHasMathOperator(raw)) {
+      return numberFormatting.formatForInput(raw);
+    }
+
+    return raw
+      .split(/([+\-*/])/)
+      .map((part) => {
+        if (/^[+\-*/]$/.test(part) || part === "") {
+          return part;
+        }
+
+        return numberFormatting.formatForInput(part);
+      })
+      .join("");
+  },
   // Format number with comma delimiters for display
   formatNumber: (value: string | number): string => {
     if (!value && value !== 0) return '';

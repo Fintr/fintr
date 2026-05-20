@@ -10,7 +10,7 @@ RSpec.describe Insights::Operations::CreateInsightsData do
   let(:user) { create(:user) }
   let!(:space) { create(:personal_space, users: [user], code: 'test_space') }
 
-  let(:category_name) { 'Groceries' }
+  let(:category_name) { '' }
   let(:start_date) { Date.new(2023, 1, 1) }
   let(:end_date) { Date.new(2023, 1, 31) }
 
@@ -83,7 +83,12 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
       it 'calls Transactions::Queries::FilteredTransactions with correct params including balance_state' do
         call_operation
-        expected_params = valid_params.merge(balance_state: "calculated", paginate: false, without_initial_balance: true)
+        expected_params = valid_params.merge(
+          balance_state: "calculated",
+          paginate: false,
+          without_initial_balance: true,
+          category_name: nil
+        )
         expect(Transactions::Queries::FilteredTransactions).to have_received(:call).with(params: expected_params)
       end
 
@@ -158,16 +163,6 @@ RSpec.describe Insights::Operations::CreateInsightsData do
 
         it 'returns space_code missing error' do
           expect(subject.failure).to include(space_code: ['is missing'])
-        end
-      end
-
-      context 'when category_name is missing' do
-        subject { operation.call(valid_params.except(:category_name)) }
-
-        it { is_expected.to be_failure }
-
-        it 'returns category_name missing error' do
-          expect(subject.failure).to include(category_name: ['is missing'])
         end
       end
 

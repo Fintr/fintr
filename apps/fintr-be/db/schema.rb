@@ -10,11 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_16_121000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_20_120000) do
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
-  enable_extension "timescaledb"
   enable_extension "timescaledb_toolkit"
   enable_extension "vector"
   enable_extension "vectorscale"
@@ -165,12 +165,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_121000) do
     t.uuid "space_id", null: false
     t.bigint "spent_cents", default: 0, null: false
     t.string "spent_currency", default: "PHP", null: false
+    t.uuid "subcategory_id"
     t.datetime "updated_at", null: false
     t.index ["amount_cents", "amount_currency"], name: "index_budgets_on_amount_cents_and_amount_currency"
     t.index ["category_id"], name: "index_budgets_on_category_id"
-    t.index ["space_id", "category_id", "date"], name: "index_budgets_on_space_id_and_category_id_and_date", unique: true
+    t.index ["space_id", "category_id", "date"], name: "index_budgets_parent_per_month", unique: true, where: "(subcategory_id IS NULL)"
+    t.index ["space_id", "category_id", "subcategory_id", "date"], name: "index_budgets_sub_per_month", unique: true, where: "(subcategory_id IS NOT NULL)"
     t.index ["space_id"], name: "index_budgets_on_space_id"
     t.index ["spent_cents", "spent_currency"], name: "index_budgets_on_spent_cents_and_spent_currency"
+    t.index ["subcategory_id"], name: "index_budgets_on_subcategory_id"
   end
 
   create_table "crm_ticket_responses", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -579,6 +582,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_121000) do
     t.jsonb "schedule", default: {}
     t.enum "schedule_type", null: false, enum_type: "schedule_type"
     t.uuid "space_id"
+    t.uuid "subcategory_id"
     t.uuid "transfer_id"
     t.string "type", null: false
     t.datetime "updated_at", null: false
@@ -591,6 +595,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_121000) do
     t.index ["parent_id", "date"], name: "index_transactions_on_parent_id_and_date"
     t.index ["parent_id"], name: "index_transactions_on_parent_id"
     t.index ["space_id"], name: "index_transactions_on_space_id"
+    t.index ["subcategory_id"], name: "index_transactions_on_subcategory_id"
     t.index ["transfer_id"], name: "index_transactions_on_transfer_id"
     t.index ["user_id", "date", "type"], name: "index_transactions_on_user_id_and_date_and_type"
     t.index ["user_id"], name: "index_transactions_on_user_id"
@@ -600,9 +605,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_121000) do
     t.enum "category_type", null: false, enum_type: "category_type_enum"
     t.datetime "created_at", null: false
     t.string "name", null: false
+    t.uuid "parent_id"
     t.uuid "space_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["space_id", "category_type", "name"], name: "index_tx_categories_on_space_type_name", unique: true
+    t.index ["parent_id"], name: "index_transactions_categories_on_parent_id"
+    t.index ["space_id", "category_type", "name"], name: "index_tx_categories_roots_on_space_type_name", unique: true, where: "(parent_id IS NULL)"
+    t.index ["space_id", "category_type", "parent_id", "name"], name: "index_tx_categories_subs_on_space_type_parent_name", unique: true, where: "(parent_id IS NOT NULL)"
     t.index ["space_id"], name: "index_transactions_categories_on_space_id"
   end
 
@@ -690,6 +698,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_121000) do
   add_foreign_key "ai_usages", "users"
   add_foreign_key "budgets", "spaces"
   add_foreign_key "budgets", "transactions_categories", column: "category_id"
+  add_foreign_key "budgets", "transactions_categories", column: "subcategory_id"
   add_foreign_key "crm_ticket_responses", "crm_tickets", column: "ticket_id"
   add_foreign_key "crm_ticket_responses", "users", column: "responder_id"
   add_foreign_key "crm_tickets", "spaces"
@@ -730,9 +739,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_121000) do
   add_foreign_key "transactions", "transactions", column: "effective_parent_id"
   add_foreign_key "transactions", "transactions", column: "parent_id"
   add_foreign_key "transactions", "transactions_categories", column: "category_id"
+  add_foreign_key "transactions", "transactions_categories", column: "subcategory_id"
   add_foreign_key "transactions", "transfers"
   add_foreign_key "transactions", "users"
   add_foreign_key "transactions_categories", "spaces"
+  add_foreign_key "transactions_categories", "transactions_categories", column: "parent_id"
   add_foreign_key "transfers", "accounts", column: "from_account_id"
   add_foreign_key "transfers", "accounts", column: "to_account_id"
   add_foreign_key "transfers", "spaces"

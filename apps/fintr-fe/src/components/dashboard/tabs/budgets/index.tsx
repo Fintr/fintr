@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardHeader,
@@ -10,7 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Filter } from "lucide-react";
-import { transformBudgetsToCategories } from "@/services/budgets/queries";
+import {
+  enrichCategoriesWithSubcategoryTree,
+  transformBudgetsToCategories,
+} from "@/services/budgets/queries";
+import { BudgetCategory } from "@/types/budgetTypes";
 import { z } from "zod";
 import { formatCurrency, getProgressColor } from "@/lib/utils";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
@@ -18,7 +22,8 @@ import { NewBudgetDialog } from "./new-budget-dialog";
 import { EditBudgetDialog } from "./edit-budget-dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { DeleteBudgetDialog } from "./delete-budget-dialog";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
+import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
 import { dateFilterStartDateAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom, dateFilterTypeAtom, monthYearToDateRange } from "@/atoms/dateFilterAtoms";
 import {
   Select,
@@ -178,9 +183,20 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   const formattedBudgetPercentage = Number(
     isNaN(budgetUsagePercentage) ? 0 : budgetUsagePercentage
   ).toFixed(1);
-  const categories = budgetsData?.budgets
-    ? transformBudgetsToCategories(budgetsData.budgets)
-    : [];
+  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+
+  const categories = useMemo(() => {
+    if (!budgetsData?.budgets) {
+      return [];
+    }
+
+    const transformed = transformBudgetsToCategories(budgetsData.budgets);
+
+    return enrichCategoriesWithSubcategoryTree(
+      transformed,
+      expenseCategoryOptions,
+    );
+  }, [budgetsData?.budgets, expenseCategoryOptions]);
 
   // Handle month change
   const handleMonthChange = (value: string) => {
@@ -323,6 +339,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
             budgetsData={budgetsData}
             createBudgetMutation={createBudgetMutation}
             api={api}
+            budgetMonthDate={appliedStartDate}
           />
         </div>
       </CardHeader>
@@ -543,7 +560,11 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                         <div className="flex space-x-2 md:hidden">
                           <EditBudgetDialog
                             budget={category}
+                            budgetsData={budgetsData}
                             updateBudgetMutation={updateBudgetMutation}
+                            createBudgetMutation={createBudgetMutation}
+                            budgetMonthDate={appliedStartDate}
+                            spaceCurrency={spaceCurrency}
                           />
                           <DeleteBudgetDialog
                             budget={category}
@@ -576,7 +597,11 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                         <div className="hidden md:flex space-x-2">
                           <EditBudgetDialog
                             budget={category}
+                            budgetsData={budgetsData}
                             updateBudgetMutation={updateBudgetMutation}
+                            createBudgetMutation={createBudgetMutation}
+                            budgetMonthDate={appliedStartDate}
+                            spaceCurrency={spaceCurrency}
                           />
                           <DeleteBudgetDialog
                             budget={category}
@@ -598,6 +623,64 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                       }
                     />
                   </div>
+
+                  {category.subcategories.length > 0 && (
+                    <div className="space-y-3 border-t pt-3">
+                      {(category.parentOnlySpent ?? 0) > 0 && (
+                        <div className="space-y-1 pl-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium text-primary/80">
+                              Parent only
+                            </span>
+                            <span className="text-primary/70">
+                              {formatCurrency(
+                                category.parentOnlySpent ?? 0,
+                                spaceCurrency,
+                              )}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Expenses in this category without a subcategory
+                          </p>
+                        </div>
+                      )}
+                      {category.subcategories.map((sub) => {
+                        const subPercentage =
+                          sub.budget > 0
+                            ? (sub.spent / sub.budget) * 100
+                            : sub.spent > 0
+                              ? 100
+                              : 0;
+
+                        return (
+                          <div key={sub.subcategoryId ?? sub.name} className="space-y-1 pl-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-primary/80">
+                                {sub.subcategoryName ?? sub.name}
+                              </span>
+                              <span className="text-primary/70">
+                                {sub.id ? (
+                                  <>
+                                    {formatCurrency(sub.spent, spaceCurrency)} /{" "}
+                                    {formatCurrency(sub.budget, spaceCurrency)}
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    Not set
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            <Progress
+                              value={subPercentage > 100 ? 100 : subPercentage}
+                              className="h-1.5 bg-gray-100"
+                              indicatorClassName={getProgressColor(subPercentage, "bg")}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })

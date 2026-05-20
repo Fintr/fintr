@@ -26,6 +26,10 @@ import { createTransaction, updateTransaction, deleteTransaction } from "@/servi
 import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
 import GridPicker from "./GridPicker";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
+import {
+  categoryPickerValueFromTransaction,
+  parseCategoryPickerValue,
+} from "@/types/categoryTreeTypes";
 import { UpdateTransactionType } from "@/types/transactionTypes";
 import NotesAutocomplete from "@/components/ui/notes-autocomplete";
 import FileUploadField from "./FileUploadField";
@@ -376,7 +380,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       setFormState({
         amount: initialAmount,
         description: initialData.description || "",
-        categoryName: initialData.categoryName || "",
+        categoryName: categoryPickerValueFromTransaction({
+          categoryId: initialData.categoryId,
+          subcategoryId: initialData.subcategoryId,
+          categoryName: initialData.categoryName,
+        }),
         accountName: initialData.accountName || "",
         scheduleType: initialData.scheduleType || ScheduleTypeEnum.ONE_TIME,
         repeatInterval: initialData.repeatInterval || "",
@@ -518,11 +526,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       const shouldUploadFile = isUploadableFile(formState.file);
 
       // Create: amount in space currency. Edit with conversion: amount in original_currency + metadata so backend converts to account.
+      const categoryAssignment = parseCategoryPickerValue(formState.categoryName);
+
       const transactionData = {
         amount: numberFormatting.cleanForBackend(formState.amount),
         description: formState.description || "",
         transactionType: "expense" as const,
         categoryName: formState.categoryName,
+        ...(categoryAssignment && {
+          categoryId: categoryAssignment.categoryId,
+          subcategoryId: categoryAssignment.subcategoryId ?? undefined,
+        }),
         accountName: formState.accountName,
         date: format(date, "yyyy-MM-dd"),
         scheduleType: formState.scheduleType,
@@ -787,41 +801,42 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   return (
     <form ref={formRef} onSubmit={handleSubmit}>
       <div className="space-y-4">
-        {/* Receipt Drafts Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowDrafts(!showDrafts)}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground"
-            >
-              <Receipt className="w-4 h-4 mr-2" />
-              Receipt Drafts
-            </Button>
-            
-            {draftId && (
+        {!isEditMode && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
               <Button
                 type="button"
-                variant="destructive"
-                onClick={handleDeleteDraft}
-                className="bg-destructive text-white hover:text-white"
+                variant="outline"
+                onClick={() => setShowDrafts(!showDrafts)}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground"
               >
-                Delete Draft
+                <Receipt className="w-4 h-4 mr-2" />
+                Receipt Drafts
               </Button>
+
+              {draftId && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleDeleteDraft}
+                  className="bg-destructive text-white hover:text-white"
+                >
+                  Delete Draft
+                </Button>
+              )}
+            </div>
+
+            {showDrafts && (
+              <div className="border rounded-lg p-3 bg-muted/30">
+                <DraftItems
+                  drafts={drafts.slice(0, 5)}
+                  onDraftSelect={handleDraftSelect}
+                  onDraftsInvalidate={handleDraftsInvalidate}
+                />
+              </div>
             )}
           </div>
-          
-          {showDrafts && (
-            <div className="border rounded-lg p-3 bg-muted/30">
-              <DraftItems
-                drafts={drafts.slice(0, 5)} // Show at most 5 drafts
-                onDraftSelect={handleDraftSelect}
-                onDraftsInvalidate={handleDraftsInvalidate}
-              />
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Date + Amount: on mobile stack (Date row, then Amount row); on desktop side-by-side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

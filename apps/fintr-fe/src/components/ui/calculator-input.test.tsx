@@ -172,6 +172,114 @@ describe("CalculatorInput", () => {
       expect(keyboard).toBeTruthy();
     });
 
+    it("uses bottom-sheet layout inside a modal with a value display", async () => {
+      await act(async () => {
+        render(
+          <div data-modal-content>
+            <CalculatorInput
+              value="250"
+              onChange={mockOnChange}
+              placeholder="0.00"
+            />
+          </div>,
+        );
+      });
+
+      const input = screen.getByPlaceholderText("0.00");
+      fireEvent.focus(input);
+
+      const keyboard = document.body.querySelector("[data-calculator-keyboard]");
+      expect(keyboard).toBeTruthy();
+      expect(keyboard?.className).toContain("rounded-t-xl");
+      expect(keyboard?.textContent).toContain("250");
+    });
+
+    it("displays thousand separators for plain amounts", () => {
+      render(
+        <CalculatorInput
+          value="12345.67"
+          onChange={mockOnChange}
+          placeholder="0.00"
+        />,
+      );
+
+      expect(screen.getByDisplayValue("12,345.67")).toBeInTheDocument();
+    });
+
+    it("always reserves the preview line to avoid layout shift", async () => {
+      await act(async () => {
+        render(
+          <CalculatorInput
+            value=""
+            onChange={mockOnChange}
+            placeholder="0.00"
+          />,
+        );
+      });
+
+      fireEvent.focus(screen.getByPlaceholderText("0.00"));
+
+      const keyboard = document.body.querySelector("[data-calculator-keyboard]");
+      const previewLines = keyboard?.querySelectorAll(
+        "p.text-muted-foreground",
+      );
+
+      expect(previewLines?.length).toBe(1);
+      expect(previewLines?.[0]?.textContent).toBe("= 0.00");
+    });
+
+    it("shows a live total for plain numbers without a formula", async () => {
+      await act(async () => {
+        render(
+          <CalculatorInput
+            value="5000"
+            onChange={mockOnChange}
+            placeholder="0.00"
+          />,
+        );
+      });
+
+      fireEvent.focus(screen.getByPlaceholderText("0.00"));
+
+      const keyboard = document.body.querySelector("[data-calculator-keyboard]");
+      expect(keyboard?.textContent).toContain("= 5,000");
+    });
+
+    it("formats calculator expressions with delimiters on the keyboard display", async () => {
+      await act(async () => {
+        render(
+          <CalculatorInput
+            value=""
+            onChange={mockOnChange}
+            placeholder="0.00"
+          />,
+        );
+      });
+
+      const input = screen.getByPlaceholderText("0.00");
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: "10000+500" } });
+
+      const keyboard = document.body.querySelector("[data-calculator-keyboard]");
+      expect(keyboard?.textContent).toContain("10,000+500");
+      expect(keyboard?.textContent).toContain("= 10,500");
+    });
+
+    it("passes unformatted values to onChange", () => {
+      render(
+        <CalculatorInput
+          value=""
+          onChange={mockOnChange}
+          placeholder="0.00"
+        />,
+      );
+
+      const input = screen.getByPlaceholderText("0.00");
+      fireEvent.change(input, { target: { value: "12,345" } });
+
+      expect(mockOnChange).toHaveBeenCalledWith("12345");
+    });
+
     it("calls onChange when typing numbers", () => {
       render(
         <CalculatorInput

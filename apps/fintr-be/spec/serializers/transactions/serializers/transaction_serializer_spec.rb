@@ -41,4 +41,37 @@ RSpec.describe Transactions::Serializers::TransactionSerializer do
     expect(payload[:currency]).to be_a(String)
     expect(payload[:currency].length).to eq(3)
   end
+
+  context "with a subcategory" do
+    let(:subcategory) do
+      create(
+        :category,
+        :subcategory,
+        space: space,
+        parent: category,
+        name: "Flights",
+        category_type: "expense",
+      )
+    end
+    let(:transaction) do
+      create(
+        :expense_transaction,
+        :one_time,
+        space: space,
+        account: usd_account,
+        category: category,
+        subcategory: subcategory,
+        amount: 50,
+        amount_currency: "USD",
+        balance_currency: "USD",
+      )
+    end
+
+    it "serializes parent and subcategory assignment fields" do
+      expect(serialized_hash[:category_id]).to eq(category.id)
+      expect(serialized_hash[:category_name]).to eq(category.name)
+      expect(serialized_hash[:subcategory_id]).to eq(subcategory.id)
+      expect(serialized_hash[:subcategory_name]).to eq("Flights")
+    end
+  end
 end

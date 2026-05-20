@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Label } from "../../ui/label";
 import { Button } from "../../ui/button";
-import { Edit2, X, Plus } from "lucide-react";
+import { Edit2, X, Plus, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CategoryCreationForm from "./CategoryCreationForm";
 import AccountCreationForm from "./AccountCreationForm";
@@ -11,6 +11,15 @@ import { CategoryTypeEnum } from "@/types/categoryTypes";
 import type { AccountOptionWithCurrency } from "@/types/generalTypes";
 import { ACCOUNT_EDIT_LOCK_DISABLED_HINT } from "@/utils/accountSelectEditLocks";
 import { GridPickerModalShell } from "./GridPickerModalShell";
+import { CategoryTreeOption } from "@/types/categoryTreeTypes";
+import {
+  formatCategoryPickerValue,
+  getCategoryDisplayLabel,
+  getCategoryTriggerDisplay,
+  parseCategoryPickerValue,
+} from "@/types/categoryTreeTypes";
+import { gridPickerSubcategoryCountLabel } from "@/utils/categoryManagement";
+import { isCategoryTree } from "@/utils/categoryTreeOptions";
 
 type GridPickerSharedProps = {
   label: string;
@@ -24,13 +33,20 @@ type GridPickerSharedProps = {
   emptyMessage?: string;
   "data-testid"?: string;
   allowInlineCreate?: boolean;
+  /** When set, controls the picker sheet open state (e.g. standalone category step). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Hide the trigger button; use with controlled `open` for flows that open the sheet elsewhere. */
+  hideTrigger?: boolean;
+  /** Called after a value is chosen and the sheet closes. */
+  onAfterSelect?: () => void;
 };
 
 export type GridPickerCategoryProps = GridPickerSharedProps & {
   pickerKind: "category";
-  categories: Array<{ label: string; value: string }>;
+  categories: CategoryTreeOption[] | Array<{ label: string; value: string }>;
   categoryType: CategoryTypeEnum;
-  onCategoryCreated?: (categoryName: string) => void;
+  onCategoryCreated?: (value: string) => void;
 };
 
 export type GridPickerAccountProps = GridPickerSharedProps & {
@@ -72,18 +88,48 @@ const defaultDataTestId = (props: GridPickerProps): string | undefined => {
 };
 
 const GridPicker: React.FC<GridPickerProps> = (props) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const isControlledOpen = props.open !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = isControlledOpen ? Boolean(props.open) : internalOpen;
   const [showCreation, setShowCreation] = useState(false);
-
-  const options =
-    props.pickerKind === "category" ? props.categories : props.accounts;
+  const [pickerStep, setPickerStep] = useState<"parents" | "children">("parents");
+  const [selectedParent, setSelectedParent] = useState<CategoryTreeOption | null>(
+    null,
+  );
 
   const allowInlineCreate = props.allowInlineCreate ?? true;
-
+  const hideTrigger = props.hideTrigger ?? false;
   const triggerId = defaultTriggerId(props);
   const placeholder = defaultPlaceholder(props);
   const modalTitle = defaultModalTitle(props);
   const dataTestId = defaultDataTestId(props);
+
+  const categoryTree = useMemo(() => {
+    if (props.pickerKind !== "category") {
+      return [] as CategoryTreeOption[];
+    }
+
+    if (isCategoryTree(props.categories)) {
+      return props.categories;
+    }
+
+    return props.categories.map((option) => ({
+      id: option.value,
+      label: option.label,
+      value: option.value,
+      name: option.label,
+      parentId: null,
+      children: [],
+    }));
+  }, [props]);
+
+  const hierarchicalCategoryPicker =
+    props.pickerKind === "category" && isCategoryTree(props.categories);
+
+  const options =
+    props.pickerKind === "category"
+      ? categoryTree
+      : props.accounts;
 
   const disabledOptionTitle =
     props.pickerKind === "account"
@@ -99,28 +145,113 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
     emptyMessage,
   } = props;
 
-  const handleSelect = (itemValue: string) => {
-    onChange(itemValue);
-    setIsOpen(false);
+  const setPickerOpen = useCallback(
+    (nextOpen: boolean) => {
+      props.onOpenChange?.(nextOpen);
+      if (!isControlledOpen) {
+        setInternalOpen(nextOpen);
+      }
+    },
+    [isControlledOpen, props],
+  );
+
+  const closeModal = useCallback(() => {
+    setPickerOpen(false);
+    setShowCreation(false);
+    setPickerStep("parents");
+    setSelectedParent(null);
+  }, [setPickerOpen]);
+
+  const completeSelection = useCallback(
+    (nextValue: string) => {
+      onChange(nextValue);
+      closeModal();
+      props.onAfterSelect?.();
+    },
+    [onChange, closeModal, props],
+  );
+
+  const handleSelectParent = (parent: CategoryTreeOption, parentOnly: boolean) => {
+    if (parentOnly || (parent.children?.length ?? 0) === 0) {
+      completeSelection(
+        formatCategoryPickerValue({
+          categoryId: parent.id,
+          subcategoryId: null,
+        }),
+      );
+      return;
+    }
+
+    setSelectedParent(parent);
+    setPickerStep("children");
   };
 
-  const handleCreated = (name: string) => {
-    if (name) {
-      onChange(name);
-      if (props.pickerKind === "category" && props.onCategoryCreated) {
-        props.onCategoryCreated(name);
+  const handleSelectChild = (parent: CategoryTreeOption, childId: string | null) => {
+    completeSelection(
+      formatCategoryPickerValue({
+        categoryId: parent.id,
+        subcategoryId: childId,
+      }),
+    );
+  };
+
+  const handleSelect = (itemValue: string) => {
+    completeSelection(itemValue);
+  };
+
+  const handleCreated = (name: string, createdId?: string) => {
+    if (props.pickerKind === "category") {
+      const parent = selectedParent;
+      const createdValue = createdId
+        ? formatCategoryPickerValue({
+            categoryId: parent?.id ?? createdId,
+            subcategoryId: parent ? createdId : null,
+          })
+        : name;
+
+      onChange(createdValue);
+      if (props.onCategoryCreated) {
+        props.onCategoryCreated(createdValue);
       }
-      if (props.pickerKind === "account" && props.onAccountCreated) {
+      props.onAfterSelect?.();
+    } else if (name) {
+      onChange(name);
+      if (props.onAccountCreated) {
         props.onAccountCreated(name);
       }
+      props.onAfterSelect?.();
     }
+
     setShowCreation(false);
-    setIsOpen(false);
+    closeModal();
   };
 
-  const selected = options.find((item) => item.value === value);
-  const displayLabel =
-    value && selected ? selected.label : value ? value : "";
+  const displayLabel = useMemo(() => {
+    if (!value) {
+      return "";
+    }
+
+    if (props.pickerKind === "category" && hierarchicalCategoryPicker) {
+      return getCategoryDisplayLabel(value, categoryTree);
+    }
+
+    const selected = (options as Array<{ label: string; value: string }>).find(
+      (item) => item.value === value,
+    );
+    return selected?.label ?? value;
+  }, [value, props.pickerKind, hierarchicalCategoryPicker, categoryTree, options]);
+
+  const categoryTriggerDisplay = useMemo(() => {
+    if (
+      !value ||
+      props.pickerKind !== "category" ||
+      !hierarchicalCategoryPicker
+    ) {
+      return null;
+    }
+
+    return getCategoryTriggerDisplay(value, categoryTree);
+  }, [value, props.pickerKind, hierarchicalCategoryPicker, categoryTree]);
 
   const optionLocked = (option: { label: string; value: string }): boolean => {
     if (props.pickerKind !== "account" || !props.isOptionDisabled) {
@@ -129,52 +260,136 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
     return props.isOptionDisabled(option as AccountOptionWithCurrency);
   };
 
-  const closeModal = useCallback(() => {
-    setIsOpen(false);
-    setShowCreation(false);
-  }, []);
+  const openModal = () => {
+    if (disabled) {
+      return;
+    }
+
+    setPickerStep("parents");
+    setSelectedParent(null);
+    setPickerOpen(true);
+  };
 
   const backLabel =
     props.pickerKind === "category" ? "Back to Categories" : "Back to Accounts";
 
-  return (
-    <div className="space-y-2 min-w-0">
-      <Label htmlFor={triggerId} className="text-sm">
-        {label}
-      </Label>
+  const renderCategoryGrid = () => {
+    if (pickerStep === "children" && selectedParent) {
+      const children = selectedParent.children ?? [];
 
-      <Button
-        id={triggerId}
-        type="button"
-        variant="outline"
-        onClick={() => !disabled && setIsOpen(true)}
-        disabled={disabled}
-        title={value ? displayLabel : undefined}
-        data-testid={dataTestId}
-        className={cn(
-          "h-10 w-full min-w-0 justify-start gap-0 overflow-hidden px-3 text-left text-sm font-normal",
-          !value && "text-muted-foreground",
-          error && error.length > 0 && "border-red-800 focus-visible:ring-red-800",
+      return (
+        <div className="space-y-3">
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full justify-start gap-2"
+            onClick={() => {
+              setPickerStep("parents");
+              setSelectedParent(null);
+            }}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to {selectedParent.label}
+          </Button>
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              type="button"
+              onClick={() => handleSelectChild(selectedParent, null)}
+              className="flex min-h-[60px] items-center justify-center rounded-lg border-2 border-gray-200 p-4 text-sm font-medium text-gray-700 transition-all hover:border-primary/50 hover:bg-gray-50"
+            >
+              Use parent only
+            </button>
+            {children.map((child) => (
+              <button
+                key={child.id}
+                type="button"
+                onClick={() => handleSelectChild(selectedParent, child.id)}
+                className={cn(
+                  "flex min-h-[60px] items-center justify-center rounded-lg border-2 p-4 transition-all",
+                  value ===
+                    formatCategoryPickerValue({
+                      categoryId: selectedParent.id,
+                      subcategoryId: child.id,
+                    })
+                    ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm"
+                    : "border-gray-200 font-medium text-gray-700 hover:border-primary/50 hover:bg-gray-50",
+                )}
+              >
+                <span className="text-center text-sm leading-tight">
+                  {child.label}
+                </span>
+              </button>
+            ))}
+            {allowInlineCreate && (
+              <button
+                type="button"
+                onClick={() => setShowCreation(true)}
+                className="flex min-h-[60px] items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 transition-all hover:border-primary hover:bg-primary/5"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="text-sm font-medium">Add New</span>
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-3 gap-3">
+        {categoryTree.map((parent) => {
+          const parentValue = formatCategoryPickerValue({
+            categoryId: parent.id,
+            subcategoryId: null,
+          });
+          const subcategoryLabel = gridPickerSubcategoryCountLabel(
+            parent.children?.length ?? 0,
+          );
+
+          return (
+            <button
+              key={parent.id}
+              type="button"
+              onClick={() => handleSelectParent(parent, false)}
+              className={cn(
+                "flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-lg border-2 p-4 transition-all",
+                value === parentValue ||
+                  parseCategoryPickerValue(value)?.categoryId === parent.id
+                  ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm"
+                  : "border-gray-200 font-medium text-gray-700 hover:border-primary/50 hover:bg-gray-50",
+              )}
+            >
+              <span className="text-center text-sm leading-tight">
+                {parent.label}
+              </span>
+              {subcategoryLabel ? (
+                <span className="text-xs opacity-80">{subcategoryLabel}</span>
+              ) : null}
+            </button>
+          );
+        })}
+        {allowInlineCreate && (
+          <button
+            type="button"
+            onClick={() => setShowCreation(true)}
+            className="flex min-h-[60px] items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 transition-all hover:border-primary hover:bg-primary/5"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="text-sm font-medium">Add New</span>
+          </button>
         )}
-      >
-        {value ? (
-          <span className="min-w-0 flex-1 overflow-hidden text-clip whitespace-nowrap text-left font-medium">
-            {displayLabel}
-          </span>
-        ) : (
-          <span className="min-w-0 flex-1 overflow-hidden text-clip whitespace-nowrap text-left">
-            {placeholder}
-          </span>
-        )}
-      </Button>
+      </div>
+    );
+  };
 
-      {error && error.length > 0 && (
-        <p className="text-sm text-red-600">{error[0]}</p>
-      )}
-
+  const modalShell = (
       <GridPickerModalShell open={isOpen} onRequestClose={closeModal}>
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h3 className="text-lg font-semibold text-primary">{modalTitle}</h3>
+          <h3 className="text-lg font-semibold text-primary">
+            {pickerStep === "children" && selectedParent
+              ? selectedParent.label
+              : modalTitle}
+          </h3>
           <div className="flex gap-2">
             {allowInlineCreate && (
               <Button
@@ -212,6 +427,7 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
                 <CategoryCreationForm
                   onSuccess={handleCreated}
                   categoryType={props.categoryType}
+                  parentId={selectedParent?.id}
                 />
               ) : (
                 <AccountCreationForm onSuccess={handleCreated} />
@@ -225,6 +441,8 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
                 {backLabel}
               </Button>
             </div>
+          ) : props.pickerKind === "category" && hierarchicalCategoryPicker ? (
+            renderCategoryGrid()
           ) : options.length === 0 ? (
             <div className="space-y-4">
               {emptyMessage && (
@@ -245,30 +463,32 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
-              {options.map((option) => {
-                const locked = optionLocked(option);
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    disabled={locked}
-                    title={locked ? disabledOptionTitle : undefined}
-                    onClick={() => handleSelect(option.value)}
-                    className={cn(
-                      "flex min-h-[60px] items-center justify-center rounded-lg border-2 p-4 transition-all",
-                      locked
-                        ? "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400 opacity-60"
-                        : value === option.value
-                          ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm"
-                          : "border-gray-200 font-medium text-gray-700 hover:border-primary/50 hover:bg-gray-50",
-                    )}
-                  >
-                    <span className="text-center text-sm leading-tight">
-                      {option.label}
-                    </span>
-                  </button>
-                );
-              })}
+              {(options as Array<{ label: string; value: string }>).map(
+                (option) => {
+                  const locked = optionLocked(option);
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      disabled={locked}
+                      title={locked ? disabledOptionTitle : undefined}
+                      onClick={() => handleSelect(option.value)}
+                      className={cn(
+                        "flex min-h-[60px] items-center justify-center rounded-lg border-2 p-4 transition-all",
+                        locked
+                          ? "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400 opacity-60"
+                          : value === option.value
+                            ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm"
+                            : "border-gray-200 font-medium text-gray-700 hover:border-primary/50 hover:bg-gray-50",
+                      )}
+                    >
+                      <span className="text-center text-sm leading-tight">
+                        {option.label}
+                      </span>
+                    </button>
+                  );
+                },
+              )}
               {allowInlineCreate && (
                 <button
                   type="button"
@@ -283,6 +503,60 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
           )}
         </div>
       </GridPickerModalShell>
+  );
+
+  if (hideTrigger) {
+    return modalShell;
+  }
+
+  return (
+    <div className="space-y-2 min-w-0">
+      <Label htmlFor={triggerId} className="text-sm">
+        {label}
+      </Label>
+
+      <Button
+        id={triggerId}
+        type="button"
+        variant="outline"
+        onClick={openModal}
+        disabled={disabled}
+        title={value ? displayLabel : undefined}
+        data-testid={dataTestId}
+        className={cn(
+          "h-auto w-full min-w-0 justify-start gap-0 overflow-hidden px-3 py-2 text-left text-sm font-normal",
+          categoryTriggerDisplay?.secondary ? "min-h-[52px]" : "min-h-10",
+          !value && "text-muted-foreground",
+          error && error.length > 0 && "border-red-800 focus-visible:ring-red-800",
+        )}
+      >
+        {value ? (
+          categoryTriggerDisplay?.secondary ? (
+            <span className="min-w-0 flex flex-1 flex-col gap-0.5 text-left">
+              <span className="truncate text-sm font-medium leading-tight">
+                {categoryTriggerDisplay.primary}
+              </span>
+              <span className="truncate text-xs leading-tight text-muted-foreground">
+                {categoryTriggerDisplay.secondary}
+              </span>
+            </span>
+          ) : (
+            <span className="min-w-0 flex-1 overflow-hidden text-clip whitespace-nowrap text-left font-medium">
+              {displayLabel}
+            </span>
+          )
+        ) : (
+          <span className="min-w-0 flex-1 overflow-hidden text-clip whitespace-nowrap text-left">
+            {placeholder}
+          </span>
+        )}
+      </Button>
+
+      {error && error.length > 0 && (
+        <p className="text-sm text-red-600">{error[0]}</p>
+      )}
+
+      {modalShell}
     </div>
   );
 };

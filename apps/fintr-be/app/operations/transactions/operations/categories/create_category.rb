@@ -9,6 +9,7 @@ module Transactions
             required(:space_id).filled(:string)
             required(:name).filled(:string)
             required(:category_type).filled(:string)
+            optional(:parent_id).maybe(:string)
           end
 
           rule(:category_type) do
@@ -34,7 +35,8 @@ module Transactions
         end
 
         def create_category(params:)
-          category = Transactions::Category.find_or_initialize_by(params.slice(:space_id, :name, :category_type))
+          attrs = params.slice(:space_id, :name, :category_type, :parent_id)
+          category = Transactions::Category.find_or_initialize_by(attrs)
           category.save!
           Success(category)
         rescue ActiveRecord::ActiveRecordError => e

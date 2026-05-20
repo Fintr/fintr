@@ -9,103 +9,134 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Pencil } from "lucide-react"; // Removed Plus as it will be in the trigger
-import { toast } from "sonner";
-import { createTransactionCategory, updateTransactionCategory } from "@/services/transactions/categories/mutation";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
+import { toast } from "sonner";
 
 interface CategoryItem {
   id: string;
   name: string;
   color?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface CategoryFormDialogProps {
-  category?: CategoryItem; // Optional for creation
-  categoryType?: CategoryTypeEnum; // Required for creation
+  category?: CategoryItem;
+  categoryType?: CategoryTypeEnum;
+  parentId?: string | null;
+  parentName?: string;
   onUpdate?: (categoryId: string, newName: string) => Promise<void>;
-  onAdd?: (name: string, categoryType: CategoryTypeEnum) => Promise<void>;
+  onAdd?: (
+    name: string,
+    categoryType: CategoryTypeEnum,
+    parentId?: string | null,
+  ) => Promise<void>;
   isLoading?: boolean;
-  trigger: React.ReactNode; // New prop for the trigger element
+  trigger: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
   category,
   categoryType,
+  parentId = null,
+  parentName,
   onUpdate,
   onAdd,
   isLoading = false,
   trigger,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : internalOpen;
+  const setIsOpen = isControlled
+    ? (open: boolean) => controlledOnOpenChange?.(open)
+    : setInternalOpen;
+
   const [categoryName, setCategoryName] = useState(category?.name || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Reset form when category changes or dialog opens
   useEffect(() => {
     setCategoryName(category?.name || "");
   }, [category?.name, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!categoryName.trim()) {
-      toast.error("Category name cannot be empty");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      if (category && onUpdate) { // Editing existing category
+      if (category && onUpdate) {
         if (categoryName.trim() === category.name) {
           setIsOpen(false);
           return;
         }
         await onUpdate(category.id, categoryName.trim());
         toast.success(`Category updated to "${categoryName.trim()}"`);
-      } else if (onAdd && categoryType) { // Adding new category
-        await onAdd(categoryName.trim(), categoryType);
-        toast.success(`New ${categoryType} category "${categoryName.trim()}" created!`);
+      } else if (onAdd && categoryType) {
+        await onAdd(categoryName.trim(), categoryType, parentId);
+        const label = parentId
+          ? `Subcategory "${categoryName.trim()}" created`
+          : `New ${categoryType} category "${categoryName.trim()}" created`;
+        toast.success(label);
       } else {
         console.error("Invalid operation for CategoryFormDialog");
-        toast.error("Invalid operation");
+        return;
       }
       setIsOpen(false);
+      setCategoryName("");
     } catch (error) {
       console.error("Failed to save category:", error);
-      toast.error("Failed to save category");
+      throw error;
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleCancel = () => {
-    setCategoryName(category?.name || ""); // Reset to original name or empty
+    setCategoryName(category?.name || "");
     setIsOpen(false);
   };
 
-  const dialogTitle = category ? "Edit Category" : `Add New ${categoryType === CategoryTypeEnum.EXPENSE ? 'Expense' : 'Income'} Category`;
-  const submitButtonText = category ? (isSubmitting ? "Updating..." : "Update") : (isSubmitting ? "Creating..." : "Create");
+  const isSubcategoryCreate = !category && Boolean(parentId);
+  const typeLabel =
+    categoryType === CategoryTypeEnum.INCOME ? "Income" : "Expense";
+
+  const dialogTitle = category
+    ? "Edit category"
+    : isSubcategoryCreate
+      ? `Add subcategory to ${parentName ?? "category"}`
+      : `Add new ${typeLabel.toLowerCase()} category`;
+
+  const submitButtonText = category
+    ? isSubmitting || isLoading
+      ? "Updating..."
+      : "Update"
+    : isSubmitting || isLoading
+      ? "Creating..."
+      : "Create";
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="category-name">Category Name</Label>
+            <Label htmlFor="category-name">Name</Label>
             <Input
               id="category-name"
               value={categoryName}
               onChange={(e) => setCategoryName(e.target.value)}
               placeholder="Enter category name"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoading}
               autoFocus
             />
           </div>
@@ -114,13 +145,15 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
               type="button"
               variant="outline"
               onClick={handleCancel}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoading}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !categoryName.trim()}
+              disabled={
+                isSubmitting || isLoading || !categoryName.trim()
+              }
             >
               {submitButtonText}
             </Button>
@@ -131,4 +164,4 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
   );
 };
 
-export default CategoryFormDialog; 
+export default CategoryFormDialog;

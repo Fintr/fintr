@@ -8,6 +8,7 @@ import { CategoryTypeEnum } from "./categoryTypes";
 export interface CreateTransactionCategoryType {
   name: string;
   categoryType: CategoryTypeEnum;
+  parentId?: string | null;
 }
 
 /**
@@ -17,5 +18,7 @@ export interface TransactionCategory {
   id: string;
   name: string;
   categoryType: CategoryTypeEnum;
-  color?: string; // Optional color property for UI
+  parentId?: string | null;
+  children?: TransactionCategory[];
+  color?: string;
 }

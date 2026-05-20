@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import useAuthApi from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
+import { normalizeCategoryTreeNodes } from "@/utils/categoryTreeOptions";
 
 export const useTransactionCategories = () => {
   const queryClient = useQueryClient();
@@ -22,8 +23,16 @@ export const useTransactionCategories = () => {
 
   // Mutation for creating categories
   const createCategoryMutation = useMutation({
-    mutationFn: ({ name, categoryType }: { name: string; categoryType: CategoryTypeEnum }) =>
-      createTransactionCategory(api, { name, categoryType }),
+    mutationFn: ({
+      name,
+      categoryType,
+      parentId,
+    }: {
+      name: string;
+      categoryType: CategoryTypeEnum;
+      parentId?: string | null;
+    }) =>
+      createTransactionCategory(api, { name, categoryType, parentId }),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
       // Invalidate dashboard query if expense category is created
@@ -111,8 +120,12 @@ export const useTransactionCategories = () => {
     isError, 
     isSuccess, 
     refetch,
-    expenseCategories: data?.data?.expenseCategories || [],
-    incomeCategories: data?.data?.incomeCategories || [],
+    expenseCategories: normalizeCategoryTreeNodes(
+      data?.data?.expenseCategories ?? data?.data?.expense_categories,
+    ),
+    incomeCategories: normalizeCategoryTreeNodes(
+      data?.data?.incomeCategories ?? data?.data?.income_categories,
+    ),
     updateCategoryMutation,
     deleteCategoryMutation,
     createCategoryMutation,

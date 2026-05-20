@@ -13,14 +13,16 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface CategoryCreationFormProps {
-  onSuccess: (name: string) => void;
+  onSuccess: (value: string, createdId?: string) => void;
   categoryType: CategoryTypeEnum;
-  horizontal?: boolean; // Whether to display in horizontal layout (similar to AccountCreationForm)
+  parentId?: string;
+  horizontal?: boolean;
 }
 
 const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
   onSuccess,
   categoryType,
+  parentId,
   horizontal = false
 }) => {
   const { api } = useAuthApi();
@@ -41,9 +43,13 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
     setCategoryValidationErrors({}); 
 
     try {
-      const createdCategoryName = await addCategory({
+      const createdCategory = await addCategory({
         api,
-        categoryData: { name: categoryName, categoryType: categoryType }
+        categoryData: {
+          name: categoryName,
+          categoryType: categoryType,
+          parentId: parentId ?? null,
+        }
       });
       toast.success(`"${categoryName}" has been added.`);
 
@@ -53,12 +59,16 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
       }
 
       // Ensure we call onSuccess with the correct category name
-      const finalCategoryName = createdCategoryName || categoryName;
-      setCategoryName(''); 
-      
-      // Delay onSuccess to ensure state updates complete first
+      const createdId =
+        createdCategory?.data?.id ??
+        createdCategory?.id ??
+        createdCategory?.record?.id;
+      setCategoryName('');
+
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       setTimeout(() => {
-        onSuccess(finalCategoryName);
+        onSuccess(categoryName, createdId);
       }, 100);
     } catch (error) {
       console.error("Failed to create category:", error);

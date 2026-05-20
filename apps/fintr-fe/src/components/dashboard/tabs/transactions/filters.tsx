@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import ComboBox from "@/components/ui/combobox";
+import { CategoryFilterComboBox } from "@/components/ui/category-filter-combobox";
 import { Input } from "@/components/ui/input";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { CalendarIcon } from "lucide-react";
@@ -29,7 +29,11 @@ import {
   getMonthNumber,
   getMonthDateRange,
 } from "@/utils/dateUtils";
-import { useDashboardData } from "@/hooks/async/useDashboardData";
+import { useAtomValue } from "jotai";
+import {
+  expenseCategoryOptionsAtom,
+  incomeCategoryOptionsAtom,
+} from "@/atoms/dashboardAtoms";
 import {
   dateFilterStartDateAtom,
   dateFilterEndDateAtom,
@@ -64,7 +68,8 @@ export function Filters({
   transactionFilterType: _transactionFilterType,
   applyFilters,
 }: FiltersProps) {
-  const { data: dashboardData } = useDashboardData();
+  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
   const yearOptions = getYearOptions();
   const currentYear = new Date().getFullYear().toString();
   const currentMonth = new Date()
@@ -396,9 +401,9 @@ export function Filters({
             <div className="space-y-2 md:flex-1">
               <Label>Categories</Label>
               <div className="relative">
-                <ComboBox
-                  filterType="frontend"
-                  data={dashboardData?.categoryOptions}
+                <CategoryFilterComboBox
+                  expenseOptions={expenseCategoryOptions}
+                  incomeOptions={incomeCategoryOptions}
                   placeholder="Select categories"
                   className="w-full"
                   showAllOnFocus={true}

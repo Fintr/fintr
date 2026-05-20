@@ -77,6 +77,14 @@ module Transactions
       field :calculated do |record|
         record.transactable.respond_to?(:balance_state) && record.transactable.balance_state == "calculated"
       end
+
+      field :subcategory_name do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:subcategory_id)
+        next nil if transactable.subcategory_id.blank?
+
+        transactable.subcategory&.name
+      end
     end
   end
 end

@@ -22,7 +22,10 @@ module Transactions
           expense_categories  = step get_expense_categories(params:)
           income_categories   = step get_income_categories(params:)
 
-          { expense_categories:, income_categories: }
+          {
+            expense_categories: expense_categories,
+            income_categories: income_categories
+          }
         end
 
         private
@@ -30,15 +33,17 @@ module Transactions
         def get_expense_categories(params:)
           query = Transactions::Queries::Categories::AllCategories
                     .call(params: params.merge(category_type: "expense"))
+          return query unless query.success?
 
-          Success(query.value!)
+          BuildCategoryTree.new.call(query.value!)
         end
 
         def get_income_categories(params:)
           query = Transactions::Queries::Categories::AllCategories
                     .call(params: params.merge(category_type: "income"))
+          return query unless query.success?
 
-          Success(query.value!)
+          BuildCategoryTree.new.call(query.value!)
         end
       end
     end

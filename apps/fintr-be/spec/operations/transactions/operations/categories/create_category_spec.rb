@@ -34,6 +34,33 @@ RSpec.describe Transactions::Operations::Categories::CreateCategory do
         expect(result.space_id).to eq(space.id)
       end
 
+      context 'when creating a subcategory with parent_id' do
+        subject(:call_operation) { operation.call(params) }
+
+        let!(:parent_category) do
+          create(:category, name: "Food", category_type: "expense", space:)
+        end
+
+        let(:params) do
+          {
+            space_id: space.id,
+            name: "Groceries",
+            category_type: "expense",
+            parent_id: parent_category.id
+          }
+        end
+
+        it { is_expected.to be_success }
+
+        it "creates a subcategory under the parent" do
+          expect { call_operation }.to change(Transactions::Category, :count).by(1)
+
+          sub = call_operation.value!
+          expect(sub.name).to eq("Groceries")
+          expect(sub.parent_id).to eq(parent_category.id)
+        end
+      end
+
       context 'when creating a category with the same name but different type' do
         before do
           create(:category, name: "Entertainment", category_type: "income", space:)
