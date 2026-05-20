@@ -328,8 +328,6 @@ RSpec.describe "API V1 Transaction Loans", type: :request do
     end
 
     before do
-      # Stub the constant if it doesn't exist yet
-      stub_const("Loans::Operations::UpdateLoan", Class.new(Dry::Operation)) unless defined?(Loans::Operations::UpdateLoan)
       allow(::Loans::Operations::UpdateLoan).to receive(:new).and_return(operation_double)
       allow(operation_double).to receive(:call).and_return(Dry::Monads::Result::Success.new(loan))
     end
@@ -338,21 +336,13 @@ RSpec.describe "API V1 Transaction Loans", type: :request do
       let(:valid_params) do
         {
           id: loan.id,
-          principal_amount: 150_000.00,
-          interest_rate: 12.0,
-          date: Date.new(2024, 2, 1).to_s,
-          loan_type: "lent",
           entity_name: "Updated Lender",
-          loan_term_months: 24,
           description: "Updated loan description"
         }
       end
 
       it "updates the loan" do
-        updated_loan = loan.dup
-        updated_loan.principal_amount_cents = 150_000_00
-        updated_loan.interest_rate = 12.0
-        operation_result = Dry::Monads::Result::Success.new(updated_loan)
+        operation_result = Dry::Monads::Result::Success.new(loan)
 
         allow(operation_double).to receive(:call).and_return(operation_result)
 
@@ -379,12 +369,7 @@ RSpec.describe "API V1 Transaction Loans", type: :request do
           expect(params_hash["user_id"]).to eq(user.id.to_s)
           expect(params_hash["space_id"]).to eq(space.id.to_s)
           expect(params_hash["space_code"]).to eq(space.code)
-          expect(params_hash["principal_amount"]).to eq("150000.0")
-          expect(params_hash["interest_rate"]).to eq("12.0")
-          expect(params_hash["date"]).to eq(Date.new(2024, 2, 1).to_s)
-          expect(params_hash["loan_type"]).to eq("lent")
           expect(params_hash["entity_name"]).to eq("Updated Lender")
-          expect(params_hash["loan_term_months"]).to eq("24")
           expect(params_hash["description"]).to eq("Updated loan description")
         end
       end
@@ -393,16 +378,13 @@ RSpec.describe "API V1 Transaction Loans", type: :request do
     context "when parameters are invalid" do
       let(:invalid_params) do
         {
-          id: loan.id,
-          principal_amount: -100.00,
-          interest_rate: 150.0
+          id: loan.id
         }
       end
 
       it "returns validation errors" do
         errors = {
-          principal_amount: ["must be greater than 0"],
-          interest_rate: ["must be between 0 and 100"]
+          base: ["at least one of entity_name or description must be provided"]
         }
         operation_result = Dry::Monads::Result::Failure.new(errors)
 
@@ -422,11 +404,13 @@ RSpec.describe "API V1 Transaction Loans", type: :request do
 
     context "when loan does not exist" do
       it "returns internal server error when operation fails" do
-        errors = { id: ["not found"] }
+        errors = { id: "not found" }
         operation_result = Dry::Monads::Result::Failure.new(errors)
         allow(operation_double).to receive(:call).and_return(operation_result)
 
-        put "/api/v1/transactions/loans/invalid-id", params: { principal_amount: 150_000.00 }, headers: headers
+        put "/api/v1/transactions/loans/invalid-id",
+            params: { description: "Updated loan description" },
+            headers: headers
 
         expect(response).to have_http_status(:internal_server_error)
         parsed_response = JSON.parse(response.body)
@@ -440,11 +424,13 @@ RSpec.describe "API V1 Transaction Loans", type: :request do
       let(:other_loan) { create(:loan, space: other_space, user: user) }
 
       it "returns internal server error when operation fails" do
-        errors = { loan: ["not found"] }
+        errors = { id: "not found" }
         operation_result = Dry::Monads::Result::Failure.new(errors)
         allow(operation_double).to receive(:call).and_return(operation_result)
 
-        put "/api/v1/transactions/loans/#{other_loan.id}", params: { principal_amount: 150_000.00 }, headers: headers
+        put "/api/v1/transactions/loans/#{other_loan.id}",
+            params: { description: "Updated loan description" },
+            headers: headers
 
         expect(response).to have_http_status(:internal_server_error)
         parsed_response = JSON.parse(response.body)

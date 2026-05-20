@@ -78,14 +78,8 @@ module Api
         def update_params
           params.permit(
             :id,
-            :principal_amount,
-            :interest_rate,
-            :date,
-            :loan_type,
             :entity_name,
-            :loan_term_months,
-            :description,
-            :file
+            :description
           )
         end
       end

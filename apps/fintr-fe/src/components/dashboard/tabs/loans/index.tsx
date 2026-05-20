@@ -45,6 +45,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format, endOfMonth } from "date-fns";
 import DeleteLoanPaymentModal from "@/components/dashboard/forms/DeleteLoanPaymentModal";
 import DeleteLoanModal from "@/components/dashboard/forms/DeleteLoanModal";
+import EditLoanModal from "@/components/dashboard/forms/EditLoanModal";
 import {
   Table,
   TableHeader,
@@ -460,10 +461,13 @@ const LoansTab = ({}: LoansTabProps) => {
                               </span>
                             )}
                           </div>
-                          <DeleteLoanModal
-                            loan={loan}
-                            onDelete={handleDeleteLoan}
-                          />
+                          <div className="flex items-center gap-1">
+                            <EditLoanModal loan={loan} />
+                            <DeleteLoanModal
+                              loan={loan}
+                              onDelete={handleDeleteLoan}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>

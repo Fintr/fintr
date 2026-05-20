@@ -17,9 +17,11 @@ export interface CreateLoanType {
   fileId?: string;
 }
 
-// Type for updating a loan
-export interface UpdateLoanType extends CreateLoanType {
+// Type for updating a loan (only notes and entity are editable)
+export interface UpdateLoanType {
   id: string;
+  entityName?: string;
+  description?: string;
 }
 
 /**
@@ -93,35 +95,21 @@ export const updateLoan = async (
   loanData: UpdateLoanType
 ) => {
   try {
-    const shouldUseMultipart = isUploadableFile(loanData.file);
+    const backendData: Record<string, string> = {};
 
-    // Transform frontend data to backend format
-    const backendData = {
-      principal_amount: loanData.principalAmount,
-      interest_rate: loanData.interestRate,
-      date: loanData.date,
-      loan_type: loanData.loanType,
-      entity_name: loanData.entityName,
-      loan_term_months: loanData.loanTermMonths,
-      description: loanData.description || '',
-      ...(shouldUseMultipart && { file: loanData.file })
-    };
-
-    // If there's a file, use FormData to handle the multipart/form-data request
-    if (shouldUseMultipart) {
-      const formData = formDataWithFile(backendData);
-      const response = await api.put(`/transactions/loans/${loanData.id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      
-      return response.data;
-    } else {
-      // Regular JSON request without file
-      const response = await api.put(`/transactions/loans/${loanData.id}`, backendData);
-      return response.data;
+    if (loanData.entityName !== undefined) {
+      backendData.entity_name = loanData.entityName;
     }
+
+    if (loanData.description !== undefined) {
+      backendData.description = loanData.description;
+    }
+
+    const response = await api.put(
+      `/transactions/loans/${loanData.id}`,
+      backendData
+    );
+    return response.data;
   } catch (error) {
     // Handle different error structures
     const axiosError = error as AxiosError;
