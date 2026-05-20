@@ -20,15 +20,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useNumberInput } from "@/hooks/useNumberInput";
+import { numberFormatting } from "@/lib/utils";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import { useAtomValue } from "jotai";
 import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
 import { createTransactionCategory } from "@/services/transactions/categories/mutation";
 import { AxiosInstance } from "axios";
 import GridPicker from "@/components/dashboard/forms/GridPicker";
+import { filterCategoryOptionsWithoutBudgets } from "@/services/budgets/queries";
 
 const formSchema = z.object({
   category: z.string().min(1, { message: "Category cannot be empty." }),
@@ -55,14 +58,30 @@ export function NewBudgetDialog({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Get expense categories from dashboard data
   const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  
+
+  const availableCategoryOptions = useMemo(
+    () =>
+      filterCategoryOptionsWithoutBudgets(
+        expenseCategoryOptions,
+        budgetsData?.budgets,
+      ),
+    [expenseCategoryOptions, budgetsData?.budgets],
+  );
+
+  const hasAvailableCategories = availableCategoryOptions.length > 0;
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       category: "",
       amount: 0,
+    },
+  });
+
+  const amountInput = useNumberInput({
+    onValueChange: (cleanValue) => {
+      form.setValue("amount", cleanValue, { shouldValidate: true });
     },
   });
 
@@ -106,10 +125,18 @@ async function onSubmit(values: z.infer<typeof formSchema>) {
       });
     }
 
+    const amount = numberFormatting.cleanForBackend(amountInput.displayValue);
+
+    if (amount < 1) {
+      setFieldErrors({ amount: ["Amount must be greater than 0."] });
+      setIsSubmitting(false);
+      return;
+    }
+
     const today = new Date().toISOString().split("T")[0];
     await createBudgetMutation.mutateAsync({
       categoryName: values.category,
-      amount: values.amount,
+      amount,
       date: today,
     });
     
@@ -149,8 +176,18 @@ async function onSubmit(values: z.infer<typeof formSchema>) {
     return undefined;
   };
 
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+
+    if (open) {
+      form.reset({ category: "", amount: 0 });
+      amountInput.reset();
+      setFieldErrors({});
+    }
+  };
+
   return (
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <Plus /> Add Budget
@@ -178,7 +215,17 @@ async function onSubmit(values: z.infer<typeof formSchema>) {
                           setFieldErrors((prev) => ({ ...prev, category: undefined }));
                         }
                       }}
-                      categories={expenseCategoryOptions}
+                      categories={availableCategoryOptions}
+                      placeholder={
+                        hasAvailableCategories
+                          ? "Select category"
+                          : "Add a new category"
+                      }
+                      emptyMessage={
+                        hasAvailableCategories
+                          ? undefined
+                          : "All existing categories already have a budget for this period. Add a new category below."
+                      }
                       error={
                         getCategoryErrorMessage()
                           ? [getCategoryErrorMessage() as string]
@@ -201,20 +248,26 @@ async function onSubmit(values: z.infer<typeof formSchema>) {
             <FormField
               control={form.control}
               name="amount"
-              render={({ field }) => (
+              render={() => (
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      {...field} 
-                      onChange={(e) => {
-                        field.onChange(e);
-                        // Clear amount error when user changes value
+                    <CalculatorInput
+                      id="new-budget-amount"
+                      placeholder="0.00"
+                      value={amountInput.displayValue}
+                      onChange={(value) => {
+                        amountInput.handleInputChange(value);
                         if (fieldErrors.amount) {
-                          setFieldErrors(prev => ({ ...prev, amount: undefined }));
+                          setFieldErrors((prev) => ({ ...prev, amount: undefined }));
                         }
                       }}
+                      disabled={isSubmitting}
+                      className={
+                        getAmountErrorMessage() || form.formState.errors.amount?.message
+                          ? "border-red-800 focus-visible:ring-red-800"
+                          : ""
+                      }
                     />
                   </FormControl>
                   <FormMessage>
@@ -224,7 +277,10 @@ async function onSubmit(values: z.infer<typeof formSchema>) {
               )}
             />
             <DialogFooter>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                disabled={isSubmitting || (!hasAvailableCategories && !form.watch("category"))}
+              >
                 {isSubmitting ? "Creating..." : "Confirm"}
               </Button>
             </DialogFooter>

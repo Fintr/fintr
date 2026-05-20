@@ -120,7 +120,10 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
         return;
       }
 
-      if (target.closest("[data-calculator-keyboard]")) {
+      if (
+        target.closest("[data-calculator-keyboard]")
+        || target.closest("[data-grid-picker-modal]")
+      ) {
         return;
       }
 

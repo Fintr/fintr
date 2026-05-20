@@ -122,6 +122,20 @@ export const transformBudgetsToCategories = (budgets: Budget[]) => {
   return Array.from(categoryMap.values());
 };
 
+/**
+ * Returns category options that do not already have a budget in the fetched period.
+ */
+export const filterCategoryOptionsWithoutBudgets = (
+  options: Array<{ label: string; value: string }>,
+  budgets: Budget[] | undefined,
+): Array<{ label: string; value: string }> => {
+  const usedCategoryNames = new Set(
+    budgets?.map((budget) => budget.category_name) ?? [],
+  );
+
+  return options.filter((option) => !usedCategoryNames.has(option.value));
+};
+
 // Helper function to generate consistent colors for categories
 const getColor = (categoryName: string) => {
   // Generate a color based on the category name for consistency
