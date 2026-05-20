@@ -19,9 +19,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import EditButton from "@/components/ui/edit-button";
 import { useState } from "react";
+import { useNumberInput } from "@/hooks/useNumberInput";
+import { numberFormatting } from "@/lib/utils";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import { useAtomValue } from "jotai";
 import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
@@ -54,16 +56,39 @@ export function EditBudgetDialog({
     },
   });
 
+  const amountInput = useNumberInput({
+    initialValue: budget.budget,
+    onValueChange: (cleanValue) => {
+      form.setValue("amount", cleanValue, { shouldValidate: true });
+    },
+  });
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+
+    if (open) {
+      form.reset({
+        category: budget.name,
+        amount: budget.budget,
+      });
+      amountInput.setDisplayValue(
+        numberFormatting.formatForInput(budget.budget.toString()),
+      );
+    }
+  };
+
   function onSubmit(values: z.infer<typeof formSchema>) {
+    const amount = numberFormatting.cleanForBackend(amountInput.displayValue);
+
     updateBudgetMutation.mutate({
       budgetId: budget.id,
-      data: { amount: values.amount },
+      data: { amount },
     });
     setDialogOpen(false);
   }
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+    <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
         <EditButton onClick={() => setDialogOpen(true)} />
       </DialogTrigger>
@@ -97,11 +122,16 @@ export function EditBudgetDialog({
             <FormField
               control={form.control}
               name="amount"
-              render={({ field }) => (
+              render={() => (
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <CalculatorInput
+                      id={`edit-budget-amount-${budget.id}`}
+                      placeholder="0.00"
+                      value={amountInput.displayValue}
+                      onChange={(value) => amountInput.handleInputChange(value)}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

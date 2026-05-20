@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Trash2, Filter } from "lucide-react";
+import { Filter } from "lucide-react";
 import { transformBudgetsToCategories } from "@/services/budgets/queries";
 import { z } from "zod";
 import { formatCurrency, getProgressColor } from "@/lib/utils";
@@ -17,7 +17,7 @@ import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import { NewBudgetDialog } from "./new-budget-dialog";
 import { EditBudgetDialog } from "./edit-budget-dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import { DeleteButton } from "../transactions/buttons/DeleteButton";
+import { DeleteBudgetDialog } from "./delete-budget-dialog";
 import { useAtom } from "jotai";
 import { dateFilterStartDateAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom, dateFilterTypeAtom, monthYearToDateRange } from "@/atoms/dateFilterAtoms";
 import {
@@ -291,10 +291,8 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     setEndDate(queryEndDate);
   };
 
-  // Handle budget deletion
-  const handleDeleteBudget = (index: number) => {
-    deleteBudgetMutation.mutate(categories[index].id);
-  };
+  const handleDeleteBudget = (budgetId: string) =>
+    deleteBudgetMutation.mutateAsync(budgetId);
 
   return (
     <Card className="border-0 shadow-none bg-transparent py-0 md:py-4 overflow-visible">
@@ -547,8 +545,11 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                             budget={category}
                             updateBudgetMutation={updateBudgetMutation}
                           />
-                          <DeleteButton
-                            onClick={() => handleDeleteBudget(index)}
+                          <DeleteBudgetDialog
+                            budget={category}
+                            onDelete={handleDeleteBudget}
+                            isLoading={deleteBudgetMutation.isPending}
+                            currency={spaceCurrency}
                           />
                         </div>
                       </div>
@@ -577,10 +578,13 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                             budget={category}
                             updateBudgetMutation={updateBudgetMutation}
                           />
-                          <DeleteButton
+                          <DeleteBudgetDialog
+                            budget={category}
+                            onDelete={handleDeleteBudget}
+                            isLoading={deleteBudgetMutation.isPending}
+                            currency={spaceCurrency}
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDeleteBudget(index)}
                           />
                           
                         </div>

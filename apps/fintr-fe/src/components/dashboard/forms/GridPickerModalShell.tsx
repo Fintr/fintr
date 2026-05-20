@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen";
@@ -21,6 +22,7 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
   children,
   panelClassName,
 }) => {
+  const [mounted, setMounted] = useState(false);
   const reduceMotion = useReducedMotion();
   const {
     isAndroidNative,
@@ -54,6 +56,10 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
   useCloseOnPopStateWhenOpen(open, handleHistoryOpenChange, GRID_PICKER_MODAL_HISTORY_KEY);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!open) {
       return;
     }
@@ -76,13 +82,14 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
         ease: [0.32, 0.72, 0, 1] as const,
       };
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {open && (
         <motion.div
           key="grid-picker-backdrop"
+          data-grid-picker-modal
           className={cn(
-            "fixed inset-0 z-50 flex items-end justify-center overflow-hidden bg-black/50",
+            "pointer-events-auto fixed inset-0 z-[110] flex items-end justify-center overflow-hidden bg-black/50",
             !isAndroidNative && "pb-[env(safe-area-inset-bottom,0px)]",
           )}
           initial={{ opacity: 0 }}
@@ -117,4 +124,10 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
       )}
     </AnimatePresence>
   );
+
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(modalContent, document.body);
 };

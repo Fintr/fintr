@@ -21,6 +21,7 @@ type GridPickerSharedProps = {
   triggerId?: string;
   placeholder?: string;
   modalTitle?: string;
+  emptyMessage?: string;
   "data-testid"?: string;
   allowInlineCreate?: boolean;
 };
@@ -89,7 +90,14 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
       ? (props.disabledOptionTitle ?? ACCOUNT_EDIT_LOCK_DISABLED_HINT)
       : undefined;
 
-  const { label, value, error, disabled = false, onChange } = props;
+  const {
+    label,
+    value,
+    error,
+    disabled = false,
+    onChange,
+    emptyMessage,
+  } = props;
 
   const handleSelect = (itemValue: string) => {
     onChange(itemValue);
@@ -216,6 +224,24 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
               >
                 {backLabel}
               </Button>
+            </div>
+          ) : options.length === 0 ? (
+            <div className="space-y-4">
+              {emptyMessage && (
+                <p className="text-sm text-muted-foreground text-center px-2">
+                  {emptyMessage}
+                </p>
+              )}
+              {allowInlineCreate && (
+                <button
+                  type="button"
+                  onClick={() => setShowCreation(true)}
+                  className="flex min-h-[60px] w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 transition-all hover:border-primary hover:bg-primary/5"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="text-sm font-medium">Add New</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">

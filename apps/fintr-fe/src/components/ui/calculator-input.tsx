@@ -100,6 +100,21 @@ export function CalculatorInput({
   const keyboardRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const collapseSelectionToEnd = useCallback(() => {
+    const input = inputRef.current;
+    if (!input) {
+      return;
+    }
+
+    const length = input.value.length;
+
+    try {
+      input.setSelectionRange(length, length);
+    } catch {
+      // Input may not be focusable in some environments.
+    }
+  }, []);
+
   // Handle SSR - only render portal after mount
   useEffect(() => {
     setMounted(true);
@@ -189,6 +204,15 @@ export function CalculatorInput({
       setExpression(value);
     }
   }, [value, isExpressionMode]);
+
+  // Avoid select-all flash when the value updates from calculator keys
+  useEffect(() => {
+    if (!showKeyboard) {
+      return;
+    }
+
+    requestAnimationFrame(collapseSelectionToEnd);
+  }, [expression, showKeyboard, collapseSelectionToEnd]);
 
   const dismissKeyboard = useCallback(() => {
     setShowKeyboard(false);
@@ -382,10 +406,22 @@ export function CalculatorInput({
   );
 
   const handleFocus = useCallback(() => {
-    if (!disabled) {
-      setShowKeyboard(true);
+    if (disabled) {
+      return;
     }
-  }, [disabled]);
+
+    setShowKeyboard(true);
+    requestAnimationFrame(collapseSelectionToEnd);
+  }, [disabled, collapseSelectionToEnd]);
+
+  const handleCalculatorButtonPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      inputRef.current?.focus({ preventScroll: true });
+    },
+    [],
+  );
 
   const isOperatorButton = (btn: string) => ["+", "−", "×", "÷", "="].includes(btn);
   const isActionButton = (btn: string) => ["⌫", "C", "%"].includes(btn);
@@ -440,7 +476,12 @@ export function CalculatorInput({
                 // Plus/minus toggle - orange accent
                 btn === "±" && "bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-400"
               )}
-              onClick={() => handleButtonClick(btn)}
+              onPointerDown={handleCalculatorButtonPointerDown}
+              onMouseDown={handleCalculatorButtonPointerDown}
+              onClick={() => {
+                handleButtonClick(btn);
+                requestAnimationFrame(collapseSelectionToEnd);
+              }}
             >
               {btn}
             </Button>

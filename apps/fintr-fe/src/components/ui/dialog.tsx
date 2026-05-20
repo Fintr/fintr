@@ -6,6 +6,17 @@ import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+const isPortaledOverlayTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  return (
+    target.closest("[data-calculator-keyboard]") != null
+    || target.closest("[data-grid-picker-modal]") != null
+  )
+}
+
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
@@ -41,7 +52,7 @@ function DialogOverlay({
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
 
-    if (target.closest("[data-calculator-keyboard]")) {
+    if (isPortaledOverlayTarget(target)) {
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -64,7 +75,7 @@ function DialogOverlay({
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
 
-    if (target.closest("[data-calculator-keyboard]")) {
+    if (isPortaledOverlayTarget(target)) {
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -117,20 +128,24 @@ function DialogContent({
           className
         )}
         onPointerDownOutside={(e) => {
-          const target = e.target as HTMLElement
-          if (target.closest("[data-calculator-keyboard]")) {
+          if (isPortaledOverlayTarget(e.target)) {
             e.preventDefault()
             return
           }
           onPointerDownOutside?.(e)
         }}
         onInteractOutside={(e) => {
-          const target = e.target as HTMLElement
-          if (target.closest("[data-calculator-keyboard]")) {
+          if (isPortaledOverlayTarget(e.target)) {
             e.preventDefault()
             return
           }
           onInteractOutside?.(e)
+        }}
+        onFocusOutside={(e) => {
+          if (isPortaledOverlayTarget(e.target)) {
+            e.preventDefault()
+            return
+          }
         }}
         {...props}
       >

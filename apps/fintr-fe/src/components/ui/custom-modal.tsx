@@ -240,7 +240,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         return;
       }
 
-      if (target.closest("[data-calculator-keyboard]")) {
+      if (
+        target.closest("[data-calculator-keyboard]")
+        || target.closest("[data-grid-picker-modal]")
+      ) {
         return;
       }
 
