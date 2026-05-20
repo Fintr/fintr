@@ -2,7 +2,7 @@
 
 **Product:** Fintr  
 **Feature:** Bulk Receipt Upload for Paid/Sponsored Subscribers  
-**Status:** Proposed  
+**Status:** Revised — Pending Implementation  
 **Prepared by:** Engineering Team  
 **Date:** May 2026
 
@@ -32,7 +32,9 @@
 
 This document describes the design and implementation plan for **Bulk Receipt Upload**, a premium feature exclusive to paid and sponsored subscribers on Fintr.
 
-Currently, users may only upload one receipt at a time. This enhancement allows paying subscribers to select up to **10 receipt images in a single session**, have each processed by the AI pipeline sequentially, and review all resulting draft transactions in one continuous workflow — significantly reducing the manual effort required when reconciling multiple purchases.
+Currently, users may only upload one receipt at a time. This enhancement allows paying subscribers to select up to **15 receipt images in a single session**, have each processed by the AI pipeline sequentially, and review all resulting draft transactions in one seamless workflow — significantly reducing the manual effort required when reconciling multiple purchases.
+
+Key decisions confirmed by product review: push notifications via Capacitor are **in scope**; failed receipts do **not** consume tokens; paid users have a draft limit of **15**; and the per-image endpoint strategy is used (no dedicated bulk endpoint for this iteration).
 
 ---
 
@@ -48,13 +50,14 @@ Offering bulk upload exclusively to paid subscribers creates a meaningful, tangi
 
 | In Scope | Out of Scope |
 |---|---|
-| Multi-image file selection (up to 10) | Bulk upload via camera capture |
+| Multi-image file selection (up to 15) via Capacitor | Bulk upload via camera capture |
 | Sequential AI processing per image | Parallel AI processing |
-| Per-image status feedback in UI | Email/push notifications on completion |
-| Token cost preview before upload | Auto-approving transactions without review |
-| Draft creation for all successful receipts | Bulk editing of draft transactions |
-| Sequential transaction review flow | CSV/spreadsheet import |
-| Subscription gate (paid/sponsor only) | Admin bulk upload bypass |
+| Per-image status feedback in UI | Auto-approving transactions without review |
+| Token cost preview before upload | Bulk editing of draft transactions |
+| Draft creation for all successful receipts | CSV/spreadsheet import |
+| Seamless sequential draft review flow | Admin bulk upload bypass |
+| **Push notifications on batch completion (Capacitor)** | Email notifications on completion |
+| Subscription gate (paid/sponsor only) | |
 
 ---
 
@@ -98,8 +101,8 @@ Frontend: opens Add Transaction dialog
 ### Key Constraints in the Current System
 
 - **One image per request** — `POST /receipts` accepts a single `image` field
-- **1 AI token consumed per receipt** — enforced by `CreateUsage` before processing
-- **5 draft maximum per user per space** — enforced by `CreateDraftFromReceiptResult#delete_old_drafts` (`Transactions::Draft::MAX_DRAFTS = 5`)
+- **1 AI token consumed per successful receipt** — enforced by `CreateUsage` before processing; failed receipts must not consume tokens
+- **5 draft maximum per user per space (free)** — enforced by `CreateDraftFromReceiptResult#delete_old_drafts` (`Transactions::Draft::MAX_DRAFTS = 5`); raised to **15 for paid/sponsored users**
 - **Token limit** = `Space::FREE_TOKENS (30)` + tokens allocated from active paid billing cycles
 
 ---
@@ -177,7 +180,7 @@ After tapping "Bulk Upload", the native file picker opens with `multiple` enable
 
 **Behaviour:**
 - Each thumbnail shows a remove `[✕]` button to deselect individual images before uploading
-- "Add more" opens the file picker again to append additional images (up to the 10-image cap)
+- "Add more" opens the Capacitor file picker again to append additional images (up to the 15-image cap)
 - Token cost is calculated upfront: `tokensNeeded = selectedImages.length`
 - "Upload All" is **disabled** if `tokensNeeded > aiUsage.remaining`, with a clear message: *"Not enough tokens. Remove X receipt(s) or upgrade your plan."*
 - Images are validated on selection (type: `image/*`, size ≤ 10MB each)
@@ -254,7 +257,7 @@ Once all images have been processed, the dialog shows a results summary:
 |---|---|
 | File is not an image | Rejected immediately at file selection with toast error |
 | File exceeds 10MB | Rejected immediately at file selection with toast error |
-| More than 10 files selected | Trimmed to 10 with a warning toast |
+| More than 15 files selected | Trimmed to 15 with a warning toast |
 | Not enough tokens for the whole batch | "Upload All" disabled; user prompted to remove images or upgrade |
 | Token limit hit mid-batch | Processing stops after the last successful receipt; completed results still shown |
 | AI cannot extract data from an image | Receipt marked ❌ in grid; processing continues with remaining images |
@@ -270,9 +273,10 @@ Once all images have been processed, the dialog shows a results summary:
 
 | File | Change |
 |---|---|
-| `src/components/dashboard/add-receipt-dialog.tsx` | Add bulk mode: multi-file state, preview grid, sequential upload loop, progress tracking, subscription gate |
+| `src/components/dashboard/add-receipt-dialog.tsx` | Add bulk mode: multi-file state, preview grid, sequential upload loop, progress tracking, subscription gate, push notification trigger |
 | `src/services/receipts/mutation.tsx` | No change required — `uploadReceipt()` is called once per image in the loop |
 | `src/hooks/async/useSubscriptions.ts` | Already available — consume `useCurrentSubscription()` to gate the button |
+| Capacitor Push Notifications plugin | Trigger local push notification on batch completion |
 
 **State additions to `AddReceiptDialog`:**
 
@@ -304,10 +308,22 @@ for (let i = 0; i < selectedImages.length; i++) {
     setBulkStatuses(prev => setStatus(prev, i, 'success', response));
     refetchAIUsage();
   } catch (error) {
+    // Token is NOT consumed for failed receipts — error is caught before CreateUsage charges
     setBulkStatuses(prev => setStatus(prev, i, 'error', null, error.message));
   }
 }
+
+// After loop: fire push notification via Capacitor
+await LocalNotifications.schedule({
+  notifications: [{
+    title: 'Receipts Processed',
+    body: `${successCount} of ${total} receipts processed successfully.`,
+    id: Date.now(),
+  }]
+});
 ```
+
+**Push notifications** are delivered via the Capacitor `@capacitor/local-notifications` (or `@capacitor/push-notifications`) plugin. The notification is triggered client-side after the processing loop completes, providing immediate feedback even if the user has navigated away.
 
 **Subscription gate:**
 
@@ -323,37 +339,17 @@ const isPaidOrSponsor =
 
 ### 6.2 Backend Changes
 
-No new endpoint is required. The existing `POST /api/v1/receipts` endpoint is called once per image from the frontend loop. This approach:
+**Decided: use the existing per-image endpoint.** The existing `POST /api/v1/receipts` endpoint is called once per image from the frontend loop. This approach:
 
 - Reuses all existing validation, AI processing, and token consumption logic
-- Avoids complexity of a bulk endpoint handling partial failures server-side
+- Avoids complexity of a bulk endpoint requiring WebSocket updates and parallel processing
 - Keeps each receipt's draft creation and token deduction atomic and independent
 
-**If a dedicated bulk endpoint is preferred in the future**, the proposed signature would be:
+> **Note:** A dedicated `POST /receipts/bulk` endpoint (with WebSocket progress updates and parallel processing) is a viable future enhancement if throughput demands grow, but is deferred for this iteration.
 
-```
-POST /api/v1/receipts/bulk
-Content-Type: multipart/form-data
+**Draft limit for paid users** must be raised from `MAX_DRAFTS = 5` to `MAX_DRAFTS = 15` in `Transactions::Draft` to accommodate a full 15-receipt batch. The `CreateDraftFromReceiptResult#delete_old_drafts` method applies this limit conditionally based on subscription type.
 
-images[0]: <File>
-images[1]: <File>
-...
-images[9]: <File>
-```
-
-Response:
-```json
-{
-  "data": {
-    "results": [
-      { "status": "success", "draftId": "...", "suggestedTransactionPayload": { ... } },
-      { "status": "error",   "filename": "receipt4.jpg", "message": "Could not extract data" }
-    ],
-    "successCount": 4,
-    "failureCount": 1
-  }
-}
-```
+**Token gating on failure:** The backend `CreateUsage` operation must be restructured so that the token is only recorded on a **successful** AI extraction. If `ProcessReceipt` fails (AI error, unreadable image, etc.), the `Ai::Usage` record should be rolled back or not created. This ensures failed receipts do not consume user tokens.
 
 ---
 
@@ -361,12 +357,15 @@ Response:
 
 | Action | Tokens consumed |
 |---|---|
-| Single receipt upload | 1 token |
-| Bulk upload of N receipts | N tokens (1 per receipt, deducted sequentially) |
-| Failed receipt (AI error) | 1 token (consumed before processing attempt) |
+| Single receipt upload (success) | 1 token |
+| Bulk upload of N successful receipts | N tokens (1 per successful receipt) |
+| Failed receipt (AI error) | **0 tokens** — token deduction gated on AI success |
 | Failed receipt (file validation) | 0 tokens (rejected before `CreateUsage`) |
+| Failed receipt (network/server error) | 0 tokens (request never reaches `CreateUsage`) |
 
-Token balance is rechecked via `refetchAIUsage()` after each receipt in the loop, ensuring the UI stays accurate. The backend independently gates each request via `space.can_ai?`, so if a user runs out of tokens mid-batch, remaining receipts receive a `402`-equivalent error and are marked ❌ in the UI.
+Token balance is rechecked via `refetchAIUsage()` after each receipt in the loop, ensuring the UI stays accurate. The backend independently gates each request via `space.can_ai?`, so if a user runs out of tokens mid-batch, remaining receipts are skipped and marked ❌ in the UI.
+
+> **Goal:** As much as possible, tokens should only be consumed for value delivered. If the AI fails to extract meaningful data from an image, the user should not be penalised.
 
 ---
 
@@ -378,16 +377,19 @@ Token balance is rechecked via `refetchAIUsage()` after each receipt in the loop
 | Camera capture | ✅ | ✅ |
 | AI data extraction | ✅ (up to token limit) | ✅ (higher token limit) |
 | Draft transaction creation | ✅ | ✅ |
-| **Bulk receipt upload (up to 10)** | ❌ | ✅ |
+| **Bulk receipt upload (up to 15)** | ❌ | ✅ |
 | **Token cost preview before batch** | ❌ | ✅ |
-| **Sequential review of all drafts** | ❌ | ✅ |
+| **Seamless sequential draft review** | ❌ | ✅ |
+| **Push notification on batch completion** | ❌ | ✅ |
+| **Higher draft limit (15 vs 5)** | ❌ | ✅ |
 
 ---
 
 ## 8. Constraints & Limitations
 
-- **Maximum batch size: 10 receipts** — balances UX responsiveness with server load and token consumption risk.
-- **`MAX_DRAFTS = 5`** — the existing draft cap means if the user uploads 10 receipts, only the 5 most recent drafts are retained. The "Review Transactions" flow should prompt the user to save each draft before moving to the next to avoid automatic deletion.
+- **Maximum batch size: 15 receipts** — balances UX responsiveness with server load and token consumption risk.
+- **`MAX_DRAFTS = 15` for paid/sponsored users** — the draft limit is raised from 5 to 15 for paid/sponsored subscribers to accommodate a full bulk batch. The "Review Transactions" flow is designed to be seamless and frictionless, prompting the user to review and save each draft in sequence before it is displaced by newer ones.
+- **`MAX_DRAFTS = 5` for free users** — unchanged.
 - **Sequential, not parallel** — processing is intentionally sequential to provide clear per-image feedback and to avoid race conditions on token consumption checks.
 - **Mobile camera** — bulk mode uses the file picker only (no webcam grid). Camera capture remains single-image only, as capturing multiple photos in one session is not a standard mobile browser API.
 - **No retry on failed images** — failed receipts must be uploaded again individually. A retry button per failed item could be added in a future iteration.
@@ -396,13 +398,13 @@ Token balance is rechecked via `refetchAIUsage()` after each receipt in the loop
 
 ## 9. Open Questions
 
-| # | Question | Owner | Status |
-|---|---|---|---|
-| 1 | Should the `MAX_DRAFTS` limit be raised for paid users? | Product | Open |
-| 2 | Should failed receipts still consume a token, or should we gate token deduction on AI success? | Engineering | Open |
-| 3 | Is 10 the right cap, or should higher-tier plans allow more? | Product | Open |
-| 4 | Should the "Review Transactions" flow be a stepper/wizard UI or individual dialogs? | Design | Open |
-| 5 | Do we want a dedicated `POST /receipts/bulk` backend endpoint now, or stay with per-image calls? | Engineering | Open |
+| # | Question | Owner | Status | Resolution |
+|---|---|---|---|---|
+| 1 | Should the `MAX_DRAFTS` limit be raised for paid users? | Product | ✅ Resolved | **Yes — 15 drafts for paid/sponsored users.** |
+| 2 | Should failed receipts still consume a token, or should we gate token deduction on AI success? | Engineering | ✅ Resolved | **Failed receipts must not consume a token.** Token is only recorded on successful AI extraction. |
+| 3 | Is 15 the right cap, or should higher-tier plans allow more? | Product | 🔵 Deferred | **Parked for future discussion.** Current cap set to 15. |
+| 4 | Should the "Review Transactions" flow be a stepper/wizard UI or individual dialogs? | Design | ✅ Resolved | **Use existing draft-based flow, but improve it to be more seamless.** The draft review experience should guide the user through each receipt without friction. |
+| 5 | Do we want a dedicated `POST /receipts/bulk` backend endpoint now, or stay with per-image calls? | Engineering | ✅ Resolved | **Use per-image calls (singular endpoint) for now.** A `POST /receipts/bulk` with WebSocket + parallel processing is a future stretch goal. |
 
 ---
 
