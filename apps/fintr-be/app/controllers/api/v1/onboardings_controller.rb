@@ -36,6 +36,8 @@ module Api
           budgets_params
         when "accounts"
           accounts_params
+        when "skip"
+          skip_params
         end
       end
 
@@ -69,6 +71,10 @@ module Api
           :step,
           accounts: [:name, :account_category, :balance]
         )
+      end
+
+      def skip_params
+        params.permit(:step)
       end
 
       def show_step_params

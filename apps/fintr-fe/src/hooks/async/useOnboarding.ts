@@ -6,6 +6,7 @@ import {
   saveStep1Data,
   saveStep2Data,
   saveStep3Data,
+  skipOnboardingSetup,
   SaveCurrencyStepArgs,
   SaveStep1DataArgs,
   SaveStep2DataArgs,
@@ -139,6 +140,18 @@ export const useOnboarding = (step?: string) => {
     },
   });
 
+  // Skip onboarding mutation
+  const skipOnboardingMutation = useMutation({
+    mutationFn: () => skipOnboardingSetup({ api }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      queryClient.invalidateQueries({ queryKey: ['onboarding'] });
+    },
+    onError: (error: any) => {
+      console.error('Error skipping onboarding:', error);
+    },
+  });
+
   // Save step 3 data mutation
   const saveStep3Mutation = useMutation({
     mutationFn: (data: Omit<SaveStep3DataArgs, 'api'>) => 
@@ -188,7 +201,16 @@ export const useOnboarding = (step?: string) => {
     return new Promise((resolve, reject) => {
       saveStep3Mutation.mutate(data, {
         onSuccess: (result) => resolve(result),
-        onError: (error) => reject(error)
+        onError: (error) => reject(error),
+      });
+    });
+  };
+
+  const skipOnboardingAsync = () => {
+    return new Promise((resolve, reject) => {
+      skipOnboardingMutation.mutate(undefined, {
+        onSuccess: (result) => resolve(result),
+        onError: (error) => reject(error),
       });
     });
   };
@@ -206,11 +228,13 @@ export const useOnboarding = (step?: string) => {
     saveStep1Data: saveStep1DataAsync,
     saveStep2Data: saveStep2DataAsync,
     saveStep3Data: saveStep3DataAsync,
+    skipOnboarding: skipOnboardingAsync,
     isUpdating:
       saveCurrencyStepMutation.isLoading ||
       saveStep1Mutation.isLoading ||
       saveStep2Mutation.isLoading ||
-      saveStep3Mutation.isLoading,
+      saveStep3Mutation.isLoading ||
+      skipOnboardingMutation.isLoading,
     
     // Mutation errors
     step1Error: saveStep1Mutation.error,
