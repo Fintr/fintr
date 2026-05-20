@@ -49,10 +49,30 @@ module Transactions
       end
 
       def by_category(relation, params)
-        return Success(relation) if ["all", "", nil].include?(params[:category_name])
+        return Success(relation) if category_filter_blank?(params)
+
+        if params[:category_id].present?
+          relation = relation.where(category_id: params[:category_id])
+
+          if params[:subcategory_id].present?
+            relation = relation.joins(
+              "INNER JOIN transactions ON transactions.id = combined_transactions.transactable_id " \
+              "AND combined_transactions.transactable_type IN " \
+              "('Transactions::Income', 'Transactions::Expense')",
+            )
+              .where(transactions: { subcategory_id: params[:subcategory_id] })
+          end
+
+          return Success(relation)
+        end
 
         relation = relation.where(category_name: params[:category_name])
         Success(relation)
+      end
+
+      def category_filter_blank?(params)
+        ["all", "", nil].include?(params[:category_name]) &&
+          params[:category_id].blank?
       end
 
       def by_account(relation, params)

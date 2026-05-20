@@ -39,10 +39,10 @@ module Transactions
           params              = step validate(params:)
           transaction         = step find_transaction(params:)
           space               = step find_space(params:)
-          category            = step find_category(params:)
+          assignment          = step resolve_category_assignment(params:)
           account             = step find_account(params:)
           _                   = step ensure_account_currency_matches_original(transaction:, account:)
-          params              = step transform_params(params:, transaction:, category:, account:, space:)
+          params              = step transform_params(params:, transaction:, assignment:, account:, space:)
           changed_transaction = step initialize_update_transaction(transaction:, params:)
           _                   = step validate_installment_not_changed(transaction: changed_transaction)
           changed_transaction = step update_schedule(transaction: changed_transaction, params:)
@@ -92,13 +92,25 @@ module Transactions
         Failure(space_id: "not found")
       end
 
-      def find_category(params:)
+      def resolve_category_assignment(params:)
+        if params[:category_id].present?
+          return Transactions::Operations::ResolveCategoryAssignment.new.call(
+            space_id: params[:space_id],
+            category_id: params[:category_id],
+            subcategory_id: params[:subcategory_id]
+          )
+        end
+
         category = Transactions::Category.find_by!(
           name: params[:category_name],
           space_id: params[:space_id],
-          category_type: params[:transaction_type]
+          category_type: params[:transaction_type],
+          parent_id: nil
         )
-        Success(category)
+        Success(
+          category_id: category.id,
+          subcategory_id: nil
+        )
       rescue ActiveRecord::RecordNotFound
         Failure(category_name: "not found")
       end
@@ -111,14 +123,16 @@ module Transactions
       end
 
       # Frontend sends either (a) amount in space currency, or (b) amount in original_currency + conversion metadata (edit with currency_conversion).
-      def transform_params(params:, transaction:, category:, account:, space:)
+      def transform_params(params:, transaction:, assignment:, account:, space:)
         params = params.dup
         conversion = step convert_amount_to_account_currency(params:, transaction:, account:, space:)
         params.merge!(conversion) if conversion.present?
 
         account_currency = account.balance_currency.presence || "PHP"
-        params[:category_id] = category.id
+        params[:category_id] = assignment[:category_id]
+        params[:subcategory_id] = assignment[:subcategory_id]
         params[:category_id] = space.categories.transfer_fee.id if transaction.transfer.present?
+        params[:subcategory_id] = nil if transaction.transfer.present?
         params[:account_id] = account.id
         params[:amount_currency] = account_currency
         params[:balance_currency] = account_currency
@@ -128,6 +142,7 @@ module Transactions
         params.delete(:category_name)
         params.delete(:account_name)
         params.delete(:transaction_type)
+        params.delete(:subcategory_id) if params[:subcategory_id].blank?
         Success(params)
       end
 

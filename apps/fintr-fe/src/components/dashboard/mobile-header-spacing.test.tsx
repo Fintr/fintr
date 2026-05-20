@@ -17,6 +17,14 @@ vi.mock("@/hooks/usePlatformDetection", () => ({
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
   useRouter: () => ({ back: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("@/hooks/async/useTransactionCategories", () => ({
+  useTransactionCategories: () => ({
+    expenseCategories: [],
+    incomeCategories: [],
+  }),
 }));
 
 describe("Mobile Header Spacer - Top Safe Area", () => {

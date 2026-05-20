@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { isWithinDialogCompanionLayer } from "@/lib/dialogOutsideInteraction"
 
 const isPortaledOverlayTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) {
@@ -14,6 +15,7 @@ const isPortaledOverlayTarget = (target: EventTarget | null): boolean => {
   return (
     target.closest("[data-calculator-keyboard]") != null
     || target.closest("[data-grid-picker-modal]") != null
+    || isWithinDialogCompanionLayer(target)
   )
 }
 

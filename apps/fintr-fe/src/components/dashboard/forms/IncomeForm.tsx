@@ -31,6 +31,7 @@ import { createTransaction, updateTransaction } from "@/services/transactions/mu
 import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum } from "@/constants/transactionConstants";
 import GridPicker from "./GridPicker";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
+import { categoryPickerValueFromTransaction } from "@/types/categoryTreeTypes";
 import { UpdateTransactionType } from "@/types/transactionTypes";
 import NotesAutocomplete from "@/components/ui/notes-autocomplete";
 import FileUploadField from "./FileUploadField";
@@ -158,7 +159,13 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const [formState, setFormState] = useState<IncomeFormValues>({
     amount: initialData?.amount?.toString() || "",
     description: initialData?.description || "",
-    categoryName: initialData?.categoryName || "",
+    categoryName: initialData
+      ? categoryPickerValueFromTransaction({
+          categoryId: initialData.categoryId,
+          subcategoryId: initialData.subcategoryId,
+          categoryName: initialData.categoryName,
+        })
+      : "",
     accountName: initialData?.accountName || "",
     scheduleType: getValidIncomeScheduleType(initialData?.scheduleType),
     repeatInterval: initialData?.repeatInterval || "",
@@ -329,7 +336,11 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       setFormState({
         amount: initialAmount,
         description: initialData.description || "",
-        categoryName: initialData.categoryName || "",
+        categoryName: categoryPickerValueFromTransaction({
+          categoryId: initialData.categoryId,
+          subcategoryId: initialData.subcategoryId,
+          categoryName: initialData.categoryName,
+        }),
         accountName: initialData.accountName || "",
         scheduleType: getValidIncomeScheduleType(initialData.scheduleType),
         repeatInterval: initialData.repeatInterval || "",

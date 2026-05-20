@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { isNativeCapacitor } from "@/lib/capacitor";
 import { getSafeAreaInsets } from "@/lib/platform-detection";
 import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen";
+import { numberFormatting } from "@/lib/utils";
 
 interface CalculatorInputProps {
   id?: string;
@@ -42,8 +43,26 @@ const OPERATOR_MAP: Record<string, string> = {
 
 // Breakpoints for responsive behavior
 const MOBILE_BREAKPOINT = 768; // md breakpoint
+const MOBILE_KEYBOARD_VH = 0.4;
+const KEYBOARD_GAP = 8;
+const DESKTOP_KEYBOARD_HEIGHT = 320;
 
 const CALCULATOR_KEYBOARD_HISTORY_KEY = "__fintrCalculatorKeyboard";
+
+type KeyboardLayout = "below" | "above" | "bottom-sheet";
+
+type KeyboardPosition = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+};
+
+const parsePxOffset = (value: string): number => {
+  const parsed = Number.parseInt(value, 10);
+
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
 
 function safeEvaluate(expression: string): number | null {
   try {
@@ -67,13 +86,17 @@ function safeEvaluate(expression: string): number | null {
 }
 
 function hasOperator(value: string): boolean {
-  // Check for operators, but ignore leading minus (negative number)
-  // A value has an operator if it contains +, *, / anywhere,
-  // or if it contains - NOT at the start (subtraction vs negative)
-  if (/[+*/]/.test(value)) return true;
-  // Check for minus that's not at the start (subtraction operator)
-  const minusIndex = value.indexOf('-', 1); // Start searching from index 1
-  return minusIndex > 0;
+  const raw = numberFormatting.stripDelimiters(value);
+
+  if (/[+*/]/.test(raw)) {
+    return true;
+  }
+
+  return raw.indexOf("-", 1) > 0;
+}
+
+function toRawExpression(value: string): string {
+  return numberFormatting.stripDelimiters(value).replace(/[^0-9+\-*/.]/g, "");
 }
 
 export function CalculatorInput({
@@ -93,7 +116,13 @@ export function CalculatorInput({
   const [isMobile, setIsMobile] = useState(false);
   const [isAndroidNative, setIsAndroidNative] = useState(false);
   const [isIOSNative, setIsIOSNative] = useState(false);
-  const [keyboardPosition, setKeyboardPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [keyboardPosition, setKeyboardPosition] = useState<KeyboardPosition>({
+    top: 0,
+    left: 0,
+    width: 0,
+    height: DESKTOP_KEYBOARD_HEIGHT,
+  });
+  const [keyboardLayout, setKeyboardLayout] = useState<KeyboardLayout>("below");
   const [keyboardBottomOffset, setKeyboardBottomOffset] = useState<string>("0px");
   const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -158,50 +187,132 @@ export function CalculatorInput({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Calculate keyboard position relative to input, keeping within viewport
-  useEffect(() => {
-    if (showKeyboard && inputRef.current && !isMobile) {
-      const updatePosition = () => {
-        const rect = inputRef.current?.getBoundingClientRect();
-        if (rect) {
-          const keyboardWidth = Math.min(Math.max(rect.width, 280), 320);
-          const viewportWidth = window.innerWidth;
-          const padding = 16;
-          
-          // Calculate left position, ensuring keyboard stays within viewport
-          let left = rect.left;
-          
-          // If keyboard would overflow right side, align to right edge of input
-          if (left + keyboardWidth > viewportWidth - padding) {
-            left = rect.right - keyboardWidth;
-          }
-          
-          // If still overflowing left, clamp to left edge with padding
-          if (left < padding) {
-            left = padding;
-          }
-          
-          setKeyboardPosition({
-            top: rect.bottom + 8,
-            left: left,
-            width: keyboardWidth,
-          });
-        }
-      };
-      updatePosition();
-      window.addEventListener("scroll", updatePosition, true);
-      window.addEventListener("resize", updatePosition);
-      return () => {
-        window.removeEventListener("scroll", updatePosition, true);
-        window.removeEventListener("resize", updatePosition);
-      };
+  const prefersBottomSheetKeyboard = useCallback(() => {
+    const input = inputRef.current;
+
+    if (!input) {
+      return false;
     }
-  }, [showKeyboard, isMobile]);
+
+    if (isMobile) {
+      return true;
+    }
+
+    return (
+      input.closest("[data-modal-content]") != null
+      || input.closest('[role="dialog"]') != null
+    );
+  }, [isMobile]);
+
+  const updateKeyboardPosition = useCallback(() => {
+    const input = inputRef.current;
+    const rect = input?.getBoundingClientRect();
+
+    if (!rect) {
+      return;
+    }
+
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const padding = 16;
+    const keyboardHeight = isMobile
+      ? viewportHeight * MOBILE_KEYBOARD_VH
+      : DESKTOP_KEYBOARD_HEIGHT;
+    const keyboardWidth = Math.min(
+      Math.max(rect.width, 280),
+      Math.min(320, viewportWidth - padding * 2),
+    );
+
+    if (prefersBottomSheetKeyboard()) {
+      setKeyboardLayout("bottom-sheet");
+      setKeyboardPosition({
+        top: 0,
+        left: 0,
+        width: keyboardWidth,
+        height: keyboardHeight,
+      });
+
+      if (typeof input.scrollIntoView === "function") {
+        input.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+
+      return;
+    }
+
+    let left = rect.left;
+
+    if (left + keyboardWidth > viewportWidth - padding) {
+      left = rect.right - keyboardWidth;
+    }
+
+    if (left < padding) {
+      left = padding;
+    }
+
+    const bottomInset = parsePxOffset(keyboardBottomOffset);
+    const spaceBelow = viewportHeight - rect.bottom - padding - bottomInset;
+    const spaceAbove = rect.top - padding;
+
+    const minAnchoredHeight = 260;
+
+    if (spaceBelow >= minAnchoredHeight + KEYBOARD_GAP) {
+      const anchoredHeight = Math.min(keyboardHeight, spaceBelow - KEYBOARD_GAP);
+
+      setKeyboardLayout("below");
+      setKeyboardPosition({
+        top: rect.bottom + KEYBOARD_GAP,
+        left,
+        width: keyboardWidth,
+        height: anchoredHeight,
+      });
+      return;
+    }
+
+    if (spaceAbove >= minAnchoredHeight + KEYBOARD_GAP) {
+      const anchoredHeight = Math.min(keyboardHeight, spaceAbove - KEYBOARD_GAP);
+
+      setKeyboardLayout("above");
+      setKeyboardPosition({
+        top: rect.top - anchoredHeight - KEYBOARD_GAP,
+        left,
+        width: keyboardWidth,
+        height: anchoredHeight,
+      });
+      return;
+    }
+
+    setKeyboardLayout("bottom-sheet");
+    setKeyboardPosition({
+      top: 0,
+      left: 0,
+      width: keyboardWidth,
+      height: keyboardHeight,
+    });
+
+    if (typeof input.scrollIntoView === "function") {
+      input.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [isMobile, keyboardBottomOffset, prefersBottomSheetKeyboard]);
+
+  useEffect(() => {
+    if (!showKeyboard || !inputRef.current) {
+      return;
+    }
+
+    updateKeyboardPosition();
+    window.addEventListener("scroll", updateKeyboardPosition, true);
+    window.addEventListener("resize", updateKeyboardPosition);
+
+    return () => {
+      window.removeEventListener("scroll", updateKeyboardPosition, true);
+      window.removeEventListener("resize", updateKeyboardPosition);
+    };
+  }, [showKeyboard, updateKeyboardPosition]);
 
   // Sync with external value when not in expression mode
   useEffect(() => {
     if (!isExpressionMode) {
-      setExpression(value);
+      setExpression(numberFormatting.stripDelimiters(value));
     }
   }, [value, isExpressionMode]);
 
@@ -262,20 +373,45 @@ export function CalculatorInput({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const previewResult = hasOperator(expression) ? safeEvaluate(expression) : null;
+  const formatPreviewAmount = (amount: number) => {
+    const rounded = Math.round(amount * 100) / 100;
+
+    return numberFormatting.formatForInput(rounded.toString());
+  };
+
+  const displayExpression = numberFormatting.formatExpressionForDisplay(expression);
+  const keyboardDisplayValue = displayExpression.trim() === "" ? placeholder : displayExpression;
+
+  const keyboardPreviewLine = useMemo(() => {
+    const raw = numberFormatting.stripDelimiters(expression).trim();
+
+    if (raw === "") {
+      return `= ${placeholder}`;
+    }
+
+    const evaluated = safeEvaluate(raw);
+
+    if (evaluated !== null) {
+      return `= ${formatPreviewAmount(evaluated)}`;
+    }
+
+    if (hasOperator(raw)) {
+      return "= —";
+    }
+
+    const formatted = numberFormatting.formatForInput(raw);
+
+    return formatted === "" ? `= ${placeholder}` : `= ${formatted}`;
+  }, [expression, placeholder]);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value;
-      // Allow numbers, operators, decimal points, commas, and leading minus
-      const filtered = newValue.replace(/[^0-9+\-*/.,]/g, "");
-      
+      const filtered = toRawExpression(e.target.value);
+
       if (hasOperator(filtered)) {
-        // Enter expression mode - keep expression internal
         setIsExpressionMode(true);
         setExpression(filtered);
       } else {
-        // No operators (may be a negative number like "-500") - pass through to parent
         setIsExpressionMode(false);
         setExpression(filtered);
         onChange(filtered);
@@ -411,8 +547,20 @@ export function CalculatorInput({
     }
 
     setShowKeyboard(true);
-    requestAnimationFrame(collapseSelectionToEnd);
-  }, [disabled, collapseSelectionToEnd]);
+    requestAnimationFrame(() => {
+      collapseSelectionToEnd();
+      updateKeyboardPosition();
+      const element = inputRef.current;
+
+      if (typeof element?.scrollIntoView === "function") {
+        element.scrollIntoView({
+          block: "nearest",
+          behavior: "smooth",
+          inline: "nearest",
+        });
+      }
+    });
+  }, [disabled, collapseSelectionToEnd, updateKeyboardPosition]);
 
   const handleCalculatorButtonPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -433,32 +581,64 @@ export function CalculatorInput({
       data-calculator-keyboard
       className={cn(
         "bg-background border shadow-2xl z-[9999] pointer-events-auto",
-        isMobile
+        keyboardLayout === "bottom-sheet"
           ? "fixed left-0 right-0 border-t rounded-t-xl p-3"
-          : "fixed rounded-xl p-4"
+          : "fixed rounded-xl border p-3 sm:p-4",
       )}
       style={
-        isMobile
+        keyboardLayout === "bottom-sheet"
           ? {
-              height: "40vh",
-              // Position above system navigation (Android 3-button nav / iOS home indicator)
+              height: `${MOBILE_KEYBOARD_VH * 100}vh`,
               bottom: keyboardBottomOffset,
             }
           : {
               top: keyboardPosition.top,
               left: keyboardPosition.left,
               width: keyboardPosition.width,
+              height: keyboardPosition.height,
             }
       }
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <div className={cn("flex flex-col", isMobile ? "h-full gap-1.5" : "space-y-2")}>
+      <div
+        className={cn(
+          "flex h-full flex-col",
+          keyboardLayout === "bottom-sheet" ? "gap-1.5" : "gap-2",
+        )}
+      >
+        <div
+          className={cn(
+            "shrink-0 rounded-lg border bg-muted/30 px-3 py-2",
+            keyboardLayout === "bottom-sheet" ? "mb-0.5" : "mb-1",
+          )}
+        >
+          <p
+            className={cn(
+              "truncate text-right font-semibold tabular-nums text-primary",
+              keyboardLayout === "bottom-sheet"
+                ? "text-2xl sm:text-3xl"
+                : "text-xl sm:text-2xl",
+            )}
+            aria-live="polite"
+          >
+            {keyboardDisplayValue}
+          </p>
+          <p
+            className="min-h-5 truncate text-right text-sm leading-5 tabular-nums text-muted-foreground"
+            aria-live="polite"
+          >
+            {keyboardPreviewLine}
+          </p>
+        </div>
+
         {/* Calculator buttons - iOS style layout */}
-        <div className={cn(
-          "grid grid-cols-4 gap-1.5",
-          isMobile && "flex-1 grid-rows-5"
-        )}>
+        <div
+          className={cn(
+            "grid grid-cols-4 gap-1.5",
+            keyboardLayout === "bottom-sheet" && "flex-1 grid-rows-5",
+          )}
+        >
           {CALCULATOR_BUTTONS.flat().map((btn, index) => (
             <Button
               key={`${btn}-${index}`}
@@ -468,7 +648,9 @@ export function CalculatorInput({
                 "touch-manipulation [-webkit-tap-highlight-color:transparent] font-semibold",
                 "transition-colors duration-100 ease-out",
                 "active:bg-primary active:text-primary-foreground active:border-primary",
-                isMobile ? "h-full min-h-11 text-lg" : "h-12 text-xl",
+                keyboardLayout === "bottom-sheet"
+                  ? "h-full min-h-11 text-lg"
+                  : "h-11 text-lg sm:h-12 sm:text-xl",
                 // Operators column (right side) - primary/orange color
                 isOperatorButton(btn) && "bg-primary/10 hover:bg-primary/20 text-primary",
                 // Action buttons (top row except ÷) - muted style
@@ -500,7 +682,7 @@ export function CalculatorInput({
         name={name}
         type="text"
         inputMode="none"
-        value={expression}
+        value={displayExpression}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}

@@ -27,6 +27,7 @@ import {
 import { Folder, Users, Settings, Upload, Download, Pencil, Plus, CreditCard, X, Loader2, AlertCircle, Copy, Check, Zap, Play, RefreshCw } from "lucide-react";
 import CategoryToggle, { CategoryToggleType } from "../category-toggle";
 import CategoryListCard from "../category-list-card";
+import CategoryList from "../category-list";
 import AccountList from "../account-list";
 import AddAccountSheet from "../add-account-sheet";
 import CategoryFormDialog from "../category-form-dialog";
@@ -303,25 +304,13 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
 
   const [importFormat, setImportFormat] = useState("JSON (Recommended)");
 
-  // Transform API data to match component expectations
-  const transformedExpenseCategories = expenseCategories.map((category: TransactionCategory) => ({
-    id: category.id,
-    name: category.name,
-    color: category.color || getColor(),
-    type: "expense",
-  }));
-
-  const transformedIncomeCategories = incomeCategories.map((category: TransactionCategory) => ({
-    id: category.id,
-    name: category.name,
-    color: category.color || getColor(),
-    type: "income",
-  }));
+  const [addRootCategoryType, setAddRootCategoryType] =
+    useState<CategoryTypeEnum | null>(null);
 
   // Category data - mix of API data and mock data for other types
   const categories = {
-    expense: transformedExpenseCategories,
-    income: transformedIncomeCategories,
+    expense: expenseCategories,
+    income: incomeCategories,
     goal: showV2Features ? [
       {
         id: "7",
@@ -461,13 +450,20 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
   //   // Implement add income category functionality
   // };
 
-  const handleCreateCategory = async (name: string, categoryType: CategoryTypeEnum) => {
+  const handleCreateCategory = async (
+    name: string,
+    categoryType: CategoryTypeEnum,
+    parentId?: string | null,
+  ) => {
     try {
-      await createCategoryMutation.mutateAsync({ name, categoryType });
-      // No toast here, it's handled in the dialog
+      await createCategoryMutation.mutateAsync({
+        name,
+        categoryType,
+        parentId: parentId ?? null,
+      });
     } catch (error) {
       console.error("Failed to create category:", error);
-      throw error; // Re-throw so the dialog can handle the error
+      throw error;
     }
   };
 
@@ -525,21 +521,21 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
     />
   );
 
-  // Create custom add component for categories
-  const renderCategoryAdd = (categoryType: CategoryTypeEnum) => (
-    <CategoryFormDialog
-      categoryType={categoryType}
-      onAdd={handleCreateCategory}
-      isLoading={createCategoryMutation.isLoading}
-      trigger={
-        <Button
-          className="bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-4 rounded-md transition-all duration-300 ease-in-out transform hover:scale-[1.01] w-full"
-        >
-          <Plus className="mr-2 h-5 w-5" /> Add New {categoryType === CategoryTypeEnum.EXPENSE ? 'Expense' : 'Income'} Category
-        </Button>
-      }
-    />
-  );
+  const renderRootCategoryAddDialog = () =>
+    addRootCategoryType ? (
+      <CategoryFormDialog
+        categoryType={addRootCategoryType}
+        onAdd={handleCreateCategory}
+        isLoading={createCategoryMutation.isPending}
+        open
+        onOpenChange={(open) => {
+          if (!open) {
+            setAddRootCategoryType(null);
+          }
+        }}
+        trigger={<span className="hidden" />}
+      />
+    ) : null;
 
   // Create custom delete component for categories
   const renderCategoryDelete = (item: CategoryItem) => (
@@ -677,37 +673,47 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
             </div>
 
             {activeCategory === "expense" && (
-              <CategoryListCard
-                title="Expense Categories"
-                description="Manage your expense categories"
-                items={categories["expense"]}
-                onAddItem={() => {}} // Dummy function, actual dialog is rendered via customAddComponent
-                onEditItem={handleEditCategory}
-                onDeleteItem={handleDeleteCategory}
-                colorField="color"
-                primaryField="name"
-                addButtonText="Add New Expense Category"
-                customEditComponent={renderCategoryEdit}
-                customAddComponent={renderCategoryAdd(CategoryTypeEnum.EXPENSE)}
-                customDeleteComponent={renderCategoryDelete}
-              />
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-lg font-semibold text-primary">
+                    Expense categories
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Tap a category to manage its subcategories
+                  </p>
+                </div>
+                <CategoryList
+                  categories={categories["expense"]}
+                  kind="expense"
+                  addButtonLabel="Add new expense category"
+                  onAddRoot={() =>
+                    setAddRootCategoryType(CategoryTypeEnum.EXPENSE)
+                  }
+                />
+                {renderRootCategoryAddDialog()}
+              </div>
             )}
 
             {activeCategory === "income" && (
-              <CategoryListCard
-                title="Income Categories"
-                description="Manage your income categories"
-                items={categories["income"]}
-                onAddItem={() => {}} // Dummy function, actual dialog is rendered via customAddComponent
-                onEditItem={handleEditCategory}
-                onDeleteItem={handleDeleteCategory}
-                colorField="color"
-                primaryField="name"
-                addButtonText="Add New Income Category"
-                customEditComponent={renderCategoryEdit}
-                customAddComponent={renderCategoryAdd(CategoryTypeEnum.INCOME)}
-                customDeleteComponent={renderCategoryDelete}
-              />
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-lg font-semibold text-primary">
+                    Income categories
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Tap a category to manage its subcategories
+                  </p>
+                </div>
+                <CategoryList
+                  categories={categories["income"]}
+                  kind="income"
+                  addButtonLabel="Add new income category"
+                  onAddRoot={() =>
+                    setAddRootCategoryType(CategoryTypeEnum.INCOME)
+                  }
+                />
+                {renderRootCategoryAddDialog()}
+              </div>
             )}
 
             {activeCategory === "goal" && (

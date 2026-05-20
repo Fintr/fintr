@@ -26,6 +26,7 @@ import { Filters, FilterTypes } from "./filters";
 import { DownloadButton } from "./buttons/DownloadButton";
 import { DeleteButton } from "./buttons/DeleteButton";
 import { ViewModeButton } from "./buttons/ViewModeButton";
+import { parseCategoryPickerValue } from "@/types/categoryTreeTypes";
 import { IndexTransaction, TransactionIndexInputType, TransactionTotals } from "@/types/transactionTypes";
 import { TransactionTotalsDisplay } from "./transaction-totals";
 import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
@@ -621,14 +622,31 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
 
   const handleDownloadTransactions = async () => {
     try {
-      const filterData: Omit<TransactionIndexInputType, 'page'> = {
+      const categoryAssignment = parseCategoryPickerValue(
+        appliedFilters.appliedCategory &&
+          appliedFilters.appliedCategory !== "all"
+          ? appliedFilters.appliedCategory
+          : "",
+      );
+
+      const filterData: Omit<TransactionIndexInputType, "page"> = {
         spaceCode,
-        categoryName: appliedFilters.appliedCategory,
         startDate: appliedFilters.queryStartDate,
         endDate: appliedFilters.queryEndDate,
         minAmount: appliedFilters.appliedMinAmount,
         maxAmount: appliedFilters.appliedMaxAmount,
         searchQuery: appliedFilters.searchQuery,
+        ...(categoryAssignment?.categoryId
+          ? { categoryId: categoryAssignment.categoryId }
+          : {}),
+        ...(categoryAssignment?.subcategoryId
+          ? { subcategoryId: categoryAssignment.subcategoryId }
+          : {}),
+        ...(!categoryAssignment?.categoryId &&
+        appliedFilters.appliedCategory &&
+        appliedFilters.appliedCategory !== "all"
+          ? { categoryName: appliedFilters.appliedCategory }
+          : {}),
       };
       await generateTransactionsCsv(api, filterData);
     } catch (error) {

@@ -24,6 +24,7 @@ export interface IndexTransaction {
   bookedAmount?: number;
   bookedAmountCurrency?: string;
   categoryName: string;
+  subcategoryName?: string | null;
   fromAccountName: string;
   toAccountName: string;
   type: CombinedTransactionTypeEnum;
@@ -35,7 +36,9 @@ export interface IndexTransaction {
 
 export interface TransactionIndexInputType {
   spaceCode: string;
-  categoryName: string;
+  categoryName?: string;
+  categoryId?: string;
+  subcategoryId?: string;
   startDate: string;
   endDate: string;
   minAmount: number | string;
@@ -54,6 +57,9 @@ export interface UpdateTransactionType {
   /** Space-normalized display from API when needed for summaries. */
   amountInSpaceCurrency?: { amount: number; currency: string };
   categoryName: string;
+  categoryId?: string;
+  subcategoryId?: string | null;
+  subcategoryName?: string | null;
   accountName: string;
   /** Explicit form type sent to API: "income" or "expense" */
   transactionType: "income" | "expense";

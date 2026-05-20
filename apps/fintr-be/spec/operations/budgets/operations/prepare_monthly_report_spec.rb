@@ -18,45 +18,34 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
         }
       end
 
-      let(:mock_monthly_budgets) do
-        [
-          OpenStruct.new(
-            id: SecureRandom.uuid,
-            date: test_date.beginning_of_month,
-            amount_cents: 10000,
-            category_name: "Food",
-            total_spent: 50.0,
-            amount_currency: "PHP"
-          ),
-          OpenStruct.new(
-            id: SecureRandom.uuid,
-            date: test_date.beginning_of_month,
-            amount_cents: 20000,
-            category_name: "Transport",
-            total_spent: 100.0,
-            amount_currency: "PHP"
-          )
-        ]
-      end
-
-      let(:mock_monthly_budgets_query) { instance_double(ActiveRecord::Relation, to_a: mock_monthly_budgets) }
+      let!(:food_category) { create(:category, space:, category_type: "expense", name: "Food") }
+      let!(:transport_category) { create(:category, space:, category_type: "expense", name: "Transport") }
       let(:mock_transactions_query) { instance_double(ActiveRecord::Relation, sum: 15000) }
 
       before do
+        create(
+          :budget,
+          space:,
+          category: food_category,
+          date: test_date.beginning_of_month,
+          amount_cents: 10_000,
+          amount_currency: "PHP",
+        )
+        create(
+          :budget,
+          space:,
+          category: transport_category,
+          date: test_date.beginning_of_month,
+          amount_cents: 20_000,
+          amount_currency: "PHP",
+        )
+
         allow(Budgets::Queries::MonthlyBudgets).to receive(:call).and_return(
-          Dry::Monads::Success(mock_monthly_budgets_query)
+          Dry::Monads::Success(Budget.none)
         )
         allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_return(
           Dry::Monads::Success(mock_transactions_query)
         )
-        allow(Budgets::Serializers::MonthlyBudgetsSerializer).to receive(:render_as_hash)
-          .with(mock_monthly_budgets)
-          .and_return(
-            [
-              { id: mock_monthly_budgets[0].id, date: mock_monthly_budgets[0].date, amount: 100.0, category_name: "Food", total_spent: 50.0, amount_currency: "PHP" },
-              { id: mock_monthly_budgets[1].id, date: mock_monthly_budgets[1].date, amount: 200.0, category_name: "Transport", total_spent: 100.0, amount_currency: "PHP" }
-            ]
-          )
       end
 
       it { is_expected.to be_success }
@@ -125,36 +114,25 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
         }
       end
 
-      let(:mock_monthly_budgets) do
-        [
-          OpenStruct.new(
-            id: SecureRandom.uuid,
-            date: params[:start_date],
-            amount_cents: 5000,
-            category_name: "Utilities",
-            total_spent: 25.0,
-            amount_currency: "PHP"
-          )
-        ]
-      end
-
-      let(:mock_monthly_budgets_query) { instance_double(ActiveRecord::Relation, to_a: mock_monthly_budgets) }
+      let!(:utilities_category) { create(:category, space:, category_type: "expense", name: "Utilities") }
       let(:mock_transactions_query) { instance_double(ActiveRecord::Relation, sum: 2500) }
 
       before do
+        create(
+          :budget,
+          space:,
+          category: utilities_category,
+          date: params[:start_date].beginning_of_month,
+          amount_cents: 5000,
+          amount_currency: "PHP",
+        )
+
         allow(Budgets::Queries::MonthlyBudgets).to receive(:call).and_return(
-          Dry::Monads::Success(mock_monthly_budgets_query)
+          Dry::Monads::Success(Budget.none)
         )
         allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_return(
           Dry::Monads::Success(mock_transactions_query)
         )
-        allow(Budgets::Serializers::MonthlyBudgetsSerializer).to receive(:render_as_hash)
-          .with(mock_monthly_budgets)
-          .and_return(
-            [
-              { id: mock_monthly_budgets[0].id, date: mock_monthly_budgets[0].date, amount: 50.0, category_name: "Utilities", total_spent: 25.0, amount_currency: "PHP" }
-            ]
-          )
       end
 
       it { is_expected.to be_success }

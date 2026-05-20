@@ -43,13 +43,13 @@ module Budgets
           Budget.new(
             space:,
             category: budget.category,
+            subcategory_id: budget.subcategory_id,
             amount_cents: budget.amount_cents,
             amount_currency: budget.amount_currency,
             date:
           )
         end
         result = Budget.bulk_import(records, validate: true, all_or_none: true)
-        puts "Result: #{result.inspect}"
         Success(result.results)
       rescue ActiveRecord::RecordInvalid => e
         Failure(budgets: result.failed_instances, error: e, expected: true)

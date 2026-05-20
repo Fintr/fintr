@@ -12,6 +12,8 @@ interface UseInsightsDataParams {
   endMonth?: string;
   endYear?: string;
   selectedCategory?: string;
+  selectedCategoryId?: string | null;
+  selectedSubcategoryId?: string | null;
 }
 
 export const useInsightsData = (params: UseInsightsDataParams = {}) => {

@@ -16,6 +16,7 @@ import { fetchTransactionById } from "@/services/transactions/queries";
 import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import { toast } from "sonner";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { cn } from "@/lib/utils";
 import { indexTransactionDisplayMoney } from "@/utils/indexTransactionDisplay";
 
 interface ListViewProps {
@@ -191,6 +192,17 @@ export function ListView({
                   showBookedCurrencies
                 );
 
+              const subcategoryName = transaction.subcategoryName?.trim();
+              const hasSubcategory = Boolean(subcategoryName);
+              const categoryLine = hasSubcategory
+                ? `${transaction.categoryName} › ${subcategoryName}`
+                : transaction.categoryName;
+
+              const accountLine =
+                transaction.fromAccountName && transaction.toAccountName
+                  ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
+                  : transaction.fromAccountName || transaction.toAccountName || "";
+
               return (
                 <React.Fragment key={transaction.id}>
                   {showDivider && (
@@ -213,7 +225,10 @@ export function ListView({
                     </div>
                   )}
                   <div 
-                    className="transaction-item relative flex items-center justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors min-h-[60px] cursor-pointer"
+                    className={cn(
+                      "transaction-item relative flex justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors cursor-pointer",
+                      hasSubcategory ? "items-stretch min-h-[78px] md:min-h-[60px]" : "items-center min-h-[60px]",
+                    )}
                     onClick={() => {
                       if (!transaction.hasLoanPayment) {
                         onRowEdit(transaction);
@@ -253,14 +268,16 @@ export function ListView({
                       </Popover>
                     )}
                     {/* Color indicator */}
-                      <div
-                      className={`w-1 h-12 rounded mr-3 flex-shrink-0 ${
-                          transaction.type === CombinedTransactionTypeEnum.INCOME
-                            ? "bg-teal-600"
+                    <div
+                      className={cn(
+                        "w-1 self-center rounded mr-3 flex-shrink-0",
+                        hasSubcategory ? "h-[80%] min-h-12" : "h-12",
+                        transaction.type === CombinedTransactionTypeEnum.INCOME
+                          ? "bg-teal-600"
                           : transaction.type === CombinedTransactionTypeEnum.EXPENSE
                             ? "bg-red-900"
-                            : "bg-blue-900"
-                        }`}
+                            : "bg-blue-900",
+                      )}
                     />
                     
                     {/* Main content */}
@@ -348,40 +365,47 @@ export function ListView({
                         </div>
                       </div>
                       
+                      {hasSubcategory && (
+                        <p
+                          className="md:hidden mt-1 text-xs text-gray-600 truncate"
+                          title={categoryLine}
+                        >
+                          {categoryLine}
+                        </p>
+                      )}
+
                       <div className="flex items-center justify-between mt-1">
                         <div className="flex items-center text-xs text-gray-600 flex-1 min-w-0 overflow-hidden">
-                          <span className="flex-shrink-0 whitespace-nowrap">{new Date(transaction.date).toLocaleDateString()}</span>
-                          <span className="hidden md:block truncate ml-4" title={transaction.categoryName}>{transaction.categoryName}</span>
-                          <span className="md:hidden truncate ml-2 md:ml-4 min-w-0" title={transaction.categoryName}>{transaction.categoryName}</span>
-                          {(transaction.fromAccountName || transaction.toAccountName) && (
+                          <span className="flex-shrink-0 whitespace-nowrap">
+                            {new Date(transaction.date).toLocaleDateString()}
+                          </span>
+                          <span
+                            className="hidden md:block truncate ml-4"
+                            title={categoryLine}
+                          >
+                            {categoryLine}
+                          </span>
+                          {!hasSubcategory && (
+                            <span
+                              className="md:hidden truncate ml-2 min-w-0"
+                              title={categoryLine}
+                            >
+                              {categoryLine}
+                            </span>
+                          )}
+                          {accountLine && (
                             <>
-                              <span className="hidden md:block truncate ml-4" title={
-                                transaction.fromAccountName && transaction.toAccountName 
-                                  ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
-                                  : transaction.fromAccountName 
-                                  ? `${transaction.fromAccountName}`
-                                  : `${transaction.toAccountName}`
-                              }>
-                                {transaction.fromAccountName && transaction.toAccountName 
-                                  ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
-                                  : transaction.fromAccountName 
-                                  ? `${transaction.fromAccountName}`
-                                  : `${transaction.toAccountName}`
-                                }
+                              <span
+                                className="hidden md:block truncate ml-4"
+                                title={accountLine}
+                              >
+                                {accountLine}
                               </span>
-                              <span className="md:hidden truncate ml-2 md:ml-4 min-w-0" title={
-                                transaction.fromAccountName && transaction.toAccountName 
-                                  ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
-                                  : transaction.fromAccountName 
-                                  ? `${transaction.fromAccountName}`
-                                  : `${transaction.toAccountName}`
-                              }>
-                                {transaction.fromAccountName && transaction.toAccountName 
-                                  ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
-                                  : transaction.fromAccountName 
-                                  ? `${transaction.fromAccountName}`
-                                  : `${transaction.toAccountName}`
-                                }
+                              <span
+                                className="md:hidden truncate ml-2 min-w-0"
+                                title={accountLine}
+                              >
+                                {accountLine}
                               </span>
                             </>
                           )}

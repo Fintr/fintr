@@ -14,7 +14,13 @@ module Api
       private
 
       def index_params
-        params.permit(:category_name, :start_date, :end_date)
+        params.permit(
+          :category_name,
+          :category_id,
+          :subcategory_id,
+          :start_date,
+          :end_date
+        )
       end
     end
   end

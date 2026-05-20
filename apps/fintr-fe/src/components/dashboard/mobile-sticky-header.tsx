@@ -1,9 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
+import {
+  CategoryKind,
+  findRootCategory,
+} from "@/utils/categoryManagement";
 
 interface MobileStickyHeaderProps {
   title?: string;
@@ -27,6 +32,9 @@ const getPageTitle = (pathname: string): string => {
   }
   if (pathname.startsWith("/dashboard/insights")) {
     return "Dashboard";
+  }
+  if (pathname.includes("/space_settings/categories/detail")) {
+    return "Category";
   }
   if (pathname.startsWith("/dashboard/space_settings/categories")) {
     return "Category Management";
@@ -58,14 +66,60 @@ const getPageTitle = (pathname: string): string => {
   return "Dashboard";
 };
 
-export default function MobileStickyHeader({ title }: MobileStickyHeaderProps) {
+/** Nested settings routes show back immediately (no scroll required). */
+export const shouldShowImmediateBackButton = (pathname: string): boolean => {
+  const immediateBackPrefixes = [
+    "/dashboard/space_settings/accounts/detail",
+    "/dashboard/space_settings/categories",
+    "/dashboard/space_settings/accounts",
+    "/dashboard/space_settings/import",
+    "/dashboard/space_settings/subscriptions",
+  ];
+
+  return immediateBackPrefixes.some((prefix) => pathname.startsWith(prefix));
+};
+
+function MobileStickyHeaderContent({ title }: MobileStickyHeaderProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
-  const pageTitle = title || getPageTitle(pathname);
+
+  const { expenseCategories, incomeCategories } = useTransactionCategories();
+
+  const categoryDetailTitle = useMemo(() => {
+    if (!pathname.includes("/space_settings/categories/detail")) {
+      return null;
+    }
+
+    const categoryId = searchParams.get("categoryId");
+    const kindParam = searchParams.get("kind");
+    const kind: CategoryKind | null =
+      kindParam === "income" || kindParam === "expense" ? kindParam : null;
+
+    if (!categoryId || !kind) {
+      return null;
+    }
+
+    const tree = kind === "income" ? incomeCategories : expenseCategories;
+    const category = findRootCategory(tree, categoryId);
+
+    if (!category?.name) {
+      return null;
+    }
+
+    return `Category: ${category.name}`;
+  }, [
+    pathname,
+    searchParams,
+    expenseCategories,
+    incomeCategories,
+  ]);
+
+  const pageTitle = title || categoryDetailTitle || getPageTitle(pathname);
 
   const showBackButton =
-    isScrolled || pathname.includes("/space_settings/accounts/detail");
+    isScrolled || shouldShowImmediateBackButton(pathname);
 
   const { isAndroidNative } = usePlatformDetection();
 
@@ -154,4 +208,11 @@ export default function MobileStickyHeader({ title }: MobileStickyHeaderProps) {
   );
 }
 
+export default function MobileStickyHeader(props: MobileStickyHeaderProps) {
+  return (
+    <Suspense fallback={null}>
+      <MobileStickyHeaderContent {...props} />
+    </Suspense>
+  );
+}
 

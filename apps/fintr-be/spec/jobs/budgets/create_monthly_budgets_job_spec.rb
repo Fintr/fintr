@@ -119,6 +119,50 @@ RSpec.describe Budgets::CreateMonthlyBudgetsJob, type: :job do
       end
     end
 
+    context "integration with CreateMonthlyBudget operation" do
+      let(:space) { create(:personal_space) }
+      let(:space_id) { space.id }
+      let(:date) { Date.new(2026, 6, 1) }
+      let!(:category) { create(:category, :expense, space:, name: "Food") }
+      let!(:parent) { category }
+      let!(:subcategory) do
+        create(:category, :expense, space:, name: "Groceries", parent:)
+      end
+
+      before do
+        create(
+          :budget,
+          space:,
+          category: parent,
+          subcategory_id: nil,
+          date: Date.new(2026, 5, 10),
+          amount_cents: 30_000
+        )
+        create(
+          :budget,
+          space:,
+          category: parent,
+          subcategory_id: subcategory.id,
+          date: Date.new(2026, 5, 10),
+          amount_cents: 12_000
+        )
+      end
+
+      it "creates next-month parent and subcategory budgets from the prior month" do
+        expect { job.perform(space_id:, date:) }.to change(Budget, :count).by(2)
+
+        june_budgets = space.budgets.for_month(date)
+        expect(june_budgets.find_by(subcategory_id: nil).amount_cents).to eq(30_000)
+        expect(june_budgets.find_by(subcategory_id: subcategory.id).amount_cents).to eq(12_000)
+      end
+
+      it "raises when budgets already exist for the target month" do
+        create(:budget, space:, category: parent, date:)
+
+        expect { job.perform(space_id:, date:) }.to raise_error(StandardError, /Already created/)
+      end
+    end
+
     context "with Europe/London timezone" do
       around do |example|
         Time.use_zone("Europe/London") do

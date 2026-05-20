@@ -39,8 +39,21 @@ module Transactions
 
       field :balance_currency
 
+      field :category_id do |record|
+        record.category_id
+      end
+
       field :category_name do |record|
         record.category.name
+      end
+
+      field :subcategory_id do |record|
+        record.subcategory_id
+      end
+
+      field :subcategory_name,
+             if: ->(_field_name, record, _options) { record.subcategory_id.present? } do |record|
+        record.subcategory&.name
       end
 
 

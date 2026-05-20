@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DeleteButton } from "./tabs/transactions/buttons/DeleteButton";
 
@@ -15,103 +14,123 @@ interface CategoryItem {
   id: string;
   name: string;
   color?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface DeleteCategoryDialogProps {
   category: CategoryItem;
-  onDelete: (categoryId: string) => Promise<any>;
+  onDelete: (categoryId: string) => Promise<unknown>;
   isLoading?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
 const DeleteCategoryDialog: React.FC<DeleteCategoryDialogProps> = ({
   category,
   onDelete,
   isLoading = false,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  hideTrigger = false,
 }) => {
-  const [internalIsOpen, setInternalIsOpen] = useState(false); // Controls the Dialog's open/close state directly
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : internalOpen;
+  const setIsOpen = isControlled
+    ? (open: boolean) => controlledOnOpenChange?.(open)
+    : setInternalOpen;
+
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // UseEffect to log component mount/unmount and state changes
-  // REMOVE ALL CONSOLE LOGS
-
-  // This function is called when the DialogTrigger is clicked
   const handleTriggerClick = useCallback(() => {
-    setInternalIsOpen(true);
-    setErrorMessage(null); // Clear any previous errors when opening
-  }, []);
+    setIsOpen(true);
+    setErrorMessage(null);
+  }, [setIsOpen]);
 
   const handleDelete = useCallback(async () => {
     setIsDeleting(true);
-    setErrorMessage(null); // Clear previous errors on new attempt
-    
+    setErrorMessage(null);
+
     try {
       const response = await onDelete(category.id);
 
-      if (response?.success === true) {
-        toast.success(`Category "${category.name}" has been deleted`);
-        setInternalIsOpen(false); // Close on success
-        setErrorMessage(null); // Clear error on success
-      } else {
-        // Backend returned success: false, so display the error message
-        const backendMessage = response?.error?.details?.category || response?.error?.message || "Failed to delete category.";
+      if (response && typeof response === "object" && "success" in response) {
+        if (response.success === true) {
+          toast.success(`Category "${category.name}" has been deleted`);
+          setIsOpen(false);
+          setErrorMessage(null);
+          return;
+        }
+
+        const err = response as {
+          error?: { details?: { category?: string }; message?: string };
+        };
+        const backendMessage =
+          err.error?.details?.category ||
+          err.error?.message ||
+          "Failed to delete category.";
         setErrorMessage(backendMessage);
+        return;
       }
-    } catch (error: any) {
-      // This catch is for network errors or unhandled exceptions during the onDelete call
-      const errorMessageText = "An unexpected error occurred. Please try again.";
-      setErrorMessage(errorMessageText);
+
+      toast.success(`Category "${category.name}" has been deleted`);
+      setIsOpen(false);
+    } catch {
+      setErrorMessage("An unexpected error occurred. Please try again.");
     } finally {
       setIsDeleting(false);
     }
-  }, [category.id, category.name, onDelete]);
+  }, [category.id, category.name, onDelete, setIsOpen]);
 
   const handleCancel = useCallback(() => {
-    setErrorMessage(null); // Clear error message first
-    setInternalIsOpen(false); // Then close the dialog
-  }, []);
+    setErrorMessage(null);
+    setIsOpen(false);
+  }, [setIsOpen]);
 
-  // This function is called by the Dialog component whenever its internal open state changes (e.g., via ESC key, click outside)
-  const handleOpenChangeFromDialog = useCallback((openStateFromDialog: boolean) => {
-    // Always allow the dialog's internal open state to reflect the Dialog component's intent (e.g., from X button, ESC key).
-    setInternalIsOpen(openStateFromDialog);
-    
-    // If the dialog is closing
-    if (!openStateFromDialog) {
-      setErrorMessage(null); // Clear any error message when the dialog genuinely closes.
-    }
-  }, []); // No dependencies are needed here, as it directly uses `openStateFromDialog` and modifies `internalIsOpen` and `errorMessage` without reading their stale values.
+  const handleOpenChangeFromDialog = useCallback(
+    (openStateFromDialog: boolean) => {
+      setIsOpen(openStateFromDialog);
+      if (!openStateFromDialog) {
+        setErrorMessage(null);
+      }
+    },
+    [setIsOpen],
+  );
 
   return (
-    <Dialog open={internalIsOpen} onOpenChange={handleOpenChangeFromDialog}>
-      <DialogTrigger asChild>
-        <DeleteButton onClick={handleTriggerClick} />
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={handleOpenChangeFromDialog}>
+      {hideTrigger ? null : (
+        <DialogTrigger asChild>
+          <DeleteButton onClick={handleTriggerClick} />
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Delete Category</DialogTitle>
+          <DialogTitle>Delete category</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="text-sm text-gray-600">
-            Are you sure you want to delete the category{" "}
-            <span className="font-semibold text-gray-900">"{category.name}"</span>?
+            Are you sure you want to delete{" "}
+            <span className="font-semibold text-gray-900">
+              &quot;{category.name}&quot;
+            </span>
+            ?
           </div>
 
-          {errorMessage && (
+          {errorMessage ? (
             <div className="text-sm text-red-900 bg-red-100/50 p-3 rounded-md border border-red-300">
               <strong>Error:</strong> {errorMessage}
             </div>
-          )}          
-
-          {/* Removed the warning message display as per request */}
+          ) : null}
 
           <div className="flex justify-end space-x-2">
             <Button
               type="button"
               variant="outline"
               onClick={handleCancel}
-              disabled={isDeleting}
+              disabled={isDeleting || isLoading}
             >
               Cancel
             </Button>
@@ -119,9 +138,9 @@ const DeleteCategoryDialog: React.FC<DeleteCategoryDialogProps> = ({
               type="button"
               variant="destructive"
               onClick={handleDelete}
-              disabled={isDeleting}
+              disabled={isDeleting || isLoading}
             >
-              {isDeleting ? "Deleting..." : "Delete Category"}
+              {isDeleting ? "Deleting..." : "Delete category"}
             </Button>
           </div>
         </div>
@@ -130,4 +149,4 @@ const DeleteCategoryDialog: React.FC<DeleteCategoryDialogProps> = ({
   );
 };
 
-export default DeleteCategoryDialog; 
+export default DeleteCategoryDialog;
