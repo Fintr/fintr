@@ -247,6 +247,33 @@ RSpec.describe "Api::V1::Transactions", type: :request do
         ).once
       end
 
+      context "when category_id and subcategory_id are provided" do
+        let(:parent_category) { create(:category, :expense, space:) }
+        let(:subcategory) do
+          create(:category, :expense, space:, name: "Coffee", parent: parent_category)
+        end
+        let(:subcategory_create_params) do
+          valid_create_params.merge(
+            category_id: parent_category.id,
+            subcategory_id: subcategory.id,
+            category_name: "#{parent_category.id}:#{subcategory.id}"
+          )
+        end
+
+        before do
+          post api_v1_transactions_path, params: subcategory_create_params, headers: headers
+        end
+
+        it "forwards category_id to CreateTransaction" do
+          expect(create_operation).to have_received(:call).with(
+            hash_including(
+              category_id: parent_category.id,
+              subcategory_id: subcategory.id
+            )
+          ).once
+        end
+      end
+
       it "returns success true in the response body" do
         json = JSON.parse(response.body)
         expect(json["success"]).to be true
@@ -307,6 +334,35 @@ RSpec.describe "Api::V1::Transactions", type: :request do
         expect(update_operation).to have_received(:call).with(
           hash_including(transaction_type: "expense")
         ).once
+      end
+
+      context "when category_id and subcategory_id are provided" do
+        let(:parent_category) { create(:category, :expense, space:) }
+        let(:subcategory) do
+          create(:category, :expense, space:, name: "Coffee", parent: parent_category)
+        end
+        let(:subcategory_update_params) do
+          valid_update_params.merge(
+            category_id: parent_category.id,
+            subcategory_id: subcategory.id,
+            category_name: "#{parent_category.id}:#{subcategory.id}"
+          )
+        end
+
+        before do
+          put api_v1_transaction_path(transaction),
+              params: subcategory_update_params,
+              headers: headers
+        end
+
+        it "forwards category_id to UpdateTransaction" do
+          expect(update_operation).to have_received(:call).with(
+            hash_including(
+              category_id: parent_category.id,
+              subcategory_id: subcategory.id
+            )
+          ).once
+        end
       end
 
       it "returns success true in the response body" do

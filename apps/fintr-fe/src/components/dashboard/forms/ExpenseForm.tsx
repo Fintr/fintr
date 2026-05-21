@@ -28,6 +28,7 @@ import GridPicker from "./GridPicker";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import {
   categoryPickerValueFromTransaction,
+  getCategoryNameForApi,
   parseCategoryPickerValue,
 } from "@/types/categoryTreeTypes";
 import { UpdateTransactionType } from "@/types/transactionTypes";
@@ -527,12 +528,16 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
       // Create: amount in space currency. Edit with conversion: amount in original_currency + metadata so backend converts to account.
       const categoryAssignment = parseCategoryPickerValue(formState.categoryName);
+      const categoryNameForApi = getCategoryNameForApi(
+        formState.categoryName,
+        categoryOptionsRaw,
+      );
 
       const transactionData = {
         amount: numberFormatting.cleanForBackend(formState.amount),
         description: formState.description || "",
         transactionType: "expense" as const,
-        categoryName: formState.categoryName,
+        categoryName: categoryNameForApi,
         ...(categoryAssignment && {
           categoryId: categoryAssignment.categoryId,
           subcategoryId: categoryAssignment.subcategoryId ?? undefined,

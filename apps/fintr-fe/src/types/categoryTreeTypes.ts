@@ -102,6 +102,26 @@ export const getCategoryTriggerDisplay = (
   };
 };
 
+/** Parent category `name` for transaction/budget APIs (not picker ids or composite labels). */
+export const getCategoryNameForApi = (
+  value: string,
+  options: CategoryTreeOption[],
+): string => {
+  const assignment = parseCategoryPickerValue(value);
+
+  if (!assignment) {
+    return value.trim();
+  }
+
+  const parent = options.find((option) => option.id === assignment.categoryId);
+
+  if (!parent) {
+    return value.trim();
+  }
+
+  return parent.name;
+};
+
 export const getCategoryDisplayLabel = (
   value: string,
   options: CategoryTreeOption[],

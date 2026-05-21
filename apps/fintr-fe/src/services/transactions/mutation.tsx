@@ -9,6 +9,8 @@ export interface CreateTransactionType {
   /** Explicit form type: "income" or "expense" */
   transactionType: "income" | "expense";
   categoryName: string;
+  categoryId?: string;
+  subcategoryId?: string;
   accountName: string;
   date: string;
   scheduleType: ScheduleTypeEnum;

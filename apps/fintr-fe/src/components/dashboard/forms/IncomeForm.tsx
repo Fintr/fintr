@@ -31,7 +31,11 @@ import { createTransaction, updateTransaction } from "@/services/transactions/mu
 import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum } from "@/constants/transactionConstants";
 import GridPicker from "./GridPicker";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
-import { categoryPickerValueFromTransaction } from "@/types/categoryTreeTypes";
+import {
+  categoryPickerValueFromTransaction,
+  getCategoryNameForApi,
+  parseCategoryPickerValue,
+} from "@/types/categoryTreeTypes";
 import { UpdateTransactionType } from "@/types/transactionTypes";
 import NotesAutocomplete from "@/components/ui/notes-autocomplete";
 import FileUploadField from "./FileUploadField";
@@ -470,11 +474,21 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         amountToUse = String(taxCalculation.netIncome);
       }
 
+      const categoryAssignment = parseCategoryPickerValue(formState.categoryName);
+      const categoryNameForApi = getCategoryNameForApi(
+        formState.categoryName,
+        categoryOptions,
+      );
+
       const transactionData = {
         amount: Number(amountToUse),
         description: formState.description || "",
         transactionType: "income" as const,
-        categoryName: formState.categoryName,
+        categoryName: categoryNameForApi,
+        ...(categoryAssignment && {
+          categoryId: categoryAssignment.categoryId,
+          subcategoryId: categoryAssignment.subcategoryId ?? undefined,
+        }),
         accountName: formState.accountName,
         date: format(date, "yyyy-MM-dd"),
         scheduleType: formState.scheduleType,

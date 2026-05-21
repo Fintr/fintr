@@ -3,6 +3,7 @@ import {
   categoryPickerValueFromTransaction,
   formatCategoryPickerValue,
   getCategoryDisplayLabel,
+  getCategoryNameForApi,
   getCategoryTriggerDisplay,
   parseCategoryPickerValue,
 } from "./categoryTreeTypes";
@@ -67,5 +68,17 @@ describe("categoryTreeTypes", () => {
       primary: "Food",
       secondary: "Groceries",
     });
+  });
+
+  it("returns parent name for API from parent-only picker value", () => {
+    expect(getCategoryNameForApi("parent-1", tree)).toBe("Food");
+  });
+
+  it("returns parent name for API from parent + sub picker value", () => {
+    expect(getCategoryNameForApi("parent-1:sub-1", tree)).toBe("Food");
+  });
+
+  it("returns plain name when value is not a picker id", () => {
+    expect(getCategoryNameForApi("Transfer Fee", tree)).toBe("Transfer Fee");
   });
 });
