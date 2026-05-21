@@ -28,7 +28,14 @@ export function useCloseOnPopStateWhenOpen(
     window.history.pushState({ [historyKey]: true }, "")
     historyEntryActiveRef.current = true
 
-    const handlePopState = () => {
+    const handlePopState = (event: PopStateEvent) => {
+      // A nested overlay (e.g. date picker inside filter sheet) also pushes
+      // history. When it closes it calls history.back(), which lands on this
+      // entry — do not treat that as closing this layer.
+      if (event.state?.[historyKey]) {
+        return
+      }
+
       historyEntryActiveRef.current = false
       onOpenChangeRef.current(false)
     }

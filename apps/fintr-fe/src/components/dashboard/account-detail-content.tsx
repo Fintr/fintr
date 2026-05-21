@@ -19,13 +19,7 @@ import type { DateRange } from "@daypicker/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CategoryFilterComboBox } from "@/components/ui/category-filter-combobox";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import {
   Sheet,
@@ -50,7 +44,10 @@ import {
   ACCOUNT_ADJUSTMENT_HISTORY_KEY,
 } from "@/hooks/async/useAccountDetailTransactions";
 import { getWideAccountHistoryDateRange } from "@/utils/dateUtils";
-import { categoryOptionsAtom } from "@/atoms/dashboardAtoms";
+import {
+  expenseCategoryOptionsAtom,
+  incomeCategoryOptionsAtom,
+} from "@/atoms/dashboardAtoms";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import AccountEditSheet from "@/components/dashboard/account-edit-sheet";
 import AccountDeleteDialog from "@/components/dashboard/account-delete-dialog";
@@ -67,8 +64,6 @@ import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { toast } from "sonner";
-
-const ALL_CATEGORIES_VALUE = "__all_categories__";
 
 type AccountDetailContentProps = {
   accountId: string;
@@ -314,7 +309,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   const [appliedEnd, setAppliedEnd] = useState(() => filterBaseline.endDate);
   const [draftStart, setDraftStart] = useState(() => filterBaseline.startDate);
   const [draftEnd, setDraftEnd] = useState(() => filterBaseline.endDate);
-  const [draftCategory, setDraftCategory] = useState(ALL_CATEGORIES_VALUE);
+  const [draftCategory, setDraftCategory] = useState("");
   const [appliedCategory, setAppliedCategory] = useState("");
   const [draftMin, setDraftMin] = useState("");
   const [draftMax, setDraftMax] = useState("");
@@ -338,7 +333,8 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
 
   const { accounts, isLoading: accountsLoading } = useAccounts();
   useDashboardData();
-  const categoryOptions = useAtomValue(categoryOptionsAtom);
+  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
 
   const account = useMemo(
     () => accounts.find((a) => a.id === accountId) ?? null,
@@ -354,9 +350,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   const openFiltersSheet = () => {
     setDraftStart(appliedStart);
     setDraftEnd(appliedEnd);
-    setDraftCategory(
-      appliedCategory === "" ? ALL_CATEGORIES_VALUE : appliedCategory,
-    );
+    setDraftCategory(appliedCategory);
     setDraftMin(appliedMin === 0 ? "" : String(appliedMin));
     setDraftMax(appliedMax === 999999 ? "" : String(appliedMax));
     setRangeSelected({
@@ -392,7 +386,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
     accountName,
     startDate: appliedStart,
     endDate: appliedEnd,
-    categoryName: appliedCategory,
+    categoryFilter: appliedCategory,
     searchQuery: appliedSearch,
     ...(appliedMin !== 0 ? { minAmount: appliedMin } : {}),
     ...(appliedMax !== 999999 ? { maxAmount: appliedMax } : {}),
@@ -640,9 +634,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   const handleApplyFilters = () => {
     setAppliedStart(draftStart);
     setAppliedEnd(draftEnd);
-    setAppliedCategory(
-      draftCategory === ALL_CATEGORIES_VALUE ? "" : draftCategory,
-    );
+    setAppliedCategory(draftCategory);
     const minParsed = draftMin.trim() === "" ? 0 : Number(draftMin);
     const maxParsed = draftMax.trim() === "" ? 999999 : Number(draftMax);
     if (
@@ -667,7 +659,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
     setDraftStart(next.startDate);
     setDraftEnd(next.endDate);
     setAppliedCategory("");
-    setDraftCategory(ALL_CATEGORIES_VALUE);
+    setDraftCategory("");
     setAppliedMin(0);
     setAppliedMax(999999);
     setDraftMin("");
@@ -823,22 +815,16 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="acct-filter-category">Category</Label>
-                <Select value={draftCategory} onValueChange={setDraftCategory}>
-                  <SelectTrigger id="acct-filter-category">
-                    <SelectValue placeholder="All categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_CATEGORIES_VALUE}>
-                      All categories
-                    </SelectItem>
-                    {categoryOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="acct-filter-category">Categories</Label>
+                <CategoryFilterComboBox
+                  expenseOptions={expenseCategoryOptions}
+                  incomeOptions={incomeCategoryOptions}
+                  placeholder="Select categories"
+                  className="w-full"
+                  showAllOnFocus={true}
+                  value={draftCategory}
+                  onChange={setDraftCategory}
+                />
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">

@@ -22,7 +22,7 @@ import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useInfiniteTransactions } from "@/hooks/async/useInfiniteTransactions";
 import { ArrowUpRight, ArrowDownLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { Filters, FilterTypes } from "./filters";
+import { TransactionFiltersSheet, FilterTypes } from "./filters";
 import { DownloadButton } from "./buttons/DownloadButton";
 import { DeleteButton } from "./buttons/DeleteButton";
 import { ViewModeButton } from "./buttons/ViewModeButton";
@@ -85,7 +85,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
 
   // Default to list view
   const [viewMode, setViewMode] = useState("list");
-  const [showFilters, setShowFilters] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   
   // Initialize appliedFilters with date filter atoms
   const [appliedFilters, setAppliedFilters] = useState<FilterTypes>(() => ({
@@ -730,13 +730,12 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           <div className="relative">
             <Button
               variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={() => setFiltersOpen(true)}
               className="flex items-center gap-2 bg-white"
+              aria-label="Open transaction filters"
             >
               <Filter className="h-4 w-4" />
-              <div className="hidden md:flex">
-                {showFilters ? "Hide" : "Show"} Filters
-              </div>
+              <span className="hidden md:inline">Filters</span>
             </Button>
             {hasActiveFilters() && (
               <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
@@ -771,14 +770,12 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           )}
         </CardHeader>
         <CardContent className="px-0">
-          {showFilters && (
-            <Filters
-              transactionFilterType={filterType as "single" | "range"}
-              applyFilters={applyFilters}
-              isCollapsible={true}
-              defaultCollapsed={false}
-            />
-          )}
+          <TransactionFiltersSheet
+            open={filtersOpen}
+            onOpenChange={setFiltersOpen}
+            applyFilters={applyFilters}
+            appliedFilters={appliedFilters}
+          />
 
           <div className="flex flex-col md:flex-row gap-4 mb-6 md:items-center">
             <div className="relative min-w-0 flex-1 w-full">

@@ -32,7 +32,7 @@ export type FetchAccountTransactionsPageParams = {
   accountName: string;
   startDate: string;
   endDate: string;
-  categoryName: string;
+  categoryFilter: string;
   searchQuery: string;
   page: number;
   minAmount?: number;
@@ -48,23 +48,37 @@ export const fetchAccountTransactionsPage = async (
     accountName,
     startDate,
     endDate,
-    categoryName,
+    categoryFilter,
     searchQuery,
     page,
     minAmount,
     maxAmount,
   } = params;
 
+  const categoryAssignment = parseCategoryPickerValue(
+    categoryFilter && categoryFilter !== "all" ? categoryFilter : "",
+  );
+
   const requestParams = omitUndefinedParams({
     spaceCode,
     accountName,
     startDate,
     endDate,
-    categoryName,
     searchQuery,
     page,
     ...(minAmount !== undefined ? { minAmount } : {}),
     ...(maxAmount !== undefined ? { maxAmount } : {}),
+    ...(categoryAssignment?.categoryId
+      ? { categoryId: categoryAssignment.categoryId }
+      : {}),
+    ...(categoryAssignment?.subcategoryId
+      ? { subcategoryId: categoryAssignment.subcategoryId }
+      : {}),
+    ...(!categoryAssignment?.categoryId &&
+    categoryFilter &&
+    categoryFilter !== "all"
+      ? { categoryName: categoryFilter }
+      : {}),
   });
 
   try {

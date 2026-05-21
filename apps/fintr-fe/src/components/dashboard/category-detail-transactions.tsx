@@ -8,13 +8,7 @@ import type { DateRange } from "@daypicker/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ComboBox } from "@/components/ui/combobox";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import {
   Sheet,
@@ -111,6 +105,17 @@ export function CategoryDetailTransactions({
     useState<IndexTransaction | null>(null);
 
   const deleteCancelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const subcategoryComboOptions = useMemo(
+    () => [
+      { value: ALL_SUBCATEGORIES_VALUE, label: "All subcategories" },
+      ...subcategories.map((sub) => ({
+        value: sub.id,
+        label: sub.name,
+      })),
+    ],
+    [subcategories],
+  );
 
   const appliedCategoryFilter = useMemo(
     () =>
@@ -451,24 +456,19 @@ export function CategoryDetailTransactions({
               {subcategories.length > 0 ? (
                 <div className="space-y-2">
                   <Label htmlFor="cat-filter-subcategory">Subcategory</Label>
-                  <Select
+                  <ComboBox
+                    filterType="frontend"
+                    data={subcategoryComboOptions}
+                    placeholder="Select subcategories"
+                    className="w-full"
+                    showAllOnFocus={true}
                     value={draftSubcategory}
-                    onValueChange={setDraftSubcategory}
-                  >
-                    <SelectTrigger id="cat-filter-subcategory">
-                      <SelectValue placeholder="All subcategories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_SUBCATEGORIES_VALUE}>
-                        All subcategories
-                      </SelectItem>
-                      {subcategories.map((sub) => (
-                        <SelectItem key={sub.id} value={sub.id}>
-                          {sub.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={setDraftSubcategory}
+                    getDisplayLabel={(value) =>
+                      subcategoryComboOptions.find((opt) => opt.value === value)
+                        ?.label ?? ""
+                    }
+                  />
                 </div>
               ) : null}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
