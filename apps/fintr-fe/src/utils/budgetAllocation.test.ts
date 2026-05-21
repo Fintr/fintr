@@ -10,23 +10,28 @@ import {
   sumSubcategoryBudgets,
 } from "./budgetAllocation";
 
+const CAT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const SUB_A = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const SUB_B = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const SUB_C = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+
 describe("budgetAllocation", () => {
   const parentRow = {
     id: "parent-1",
-    category_id: "cat-1",
+    category_id: CAT_ID,
     subcategory_id: null,
     amount: 20_000,
     has_explicit_parent_budget: true,
     subcategories: [
       {
         id: "sub-1",
-        subcategoryId: "sub-a",
+        subcategoryId: SUB_A,
         name: "Japan Expense",
         budget: 5_000,
       },
       {
         id: "sub-2",
-        subcategoryId: "sub-b",
+        subcategoryId: SUB_B,
         name: "Flights",
         budget: 3_000,
       },
@@ -34,12 +39,12 @@ describe("budgetAllocation", () => {
   };
 
   it("finds parent row by category_id", () => {
-    expect(findParentBudgetRow([parentRow], "cat-1")).toEqual(parentRow);
+    expect(findParentBudgetRow([parentRow], CAT_ID)).toEqual(parentRow);
   });
 
   it("sums subcategory budgets excluding one sub", () => {
     expect(
-      sumSubcategoryBudgets(parentRow, { subcategoryId: "sub-a" }),
+      sumSubcategoryBudgets(parentRow, { subcategoryId: SUB_A }),
     ).toBe(3_000);
   });
 
@@ -50,7 +55,7 @@ describe("budgetAllocation", () => {
     };
 
     const context = buildBudgetAllocationContext({
-      categoryValue: "cat-1:sub-a",
+      categoryValue: `${CAT_ID}:${SUB_A}`,
       amount: 1_000,
       budgetsData: { budgets: [rolledUpOnly] } as never,
     });
@@ -61,7 +66,7 @@ describe("budgetAllocation", () => {
 
   it("allows subcategory amount within parent cap", () => {
     const context = buildBudgetAllocationContext({
-      categoryValue: "cat-1:sub-c",
+      categoryValue: `${CAT_ID}:${SUB_C}`,
       amount: 10_000,
       budgetsData: { budgets: [parentRow] } as never,
     });
@@ -71,7 +76,7 @@ describe("budgetAllocation", () => {
 
   it("rejects subcategory amount over parent cap", () => {
     const context = buildBudgetAllocationContext({
-      categoryValue: "cat-1:sub-c",
+      categoryValue: `${CAT_ID}:${SUB_C}`,
       amount: 15_000,
       budgetsData: { budgets: [parentRow] } as never,
     });
@@ -81,7 +86,7 @@ describe("budgetAllocation", () => {
 
   it("rejects parent amount below subcategory total", () => {
     const context = buildBudgetAllocationContext({
-      categoryValue: "cat-1",
+      categoryValue: CAT_ID,
       amount: 5_000,
       budgetsData: { budgets: [parentRow] } as never,
     });
@@ -96,13 +101,13 @@ describe("budgetAllocation", () => {
   it("merges category children with existing subcategory budgets", () => {
     const lines = mergeSubcategoryBudgetLines(
       [
-        { id: "sub-a", label: "Japan Expense" },
-        { id: "sub-b", label: "Flights" },
+        { id: SUB_A, label: "Japan Expense" },
+        { id: SUB_B, label: "Flights" },
       ],
       [
         {
           id: "budget-1",
-          subcategoryId: "sub-a",
+          subcategoryId: SUB_A,
           subcategoryName: "Japan Expense",
           budget: 5_000,
         },
@@ -111,20 +116,20 @@ describe("budgetAllocation", () => {
 
     expect(lines).toHaveLength(2);
     expect(lines[0]).toMatchObject({
-      subcategoryId: "sub-a",
+      subcategoryId: SUB_A,
       budgetId: "budget-1",
       amount: 5_000,
     });
     expect(lines[1]).toMatchObject({
-      subcategoryId: "sub-b",
+      subcategoryId: SUB_B,
       amount: 0,
     });
   });
 
   it("detects when subcategory totals exceed parent", () => {
     const lines = mergeSubcategoryBudgetLines(
-      [{ id: "sub-a", label: "A" }],
-      [{ subcategoryId: "sub-a", budget: 6_000 }],
+      [{ id: SUB_A, label: "A" }],
+      [{ subcategoryId: SUB_A, budget: 6_000 }],
     );
 
     expect(isSubcategoryTotalOverParent(5_000, lines)).toBe(true);

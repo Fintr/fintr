@@ -5,8 +5,10 @@ module Ai
     module Receipts
       # Vision-based receipt extraction. Optimized for ~1s latency: resized image + low detail + concise output.
       class ExtractReceiptDataVision < Dry::Operation
-        MAX_VISION_EDGE = 1024   # Max pixels on longest side; smaller = faster upload + inference
-        JPEG_QUALITY    = 85     # Balance size vs readability for receipts
+        DEFAULT_MAX_VISION_EDGE = 768  # Receipt text stays readable; smaller = faster upload + inference
+        DEFAULT_JPEG_QUALITY    = 82
+        DEFAULT_IMAGE_DETAIL    = "low" # OpenAI-compatible; much faster than "high" for receipts
+        DEFAULT_MAX_TOKENS      = 220
         class Contract < Dry::Validation::Contract
           params do
             required(:image_path).value(:string)
@@ -60,10 +62,16 @@ module Ai
         end
 
         def fetch_space_categories(space:)
-          # Fetch expense categories for the space (already excludes UNINCLUDED_EXPENSE_CATEGORIES)
-          categories = space.expense_categories.pluck(:name)
+          categories = Transactions::Category.expense
+                           .where(space_id: space.id)
+                           .roots
+                           .includes(:children)
+                           .order(:name)
+                           .flat_map do |parent|
+                             [parent.name] + parent.children.order(:name).pluck(:name)
+                           end
+                           .uniq
 
-          # Fallback to default categories if space has no categories
           categories = Transactions::Category::DEFAULT_EXPENSE_CATEGORIES if categories.empty?
 
           Success(categories)
@@ -102,9 +110,9 @@ module Ai
         # Resize and compress for fast vision API: smaller payload and fewer tokens.
         def resize_image_for_vision(image_path)
           img = MiniMagick::Image.open(image_path)
-          img.resize "#{MAX_VISION_EDGE}x#{MAX_VISION_EDGE}>"
+          img.resize "#{max_vision_edge}x#{max_vision_edge}>"
           img.format "jpeg"
-          img.quality JPEG_QUALITY.to_s
+          img.quality jpeg_quality.to_s
           [img.to_blob, "image/jpeg"]
         rescue StandardError
           # Fallback: original file (e.g. MiniMagick not available or invalid image)
@@ -135,28 +143,28 @@ module Ai
                 messages: [
                   {
                     role: "system",
-                    content: system_prompt
+                    content: system_prompt,
                   },
                   {
                     role: "user",
                     content: [
                       {
                         type: "text",
-                        text: "Please analyze this receipt image and extract the total amount, date, and appropriate category."
+                        text: "Extract total, date, category, and account from this receipt.",
                       },
                       {
                         type: "image_url",
                         image_url: {
                           url: base64_image,
-                          detail: "high" # Keep high for readable text; speed comes from resized image + fast model
-                        }
-                      }
-                    ]
-                  }
+                          detail: vision_image_detail,
+                        },
+                      },
+                    ],
+                  },
                 ],
                 temperature: 0.0,
-                max_tokens: 300
-              }
+                max_tokens: vision_max_tokens,
+              }.merge(::Ai::Llm::VisionClient.openrouter_chat_extras)
             )
 
             ai_content = response.dig("choices", 0, "message", "content")&.strip
@@ -187,42 +195,42 @@ module Ai
           account_list = space_accounts.join(", ")
           default_account = space_accounts.first || "Cash"
 
-          <<~PROMPT
-            You are an expert receipt analyzer with computer vision capabilities. Analyze receipt images and extract the total amount, date, and suggest the most appropriate category.
-
-            IMPORTANT RULES:
-            1. Look at the receipt image carefully and identify the FINAL TOTAL amount (not subtotals, taxes, or individual line items)
-            2. Extract the transaction DATE from the receipt (look for date stamps, transaction dates, or receipt dates)
-            3. Return ONLY valid JSON format
-            4. For category, choose ONLY from: #{category_list}
-            5. ALWAYS provide a category suggestion - if unclear, default to "#{default_category}"
-            6. For account, choose ONLY from: #{account_list}
-            7. If no clear account found, default to "#{default_account}"
-            6. If no clear total found, return null for total_amount
-            7. If no clear date found, return null for date
-            8. Use visual context clues like merchant logos, store names, or item types visible in the image
-
-            AVAILABLE CATEGORIES: #{category_list}
-            AVAILABLE ACCOUNTS: #{account_list}
-
-            VISUAL ANALYSIS GUIDELINES:
-            - Look for merchant names/logos at the top of the receipt
-            - Identify the final total line (usually at the bottom, may be bold or emphasized)
-            - Look for date information (usually near the top or bottom, may be in various formats)
-            - Consider the types of items purchased if visible
-            - Use store branding and visual context to determine appropriate category
-            - Pay attention to currency symbols and decimal formatting
-
-            Response format (JSON only):
-            {
-              "total_amount": "XX.XX",
-              "date": "YYYY-MM-DD",
-              "category": "CategoryName",
-              "account": "AccountName",
-              "confidence": "high|medium|low",
-              "merchant_detected": "Store Name (if visible)"
-            }
+          <<~PROMPT.strip
+            Receipt OCR. Reply with JSON only.
+            - total_amount: final total (not subtotal); null if missing
+            - date: YYYY-MM-DD or null. The date you see in the receipt.
+            - category: exactly one of [#{category_list}]; default "#{default_category}". The category that the receipt is likely to be categorized under.
+            - account: one of [#{account_list}]; default "#{default_account}". The account that the receipt is likely to be categorized under.
+            - merchant_detected: store name if visible. The name of the store or service that the receipt is for.
+            - confidence: high|medium|low
+            Use merchant/service context (e.g. photo/cinema/wedding → photography, not dining).
+            {"total_amount":"..","date":"..","category":"..","account":"..","confidence":"..","merchant_detected":".."}
           PROMPT
+        end
+
+        def max_vision_edge
+          raw = ENV["AI_VISION_MAX_EDGE"].to_s.strip
+          edge = raw.present? ? raw.to_i : DEFAULT_MAX_VISION_EDGE
+          edge.positive? ? edge : DEFAULT_MAX_VISION_EDGE
+        end
+
+        def jpeg_quality
+          raw = ENV["AI_VISION_JPEG_QUALITY"].to_s.strip
+          quality = raw.present? ? raw.to_i : DEFAULT_JPEG_QUALITY
+          quality.clamp(60, 95)
+        end
+
+        def vision_image_detail
+          detail = ENV["AI_VISION_IMAGE_DETAIL"].to_s.strip.downcase
+          return DEFAULT_IMAGE_DETAIL if detail.blank?
+
+          %w[low high auto].include?(detail) ? detail : DEFAULT_IMAGE_DETAIL
+        end
+
+        def vision_max_tokens
+          raw = ENV["AI_VISION_MAX_TOKENS"].to_s.strip
+          tokens = raw.present? ? raw.to_i : DEFAULT_MAX_TOKENS
+          tokens.positive? ? tokens : DEFAULT_MAX_TOKENS
         end
 
         def parse_ai_response(ai_response:)

@@ -425,6 +425,42 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
       end
     end
 
+    context "when the suggested category is a subcategory name" do
+      let!(:parent_category) { create(:category, :expense, space:, name: "Food") }
+      let!(:subcategory) do
+        create(:category, :expense, space:, name: "Groceries", parent: parent_category)
+      end
+
+      let(:transaction_params) do
+        {
+          params: {
+            user_id: user.id,
+            space_id: space.id,
+            image_path: "/path/to/receipt.jpg"
+          },
+          receipt_result: {
+            suggested_transaction_payload: {
+              amount: 42.50,
+              date: Date.current,
+              transaction_type: "expense",
+              category_name: subcategory.name,
+              account_name: account.name,
+              description: "Grocery receipt"
+            }
+          }
+        }
+      end
+
+      it "creates a draft assigned to the parent and subcategory" do
+        result = operation.call(transaction_params)
+        expect(result).to be_success
+
+        transaction = result.value!
+        expect(transaction.category_id).to eq(parent_category.id)
+        expect(transaction.subcategory_id).to eq(subcategory.id)
+      end
+    end
+
     context "when category does not exist" do
       let(:transaction_params) do
         {

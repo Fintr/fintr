@@ -577,6 +577,37 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         end
       end
 
+      context 'when category_name matches a subcategory' do
+        subject(:call_operation) { operation.call(subcategory_name_params) }
+
+        let!(:parent_category) { create(:category, :expense, space:, name: 'Food') }
+        let!(:named_subcategory) do
+          create(:category, :expense, space:, name: 'Dining', parent: parent_category)
+        end
+
+        let(:subcategory_name_params) do
+          {
+            user_id: user.id,
+            space_id: space.id,
+            amount: 25.0,
+            date: Date.current,
+            description: 'Coffee',
+            transaction_type: 'expense',
+            category_name: named_subcategory.name,
+            account_name: account.name,
+            schedule_type: 'one_time'
+          }
+        end
+
+        it { is_expected.to be_success }
+
+        it 'assigns the parent and subcategory ids' do
+          transaction = call_operation.value!
+          expect(transaction.category_id).to eq(parent_category.id)
+          expect(transaction.subcategory_id).to eq(named_subcategory.id)
+        end
+      end
+
       # Non-existent category
       context 'when category does not exist' do
         subject(:call_operation) { operation.call(nonexistent_category_params) }

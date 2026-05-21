@@ -101,18 +101,11 @@ module Transactions
           )
         end
 
-        category = Transactions::Category.find_by!(
-          name: params[:category_name],
+        Transactions::Operations::ResolveCategoryByName.new.call(
           space_id: params[:space_id],
-          category_type: params[:transaction_type],
-          parent_id: nil
+          category_name: params[:category_name],
+          category_type: params[:transaction_type]
         )
-        Success(
-          category_id: category.id,
-          subcategory_id: nil
-        )
-      rescue ActiveRecord::RecordNotFound
-        Failure(category_name: "not found")
       end
 
       def find_account(params:)

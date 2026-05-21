@@ -186,17 +186,10 @@ module Transactions
           )
         end
 
-        category = Transactions::Category.find_by(
-          name: params[:category_name],
+        Transactions::Operations::ResolveCategoryByName.new.call(
           space_id: params[:space_id],
-          category_type: params[:transaction_type],
-          parent_id: nil
-        )
-        return Failure(category_name: "not found") unless category
-
-        Success(
-          category_id: category.id,
-          subcategory_id: nil
+          category_name: params[:category_name],
+          category_type: params[:transaction_type]
         )
       end
 
