@@ -5,6 +5,7 @@ import {
   subscribeToSafeAreaInsetChanges,
   calculateBottomPadding,
   clampAndroidNavigationInsetPx,
+  calculateAndroidBottomInsetPx,
   calculateNavBottomOffset,
   calculateHeaderSpacerHeight,
   MAX_ANDROID_STATUS_BAR_INSET_PX,
@@ -204,6 +205,19 @@ describe("clampAndroidNavigationInsetPx", () => {
     expect(clampAndroidNavigationInsetPx(16, false)).toBe(16)
     expect(clampAndroidNavigationInsetPx(48, false)).toBe(16)
     expect(clampAndroidNavigationInsetPx(56, false)).toBe(16)
+  })
+})
+
+describe("calculateAndroidBottomInsetPx", () => {
+  it("uses 48px minimum for 3-button navigation", () => {
+    expect(calculateAndroidBottomInsetPx(0, true)).toBe(48)
+    expect(calculateAndroidBottomInsetPx(16, true)).toBe(48)
+    expect(calculateAndroidBottomInsetPx(56, true)).toBe(56)
+  })
+
+  it("uses 16px minimum for gesture navigation", () => {
+    expect(calculateAndroidBottomInsetPx(0, false)).toBe(16)
+    expect(calculateAndroidBottomInsetPx(24, false)).toBe(24)
   })
 })
 

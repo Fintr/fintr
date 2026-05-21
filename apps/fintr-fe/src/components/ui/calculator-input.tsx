@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import {
+  calculateAndroidBottomInsetPx,
+  getSafeAreaInsets,
+} from "@/lib/platform-detection";
 import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen";
 import { numberFormatting } from "@/lib/utils";
 
@@ -45,6 +49,10 @@ const MOBILE_BREAKPOINT = 768; // md breakpoint
 const MOBILE_KEYBOARD_VH = 0.4;
 const KEYBOARD_GAP = 8;
 const DESKTOP_KEYBOARD_HEIGHT = 320;
+/** Minimum touch target for bottom-sheet calculator keys (WCAG / Material). */
+export const MOBILE_CALC_BUTTON_MIN_HEIGHT_PX = 48;
+const MOBILE_CALC_GRID_GAP_CLASS = "gap-2.5";
+const MOBILE_CALC_BUTTON_ROW_CLASS = "h-12 min-h-12 w-full";
 
 const CALCULATOR_KEYBOARD_HISTORY_KEY = "__fintrCalculatorKeyboard";
 
@@ -55,12 +63,6 @@ type KeyboardPosition = {
   left: number;
   width: number;
   height: number;
-};
-
-const parsePxOffset = (value: string): number => {
-  const parsed = Number.parseInt(value, 10);
-
-  return Number.isNaN(parsed) ? 0 : parsed;
 };
 
 function safeEvaluate(expression: string): number | null {
@@ -98,6 +100,26 @@ function toRawExpression(value: string): string {
   return numberFormatting.stripDelimiters(value).replace(/[^0-9+\-*/.]/g, "");
 }
 
+function resolveMobileNavInsetMinHeightPx(
+  isMobile: boolean,
+  hasThreeButtonNav: boolean,
+): number {
+  if (!isMobile || typeof document === "undefined") {
+    return 0;
+  }
+
+  const insets = getSafeAreaInsets();
+  const usesThreeButtonNav =
+    hasThreeButtonNav
+    || document.documentElement.classList.contains("fintr-has-3btn-nav")
+    || insets.bottom >= 40;
+
+  return calculateAndroidBottomInsetPx(
+    insets.bottom,
+    usesThreeButtonNav,
+  );
+}
+
 export function CalculatorInput({
   id,
   name,
@@ -128,27 +150,23 @@ export function CalculatorInput({
   const [keyboardLayout, setKeyboardLayout] = useState<KeyboardLayout>("below");
   const [mounted, setMounted] = useState(false);
 
-  const keyboardBottomOffset = useMemo(() => {
-    if (isIOSNative) {
-      return "0px";
+  const androidBottomInsetPx = useMemo(() => {
+    if (!isAndroidNative) {
+      return 0;
     }
 
-    if (isAndroidNative) {
-      const insetPx = Math.max(
-        safeAreaInsetBottom,
-        hasAndroid3ButtonNav ? 48 : 16,
-      );
+    const insets = getSafeAreaInsets();
 
-      return `${insetPx}px`;
-    }
-
-    return "0px";
+    return calculateAndroidBottomInsetPx(
+      insets.bottom,
+      hasAndroid3ButtonNav,
+    );
   }, [
     isAndroidNative,
-    isIOSNative,
     safeAreaInsetBottom,
     hasAndroid3ButtonNav,
   ]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const keyboardRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -245,7 +263,7 @@ export function CalculatorInput({
       left = padding;
     }
 
-    const bottomInset = parsePxOffset(keyboardBottomOffset);
+    const bottomInset = androidBottomInsetPx;
     const spaceBelow = viewportHeight - rect.bottom - padding - bottomInset;
     const spaceAbove = rect.top - padding;
 
@@ -288,7 +306,7 @@ export function CalculatorInput({
     if (typeof input.scrollIntoView === "function") {
       input.scrollIntoView({ block: "center", behavior: "smooth" });
     }
-  }, [isMobile, keyboardBottomOffset, prefersBottomSheetKeyboard]);
+  }, [androidBottomInsetPx, isMobile, prefersBottomSheetKeyboard]);
 
   useEffect(() => {
     if (!showKeyboard || !inputRef.current) {
@@ -570,22 +588,27 @@ export function CalculatorInput({
   const isOperatorButton = (btn: string) => ["+", "−", "×", "÷", "="].includes(btn);
   const isActionButton = (btn: string) => ["⌫", "C", "%"].includes(btn);
 
+  const isBottomSheetKeyboard = keyboardLayout === "bottom-sheet";
+  const mobileNavInsetMinHeightPx = resolveMobileNavInsetMinHeightPx(
+    isMobile,
+    hasAndroid3ButtonNav,
+  );
+
   // Render the calculator keyboard content
   const renderKeyboard = () => (
     <div
       ref={keyboardRef}
       data-calculator-keyboard
       className={cn(
-        "bg-background border shadow-2xl z-[9999] pointer-events-auto",
-        keyboardLayout === "bottom-sheet"
-          ? "fixed left-0 right-0 border-t rounded-t-xl p-3"
+        "z-[9999] pointer-events-auto bg-background shadow-2xl",
+        isBottomSheetKeyboard
+          ? "fixed bottom-0 left-0 right-0 flex flex-col border-t rounded-t-xl"
           : "fixed rounded-xl border p-3 sm:p-4",
       )}
       style={
-        keyboardLayout === "bottom-sheet"
+        isBottomSheetKeyboard
           ? {
-              height: `${MOBILE_KEYBOARD_VH * 100}vh`,
-              bottom: keyboardBottomOffset,
+              paddingBottom: mobileNavInsetMinHeightPx,
             }
           : {
               top: keyboardPosition.top,
@@ -599,20 +622,22 @@ export function CalculatorInput({
     >
       <div
         className={cn(
-          "flex h-full flex-col",
-          keyboardLayout === "bottom-sheet" ? "gap-1.5" : "gap-2",
+          "flex flex-col",
+          isBottomSheetKeyboard
+            ? "gap-2.5 p-3"
+            : "h-full min-h-0 gap-2",
         )}
       >
         <div
           className={cn(
             "shrink-0 rounded-lg border bg-muted/30 px-3 py-2",
-            keyboardLayout === "bottom-sheet" ? "mb-0.5" : "mb-1",
+            !isBottomSheetKeyboard && "mb-1",
           )}
         >
           <p
             className={cn(
               "truncate text-right font-semibold tabular-nums text-primary",
-              keyboardLayout === "bottom-sheet"
+              isBottomSheetKeyboard
                 ? "text-2xl sm:text-3xl"
                 : "text-xl sm:text-2xl",
             )}
@@ -631,22 +656,25 @@ export function CalculatorInput({
         {/* Calculator buttons - iOS style layout */}
         <div
           className={cn(
-            "grid grid-cols-4 gap-1.5",
-            keyboardLayout === "bottom-sheet" && "flex-1 grid-rows-5",
+            "grid grid-cols-4",
+            isBottomSheetKeyboard
+              ? MOBILE_CALC_GRID_GAP_CLASS
+              : "min-h-0 flex-1 grid-rows-5 gap-1.5",
           )}
         >
           {CALCULATOR_BUTTONS.flat().map((btn, index) => (
             <Button
               key={`${btn}-${index}`}
               type="button"
+              data-calculator-keyboard-button=""
               variant={isOperatorButton(btn) ? "secondary" : isActionButton(btn) ? "secondary" : "outline"}
               className={cn(
                 "touch-manipulation [-webkit-tap-highlight-color:transparent] font-semibold",
                 "transition-colors duration-100 ease-out",
                 "active:bg-primary active:text-primary-foreground active:border-primary",
-                keyboardLayout === "bottom-sheet"
-                  ? "h-full min-h-11 text-lg"
-                  : "h-11 text-lg sm:h-12 sm:text-xl",
+                isBottomSheetKeyboard
+                  ? cn(MOBILE_CALC_BUTTON_ROW_CLASS, "text-lg")
+                  : "h-full min-h-11 text-lg sm:h-12 sm:text-xl",
                 // Operators column (right side) - primary/orange color
                 isOperatorButton(btn) && "bg-primary/10 hover:bg-primary/20 text-primary",
                 // Action buttons (top row except ÷) - muted style

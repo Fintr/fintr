@@ -279,6 +279,20 @@ export const clampAndroidNavigationInsetPx = (
 }
 
 /**
+ * Bottom inset for fixed UI above Android system navigation (modals, calculator, etc.).
+ * Matches CustomModal / GridPickerModalShell: max of injected safe area and nav minimum.
+ */
+export const calculateAndroidBottomInsetPx = (
+  safeAreaInsetBottom: number,
+  is3ButtonNav: boolean = hasAndroid3ButtonNav()
+): number => {
+  return Math.max(
+    safeAreaInsetBottom,
+    is3ButtonNav ? ANDROID_3BUTTON_NAV_HEIGHT_PX : ANDROID_GESTURE_NAV_HEIGHT_PX,
+  )
+}
+
+/**
  * Detect if Android is using 3-button navigation (vs gesture navigation).
  * MainActivity sets 'fintr-has-3btn-nav' class when navigation bar height >= 40px.
  * 3-button nav: typically 48px+, Gesture nav: typically 16-24px
