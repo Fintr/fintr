@@ -11,22 +11,56 @@ module Ai
 
       OPENAI_DEFAULT_MODEL    = "gpt-4o"
       OPENROUTER_DEFAULT_MODEL = "google/gemini-2.5-flash-lite"
+      DEFAULT_REQUEST_TIMEOUT_SECONDS = 12
 
       # No trailing /v1 — ruby-openai appends /v1/ to uri_base
       OPENROUTER_URI_BASE = "https://openrouter.ai/api"
 
       class << self
+        def openrouter?
+          case ENV["AI_VISION_PROVIDER"].to_s.strip.downcase
+          when PROVIDER_OPENAI
+            false
+          when PROVIDER_OPENROUTER
+            ENV["OPENROUTER_API_KEY"].present?
+          else
+            ENV["OPENROUTER_API_KEY"].present?
+          end
+        end
+
+        def request_timeout_seconds
+          raw = ENV["AI_VISION_REQUEST_TIMEOUT"].to_s.strip
+          return DEFAULT_REQUEST_TIMEOUT_SECONDS if raw.blank?
+
+          seconds = raw.to_i
+          seconds.positive? ? seconds : DEFAULT_REQUEST_TIMEOUT_SECONDS
+        end
+
+        # OpenRouter-only: route to the lowest-latency provider for the model.
+        def openrouter_chat_extras
+          return {} unless openrouter?
+
+          {
+            provider: {
+              sort: "latency",
+            },
+          }
+        end
         # Returns an OpenAI-compatible client (either OpenAI or OpenRouter).
         # Use for chat completions with vision (e.g. receipt/document extraction).
         def client
+          timeout = request_timeout_seconds
+
           if openrouter?
             OpenAI::Client.new(
               access_token: ENV.fetch("OPENROUTER_API_KEY"),
-              uri_base: OPENROUTER_URI_BASE
+              uri_base: OPENROUTER_URI_BASE,
+              request_timeout: timeout,
             )
           else
             OpenAI::Client.new(
-              access_token: ENV["OPENAI_API_KEY"] || Rails.application.credentials.openai_api_key
+              access_token: ENV["OPENAI_API_KEY"] || Rails.application.credentials.openai_api_key,
+              request_timeout: timeout,
             )
           end
         end
@@ -43,18 +77,6 @@ module Ai
         end
 
         private
-
-        def openrouter?
-          case ENV["AI_VISION_PROVIDER"].to_s.strip.downcase
-          when PROVIDER_OPENAI
-            false
-          when PROVIDER_OPENROUTER
-            ENV["OPENROUTER_API_KEY"].present?
-          else
-            # Default: use OpenRouter if key is set, else OpenAI (old way)
-            ENV["OPENROUTER_API_KEY"].present?
-          end
-        end
 
         def default_model
           openrouter? ? OPENROUTER_DEFAULT_MODEL : OPENAI_DEFAULT_MODEL

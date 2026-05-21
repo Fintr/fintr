@@ -35,10 +35,33 @@ This API allows you to upload receipt images and automatically extract transacti
 - **Pattern Enhancement**: AI-powered text analysis
 
 ### Pure AI Vision Method (plug-and-play)
-- **Default (new, cheaper)**: OpenRouter + Gemini 2.0 Flash (`google/gemini-2.5-flash-lite`) when `OPENROUTER_API_KEY` is set. Lower cost, strong document/receipt extraction.
-- **Legacy**: OpenAI GPT-4 Vision (gpt-4o) when only `OPENAI_API_KEY` is set or `AI_VISION_PROVIDER=openai`.
+- **Default (~1s target)**: OpenRouter + **Gemini 2.5 Flash Lite** (`google/gemini-2.5-flash-lite`) when `OPENROUTER_API_KEY` is set. Optimized for low latency on receipt OCR.
+- **Legacy (slower)**: OpenAI **gpt-4o** when only `OPENAI_API_KEY` is set or `AI_VISION_PROVIDER=openai` — typically **3–8s+**, not ~1s.
 - **Direct Analysis**: No separate OCR step; same request/response shape for both providers.
-- **Override model**: Set `AI_VISION_MODEL` (e.g. `openai/gpt-4o` or `google/gemini-2.5-pro`) to override the default for the chosen provider.
+- **Override model**: `AI_VISION_MODEL` (stay on flash-tier models for speed).
+
+#### Latency tuning (env)
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `OPENROUTER_API_KEY` | — | Required for fast path |
+| `AI_VISION_MODEL` | `google/gemini-2.5-flash-lite` | Faster: flash-lite; slower: `gpt-4o`, `gemini-2.5-pro` |
+| `AI_VISION_PROVIDER` | `openrouter` if OR key set | Force `openai` only if you accept slower scans |
+| `AI_VISION_MAX_EDGE` | `768` | Max image edge px before upload |
+| `AI_VISION_IMAGE_DETAIL` | `low` | Vision detail (`low` ≈ 1s; `high` ≈ 3s+) |
+| `AI_VISION_MAX_TOKENS` | `220` | Cap JSON output size |
+| `AI_VISION_REQUEST_TIMEOUT` | `12` | Fail fast if provider is slow |
+
+OpenRouter requests use `provider.sort=latency` to pick the fastest host for the model.
+
+**Recommended models (OpenRouter, receipt scans):**
+1. `google/gemini-2.5-flash-lite` — default, best speed/cost for OCR
+2. `google/gemini-2.0-flash-001` — similar tier, good fallback
+3. `google/gemini-3.1-flash-lite` — newer flash-lite if available on your account
+
+Avoid for speed: `gpt-4o`, `gemini-2.5-pro`, large Claude vision models.
+
+In development, API responses include `processing_time_seconds` when receipt processing completes.
 
 ## API Endpoints
 

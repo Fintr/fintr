@@ -187,9 +187,11 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
 
     context "when all steps are successful" do
       before do
+        create(:category, name: "Groceries", space:, category_type: "expense")
+        create(:category, name: "Restaurants", space:, category_type: "expense")
+
         # Mock external dependencies for a successful full flow
         allow(Spaces::Space).to receive(:find).with(space_id).and_return(space) # Use find method
-        allow(space).to receive(:expense_categories).and_return(instance_double(ActiveRecord::Relation, pluck: space_categories))
         allow(space).to receive(:accounts).and_return(instance_double(ActiveRecord::Relation, pluck: space_accounts))
         allow(File).to receive(:binread).with(image_path).and_return("dummy image data")
         allow(Base64).to receive(:strict_encode64).and_return("ZHVtbXkgaW1hZ2UgZGF0YQ==")
@@ -222,12 +224,11 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
       end
 
       context "when fetch_space_categories fails" do
-        let(:mock_space_for_categories) { instance_double(Spaces::Space) }
+        let(:mock_space_for_categories) { instance_double(Spaces::Space, id: space_id) }
 
         before do
-          # Simulate find_space succeeding with a mock space, then its categories failing
           allow(Spaces::Space).to receive(:find).with(space_id).and_return(mock_space_for_categories)
-          allow(mock_space_for_categories).to receive(:expense_categories).and_raise(StandardError, "Database error for categories")
+          allow(Transactions::Category).to receive(:expense).and_raise(StandardError, "Database error for categories")
         end
 
         it "returns a failure" do
@@ -304,18 +305,21 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
     describe "#fetch_space_categories" do
       let(:category1) { create(:category, name: "Food", space:, category_type: "expense") }
       let(:category2) { create(:category, name: "Travel", space:, category_type: "expense") }
+      let!(:groceries) do
+        create(:category, name: "Groceries", space:, category_type: "expense", parent: category1)
+      end
 
       before do
-        # Ensure categories are created before each test in this describe block
         category1
         category2
+        groceries
       end
 
       context "when space has expense categories" do
-        it "returns success with the categories" do
+        it "returns parent and subcategory names for receipt assignment" do
           result = operation.__send__(:fetch_space_categories, space:)
           expect(result).to be_success
-          expect(result.value!).to contain_exactly("Food", "Travel")
+          expect(result.value!).to contain_exactly("Food", "Travel", "Groceries")
         end
       end
 
@@ -331,7 +335,7 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
 
       context "when an error occurs" do
         before do
-          allow(space).to receive(:expense_categories).and_raise(StandardError, "Database error")
+          allow(Transactions::Category).to receive(:expense).and_raise(StandardError, "Database error")
         end
 
         it "returns failure with an error message" do
@@ -519,10 +523,9 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
 
       it "builds the system prompt correctly with categories" do
         result = operation.__send__(:build_vision_system_prompt, space_categories, [])
-        expect(result).to include("Extract the transaction DATE from the receipt")
-        expect(result).to include("ALWAYS provide a category suggestion")
-        expect(result).to include("default to \"Groceries\"")
-        expect(result).to include("date\": \"YYYY-MM-DD\"")
+        expect(result).to include("Receipt OCR")
+        expect(result).to include("default \"Groceries\"")
+        expect(result).to include("date: YYYY-MM-DD")
         expect(result).to include("Groceries, Dining, Transport")
       end
 
@@ -531,9 +534,9 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
 
         it "builds the system prompt with default category 'Family'" do
           result = operation.__send__(:build_vision_system_prompt, [], [])
-          expect(result).to include("ALWAYS provide a category suggestion")
-          expect(result).to include("default to \"Family\"")
-          expect(result).to include("date\": \"YYYY-MM-DD\"")
+          expect(result).to include("Receipt OCR")
+          expect(result).to include("default \"Family\"")
+          expect(result).to include("date: YYYY-MM-DD")
         end
       end
 
@@ -544,7 +547,7 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
         it "builds the system prompt correctly with accounts" do
           result = operation.__send__(:build_vision_system_prompt, space_categories, space_accounts)
           expect(result).to include("Checking, Savings")
-          expect(result).to include("default to \"Checking\"")
+          expect(result).to include("default \"Checking\"")
         end
       end
 
@@ -554,7 +557,7 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
 
         it "builds the system prompt with default account 'Cash'" do
           result = operation.__send__(:build_vision_system_prompt, space_categories, space_accounts)
-          expect(result).to include("default to \"Cash\"")
+          expect(result).to include("default \"Cash\"")
         end
       end
     end

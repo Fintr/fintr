@@ -12,6 +12,12 @@ export interface CategoryAssignment {
   subcategoryId: string | null;
 }
 
+const CATEGORY_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export const isCategoryPickerId = (value: string): boolean =>
+  CATEGORY_ID_PATTERN.test(value.trim());
+
 export const formatCategoryPickerValue = (
   assignment: CategoryAssignment,
 ): string => {
@@ -31,7 +37,11 @@ export const parseCategoryPickerValue = (
 
   const [categoryId, subcategoryId] = value.split(":");
 
-  if (!categoryId) {
+  if (!categoryId || !isCategoryPickerId(categoryId)) {
+    return null;
+  }
+
+  if (subcategoryId && !isCategoryPickerId(subcategoryId)) {
     return null;
   }
 
@@ -44,6 +54,47 @@ export const parseCategoryPickerValue = (
 export type CategoryTriggerDisplay = {
   primary: string;
   secondary: string | null;
+};
+
+export const normalizeCategoryMatchKey = (value: string): string =>
+  value
+    .replace(/\\/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+export const categoryPickerValueFromName = (
+  categoryName: string,
+  options: CategoryTreeOption[],
+): string => {
+  const key = normalizeCategoryMatchKey(categoryName);
+
+  if (!key) {
+    return "";
+  }
+
+  for (const parent of options) {
+    if (
+      normalizeCategoryMatchKey(parent.name) === key
+      || normalizeCategoryMatchKey(parent.label) === key
+    ) {
+      return parent.id;
+    }
+
+    for (const child of parent.children ?? []) {
+      if (
+        normalizeCategoryMatchKey(child.name) === key
+        || normalizeCategoryMatchKey(child.label) === key
+      ) {
+        return formatCategoryPickerValue({
+          categoryId: parent.id,
+          subcategoryId: child.id,
+        });
+      }
+    }
+  }
+
+  return categoryName.trim();
 };
 
 export const categoryPickerValueFromTransaction = (input: {
@@ -61,6 +112,25 @@ export const categoryPickerValueFromTransaction = (input: {
   }
 
   return input.categoryName?.trim() ?? "";
+};
+
+export const categoryPickerValueFromReceiptOrTransaction = (
+  input: {
+    categoryId?: string | null;
+    subcategoryId?: string | null;
+    categoryName?: string;
+  },
+  options: CategoryTreeOption[],
+): string => {
+  if (input.categoryId?.trim()) {
+    return categoryPickerValueFromTransaction(input);
+  }
+
+  if (input.categoryName?.trim()) {
+    return categoryPickerValueFromName(input.categoryName, options);
+  }
+
+  return "";
 };
 
 export const getCategoryTriggerDisplay = (
@@ -102,7 +172,7 @@ export const getCategoryTriggerDisplay = (
   };
 };
 
-/** Parent category `name` for transaction/budget APIs (not picker ids or composite labels). */
+/** Category `name` for APIs that resolve by name (receipts, legacy payloads). */
 export const getCategoryNameForApi = (
   value: string,
   options: CategoryTreeOption[],
@@ -119,7 +189,42 @@ export const getCategoryNameForApi = (
     return value.trim();
   }
 
+  if (assignment.subcategoryId) {
+    const sub = parent.children?.find(
+      (child) => child.id === assignment.subcategoryId,
+    );
+
+    if (sub) {
+      return sub.name;
+    }
+  }
+
   return parent.name;
+};
+
+export const buildTransactionCategoryFields = (
+  pickerValue: string,
+  options: CategoryTreeOption[],
+): {
+  categoryName: string;
+  categoryId?: string;
+  subcategoryId?: string;
+} => {
+  const assignment = parseCategoryPickerValue(pickerValue);
+
+  if (!assignment) {
+    return {
+      categoryName: pickerValue.trim(),
+    };
+  }
+
+  return {
+    categoryName: getCategoryNameForApi(pickerValue, options),
+    categoryId: assignment.categoryId,
+    ...(assignment.subcategoryId
+      ? { subcategoryId: assignment.subcategoryId }
+      : {}),
+  };
 };
 
 export const getCategoryDisplayLabel = (

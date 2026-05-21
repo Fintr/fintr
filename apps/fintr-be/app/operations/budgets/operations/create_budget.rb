@@ -48,16 +48,14 @@ module Budgets
           )
         end
 
-        category = Transactions::Category.find_by!(
+        assignment = Transactions::Operations::ResolveCategoryByName.new.call(
           space_id: params[:space_id],
-          name: params[:category_name]
+          category_name: params[:category_name],
+          category_type: "expense"
         )
-        Success(
-          category_id: category.id,
-          subcategory_id: nil
-        )
-      rescue ActiveRecord::RecordNotFound
-        Failure(category_name: "not found")
+        return assignment if assignment.failure?
+
+        Success(assignment.value!)
       end
 
       def validate_allocation(params:)

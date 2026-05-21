@@ -10,21 +10,24 @@ import {
 } from "./categoryTreeOptions";
 import { CategoryTreeOption } from "@/types/categoryTreeTypes";
 
+const PARENT_ID = "11111111-1111-4111-8111-111111111111";
+const SUB_ID = "22222222-2222-4222-8222-222222222222";
+
 describe("categoryTreeTypes", () => {
   const tree = [
     {
-      id: "parent-1",
+      id: PARENT_ID,
       label: "Food",
-      value: "parent-1",
+      value: PARENT_ID,
       name: "Food",
       parentId: null,
       children: [
         {
-          id: "sub-1",
+          id: SUB_ID,
           label: "Groceries",
-          value: "sub-1",
+          value: SUB_ID,
           name: "Groceries",
-          parentId: "parent-1",
+          parentId: PARENT_ID,
         },
       ],
     },
@@ -32,24 +35,24 @@ describe("categoryTreeTypes", () => {
 
   it("formats and parses parent-only values", () => {
     const encoded = formatCategoryPickerValue({
-      categoryId: "parent-1",
+      categoryId: PARENT_ID,
       subcategoryId: null,
     });
 
-    expect(encoded).toBe("parent-1");
+    expect(encoded).toBe(PARENT_ID);
     expect(parseCategoryPickerValue(encoded)).toEqual({
-      categoryId: "parent-1",
+      categoryId: PARENT_ID,
       subcategoryId: null,
     });
   });
 
   it("formats and parses parent + sub values", () => {
     const encoded = formatCategoryPickerValue({
-      categoryId: "parent-1",
-      subcategoryId: "sub-1",
+      categoryId: PARENT_ID,
+      subcategoryId: SUB_ID,
     });
 
-    expect(encoded).toBe("parent-1:sub-1");
+    expect(encoded).toBe(`${PARENT_ID}:${SUB_ID}`);
     expect(getCategoryDisplayLabel(encoded, tree)).toBe("Food › Groceries");
   });
 });

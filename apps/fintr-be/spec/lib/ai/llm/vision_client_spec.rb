@@ -66,6 +66,28 @@ RSpec.describe Ai::Llm::VisionClient do
     end
   end
 
+  describe ".openrouter_chat_extras" do
+    it "returns latency routing when openrouter is active" do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("AI_VISION_PROVIDER").and_return("openrouter")
+      allow(ENV).to receive(:[]).with("OPENROUTER_API_KEY").and_return("sk-or-xxx")
+
+      expect(described_class.openrouter_chat_extras).to eq(
+        provider: {
+          sort: "latency",
+        },
+      )
+    end
+
+    it "returns empty hash for openai provider" do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("AI_VISION_PROVIDER").and_return("openai")
+      allow(ENV).to receive(:[]).with("OPENROUTER_API_KEY").and_return(nil)
+
+      expect(described_class.openrouter_chat_extras).to eq({})
+    end
+  end
+
   describe ".client" do
     it "builds OpenAI client when provider is openai" do
       allow(ENV).to receive(:[]).and_call_original
@@ -73,7 +95,10 @@ RSpec.describe Ai::Llm::VisionClient do
       allow(ENV).to receive(:[]).with("OPENROUTER_API_KEY").and_return(nil)
       allow(ENV).to receive(:[]).with("OPENAI_API_KEY").and_return("sk-openai")
 
-      expect(OpenAI::Client).to receive(:new).with(access_token: "sk-openai")
+      expect(OpenAI::Client).to receive(:new).with(
+        access_token: "sk-openai",
+        request_timeout: 12,
+      )
 
       described_class.client
     end
@@ -86,7 +111,8 @@ RSpec.describe Ai::Llm::VisionClient do
 
       expect(OpenAI::Client).to receive(:new).with(
         access_token: "sk-or-xxx",
-        uri_base: "https://openrouter.ai/api"
+        uri_base: "https://openrouter.ai/api",
+        request_timeout: 12,
       )
 
       described_class.client

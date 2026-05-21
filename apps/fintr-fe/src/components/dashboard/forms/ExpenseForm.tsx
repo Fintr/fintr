@@ -27,8 +27,8 @@ import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum, DeleteScopeEnu
 import GridPicker from "./GridPicker";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import {
-  categoryPickerValueFromTransaction,
-  getCategoryNameForApi,
+  buildTransactionCategoryFields,
+  categoryPickerValueFromReceiptOrTransaction,
   parseCategoryPickerValue,
 } from "@/types/categoryTreeTypes";
 import { UpdateTransactionType } from "@/types/transactionTypes";
@@ -381,11 +381,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       setFormState({
         amount: initialAmount,
         description: initialData.description || "",
-        categoryName: categoryPickerValueFromTransaction({
-          categoryId: initialData.categoryId,
-          subcategoryId: initialData.subcategoryId,
-          categoryName: initialData.categoryName,
-        }),
+        categoryName: categoryPickerValueFromReceiptOrTransaction(
+          {
+            categoryId: initialData.categoryId,
+            subcategoryId: initialData.subcategoryId,
+            categoryName: initialData.categoryName,
+          },
+          categoryOptionsRaw,
+        ),
         accountName: initialData.accountName || "",
         scheduleType: initialData.scheduleType || ScheduleTypeEnum.ONE_TIME,
         repeatInterval: initialData.repeatInterval || "",
@@ -453,7 +456,30 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       setConversionSnapshot(null);
       prevInitialDataRef.current = undefined;
     }
-  }, [initialData, initialData?.file]); // Add initialData?.file to dependencies
+  }, [initialData, initialData?.file, categoryOptionsRaw]);
+
+  useEffect(() => {
+    if (!initialData || categoryOptionsRaw.length === 0) {
+      return;
+    }
+
+    const resolved = categoryPickerValueFromReceiptOrTransaction(
+      {
+        categoryId: initialData.categoryId,
+        subcategoryId: initialData.subcategoryId,
+        categoryName: initialData.categoryName,
+      },
+      categoryOptionsRaw,
+    );
+
+    if (!resolved || parseCategoryPickerValue(formState.categoryName)) {
+      return;
+    }
+
+    if (resolved !== formState.categoryName) {
+      handleFieldChange("categoryName", resolved);
+    }
+  }, [categoryOptionsRaw, initialData?.categoryId, initialData?.categoryName, initialData?.subcategoryId]);
 
   // Effect to force re-render when new categories or accounts are added
   useEffect(() => {
@@ -527,8 +553,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       const shouldUploadFile = isUploadableFile(formState.file);
 
       // Create: amount in space currency. Edit with conversion: amount in original_currency + metadata so backend converts to account.
-      const categoryAssignment = parseCategoryPickerValue(formState.categoryName);
-      const categoryNameForApi = getCategoryNameForApi(
+      const categoryFields = buildTransactionCategoryFields(
         formState.categoryName,
         categoryOptionsRaw,
       );
@@ -537,11 +562,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         amount: numberFormatting.cleanForBackend(formState.amount),
         description: formState.description || "",
         transactionType: "expense" as const,
-        categoryName: categoryNameForApi,
-        ...(categoryAssignment && {
-          categoryId: categoryAssignment.categoryId,
-          subcategoryId: categoryAssignment.subcategoryId ?? undefined,
-        }),
+        ...categoryFields,
         accountName: formState.accountName,
         date: format(date, "yyyy-MM-dd"),
         scheduleType: formState.scheduleType,
@@ -673,7 +694,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     const newFormState = {
       amount: draftAmount,
       description: draft.description || "",
-      categoryName: draft.categoryName || "",
+      categoryName: categoryPickerValueFromReceiptOrTransaction(
+        {
+          categoryId: draft.categoryId,
+          subcategoryId: draft.subcategoryId,
+          categoryName: draft.categoryName || "",
+        },
+        categoryOptionsRaw,
+      ),
       accountName: draft.accountName || "",
       scheduleType: draft.scheduleType || ScheduleTypeEnum.ONE_TIME,
       repeatInterval: draft.repeatInterval || "",

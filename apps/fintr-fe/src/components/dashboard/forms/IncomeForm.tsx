@@ -32,8 +32,8 @@ import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum } from "@/const
 import GridPicker from "./GridPicker";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import {
-  categoryPickerValueFromTransaction,
-  getCategoryNameForApi,
+  buildTransactionCategoryFields,
+  categoryPickerValueFromReceiptOrTransaction,
   parseCategoryPickerValue,
 } from "@/types/categoryTreeTypes";
 import { UpdateTransactionType } from "@/types/transactionTypes";
@@ -164,11 +164,14 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     amount: initialData?.amount?.toString() || "",
     description: initialData?.description || "",
     categoryName: initialData
-      ? categoryPickerValueFromTransaction({
-          categoryId: initialData.categoryId,
-          subcategoryId: initialData.subcategoryId,
-          categoryName: initialData.categoryName,
-        })
+      ? categoryPickerValueFromReceiptOrTransaction(
+          {
+            categoryId: initialData.categoryId,
+            subcategoryId: initialData.subcategoryId,
+            categoryName: initialData.categoryName,
+          },
+          categoryOptions,
+        )
       : "",
     accountName: initialData?.accountName || "",
     scheduleType: getValidIncomeScheduleType(initialData?.scheduleType),
@@ -340,11 +343,14 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       setFormState({
         amount: initialAmount,
         description: initialData.description || "",
-        categoryName: categoryPickerValueFromTransaction({
-          categoryId: initialData.categoryId,
-          subcategoryId: initialData.subcategoryId,
-          categoryName: initialData.categoryName,
-        }),
+        categoryName: categoryPickerValueFromReceiptOrTransaction(
+          {
+            categoryId: initialData.categoryId,
+            subcategoryId: initialData.subcategoryId,
+            categoryName: initialData.categoryName,
+          },
+          categoryOptions,
+        ),
         accountName: initialData.accountName || "",
         scheduleType: getValidIncomeScheduleType(initialData.scheduleType),
         repeatInterval: initialData.repeatInterval || "",
@@ -408,8 +414,31 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       setConversionSnapshot(null);
       prevInitialDataRef.current = undefined;
     }
-  }, [initialData, initialData?.file]); // Add initialData?.file and setDate to dependencies
-  
+  }, [initialData, initialData?.file, categoryOptions]);
+
+  useEffect(() => {
+    if (!initialData || categoryOptions.length === 0) {
+      return;
+    }
+
+    const resolved = categoryPickerValueFromReceiptOrTransaction(
+      {
+        categoryId: initialData.categoryId,
+        subcategoryId: initialData.subcategoryId,
+        categoryName: initialData.categoryName,
+      },
+      categoryOptions,
+    );
+
+    if (!resolved || parseCategoryPickerValue(formState.categoryName)) {
+      return;
+    }
+
+    if (resolved !== formState.categoryName) {
+      handleFieldChange("categoryName", resolved);
+    }
+  }, [categoryOptions, initialData?.categoryId, initialData?.categoryName, initialData?.subcategoryId]);
+
   // Form validation
   const validateForm = () => {
     try {
@@ -474,8 +503,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         amountToUse = String(taxCalculation.netIncome);
       }
 
-      const categoryAssignment = parseCategoryPickerValue(formState.categoryName);
-      const categoryNameForApi = getCategoryNameForApi(
+      const categoryFields = buildTransactionCategoryFields(
         formState.categoryName,
         categoryOptions,
       );
@@ -484,11 +512,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         amount: Number(amountToUse),
         description: formState.description || "",
         transactionType: "income" as const,
-        categoryName: categoryNameForApi,
-        ...(categoryAssignment && {
-          categoryId: categoryAssignment.categoryId,
-          subcategoryId: categoryAssignment.subcategoryId ?? undefined,
-        }),
+        ...categoryFields,
         accountName: formState.accountName,
         date: format(date, "yyyy-MM-dd"),
         scheduleType: formState.scheduleType,
