@@ -5,8 +5,7 @@ import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { isNativeCapacitor } from "@/lib/capacitor";
-import { getSafeAreaInsets } from "@/lib/platform-detection";
+import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen";
 import { numberFormatting } from "@/lib/utils";
 
@@ -114,8 +113,12 @@ export function CalculatorInput({
   // Track if we're in "expression mode" (user is typing a calculation)
   const [isExpressionMode, setIsExpressionMode] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [isAndroidNative, setIsAndroidNative] = useState(false);
-  const [isIOSNative, setIsIOSNative] = useState(false);
+  const {
+    isAndroidNative,
+    isIOSNative,
+    safeAreaInsetBottom,
+    hasAndroid3ButtonNav,
+  } = usePlatformDetection();
   const [keyboardPosition, setKeyboardPosition] = useState<KeyboardPosition>({
     top: 0,
     left: 0,
@@ -123,8 +126,29 @@ export function CalculatorInput({
     height: DESKTOP_KEYBOARD_HEIGHT,
   });
   const [keyboardLayout, setKeyboardLayout] = useState<KeyboardLayout>("below");
-  const [keyboardBottomOffset, setKeyboardBottomOffset] = useState<string>("0px");
   const [mounted, setMounted] = useState(false);
+
+  const keyboardBottomOffset = useMemo(() => {
+    if (isIOSNative) {
+      return "0px";
+    }
+
+    if (isAndroidNative) {
+      const insetPx = Math.max(
+        safeAreaInsetBottom,
+        hasAndroid3ButtonNav ? 48 : 16,
+      );
+
+      return `${insetPx}px`;
+    }
+
+    return "0px";
+  }, [
+    isAndroidNative,
+    isIOSNative,
+    safeAreaInsetBottom,
+    hasAndroid3ButtonNav,
+  ]);
   const containerRef = useRef<HTMLDivElement>(null);
   const keyboardRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -147,34 +171,6 @@ export function CalculatorInput({
   // Handle SSR - only render portal after mount
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  // Detect platform and calculate bottom offset for safe area / navigation bar
-  useEffect(() => {
-    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-    const uaLower = ua.toLowerCase();
-    const isAndroid = /android/i.test(ua);
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    const isNative = isNativeCapacitor();
-    const hasAndroidClass = document.documentElement.classList.contains("fintr-native-android");
-    const hasIOSClass = document.documentElement.classList.contains("fintr-native-ios");
-    const androidNative = isAndroid && (isNative || hasAndroidClass);
-    const iosNative = isIOS && (isNative || hasIOSClass);
-    setIsAndroidNative(androidNative);
-    setIsIOSNative(iosNative);
-
-    // Calculate bottom offset to avoid system navigation overlap.
-    // Android native needs extra lift for 3-button navigation.
-    // iOS native should sit flush at the modal bottom to avoid double-spacing.
-    if (androidNative) {
-      const insets = getSafeAreaInsets();
-      const minNavHeight = 48;
-      const navHeight = Math.max(insets.bottom, minNavHeight);
-      const cappedNavHeight = Math.min(navHeight, 80);
-      setKeyboardBottomOffset(`${cappedNavHeight}px`);
-    } else if (iosNative) {
-      setKeyboardBottomOffset("0px");
-    }
   }, []);
 
   // Detect mobile/desktop and update on resize

@@ -4,14 +4,18 @@ import userEvent from "@testing-library/user-event";
 import { CalculatorInput } from "./calculator-input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog";
 
-// Mock the Capacitor native check
-vi.mock("@/lib/capacitor", () => ({
-  isNativeCapacitor: () => true,
-}));
-
-// Mock the platform detection
-vi.mock("@/lib/platform-detection", () => ({
-  getSafeAreaInsets: () => ({ bottom: 48, top: 0, left: 0, right: 0 }),
+vi.mock("@/hooks/usePlatformDetection", () => ({
+  usePlatformDetection: () => ({
+    isAndroidNative: false,
+    isIOSNative: false,
+    isNative: false,
+    isMobileBrowser: false,
+    isAndroidBrowser: false,
+    isIOSBrowser: false,
+    safeAreaInsetBottom: 0,
+    safeAreaInsetTop: 0,
+    hasAndroid3ButtonNav: false,
+  }),
 }));
 
 describe("CalculatorInput", () => {
