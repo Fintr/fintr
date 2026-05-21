@@ -1,0 +1,72 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "open3"
+require "pathname"
+
+ROOT = Pathname.new(__dir__).join("..").expand_path
+BE_PREFIX = "apps/fintr-be/"
+
+def normalize_path(path)
+  path.delete_prefix(BE_PREFIX)
+end
+
+def git_changed_files
+  base = ENV.fetch("RSPEC_CHANGED_BASE", "HEAD")
+  diff_target = base == "HEAD" ? "" : "#{base}...HEAD"
+
+  commands = [
+    ["git", "diff", "--name-only", "--diff-filter=ACMRTUXB"],
+    ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMRTUXB"]
+  ]
+  commands << ["git", "diff", "--name-only", "--diff-filter=ACMRTUXB", diff_target] unless diff_target.empty?
+
+  commands.flat_map do |cmd|
+    stdout, _status = Open3.capture2(*cmd, chdir: ROOT)
+    stdout.lines.map(&:strip)
+  end
+    .map { |path| normalize_path(path) }
+    .uniq
+    .select { |path| path.start_with?("app/", "lib/", "spec/") }
+end
+
+def spec_path_for(source_path)
+  absolute = ROOT.join(source_path)
+  return source_path if source_path.start_with?("spec/") && absolute.exist?
+
+  if (match = source_path.match(%r{\Aapp/controllers/(.+)_controller\.rb\z}))
+    request_spec = "spec/requests/#{match[1]}_spec.rb"
+    return request_spec if ROOT.join(request_spec).exist?
+  end
+
+  candidates = []
+  if source_path.start_with?("app/")
+    candidates << source_path.sub(%r{\Aapp/}, "spec/").sub(/\.rb\z/, "_spec.rb")
+  end
+  if source_path.start_with?("lib/")
+    candidates << source_path.sub(%r{\Alib/}, "spec/lib/").sub(/\.rb\z/, "_spec.rb")
+  end
+
+  candidates.find { |candidate| ROOT.join(candidate).exist? }
+end
+
+changed_files = git_changed_files
+spec_files = changed_files.map { |file| spec_path_for(file) }.compact.uniq.sort
+
+if spec_files.empty?
+  warn "No related spec files found for changed app/lib/spec paths."
+  warn "Changed paths: #{changed_files.join(', ')}" if changed_files.any?
+  exit 0
+end
+
+warn "Running specs for changed files:"
+spec_files.each { |path| warn "  - #{path}" }
+
+runner =
+  if system("command -v mise >/dev/null 2>&1")
+    ["mise", "exec", "--", "bundle", "exec", "rspec"]
+  else
+    ["bundle", "exec", "rspec"]
+  end
+
+exec(*runner, *spec_files, chdir: ROOT)

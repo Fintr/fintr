@@ -202,9 +202,9 @@ RSpec.describe "Api::V1::Transactions", type: :request do
         transfer_row = json["data"]["transactions"].find { |row| row["type"] == "transfer" }
 
         expect(transfer_row).to be_present
-        expect(transfer_row["amount"]).to eq(25_000.0)
+        expect(transfer_row["amount"]).to eq("25000.0")
         expect(transfer_row["amountCurrency"]).to eq("PHP")
-        expect(transfer_row["bookedAmount"]).to eq(500.0)
+        expect(transfer_row["bookedAmount"]).to eq("500.0")
         expect(transfer_row["bookedAmountCurrency"]).to eq("USD")
       end
     end

@@ -92,6 +92,8 @@ RSpec.describe Transactions::Operations::CreateTransaction do
     end
 
     context "when amount_in_currency matches the account currency while the space currency differs" do
+      subject(:call_result) { operation.call(account_currency_amount_params) }
+
       let(:usd_account) do
         create(
           :account,
@@ -117,7 +119,6 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         }
       end
 
-      subject(:call_result) { operation.call(account_currency_amount_params) }
 
       it { expect(call_result).to be_success }
 
@@ -538,7 +539,7 @@ RSpec.describe Transactions::Operations::CreateTransaction do
 
         it 'returns validation errors' do
           result = call_operation
-          expect(result.failure).to include(:category_name)
+          expect(result.failure).to include(:category_id)
         end
       end
 

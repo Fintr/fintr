@@ -447,15 +447,29 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
       end
     end
 
-    describe '#find_category' do
-      it 'finds existing category' do
-        result = described_class.new.send(:find_category, params: { transaction_type: 'expense', category_name: category.name, space_id: space.id })
+    describe '#resolve_category_assignment' do
+      it 'resolves existing category by name' do
+        result = described_class.new.send(
+          :resolve_category_assignment,
+          params: {
+            transaction_type: 'expense',
+            category_name: category.name,
+            space_id: space.id
+          }
+        )
         expect(result).to be_success
-        expect(result.value!).to eq(category)
+        expect(result.value!).to eq(category_id: category.id, subcategory_id: nil)
       end
 
       it 'fails when category not found' do
-        result = described_class.new.send(:find_category, params: { transaction_type: 'expense', category_name: 'Non-existent', space_id: space.id })
+        result = described_class.new.send(
+          :resolve_category_assignment,
+          params: {
+            transaction_type: 'expense',
+            category_name: 'Non-existent',
+            space_id: space.id
+          }
+        )
         expect(result).to be_failure
         expect(result.failure).to include(category_name: "not found")
       end

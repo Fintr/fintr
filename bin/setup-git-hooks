@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Point this clone's git hooks at the tracked .githooks/ scripts (prek-backed).
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "${REPO_ROOT}"
+
+if ! command -v prek >/dev/null 2>&1; then
+  if command -v mise >/dev/null 2>&1; then
+    if ! mise exec -- prek --version >/dev/null 2>&1; then
+      echo "prek is required. Install with: brew install prek" >&2
+      exit 1
+    fi
+  else
+    echo "prek is required. Install with: brew install prek" >&2
+    exit 1
+  fi
+fi
+
+chmod +x .githooks/pre-commit .githooks/pre-push
+
+git config core.hooksPath .githooks
+
+echo "Git hooks configured (core.hooksPath=.githooks)"
+echo "  pre-commit → prek → scripts/git-hooks/pre-commit-backend-rspec.sh"
+echo "  pre-push   → prek → scripts/git-hooks/pre-push-frontend.sh"
+echo ""
+echo "Hook scripts are tracked in git; each developer runs this once per clone:"
+echo "  bin/setup-git-hooks"

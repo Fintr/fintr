@@ -27,7 +27,7 @@ cors_configuration = proc do
         "http://127.0.0.1:5173",
         "http://localhost:3000",
         "http://localhost:3001",
-        "http://127.0.0.1:3001",
+        "http://127.0.0.1:3001"
       ].join(","),
     ).split(",").map(&:strip)
 

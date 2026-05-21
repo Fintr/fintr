@@ -89,7 +89,7 @@ module Transactions
             account_name: account.name,
             description: "Balance adjustment",
             schedule_type: "one_time",
-            amount_in_currency: account.balance_currency,
+            amount_in_currency: account.balance_currency
           }
 
           result = CreateTransaction.new.call(transaction_params)

@@ -92,6 +92,8 @@ RSpec.describe Transactions::Operations::Accounts::AdjustAccountBalance do
     end
 
     context 'when account currency differs from space currency' do
+      subject(:call_result) { operation.call(cross_currency_params) }
+
       let(:space) { create(:personal_space, currency: 'PHP') }
       let(:usd_account) do
         create(
@@ -112,7 +114,6 @@ RSpec.describe Transactions::Operations::Accounts::AdjustAccountBalance do
         }
       end
 
-      subject(:call_result) { operation.call(cross_currency_params) }
 
       it { expect(call_result).to be_success }
 
@@ -134,6 +135,8 @@ RSpec.describe Transactions::Operations::Accounts::AdjustAccountBalance do
       end
 
       context 'when a PHP exchange rate exists for the adjustment date' do
+        subject(:call_result) { operation.call(cross_currency_params) }
+
         let(:usd_account) do
           create(
             :account,
@@ -162,7 +165,6 @@ RSpec.describe Transactions::Operations::Accounts::AdjustAccountBalance do
           )
         end
 
-        subject(:call_result) { operation.call(cross_currency_params) }
 
         it { expect(call_result).to be_success }
 
