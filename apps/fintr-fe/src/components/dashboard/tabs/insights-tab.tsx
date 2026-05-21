@@ -55,9 +55,14 @@ import { formatCurrency, getColor, getColorByIndex, shouldShowV2Features } from 
 import { useMemo, useEffect, useState } from "react";
 import { parseCategoryPickerValue } from "@/types/categoryTreeTypes";
 import { useAtom, useAtomValue } from "jotai";
-import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
-import GridPicker from "@/components/dashboard/forms/GridPicker";
-import { CategoryTypeEnum } from "@/types/categoryTypes";
+import {
+  expenseCategoryOptionsAtom,
+  incomeCategoryOptionsAtom,
+} from "@/atoms/dashboardAtoms";
+import { CategoryFilterComboBox } from "@/components/ui/category-filter-combobox";
+import { FilterOptionPills } from "@/components/ui/filter-option-pills";
+import { FilterSheet } from "@/components/ui/filter-sheet";
+import { getCurrentMonthDates } from "@/utils/dateUtils";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ScoreTag from "@/components/ui/score-tag";
 import AccountBreakdownComponent from "@/components/dashboard/account-breakdown";
@@ -71,7 +76,6 @@ import {
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { getCurrentMonthDates } from "@/utils/dateUtils";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 
@@ -108,7 +112,7 @@ const weeklySpendingData = [
 ];
 
 const InsightsTab = () => {
-  const [showFilters, setShowFilters] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
     .toLowerCase();
@@ -151,6 +155,7 @@ const InsightsTab = () => {
   const [endDate, setEndDate] = useAtom(dateFilterEndDateAtom);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
   const selectedCategoryAssignment = useMemo(
     () =>
       selectedCategory === "all"
@@ -184,8 +189,8 @@ const InsightsTab = () => {
   const hasActiveFilters = () => {
     const { firstDay, lastDay } = getCurrentMonthDates();
     const isDefaultDateRange = startDate === firstDay && endDate === lastDay;
-    
-    return !isDefaultDateRange;
+
+    return !isDefaultDateRange || selectedCategory !== "all";
   };
   
   // Sync local state with atoms
@@ -431,6 +436,45 @@ const InsightsTab = () => {
     }
   };
   
+  useEffect(() => {
+    if (!filtersOpen) {
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      setSelectedMonth(monthYear.selectedMonth);
+      setSelectedYear(monthYear.selectedYear);
+      setFilterTypeSelector(filterType === "single" ? "single" : "custom");
+
+      if (startDate && endDate) {
+        setDateRange({
+          from: new Date(startDate),
+          to: new Date(endDate),
+        });
+      }
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [filtersOpen, monthYear, filterType, startDate, endDate]);
+
+  const handleResetFilters = () => {
+    const { firstDay, lastDay } = getCurrentMonthDates();
+    const monthName = currentMonth;
+
+    setFilterTypeSelector("single");
+    setSelectedMonth(monthName);
+    setSelectedYear(currentYear);
+    setSelectedCategory("all");
+    setDateRange({
+      from: new Date(firstDay),
+      to: new Date(lastDay),
+    });
+    setStartDate(firstDay);
+    setEndDate(lastDay);
+    setFiltersOpen(false);
+    refetch();
+  };
+
   // Handle filter application - update date atoms first
   const handleApplyFilters = () => {
     let queryStartDate: string;
@@ -462,9 +506,9 @@ const InsightsTab = () => {
       }
     }
     
-    // Update atoms
     setStartDate(queryStartDate);
     setEndDate(queryEndDate);
+    setFiltersOpen(false);
     refetch();
   };
 
@@ -495,13 +539,12 @@ const InsightsTab = () => {
           <div className="relative">
             <Button
               variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={() => setFiltersOpen(true)}
               className="flex items-center gap-2 bg-white text-primary"
+              aria-label="Open dashboard filters"
             >
               <Filter className="h-4 w-4" />
-              <div className="hidden md:flex">
-                {showFilters ? "Hide" : "Show"} Filters
-              </div>
+              <span className="hidden md:inline">Filters</span>
             </Button>
             {hasActiveFilters() && (
               <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
@@ -510,156 +553,119 @@ const InsightsTab = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Insights Filters */}
-        {showFilters && (
-          <Card className="mb-6">
-            <CardHeader className="px-4">
-              <CardTitle>Dashboard Filters</CardTitle> 
-              <CardDescription>Customize your dashboard view</CardDescription>
-            </CardHeader>
-            <CardContent className="px-4">
-              <div className="flex flex-col md:flex-row gap-4 items-start">
-                <div className="flex flex-col md:flex-row gap-4 flex-1">
-                  {/* Filter Type Selector */}
-                  <div className="space-y-2 md:w-auto md:min-w-[180px]">
-                    <Label>Filter Type</Label>
-                    <Select
-                      value={filterTypeSelector}
-                      onValueChange={(value) => handleFilterTypeChange(value as "single" | "custom")}
-                    >
-                      <SelectTrigger className="w-full md:w-[180px]">
-                        <SelectValue placeholder="Select filter type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="single">Single Month</SelectItem>
-                        <SelectItem value="custom">Custom Range</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+        <FilterSheet
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          title="Dashboard Filters"
+          onReset={handleResetFilters}
+          onApply={handleApplyFilters}
+          applyLoading={isLoading}
+        >
+          <div className="space-y-2">
+            <Label>Filter Type</Label>
+            <FilterOptionPills
+              ariaLabel="Filter type"
+              value={filterTypeSelector}
+              onChange={(value) =>
+                handleFilterTypeChange(value as "single" | "custom")
+              }
+              options={[
+                { value: "single", label: "Single Month" },
+                { value: "custom", label: "Custom Range" },
+              ]}
+            />
+          </div>
 
-                  {filterTypeSelector === "single" ? (
-                    <>
-                      <div className="space-y-2 md:w-auto md:min-w-[160px]">
-                        <Label>Month</Label>
-                        <Select
-                          defaultValue={selectedMonth}
-                          value={selectedMonth}
-                          onValueChange={(value) => {
-                            setSelectedMonth(value);
-                            // Don't update date atoms immediately - wait for Apply Filters button
-                          }}
-                        >
-                          <SelectTrigger className="w-full md:w-[160px]">
-                            <SelectValue placeholder="Select month" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="january">January</SelectItem>
-                            <SelectItem value="february">February</SelectItem>
-                            <SelectItem value="march">March</SelectItem>
-                            <SelectItem value="april">April</SelectItem>
-                            <SelectItem value="may">May</SelectItem>
-                            <SelectItem value="june">June</SelectItem>
-                            <SelectItem value="july">July</SelectItem>
-                            <SelectItem value="august">August</SelectItem>
-                            <SelectItem value="september">September</SelectItem>
-                            <SelectItem value="october">October</SelectItem>
-                            <SelectItem value="november">November</SelectItem>
-                            <SelectItem value="december">December</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2 md:w-auto md:min-w-[120px]">
-                        <Label>Year</Label>
-                        <Select
-                          defaultValue={selectedYear}
-                          value={selectedYear}
-                          onValueChange={(value) => {
-                            setSelectedYear(value);
-                            // Don't update date atoms immediately - wait for Apply Filters button
-                          }}
-                        >
-                          <SelectTrigger className="w-full md:w-[120px]">
-                            <SelectValue placeholder="Select year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {yearOptions.map((year) => (
-                              <SelectItem key={year.value} value={year.value}>
-                                {year.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="space-y-2 md:w-auto md:min-w-[280px]">
-                      <Label>Date Range</Label>
-                      <DateRangePicker
-                        open={dateRangePickerOpen}
-                        onOpenChange={setDateRangePickerOpen}
-                        selected={dateRange}
-                        onSelect={handleDateRangeSelect}
-                        trigger={
-                          <Button
-                            variant="outline"
-                            className="w-full md:w-[280px] justify-start text-left font-normal text-sm"
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dateRange?.from ? (
-                              dateRange.to ? (
-                                <>
-                                  {format(dateRange.from, "MMM d, yyyy")} -{" "}
-                                  {format(dateRange.to, "MMM d, yyyy")}
-                                </>
-                              ) : (
-                                format(dateRange.from, "MMM d, yyyy")
-                              )
-                            ) : (
-                              <span>Pick a date range</span>
-                            )}
-                          </Button>
-                        }
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-2 md:min-w-[240px] md:flex-1">
-                    <Label>Category</Label>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant={selectedCategory === "all" ? "default" : "outline"}
-                        onClick={() => setSelectedCategory("all")}
-                      >
-                        All
-                      </Button>
-                    </div>
-                    <GridPicker
-                      pickerKind="category"
-                      label="Filter by category"
-                      value={selectedCategory === "all" ? "" : selectedCategory}
-                      onChange={(value) => setSelectedCategory(value || "all")}
-                      categories={expenseCategoryOptions}
-                      categoryType={CategoryTypeEnum.EXPENSE}
-                      allowInlineCreate={false}
-                    />
-                  </div>
-                </div>
-
-                <div className="md:self-end md:ml-auto">
-                  <Button
-                    className="bg-primary hover:bg-primary/80 w-full md:w-auto"
-                    onClick={handleApplyFilters}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? <LoadingSpinner size="small" className="mr-2" /> : "Apply Filters"}
-                  </Button>
-                </div>
+          {filterTypeSelector === "single" ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Month</Label>
+                <Select
+                  value={selectedMonth}
+                  onValueChange={setSelectedMonth}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="january">January</SelectItem>
+                    <SelectItem value="february">February</SelectItem>
+                    <SelectItem value="march">March</SelectItem>
+                    <SelectItem value="april">April</SelectItem>
+                    <SelectItem value="may">May</SelectItem>
+                    <SelectItem value="june">June</SelectItem>
+                    <SelectItem value="july">July</SelectItem>
+                    <SelectItem value="august">August</SelectItem>
+                    <SelectItem value="september">September</SelectItem>
+                    <SelectItem value="october">October</SelectItem>
+                    <SelectItem value="november">November</SelectItem>
+                    <SelectItem value="december">December</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
-        )}
+
+              <div className="space-y-2">
+                <Label>Year</Label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((year) => (
+                      <SelectItem key={year.value} value={year.value}>
+                        {year.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Date Range</Label>
+              <DateRangePicker
+                open={dateRangePickerOpen}
+                onOpenChange={setDateRangePickerOpen}
+                selected={dateRange}
+                onSelect={handleDateRangeSelect}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "MMM d, yyyy")} –{" "}
+                          {format(dateRange.to, "MMM d, yyyy")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "MMM d, yyyy")
+                      )
+                    ) : (
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                }
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Categories</Label>
+            <CategoryFilterComboBox
+              expenseOptions={expenseCategoryOptions}
+              incomeOptions={incomeCategoryOptions}
+              placeholder="Select categories"
+              className="w-full"
+              showAllOnFocus={true}
+              value={selectedCategory === "all" ? "" : selectedCategory}
+              onChange={(value) => setSelectedCategory(value || "all")}
+            />
+          </div>
+        </FilterSheet>
 
         <Card className="mb-6 border border-primary/10" data-tutorial-target="dashboard-summary">
           <CardHeader className="px-4">

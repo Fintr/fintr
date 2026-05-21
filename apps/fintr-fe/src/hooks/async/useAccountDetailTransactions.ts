@@ -13,7 +13,7 @@ type UseAccountDetailTransactionsParams = {
   accountName: string;
   startDate: string;
   endDate: string;
-  categoryName: string;
+  categoryFilter: string;
   searchQuery: string;
   minAmount?: number;
   maxAmount?: number;
@@ -24,7 +24,7 @@ export const useAccountDetailTransactions = ({
   accountName,
   startDate,
   endDate,
-  categoryName,
+  categoryFilter,
   minAmount,
   maxAmount,
   searchQuery,
@@ -43,7 +43,7 @@ export const useAccountDetailTransactions = ({
       accountName,
       startDate,
       endDate,
-      categoryName,
+      categoryFilter,
       minAmount,
       maxAmount,
       searchQuery,
@@ -54,7 +54,7 @@ export const useAccountDetailTransactions = ({
         accountName,
         startDate,
         endDate,
-        categoryName,
+        categoryFilter,
         searchQuery,
         page: pageParam,
         ...(minAmount !== undefined ? { minAmount } : {}),
@@ -102,7 +102,7 @@ export const useAccountAdjustmentHistory = ({
         accountName,
         startDate,
         endDate,
-        categoryName: "",
+        categoryFilter: "",
         searchQuery: BALANCE_ADJUSTMENT_SEARCH,
         page: pageParam,
       }),

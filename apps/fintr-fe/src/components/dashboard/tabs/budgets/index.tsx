@@ -33,6 +33,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { FilterOptionPills } from "@/components/ui/filter-option-pills";
+import { FilterSheet } from "@/components/ui/filter-sheet";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { monthNames, getYearOptions, getCurrentMonthDates } from "@/utils/dateUtils";
@@ -43,7 +45,7 @@ interface BudgetsTabProps {}
 
 const BudgetsTab = ({}: BudgetsTabProps) => {
   // Budget state
-  const [showFilters, setShowFilters] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
@@ -269,6 +271,44 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     }
   };
 
+  useEffect(() => {
+    if (!filtersOpen) {
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      setSelectedMonth(monthYear.selectedMonth);
+      setSelectedYear(monthYear.selectedYear);
+      setFilterTypeSelector(filterType === "single" ? "single" : "custom");
+
+      if (appliedStartDate && appliedEndDate) {
+        setDateRange({
+          from: new Date(appliedStartDate),
+          to: new Date(appliedEndDate),
+        });
+      }
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [filtersOpen, monthYear, filterType, appliedStartDate, appliedEndDate]);
+
+  const handleResetFilters = () => {
+    const { firstDay, lastDay } = getCurrentMonthDates();
+
+    setFilterTypeSelector("single");
+    setSelectedMonth(currentMonth);
+    setSelectedYear(currentYear);
+    setDateRange({
+      from: new Date(firstDay),
+      to: new Date(lastDay),
+    });
+    setAppliedStartDate(firstDay);
+    setAppliedEndDate(lastDay);
+    setStartDate(firstDay);
+    setEndDate(lastDay);
+    setFiltersOpen(false);
+  };
+
   // Handle applying filters
   const handleApplyFilters = () => {
     let queryStartDate: string;
@@ -305,6 +345,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     setAppliedEndDate(queryEndDate);
     setStartDate(queryStartDate);
     setEndDate(queryEndDate);
+    setFiltersOpen(false);
   };
 
   const handleDeleteBudget = (budgetId: string) =>
@@ -323,13 +364,12 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
           <div className="relative">
             <Button
               variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={() => setFiltersOpen(true)}
               className="flex items-center gap-2 bg-white text-primary"
+              aria-label="Open budget filters"
             >
               <Filter className="h-4 w-4" />
-              <div className="hidden md:flex">
-                {showFilters ? "Hide" : "Show"} Filters
-              </div>
+              <span className="hidden md:inline">Filters</span>
             </Button>
             {hasActiveFilters() && (
               <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
@@ -344,129 +384,109 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
         </div>
       </CardHeader>
       <CardContent>
-        {/* Budget Filters */}
-        {showFilters && (
-          <Card className="mb-6">
-            <CardHeader className="px-4">
-              <CardTitle>Budget Filters</CardTitle>
-              <CardDescription>Customize your budget view</CardDescription>
-            </CardHeader>
-            <CardContent className="px-4">
-              <div className="flex flex-col md:flex-row gap-4 items-start">
-                <div className="flex flex-col md:flex-row gap-4 flex-1">
-                  {/* Filter Type Selector */}
-                  <div className="space-y-2 md:w-auto md:min-w-[180px]">
-                    <Label>Filter Type</Label>
-                    <Select
-                      value={filterTypeSelector}
-                      onValueChange={(value) => handleFilterTypeChange(value as "single" | "custom")}
-                    >
-                      <SelectTrigger className="w-full md:w-[180px]">
-                        <SelectValue placeholder="Select filter type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="single">Single Month</SelectItem>
-                        <SelectItem value="custom">Custom Range</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+        <FilterSheet
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          title="Budget Filters"
+          onReset={handleResetFilters}
+          onApply={handleApplyFilters}
+          applyDisabled={isLoading}
+        >
+          <div className="space-y-2">
+            <Label>Filter Type</Label>
+            <FilterOptionPills
+              ariaLabel="Filter type"
+              value={filterTypeSelector}
+              onChange={(value) =>
+                handleFilterTypeChange(value as "single" | "custom")
+              }
+              options={[
+                { value: "single", label: "Single Month" },
+                { value: "custom", label: "Custom Range" },
+              ]}
+            />
+          </div>
 
-                  {filterTypeSelector === "single" ? (
-                    <>
-                      <div className="space-y-2 md:w-auto md:min-w-[160px]">
-                        <Label>Month</Label>
-                        <Select
-                          value={selectedMonth}
-                          onValueChange={handleMonthChange}
+          {filterTypeSelector === "single" ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Month</Label>
+                <Select
+                  value={selectedMonth}
+                  onValueChange={handleMonthChange}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthNames
+                      .filter(
+                        (month, index) =>
+                          parseInt(selectedYear) !==
+                            new Date().getFullYear() ||
+                          index < currentMonthNumber,
+                      )
+                      .map((month, idx) => (
+                        <SelectItem
+                          key={`${month.value}-${idx}`}
+                          value={month.value}
                         >
-                          <SelectTrigger className="w-full md:w-[160px]">
-                            <SelectValue placeholder="Select month" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {monthNames
-                              .filter(
-                                (month, index) =>
-                                  parseInt(selectedYear) !==
-                                    new Date().getFullYear() ||
-                                  index < currentMonthNumber
-                              )
-                              .map((month, idx) => (
-                                <SelectItem
-                                  key={`${month.value}-${idx}`}
-                                  value={month.value}
-                                >
-                                  {month.label}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2 md:w-auto md:min-w-[120px]">
-                        <Label>Year</Label>
-                        <Select
-                          value={selectedYear}
-                          onValueChange={handleYearChange}
-                        >
-                          <SelectTrigger className="w-full md:w-[120px]">
-                            <SelectValue placeholder="Select year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {yearOptions.map((year, idx) => (
-                              <SelectItem key={`${year}-${idx}`} value={year}>
-                                {year}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="space-y-2 md:w-auto md:min-w-[280px]">
-                      <Label>Date Range</Label>
-                      <DateRangePicker
-                        open={dateRangePickerOpen}
-                        onOpenChange={setDateRangePickerOpen}
-                        selected={dateRange}
-                        onSelect={handleDateRangeSelect}
-                        trigger={
-                          <Button
-                            variant="outline"
-                            className="w-full md:w-[280px] justify-start text-left font-normal text-sm"
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dateRange?.from ? (
-                              dateRange.to ? (
-                                <>
-                                  {format(dateRange.from, "MMM d, yyyy")} -{" "}
-                                  {format(dateRange.to, "MMM d, yyyy")}
-                                </>
-                              ) : (
-                                format(dateRange.from, "MMM d, yyyy")
-                              )
-                            ) : (
-                              <span>Pick a date range</span>
-                            )}
-                          </Button>
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="md:self-end md:ml-auto">
-                  <Button
-                    className="bg-primary hover:bg-primary/80 w-full md:w-auto"
-                    onClick={handleApplyFilters}
-                    disabled={isLoading}
-                  >
-                    Apply Filters
-                  </Button>
-                </div>
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
-        )}
+
+              <div className="space-y-2">
+                <Label>Year</Label>
+                <Select value={selectedYear} onValueChange={handleYearChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((year, idx) => (
+                      <SelectItem key={`${year}-${idx}`} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Date Range</Label>
+              <DateRangePicker
+                open={dateRangePickerOpen}
+                onOpenChange={setDateRangePickerOpen}
+                selected={dateRange}
+                onSelect={handleDateRangeSelect}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "MMM d, yyyy")} –{" "}
+                          {format(dateRange.to, "MMM d, yyyy")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "MMM d, yyyy")
+                      )
+                    ) : (
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                }
+              />
+            </div>
+          )}
+        </FilterSheet>
 
         {/* Budget Summary */}
         <Card className="mb-6">
