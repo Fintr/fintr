@@ -12,7 +12,7 @@ RSpec.describe Budgets::Operations::CreateMonthlyBudget do
   let(:params) do
     {
       space_id: space.id,
-      date: next_month_date,
+      date: next_month_date
     }
   end
 
@@ -127,7 +127,7 @@ RSpec.describe Budgets::Operations::CreateMonthlyBudget do
       let(:params) do
         {
           space_id: SecureRandom.uuid,
-          date: next_month_date,
+          date: next_month_date
         }
       end
 

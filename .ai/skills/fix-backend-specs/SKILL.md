@@ -142,8 +142,11 @@ mise exec -- bundle exec rails parallel:spec
 ```bash
 make specs spec/requests/api/v1/transactions_spec.rb
 make mspecs spec/models/transaction_spec.rb
+make mchanged-specs   # specs for changed app/lib/spec files only (preferred during dev)
 make test          # Run parallel specs
 ```
+
+**During development**, prefer `make mchanged-specs` (see skill `rspec-changed`) so only specs tied to your edits run. A pre-commit hook runs the same script when you commit backend changes.
 
 ## Key Patterns (From create_specs Playbook)
 

@@ -170,6 +170,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       :to_account_name,
       :from_account_name,
       :category_name,
+      :subcategory_name,
       :amount,
       :amount_currency,
       :booked_amount,

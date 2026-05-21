@@ -1,0 +1,24 @@
+---
+description: Run scoped RSpec for changed backend files during development
+globs:
+  - app/**/*
+  - lib/**/*
+  - spec/**/*
+alwaysApply: false
+---
+
+# RSpec for changed files
+
+When you change Ruby code under `apps/fintr-be` (`app/`, `lib/`, or `spec/`), run targeted specs before finishing:
+
+```bash
+cd apps/fintr-be && make mchanged-specs
+```
+
+This uses `bin/rspec-changed` to map each changed file to its spec and run only those examples.
+
+- Use `RSPEC_CHANGED_BASE=main make mchanged-specs` when comparing against `main`
+- A **pre-commit** hook runs the same script on commit when backend app/lib/spec files changed (`bin/setup-git-hooks` from repo root; hooks live in tracked `.githooks/`)
+- See skill `rspec-changed` for full workflow and path mapping rules
+
+Do not claim backend work is complete until `make mchanged-specs` passes (unless the user explicitly skips tests).

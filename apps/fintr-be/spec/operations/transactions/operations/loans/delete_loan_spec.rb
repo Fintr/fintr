@@ -205,12 +205,13 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoan do
       end
 
       context 'when borrowed loan did not adjust account balance on creation' do
+        subject(:call_operation) { operation.call(valid_params) }
+
         before do
           borrowed_loan.update!(adjusts_account_balance: false)
           account.update(balance: Money.from_amount(50_000, 'PHP'))
         end
 
-        subject(:call_operation) { operation.call(valid_params) }
 
         it 'is successful' do
           expect(call_operation).to be_success
@@ -224,12 +225,13 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoan do
       end
 
       context 'when lent loan did not adjust account balance on creation' do
+        subject(:call_operation) { operation.call(valid_params.merge(loan_id: lent_loan.id.to_s)) }
+
         before do
           lent_loan.update!(adjusts_account_balance: false)
           account.update(balance: Money.from_amount(40_000, 'PHP'))
         end
 
-        subject(:call_operation) { operation.call(valid_params.merge(loan_id: lent_loan.id.to_s)) }
 
         it 'is successful' do
           expect(call_operation).to be_success

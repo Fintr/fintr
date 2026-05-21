@@ -25,7 +25,7 @@ RSpec.describe Loans::Operations::UpdateLoan do
     {
       user_id: user.id.to_s,
       space_id: space.id.to_s,
-      id: loan.id.to_s,
+      id: loan.id.to_s
     }
   end
 

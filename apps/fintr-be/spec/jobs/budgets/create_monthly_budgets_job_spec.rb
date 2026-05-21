@@ -119,7 +119,7 @@ RSpec.describe Budgets::CreateMonthlyBudgetsJob, type: :job do
       end
     end
 
-    context "integration with CreateMonthlyBudget operation" do
+    context "with integration with CreateMonthlyBudget operation" do
       let(:space) { create(:personal_space) }
       let(:space_id) { space.id }
       let(:date) { Date.new(2026, 6, 1) }

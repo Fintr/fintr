@@ -120,9 +120,9 @@ module Budgets
 
         scope = if budget.parent_budget?
                   scope
-                else
+        else
                   scope.where(subcategory_id: budget.subcategory_id)
-                end
+        end
 
         scope.sum(:amount_cents).to_d / 100
       end

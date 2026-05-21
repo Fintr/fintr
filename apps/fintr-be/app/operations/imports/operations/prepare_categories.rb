@@ -82,13 +82,16 @@ module Imports
           }
         end
 
-        # Eagerly load the relation to execute the query immediately
-        # This prevents transaction errors when iterating over the result later
-        Transactions::Category.where(
-          category_conditions.map { |c| "(space_id = ? AND name = ? AND category_type = ?)" }
-            .join(" OR "),
-          *category_conditions.flat_map { |c| [c[:space_id], c[:name], c[:category_type]] }
-        ).to_a
+          # Eagerly load the relation to execute the query immediately
+          # This prevents transaction errors when iterating over the result later
+          Transactions::Category
+            .where(parent_id: nil)
+            .where(
+              category_conditions.map { |c| "(space_id = ? AND name = ? AND category_type = ?)" }
+                .join(" OR "),
+              *category_conditions.flat_map { |c| [c[:space_id], c[:name], c[:category_type]] }
+            )
+            .to_a
       end
 
       def create_missing_categories(space_id:, unique_categories:, existing_categories:)
@@ -101,7 +104,8 @@ module Imports
           Transactions::Category.new(
             space_id: space_id,
             name: cat[:name],
-            category_type: cat[:category_type]
+            category_type: cat[:category_type],
+            parent_id: nil
           )
         end
 
@@ -110,7 +114,8 @@ module Imports
           Transactions::Category.import(
             categories_to_create,
             on_duplicate_key_update: {
-              conflict_target: [:space_id, :name, :category_type],
+              conflict_target: [:space_id, :category_type, :name],
+              index_predicate: "(parent_id IS NULL)",
               columns: []
             },
             validate: false
@@ -148,7 +153,8 @@ module Imports
             category = Transactions::Category.create!(
               space_id: space_id,
               name: cat[:name],
-              category_type: cat[:category_type]
+              category_type: cat[:category_type],
+              parent_id: nil
             )
             created << category
           rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
@@ -156,7 +162,8 @@ module Imports
             category = Transactions::Category.find_by!(
               space_id: space_id,
               name: cat[:name],
-              category_type: cat[:category_type]
+              category_type: cat[:category_type],
+              parent_id: nil
             )
             created << category
           end

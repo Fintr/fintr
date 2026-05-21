@@ -15,19 +15,28 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
   let!(:account1) { create(:account, space: space, name: "Checking Account") }
   let!(:account2) { create(:account, space: space, name: "Savings Account") }
 
+  def category_tree_node(category)
+    {
+      id: category.id,
+      label: category.name,
+      value: category.id,
+      name: category.name,
+      parent_id: nil,
+      children: []
+    }
+  end
+
   it 'includes the id' do
     expect(serialized_hash[:id]).to eq(space.id)
   end
 
   describe ':category_options field' do
     let(:expected_options) do
-      [expense_cat1, expense_cat2, income_cat1].map do |category|
-        { label: category.name, value: category.name }
-      end.sort_by { |h| h[:label] } # Sort for consistent comparison
+      [expense_cat1, expense_cat2, income_cat1].map { |category| category_tree_node(category) }
+        .sort_by { |h| h[:label] }
     end
 
-    it 'includes all valid categories as label-value pairs' do
-      # The serializer does not specify an order, so we sort both for comparison
+    it 'includes all valid categories as hierarchical options' do
       actual_options = serialized_hash[:category_options].sort_by { |h| h[:label] }
       expect(actual_options).to match_array(expected_options)
     end
@@ -35,12 +44,11 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
 
   describe ':expense_category_options field' do
     let(:expected_options) do
-      [expense_cat1, expense_cat2].map do |category|
-        { label: category.name, value: category.name }
-      end.sort_by { |h| h[:label] }
+      [expense_cat1, expense_cat2].map { |category| category_tree_node(category) }
+        .sort_by { |h| h[:label] }
     end
 
-    it 'includes only expense categories as label-value pairs' do
+    it 'includes only expense categories as hierarchical options' do
       actual_options = serialized_hash[:expense_category_options].sort_by { |h| h[:label] }
       expect(actual_options).to match_array(expected_options)
     end
@@ -48,12 +56,11 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
 
   describe ':income_category_options field' do
     let(:expected_options) do
-      [income_cat1].map do |category|
-        { label: category.name, value: category.name }
-      end.sort_by { |h| h[:label] }
+      [income_cat1].map { |category| category_tree_node(category) }
+        .sort_by { |h| h[:label] }
     end
 
-    it 'includes only income categories as label-value pairs' do
+    it 'includes only income categories as hierarchical options' do
       actual_options = serialized_hash[:income_category_options].sort_by { |h| h[:label] }
       expect(actual_options).to match_array(expected_options)
     end

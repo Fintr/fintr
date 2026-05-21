@@ -281,7 +281,7 @@ module Transactions
           unless incoming == allowed_account || incoming == allowed_space
             return Failure(
               amount_in_currency: [
-                "must match the account currency (#{account_currency}) or the space currency (#{space_currency})",
+                "must match the account currency (#{account_currency}) or the space currency (#{space_currency})"
               ]
             )
           end

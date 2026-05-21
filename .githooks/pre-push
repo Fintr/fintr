@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+# Shared pre-push hook (tracked in git). Runs hooks from prek.toml.
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "${ROOT}" || exit 1
+
+# Git passes <remote> <url> to pre-push; do not forward them — prek treats extra args as hook selectors.
+if command -v mise >/dev/null 2>&1; then
+  exec mise exec -- prek run --stage pre-push
+fi
+
+if command -v prek >/dev/null 2>&1; then
+  exec prek run --stage pre-push
+fi
+
+echo "prek not found. From repo root run: bin/setup-git-hooks (requires prek: brew install prek)" >&2
+exit 1

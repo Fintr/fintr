@@ -120,6 +120,14 @@ Or with make:
 make mspecs <path>
 ```
 
+After changing multiple backend files, run scoped specs for everything you touched:
+
+```bash
+make mchanged-specs
+```
+
+See skill `rspec-changed` for path mapping and the pre-commit hook workflow.
+
 ### 5. Fix Failures
 
 Review error output. Update **only the spec file** to match the implementation. Do not modify source code. Repeat step 4 until passing.

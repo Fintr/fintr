@@ -12,7 +12,8 @@ RSpec.describe Budget, type: :model do
     # Stub the validation method to avoid the expense? check during association tests
     before do
       allow_any_instance_of(described_class).to receive(:category_is_expense).and_return(true)
-      allow_any_instance_of(described_class).to receive(:only_one_category_for_month).and_return(true)
+      allow_any_instance_of(described_class).to receive(:category_must_be_parent).and_return(true)
+      allow_any_instance_of(described_class).to receive(:only_one_budget_for_month).and_return(true)
     end
 
     it { is_expected.to belong_to(:space).class_name('Spaces::Space') }

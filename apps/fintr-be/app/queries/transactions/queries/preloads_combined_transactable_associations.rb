@@ -20,7 +20,7 @@ module Transactions
             :space,
             :category,
             :subcategory,
-            { files_attachments: :blob },
+            { files_attachments: :blob }
           ]
         )
       end

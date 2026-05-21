@@ -35,9 +35,30 @@ npm install
 npm run dev
 ```
 
+## Git hooks (shared)
+
+Hook **scripts** live in `.githooks/` and are committed to the repo. Hook **behavior** is defined in `prek.toml` and `scripts/git-hooks/`.
+
+After cloning, install them once per machine:
+
+```bash
+brew install prek   # if needed
+bin/setup-git-hooks
+```
+
+| Hook | When | What runs |
+|------|------|-----------|
+| `pre-commit` | `git commit` | Backend scoped RSpec for changed `apps/fintr-be` files |
+| `pre-push` | `git push` | Frontend Vitest / Playwright for changed `apps/fintr-fe` files |
+
+Skip once: `git commit --no-verify` or `git push --no-verify`.
+
+You do **not** need Husky or `prek install` (which writes to `.husky/_/`). Use `bin/setup-git-hooks` instead.
+
 ## Testing
 
 - **Backend:** `cd apps/fintr-be && bundle exec rspec`
+- **Backend (changed files only):** `cd apps/fintr-be && make mchanged-specs`
 - **Frontend:** `cd apps/fintr-fe && npm test`
 
 ---

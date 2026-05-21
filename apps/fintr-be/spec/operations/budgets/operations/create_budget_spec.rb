@@ -50,8 +50,8 @@ RSpec.describe Budgets::Operations::CreateBudget do
 
         it { is_expected.to be_failure }
 
-        it 'returns a failure with category_name missing error' do
-          expect(call_operation.failure).to eq({ category_name: ['is missing'] })
+        it 'returns a failure with category_id missing error' do
+          expect(call_operation.failure).to eq({ category_id: ['category_id or category_name is required'] })
         end
       end
 

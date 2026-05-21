@@ -39,6 +39,13 @@ rubocop:
 mspecs:
 	mise exec -- bundle exec rspec $(filter-out $@,$(MAKECMDGOALS))
 
+# Run specs for app/lib files changed vs HEAD (staged + unstaged). Override base: RSPEC_CHANGED_BASE=main make changed-specs
+changed-specs:
+	./bin/rspec-changed
+
+mchanged-specs:
+	mise exec -- ./bin/rspec-changed
+
 mrubocop:
 	mise exec -- bundle exec rubocop -A $(filter-out $@,$(MAKECMDGOALS))
 
