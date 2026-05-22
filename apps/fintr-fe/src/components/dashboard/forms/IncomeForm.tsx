@@ -496,6 +496,8 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       return;
     }
     
+    let transactionCreated = false;
+
     try {
       // Backend expects amount always in space currency; it converts to account currency when needed.
       let amountToUse: string = String(numberFormatting.cleanForBackend(formState.amount));
@@ -538,6 +540,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       } else {
         // Create new transaction
         response = await createTransaction(api, transactionData);
+        transactionCreated = true;
         toast.success("Income created successfully");
       }
       
@@ -568,6 +571,10 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       }
       
     } catch (error) {
+      console.error('Error creating income:', error);
+      if (transactionCreated) {
+        return;
+      }
       const fieldErrors = extractFieldErrors(error);
       
       toast.error(fieldErrors.detail || `Failed to create income. Please try again.`);

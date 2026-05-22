@@ -450,7 +450,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       // Reset number input hook
       amountInput.reset();
       setDate(undefined);
-      setShowCustomAccountInput(false);
       setScheduleType(ScheduleTypeEnum.ONE_TIME);
       setFormSubmitted(false);
       setConversionSnapshot(null);
@@ -549,6 +548,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       return;
     }
     
+    let transactionCreated = false;
+
     try {
       const shouldUploadFile = isUploadableFile(formState.file);
 
@@ -594,6 +595,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       } else {
         // Create new transaction
         response = await createTransaction(api, transactionData);
+        transactionCreated = true;
         toast.success("Expense created successfully");
       }
       
@@ -624,13 +626,15 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         setFileId(null);
         setDate(undefined);
         // setFileState(null); // Removed
-        setShowCustomAccountInput(false);
         setScheduleType(ScheduleTypeEnum.ONE_TIME);
         setFormSubmitted(false); // Reset the form submission flag
       }
       
     } catch (error) {
       console.error(`Error ${isEditMode ? 'updating' : 'creating'} expense:`, error);
+      if (transactionCreated) {
+        return;
+      }
       const fieldErrors = extractFieldErrors(error);
       
       toast.error(fieldErrors.detail || `Failed to ${isEditMode ? 'update' : 'create'} expense. Please try again.`);
