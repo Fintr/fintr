@@ -5,7 +5,7 @@
  */
 export const extractFieldErrors = (error: any): Record<string, string[]> => {
   // If the error has a response property (Axios error)
-  if (error.error.details) {
+  if (error?.error?.details) {
     const { details } = error.error;
     // Check for the expected error structure
     if (details) {
