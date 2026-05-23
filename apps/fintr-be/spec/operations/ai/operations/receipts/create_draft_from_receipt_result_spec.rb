@@ -8,7 +8,7 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
   let(:user) { create(:user) }
   let(:space) { create(:personal_space) }
   let(:account) { create(:account, space: space) }
-  let(:category) { create(:category, space: space) }
+  let(:category) { create(:category, :expense, space: space) }
 
   let(:valid_params) do
     {
@@ -247,7 +247,7 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
     let(:user) { create(:user) }
     let(:space) { create(:personal_space) }
     let(:account) { create(:account, space: space) }
-    let(:category) { create(:category, space: space) }
+    let(:category) { create(:category, :expense, space: space) }
 
     context "when there are fewer than MAX_DRAFTS" do
       before do
@@ -462,6 +462,10 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
     end
 
     context "when category does not exist" do
+      let!(:fallback_category) { create(:category, :expense, space:, name: "Shopping") }
+
+      before { category.destroy! }
+
       let(:transaction_params) do
         {
           params: {
@@ -482,14 +486,20 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
         }
       end
 
-      it "fails with category not found error" do
+      it "creates a draft using a fallback category from the space" do
         result = operation.call(transaction_params)
-        expect(result).to be_failure
-        expect(result.failure).to include(category_name: "not found")
+        expect(result).to be_success
+
+        transaction = result.value!
+        expect(transaction.category_id).to eq(fallback_category.id)
       end
     end
 
     context "when account does not exist" do
+      let!(:fallback_account) { create(:account, space:, name: "Debit Card") }
+
+      before { account.destroy! }
+
       let(:transaction_params) do
         {
           params: {
@@ -510,10 +520,12 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
         }
       end
 
-      it "fails with account not found error" do
+      it "creates a draft using a fallback account from the space" do
         result = operation.call(transaction_params)
-        expect(result).to be_failure
-        expect(result.failure).to include(account_name: "not found")
+        expect(result).to be_success
+
+        transaction = result.value!
+        expect(transaction.account_id).to eq(fallback_account.id)
       end
     end
   end

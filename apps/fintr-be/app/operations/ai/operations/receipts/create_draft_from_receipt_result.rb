@@ -36,12 +36,29 @@ module Ai
 
         def call(params)
           params      = step validate(params:)
+          params      = step resolve_suggested_payload(params:)
           transaction = step create_draft(params:)
           _           = step delete_old_drafts(params:)
           transaction
         end
 
         private
+
+        def resolve_suggested_payload(params:)
+          resolution = ResolveSuggestedTransactionPayload.new.call(
+            space_id: params[:params][:space_id],
+            suggested_transaction_payload: params[:receipt_result][:suggested_transaction_payload]
+          )
+          return resolution unless resolution.success?
+
+          Success(
+            params.merge(
+              receipt_result: params[:receipt_result].merge(
+                suggested_transaction_payload: resolution.value!
+              )
+            )
+          )
+        end
 
         def create_draft(params:)
           transaction_params = params[:receipt_result][:suggested_transaction_payload].merge(
