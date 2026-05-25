@@ -3,9 +3,34 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Joyride, { CallBackProps, STATUS, Step, TooltipRenderProps } from 'react-joyride';
 import { useTutorial } from '@/contexts/TutorialContext';
-import { useSetAtom } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { isTutorialActiveAtom } from '@/atoms/tutorialAtoms';
+import { onboardingStepAtom } from '@/atoms/onboardingAtoms';
+import { dashboardShellReadyAtom } from '@/atoms/dashboardAtoms';
 import { usePathname } from 'next/navigation';
+import { X } from 'lucide-react';
+
+const TUTORIAL_Z_INDEX = 10050;
+const TUTORIAL_DISMISS_Z_INDEX = 10061;
+
+const isTourTargetVisible = (selector: string): boolean => {
+  const element = document.querySelector(selector) as HTMLElement | null;
+  if (!element) {
+    return false;
+  }
+
+  const style = window.getComputedStyle(element);
+  if (
+    style.display === 'none' ||
+    style.visibility === 'hidden' ||
+    Number.parseFloat(style.opacity) === 0
+  ) {
+    return false;
+  }
+
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+};
 
 // Custom tooltip component with working skip button
 interface CustomTooltipProps extends TooltipRenderProps {
@@ -23,20 +48,37 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
 }) => {
   return (
     <div
-      {...tooltipProps}
-      className="bg-white rounded-lg p-4 max-w-xs shadow-lg z-[10050]"
+      ref={tooltipProps.ref}
+      role={tooltipProps.role}
+      aria-modal={tooltipProps['aria-modal']}
+      className="relative bg-white rounded-lg p-4 min-w-[260px] max-w-[min(100vw-2rem,20rem)] shadow-lg"
+      style={{ zIndex: TUTORIAL_Z_INDEX + 2 }}
+      data-testid="tutorial-tooltip"
     >
-      {step.content}
+      <button
+        type="button"
+        aria-label="Close tour"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onSkipClick();
+        }}
+        className="absolute right-2 top-2 rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <X className="h-4 w-4" />
+      </button>
+      <div className="pr-8">{step.content}</div>
       <div className="flex justify-between items-center mt-4 pt-3 border-t border-black/10">
         <button
+          type="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onSkipClick();
           }}
-          className="text-primary bg-transparent border-none cursor-pointer text-sm py-2"
+          className="text-primary bg-transparent border-none cursor-pointer text-sm py-2 min-h-[44px]"
         >
-          Skip
+          Skip tour
         </button>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
@@ -54,6 +96,30 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
   );
 };
 
+interface TutorialDismissBarProps {
+  onDismiss: () => void;
+}
+
+/** Always on top of Joyride — escape hatch when the tooltip/spotlight breaks. */
+const TutorialDismissBar: React.FC<TutorialDismissBarProps> = ({ onDismiss }) => (
+  <div
+    className="fixed inset-x-0 z-[10061] flex justify-center px-4 pointer-events-none"
+    style={{
+      zIndex: TUTORIAL_DISMISS_Z_INDEX,
+      bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))",
+    }}
+    data-testid="tutorial-dismiss-bar"
+  >
+    <button
+      type="button"
+      onClick={onDismiss}
+      className="pointer-events-auto rounded-full bg-white px-5 py-3 text-sm font-semibold text-primary shadow-lg ring-1 ring-black/15 min-h-[44px]"
+    >
+      Skip tour
+    </button>
+  </div>
+);
+
 const TutorialOverlay: React.FC = () => {
   const {
     isActive,
@@ -65,9 +131,17 @@ const TutorialOverlay: React.FC = () => {
 
   const pathname = usePathname();
   const setIsTutorialActive = useSetAtom(isTutorialActiveAtom);
-  
+  const onboardingStep = useAtomValue(onboardingStepAtom);
+  const dashboardShellReady = useAtomValue(dashboardShellReadyAtom);
+
   // Don't run tutorial on onboarding pages
   const isOnOnboardingPage = pathname?.startsWith('/onboarding');
+  const isOnboardingComplete = onboardingStep === 'completed';
+  const canRunTour =
+    isOnboardingComplete &&
+    !isOnOnboardingPage &&
+    dashboardShellReady &&
+    pathname?.startsWith('/dashboard');
 
   const [run, setRun] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
@@ -116,9 +190,26 @@ const TutorialOverlay: React.FC = () => {
     await skipTutorial();
   }, [skipTutorial, setIsTutorialActive]);
 
+  // Escape key dismisses the tour (overlay may be blocking the UI)
+  useEffect(() => {
+    if (!run) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        void handleSkipClick();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [run, handleSkipClick]);
+
   // Convert our tutorial steps to react-joyride format
   useEffect(() => {
-    if (!isActive || !platform) {
+    if (!isActive || !platform || !canRunTour) {
       setRun(false);
       setSteps([]);
       return;
@@ -176,26 +267,25 @@ const TutorialOverlay: React.FC = () => {
           ),
           placement: finalPlacement,
           disableBeacon: true,
-          disableOverlayClose: true,
+          disableOverlayClose: false,
           hideCloseButton: false,
           hideBackButton: true,
           disableActions: false,
-          // Use waitForElement for steps that need to wait for elements to appear
-          ...(step.waitForElement ? { 
-            waitForElement: true 
-          } : {}),
+          floaterProps: {
+            styles: {
+              floater: {
+                zIndex: TUTORIAL_Z_INDEX + 2,
+              },
+            },
+          },
+          ...(step.waitForElement ? { waitForElement: true } : {}),
         };
       });
 
     setSteps(joyrideSteps);
-    // Only reset stepIndex if tutorial is just starting (not if it's already running)
-    setRun((prevRun) => {
-      if (!prevRun) {
-        setStepIndex(0); // Reset to first step only when starting
-      }
-      return true;
-    });
-    
+    setRun(false);
+    setStepIndex(0);
+
     // Add data attribute to body when tutorial is active (for backward compatibility)
     // Also set Jotai atom for React state management
     if (isActive) {
@@ -211,8 +301,64 @@ const TutorialOverlay: React.FC = () => {
       document.body.removeAttribute('data-tutorial-active');
       setIsTutorialActive(false);
     };
-  }, [isActive, platform, getConfig, setIsTutorialActive, isOnOnboardingPage]);
+  }, [
+    isActive,
+    platform,
+    getConfig,
+    setIsTutorialActive,
+    canRunTour,
+  ]);
 
+  // Only run Joyride once the first step target is in the DOM (dashboard finished loading)
+  useEffect(() => {
+    if (!isActive || !platform || !canRunTour || steps.length === 0) {
+      setRun(false);
+      return;
+    }
+
+    let cancelled = false;
+    const firstTarget = steps[0]?.target;
+
+    if (typeof firstTarget !== 'string') {
+      setStepIndex(0);
+      setRun(true);
+      return;
+    }
+
+    const waitForFirstTarget = (attempt = 0) => {
+      if (cancelled) {
+        return;
+      }
+
+      if (isTourTargetVisible(firstTarget)) {
+        setStepIndex(0);
+        setRun(true);
+        return;
+      }
+
+      if (attempt >= 60) {
+        console.warn('Tutorial first target not found, skipping tour:', firstTarget);
+        void handleSkipClick();
+        return;
+      }
+
+      trackTimeout(setTimeout(() => waitForFirstTarget(attempt + 1), 100));
+    };
+
+    setRun(false);
+    waitForFirstTarget();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isActive,
+    platform,
+    steps,
+    canRunTour,
+    handleSkipClick,
+    trackTimeout,
+  ]);
 
   // Ensure popover content and modal have appropriate z-index
   useEffect(() => {
@@ -632,49 +778,57 @@ const TutorialOverlay: React.FC = () => {
       const config = getConfig();
       if (config) {
         const currentStep = config.steps[index];
-        if (currentStep?.waitForElement) {
-          // Clean the selector (remove pseudo-selectors)
-          let selector = currentStep.targetSelector || '';
-          if (selector.includes(':first-of-type')) {
-            selector = selector.replace(':first-of-type', '').trim();
-          }
-          if (selector.includes(':first-child')) {
-            selector = selector.replace(':first-child', '').trim();
-          }
-          
-          // Retry finding the element with exponential backoff
-          // For loan-menu-item, use more retries since it's after navigation (but navigation step should have waited)
-          const isLoanMenuItem = currentStep?.id === 'loan-menu-item';
-          let retryCount = 0;
-          const maxRetries = isLoanMenuItem ? 30 : 10; // More retries for loan-menu-item
-          const retryDelay = isLoanMenuItem ? 200 : 500; // Shorter delay but more retries for loan-menu-item
-          
-          const retryFindElement = () => {
-            const targetElement = document.querySelector(selector) as HTMLElement | null;
-            if (targetElement && targetElement.offsetParent !== null) {
-              console.log('Element found after retry, continuing tutorial at step', index);
-              // Toggle run off then on so Joyride re-evaluates the target for this step index
-              stepIndexRef.current = index;
-              setRun(false);
-              trackTimeout(setTimeout(() => {
-                setStepIndex(index);
-                setRun(true);
-              }, 50));
-            } else if (retryCount < maxRetries) {
-              retryCount++;
-              console.log(`Retrying to find element (attempt ${retryCount}/${maxRetries}):`, selector, 'visible:', targetElement?.offsetParent !== null);
-              trackTimeout(setTimeout(retryFindElement, retryDelay));
-            } else {
-              console.error('Element not found after max retries:', selector);
-            }
-          };
-          
-          const initialDelay = isLoanMenuItem ? 500 : retryDelay;
-          trackTimeout(setTimeout(retryFindElement, initialDelay));
+        if (!currentStep?.waitForElement) {
+          console.warn('Tutorial target missing on step without wait — dismissing tour');
+          void handleTutorialCompletion(STATUS.SKIPPED);
+          return;
         }
+
+        // Clean the selector (remove pseudo-selectors)
+        let selector = currentStep.targetSelector || '';
+        if (selector.includes(':first-of-type')) {
+          selector = selector.replace(':first-of-type', '').trim();
+        }
+        if (selector.includes(':first-child')) {
+          selector = selector.replace(':first-child', '').trim();
+        }
+
+        // Retry finding the element with exponential backoff
+        const isLoanMenuItem = currentStep?.id === 'loan-menu-item';
+        let retryCount = 0;
+        const maxRetries = isLoanMenuItem ? 30 : 10;
+        const retryDelay = isLoanMenuItem ? 200 : 500;
+
+        const retryFindElement = () => {
+          const targetElement = document.querySelector(selector) as HTMLElement | null;
+          if (targetElement && targetElement.offsetParent !== null) {
+            console.log('Element found after retry, continuing tutorial at step', index);
+            stepIndexRef.current = index;
+            setRun(false);
+            trackTimeout(setTimeout(() => {
+              setStepIndex(index);
+              setRun(true);
+            }, 50));
+          } else if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`Retrying to find element (attempt ${retryCount}/${maxRetries}):`, selector, 'visible:', targetElement?.offsetParent !== null);
+            trackTimeout(setTimeout(retryFindElement, retryDelay));
+          } else {
+            console.error('Element not found after max retries:', selector);
+            void handleTutorialCompletion(STATUS.SKIPPED);
+          }
+        };
+
+        const initialDelay = isLoanMenuItem ? 500 : retryDelay;
+        trackTimeout(setTimeout(retryFindElement, initialDelay));
+      } else {
+        void handleTutorialCompletion(STATUS.SKIPPED);
       }
+      return;
     }
-  }, [getConfig, trackTimeout]);
+
+    void handleTutorialCompletion(STATUS.SKIPPED);
+  }, [getConfig, trackTimeout, handleTutorialCompletion]);
 
   // Handle joyride callbacks
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
@@ -739,38 +893,59 @@ const TutorialOverlay: React.FC = () => {
     handleTutorialError,
   ]);
 
-  // Don't render tutorial overlay on onboarding pages
-  if (isOnOnboardingPage || !isActive || !platform || steps.length === 0) {
+  // Don't render tutorial overlay during setup or on onboarding pages
+  if (
+    isOnOnboardingPage ||
+    !isOnboardingComplete ||
+    !isActive ||
+    !platform ||
+    steps.length === 0
+  ) {
     return null;
   }
 
   return (
-    <Joyride
-      steps={steps}
-      run={run}
-      stepIndex={stepIndex}
-      continuous={true}
-      showProgress={false}
-      showSkipButton={false}
-      disableOverlayClose={true}
-      disableScrolling={true}
-      scrollOffset={20}
-      scrollToFirstStep={false}
-      spotlightClicks={false}
-      callback={handleJoyrideCallback}
-      tooltipComponent={(props) => (
-        <CustomTooltip {...props} onSkipClick={handleSkipClick} />
-      )}
-      styles={{
-        options: {
-          primaryColor: '#083d64',
-          zIndex: 10050,
-        },
-        spotlight: {
-          pointerEvents: 'none',
-        },
-      }}
-    />
+    <>
+      {run ? <TutorialDismissBar onDismiss={() => void handleSkipClick()} /> : null}
+      <Joyride
+        steps={steps}
+        run={run}
+        stepIndex={stepIndex}
+        continuous={true}
+        showProgress={false}
+        showSkipButton={false}
+        disableOverlayClose={false}
+        disableScrolling={true}
+        scrollOffset={20}
+        scrollToFirstStep={true}
+        spotlightClicks={false}
+        debug={process.env.NODE_ENV === 'development'}
+        callback={handleJoyrideCallback}
+        tooltipComponent={(props) => (
+          <CustomTooltip {...props} onSkipClick={handleSkipClick} />
+        )}
+        styles={{
+          options: {
+            primaryColor: '#083d64',
+            zIndex: TUTORIAL_Z_INDEX,
+          },
+          overlay: {
+            cursor: 'pointer',
+            zIndex: TUTORIAL_Z_INDEX,
+          },
+          spotlight: {
+            pointerEvents: 'none',
+            zIndex: TUTORIAL_Z_INDEX + 1,
+          },
+          tooltip: {
+            zIndex: TUTORIAL_Z_INDEX + 2,
+          },
+          tooltipContainer: {
+            zIndex: TUTORIAL_Z_INDEX + 2,
+          },
+        }}
+      />
+    </>
   );
 };
 

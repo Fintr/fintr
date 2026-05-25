@@ -18,12 +18,14 @@ interface UnifiedAuthPageProps {
   onBack?: () => void;
   isLogin?: boolean;
   authToggle?: React.ReactNode;
+  onAuthModeChange?: (mode: "login" | "signup") => void;
 }
 
 const UnifiedAuthPage = ({
   onBack,
   isLogin = true,
   authToggle,
+  onAuthModeChange,
 }: UnifiedAuthPageProps) => {
   const { login, signup, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
@@ -38,15 +40,32 @@ const UnifiedAuthPage = ({
     firstName: "",
     lastName: "",
   });
-  const [isLoginState, setIsLoginState] = useState(isLogin);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const isSignupView = registerError !== null ? true : !isLogin;
 
-  useEffect(() => {
-    setIsLoginState(isLogin);
-  }, [isLogin]);
+  const showSignupForm = () => {
+    setRegisterError(null);
+    if (onAuthModeChange) {
+      onAuthModeChange("signup");
+      return;
+    }
+
+    router.push("/signup");
+  };
+
+  const showLoginForm = () => {
+    setRegisterError(null);
+    if (onAuthModeChange) {
+      onAuthModeChange("login");
+      return;
+    }
+
+    router.push("/login");
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push("/dashboard");
+      router.push("/onboarding");
     }
   }, [isAuthenticated, router]);
 
@@ -109,6 +128,9 @@ const UnifiedAuthPage = ({
   const handleRegisterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setRegisterData((prev) => ({ ...prev, [name]: value }));
+    if (registerError) {
+      setRegisterError(null);
+    }
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -130,14 +152,15 @@ const UnifiedAuthPage = ({
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRegisterError(null);
 
     if (registerData.password !== registerData.confirmPassword) {
-      toast.error("Passwords don't match");
+      setRegisterError("Passwords don't match");
       return;
     }
 
     if (registerData.password.length < 8) {
-      toast.error("Password must be at least 8 characters long");
+      setRegisterError("Password must be at least 8 characters long");
       return;
     }
 
@@ -151,8 +174,11 @@ const UnifiedAuthPage = ({
         password: registerData.password,
       });
       toast.success("Your account has been created. Welcome to Fintr!");
-    } catch (error: any) {
-      toast.error(error.message || "Registration failed");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Registration failed";
+      setRegisterError(message);
+      onAuthModeChange?.("signup");
     } finally {
       setIsLoading(false);
     }
@@ -208,7 +234,18 @@ const UnifiedAuthPage = ({
     }
   };
 
-  if (authLoading || isAuthenticated) {
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authLoading && !isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
@@ -240,7 +277,9 @@ const UnifiedAuthPage = ({
             Welcome
           </h2>
           <p className="text-gray-600 text-sm">
-            {isLoginState ? "Log in to fintr to continue to Fintr" : "Create your account to get started"}
+            {isSignupView
+              ? "Create your account to get started"
+              : "Log in to fintr to continue to Fintr"}
           </p>
         </div>
       </div>
@@ -309,7 +348,7 @@ const UnifiedAuthPage = ({
 
       {authToggle && <div className="mb-6">{authToggle}</div>}
 
-      {isLoginState ? (
+      {!isSignupView ? (
         <div>
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -375,7 +414,7 @@ const UnifiedAuthPage = ({
               Don't have an account?{" "}
               <button
                 type="button"
-                onClick={() => setIsLoginState(false)}
+                onClick={showSignupForm}
                 className="text-blue-600 font-medium hover:text-blue-800 underline"
               >
                 Sign up
@@ -386,6 +425,15 @@ const UnifiedAuthPage = ({
       ) : (
         <div>
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
+            {registerError ? (
+              <div
+                role="alert"
+                data-testid="register-form-error"
+                className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {registerError}
+              </div>
+            ) : null}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="register-first-name" className="text-sm font-medium text-gray-700">
@@ -495,7 +543,7 @@ const UnifiedAuthPage = ({
               Already have an account?{" "}
               <button
                 type="button"
-                onClick={() => setIsLoginState(true)}
+                onClick={showLoginForm}
                 className="text-blue-600 font-medium hover:text-blue-800 underline"
               >
                 Sign In

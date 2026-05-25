@@ -432,6 +432,60 @@ export const calculateHeaderSpacerHeight = (
   return `calc(${baseHeight}px + env(safe-area-inset-top, 0px))`
 }
 
+/** Extra breathing room below the status bar / above the system nav on setup screens. */
+export const ONBOARDING_SCREEN_CONTENT_INSET_PX = 16
+
+export interface OnboardingScreenInsets {
+  paddingTop: string
+  paddingBottom: string
+}
+
+/**
+ * Top/bottom padding for full-screen onboarding (no app header or bottom nav).
+ * Android native uses injected safe-area CSS vars; iOS uses env().
+ */
+export const calculateOnboardingScreenInsets = (
+  platform: Pick<
+    PlatformDetectionResult,
+    | "isAndroidNative"
+    | "isIOSNative"
+    | "isAndroidBrowser"
+    | "isIOSBrowser"
+    | "safeAreaInsetTop"
+    | "safeAreaInsetBottom"
+    | "hasAndroid3ButtonNav"
+  >,
+): OnboardingScreenInsets => {
+  const extra = ONBOARDING_SCREEN_CONTENT_INSET_PX
+
+  if (platform.isAndroidNative || platform.isAndroidBrowser) {
+    const topPx =
+      resolveAndroidNativeTopInsetPx(platform.safeAreaInsetTop) + extra
+    const bottomPx =
+      clampAndroidNavigationInsetPx(
+        platform.safeAreaInsetBottom,
+        platform.hasAndroid3ButtonNav,
+      ) + extra
+
+    return {
+      paddingTop: `${topPx}px`,
+      paddingBottom: `${bottomPx}px`,
+    }
+  }
+
+  if (platform.isIOSNative || platform.isIOSBrowser) {
+    return {
+      paddingTop: `calc(${extra}px + env(safe-area-inset-top, 0px))`,
+      paddingBottom: `calc(${extra}px + env(safe-area-inset-bottom, 0px))`,
+    }
+  }
+
+  return {
+    paddingTop: `${extra}px`,
+    paddingBottom: `${extra}px`,
+  }
+}
+
 /**
  * Complete platform detection with safe area insets
  * For use in browser environment only

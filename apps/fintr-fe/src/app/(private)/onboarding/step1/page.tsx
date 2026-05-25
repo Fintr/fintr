@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,11 @@ export default function OnboardingStep1() {
   const currentCurrency =
     onboardingData?.data?.currency ?? onboardingData?.data?.storedCurrency ?? "PHP";
   const [selectedCurrency, setSelectedCurrency] = useState<string>(currentCurrency);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  useEffect(() => {
+    router.prefetch("/onboarding/choice");
+  }, [router]);
 
   const handleNext = async () => {
     try {
@@ -23,7 +28,8 @@ export default function OnboardingStep1() {
         step: "currency",
         currency: selectedCurrency,
       });
-      router.push("/onboarding/choice");
+      setIsNavigating(true);
+      router.replace("/onboarding/choice");
     } catch (error) {
       console.error("Error saving currency:", error);
       toast.error("Failed to save currency. Please try again.");
@@ -31,8 +37,7 @@ export default function OnboardingStep1() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <>
         <div className="mb-8">
           <div className="flex justify-between text-sm text-muted-foreground mb-2">
             <span>Step 1 of 5</span>
@@ -68,11 +73,14 @@ export default function OnboardingStep1() {
               <Button
                 onClick={handleNext}
                 disabled={
-                  isUpdating || !selectedCurrency || !isValidCurrencyCode(selectedCurrency)
+                  isUpdating ||
+                  isNavigating ||
+                  !selectedCurrency ||
+                  !isValidCurrencyCode(selectedCurrency)
                 }
                 className="px-8 bg-primary hover:bg-primary/90"
               >
-                {isUpdating ? "Saving..." : "Next"}
+                {isUpdating ? "Saving..." : isNavigating ? "Continuing..." : "Next"}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
@@ -81,7 +89,6 @@ export default function OnboardingStep1() {
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Transactions and budgets will use this currency by default.
         </p>
-      </div>
-    </div>
+    </>
   );
 }

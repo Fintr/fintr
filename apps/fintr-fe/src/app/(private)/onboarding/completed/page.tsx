@@ -145,8 +145,7 @@ export default function OnboardingCompleted() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <>
         {/* Progress indicator - Complete */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-muted-foreground mb-2">
@@ -208,7 +207,6 @@ export default function OnboardingCompleted() {
             You can always update your information later from the dashboard settings
           </p>
         </div>
-      </div>
-    </div>
+    </>
   );
 }

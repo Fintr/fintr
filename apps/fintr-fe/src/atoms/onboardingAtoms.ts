@@ -10,6 +10,7 @@ export type OnboardingStep =
 
 export interface OnboardingData {
   step: OnboardingStep;
+  currency?: string;
   incomeData?: {
     income: number;
   };

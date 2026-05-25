@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAtom, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import {
   saveCurrencyStepData,
@@ -15,7 +15,7 @@ import {
 import { getOnboardingData } from '@/services/onboarding/queries';
 import { onboardingBudgetCategoriesAtom, onboardingAccountsDataAtom, onboardingAccountCategoriesAtom, incomeRequirementsAtom } from '@/atoms/budgetAtoms';
 import { toast } from 'sonner';
-import { onboardingDataAtom } from '@/atoms/onboardingAtoms';
+import { onboardingDataAtom, onboardingStepAtom } from '@/atoms/onboardingAtoms';
 
 export const useOnboarding = (step?: string) => {
   const { api, isAuthenticated } = useAuthApi({
@@ -25,8 +25,22 @@ export const useOnboarding = (step?: string) => {
   const [budgetCategories, setBudgetCategories] = useAtom(onboardingBudgetCategoriesAtom);
   const [accountsData, setAccountsData] = useAtom(onboardingAccountsDataAtom);
   const [onboardingDataFromAtom, setOnboardingData] = useAtom(onboardingDataAtom);
+  const setOnboardingStep = useSetAtom(onboardingStepAtom);
+  const currentOnboardingStep = useAtomValue(onboardingStepAtom);
   const setAccountCategories = useSetAtom(onboardingAccountCategoriesAtom);
   const setIncomeRequirements = useSetAtom(incomeRequirementsAtom);
+
+  const invalidateUserContext = () => {
+    void queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+    void queryClient.invalidateQueries({ queryKey: ['onboarding'] });
+  };
+
+  const invalidateWorkspaceLists = () => {
+    queueMicrotask(() => {
+      void queryClient.invalidateQueries({ queryKey: ['spaces'] });
+      void queryClient.invalidateQueries({ queryKey: ['space-context'] });
+    });
+  };
 
   // Determine if we should fetch data:
   // - For 'budgets' step: only if no existing budget categories data
@@ -78,11 +92,15 @@ export const useOnboarding = (step?: string) => {
   const saveCurrencyStepMutation = useMutation({
     mutationFn: (data: Omit<SaveCurrencyStepArgs, 'api'>) =>
       saveCurrencyStepData({ api, ...data }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
-      queryClient.invalidateQueries({ queryKey: ['onboarding'] });
-      queryClient.invalidateQueries({ queryKey: ['spaces'] });
-      queryClient.invalidateQueries({ queryKey: ['space-context'] });
+    onSuccess: (_response, variables) => {
+      setOnboardingStep('income');
+      setOnboardingData((current) => ({
+        ...current,
+        step: 'income',
+        currency: variables.currency.toUpperCase(),
+      }));
+      invalidateUserContext();
+      invalidateWorkspaceLists();
       toast.success('Currency set successfully');
     },
     onError: (error: any) => {
@@ -95,11 +113,9 @@ export const useOnboarding = (step?: string) => {
     mutationFn: (data: Omit<SaveStep1DataArgs, 'api'>) => 
       saveStep1Data({ api, ...data }),
     onSuccess: (response: any) => {
-      // Invalidate the currentUser query to refresh user data and onboarding step
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
-      
-      // If the response contains budget categories, populate the atom
+      setOnboardingStep('budgets');
+      invalidateUserContext();
+
       if (response && response.data) {
         setBudgetCategories(response.data.budgetsData);
       }
@@ -117,9 +133,8 @@ export const useOnboarding = (step?: string) => {
     mutationFn: (data: Omit<SaveStep2DataArgs, 'api'>) => 
       saveStep2Data({ api, ...data }),
     onSuccess: (response: any) => {
-      // Invalidate the currentUser query to refresh user data and onboarding step
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+      setOnboardingStep('accounts');
+      invalidateUserContext();
 
       if (response && response.data) {
         setAccountsData(response.data.accountsData)
@@ -143,12 +158,22 @@ export const useOnboarding = (step?: string) => {
   // Skip onboarding mutation
   const skipOnboardingMutation = useMutation({
     mutationFn: () => skipOnboardingSetup({ api }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
-      queryClient.invalidateQueries({ queryKey: ['onboarding'] });
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['currentUser'] });
+      const previousStep = currentOnboardingStep;
+      setOnboardingStep('completed');
+      return { previousStep };
     },
-    onError: (error: any) => {
+    onSuccess: () => {
+      setOnboardingStep('completed');
+      invalidateUserContext();
+    },
+    onError: (error: any, _variables, context) => {
       console.error('Error skipping onboarding:', error);
+      if (context?.previousStep != null) {
+        setOnboardingStep(context.previousStep);
+      }
+      void queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     },
   });
 
@@ -157,9 +182,8 @@ export const useOnboarding = (step?: string) => {
     mutationFn: (data: Omit<SaveStep3DataArgs, 'api'>) => 
       saveStep3Data({ api, ...data }),
     onSuccess: () => {
-      // Invalidate the currentUser query to refresh user data and onboarding step
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+      setOnboardingStep('import');
+      invalidateUserContext();
       
       toast.success('Accounts setup completed successfully');
     },

@@ -8,6 +8,8 @@ import {
   calculateAndroidBottomInsetPx,
   calculateNavBottomOffset,
   calculateHeaderSpacerHeight,
+  calculateOnboardingScreenInsets,
+  ONBOARDING_SCREEN_CONTENT_INSET_PX,
   MAX_ANDROID_STATUS_BAR_INSET_PX,
   MIN_ANDROID_STATUS_BAR_INSET_PX,
   resolveAndroidNativeTopInsetPx,
@@ -453,6 +455,42 @@ describe("resolveAndroidNativeTopInsetPx", () => {
   it("caps inflated top insets after IME or rotation", () => {
     expect(resolveAndroidNativeTopInsetPx(120)).toBe(MAX_ANDROID_STATUS_BAR_INSET_PX)
     expect(resolveAndroidNativeTopInsetPx(200)).toBe(MAX_ANDROID_STATUS_BAR_INSET_PX)
+  })
+})
+
+describe("calculateOnboardingScreenInsets", () => {
+  it("adds Android status bar and 3-button nav padding for native setup screens", () => {
+    const insets = calculateOnboardingScreenInsets({
+      isAndroidNative: true,
+      isIOSNative: false,
+      isAndroidBrowser: false,
+      isIOSBrowser: false,
+      safeAreaInsetTop: 0,
+      safeAreaInsetBottom: 0,
+      hasAndroid3ButtonNav: true,
+    })
+
+    expect(insets.paddingTop).toBe(`${24 + ONBOARDING_SCREEN_CONTENT_INSET_PX}px`)
+    expect(insets.paddingBottom).toBe(`${48 + ONBOARDING_SCREEN_CONTENT_INSET_PX}px`)
+  })
+
+  it("uses env safe-area on iOS native setup screens", () => {
+    const insets = calculateOnboardingScreenInsets({
+      isAndroidNative: false,
+      isIOSNative: true,
+      isAndroidBrowser: false,
+      isIOSBrowser: false,
+      safeAreaInsetTop: 47,
+      safeAreaInsetBottom: 34,
+      hasAndroid3ButtonNav: false,
+    })
+
+    expect(insets.paddingTop).toBe(
+      `calc(${ONBOARDING_SCREEN_CONTENT_INSET_PX}px + env(safe-area-inset-top, 0px))`,
+    )
+    expect(insets.paddingBottom).toBe(
+      `calc(${ONBOARDING_SCREEN_CONTENT_INSET_PX}px + env(safe-area-inset-bottom, 0px))`,
+    )
   })
 })
 

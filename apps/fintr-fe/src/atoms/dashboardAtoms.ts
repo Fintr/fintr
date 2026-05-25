@@ -16,4 +16,7 @@ export const categoryOptionsAtom = atom<OptionType[]>([]);
 export const accountOptionsAtom = atom<AccountOptionWithCurrency[]>([]);
 export const expenseCategoryOptionsAtom = atom<CategoryTreeOption[]>([]);
 export const incomeCategoryOptionsAtom = atom<CategoryTreeOption[]>([]); 
-export const isAdminAtom = atom<boolean | null>(null); 
+export const isAdminAtom = atom<boolean | null>(null);
+
+/** True when dashboard layout has spaceCode and finished loading shell data (nav + tabs). */
+export const dashboardShellReadyAtom = atom(false);

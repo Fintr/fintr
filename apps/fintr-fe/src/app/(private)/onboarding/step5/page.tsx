@@ -32,8 +32,7 @@ export default function OnboardingStep5() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
+    <>
         {/* Progress indicator */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-muted-foreground mb-2">
@@ -70,7 +69,6 @@ export default function OnboardingStep5() {
             />
           </div>
         )}
-      </div>
-    </div>
+    </>
   );
 }

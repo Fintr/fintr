@@ -4,6 +4,10 @@
  */
 
 import { getPublicBackendUrl } from '@/lib/public-backend-url';
+import {
+  parseApiErrorMessage,
+  parseAuthTokenPayload,
+} from '@/services/auth/parse-auth-response';
 
 export interface LoginCredentials {
   username: string; // Can be email or username
@@ -74,16 +78,16 @@ export const loginWithCredentials = async (
     });
 
     if (!response.ok) {
+      const errorMessage = parseApiErrorMessage(data, "Login failed");
       console.error('❌ loginWithCredentials: Login failed', {
         status: response.status,
-        message: data.message || data.error,
+        message: errorMessage,
       });
-      throw new Error(data.message || data.error || 'Login failed');
+      throw new Error(errorMessage);
     }
 
     console.log('✅ loginWithCredentials: Login successful');
-    // The backend returns the data in a success wrapper under data.value
-    return data.data.value as LoginResponse;
+    return parseAuthTokenPayload(data);
   } catch (error) {
     console.error('❌ loginWithCredentials: Exception thrown', error);
     throw error;
@@ -150,12 +154,10 @@ export const signupWithCredentials = async (
     const data = await response.json();
 
     if (!response.ok) {
-      const errorMessage = data.details || data.message || data.error || 'Signup failed';
-      throw new Error(errorMessage);
+      throw new Error(parseApiErrorMessage(data, "Signup failed"));
     }
 
-    // The backend returns the data in a success wrapper under data.value
-    return data.data.value as SignupResponse;
+    return parseAuthTokenPayload(data);
   } catch (error) {
     throw error;
   }
@@ -183,11 +185,10 @@ export const refreshAccessToken = async (refreshToken: string): Promise<LoginRes
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || data.error || 'Token refresh failed');
+      throw new Error(parseApiErrorMessage(data, "Token refresh failed"));
     }
 
-    // The backend returns the data in a success wrapper under data.value
-    return data.data.value as LoginResponse;
+    return parseAuthTokenPayload(data);
   } catch (error) {
     throw error;
   }
