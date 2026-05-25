@@ -126,4 +126,41 @@ RSpec.describe Budgets::Operations::BuildMonthlyBudgetRows do
     expect(row[:parent_only_spent]).to eq(30)
     expect(row[:subcategories].first[:spent]).to eq(20)
   end
+
+  it "includes subcategory spending when no subcategory budget exists" do
+    account = create(:account, space:)
+    create(
+      :expense_transaction,
+      space:,
+      account:,
+      category: parent,
+      subcategory_id: sub.id,
+      date: Date.new(2025, 5, 10),
+      amount: 45,
+      balance_state: :calculated
+    )
+
+    parent_budget = create(
+      :budget,
+      space:,
+      category: parent,
+      date: Date.new(2025, 5, 1),
+      amount_cents: 100_00
+    )
+
+    result = operation.call(
+      budgets: [parent_budget],
+      space_id: space.id,
+      start_date:,
+      end_date:
+    )
+
+    row = result.value!.first
+    sub_row = row[:subcategories].find { |entry| entry[:subcategory_id] == sub.id }
+
+    expect(sub_row).to be_present
+    expect(sub_row[:id]).to be_nil
+    expect(sub_row[:spent]).to eq(45)
+    expect(sub_row[:budget]).to eq(0)
+  end
 end

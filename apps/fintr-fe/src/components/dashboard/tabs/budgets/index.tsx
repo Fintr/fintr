@@ -679,14 +679,16 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                                 {sub.subcategoryName ?? sub.name}
                               </span>
                               <span className="text-primary/70">
+                                {formatCurrency(sub.spent, spaceCurrency)}
                                 {sub.id ? (
                                   <>
-                                    {formatCurrency(sub.spent, spaceCurrency)} /{" "}
+                                    {" / "}
                                     {formatCurrency(sub.budget, spaceCurrency)}
                                   </>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">
-                                    Not set
+                                    {" "}
+                                    · No budget set
                                   </span>
                                 )}
                               </span>
