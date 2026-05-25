@@ -20,6 +20,7 @@ const Auth = () => {
         <UnifiedAuthPage
           onBack={handleBack}
           isLogin={activeTab === "login"}
+          onAuthModeChange={setActiveTab}
           authToggle={
             <AuthToggle activeTab={activeTab} onToggle={handleToggle} />
           }

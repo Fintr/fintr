@@ -12,12 +12,16 @@ import React,
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthContext';
 import { useAuthApi } from '@/hooks/useAuthApi';
+import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
 import { completeTutorial } from '@/services/auth/user/tutorial';
 import { performanceUtils } from '@/lib/utils';
 import { getTutorialConfig as getTutorialConfigFromSteps } from '@/config/tutorialSteps';
 import { useAtomValue } from 'jotai';
 import { desktopTutorialCompletedAtom, mobileTutorialCompletedAtom, tutorialDataLoadedAtom } from '@/atoms/tutorialAtoms';
 import { currentSpaceAtom } from '@/atoms/spaceAtoms';
+import { dashboardShellReadyAtom } from '@/atoms/dashboardAtoms';
+import { onboardingStepAtom } from '@/atoms/onboardingAtoms';
+import { workspaceTransitionAtom } from '@/atoms/spaceAtoms';
 import { useQueryClient } from '@tanstack/react-query';
 
 export type TutorialPlatform = 'desktop' | 'mobile';
@@ -60,8 +64,9 @@ interface TutorialProviderProps {
 export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) => {
   const { user } = useAuth();
   const { api } = useAuthApi({
-    scope: "openid profile email read:current_user",
+    scope: "openid profile email read:current_user read:transactions read:users",
   });
+  const { spaceCode } = useGetSpaceCode(api);
   const queryClient = useQueryClient();
   const pathname = usePathname();
   
@@ -69,6 +74,9 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
   const mobileTutorialCompleted = useAtomValue(mobileTutorialCompletedAtom);
   const tutorialDataLoaded = useAtomValue(tutorialDataLoadedAtom);
   const currentSpace = useAtomValue(currentSpaceAtom);
+  const onboardingStep = useAtomValue(onboardingStepAtom);
+  const transitionState = useAtomValue(workspaceTransitionAtom);
+  const dashboardShellReady = useAtomValue(dashboardShellReadyAtom);
   
   const [isActive, setIsActive] = useState(false);
   const [platform, setPlatform] = useState<TutorialPlatform | null>(null);
@@ -137,6 +145,49 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
       return;
     }
 
+    // New users must finish workspace setup before the product tour
+    if (onboardingStep !== 'completed') {
+      if (isActive) {
+        setIsActive(false);
+        setPlatform(null);
+      }
+      return;
+    }
+
+    // Wait until workspace context exists (dashboard shell has left its loading state)
+    if (!spaceCode) {
+      if (isActive) {
+        setIsActive(false);
+        setPlatform(null);
+      }
+      return;
+    }
+
+    if (!dashboardShellReady) {
+      if (isActive) {
+        setIsActive(false);
+        setPlatform(null);
+      }
+      return;
+    }
+
+    if (transitionState.isTransitioning) {
+      if (isActive) {
+        setIsActive(false);
+        setPlatform(null);
+      }
+      return;
+    }
+
+    // Tour targets live on dashboard chrome (tabs, bottom nav, header actions)
+    if (!pathname?.startsWith('/dashboard')) {
+      if (isActive) {
+        setIsActive(false);
+        setPlatform(null);
+      }
+      return;
+    }
+
     const detectedPlatform = detectPlatform();
     const completed = isTutorialCompleted(detectedPlatform);
 
@@ -148,13 +199,28 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     }
 
     if (!completed && !isActive) {
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
+      const startTimer = setTimeout(() => {
         setPlatform(detectedPlatform);
         setIsActive(true);
       }, 500);
+
+      return () => clearTimeout(startTimer);
     }
-  }, [user, detectPlatform, isTutorialCompleted, isActive, desktopTutorialCompleted, mobileTutorialCompleted, tutorialDataLoaded, isCompletingTutorial, pathname]);
+  }, [
+    user,
+    detectPlatform,
+    isTutorialCompleted,
+    isActive,
+    desktopTutorialCompleted,
+    mobileTutorialCompleted,
+    tutorialDataLoaded,
+    isCompletingTutorial,
+    pathname,
+    onboardingStep,
+    spaceCode,
+    dashboardShellReady,
+    transitionState.isTransitioning,
+  ]);
 
   const startTutorial = useCallback((platform: TutorialPlatform) => {
     setPlatform(platform);

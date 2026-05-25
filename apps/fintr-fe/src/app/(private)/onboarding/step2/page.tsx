@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { Button } from "@/components/ui/button";
@@ -18,11 +18,7 @@ export default function OnboardingStep2() {
   const router = useRouter();
   const [onboardingData, setOnboardingData] = useAtom(onboardingDataAtom);
   const { saveStep1Data, isUpdating } = useOnboarding("income");
-  const { onboardingData: currencyData } = useOnboarding("currency");
-  const workspaceCurrency =
-    currencyData?.data?.currency ??
-    currencyData?.data?.storedCurrency ??
-    "PHP";
+  const workspaceCurrency = onboardingData.currency ?? "PHP";
   const isPhp = workspaceCurrency === "PHP";
   
   const [income, setIncome] = useState<string>(
@@ -51,7 +47,11 @@ export default function OnboardingStep2() {
   // Deduction options state - set to true by default
   const [deductTaxes, setDeductTaxes] = useState(true);
   const [deductContributions, setDeductContributions] = useState(true);
+  const [isNavigating, setIsNavigating] = useState(false);
 
+  useEffect(() => {
+    router.prefetch("/onboarding/step3");
+  }, [router]);
 
   const validateForm = () => {
     const newErrors: { income?: string } = {};
@@ -87,9 +87,9 @@ export default function OnboardingStep2() {
           step: 'income',
           income: amountToUse,
         });
-        
-        // Navigate to step 3 (budgets) on success
-        router.push('/onboarding/step3');
+
+        setIsNavigating(true);
+        router.replace('/onboarding/step3');
       } catch (error) {
         console.error('Error saving step 1 data:', error);
         toast.error('Error saving income data. Please try again.');
@@ -113,9 +113,9 @@ export default function OnboardingStep2() {
         step: 'income',
         income: 0,
       });
-      
-      // Navigate to step 3 (budgets)
-      router.push('/onboarding/step3');
+
+      setIsNavigating(true);
+      router.replace('/onboarding/step3');
     } catch (error) {
       console.error('Error skipping step:', error);
       toast.error('Error skipping step. Please try again.');
@@ -126,8 +126,7 @@ export default function OnboardingStep2() {
   const totalIncome = (deductTaxes || deductContributions) && taxCalculation ? taxCalculation.netIncome : (Number(income) || 0);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <>
         {/* Progress indicator */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-muted-foreground mb-2">
@@ -224,10 +223,10 @@ export default function OnboardingStep2() {
                 </Button>
                 <Button
                   onClick={handleNext}
-                  disabled={isUpdating}
+                  disabled={isUpdating || isNavigating}
                   className="px-8 bg-primary hover:bg-primary/90"
                 >
-                  {isUpdating ? "Saving..." : "Next"}
+                  {isUpdating ? "Saving..." : isNavigating ? "Continuing..." : "Next"}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
@@ -235,7 +234,7 @@ export default function OnboardingStep2() {
                 type="button"
                 variant="ghost"
                 onClick={handleSkip}
-                disabled={isUpdating}
+                disabled={isUpdating || isNavigating}
                 className="w-full text-muted-foreground hover:text-foreground"
               >
                 Skip for now
@@ -250,7 +249,6 @@ export default function OnboardingStep2() {
             Don't worry, you can always update this information later in your dashboard
           </p>
         </div>
-      </div>
-    </div>
+    </>
   );
 }

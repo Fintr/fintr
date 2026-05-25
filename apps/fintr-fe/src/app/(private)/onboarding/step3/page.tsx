@@ -61,9 +61,8 @@ export default function OnboardingStep3() {
           step: 'budgets',
           budgetCategories: budgetCategoryInputs,
         });
-        
-        // Navigate to step 4 on success
-        router.push('/onboarding/step4');
+
+        router.replace('/onboarding/step4');
       } catch (error) {
         console.error('Error saving step 2 data:', error);
         toast.error('Error saving budget categories. Please try again.');
@@ -133,8 +132,7 @@ export default function OnboardingStep3() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <>
         {/* Progress indicator */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-muted-foreground mb-2">
@@ -280,7 +278,6 @@ export default function OnboardingStep3() {
             You can adjust these amounts based on your spending habits and financial goals
           </p>
         </div>
-      </div>
-    </div>
+    </>
   );
 }

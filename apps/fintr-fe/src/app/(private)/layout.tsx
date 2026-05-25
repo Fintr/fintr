@@ -6,7 +6,6 @@ import BottomNavigation from "@/components/dashboard/bottom-navigation";
 import MobileStickyHeader from "@/components/dashboard/mobile-sticky-header";
 import { useAtomValue } from 'jotai';
 import { isAdminAtom } from '@/atoms/dashboardAtoms';
-import { onboardingStepAtom, isOnboardingCompletedAtom } from '@/atoms/onboardingAtoms';
 import { workspaceTransitionAtom } from '@/atoms/spaceAtoms';
 import { useToastSettings } from '@/contexts/ToastSettingsContext';
 import { useAuthApi } from '@/hooks/useAuthApi';
@@ -15,6 +14,7 @@ import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
 import { usePathname } from 'next/navigation';
 import { useRouter } from "next/navigation";
 import TutorialOverlay from "@/components/tutorial/TutorialOverlay";
+import { WorkspaceSetupGate } from "@/components/onboarding/workspace-setup-gate";
 import { WorkspaceTransitionScreen } from "@/components/space/workspace-transition-screen";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import {
@@ -25,14 +25,13 @@ import { isDashboardShellRoute } from "@/lib/dashboard-shell-route";
 import { WeeklyFeedbackPrompt } from "@/components/feedback/weekly-feedback-prompt";
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
-  const { api, isLoading: isApiLoading } = useAuthApi({
+  const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
   const isAdmin = useAtomValue(isAdminAtom);
-  const onboardingStep = useAtomValue(onboardingStepAtom);
-  const isOnboardingCompleted = useAtomValue(isOnboardingCompletedAtom);
   const pathname = usePathname();
   const router = useRouter();
+  const { spaceCode, onboardingStep, isUserContextLoading } = useGetSpaceCode(api);
 
   // Get workspace transition state from shared atom
   const transitionState = useAtomValue(workspaceTransitionAtom);
@@ -42,16 +41,22 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 
   // Hide navigation completely during onboarding
   const isOnOnboardingPage = pathname.startsWith('/onboarding');
+  const isOnAdminPage = pathname.startsWith('/admin');
+
+  const isOnboardingIncomplete =
+    onboardingStep !== null && onboardingStep !== 'completed';
+  const isResolvingWorkspaceContext =
+    !api || isUserContextLoading || onboardingStep === null;
+  const shouldShowWorkspaceSetupGate =
+    !isOnOnboardingPage &&
+    !isOnAdminPage &&
+    (isResolvingWorkspaceContext || isOnboardingIncomplete);
 
   // Hide navigation for standalone subscription create page
   const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
 
   // Dashboard shell layout already applies mobile bottom padding + BottomNavigation
   const isDashboardPage = isDashboardShellRoute(pathname);
-
-  // Show mobile sticky header in private layout only for non-dashboard pages (CRM, Admin)
-
-  const { spaceCode } = useGetSpaceCode(api);
   const weeklyFeedbackEnabled =
     Boolean(spaceCode) &&
     !isOnOnboardingPage &&
@@ -94,30 +99,31 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     setToastSettings({ offsetBottom });
   }, [isOnOnboardingPage, isMobile, setToastSettings]);
 
-  // Check onboarding status and redirect if necessary
+  // Route incomplete workspaces into onboarding (avoids dashboard + Joyride flash)
   useEffect(() => {
-    
-    // Skip onboarding redirect if user is on onboarding pages or admin pages
-    if (pathname.startsWith('/onboarding') || pathname.startsWith('/admin')) {
+    if (isOnOnboardingPage || isOnAdminPage) {
       return;
     }
 
-    // Check if user needs onboarding based on the step from API
-    if (pathname === '/dashboard' && onboardingStep && onboardingStep !== 'completed') {
-      // Determine which step to redirect to based on current onboarding step
-      const stepRoutes = {
-        currency: '/onboarding/step1',
-        income: '/onboarding/step2',
-        budgets: '/onboarding/step3',
-        accounts: '/onboarding/step4',
-      };
-      
-      const redirectRoute = stepRoutes[onboardingStep as keyof typeof stepRoutes];
-      if (redirectRoute) {
-        router.push(redirectRoute);
-      }
+    if (!isOnboardingIncomplete) {
+      return;
     }
-  }, [pathname, onboardingStep, router]);
+
+    router.replace('/onboarding');
+  }, [
+    isOnOnboardingPage,
+    isOnAdminPage,
+    isOnboardingIncomplete,
+    router,
+  ]);
+
+  if (shouldShowWorkspaceSetupGate) {
+    return (
+      <div className="min-h-screen bg-background text-primary">
+        <WorkspaceSetupGate />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-primary">

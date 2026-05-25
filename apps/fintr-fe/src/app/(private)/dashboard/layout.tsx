@@ -9,6 +9,8 @@ import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { shouldShowV2Features, formatCurrency } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { useSetAtom } from "jotai";
+import { dashboardShellReadyAtom } from "@/atoms/dashboardAtoms";
 import { Edit, ArrowRight } from "lucide-react";
 import ExpandableTextarea from "@/components/ui/expandable-textarea";
 import { Button } from "@/components/ui/button";
@@ -72,6 +74,7 @@ export default function Layout({
   
   const { spaceCode } = useGetSpaceCode(api, isAuthenticated);
   const { data, isLoading: isLoadingDashboardData, isError, refetch } = useDashboardData();
+  const setDashboardShellReady = useSetAtom(dashboardShellReadyAtom);
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
 
@@ -92,6 +95,24 @@ export default function Layout({
       setGoalDescription(data.goalDescription);
     }
   }, [data?.goalDescription]);
+
+  useEffect(() => {
+    const ready =
+      !isStandalonePage &&
+      Boolean(spaceCode) &&
+      !isLoadingDashboardData;
+
+    setDashboardShellReady(ready);
+
+    return () => {
+      setDashboardShellReady(false);
+    };
+  }, [
+    isStandalonePage,
+    spaceCode,
+    isLoadingDashboardData,
+    setDashboardShellReady,
+  ]);
 
   const { mutate: updateDefinition, status: updateStatus } = useMutation<any, Error, UpdateFinancialFreedomDescriptionType>({
     mutationFn: (data) => updateFinancialFreedomDescription(api, data),

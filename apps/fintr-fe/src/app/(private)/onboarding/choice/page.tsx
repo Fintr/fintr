@@ -1,8 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOnboarding } from "@/hooks/async/useOnboarding";
 import { toast } from "sonner";
@@ -11,25 +10,32 @@ import { ArrowRight, Clock } from "lucide-react";
 export default function OnboardingChoice() {
   const router = useRouter();
   const { skipOnboarding, isUpdating } = useOnboarding();
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  useEffect(() => {
+    router.prefetch("/onboarding/step2");
+    router.prefetch("/dashboard");
+  }, [router]);
 
   const handleSetupNow = () => {
-    router.push("/onboarding/step2");
+    setIsNavigating(true);
+    router.replace("/onboarding/step2");
   };
 
   const handleSetupLater = async () => {
     try {
       await skipOnboarding();
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch (error) {
       console.error("Error skipping onboarding:", error);
       toast.error("Something went wrong. Please try again.");
     }
   };
 
+  const isBusy = isUpdating || isNavigating;
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Progress indicator */}
+    <>
         <div className="mb-8">
           <div className="flex justify-between text-sm text-muted-foreground mb-2">
             <span>Step 1 of 5</span>
@@ -49,15 +55,16 @@ export default function OnboardingChoice() {
           </CardHeader>
 
           <CardContent className="space-y-4 pt-2">
-            {/* Setup Now */}
             <button
               onClick={handleSetupNow}
-              disabled={isUpdating}
-              className="w-full text-left rounded-xl border-2 border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 transition-all duration-200 p-5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              disabled={isBusy}
+              className="w-full text-left rounded-xl border-2 border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 transition-all duration-200 p-5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <p className="font-semibold text-foreground text-base">Setup Now</p>
+                  <p className="font-semibold text-foreground text-base">
+                    {isNavigating ? "Opening setup..." : "Setup Now"}
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     Walk through income, budgets, and accounts in a few quick steps.
                   </p>
@@ -66,10 +73,9 @@ export default function OnboardingChoice() {
               </div>
             </button>
 
-            {/* Setup Later */}
             <button
               onClick={handleSetupLater}
-              disabled={isUpdating}
+              disabled={isBusy}
               className="w-full text-left rounded-xl border-2 border-border hover:border-muted-foreground bg-muted/30 hover:bg-muted/60 transition-all duration-200 p-5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <div className="flex items-start justify-between gap-3">
@@ -90,7 +96,6 @@ export default function OnboardingChoice() {
         <p className="mt-6 text-center text-sm text-muted-foreground">
           You can always complete your setup from the dashboard settings.
         </p>
-      </div>
-    </div>
+    </>
   );
 }

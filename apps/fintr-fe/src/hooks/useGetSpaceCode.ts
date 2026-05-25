@@ -59,5 +59,9 @@ export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = t
   });
 
   // Return the spaceCode, isAdmin, and onboardingStep from atoms, which are reactive
-  return { spaceCode, onboardingStep };
+  return {
+    spaceCode,
+    onboardingStep,
+    isUserContextLoading: _getSpaceCode.isLoading,
+  };
 }

@@ -17,7 +17,9 @@ function AuthWrapper({ children }: AuthWrapperProps) {
   const pathname = usePathname();
   
   // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/auth', '/auth-callback', '/consent', '/', '/pricing', '/contact-us', '/privacy-policy', '/terms-of-service', '/waitlist', '/whats-next', '/delete-account'];
+  const publicRoutes = ['/login', '/signup', '/auth', '/auth-callback', '/consent', '/', '/pricing', '/contact-us', '/privacy-policy', '/terms-of-service', '/waitlist', '/whats-next', '/delete-account'];
+  const publicAuthRoutes = ['/auth', '/login', '/signup'];
+  const isPublicAuthRoute = publicAuthRoutes.includes(pathname);
   const isPublicRoute = publicRoutes.includes(pathname);
 
   console.log('🛡️ AuthWrapper: Render', {
@@ -55,7 +57,7 @@ function AuthWrapper({ children }: AuthWrapperProps) {
     }
   }, [isLoading, isAuthenticated, isPublicRoute, router, pathname]);
   
-  if (isLoading) {
+  if (isLoading && !isPublicAuthRoute) {
     return (
       <>
         <LoadingScreen />

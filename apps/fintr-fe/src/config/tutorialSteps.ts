@@ -7,6 +7,7 @@ export const desktopTutorialSteps: TutorialStep[] = [
     description: 'Click the "Add Transaction" button to create different types of transactions.',
     targetSelector: '[data-tutorial-target="add-transaction-button"]',
     position: 'bottom',
+    waitForElement: true,
   },
   {
     id: 'expense-tab',
@@ -165,6 +166,7 @@ export const mobileTutorialSteps: TutorialStep[] = [
     description: 'Tap the "+" button to see available options for adding transactions and receipts.',
     targetSelector: '[data-tutorial-target="mobile-add-button"]',
     position: 'top',
+    waitForElement: true,
     action: 'open-menu',
   },
   {

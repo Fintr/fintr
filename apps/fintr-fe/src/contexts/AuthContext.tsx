@@ -192,7 +192,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: LoginCredentials) => {
     console.log('🔐 AuthContext.login: Starting login...', { username: credentials.username });
     try {
-      setIsLoading(true);
       setError(null);
       console.log('🔐 AuthContext.login: Calling loginWithCredentials...');
 
@@ -231,16 +230,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('❌ AuthContext.login: Login failed:', error.message);
       setError(error.message || 'Login failed');
       throw error;
-    } finally {
-      console.log('🔐 AuthContext.login: Setting isLoading = false');
-      setIsLoading(false);
     }
   };
 
   const signup = async (credentials: SignupCredentials) => {
     console.log('📝 AuthContext.signup: Starting signup...', { email: credentials.email });
     try {
-      setIsLoading(true);
       setError(null);
       console.log('📝 AuthContext.signup: Calling signupWithCredentials...');
 
@@ -273,8 +268,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       setError(error.message || 'Signup failed');
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
