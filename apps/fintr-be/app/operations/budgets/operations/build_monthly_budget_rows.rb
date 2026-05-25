@@ -97,6 +97,13 @@ module Budgets
 
       def finalize_parent_rows(rows_by_parent, space_id:, start_date:, end_date:)
         rows_by_parent.each_value do |row|
+          attach_subcategory_spending_without_budget(
+            row:,
+            space_id:,
+            start_date:,
+            end_date:,
+          )
+
           next if row[:subcategories].blank?
 
           row[:parent_only_spent] = parent_only_spent(
@@ -140,6 +147,45 @@ module Budgets
           .where(subcategory_id: nil)
           .sum(:amount_cents)
           .to_d / 100
+      end
+
+      def attach_subcategory_spending_without_budget(row:, space_id:, start_date:, end_date:)
+        spending_by_subcategory_id = base_transactions(space_id:, start_date:, end_date:)
+          .where(category_id: row[:category_id])
+          .where.not(subcategory_id: nil)
+          .group(:subcategory_id)
+          .sum(:amount_cents)
+
+        return if spending_by_subcategory_id.blank?
+
+        existing_subcategory_ids = row[:subcategories].map { |sub| sub[:subcategory_id] }.compact
+
+        spending_by_subcategory_id.each do |subcategory_id, amount_cents|
+          next if existing_subcategory_ids.include?(subcategory_id)
+
+          subcategory = Transactions::Category.find_by(id: subcategory_id)
+          next if subcategory.blank?
+
+          row[:subcategories] << subcategory_spending_only_row(
+            category_id: row[:category_id],
+            subcategory:,
+            spent: amount_cents.to_d / 100,
+          )
+        end
+      end
+
+      def subcategory_spending_only_row(category_id:, subcategory:, spent:)
+        {
+          id: nil,
+          category_id:,
+          subcategory_id: subcategory.id,
+          subcategory_name: subcategory.name,
+          amount: 0,
+          budget: 0,
+          spent:,
+          date: nil,
+          amount_currency: nil,
+        }
       end
 
       def base_transactions(space_id:, start_date:, end_date:)
