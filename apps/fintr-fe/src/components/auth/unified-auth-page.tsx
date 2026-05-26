@@ -65,7 +65,7 @@ const UnifiedAuthPage = ({
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push("/onboarding");
+      router.push("/dashboard");
     }
   }, [isAuthenticated, router]);
 

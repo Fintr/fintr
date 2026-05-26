@@ -21,6 +21,7 @@ import {
 } from "@/services/goals/mutations";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/ui/loading-screen";
+import { useBootstrapLoadingTimeout } from "@/hooks/useBootstrapLoadingTimeout";
 import { usePathname } from "next/navigation";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import {
@@ -74,6 +75,12 @@ export default function Layout({
   
   const { spaceCode } = useGetSpaceCode(api, isAuthenticated);
   const { data, isLoading: isLoadingDashboardData, isError, refetch } = useDashboardData();
+  const isWaitingForDashboardShell =
+    !spaceCode ||
+    (isLoadingDashboardData && !isError);
+  const { shouldBlock: shouldBlockOnDashboardLoading } = useBootstrapLoadingTimeout(
+    isWaitingForDashboardShell,
+  );
   const setDashboardShellReady = useSetAtom(dashboardShellReadyAtom);
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
@@ -135,8 +142,7 @@ export default function Layout({
     return <>{children}</>;
   }
 
-  // Only show loading spinner if spaceCode is not available OR dashboard data is loading
-  if (!spaceCode || isLoadingDashboardData) {
+  if (shouldBlockOnDashboardLoading) {
     return <LoadingScreen />;
   }
 

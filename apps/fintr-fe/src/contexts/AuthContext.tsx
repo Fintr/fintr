@@ -11,7 +11,14 @@ import {
   SignupCredentials,
   LoginResponse,
 } from '@/services/auth/login';
-import { AuthStorage, AuthUser, AuthStorageData, AuthTokens } from '@/lib/auth-storage';
+import {
+  AuthStorage,
+  AuthUser,
+  AuthStorageData,
+  AuthTokens,
+  isJwtToken,
+  resolveApiBearerToken,
+} from '@/lib/auth-storage';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -327,9 +334,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 };
                 AuthStorage.setAuthData(updatedAuthData);
                 
-                // Check if new access token is also encrypted
-                const newIsEncrypted = newTokens.access_token.includes('..') && newTokens.access_token.split('.').length === 5;
-                return newIsEncrypted ? newTokens.id_token : newTokens.access_token;
+                const refreshedApiToken = resolveApiBearerToken(newTokens);
+                if (!isJwtToken(refreshedApiToken)) {
+                  console.error('🔑 getAccessToken: Refreshed tokens are not valid JWTs');
+                  logout();
+                  return null;
+                }
+
+                return refreshedApiToken;
               }
             } catch (error) {
               logout();
@@ -338,21 +350,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
         
-        // Check if access token is encrypted (JWE format)
-        const isEncrypted = tokens.access_token.includes('..') && tokens.access_token.split('.').length === 5;
-        console.log('🔑 getAccessToken: Token format check', {
-          isEncrypted,
+        const apiToken = resolveApiBearerToken(tokens);
+        console.log('🔑 getAccessToken: Resolved API bearer token', {
           accessTokenParts: tokens.access_token.split('.').length,
-          willUseIdToken: isEncrypted,
+          apiTokenParts: apiToken.split('.').length,
         });
-        
-        if (isEncrypted) {
-          console.log('🔑 getAccessToken: Returning ID token (access token is encrypted)');
-          return tokens.id_token;
+
+        if (!isJwtToken(apiToken)) {
+          console.error('🔑 getAccessToken: No valid JWT for API requests');
+          return null;
         }
-        
-        console.log('🔑 getAccessToken: Returning access token');
-        return tokens.access_token;
+
+        return apiToken;
       }
 
       // Fallback: try to get token from storage directly
@@ -371,7 +380,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setTokens(loginResponse);
           setUser(authData.user);
         }
-        return authData.tokens.access_token;
+
+        const storedApiToken = resolveApiBearerToken(authData.tokens);
+        if (!isJwtToken(storedApiToken)) {
+          console.error('🔑 getAccessToken: Stored tokens are not valid JWTs');
+          return null;
+        }
+
+        return storedApiToken;
       }
 
       return null;

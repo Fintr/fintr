@@ -333,7 +333,7 @@ export default function ImageLightbox({
     const filename = extension ? `${baseFilename}.${extension}` : baseFilename;
 
     const backendUrl = getPublicBackendUrl() ?? process.env.NEXT_PUBLIC_BE_URL;
-    const token = AuthStorage.getAuthData()?.tokens?.access_token;
+    const token = AuthStorage.getAccessToken();
     const isS3Url = ALLOWED_S3_PREFIXES.some((p) => currentImage.url.startsWith(p));
     const canUseProxy = Boolean(backendUrl && token && isS3Url);
 

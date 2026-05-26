@@ -32,6 +32,33 @@ export interface AuthStorageData {
   issued_at: number; // Unix timestamp when token was issued
 }
 
+type BearerTokenPair = Pick<AuthTokens, "access_token" | "id_token">;
+
+/** Rails API auth expects a standard JWT (header.payload.signature). */
+export const isJwtToken = (token: string | undefined | null): boolean => {
+  if (!token || typeof token !== "string") {
+    return false;
+  }
+
+  return token.split(".").length === 3;
+};
+
+/**
+ * Auth0 may return encrypted (JWE) or opaque access tokens. The Rails API only
+ * accepts a three-segment JWT, so prefer a JWT access token and fall back to id_token.
+ */
+export const resolveApiBearerToken = (tokens: BearerTokenPair): string => {
+  if (isJwtToken(tokens.access_token)) {
+    return tokens.access_token;
+  }
+
+  if (isJwtToken(tokens.id_token)) {
+    return tokens.id_token;
+  }
+
+  return tokens.access_token;
+};
+
 // Auth0 SDK compatible localStorage keys
 const AUTH0_KEYS = {
   ACCESS_TOKEN: '@@auth0@@.access_token',
@@ -195,11 +222,15 @@ export class AuthStorage {
   }
 
   /**
-   * Get access token
+   * Token to send as Bearer on API requests (JWT, not encrypted JWE access token).
    */
   static getAccessToken(): string | null {
     const authData = this.getAuthData();
-    return authData?.tokens.access_token || null;
+    if (!authData?.tokens.access_token) {
+      return null;
+    }
+
+    return resolveApiBearerToken(authData.tokens);
   }
 
   /**

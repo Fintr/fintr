@@ -17,7 +17,7 @@ export default function OnboardingIndex() {
     if (!isApiLoading && onboardingStep !== null) {
       // Check if user has completed onboarding
       if (onboardingStep === "completed") {
-        router.push("/onboarding/completed");
+        router.replace("/dashboard");
       } else {
         // Map API step to route; unknown or missing step always starts at step1
         const stepRoutes: Record<string, string> = {
@@ -36,7 +36,10 @@ export default function OnboardingIndex() {
   // Show loading state while checking user status
   if (isApiLoading || onboardingStep === null) {
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center text-center space-y-4">
+      <div
+        className="flex min-h-[50vh] flex-col items-center justify-center text-center space-y-4"
+        data-testid="onboarding-setup-loading"
+      >
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
         <p className="text-muted-foreground">Preparing your workspace setup...</p>
       </div>

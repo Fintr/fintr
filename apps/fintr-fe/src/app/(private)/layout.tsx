@@ -14,7 +14,11 @@ import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
 import { usePathname } from 'next/navigation';
 import { useRouter } from "next/navigation";
 import TutorialOverlay from "@/components/tutorial/TutorialOverlay";
+import LoadingScreen from "@/components/ui/loading-screen";
 import { WorkspaceSetupGate } from "@/components/onboarding/workspace-setup-gate";
+import { CapacitorLoadingTimeout } from "@/components/capacitor-loading-timeout";
+import { useBootstrapLoadingTimeout } from "@/hooks/useBootstrapLoadingTimeout";
+import { BOOTSTRAP_LOADING_MAX_MS } from "@/lib/bootstrap-loading";
 import { WorkspaceTransitionScreen } from "@/components/space/workspace-transition-screen";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import {
@@ -25,13 +29,22 @@ import { isDashboardShellRoute } from "@/lib/dashboard-shell-route";
 import { WeeklyFeedbackPrompt } from "@/components/feedback/weekly-feedback-prompt";
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
-  const { api } = useAuthApi({
+  const {
+    api,
+    isAuthenticated,
+    isLoading: isAuthLoading,
+  } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
   const isAdmin = useAtomValue(isAdminAtom);
   const pathname = usePathname();
   const router = useRouter();
-  const { spaceCode, onboardingStep, isUserContextLoading } = useGetSpaceCode(api);
+  const {
+    spaceCode,
+    onboardingStep,
+    isUserContextLoading,
+    refetchUserContext,
+  } = useGetSpaceCode(api, isAuthenticated && !isAuthLoading);
 
   // Get workspace transition state from shared atom
   const transitionState = useAtomValue(workspaceTransitionAtom);
@@ -46,11 +59,16 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const isOnboardingIncomplete =
     onboardingStep !== null && onboardingStep !== 'completed';
   const isResolvingWorkspaceContext =
-    !api || isUserContextLoading || onboardingStep === null;
+    isAuthenticated &&
+    !isAuthLoading &&
+    isUserContextLoading;
+  const { shouldBlock: shouldBlockOnContextLoading } = useBootstrapLoadingTimeout(
+    isResolvingWorkspaceContext,
+  );
   const shouldShowWorkspaceSetupGate =
     !isOnOnboardingPage &&
     !isOnAdminPage &&
-    (isResolvingWorkspaceContext || isOnboardingIncomplete);
+    isOnboardingIncomplete;
 
   // Hide navigation for standalone subscription create page
   const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
@@ -116,6 +134,25 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     isOnboardingIncomplete,
     router,
   ]);
+
+  if (
+    !isOnOnboardingPage &&
+    !isOnAdminPage &&
+    shouldBlockOnContextLoading
+  ) {
+    return (
+      <div className="min-h-screen bg-background text-primary">
+        <LoadingScreen />
+        <CapacitorLoadingTimeout
+          isLoading={isResolvingWorkspaceContext}
+          timeoutMs={BOOTSTRAP_LOADING_MAX_MS}
+          onRetry={() => {
+            void refetchUserContext();
+          }}
+        />
+      </div>
+    );
+  }
 
   if (shouldShowWorkspaceSetupGate) {
     return (

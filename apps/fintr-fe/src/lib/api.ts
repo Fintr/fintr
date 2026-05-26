@@ -1,6 +1,27 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { getPublicBackendUrl } from '@/lib/public-backend-url';
 import { triggerSessionExpiration } from './session-expiration-handler';
+import { AuthStorage } from '@/lib/auth-storage';
+
+const AUTH_BOOTSTRAP_PATHS = ["/auth/private"];
+
+const isAuthBootstrapRequest = (url?: string) => {
+  if (!url) {
+    return false;
+  }
+
+  return AUTH_BOOTSTRAP_PATHS.some((path) => url.includes(path));
+};
+
+const hasFreshAuthSession = () => {
+  const authData = AuthStorage.getAuthData();
+
+  if (!authData?.issued_at) {
+    return false;
+  }
+
+  return Date.now() - authData.issued_at < 15000;
+};
 
 /**
  * rack-mini-profiler patches `window.fetch` to read `X-MiniProfiler-Ids` from API responses.
@@ -43,7 +64,10 @@ const handleResponseError = (error: AxiosError) => {
     details: responseData?.details,
   });
   
-  if (errorMessage.includes('Bad credentials: Signature has expired')) {
+  if (
+    errorMessage.includes('Bad credentials: Signature has expired') ||
+    errorMessage.includes('Bad credentials: Not enough or too many segments')
+  ) {
     console.error('Session expired: Signature has expired');
     // Only trigger if we're not already on a public route
     if (typeof window !== 'undefined') {
@@ -58,6 +82,12 @@ const handleResponseError = (error: AxiosError) => {
 
   if (status === 401) {
     console.error('Authentication error: Unauthorized');
+
+    if (isAuthBootstrapRequest(url) && hasFreshAuthSession()) {
+      console.warn('⚠️ 401 during auth bootstrap — allowing retry without clearing session');
+      return Promise.reject(error);
+    }
+
     // Clear auth and redirect to login
     if (typeof window !== 'undefined') {
       const publicRoutes = ['/login', '/auth', '/auth-callback', '/consent', '/', '/pricing', '/contact-us', '/privacy-policy', '/terms-of-service', '/waitlist', '/whats-next'];

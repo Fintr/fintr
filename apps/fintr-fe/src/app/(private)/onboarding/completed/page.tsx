@@ -157,7 +157,7 @@ export default function OnboardingCompleted() {
           </div>
         </div>
 
-        <Card className="shadow-lg border-border">
+        <Card className="shadow-lg border-border" data-testid="onboarding-completed-page">
           <CardHeader className="text-center px-4">
             <div className="mb-6">
               <CompletionIcon />

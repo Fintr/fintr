@@ -1,0 +1,1 @@
+export const BOOTSTRAP_LOADING_MAX_MS = 3000;
