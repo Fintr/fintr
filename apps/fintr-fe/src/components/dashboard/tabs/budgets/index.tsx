@@ -16,6 +16,7 @@ import {
 } from "@/services/budgets/queries";
 import { BudgetCategory } from "@/types/budgetTypes";
 import { z } from "zod";
+import { BudgetUsageBar } from "@/components/dashboard/insights/budget-usage-bar";
 import { formatCurrency, getProgressColor } from "@/lib/utils";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import { NewBudgetDialog } from "./new-budget-dialog";
@@ -492,7 +493,10 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
         <Card className="mb-6">
           <CardHeader className="px-4">
             <CardTitle>Budget Summary</CardTitle>
-            <CardDescription>Overview of your budget status</CardDescription>
+            <CardDescription>
+              Overview of your budget status. Totals use the same rules as
+              Dashboard insights for this date range.
+            </CardDescription>
           </CardHeader>
           <CardContent className="px-4">
             {isError ? (
@@ -521,15 +525,19 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                       ({formattedBudgetPercentage}%)
                     </div>
                   </div>
-                  <Progress
-                    value={budgetUsagePercentage > 100 ? 100 : budgetUsagePercentage}
-                    className="h-2 mt-2 bg-gray-200"
-                    indicatorClassName={getProgressColor(budgetUsagePercentage, "bg")}
+                  <BudgetUsageBar
+                    usagePercentage={budgetUsagePercentage}
+                    className="mt-2"
+                    overAmountLabel={
+                      isOverBudget
+                        ? formatCurrency(Math.abs(totalRemaining), spaceCurrency)
+                        : undefined
+                    }
                   />
                 </div>
                 <div className="bg-[#f9f7f5] p-4 rounded-lg">
                   <h4 className="text-sm font-medium text-primary/70 mb-1">
-                    Remaining
+                    {isOverBudget ? "Over budget" : "Remaining"}
                   </h4>
                   <div className={`text-2xl font-bold text-primary ${getProgressColor(budgetUsagePercentage, "font")}`}>
                     {formatCurrency(totalRemaining, spaceCurrency)}

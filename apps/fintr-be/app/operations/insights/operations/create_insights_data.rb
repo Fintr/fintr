@@ -31,8 +31,16 @@ module Insights
         params                 = step validate(params:)
         transactions           = step find_transactions(params:)
         budgets                = step find_budgets(params:)
+        budget_records         = step find_budget_records(params:)
         summary_structure      = step create_summary_structure(transactions:, space:)
-        health_scores          = step create_health_scores(summary_structure:, budgets:)
+        period_days            = (params[:end_date] - params[:start_date]).to_i + 1
+        health_scores          = step create_health_scores(
+          summary_structure:,
+          budget_records:,
+          transactions:,
+          space:,
+          period_days:
+        )
         expense_breakdown      = step create_expense_breakdown(transactions:, space:)
         weekly_spending        = step create_weekly_spending(transactions:, space:)
         monthly_spending       = step create_monthly_spending(params:)
@@ -68,6 +76,13 @@ module Insights
         )
       end
 
+      def find_budget_records(params:)
+        start_month = params[:start_date].to_date.beginning_of_month
+        end_month = params[:end_date].to_date.end_of_month
+        records = Budget.where(space_id: space.id, date: start_month..end_month).to_a
+        Success(records)
+      end
+
       def create_summary_structure(transactions:, space:)
         Insights::Operations::CreateSummaryStructure.new.call(
           transactions:,
@@ -75,8 +90,14 @@ module Insights
         )
       end
 
-      def create_health_scores(summary_structure:, budgets:)
-        Insights::Operations::CreateHealthScores.new.call(summary_structure:, budgets:)
+      def create_health_scores(summary_structure:, budget_records:, transactions:, space:, period_days:)
+        Insights::Operations::CreateHealthScores.new.call(
+          summary_structure:,
+          budget_records:,
+          transactions:,
+          space:,
+          period_days:
+        )
       end
 
       def create_expense_breakdown(transactions:, space:)

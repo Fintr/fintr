@@ -1,7 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { formatCurrency } from "@/lib/utils";
-import { AccountBreakdown } from "@/services/insights/queries";
+import { AccountBreakdown } from "@/services/insights/types";
 import { 
   Wallet, 
   CreditCard, 

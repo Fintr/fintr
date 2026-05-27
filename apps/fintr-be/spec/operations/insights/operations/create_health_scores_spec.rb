@@ -3,9 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Insights::Operations::CreateHealthScores do
+  include Dry::Monads[:result]
   let(:operation) { described_class.new }
   let(:user) { create(:user) }
-  let(:space) { create(:personal_space, users: [user]) } # Try direct user association
+  let(:space) { create(:personal_space, users: [user]) }
 
   let(:budget1) { build_stubbed(:budget, space: space, amount: Money.from_amount(1000, 'PHP')) }
   let(:budget2) { build_stubbed(:budget, space: space, amount: Money.from_amount(1500, 'PHP')) }
@@ -17,31 +18,73 @@ RSpec.describe Insights::Operations::CreateHealthScores do
       net_savings: BigDecimal('2000')
     }
   end
-  let(:valid_budgets_param) { [budget1, budget2] }
-  let(:valid_operation_params) { { summary_structure: valid_summary_structure, budgets: valid_budgets_param } }
+  let(:valid_budget_records) { [budget1, budget2] }
+  let(:valid_operation_params) do
+    {
+      summary_structure: valid_summary_structure,
+      budget_records: valid_budget_records,
+      transactions: Transactions::Transaction.none,
+      space:
+    }
+  end
+
+  def stub_budget_usage(total_budget:, total_expenses:)
+    usage_percentage =
+      total_budget.zero? ? 0.to_d : (total_expenses.to_d / total_budget.to_d * 100)
+    remaining = total_budget.to_d - total_expenses.to_d
+    compute = instance_double(Insights::Operations::ComputeBudgetUsage)
+    allow(Insights::Operations::ComputeBudgetUsage).to receive(:new).and_return(compute)
+    allow(compute).to receive(:call).and_return(
+      Success(
+        total_budget: total_budget.to_d,
+        total_expenses: total_expenses.to_d,
+        usage_percentage:,
+        remaining:,
+        over_amount: remaining.negative? ? -remaining : 0.to_d
+      )
+    )
+  end
 
   describe '#call' do
     context 'with valid parameters' do
       subject(:call_operation) { operation.call(**valid_operation_params) }
+
+      before { stub_budget_usage(total_budget: 2500, total_expenses: 3000) }
 
       it { is_expected.to be_success }
 
       it 'returns the correct health scores hash' do
         result = call_operation.value!
         expect(result).to be_a(Hash)
-        expect(result[:savings_percentage]).to eq({ percentage: Utils::Number.format_percentage(BigDecimal('40.0')), score: 100 })
-        expect(result[:debt_to_income_ratio]).to eq(Utils::Number.format_decimal(0))
-        expect(result[:budget_usage]).to eq({ percentage: Utils::Number.format_percentage(BigDecimal('120.0')), score: 70 })
-        expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('88.00')))
+        expect(result[:savings_percentage]).to include(
+          percentage: Utils::Number.format_percentage(BigDecimal('40.0')),
+          score: 100
+        )
+        expect(result[:savings_percentage][:calculation][:labeled_formula]).to eq(
+          "(Net savings ÷ Total income) × 100"
+        )
+        expect(result[:debt_to_income_ratio]).to include(
+          percentage: Utils::Number.format_percentage(0),
+          score: 100,
+          monthly_debt: Utils::Number.format_number(0)
+        )
+        expect(result[:budget_usage]).to include(
+          percentage: Utils::Number.format_percentage(BigDecimal('120.0')),
+          score: 70
+        )
+        expect(result[:calculation][:labeled_formula]).to include("50%")
+        expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('91.00')))
       end
     end
 
     context 'when calculating financial health score' do
       subject(:call_operation) { operation.call(**valid_operation_params) }
 
+      before { stub_budget_usage(total_budget: 2500, total_expenses: 3000) }
+
       it 'returns the correct financial_health_score for savings_percentage 40 and budget_usage 120' do
         result = call_operation.value!
-        expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('88.00')))
+        expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('91.00')))
       end
 
       context 'with different savings_percentage and budget_usage' do
@@ -54,19 +97,22 @@ RSpec.describe Insights::Operations::CreateHealthScores do
               total_expenses: BigDecimal('500'),
               net_savings: BigDecimal('100')
             },
-            budgets: [build_stubbed(:budget, space: space, amount: Money.from_amount(400, 'PHP'))]
+            budget_records: [build_stubbed(:budget, space: space, amount: Money.from_amount(400, 'PHP'))],
+            transactions: Transactions::Transaction.none,
+            space:
           }
         end
 
+        before { stub_budget_usage(total_budget: 400, total_expenses: 500) }
 
         it 'calculates financial_health_score correctly for savings 10%, budget usage 125%' do
           # savings_percentage: (100 / 1000) * 100 = 10%
           # budget_usage: (500 / 400) * 100 = 125%
           # Savings score: 10% -> 75
           # Budget usage score: 125% -> 70
-          # Financial health score: (75 * 0.6) + (70 * 0.4) = 45 + 28 = 73
+          # Financial health score: (75 * 0.5) + (70 * 0.3) + (100 * 0.2) = 37.5 + 21 + 20 = 78.5
           result = call_operation.value!
-          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('73.00')))
+          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('78.50')))
         end
       end
 
@@ -80,19 +126,22 @@ RSpec.describe Insights::Operations::CreateHealthScores do
               total_expenses: BigDecimal('500'),
               net_savings: BigDecimal('100')
             },
-            budgets: [build_stubbed(:budget, space: space, amount: Money.from_amount(0, 'PHP'))]
+            budget_records: [build_stubbed(:budget, space: space, amount: Money.from_amount(0, 'PHP'))],
+            transactions: Transactions::Transaction.none,
+            space:
           }
         end
 
+        before { stub_budget_usage(total_budget: 0, total_expenses: 500) }
 
         it 'calculates financial_health_score correctly when total budget is zero (budget_usage 0)' do
           # savings_percentage: (100 / 1000) * 100 = 10%
           # budget_usage: 0 (due to zero total budget)
           # Savings score: 10% -> 75
           # Budget usage score: 0% -> 0
-          # Financial health score: (75 * 0.6) + (0 * 0.4) = 45 + 0 = 45
+          # Financial health score: (75 * 0.5) + (0 * 0.3) + (100 * 0.2) = 37.5 + 0 + 20 = 57.5
           result = call_operation.value!
-          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('45.00')))
+          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('57.50')))
         end
       end
 
@@ -106,17 +155,20 @@ RSpec.describe Insights::Operations::CreateHealthScores do
               total_expenses: BigDecimal('1500'),
               net_savings: BigDecimal('-500')
             },
-            budgets: [build_stubbed(:budget, space: space, amount: Money.from_amount(1000, 'PHP'))]
+            budget_records: [build_stubbed(:budget, space: space, amount: Money.from_amount(1000, 'PHP'))],
+            transactions: Transactions::Transaction.none,
+            space:
           }
         end
 
+        before { stub_budget_usage(total_budget: 1000, total_expenses: 1500) }
 
         it 'calculates financial_health_score correctly when net savings is negative (savings_percentage 0)' do
           # savings_percentage: (-500 / 1000) * 100 = -50% -> 0 score
           # budget_usage: (1500 / 1000) * 100 = 150% -> 40 score
-          # Financial health score: (0 * 0.6) + (40 * 0.4) = 0 + 16 = 16
+          # Financial health score: (0 * 0.5) + (40 * 0.3) + (100 * 0.2) = 0 + 12 + 20 = 32
           result = call_operation.value!
-          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('16.00')))
+          expect(result[:financial_health_score]).to eq(Utils::Number.format_percentage(BigDecimal('32.00')))
         end
       end
     end
@@ -126,15 +178,19 @@ RSpec.describe Insights::Operations::CreateHealthScores do
         subject(:call_operation) { operation.call(**params_with_zero_income) }
 
         let(:params_with_zero_income) do
-          { summary_structure: valid_summary_structure.merge(total_income: BigDecimal('0')), budgets: valid_budgets_param }
+          valid_operation_params.merge(summary_structure: valid_summary_structure.merge(total_income: BigDecimal('0')))
         end
 
+        before { stub_budget_usage(total_budget: 2500, total_expenses: 3000) }
 
         it { is_expected.to be_success }
 
         it 'returns savings_percentage as formatted hash when total income is 0' do
           result = call_operation.value!
-          expect(result[:savings_percentage]).to eq({ percentage: Utils::Number.format_percentage(0), score: 0 })
+          expect(result[:savings_percentage]).to include(
+            percentage: Utils::Number.format_percentage(0),
+            score: 0
+          )
         end
       end
 
@@ -142,9 +198,8 @@ RSpec.describe Insights::Operations::CreateHealthScores do
         subject(:call_operation) { operation.call(**params_with_negative_income) }
 
         let(:params_with_negative_income) do
-          { summary_structure: valid_summary_structure.merge(total_income: BigDecimal('-100')), budgets: valid_budgets_param }
+          valid_operation_params.merge(summary_structure: valid_summary_structure.merge(total_income: BigDecimal('-100')))
         end
-
 
         it { is_expected.to be_failure }
 
@@ -158,15 +213,19 @@ RSpec.describe Insights::Operations::CreateHealthScores do
         subject(:call_operation) { operation.call(**params_with_zero_expenses) }
 
         let(:params_with_zero_expenses) do
-          { summary_structure: valid_summary_structure.merge(total_expenses: BigDecimal('0')), budgets: valid_budgets_param }
+          valid_operation_params.merge(summary_structure: valid_summary_structure.merge(total_expenses: BigDecimal('0')))
         end
 
+        before { stub_budget_usage(total_budget: 2500, total_expenses: 0) }
 
         it { is_expected.to be_success }
 
         it 'returns budget_usage as formatted hash when total expenses is 0' do
           result = call_operation.value!
-          expect(result[:budget_usage]).to eq({ percentage: Utils::Number.format_percentage(BigDecimal('0.0')), score: 100 })
+          expect(result[:budget_usage]).to include(
+            percentage: Utils::Number.format_percentage(BigDecimal('0.0')),
+            score: 100
+          )
         end
       end
 
@@ -174,9 +233,8 @@ RSpec.describe Insights::Operations::CreateHealthScores do
         subject(:call_operation) { operation.call(**params_with_negative_expenses) }
 
         let(:params_with_negative_expenses) do
-          { summary_structure: valid_summary_structure.merge(total_expenses: BigDecimal('-100')), budgets: valid_budgets_param }
+          valid_operation_params.merge(summary_structure: valid_summary_structure.merge(total_expenses: BigDecimal('-100')))
         end
-
 
         it { is_expected.to be_failure }
 
@@ -186,65 +244,31 @@ RSpec.describe Insights::Operations::CreateHealthScores do
         end
       end
 
-      context 'when budgets parameter is missing (passed as nil to operation call)' do
-        let(:params_with_nil_budgets) { { summary_structure: valid_summary_structure, budgets: nil } }
-
-        it 'fails with budgets error when budgets is nil' do
-          result = operation.call(**params_with_nil_budgets)
+      context 'when budget_records is nil' do
+        it 'fails with budget_records error' do
+          result = operation.call(**valid_operation_params.merge(budget_records: nil))
           expect(result).to be_failure
-          expect(result.failure).to include(:budgets)
-          expect(result.failure[:budgets]).to include('is missing')
+          expect(result.failure).to include(:budget_records)
         end
       end
 
-      context 'when budgets key is not present in params hash for operation call' do
-        let(:params_without_budgets_key) { { summary_structure: valid_summary_structure } }
+      context 'when budget_records is an empty array' do
+        subject(:call_operation) { operation.call(**params_with_empty_budget_records) }
 
-        it 'fails with budgets error when budgets key is missing' do
-           result = operation.call(params_without_budgets_key)
-           expect(result).to be_failure
-           expect(result.failure).to include(:budgets)
-           expect(result.failure[:budgets]).to include('is missing')
+        let(:params_with_empty_budget_records) do
+          valid_operation_params.merge(budget_records: [])
         end
-      end
 
-      context 'when budgets is an empty array' do
-        subject(:call_operation) { operation.call(**params_with_empty_budgets) }
-
-        let(:params_with_empty_budgets) { { summary_structure: valid_summary_structure, budgets: [] } }
-
+        before { stub_budget_usage(total_budget: 0, total_expenses: 0) }
 
         it { is_expected.to be_success }
 
         it 'returns health scores with budget_usage as formatted hash when total budget is 0' do
-          # With an empty budget array, total_budget will be 0, leading to budget_usage 0.
           result = call_operation.value!
-          expect(result[:budget_usage]).to eq({ percentage: Utils::Number.format_percentage(0), score: 0 })
-        end
-      end
-
-      context 'when budgets is an array with a non-Budget object as the first element' do
-        subject(:call_operation) { operation.call(**params_with_invalid_first_budget) }
-
-        let(:params_with_invalid_first_budget) { { summary_structure: valid_summary_structure, budgets: ['not a budget'] } }
-
-
-        it { is_expected.to be_failure }
-
-        it 'fails with budgets error' do
-          expect(call_operation.failure).to include(:budgets)
-          expect(call_operation.failure[:budgets]).to include('should be an array of budgets')
-        end
-      end
-
-      context 'when budgets has a valid first element but invalid subsequent elements' do
-        subject(:call_operation) { operation.call(**params_with_mixed_budgets) }
-
-        let(:params_with_mixed_budgets) { { summary_structure: valid_summary_structure, budgets: [budget1, 'not a budget'] } }
-
-
-        it 'succeeds due to flawed contract logic (only checks first element for type)' do
-          expect { call_operation.value! }.to raise_error(NoMethodError, /undefined method 'amount' for an instance of String/)
+          expect(result[:budget_usage]).to include(
+            percentage: Utils::Number.format_percentage(0),
+            score: 0
+          )
         end
       end
     end
@@ -254,13 +278,17 @@ RSpec.describe Insights::Operations::CreateHealthScores do
         subject(:call_operation) { operation.call(**params) }
 
         let(:summary_zero_net_savings) { valid_summary_structure.merge(net_savings: BigDecimal('0')) }
-        let(:params) { { summary_structure: summary_zero_net_savings, budgets: valid_budgets_param } }
+        let(:params) { valid_operation_params.merge(summary_structure: summary_zero_net_savings) }
 
+        before { stub_budget_usage(total_budget: 2500, total_expenses: 3000) }
 
         it { is_expected.to be_success }
 
         it 'returns savings_percentage as formatted hash with 0.0 percentage' do
-          expect(call_operation.value![:savings_percentage]).to eq({ percentage: Utils::Number.format_percentage(BigDecimal('0.0')), score: 0 })
+          expect(call_operation.value![:savings_percentage]).to include(
+            percentage: Utils::Number.format_percentage(BigDecimal('0.0')),
+            score: 0
+          )
         end
       end
 
@@ -268,13 +296,19 @@ RSpec.describe Insights::Operations::CreateHealthScores do
         subject(:call_operation) { operation.call(**params_zero_total_budget) }
 
         let(:budget_with_zero_amount) { build_stubbed(:budget, space: space, amount: Money.from_amount(0, 'PHP')) }
-        let(:params_zero_total_budget) { { summary_structure: valid_summary_structure, budgets: [budget_with_zero_amount] } }
+        let(:params_zero_total_budget) do
+          valid_operation_params.merge(budget_records: [budget_with_zero_amount])
+        end
 
+        before { stub_budget_usage(total_budget: 0, total_expenses: 3000) }
 
         it { is_expected.to be_success }
 
         it 'returns budget_usage as formatted hash with 0.00% percentage' do
-          expect(call_operation.value![:budget_usage]).to eq({ percentage: Utils::Number.format_percentage(0), score: 0 })
+          expect(call_operation.value![:budget_usage]).to include(
+            percentage: Utils::Number.format_percentage(0),
+            score: 0
+          )
         end
       end
     end

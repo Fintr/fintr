@@ -20,7 +20,8 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
 
       let!(:food_category) { create(:category, space:, category_type: "expense", name: "Food") }
       let!(:transport_category) { create(:category, space:, category_type: "expense", name: "Transport") }
-      let(:mock_transactions_query) { instance_double(ActiveRecord::Relation, sum: 15000) }
+      let(:user) { create(:user) }
+      let(:account) { create(:account, space:) }
 
       before do
         create(
@@ -39,12 +40,20 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
           amount_cents: 20_000,
           amount_currency: "PHP",
         )
+        create(
+          :expense_transaction,
+          user:,
+          space:,
+          account:,
+          category: food_category,
+          date: test_date,
+          amount_cents: 15_000,
+          amount_currency: "PHP",
+          balance_state: :calculated
+        )
 
         allow(Budgets::Queries::MonthlyBudgets).to receive(:call).and_return(
           Dry::Monads::Success(Budget.none)
-        )
-        allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_return(
-          Dry::Monads::Success(mock_transactions_query)
         )
       end
 
@@ -90,17 +99,19 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
       end
 
       it 'calls FilteredTransactions query with correct parameters' do
+        allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_call_original
         call_operation
         expect(Transactions::Queries::FilteredTransactions).to have_received(:call).with(
-          params: {
+          params: hash_including(
             space_code: space.code,
             start_date: test_date.beginning_of_month,
             end_date: test_date.end_of_month,
             category_name: nil,
+            without_initial_balance: true,
             balance_state: "calculated",
             transaction_type: "Transactions::Expense",
             paginate: false
-          }
+          )
         )
       end
     end
@@ -115,7 +126,8 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
       end
 
       let!(:utilities_category) { create(:category, space:, category_type: "expense", name: "Utilities") }
-      let(:mock_transactions_query) { instance_double(ActiveRecord::Relation, sum: 2500) }
+      let(:user) { create(:user) }
+      let(:account) { create(:account, space:) }
 
       before do
         create(
@@ -126,12 +138,20 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
           amount_cents: 5000,
           amount_currency: "PHP",
         )
+        create(
+          :expense_transaction,
+          user:,
+          space:,
+          account:,
+          category: utilities_category,
+          date: params[:start_date] + 5.days,
+          amount_cents: 2500,
+          amount_currency: "PHP",
+          balance_state: :calculated
+        )
 
         allow(Budgets::Queries::MonthlyBudgets).to receive(:call).and_return(
           Dry::Monads::Success(Budget.none)
-        )
-        allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_return(
-          Dry::Monads::Success(mock_transactions_query)
         )
       end
 
@@ -376,14 +396,10 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
       end
 
       let(:mock_monthly_budgets_query) { instance_double(ActiveRecord::Relation, to_a: []) }
-      let(:mock_transactions_query) { instance_double(ActiveRecord::Relation, sum: 0) }
 
       before do
         allow(Budgets::Queries::MonthlyBudgets).to receive(:call).and_return(
           Dry::Monads::Success(mock_monthly_budgets_query)
-        )
-        allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_return(
-          Dry::Monads::Success(mock_transactions_query)
         )
         allow(Budgets::Serializers::MonthlyBudgetsSerializer).to receive(:render_as_hash)
           .with([])

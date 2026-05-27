@@ -118,8 +118,14 @@ RSpec.describe Insights::Operations::CreateInsightsData do
         call_operation
       end
 
-      it 'calls Insights::Operations::CreateHealthScores with summary_structure and budgets' do
-        expect(mock_create_health_scores_op).to receive(:call).with(summary_structure: mocked_summary_structure_result.value!, budgets: mocked_budgets_result.value!).and_return(mocked_health_scores_result)
+      it 'calls Insights::Operations::CreateHealthScores with summary_structure and budget records' do
+        expect(mock_create_health_scores_op).to receive(:call).with(
+          summary_structure: mocked_summary_structure_result.value!,
+          budget_records: kind_of(Array),
+          transactions: mocked_transactions_result.value!,
+          space:,
+          period_days: 31
+        ).and_return(mocked_health_scores_result)
         call_operation
       end
 
