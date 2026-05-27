@@ -97,6 +97,29 @@ export const categoryPickerValueFromName = (
   return categoryName.trim();
 };
 
+/** Maps a display name from insights/API to a transactions filter value (id or name). */
+export const resolveCategoryFilterFromDisplayName = (
+  categoryName: string,
+  expenseOptions: CategoryTreeOption[],
+  incomeOptions: CategoryTreeOption[],
+): string => {
+  const trimmed = categoryName.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  for (const options of [expenseOptions, incomeOptions]) {
+    const value = categoryPickerValueFromName(trimmed, options);
+
+    if (isCategoryPickerId(value)) {
+      return value;
+    }
+  }
+
+  return trimmed;
+};
+
 export const categoryPickerValueFromTransaction = (input: {
   categoryId?: string | null;
   subcategoryId?: string | null;

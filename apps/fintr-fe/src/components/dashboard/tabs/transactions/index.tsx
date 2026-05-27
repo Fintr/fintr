@@ -26,7 +26,10 @@ import { TransactionFiltersSheet, FilterTypes } from "./filters";
 import { DownloadButton } from "./buttons/DownloadButton";
 import { DeleteButton } from "./buttons/DeleteButton";
 import { ViewModeButton } from "./buttons/ViewModeButton";
-import { parseCategoryPickerValue } from "@/types/categoryTreeTypes";
+import {
+  parseCategoryPickerValue,
+  resolveCategoryFilterFromDisplayName,
+} from "@/types/categoryTreeTypes";
 import { IndexTransaction, TransactionIndexInputType, TransactionTotals } from "@/types/transactionTypes";
 import { TransactionTotalsDisplay } from "./transaction-totals";
 import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
@@ -46,8 +49,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateTransactionsCsv } from "@/services/transactions/queries";
 import { getUserFacingExportErrorMessage } from "@/lib/user-facing-export-error";
 import { toast } from "sonner";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { dateFilterTypeAtom, dateFilterStartDateAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom } from "@/atoms/dateFilterAtoms";
+import {
+  expenseCategoryOptionsAtom,
+  incomeCategoryOptionsAtom,
+} from "@/atoms/dashboardAtoms";
+import { useSearchParams } from "next/navigation";
 
 interface TransactionsTabProps {
   // Define any props if needed, but not used in this component
@@ -55,6 +63,10 @@ interface TransactionsTabProps {
 
 const TransactionsTab = ({ }: TransactionsTabProps) => {
   const showV2Features = shouldShowV2Features();
+  const searchParams = useSearchParams();
+  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
+  const categoryFromUrl = searchParams.get("category");
   const [spaceCode] = useLocalStorage("spaceCode", "");
   const { firstDay, lastDay } = getCurrentMonthDates();
   const currentMonth = new Date()
@@ -102,8 +114,47 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     appliedMinAmount: "",
     appliedMaxAmount: "",
     searchQuery: "",
-  }))
-  
+  }));
+
+  useEffect(() => {
+    if (!categoryFromUrl) {
+      return;
+    }
+
+    if (
+      expenseCategoryOptions.length === 0
+      && incomeCategoryOptions.length === 0
+    ) {
+      return;
+    }
+
+    const resolvedCategory = resolveCategoryFilterFromDisplayName(
+      categoryFromUrl,
+      expenseCategoryOptions,
+      incomeCategoryOptions,
+    );
+
+    if (!resolvedCategory) {
+      return;
+    }
+
+    setAppliedFilters((previous) => {
+      if (previous.appliedCategory === resolvedCategory) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        selectedCategory: resolvedCategory,
+        appliedCategory: resolvedCategory,
+      };
+    });
+  }, [
+    categoryFromUrl,
+    expenseCategoryOptions,
+    incomeCategoryOptions,
+  ]);
+
   // Check if any filters are active (beyond default date range)
   const hasActiveFilters = () => {
     const { firstDay, lastDay } = getCurrentMonthDates();

@@ -148,7 +148,17 @@ Rails.application.routes.draw do
       end
       resources :budgets, only: %i[index create update destroy]
       resources :entities, only: %i[index create]
-      resources :insights, only: [:index]
+      resources :insights, only: [:index] do
+        collection do
+          get :summary
+          get :health_scores
+          get :expense_breakdown
+          get :weekly_spending
+          get :monthly_spending
+          get :account_breakdown
+          get :narratives
+        end
+      end
       resources :receipts, only: [:create] do
         collection do
           post :process_test

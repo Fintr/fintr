@@ -10,6 +10,7 @@ import {
   getCategoryTriggerDisplay,
   isCategoryPickerId,
   parseCategoryPickerValue,
+  resolveCategoryFilterFromDisplayName,
 } from "./categoryTreeTypes";
 
 const PARENT_ID = "11111111-1111-4111-8111-111111111111";
@@ -64,6 +65,24 @@ describe("categoryTreeTypes", () => {
   it("rejects plain category names as picker values", () => {
     expect(parseCategoryPickerValue("Dine Out & Entertainment")).toBeNull();
     expect(parseCategoryPickerValue("Transfer Fee")).toBeNull();
+  });
+
+  it("resolves category filter from display name for transactions URL", () => {
+    expect(
+      resolveCategoryFilterFromDisplayName(
+        "Food",
+        tree,
+        [],
+      ),
+    ).toBe(PARENT_ID);
+
+    expect(
+      resolveCategoryFilterFromDisplayName(
+        "Unknown Category",
+        tree,
+        [],
+      ),
+    ).toBe("Unknown Category");
   });
 
   it("formats and parses parent + sub values", () => {

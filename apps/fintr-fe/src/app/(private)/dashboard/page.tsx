@@ -1,6 +1,8 @@
 "use client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Suspense } from "react";
+import { TabsContent } from "@/components/ui/tabs";
 import dynamic from "next/dynamic";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 const DynamicTransactionsTab = dynamic(
   () => import("@/components/dashboard/tabs/transactions/index"),
@@ -12,7 +14,15 @@ const DynamicTransactionsTab = dynamic(
 export default function page() {
   return (
     <TabsContent value="transactions">
-      <DynamicTransactionsTab />
+      <Suspense
+        fallback={
+          <div className="flex justify-center py-12">
+            <LoadingSpinner size="medium" />
+          </div>
+        }
+      >
+        <DynamicTransactionsTab />
+      </Suspense>
     </TabsContent>
   );
 }

@@ -19,9 +19,13 @@ const minimalInsightsResponse = {
     },
     healthScores: {
       savingsPercentage: { percentage: "10%", score: 10 },
-      debtToIncomeRatio: "0",
+      debtToIncomeRatio: {
+        percentage: "0%",
+        score: 100,
+        monthlyDebt: "0",
+      },
       budgetUsage: { percentage: "5%", score: 5 },
-      financialHealthScore: "75",
+      financialHealthScore: "75%",
     },
     expenseBreakdown: [],
     weeklySpending: [],
@@ -113,10 +117,41 @@ async function mockInsightsFlowApi(page: Page) {
       await route.continue();
       return;
     }
+
+    const url = new URL(route.request().url());
+    const section = url.pathname.split("/").pop() || "insights";
+    const payload = minimalInsightsResponse.data;
+
+    let data: unknown = payload;
+    if (section === "summary") {
+      data = payload.summaryStructure;
+    } else if (section === "health_scores") {
+      data = payload.healthScores;
+    } else if (section === "expense_breakdown") {
+      data = payload.expenseBreakdown;
+    } else if (section === "weekly_spending") {
+      data = payload.weeklySpending;
+    } else if (section === "monthly_spending") {
+      data = payload.monthlySpending;
+    } else if (section === "account_breakdown") {
+      data = payload.accountBreakdown;
+    } else if (section === "narratives") {
+      data = {
+        headline: { text: "You kept ₱0 this period.", sentiment: "positive" },
+        metrics: [],
+        insights: [],
+        dataQuality: {
+          transactionCount: 0,
+          categorizedPercent: "0%",
+          completenessTier: "sparse",
+        },
+      };
+    }
+
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(minimalInsightsResponse),
+      body: JSON.stringify({ success: true, message: "Success", data }),
     });
   });
 

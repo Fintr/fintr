@@ -85,7 +85,8 @@ module Budgets
             category_name: nil,
             balance_state: "calculated",
             transaction_type: "Transactions::Expense",
-            paginate: false
+            paginate: false,
+            without_initial_balance: true
           }
         )
       end
@@ -109,17 +110,19 @@ module Budgets
 
         budget_rows = budget_rows_result.value!
 
-        total_budget = monthly_budgets_array.sum(&:amount_cents) / 100.to_d
-        total_spent = monthly_transactions_query.sum(:amount_cents) / 100.to_d
-        remaining = total_budget - total_spent
+        usage_values = step Insights::Operations::ComputeBudgetUsage.new.call(
+          budget_records: monthly_budgets_array,
+          transactions: monthly_transactions_query,
+          space:
+        )
 
         output = {
           budgets: budget_rows,
           summary: {
-            total_budget: total_budget.round.to_i,
-            total_spent: total_spent.round.to_i,
-            total_spent_percentage: total_budget.zero? ? nil : (total_spent / total_budget * 100).round(2),
-            remaining: remaining.round.to_i
+            total_budget: usage_values[:total_budget].round.to_i,
+            total_spent: usage_values[:total_expenses].round.to_i,
+            total_spent_percentage: usage_values[:total_budget].zero? ? nil : usage_values[:usage_percentage].round(2),
+            remaining: usage_values[:remaining].round.to_i
           }
         }
         Success(output)

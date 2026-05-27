@@ -34,7 +34,11 @@ import {
   Filter,
   Eye,
 } from "lucide-react";
-import { useInsightsData } from "@/hooks/async/useInsightsData";
+import { useInsightsQueries } from "@/hooks/async/useInsightsQueries";
+import { InsightNarrativeCards } from "@/components/dashboard/insights/insight-narrative-cards";
+import { InsightMetricCards } from "@/components/dashboard/insights/insight-metric-cards";
+import { DashboardSummarySection } from "@/components/dashboard/insights/dashboard-summary-section";
+import { ExpenseBreakdownCenterLabel } from "@/components/dashboard/insights/expense-breakdown-center-label";
 import {
   LineChart as RechartsLineChart,
   Line,
@@ -47,6 +51,7 @@ import {
   PieChart as RechartsPieChart,
   Pie,
   Cell,
+  Label as RechartsLabel,
   BarChart as RechartsBarChart,
   Bar,
   ReferenceLine,
@@ -64,7 +69,7 @@ import { FilterOptionPills } from "@/components/ui/filter-option-pills";
 import { FilterSheet } from "@/components/ui/filter-sheet";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import ScoreTag from "@/components/ui/score-tag";
+import { HealthScoreFactorRow } from "@/components/dashboard/insights/health-score-factor-row";
 import AccountBreakdownComponent from "@/components/dashboard/account-breakdown";
 import {
   dateFilterStartDateAtom,
@@ -123,15 +128,9 @@ const InsightsTab = () => {
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
 
-  console.log("[DEBUG] Component initialized - spaceCurrency:", spaceCurrency, "currentSpace:", currentSpace);
-
-  // Helper function to format currency with space currency.
-  // Removes .00 for whole numbers to make the negative sign more visible.
   const formatAmount = (amount: number) => {
     let result = formatCurrency(amount, spaceCurrency);
-    // Remove .00 or ,00 (depending on locale) for whole numbers
     result = result.replace(/[.,]00$/, "");
-    console.log("[DEBUG formatAmount] input:", amount, "result:", result);
     return result;
   };
 
@@ -247,17 +246,36 @@ const InsightsTab = () => {
     }
   }, [filterType, monthYear, selectedCategory, selectedCategoryAssignment]);
   
-  // Fetch insights data from API
-  const { data: insightsData, isLoading, isError, refetch } = useInsightsData(getInsightsParams);
+  const {
+    summary,
+    narratives,
+    healthScores: healthScoresData,
+    expenseBreakdown,
+    monthlySpending,
+    weeklySpending,
+    accountBreakdown,
+    isLoading,
+    isError,
+    isAccountLoading,
+    isChartsLoading,
+    refetch,
+  } = useInsightsQueries(getInsightsParams);
+
+  const insightsData = {
+    summary,
+    healthScores: healthScoresData,
+    expenseBreakdown,
+    monthlySpending,
+    weeklySpending,
+    accountBreakdown,
+  };
 
   // Calculate Y-axis domain for bar chart with padding
   const barChartYAxisDomain = useMemo(() => {
     const data = insightsData?.monthlySpending || monthlyFinancialData;
-    console.log("[DEBUG] Calculating Y-axis domain, raw data:", data);
 
     if (!data || data.length === 0) {
-      console.log("[DEBUG] No data, returning default domain [0, 100000]");
-      return [0, 100000]; // Default range
+      return [0, 100000];
     }
 
     // Find max and min values across all data points (income, expenses, savings)
@@ -274,37 +292,14 @@ const InsightsTab = () => {
     const domainMax = maxValue * 1.2;
     const domainMin = minValue < 0 ? minValue * 1.1 : 0;
 
-    const result = [domainMin, domainMax];
-    console.log("[DEBUG] Y-axis domain calculation:", {
-      allValues,
-      maxValue,
-      minValue,
-      domainMin,
-      domainMax,
-      result,
-    });
-    return result;
+    return [domainMin, domainMax];
   }, [insightsData?.monthlySpending]);
 
   // Whether we actually have negative savings in the series
   const hasNegativeSavings = useMemo(() => {
     const data = insightsData?.monthlySpending || monthlyFinancialData;
-    const result = data.some((item) => (item.savings || 0) < 0);
-    console.log("[DEBUG] hasNegativeSavings:", result, "data:", data);
-    return result;
+    return data.some((item) => (item.savings || 0) < 0);
   }, [insightsData?.monthlySpending]);
-
-  // Debug logging for formatAmount
-  const debugFormatAmount = (amount: number, context: string) => {
-    const result = formatCurrency(amount, spaceCurrency);
-    console.log(`[DEBUG formatAmount] ${context}:`, {
-      input: amount,
-      spaceCurrency,
-      result,
-      isNegative: amount < 0,
-    });
-    return result;
-  };
 
   // Calculate Y-axis domain for financial trends chart with padding
   const yAxisDomain = useMemo(() => {
@@ -337,15 +332,11 @@ const InsightsTab = () => {
   const processedExpenseBreakdown = useMemo(() => {
     const data = insightsData?.expenseBreakdown || categoryExpenseData;
     
-    console.log('Raw expense breakdown data:', data);
-    console.log('Insights data:', insightsData);
-
     if (data.length <= 5) {
       const result = data.map((item, index) => ({
         ...item,
         color: getColorByIndex(index), // Ensure all items have colors
       }));
-      console.log('Processed expense breakdown (≤5 items):', result);
       return result;
     }
 
@@ -377,7 +368,6 @@ const InsightsTab = () => {
         details: otherDetails 
       },
     ];
-    console.log('Processed expense breakdown (>5 items):', result);
     return result;
   }, [insightsData?.expenseBreakdown]);
 
@@ -667,57 +657,23 @@ const InsightsTab = () => {
           </div>
         </FilterSheet>
 
-        <Card className="mb-6 border border-primary/10" data-tutorial-target="dashboard-summary">
-          <CardHeader className="px-4">
-            {/* Insights Summary */}
-            <CardTitle>Dashboard Summary</CardTitle>
-            <CardDescription>
-              Overview of your financial performance
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-4">
-            {isLoading ? (
-              <div className="text-center py-8">
-                <LoadingSpinner size="medium" />
-              </div>
-            ) : isError ? (
-              <div className="text-center py-8 text-red-900">
-                Error loading insights. Please try again.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-primary/70 mb-1">
-                    Total Income
-                  </h4>
-                  <div
-                    className={`text-2xl font-bold ${(insightsData?.summary?.totalIncome || 0) >= 0 ? "text-teal-600" : "text-red-900"}`}
-                  >
-                    {formatAmount(insightsData?.summary?.totalIncome || 0)}
-                  </div>
-                </div>
-                <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-primary/70 mb-1">
-                    Total Expenses
-                  </h4>
-                  <div className="text-2xl font-bold text-red-900">
-                    {formatAmount(insightsData?.summary?.totalExpenses || 0)}
-                  </div>
-                </div>
-                <div className="bg-[#f9f7f5] p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-primary/70 mb-1">
-                    Net Savings
-                  </h4>
-                  <div
-                    className={`text-2xl font-bold ${(insightsData?.summary?.netSavings || 0) >= 0 ? "text-teal-600" : "text-red-900"}`}
-                  >
-                    {formatAmount(insightsData?.summary?.netSavings || 0)}
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <DashboardSummarySection
+          summary={summary}
+          isLoading={isLoading}
+          isError={isError}
+          formatAmount={formatAmount}
+        />
+
+        <InsightMetricCards
+          metrics={narratives?.metrics ?? []}
+          isLoading={isLoading}
+          isBusiness={currentSpace?.isOrganization ?? false}
+        />
+
+        <InsightNarrativeCards
+          insights={narratives?.insights ?? []}
+          isLoading={isLoading}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 md:gap-6">
           <Card className="border-0" data-tutorial-target="financial-health-score">
@@ -778,32 +734,57 @@ const InsightsTab = () => {
                   </div>
 
                   <div className="mt-6 space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Savings Rate</span>
-                      <ScoreTag
-                        percentage={insightsData?.healthScores?.savingsPercentage?.percentage || "0%"}
-                        score={insightsData?.healthScores?.savingsPercentage?.score || 0}
-                        color="bg-teal-600"
-                      />
-                    </div>
-                    <Progress
-                      value={insightsData?.healthScores?.savingsPercentage?.score || 0}
-                      className="h-2 bg-gray-200"
-                      indicatorClassName="bg-teal-600"
+                    <HealthScoreFactorRow
+                      label="Savings Rate"
+                      variant="savings"
+                      percentage={
+                        insightsData?.healthScores?.savingsPercentage
+                          ?.percentage || "0%"
+                      }
+                      score={
+                        insightsData?.healthScores?.savingsPercentage?.score ||
+                        0
+                      }
+                      helpTitle="Savings rate score"
+                      calculation={
+                        insightsData?.healthScores?.savingsPercentage
+                          ?.calculation
+                      }
                     />
 
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Budget Usage</span>
-                      <ScoreTag
-                        percentage={insightsData?.healthScores?.budgetUsage?.percentage || "0%"}
-                        score={insightsData?.healthScores?.budgetUsage?.score || 0}
-                        color="bg-primary"
-                      />
-                    </div>
-                    <Progress
-                      value={insightsData?.healthScores?.budgetUsage?.score || 0}
-                      className="h-2 bg-gray-200"
-                      indicatorClassName="bg-primary"
+                    <HealthScoreFactorRow
+                      label="Budget Usage"
+                      variant="budget"
+                      percentage={
+                        insightsData?.healthScores?.budgetUsage?.percentage ||
+                        "0%"
+                      }
+                      score={
+                        insightsData?.healthScores?.budgetUsage?.score || 0
+                      }
+                      helpTitle="Budget usage score"
+                      calculation={
+                        insightsData?.healthScores?.budgetUsage?.calculation
+                      }
+                      footnote={`${insightsData?.healthScores?.budgetUsage?.percentage || "0%"} of budget used in this period.`}
+                    />
+
+                    <HealthScoreFactorRow
+                      label="Debt-to-income"
+                      variant="debt"
+                      percentage={
+                        insightsData?.healthScores?.debtToIncomeRatio
+                          ?.percentage || "0%"
+                      }
+                      score={
+                        insightsData?.healthScores?.debtToIncomeRatio?.score ||
+                        0
+                      }
+                      helpTitle="Debt-to-income score"
+                      calculation={
+                        insightsData?.healthScores?.debtToIncomeRatio
+                          ?.calculation
+                      }
                     />
                   </div>
                 </>
@@ -921,7 +902,11 @@ const InsightsTab = () => {
               </CardContent>
             </Card>
           ) : (
-            <Card className="col-span-2 border-0" data-tutorial-target="expense-breakdown">
+            <Card
+              className="col-span-2 border-0"
+              data-tutorial-target="expense-breakdown"
+              data-testid="expense-breakdown"
+            >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <PieChart className="h-5 w-5 text-primary" />
@@ -932,7 +917,7 @@ const InsightsTab = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {isLoading ? (
+                {isLoading || isChartsLoading ? (
                   <div className="text-center py-8">
                     <LoadingSpinner size="medium" />
                   </div>
@@ -941,23 +926,41 @@ const InsightsTab = () => {
                     <p className="text-sm text-gray-500">No expense data available</p>
                   </div>
                 ) : (
-                  <div className="h-96 w-full relative">
+                  <div
+                    className="h-96 w-full"
+                    data-testid="expense-breakdown-chart"
+                  >
                     <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart>
+                      <RechartsPieChart margin={{ bottom: 56 }}>
                         <Pie
                           data={processedExpenseBreakdown}
                           cx="50%"
-                          cy="45%"
+                          cy="50%"
                           innerRadius={60}
                           outerRadius={90}
                           fill="#8884d8"
                           dataKey="value"
                           nameKey="name"
                           paddingAngle={2}
+                          isAnimationActive={false}
                         >
                           {processedExpenseBreakdown.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
+                          <RechartsLabel
+                            position="center"
+                            content={(labelRenderProps) => (
+                              <ExpenseBreakdownCenterLabel
+                                viewBox={labelRenderProps.viewBox}
+                                totalLabel={formatAmount(
+                                  processedExpenseBreakdown.reduce(
+                                    (sum, item) => sum + item.value,
+                                    0,
+                                  ),
+                                )}
+                              />
+                            )}
+                          />
                         </Pie>
                         <RechartsTooltip
                           formatter={(value: number, name: string, props: any) => {
@@ -1005,30 +1008,12 @@ const InsightsTab = () => {
                         />
                       </RechartsPieChart>
                     </ResponsiveContainer>
-                    {/* Center label for donut - z-index lower than tooltip */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ marginBottom: '80px', zIndex: 0 }}>
-                      <div className="text-center">
-                        <p className="text-xs text-gray-500">Total Expenses</p>
-                        <p className="text-base font-semibold text-gray-900">
-                          {formatAmount(processedExpenseBreakdown.reduce((sum, item) => sum + item.value, 0))}
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
           )}
         </div>
-
-        {/* Account Breakdown */}
-        <AccountBreakdownComponent
-          data={insightsData?.accountBreakdown || { totalBalance: 0, breakdown: [] }}
-          isLoading={isLoading}
-          currencyCode={spaceCurrency}
-          transactionsStartDate={startDate}
-          transactionsEndDate={endDate}
-        />
 
         <Card className="border-0 mt-6">
           <CardHeader>
@@ -1175,7 +1160,7 @@ const InsightsTab = () => {
             <CardDescription>Your daily expenses this week</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {isLoading || isChartsLoading ? (
               <div className="text-center py-8">
                 <LoadingSpinner size="medium" />
               </div>
@@ -1204,6 +1189,14 @@ const InsightsTab = () => {
             )}
           </CardContent>
         </Card>
+
+        <AccountBreakdownComponent
+          data={insightsData?.accountBreakdown || { totalBalance: 0, breakdown: [] }}
+          isLoading={isAccountLoading}
+          currencyCode={spaceCurrency}
+          transactionsStartDate={startDate}
+          transactionsEndDate={endDate}
+        />
 
         {showV2Features && (
           <Card className="mt-6 border-0">
