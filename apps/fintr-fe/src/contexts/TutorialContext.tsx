@@ -62,11 +62,14 @@ interface TutorialProviderProps {
 }
 
 export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
-  const { spaceCode } = useGetSpaceCode(api);
+  const { spaceCode } = useGetSpaceCode(
+    api,
+    isAuthenticated && !isAuthLoading,
+  );
   const queryClient = useQueryClient();
   const pathname = usePathname();
   

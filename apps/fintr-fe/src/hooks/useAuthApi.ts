@@ -3,6 +3,7 @@ import { createAuthenticatedClient } from '@/lib/api';
 import { AxiosInstance } from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { isPublicPath } from '@/lib/public-routes';
 
 /**
  * Custom hook that provides an authenticated Axios instance using Auth0 tokens
@@ -37,8 +38,12 @@ export const useAuthApi = (options?: {
       return token;
     } catch (e: any) {
       console.error('Error getting access token:', e);
-      // Redirect to login on token error
-      router.push('/login');
+      if (
+        typeof window !== "undefined"
+        && !isPublicPath(window.location.pathname)
+      ) {
+        router.push("/login");
+      }
       throw e;
     }
   }, [getAccessToken, router]);

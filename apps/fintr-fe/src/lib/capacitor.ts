@@ -55,6 +55,24 @@ export const isCapacitorEnvironment = (): boolean => {
 };
 
 /**
+ * True when the request comes from the Fintr iOS/Android Capacitor WebView.
+ * capacitor.config.ts appends "FintrNativeApp" to the user agent for both platforms.
+ */
+export const hasFintrNativeAppUserAgent = (): boolean => {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+
+  return navigator.userAgent.includes('FintrNativeApp');
+};
+
+/**
+ * Marketing homepage (fintr.ai `/`): redirect to /auth only inside the native app.
+ * Regular browsers — including mobile Safari/Chrome — must always see the landing page.
+ */
+export const shouldRedirectHomeToAuth = (): boolean => hasFintrNativeAppUserAgent();
+
+/**
  * Check if we're running as a native Capacitor app (iOS/Android), not in a browser.
  * Use this when choosing redirect URIs: only use fintrapp:// when this is true.
  * When Capacitor is loaded in a web build, getPlatform() is 'web' and we must use
@@ -66,32 +84,37 @@ export const isCapacitorEnvironment = (): boolean => {
  *    reliable regardless of Capacitor bridge injection timing.
  * 2. window.Capacitor bridge (always works on iOS at document start; on Android this can
  *    arrive after page load via evaluateJavascript, so it may be absent initially).
- * 3. Android WebView user-agent signature ("; wv)") — Chrome omits this, WebView includes it.
+ *
+ * Do not treat generic Android WebView UAs ("; wv)") as native — that matches in-app
+ * browsers and other WebViews loading https://fintr.ai and would incorrectly redirect
+ * the marketing site to /auth.
  */
 export const isNativeCapacitor = (): boolean => {
   if (typeof window === 'undefined') return false;
 
-  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  if (hasFintrNativeAppUserAgent()) return true;
 
-  // Primary check: FintrNativeApp is appended to the user-agent by capacitor.config.ts for
-  // both iOS and Android native builds. This is the most reliable signal.
-  if (ua.includes('FintrNativeApp')) return true;
+  const win = window as any;
+  const cap = win.Capacitor;
+  if (!cap) return false;
 
-  // Secondary check: Capacitor bridge object
-  const cap = (window as any).Capacitor;
-  if (cap) {
-    if (typeof cap.isNativePlatform === 'function') {
-      return cap.isNativePlatform() === true;
-    }
-    const platform = typeof cap.getPlatform === 'function' ? cap.getPlatform() : '';
-    return platform === 'ios' || platform === 'android';
+  const isNative =
+    typeof cap.isNativePlatform === 'function'
+      ? cap.isNativePlatform() === true
+      : false;
+  const platform =
+    typeof cap.getPlatform === 'function' ? cap.getPlatform() : '';
+
+  if (!isNative || (platform !== 'ios' && platform !== 'android')) {
+    return false;
   }
 
-  // Tertiary fallback for Android: the Capacitor WebView user-agent always contains "; wv)"
-  // whereas Chrome (used by regular Android browsers and Chrome Custom Tabs) does not.
-  if (/Android/.test(ua) && /; wv\)/.test(ua)) return true;
-
-  return false;
+  // Do not treat @capacitor/core in a normal browser as native. Require signals that
+  // only exist in the Fintr native WebView (iOS injection or Android androidBridge).
+  return (
+    platform === 'ios'
+    || Boolean(win.androidBridge || win.AndroidBridge)
+  );
 };
 
 /**

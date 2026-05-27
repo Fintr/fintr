@@ -11,7 +11,6 @@ import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
 
 const TUTORIAL_Z_INDEX = 10050;
-const TUTORIAL_DISMISS_Z_INDEX = 10061;
 
 const isTourTargetVisible = (selector: string): boolean => {
   const element = document.querySelector(selector) as HTMLElement | null;
@@ -95,30 +94,6 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
     </div>
   );
 };
-
-interface TutorialDismissBarProps {
-  onDismiss: () => void;
-}
-
-/** Always on top of Joyride — escape hatch when the tooltip/spotlight breaks. */
-const TutorialDismissBar: React.FC<TutorialDismissBarProps> = ({ onDismiss }) => (
-  <div
-    className="fixed inset-x-0 z-[10061] flex justify-center px-4 pointer-events-none"
-    style={{
-      zIndex: TUTORIAL_DISMISS_Z_INDEX,
-      bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))",
-    }}
-    data-testid="tutorial-dismiss-bar"
-  >
-    <button
-      type="button"
-      onClick={onDismiss}
-      className="pointer-events-auto rounded-full bg-white px-5 py-3 text-sm font-semibold text-primary shadow-lg ring-1 ring-black/15 min-h-[44px]"
-    >
-      Skip tour
-    </button>
-  </div>
-);
 
 const TutorialOverlay: React.FC = () => {
   const {
@@ -905,47 +880,44 @@ const TutorialOverlay: React.FC = () => {
   }
 
   return (
-    <>
-      {run ? <TutorialDismissBar onDismiss={() => void handleSkipClick()} /> : null}
-      <Joyride
-        steps={steps}
-        run={run}
-        stepIndex={stepIndex}
-        continuous={true}
-        showProgress={false}
-        showSkipButton={false}
-        disableOverlayClose={false}
-        disableScrolling={true}
-        scrollOffset={20}
-        scrollToFirstStep={true}
-        spotlightClicks={false}
-        debug={process.env.NODE_ENV === 'development'}
-        callback={handleJoyrideCallback}
-        tooltipComponent={(props) => (
-          <CustomTooltip {...props} onSkipClick={handleSkipClick} />
-        )}
-        styles={{
-          options: {
-            primaryColor: '#083d64',
-            zIndex: TUTORIAL_Z_INDEX,
-          },
-          overlay: {
-            cursor: 'pointer',
-            zIndex: TUTORIAL_Z_INDEX,
-          },
-          spotlight: {
-            pointerEvents: 'none',
-            zIndex: TUTORIAL_Z_INDEX + 1,
-          },
-          tooltip: {
-            zIndex: TUTORIAL_Z_INDEX + 2,
-          },
-          tooltipContainer: {
-            zIndex: TUTORIAL_Z_INDEX + 2,
-          },
-        }}
-      />
-    </>
+    <Joyride
+      steps={steps}
+      run={run}
+      stepIndex={stepIndex}
+      continuous={true}
+      showProgress={false}
+      showSkipButton={false}
+      disableOverlayClose={false}
+      disableScrolling={true}
+      scrollOffset={20}
+      scrollToFirstStep={true}
+      spotlightClicks={false}
+      debug={process.env.NODE_ENV === 'development'}
+      callback={handleJoyrideCallback}
+      tooltipComponent={(props) => (
+        <CustomTooltip {...props} onSkipClick={handleSkipClick} />
+      )}
+      styles={{
+        options: {
+          primaryColor: '#083d64',
+          zIndex: TUTORIAL_Z_INDEX,
+        },
+        overlay: {
+          cursor: 'pointer',
+          zIndex: TUTORIAL_Z_INDEX,
+        },
+        spotlight: {
+          pointerEvents: 'none',
+          zIndex: TUTORIAL_Z_INDEX + 1,
+        },
+        tooltip: {
+          zIndex: TUTORIAL_Z_INDEX + 2,
+        },
+        tooltipContainer: {
+          zIndex: TUTORIAL_Z_INDEX + 2,
+        },
+      }}
+    />
   );
 };
 

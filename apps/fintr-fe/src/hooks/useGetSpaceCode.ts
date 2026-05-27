@@ -20,7 +20,7 @@ const normalizeOnboardingStep = (step: unknown) => {
   return "currency";
 };
 
-export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = true) {
+export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = false) {
   const isClient = typeof window !== "undefined";
   const [spaceCode, setSpaceCode] = useLocalStorage("spaceCode", "");
   const setIsAdmin = useSetAtom(isAdminAtom);

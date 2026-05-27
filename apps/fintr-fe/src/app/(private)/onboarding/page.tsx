@@ -7,11 +7,18 @@ import { useGetSpaceCode } from "@/hooks/useGetSpaceCode";
 
 export default function OnboardingIndex() {
   const router = useRouter();
-  const { api, isLoading: isApiLoading } = useAuthApi({
+  const {
+    api,
+    isLoading: isApiLoading,
+    isAuthenticated,
+  } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
-  
-  const { onboardingStep } = useGetSpaceCode(api!);
+
+  const { onboardingStep } = useGetSpaceCode(
+    api!,
+    isAuthenticated && !isApiLoading,
+  );
 
   useEffect(() => {
     if (!isApiLoading && onboardingStep !== null) {

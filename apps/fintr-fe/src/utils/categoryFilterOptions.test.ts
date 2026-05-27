@@ -5,22 +5,29 @@ import {
   getCategoryFilterDisplayLabel,
   INCOME_SECTION_VALUE,
 } from "./categoryFilterOptions";
-import { CategoryTreeOption } from "@/types/categoryTreeTypes";
+import {
+  CategoryTreeOption,
+  formatCategoryPickerValue,
+} from "@/types/categoryTreeTypes";
+
+const EXPENSE_PARENT_ID = "11111111-1111-4111-8111-111111111111";
+const EXPENSE_SUB_ID = "22222222-2222-4222-8222-222222222222";
+const INCOME_PARENT_ID = "33333333-3333-4333-8333-333333333333";
 
 const expenseTrees: CategoryTreeOption[] = [
   {
-    id: "exp-parent",
+    id: EXPENSE_PARENT_ID,
     label: "Food",
-    value: "exp-parent",
+    value: EXPENSE_PARENT_ID,
     name: "Food",
     parentId: null,
     children: [
       {
-        id: "exp-sub",
+        id: EXPENSE_SUB_ID,
         label: "Groceries",
-        value: "exp-sub",
+        value: EXPENSE_SUB_ID,
         name: "Groceries",
-        parentId: "exp-parent",
+        parentId: EXPENSE_PARENT_ID,
       },
     ],
   },
@@ -28,9 +35,9 @@ const expenseTrees: CategoryTreeOption[] = [
 
 const incomeTrees: CategoryTreeOption[] = [
   {
-    id: "inc-parent",
+    id: INCOME_PARENT_ID,
     label: "Salary",
-    value: "inc-parent",
+    value: INCOME_PARENT_ID,
     name: "Salary",
     parentId: null,
     children: [],
@@ -48,11 +55,14 @@ describe("buildCategoryFilterOptions", () => {
     });
     expect(options[1]).toMatchObject({
       label: "Food",
-      value: "exp-parent",
+      value: EXPENSE_PARENT_ID,
     });
     expect(options[2]).toMatchObject({
       label: "Groceries",
-      value: "exp-parent:exp-sub",
+      value: formatCategoryPickerValue({
+        categoryId: EXPENSE_PARENT_ID,
+        subcategoryId: EXPENSE_SUB_ID,
+      }),
       indentLevel: 1,
     });
     expect(options[3]).toMatchObject({
@@ -62,7 +72,7 @@ describe("buildCategoryFilterOptions", () => {
     });
     expect(options[4]).toMatchObject({
       label: "Salary",
-      value: "inc-parent",
+      value: INCOME_PARENT_ID,
     });
   });
 });
@@ -71,7 +81,10 @@ describe("getCategoryFilterDisplayLabel", () => {
   it("returns parent › sub for subcategory selection", () => {
     expect(
       getCategoryFilterDisplayLabel(
-        "exp-parent:exp-sub",
+        formatCategoryPickerValue({
+          categoryId: EXPENSE_PARENT_ID,
+          subcategoryId: EXPENSE_SUB_ID,
+        }),
         expenseTrees,
         incomeTrees,
       ),
@@ -80,7 +93,11 @@ describe("getCategoryFilterDisplayLabel", () => {
 
   it("returns parent label for category-only selection", () => {
     expect(
-      getCategoryFilterDisplayLabel("inc-parent", expenseTrees, incomeTrees),
+      getCategoryFilterDisplayLabel(
+        INCOME_PARENT_ID,
+        expenseTrees,
+        incomeTrees,
+      ),
     ).toBe("Salary");
   });
 });

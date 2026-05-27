@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import LoadingScreen from '@/components/ui/loading-screen';
 import { AuthStorage } from '@/lib/auth-storage';
 import { CapacitorLoadingTimeout } from '@/components/capacitor-loading-timeout';
+import { isPublicPath } from '@/lib/public-routes';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
@@ -16,11 +17,9 @@ function AuthWrapper({ children }: AuthWrapperProps) {
   const router = useRouter();
   const pathname = usePathname();
   
-  // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/signup', '/auth', '/auth-callback', '/consent', '/', '/pricing', '/contact-us', '/privacy-policy', '/terms-of-service', '/waitlist', '/whats-next', '/delete-account'];
   const publicAuthRoutes = ['/auth', '/login', '/signup'];
   const isPublicAuthRoute = publicAuthRoutes.includes(pathname);
-  const isPublicRoute = publicRoutes.includes(pathname);
+  const isPublicRoute = isPublicPath(pathname);
 
   console.log('🛡️ AuthWrapper: Render', {
     pathname,

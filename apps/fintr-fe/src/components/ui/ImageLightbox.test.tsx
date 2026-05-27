@@ -15,6 +15,7 @@ vi.mock("@/lib/auth-storage", () => ({
     getAuthData: () => ({
       tokens: { access_token: "test-token-123" },
     }),
+    getAccessToken: () => "test-token-123",
   },
 }))
 

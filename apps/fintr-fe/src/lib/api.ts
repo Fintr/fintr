@@ -2,6 +2,7 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosE
 import { getPublicBackendUrl } from '@/lib/public-backend-url';
 import { triggerSessionExpiration } from './session-expiration-handler';
 import { AuthStorage } from '@/lib/auth-storage';
+import { isPublicPath } from '@/lib/public-routes';
 
 const AUTH_BOOTSTRAP_PATHS = ["/auth/private"];
 
@@ -71,9 +72,8 @@ const handleResponseError = (error: AxiosError) => {
     console.error('Session expired: Signature has expired');
     // Only trigger if we're not already on a public route
     if (typeof window !== 'undefined') {
-      const publicRoutes = ['/login', '/auth', '/auth-callback'];
       const currentPath = window.location.pathname;
-      if (!publicRoutes.some(route => currentPath.startsWith(route))) {
+      if (!isPublicPath(currentPath)) {
         triggerSessionExpiration();
       }
     }
@@ -90,14 +90,11 @@ const handleResponseError = (error: AxiosError) => {
 
     // Clear auth and redirect to login
     if (typeof window !== 'undefined') {
-      const publicRoutes = ['/login', '/auth', '/auth-callback', '/consent', '/', '/pricing', '/contact-us', '/privacy-policy', '/terms-of-service', '/waitlist', '/whats-next'];
       const currentPath = window.location.pathname;
-      if (!publicRoutes.some(route => currentPath.startsWith(route))) {
+      if (!isPublicPath(currentPath)) {
         console.log('🔒 401: Redirecting to login...');
-        // Clear storage
         localStorage.removeItem('fintr_auth_data');
         sessionStorage.clear();
-        // Redirect to login
         window.location.href = '/login';
       }
     }

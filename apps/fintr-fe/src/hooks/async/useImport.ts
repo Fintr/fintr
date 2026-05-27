@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 
 export const useImport = (importId?: string) => {
   const { api } = useAuthApi();
-  const { spaceCode } = useGetSpaceCode(api!);
+  const { spaceCode } = useGetSpaceCode(api!, true);
 
   const {
     data: importData,
@@ -49,7 +49,7 @@ export const useImport = (importId?: string) => {
 
 export const useImports = (spaceId?: string, status?: string, page: number = 1, perPage: number = 10) => {
   const { api } = useAuthApi();
-  const { spaceCode } = useGetSpaceCode(api!);
+  const { spaceCode } = useGetSpaceCode(api!, true);
 
   const {
     data: importsData,

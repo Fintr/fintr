@@ -20,16 +20,15 @@ export default function CapacitorLoader() {
         ? capacitor.getPlatform()
         : null;
 
+    const isFintrNativeApp = uaLower.includes("fintrnativeapp");
+
     const isAndroidNative =
-      (uaLower.includes("android") && uaLower.includes("fintrnativeapp")) ||
-      platform === "android" ||
-      (/Android/i.test(ua) && /; wv\)/.test(ua));
+      isFintrNativeApp
+      && (uaLower.includes("android") || platform === "android");
 
     const isIOSNative =
-      (uaLower.includes("iphone") && uaLower.includes("fintrnativeapp")) ||
-      (uaLower.includes("ipad") && uaLower.includes("fintrnativeapp")) ||
-      platform === "ios" ||
-      (/iPhone|iPad|iPod/i.test(ua) && /; wv\)/.test(ua));
+      isFintrNativeApp
+      && (/iPhone|iPad|iPod/i.test(ua) || platform === "ios");
 
     if (isAndroidNative) {
       // Initialize the Capacitor bridge first (needed for manual bridge mode)
