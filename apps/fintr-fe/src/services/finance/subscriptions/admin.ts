@@ -51,10 +51,23 @@ export interface SpaceForFreeSubscription {
   currency: string;
   ownerEmail?: string;
   ownerName?: string;
+  transactionsCount: number;
   hasActiveSubscription: boolean;
   subscriptionStatus?: string;
   subscriptionType?: string;
   createdAt: string;
+}
+
+export interface SpacesForFreeSubscriptionPagination {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+}
+
+export interface SpacesForFreeSubscriptionPage {
+  spaces: SpaceForFreeSubscription[];
+  nextPage: number | null;
+  pagination: SpacesForFreeSubscriptionPagination;
 }
 
 export interface CreateFreeSubscriptionRequest {
@@ -101,9 +114,44 @@ export const deleteSponsorCode = async (api: AxiosInstance, id: string): Promise
 };
 
 // Free Subscription API
-export const fetchSpacesForFreeSubscription = async (api: AxiosInstance): Promise<SpaceForFreeSubscription[]> => {
-  const response = await api.get("/admin/finance/free_subscriptions/spaces");
-  return response.data.data.spaces || [];
+const SPACES_PER_PAGE = 25;
+
+export const fetchSpacesForFreeSubscriptionPage = async (
+  api: AxiosInstance,
+  {
+    pageParam = 1,
+    searchQuery = "",
+    perPage = SPACES_PER_PAGE,
+  }: {
+    pageParam?: number;
+    searchQuery?: string;
+    perPage?: number;
+  },
+): Promise<SpacesForFreeSubscriptionPage> => {
+  const response = await api.get("/admin/finance/free_subscriptions/spaces", {
+    params: {
+      page: pageParam,
+      per_page: perPage,
+      search_query: searchQuery.trim() || undefined,
+    },
+  });
+
+  const spaces: SpaceForFreeSubscription[] = response.data.data.spaces || [];
+  const pagination = response.data.data.pagination || {};
+  const currentPage = pagination.currentPage ?? pagination.current_page ?? pageParam;
+  const totalPages = pagination.totalPages ?? pagination.total_pages ?? 1;
+  const totalCount = pagination.totalCount ?? pagination.total_count ?? 0;
+  const nextPage = currentPage < totalPages ? currentPage + 1 : null;
+
+  return {
+    spaces,
+    nextPage,
+    pagination: {
+      currentPage,
+      totalPages,
+      totalCount,
+    },
+  };
 };
 
 export const createFreeSubscription = async (

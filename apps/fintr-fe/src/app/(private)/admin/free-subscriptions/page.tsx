@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  useSpacesForFreeSubscription,
+  useInfiniteSpacesForFreeSubscription,
   useCreateFreeSubscription,
   useRemoveFreeSubscription,
   useSubscriptionPlans,
@@ -48,19 +48,33 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatApiErrorMessage } from "@/utils/errorUtils";
+import type { SpaceForFreeSubscription } from "@/services/finance/subscriptions/admin";
 
 const FreeSubscriptionsPage = () => {
-  const { spaces, isLoading: isLoadingSpaces, refetch } = useSpacesForFreeSubscription();
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
+
+  const {
+    spaces,
+    totalCount,
+    isLoading: isLoadingSpaces,
+    isFetchingNextPage,
+    hasNextPage,
+    refetch,
+  } = useInfiniteSpacesForFreeSubscription({
+    searchQuery: debouncedSearchQuery,
+    loadMoreRef,
+  });
+
   const { plans, isLoading: isLoadingPlans } = useSubscriptionPlans();
   const { createFreeSubscription, isCreating } = useCreateFreeSubscription();
   const { removeFreeSubscription, isRemoving } = useRemoveFreeSubscription();
 
   const [showGrantDialog, setShowGrantDialog] = useState(false);
-  const [selectedSpace, setSelectedSpace] = useState<typeof spaces[0] | null>(null);
+  const [selectedSpace, setSelectedSpace] = useState<SpaceForFreeSubscription | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [notes, setNotes] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearchQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
 
   const handleGrant = async () => {
     if (!selectedSpace || !selectedPlanId) {
@@ -78,12 +92,12 @@ const FreeSubscriptionsPage = () => {
       setShowGrantDialog(false);
       resetForm();
       refetch();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(
         formatApiErrorMessage(
           error,
-          "Failed to grant free subscription"
-        )
+          "Failed to grant free subscription",
+        ),
       );
     }
   };
@@ -93,12 +107,12 @@ const FreeSubscriptionsPage = () => {
       await removeFreeSubscription({ spaceId });
       toast.success(`Free subscription removed from ${spaceName}`);
       refetch();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(
         formatApiErrorMessage(
           error,
-          "Failed to remove free subscription"
-        )
+          "Failed to remove free subscription",
+        ),
       );
     }
   };
@@ -109,15 +123,11 @@ const FreeSubscriptionsPage = () => {
     setNotes("");
   };
 
-  const filteredSpaces = spaces.filter((space) =>
-    space.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-    space.ownerEmail?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-    space.code.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-  );
-
   const activePlans = plans.filter((plan) => plan.active);
 
-  if (isLoadingSpaces || isLoadingPlans) {
+  const initialLoad = isLoadingSpaces && spaces.length === 0;
+
+  if (initialLoad || isLoadingPlans) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -161,9 +171,14 @@ const FreeSubscriptionsPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Spaces</CardTitle>
+          <CardTitle>
+            Spaces
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              ({totalCount} total, sorted by transaction count)
+            </span>
+          </CardTitle>
           <CardDescription>
-            Select a space to grant a free subscription
+            Select a space to grant a free subscription. Scroll to load more.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -173,12 +188,13 @@ const FreeSubscriptionsPage = () => {
                 <TableHead>Space Name</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Owner</TableHead>
+                <TableHead className="text-right">Transactions</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSpaces.map((space) => (
+              {spaces.map((space) => (
                 <TableRow key={space.id}>
                   <TableCell>
                     <div className="font-medium">{space.name}</div>
@@ -199,6 +215,9 @@ const FreeSubscriptionsPage = () => {
                     {space.ownerName && (
                       <div className="text-xs text-gray-500">{space.ownerName}</div>
                     )}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {space.transactionsCount.toLocaleString()}
                   </TableCell>
                   <TableCell>
                     {space.hasActiveSubscription ? (
@@ -231,7 +250,11 @@ const FreeSubscriptionsPage = () => {
                         size="sm"
                         variant="destructive"
                         onClick={() => handleRemove(space.id, space.name)}
-                        disabled={!space.hasActiveSubscription || space.subscriptionType !== "free" || isRemoving}
+                        disabled={
+                          !space.hasActiveSubscription ||
+                          space.subscriptionType !== "free" ||
+                          isRemoving
+                        }
                       >
                         {isRemoving ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -246,19 +269,29 @@ const FreeSubscriptionsPage = () => {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredSpaces.length === 0 && (
+              {spaces.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-gray-500 py-8">
-                    {searchQuery ? "No spaces found matching your search" : "No spaces available"}
+                  <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                    {searchQuery
+                      ? "No spaces found matching your search"
+                      : "No spaces available"}
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
+
+          <div ref={loadMoreRef} className="flex justify-center py-6 min-h-[48px]">
+            {isFetchingNextPage ? (
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            ) : null}
+            {!hasNextPage && spaces.length > 0 ? (
+              <p className="text-sm text-muted-foreground">All spaces loaded</p>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Grant Free Subscription Dialog */}
       <Dialog open={showGrantDialog} onOpenChange={setShowGrantDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

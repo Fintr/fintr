@@ -9,29 +9,19 @@ module Api
           before_action :ensure_admin!
 
           # GET /admin/finance/free_subscriptions/spaces
-          # List all spaces with their current subscription status
+          # List spaces with subscription status, ordered by transaction count (paginated)
           def spaces
-            spaces = ::Spaces::Space.includes(:owner, :space_subscriptions).order(created_at: :desc)
+            result = ::Admin::Queries::SpacesForFreeSubscriptionQuery.call(
+              params: spaces_index_params,
+            )
 
-            serializer = spaces.map do |space|
-              active_subscription = space.space_subscriptions.find { |s| s.status == "active" }
+            return render_unprocessable_content(details: result.failure) unless result.success?
 
-              {
-                id: space.id,
-                name: space.name,
-                code: space.code,
-                type: space.type == "Spaces::PersonalSpace" ? "Personal" : "Organization",
-                currency: space.currency,
-                ownerEmail: space.owner&.email,
-                ownerName: space.owner&.full_name,
-                hasActiveSubscription: active_subscription.present?,
-                subscriptionStatus: active_subscription&.status,
-                subscriptionType: active_subscription&.subscription_type,
-                createdAt: space.created_at.iso8601
-              }
-            end
-
-            render_success(data: { spaces: serializer })
+            render_paginated(
+              result.value!,
+              serializer: ::Admin::Serializers::SpaceForFreeSubscriptionSerializer,
+              key: :spaces,
+            )
           end
 
           # POST /admin/finance/free_subscriptions
@@ -96,6 +86,19 @@ module Api
 
           def remove_free_subscription_params
             params.permit(:space_id)
+          end
+
+          def spaces_index_params
+            p = params.permit(
+              :search_query,
+              :page,
+              :per_page,
+            )
+            {
+              search_query: p[:search_query].presence,
+              page: p[:page],
+              per_page: p[:per_page].presence,
+            }
           end
         end
       end

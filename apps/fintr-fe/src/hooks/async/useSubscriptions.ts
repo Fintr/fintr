@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import {
   fetchSubscriptionPlans,
@@ -229,7 +230,7 @@ import {
   createSponsorCode,
   updateSponsorCode,
   deleteSponsorCode,
-  fetchSpacesForFreeSubscription,
+  fetchSpacesForFreeSubscriptionPage,
   createFreeSubscription,
   removeFreeSubscription,
   CreateSponsorCodeRequest,
@@ -342,21 +343,76 @@ export const useDeleteSponsorCode = () => {
 };
 
 // Free subscriptions admin hooks
-export const useSpacesForFreeSubscription = () => {
+export const useInfiniteSpacesForFreeSubscription = ({
+  searchQuery,
+  loadMoreRef,
+}: {
+  searchQuery: string;
+  loadMoreRef: React.RefObject<HTMLDivElement | null>;
+}) => {
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
 
-  const { data, isLoading, error, refetch } = useQuery<SpaceForFreeSubscription[]>({
-    queryKey: ["spacesForFreeSubscription"],
-    queryFn: () => fetchSpacesForFreeSubscription(api),
-    staleTime: 1 * 60 * 1000,
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isLoading,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ["spacesForFreeSubscription", searchQuery],
+    queryFn: ({ pageParam = 1 }) =>
+      fetchSpacesForFreeSubscriptionPage(api, {
+        pageParam,
+        searchQuery,
+      }),
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      {
+        threshold: 0.1,
+      },
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+      observer.disconnect();
+    };
+  }, [hasNextPage, fetchNextPage, isFetchingNextPage, loadMoreRef]);
+
+  const spaces =
+    data?.pages.flatMap((page) => page.spaces) ?? [];
+  const totalCount = data?.pages[0]?.pagination.totalCount ?? 0;
+
   return {
-    spaces: data || [],
-    isLoading,
+    spaces,
+    totalCount,
     error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isLoading,
     refetch,
   };
 };
