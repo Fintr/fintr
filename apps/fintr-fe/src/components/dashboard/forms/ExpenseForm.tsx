@@ -48,9 +48,11 @@ import {
   editLockedAccountLedgerCurrency,
   isAccountSelectOptionDisabledForEdit,
 } from "@/utils/accountSelectEditLocks";
-
-/** System category for transfer-fee expenses; when editing such a transaction, the category is shown and disabled. */
-const TRANSFER_FEE_CATEGORY_NAME = "Transfer Fee";
+import {
+  ensureLockedCategoryInTreeOptions,
+  isLockedExpenseCategoryName,
+  lockedCategoryRefForExpenseEdit,
+} from "@/utils/lockedSystemCategories";
 
 // Keep Zod schemas as they are used by the adapter and nested forms
 const categorySchema = z.object({
@@ -207,18 +209,27 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     file: initialData?.file || null,
   });
 
-  // Ensure "Transfer Fee" is in the list when editing a transfer-fee expense so the picker can display it
-  const categoryOptions = useMemo(() => {
-    const isTransferFee = formState.categoryName === TRANSFER_FEE_CATEGORY_NAME;
-    const hasTransferFee = categoryOptionsRaw.some((c) => c.value === TRANSFER_FEE_CATEGORY_NAME);
-    if (isTransferFee && !hasTransferFee) {
-      return [
-        { value: TRANSFER_FEE_CATEGORY_NAME, label: TRANSFER_FEE_CATEGORY_NAME },
-        ...categoryOptionsRaw,
-      ];
-    }
-    return categoryOptionsRaw;
-  }, [categoryOptionsRaw, formState.categoryName]);
+  const lockedCategoryForEdit = useMemo(
+    () =>
+      lockedCategoryRefForExpenseEdit(
+        isEditMode,
+        initialData?.categoryName,
+        initialData?.categoryId,
+      ),
+    [isEditMode, initialData?.categoryId, initialData?.categoryName],
+  );
+
+  const categoryOptions = useMemo(
+    () =>
+      ensureLockedCategoryInTreeOptions(
+        categoryOptionsRaw,
+        lockedCategoryForEdit,
+      ),
+    [categoryOptionsRaw, lockedCategoryForEdit],
+  );
+
+  const isCategoryLockedForEdit =
+    isEditMode && isLockedExpenseCategoryName(initialData?.categoryName);
 
   const selectedAccount = accountOptions.find((a) => a.value === formState.accountName);
   /** Ledger currency for the selected account only — never use space as a stand-in for FX (CURR1→CURR2). */
@@ -1023,7 +1034,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
             categoryType={CategoryTypeEnum.EXPENSE}
             onCategoryCreated={handleCategoryCreated}
-            disabled={isEditMode && formState.categoryName === TRANSFER_FEE_CATEGORY_NAME}
+            disabled={isCategoryLockedForEdit}
           />
         </div>
 

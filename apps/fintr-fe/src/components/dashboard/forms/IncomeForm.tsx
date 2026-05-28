@@ -45,6 +45,11 @@ import {
   type ConversionSnapshot,
 } from "./AmountWithRatePicker";
 import { resolvePrefillAmountCurrency } from "@/utils/formUtils";
+import {
+  ensureLockedCategoryInTreeOptions,
+  isLockedIncomeCategoryName,
+  lockedCategoryRefForIncomeEdit,
+} from "@/utils/lockedSystemCategories";
 
 // Income form schema using Zod
 const incomeFormSchema = z.object({
@@ -111,8 +116,30 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   onFileUpdate,
   onDelete,
 }) => {
-  const categoryOptions = useAtomValue(incomeCategoryOptionsAtom);
+  const categoryOptionsRaw = useAtomValue(incomeCategoryOptionsAtom);
   const accountOptions = useAtomValue(accountOptionsAtom);
+
+  const lockedCategoryForEdit = useMemo(
+    () =>
+      lockedCategoryRefForIncomeEdit(
+        isEditMode,
+        initialData?.categoryName,
+        initialData?.categoryId,
+      ),
+    [isEditMode, initialData?.categoryId, initialData?.categoryName],
+  );
+
+  const categoryOptions = useMemo(
+    () =>
+      ensureLockedCategoryInTreeOptions(
+        categoryOptionsRaw,
+        lockedCategoryForEdit,
+      ),
+    [categoryOptionsRaw, lockedCategoryForEdit],
+  );
+
+  const isCategoryLockedForEdit =
+    isEditMode && isLockedIncomeCategoryName(initialData?.categoryName);
   const { api } = useAuthApi();
 
   // Use provided spaceCurrency or fallback to PHP if not provided
@@ -784,6 +811,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
             categoryType={CategoryTypeEnum.INCOME}
             onCategoryCreated={handleCategoryCreated}
+            disabled={isCategoryLockedForEdit}
           />
         </div>
 
