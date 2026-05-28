@@ -766,7 +766,6 @@ const InsightsTab = () => {
                       calculation={
                         insightsData?.healthScores?.budgetUsage?.calculation
                       }
-                      footnote={`${insightsData?.healthScores?.budgetUsage?.percentage || "0%"} of budget used in this period.`}
                     />
 
                     <HealthScoreFactorRow

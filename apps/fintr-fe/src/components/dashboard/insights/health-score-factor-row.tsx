@@ -41,7 +41,6 @@ interface HealthScoreFactorRowProps {
   variant: HealthScoreFactorVariant;
   helpTitle?: string;
   calculation?: MetricCalculation;
-  footnote?: string;
 }
 
 const scoreBarValue = (score: number) =>
@@ -54,7 +53,6 @@ export const HealthScoreFactorRow = ({
   variant,
   helpTitle,
   calculation,
-  footnote,
 }: HealthScoreFactorRowProps) => {
   const styles = FACTOR_STYLES[variant];
   const popoverTitle = helpTitle ?? label;
@@ -107,10 +105,6 @@ export const HealthScoreFactorRow = ({
         indicatorClassName={styles.bar}
         aria-label={`${label} health score ${score} out of 100`}
       />
-
-      {footnote && (
-        <p className="text-xs text-primary/60">{footnote}</p>
-      )}
     </div>
   );
 };
