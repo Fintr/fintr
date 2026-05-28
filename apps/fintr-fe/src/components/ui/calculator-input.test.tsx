@@ -97,6 +97,50 @@ describe("CalculatorInput", () => {
     });
   });
 
+  describe("Switching between calculator fields", () => {
+    it("shows the keyboard on every focus when moving between fields", async () => {
+      const user = userEvent.setup();
+
+      await act(async () => {
+        render(
+          <div>
+            <CalculatorInput
+              value=""
+              onChange={mockOnChange}
+              placeholder="Amount A"
+            />
+            <CalculatorInput
+              value=""
+              onChange={mockOnChange}
+              placeholder="Amount B"
+            />
+            <CalculatorInput
+              value=""
+              onChange={mockOnChange}
+              placeholder="Amount C"
+            />
+          </div>,
+        );
+      });
+
+      const inputA = screen.getByPlaceholderText("Amount A");
+      const inputB = screen.getByPlaceholderText("Amount B");
+      const inputC = screen.getByPlaceholderText("Amount C");
+
+      await user.click(inputA);
+      expect(document.body.querySelector("[data-calculator-keyboard]")).toBeTruthy();
+
+      await user.click(inputB);
+      expect(document.body.querySelector("[data-calculator-keyboard]")).toBeTruthy();
+
+      await user.click(inputC);
+      expect(document.body.querySelector("[data-calculator-keyboard]")).toBeTruthy();
+
+      await user.click(inputA);
+      expect(document.body.querySelector("[data-calculator-keyboard]")).toBeTruthy();
+    });
+  });
+
   describe("Dialog + CalculatorInput interaction", () => {
     it("should NOT close dialog or keyboard when clicking a calculator button inside a dialog", async () => {
       const user = userEvent.setup();
@@ -176,7 +220,40 @@ describe("CalculatorInput", () => {
       expect(keyboard).toBeTruthy();
     });
 
-    it("uses bottom-sheet layout inside a modal with a value display", async () => {
+    it("uses a compact floating layout inside a modal on desktop", async () => {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: 1280,
+      });
+
+      await act(async () => {
+        render(
+          <div data-modal-content>
+            <CalculatorInput
+              value="250"
+              onChange={mockOnChange}
+              placeholder="0.00"
+            />
+          </div>,
+        );
+      });
+
+      const input = screen.getByPlaceholderText("0.00");
+      fireEvent.focus(input);
+
+      const keyboard = document.body.querySelector("[data-calculator-keyboard]");
+      expect(keyboard).toBeTruthy();
+      expect(keyboard?.className).not.toContain("rounded-t-xl");
+      expect(keyboard?.className).toContain("rounded-xl");
+      expect(keyboard?.textContent).toContain("250");
+    });
+
+    it("uses bottom-sheet layout inside a modal on mobile", async () => {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: 390,
+      });
+
       await act(async () => {
         render(
           <div data-modal-content>
@@ -282,6 +359,56 @@ describe("CalculatorInput", () => {
       fireEvent.change(input, { target: { value: "12,345" } });
 
       expect(mockOnChange).toHaveBeenCalledWith("12345");
+    });
+
+    it("evaluates expressions when Enter is pressed (same as =)", async () => {
+      await act(async () => {
+        render(
+          <CalculatorInput
+            value=""
+            onChange={mockOnChange}
+            placeholder="0.00"
+          />,
+        );
+      });
+
+      const input = screen.getByPlaceholderText("0.00");
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: "100+50" } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+      expect(mockOnChange).toHaveBeenCalledWith("150");
+    });
+
+    it("prevents parent form submit when Enter is pressed with keyboard open", async () => {
+      const onSubmit = vi.fn((event: SubmitEvent) => {
+        event.preventDefault();
+      });
+
+      await act(async () => {
+        render(
+          <form
+            onSubmit={(event) => {
+              onSubmit(event.nativeEvent);
+            }}
+          >
+            <CalculatorInput
+              value=""
+              onChange={mockOnChange}
+              placeholder="0.00"
+            />
+            <button type="submit">Save</button>
+          </form>,
+        );
+      });
+
+      const input = screen.getByPlaceholderText("0.00");
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: "10+5" } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(mockOnChange).toHaveBeenCalledWith("15");
     });
 
     it("calls onChange when typing numbers", () => {

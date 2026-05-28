@@ -106,7 +106,7 @@ async function applyAndroidThreeButtonNavClasses(page: Page) {
 
 async function openAddTransactionCalculator(
   page: Page,
-  options?: { androidThreeButtonNav?: boolean },
+  options?: { androidThreeButtonNav?: boolean; skipAmountFocus?: boolean },
 ) {
   await page.goto("/dashboard/", {
     waitUntil: "domcontentloaded",
@@ -120,8 +120,11 @@ async function openAddTransactionCalculator(
 
   const mobileFab = page.locator('[data-tutorial-target="mobile-add-button"]')
   const desktopAdd = page.locator('[data-tutorial-target="add-transaction-button"]')
+  const viewport = page.viewportSize()
+  const useMobileEntry = viewport != null && viewport.width < 768
 
-  if (await mobileFab.isVisible({ timeout: 5000 }).catch(() => false)) {
+  if (useMobileEntry) {
+    await expect(mobileFab).toBeVisible({ timeout: 15000 })
     await mobileFab.click()
     const mobileAdd = page.locator('[data-tutorial-target="mobile-add-transaction"]')
     await expect(mobileAdd).toBeVisible({ timeout: 5000 })
@@ -137,12 +140,60 @@ async function openAddTransactionCalculator(
   })
 
   const amountInput = page.getByPlaceholder("0.00").first()
-  await amountInput.click()
+
+  if (!options?.skipAmountFocus) {
+    await amountInput.click()
+  }
 
   const keyboard = page.locator("[data-calculator-keyboard]")
-  await expect(keyboard).toBeVisible({ timeout: 5000 })
 
-  return keyboard
+  if (!options?.skipAmountFocus) {
+    await expect(keyboard).toBeVisible({ timeout: 5000 })
+  }
+
+  return { keyboard, amountInput }
+}
+
+async function sampleKeyboardTopPositions(
+  page: Page,
+  inputLocator: ReturnType<Page["getByPlaceholder"]>,
+  frameCount: number = 8,
+): Promise<number[]> {
+  await inputLocator.scrollIntoViewIfNeeded()
+  await inputLocator.click()
+
+  return page.evaluate(async (frames) => {
+    const tops: number[] = [];
+
+    for (let index = 0; index < frames; index += 1) {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          const keyboard = document.querySelector("[data-calculator-keyboard]");
+          tops.push(keyboard?.getBoundingClientRect().top ?? -1);
+          resolve();
+        });
+      });
+    }
+
+    return tops;
+  }, frameCount);
+}
+
+function maxConsecutiveTopJump(positions: number[]): number {
+  let maxJump = 0;
+
+  for (let index = 1; index < positions.length; index += 1) {
+    const previous = positions[index - 1];
+    const current = positions[index];
+
+    if (previous < 0 || current < 0) {
+      continue;
+    }
+
+    maxJump = Math.max(maxJump, Math.abs(current - previous));
+  }
+
+  return maxJump;
 }
 
 test.describe("Calculator keyboard layout", () => {
@@ -155,7 +206,7 @@ test.describe("Calculator keyboard layout", () => {
 
   test("mobile bottom-sheet keys meet minimum height and row spacing", async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 851 })
-    const keyboard = await openAddTransactionCalculator(page)
+    const { keyboard } = await openAddTransactionCalculator(page)
 
     await expect(keyboard).toHaveClass(/rounded-t-xl/)
 
@@ -180,7 +231,7 @@ test.describe("Calculator keyboard layout", () => {
 
   test("reserves space above Android 3-button navigation", async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 851 })
-    const keyboard = await openAddTransactionCalculator(page, {
+    const { keyboard } = await openAddTransactionCalculator(page, {
       androidThreeButtonNav: true,
     })
 
@@ -202,5 +253,49 @@ test.describe("Calculator keyboard layout", () => {
       return Number.parseInt(getComputedStyle(el).paddingBottom, 10)
     })
     expect(paddingBottom).toBeGreaterThanOrEqual(40)
+  })
+
+  test("first focus on an input does not flash keyboard position", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 851 })
+    const { amountInput } = await openAddTransactionCalculator(page, {
+      skipAmountFocus: true,
+    })
+
+    const firstFocusPositions = await sampleKeyboardTopPositions(page, amountInput)
+    const firstFocusJump = maxConsecutiveTopJump(firstFocusPositions)
+
+    expect(firstFocusPositions.some((top) => top >= 0)).toBe(true)
+    expect(firstFocusJump).toBeLessThan(24)
+
+    await page.keyboard.press("Escape")
+    await expect(page.locator("[data-calculator-keyboard]")).toHaveCount(0)
+
+    const secondFocusPositions = await sampleKeyboardTopPositions(page, amountInput)
+    const secondFocusJump = maxConsecutiveTopJump(secondFocusPositions)
+
+    expect(secondFocusJump).toBeLessThan(8)
+  })
+
+  test("switching calculator inputs does not flash keyboard position", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 851 })
+    const { amountInput } = await openAddTransactionCalculator(page, {
+      skipAmountFocus: true,
+    })
+
+    await page.getByRole("tab", { name: "Transfer" }).click()
+
+    const transferAmount = page.locator("[data-calculator-input] input").first()
+    const transferCost = page.locator("[data-calculator-input] input").nth(1)
+
+    await expect(transferAmount).toBeVisible({ timeout: 5000 })
+    await expect(transferCost).toBeVisible({ timeout: 5000 })
+
+    await sampleKeyboardTopPositions(page, transferAmount)
+
+    const switchPositions = await sampleKeyboardTopPositions(page, transferCost)
+    const switchJump = maxConsecutiveTopJump(switchPositions)
+
+    expect(switchPositions.some((top) => top >= 0)).toBe(true)
+    expect(switchJump).toBeLessThan(24)
   })
 })

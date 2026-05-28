@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+} from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,8 +17,18 @@ import {
   calculateAndroidBottomInsetPx,
   getSafeAreaInsets,
 } from "@/lib/platform-detection";
-import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen";
 import { numberFormatting } from "@/lib/utils";
+import {
+  acquireCalculatorScrollPadding,
+  computeKeyboardPlacement,
+  findScrollableAncestor,
+  keyboardLayoutReservesScrollSpace,
+  measureKeyboardOcclusionHeight,
+  releaseCalculatorScrollPadding,
+  scrollInputClearOfKeyboard,
+  type CalculatorKeyboardLayout,
+  type CalculatorKeyboardPosition,
+} from "./calculator-keyboard-scroll";
 
 interface CalculatorInputProps {
   id?: string;
@@ -48,7 +65,20 @@ const OPERATOR_MAP: Record<string, string> = {
 const MOBILE_BREAKPOINT = 768; // md breakpoint
 const MOBILE_KEYBOARD_VH = 0.4;
 const KEYBOARD_GAP = 8;
-const DESKTOP_KEYBOARD_HEIGHT = 320;
+const DESKTOP_KEYBOARD_WIDTH = 288;
+const DESKTOP_FLOATING_BOTTOM_OFFSET_PX = 16;
+/** Fits display + 5 rows of h-11 keys, gaps, and outer padding (do not set height below this). */
+const DESKTOP_CALC_BUTTON_HEIGHT_PX = 44;
+const DESKTOP_CALC_GRID_GAP_PX = 6;
+const DESKTOP_CALC_OUTER_PADDING_PX = 24;
+const DESKTOP_CALC_INNER_GAP_PX = 8;
+const DESKTOP_CALC_DISPLAY_BLOCK_PX = 74;
+const DESKTOP_KEYBOARD_MIN_HEIGHT =
+  DESKTOP_CALC_OUTER_PADDING_PX
+  + DESKTOP_CALC_INNER_GAP_PX
+  + DESKTOP_CALC_DISPLAY_BLOCK_PX
+  + 5 * DESKTOP_CALC_BUTTON_HEIGHT_PX
+  + 4 * DESKTOP_CALC_GRID_GAP_PX;
 /** Minimum touch target for bottom-sheet calculator keys (WCAG / Material). */
 export const MOBILE_CALC_BUTTON_MIN_HEIGHT_PX = 48;
 const MOBILE_CALC_GRID_GAP_CLASS = "gap-2.5";
@@ -56,14 +86,123 @@ const MOBILE_CALC_BUTTON_ROW_CLASS = "h-12 min-h-12 w-full";
 
 const CALCULATOR_KEYBOARD_HISTORY_KEY = "__fintrCalculatorKeyboard";
 
-type KeyboardLayout = "below" | "above" | "bottom-sheet";
-
-type KeyboardPosition = {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
+const calculatorHistoryRegistry = {
+  openCount: 0,
+  historyActive: false,
 };
+
+let pendingCalculatorHistoryBackTimer: ReturnType<typeof setTimeout> | null = null;
+const calculatorPopStateSubscribers = new Set<() => void>();
+let calculatorPopStateListenerAttached = false;
+
+function cancelPendingCalculatorHistoryBack() {
+  if (pendingCalculatorHistoryBackTimer !== null) {
+    clearTimeout(pendingCalculatorHistoryBackTimer);
+    pendingCalculatorHistoryBackTimer = null;
+  }
+}
+
+function handleCalculatorPopState(event: PopStateEvent) {
+  if (event.state?.[CALCULATOR_KEYBOARD_HISTORY_KEY]) {
+    return;
+  }
+
+  calculatorHistoryRegistry.historyActive = false;
+  calculatorHistoryRegistry.openCount = 0;
+  cancelPendingCalculatorHistoryBack();
+  calculatorPopStateSubscribers.forEach((subscriber) => subscriber());
+}
+
+function ensureCalculatorPopStateListener() {
+  if (calculatorPopStateListenerAttached) {
+    return;
+  }
+
+  window.addEventListener("popstate", handleCalculatorPopState);
+  calculatorPopStateListenerAttached = true;
+}
+
+function acquireCalculatorHistoryEntry() {
+  cancelPendingCalculatorHistoryBack();
+
+  if (!calculatorHistoryRegistry.historyActive) {
+    window.history.pushState({ [CALCULATOR_KEYBOARD_HISTORY_KEY]: true }, "");
+    calculatorHistoryRegistry.historyActive = true;
+  }
+
+  calculatorHistoryRegistry.openCount += 1;
+}
+
+function releaseCalculatorHistoryEntry() {
+  calculatorHistoryRegistry.openCount = Math.max(
+    0,
+    calculatorHistoryRegistry.openCount - 1,
+  );
+
+  if (calculatorHistoryRegistry.openCount > 0) {
+    cancelPendingCalculatorHistoryBack();
+    return;
+  }
+
+  cancelPendingCalculatorHistoryBack();
+  pendingCalculatorHistoryBackTimer = setTimeout(() => {
+    pendingCalculatorHistoryBackTimer = null;
+
+    if (calculatorHistoryRegistry.openCount > 0) {
+      return;
+    }
+
+    if (!calculatorHistoryRegistry.historyActive) {
+      return;
+    }
+
+    calculatorHistoryRegistry.historyActive = false;
+    window.history.back();
+  }, 0);
+}
+
+function subscribeCalculatorPopState(onClose: () => void) {
+  ensureCalculatorPopStateListener();
+  calculatorPopStateSubscribers.add(onClose);
+
+  return () => {
+    calculatorPopStateSubscribers.delete(onClose);
+
+    if (calculatorPopStateSubscribers.size === 0 && calculatorPopStateListenerAttached) {
+      window.removeEventListener("popstate", handleCalculatorPopState);
+      calculatorPopStateListenerAttached = false;
+    }
+  };
+}
+
+function useCalculatorKeyboardHistory(
+  open: boolean,
+  onClose: () => void,
+) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    acquireCalculatorHistoryEntry();
+
+    const unsubscribePopState = subscribeCalculatorPopState(() => {
+      onCloseRef.current();
+    });
+
+    return () => {
+      unsubscribePopState();
+      releaseCalculatorHistoryEntry();
+    };
+  }, [open]);
+}
+
+type KeyboardLayout = CalculatorKeyboardLayout;
+
+type KeyboardPosition = CalculatorKeyboardPosition;
 
 function safeEvaluate(expression: string): number | null {
   try {
@@ -94,6 +233,12 @@ function hasOperator(value: string): boolean {
   }
 
   return raw.indexOf("-", 1) > 0;
+}
+
+function isCalculatorEnterKey(
+  event: KeyboardEvent | React.KeyboardEvent,
+): boolean {
+  return event.key === "Enter" || event.code === "NumpadEnter";
 }
 
 function toRawExpression(value: string): string {
@@ -145,7 +290,6 @@ export function CalculatorInput({
     top: 0,
     left: 0,
     width: 0,
-    height: DESKTOP_KEYBOARD_HEIGHT,
   });
   const [keyboardLayout, setKeyboardLayout] = useState<KeyboardLayout>("below");
   const [mounted, setMounted] = useState(false);
@@ -201,112 +345,33 @@ export function CalculatorInput({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const prefersBottomSheetKeyboard = useCallback(() => {
-    const input = inputRef.current;
+  const applyKeyboardPlacement = useCallback(
+    (input: HTMLElement) => {
+      const placement = computeKeyboardPlacement(input, {
+        isMobile,
+        androidBottomInsetPx,
+        mobileKeyboardViewportRatio: MOBILE_KEYBOARD_VH,
+        desktopKeyboardMinHeight: DESKTOP_KEYBOARD_MIN_HEIGHT,
+        desktopKeyboardWidth: DESKTOP_KEYBOARD_WIDTH,
+        desktopFloatingBottomOffsetPx: DESKTOP_FLOATING_BOTTOM_OFFSET_PX,
+        keyboardGap: KEYBOARD_GAP,
+      });
 
-    if (!input) {
-      return false;
-    }
-
-    if (isMobile) {
-      return true;
-    }
-
-    return (
-      input.closest("[data-modal-content]") != null
-      || input.closest('[role="dialog"]') != null
-    );
-  }, [isMobile]);
+      setKeyboardLayout(placement.layout);
+      setKeyboardPosition(placement.position);
+    },
+    [androidBottomInsetPx, isMobile],
+  );
 
   const updateKeyboardPosition = useCallback(() => {
     const input = inputRef.current;
-    const rect = input?.getBoundingClientRect();
 
-    if (!rect) {
+    if (!input) {
       return;
     }
 
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-    const padding = 16;
-    const keyboardHeight = isMobile
-      ? viewportHeight * MOBILE_KEYBOARD_VH
-      : DESKTOP_KEYBOARD_HEIGHT;
-    const keyboardWidth = Math.min(
-      Math.max(rect.width, 280),
-      Math.min(320, viewportWidth - padding * 2),
-    );
-
-    if (prefersBottomSheetKeyboard()) {
-      setKeyboardLayout("bottom-sheet");
-      setKeyboardPosition({
-        top: 0,
-        left: 0,
-        width: keyboardWidth,
-        height: keyboardHeight,
-      });
-
-      if (typeof input.scrollIntoView === "function") {
-        input.scrollIntoView({ block: "center", behavior: "smooth" });
-      }
-
-      return;
-    }
-
-    let left = rect.left;
-
-    if (left + keyboardWidth > viewportWidth - padding) {
-      left = rect.right - keyboardWidth;
-    }
-
-    if (left < padding) {
-      left = padding;
-    }
-
-    const bottomInset = androidBottomInsetPx;
-    const spaceBelow = viewportHeight - rect.bottom - padding - bottomInset;
-    const spaceAbove = rect.top - padding;
-
-    const minAnchoredHeight = 260;
-
-    if (spaceBelow >= minAnchoredHeight + KEYBOARD_GAP) {
-      const anchoredHeight = Math.min(keyboardHeight, spaceBelow - KEYBOARD_GAP);
-
-      setKeyboardLayout("below");
-      setKeyboardPosition({
-        top: rect.bottom + KEYBOARD_GAP,
-        left,
-        width: keyboardWidth,
-        height: anchoredHeight,
-      });
-      return;
-    }
-
-    if (spaceAbove >= minAnchoredHeight + KEYBOARD_GAP) {
-      const anchoredHeight = Math.min(keyboardHeight, spaceAbove - KEYBOARD_GAP);
-
-      setKeyboardLayout("above");
-      setKeyboardPosition({
-        top: rect.top - anchoredHeight - KEYBOARD_GAP,
-        left,
-        width: keyboardWidth,
-        height: anchoredHeight,
-      });
-      return;
-    }
-
-    setKeyboardLayout("bottom-sheet");
-    setKeyboardPosition({
-      top: 0,
-      left: 0,
-      width: keyboardWidth,
-      height: keyboardHeight,
-    });
-
-    if (typeof input.scrollIntoView === "function") {
-      input.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
-  }, [androidBottomInsetPx, isMobile, prefersBottomSheetKeyboard]);
+    applyKeyboardPlacement(input);
+  }, [applyKeyboardPlacement]);
 
   useEffect(() => {
     if (!showKeyboard || !inputRef.current) {
@@ -322,6 +387,75 @@ export function CalculatorInput({
       window.removeEventListener("resize", updateKeyboardPosition);
     };
   }, [showKeyboard, updateKeyboardPosition]);
+
+  useLayoutEffect(() => {
+    if (!showKeyboard || disabled) {
+      return;
+    }
+
+    const input = inputRef.current;
+
+    if (!input || !keyboardLayoutReservesScrollSpace(keyboardLayout)) {
+      return;
+    }
+
+    const scrollParent = findScrollableAncestor(input);
+    const fallbackKeyboardHeightPx = isMobile
+      ? window.innerHeight * MOBILE_KEYBOARD_VH
+      : DESKTOP_KEYBOARD_MIN_HEIGHT;
+    let scrollPaddingAcquired = false;
+
+    const syncScrollPaddingAndPosition = (
+      scrollBehavior: ScrollBehavior = "instant",
+    ) => {
+      const keyboardHeightPx = measureKeyboardOcclusionHeight(
+        keyboardRef.current,
+        fallbackKeyboardHeightPx,
+      );
+
+      if (scrollParent) {
+        if (!scrollPaddingAcquired) {
+          acquireCalculatorScrollPadding(scrollParent, keyboardHeightPx);
+          scrollPaddingAcquired = true;
+        } else {
+          scrollParent.style.paddingBottom = `${keyboardHeightPx}px`;
+        }
+      }
+
+      scrollInputClearOfKeyboard(
+        input,
+        keyboardHeightPx,
+        12,
+        scrollBehavior,
+      );
+    };
+
+    syncScrollPaddingAndPosition("instant");
+
+    const visualViewport = window.visualViewport;
+    const handleViewportChange = () => {
+      syncScrollPaddingAndPosition("smooth");
+    };
+
+    window.addEventListener("resize", handleViewportChange);
+    visualViewport?.addEventListener("resize", handleViewportChange);
+    visualViewport?.addEventListener("scroll", handleViewportChange);
+
+    return () => {
+      window.removeEventListener("resize", handleViewportChange);
+      visualViewport?.removeEventListener("resize", handleViewportChange);
+      visualViewport?.removeEventListener("scroll", handleViewportChange);
+
+      if (scrollParent && scrollPaddingAcquired) {
+        releaseCalculatorScrollPadding(scrollParent);
+      }
+    };
+  }, [
+    disabled,
+    isMobile,
+    keyboardLayout,
+    showKeyboard,
+  ]);
 
   // Sync with external value when not in expression mode
   useEffect(() => {
@@ -365,10 +499,11 @@ export function CalculatorInput({
     }
   }, []);
 
-  useCloseOnPopStateWhenOpen(
+  useCalculatorKeyboardHistory(
     showKeyboard && !disabled,
-    handleKeyboardOverlayOpenChange,
-    CALCULATOR_KEYBOARD_HISTORY_KEY,
+    () => {
+      handleKeyboardOverlayOpenChange(false);
+    },
   );
 
   // Handle clicks outside to close keyboard
@@ -377,6 +512,17 @@ export function CalculatorInput({
       const target = event.target as HTMLElement;
       const clickedInsideContainer = containerRef.current?.contains(target);
       const clickedInsideKeyboard = target.closest("[data-calculator-keyboard]") != null;
+      const clickedAnotherCalculatorInput =
+        !clickedInsideContainer
+        && target.closest("[data-calculator-input]") != null;
+
+      if (clickedAnotherCalculatorInput) {
+        if (showKeyboardRef.current) {
+          dismissKeyboardRef.current();
+        }
+
+        return;
+      }
 
       if (!clickedInsideContainer && !clickedInsideKeyboard) {
         dismissKeyboardRef.current();
@@ -452,7 +598,7 @@ export function CalculatorInput({
       setShowKeyboard(false);
       return;
     }
-    
+
     const result = safeEvaluate(expression);
     if (result !== null) {
       // Round to 2 decimal places for currency
@@ -464,6 +610,37 @@ export function CalculatorInput({
       setShowKeyboard(false);
     }
   }, [expression, onChange]);
+
+  const handleEvaluateRef = useRef(handleEvaluate);
+  handleEvaluateRef.current = handleEvaluate;
+
+  const showKeyboardRef = useRef(showKeyboard);
+  showKeyboardRef.current = showKeyboard;
+
+  const isCalculatorKeyboardTarget = useCallback((target: EventTarget | null) => {
+    if (!(target instanceof Node)) {
+      return false;
+    }
+
+    return (
+      containerRef.current?.contains(target) === true
+      || keyboardRef.current?.contains(target) === true
+    );
+  }, []);
+
+  const handleEnterAsEquals = useCallback(
+    (event: KeyboardEvent | React.KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if ("stopImmediatePropagation" in event) {
+        event.stopImmediatePropagation();
+      }
+
+      handleEvaluateRef.current();
+    },
+    [],
+  );
 
   const handleButtonClick = useCallback(
     (btn: string) => {
@@ -536,14 +713,11 @@ export function CalculatorInput({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (hasOperator(expression)) {
-          handleEvaluate();
-        } else {
-          setShowKeyboard(false);
-        }
+      if (isCalculatorEnterKey(e) && showKeyboard) {
+        handleEnterAsEquals(e);
+        return;
       }
+
       if (e.key === "Escape") {
         if (isExpressionMode) {
           setIsExpressionMode(false);
@@ -552,29 +726,101 @@ export function CalculatorInput({
         setShowKeyboard(false);
       }
     },
-    [expression, handleEvaluate, isExpressionMode, value]
+    [
+      handleEnterAsEquals,
+      isExpressionMode,
+      showKeyboard,
+      value,
+    ],
   );
+
+  // Capture Enter before it reaches <form> implicit submit (same as pressing "=").
+  useEffect(() => {
+    if (!showKeyboard || disabled) {
+      return;
+    }
+
+    const handleDocumentEnter = (event: KeyboardEvent) => {
+      if (!isCalculatorEnterKey(event)) {
+        return;
+      }
+
+      if (!isCalculatorKeyboardTarget(event.target)) {
+        return;
+      }
+
+      handleEnterAsEquals(event);
+    };
+
+    document.addEventListener("keydown", handleDocumentEnter, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleDocumentEnter, true);
+    };
+  }, [
+    disabled,
+    handleEnterAsEquals,
+    isCalculatorKeyboardTarget,
+    showKeyboard,
+  ]);
+
+  useEffect(() => {
+    if (!showKeyboard || disabled) {
+      return;
+    }
+
+    const input = inputRef.current;
+    const form = input?.closest("form");
+
+    if (!form) {
+      return;
+    }
+
+    const preventSubmitWhileCalculating = (event: SubmitEvent) => {
+      if (!showKeyboardRef.current) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+
+      if (
+        activeElement !== input
+        && !isCalculatorKeyboardTarget(activeElement)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      handleEvaluateRef.current();
+    };
+
+    form.addEventListener("submit", preventSubmitWhileCalculating, true);
+
+    return () => {
+      form.removeEventListener("submit", preventSubmitWhileCalculating, true);
+    };
+  }, [
+    disabled,
+    isCalculatorKeyboardTarget,
+    showKeyboard,
+  ]);
 
   const handleFocus = useCallback(() => {
     if (disabled) {
       return;
     }
 
-    setShowKeyboard(true);
-    requestAnimationFrame(() => {
-      collapseSelectionToEnd();
-      updateKeyboardPosition();
-      const element = inputRef.current;
+    const input = inputRef.current;
 
-      if (typeof element?.scrollIntoView === "function") {
-        element.scrollIntoView({
-          block: "nearest",
-          behavior: "smooth",
-          inline: "nearest",
-        });
-      }
-    });
-  }, [disabled, collapseSelectionToEnd, updateKeyboardPosition]);
+    if (!input) {
+      return;
+    }
+
+    applyKeyboardPlacement(input);
+    setShowKeyboard(true);
+    requestAnimationFrame(collapseSelectionToEnd);
+  }, [applyKeyboardPlacement, collapseSelectionToEnd, disabled]);
 
   const handleCalculatorButtonPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -589,6 +835,10 @@ export function CalculatorInput({
   const isActionButton = (btn: string) => ["⌫", "C", "%"].includes(btn);
 
   const isBottomSheetKeyboard = keyboardLayout === "bottom-sheet";
+  const isFloatingDesktopKeyboard = keyboardLayout === "floating";
+  const isCompactDesktopKeyboard =
+    !isMobile
+    && (isFloatingDesktopKeyboard || keyboardLayout === "below" || keyboardLayout === "above");
   const mobileNavInsetMinHeightPx = resolveMobileNavInsetMinHeightPx(
     isMobile,
     hasAndroid3ButtonNav,
@@ -603,7 +853,10 @@ export function CalculatorInput({
         "z-[9999] pointer-events-auto bg-background shadow-2xl",
         isBottomSheetKeyboard
           ? "fixed bottom-0 left-0 right-0 flex flex-col border-t rounded-t-xl"
-          : "fixed rounded-xl border p-3 sm:p-4",
+          : cn(
+              "fixed h-auto rounded-xl border p-3",
+              isFloatingDesktopKeyboard && "max-w-[min(100vw-2rem,18rem)]",
+            ),
       )}
       style={
         isBottomSheetKeyboard
@@ -612,9 +865,15 @@ export function CalculatorInput({
             }
           : {
               top: keyboardPosition.top,
+              bottom: keyboardPosition.bottom,
               left: keyboardPosition.left,
               width: keyboardPosition.width,
-              height: keyboardPosition.height,
+              maxWidth: isFloatingDesktopKeyboard
+                ? `min(calc(100vw - 2rem), ${DESKTOP_KEYBOARD_WIDTH}px)`
+                : undefined,
+              ...(isCompactDesktopKeyboard
+                ? { minHeight: DESKTOP_KEYBOARD_MIN_HEIGHT }
+                : { height: keyboardPosition.height }),
             }
       }
       onPointerDown={(e) => e.stopPropagation()}
@@ -625,7 +884,9 @@ export function CalculatorInput({
           "flex flex-col",
           isBottomSheetKeyboard
             ? "gap-2.5 p-3"
-            : "h-full min-h-0 gap-2",
+            : isCompactDesktopKeyboard
+              ? "gap-2"
+              : "h-full min-h-0 gap-2",
         )}
       >
         <div
@@ -639,7 +900,9 @@ export function CalculatorInput({
               "truncate text-right font-semibold tabular-nums text-primary",
               isBottomSheetKeyboard
                 ? "text-2xl sm:text-3xl"
-                : "text-xl sm:text-2xl",
+                : isCompactDesktopKeyboard
+                  ? "text-xl"
+                  : "text-xl sm:text-2xl",
             )}
             aria-live="polite"
           >
@@ -659,7 +922,10 @@ export function CalculatorInput({
             "grid grid-cols-4",
             isBottomSheetKeyboard
               ? MOBILE_CALC_GRID_GAP_CLASS
-              : "min-h-0 flex-1 grid-rows-5 gap-1.5",
+              : cn(
+                  "grid-rows-5 gap-1.5",
+                  isCompactDesktopKeyboard ? "shrink-0" : "min-h-0 flex-1",
+                ),
           )}
         >
           {CALCULATOR_BUTTONS.flat().map((btn, index) => (
@@ -674,7 +940,9 @@ export function CalculatorInput({
                 "active:bg-primary active:text-primary-foreground active:border-primary",
                 isBottomSheetKeyboard
                   ? cn(MOBILE_CALC_BUTTON_ROW_CLASS, "text-lg")
-                  : "h-full min-h-11 text-lg sm:h-12 sm:text-xl",
+                  : isCompactDesktopKeyboard
+                    ? "h-11 min-h-11 w-full text-base"
+                    : "h-full min-h-11 text-lg",
                 // Operators column (right side) - primary/orange color
                 isOperatorButton(btn) && "bg-primary/10 hover:bg-primary/20 text-primary",
                 // Action buttons (top row except ÷) - muted style
@@ -698,7 +966,11 @@ export function CalculatorInput({
   );
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div
+      ref={containerRef}
+      data-calculator-input
+      className="relative w-full"
+    >
       {/* Input field */}
       <Input
         ref={inputRef}
