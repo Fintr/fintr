@@ -7,6 +7,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -622,52 +623,34 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
       <CardContent className="px-0">
         {/* Main Navigation Buttons */}
         {!hideTabs && (
-          <div className="flex space-x-2 mb-6 overflow-x-auto">
-            <Button
-              variant={activeMainTab === "categories" ? "default" : "ghost"}
-              className={
-                activeMainTab === "categories"
-                  ? "bg-primary"
-                  : "border-0 bg-white shadow-xs"
-              }
-              onClick={() => setActiveMainTab("categories")}
-            >
-              <Folder className="h-4 w-4 mr-2" /> Categories
-            </Button>
-            <Button
-              variant={activeMainTab === "accounts" ? "default" : "ghost"}
-              className={
-                activeMainTab === "accounts"
-                  ? "bg-primary"
-                  : "border-0 bg-white shadow-xs"
-              }
-              onClick={() => setActiveMainTab("accounts")}
-            >
-              <Users className="h-4 w-4 mr-2" /> Accounts
-            </Button>
-            <Button
-              variant={activeMainTab === "import" ? "default" : "ghost"}
-              className={
-                activeMainTab === "import"
-                  ? "bg-primary"
-                  : "border-0 bg-white shadow-xs"
-              }
-              onClick={() => setActiveMainTab("import")}
-            >
-              <Download className="h-4 w-4 mr-2" /> Import
-            </Button>
-            <Button
-              variant={activeMainTab === "subscriptions" ? "default" : "ghost"}
-              className={
-                activeMainTab === "subscriptions"
-                  ? "bg-primary"
-                  : "border-0 bg-white shadow-xs"
-              }
-              onClick={() => setActiveMainTab("subscriptions")}
-            >
-              <CreditCard className="h-4 w-4 mr-2" /> Subscriptions
-            </Button>
-          </div>
+          <Tabs
+            value={activeMainTab}
+            onValueChange={(value) =>
+              setActiveMainTab(
+                value as "categories" | "accounts" | "import" | "subscriptions",
+              )
+            }
+            className="mb-6"
+          >
+            <TabsList className="w-full min-w-0 flex-nowrap overflow-x-auto bg-white shadow-xs dark:bg-card dark:shadow-sm">
+              <TabsTrigger value="categories" className="gap-2">
+                <Folder className="h-4 w-4" />
+                Categories
+              </TabsTrigger>
+              <TabsTrigger value="accounts" className="gap-2">
+                <Users className="h-4 w-4" />
+                Accounts
+              </TabsTrigger>
+              <TabsTrigger value="import" className="gap-2">
+                <Download className="h-4 w-4" />
+                Import
+              </TabsTrigger>
+              <TabsTrigger value="subscriptions" className="gap-2">
+                <CreditCard className="h-4 w-4" />
+                Subscriptions
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         )}
 
         {/* Categories Tab Content */}

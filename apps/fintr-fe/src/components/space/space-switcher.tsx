@@ -46,9 +46,11 @@ export function SpaceSwitcher({
 
   return (
     <>
-      <div className="mb-4 pb-4 border-b border-gray-200">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-sm font-medium text-gray-700">Current Space</h4>
+      <div className="mb-4 border-b border-gray-200 pb-4 dark:border-border">
+        <div className="mb-2 flex items-center justify-between">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-muted-foreground">
+            Current Space
+          </h4>
           <div className="relative">
             <Button
               variant="ghost"
@@ -65,21 +67,23 @@ export function SpaceSwitcher({
         </div>
 
         {/* Current Space Display */}
-        <div className="p-2 rounded-lg bg-gray-50">
+        <div className="rounded-lg bg-gray-50 p-2 dark:bg-muted">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${currentSpace?.isOrganization ? 'bg-blue-500' : 'bg-green-500'}`} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-sm truncate">
-                  {currentSpace?.name || 'Loading...'}
+                <span className="truncate text-sm font-medium">
+                  {currentSpace?.name || "Loading..."}
                 </span>
               </div>
               <div className="flex items-center justify-between w-full">
-                <div className="text-xs text-gray-500">{currentSpace?.userRole || 'member'}</div>
+                <div className="text-xs text-gray-500 dark:text-muted-foreground">
+                  {currentSpace?.userRole || "member"}
+                </div>
                 {canManageUsers && (
                   <button
                     onClick={() => setShowGrantAccessDialog(true)}
-                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1"
+                    className="flex cursor-pointer items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline dark:text-primary-dark-mode dark:hover:text-primary-dark-mode/80"
                   >
                     <Users className="h-3 w-3" />
                     Grant Access
@@ -100,7 +104,7 @@ export function SpaceSwitcher({
                 <button
                   key={space.code}
                   onClick={() => handleSpaceSwitch(space.code)}
-                  className="flex items-center justify-between w-full p-2 text-left rounded hover:bg-gray-100 transition-colors"
+                  className="flex w-full items-center justify-between rounded p-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-muted"
                 >
                   <div className="flex items-center gap-2">
                     <div className="relative">
@@ -125,7 +129,7 @@ export function SpaceSwitcher({
                 <button
                   key={space.code}
                   onClick={() => handleSpaceSwitch(space.code)}
-                  className="flex items-center justify-between w-full p-2 text-left rounded hover:bg-gray-100 transition-colors"
+                  className="flex w-full items-center justify-between rounded p-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-muted"
                 >
                   <div className="flex items-center gap-2">
                     <div className="relative">
@@ -149,7 +153,7 @@ export function SpaceSwitcher({
             {/* Create Organization Space */}
             <button
               onClick={() => setShowCreateDialog(true)}
-              className="flex items-center gap-2 w-full p-2 text-left rounded hover:bg-gray-100 transition-colors text-sm text-blue-600"
+              className="flex w-full items-center gap-2 rounded p-2 text-left text-sm text-blue-600 transition-colors hover:bg-gray-100 dark:text-primary-dark-mode dark:hover:bg-muted"
             >
               <Plus className="h-3 w-3" />
               Create Organization Space

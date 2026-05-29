@@ -22,7 +22,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body
         style={{
           display: "flex",
@@ -32,7 +32,8 @@ export default function GlobalError({
           justifyContent: "center",
           padding: "24px",
           fontFamily: "system-ui, -apple-system, sans-serif",
-          backgroundColor: "#fafaf9",
+          backgroundColor: "#151921",
+          color: "#f8fafc",
           margin: 0,
         }}
       >
@@ -41,7 +42,7 @@ export default function GlobalError({
         </h1>
         <p
           style={{
-            color: "#666",
+            color: "#94a3b8",
             marginBottom: "16px",
             maxWidth: "400px",
             textAlign: "center",

@@ -40,7 +40,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
               <Link
                 key={category.id}
                 href={buildCategoryDetailHref(category.id, kind)}
-                className="flex items-center justify-between gap-2 px-3 py-3.5 min-h-0 bg-white rounded-lg hover:bg-muted/20 transition-colors group"
+                className="group flex min-h-0 items-center justify-between gap-2 rounded-lg bg-white px-3 py-3.5 transition-colors hover:bg-muted/20 dark:bg-card dark:shadow-sm dark:hover:bg-accent/50"
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate text-primary leading-tight">

@@ -179,23 +179,23 @@ export function ListView({
                       key={`divider-${currentDate}-${idx}`}
                       className="flex items-center my-5"
                     >
-                      <div className="border-t border-gray-300" style={{width: '2rem'}} />
+                      <div className="border-t border-gray-300 dark:border-border" style={{width: '2rem'}} />
                       <span className="text-xs font-semibold text-primary bg-background px-3">
                         {currentDate}
                       </span>
-                      <div className="flex-grow border-t border-gray-300" />
+                      <div className="flex-grow border-t border-gray-300 dark:border-border" />
                       <span className={`text-xs font-semibold bg-background px-3 ${
-                        dailyNet >= 0 ? 'text-teal-600' : 'text-red-900'
+                        dailyNet >= 0 ? 'text-teal-600 dark:text-teal-500' : 'text-red-900 dark:text-red-700'
                       }`}>
                         {dailyNet >= 0 ? '+' : ''}
                         {formatCurrency(dailyNet, dailyFormatCurrency)}
                       </span>
-                      <div className="border-t border-gray-300" style={{width: '2rem'}} />
+                      <div className="border-t border-gray-300 dark:border-border" style={{width: '2rem'}} />
                     </div>
                   )}
                   <div 
                     className={cn(
-                      "transaction-item relative flex justify-between p-3 bg-white rounded shadow-sm hover:bg-gray-100 transition-colors cursor-pointer",
+                      "transaction-item relative flex justify-between p-3 bg-white rounded hover:bg-gray-100 transition-colors cursor-pointer dark:bg-card dark:hover:bg-accent/50",
                       "items-stretch",
                       hasSubcategory
                         ? "min-h-[78px] md:min-h-[60px]"
@@ -256,7 +256,7 @@ export function ListView({
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 flex-1 items-start gap-1 md:gap-2">
                           <h4
-                            className="line-clamp-2 min-w-0 flex-1 break-words font-medium text-sm text-primary"
+                            className="line-clamp-2 min-w-0 flex-1 break-words font-medium text-sm text-primary dark:text-primary-dark-mode"
                             title={transaction.description}
                           >
                             {transaction.description}
@@ -271,7 +271,7 @@ export function ListView({
                               className="shrink-0 cursor-pointer transition-opacity hover:opacity-70"
                               title="View image"
                             >
-                              <Image className="h-4 w-4 min-h-4 min-w-4 text-primary" />
+                              <Image className="h-4 w-4 min-h-4 min-w-4 text-primary dark:text-blue-500" />
                             </button>
                           )}
                         </div>
@@ -279,10 +279,10 @@ export function ListView({
                           <div
                                   className={`font-semibold text-sm ${
                               transaction.type === CombinedTransactionTypeEnum.INCOME
-                                ? "text-teal-600"
+                                ? "text-teal-600 dark:text-teal-500"
                                       : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                                ? "text-red-900"
-                                : "text-blue-900"
+                                ? "text-red-900 dark:text-red-700"
+                                : "text-blue-900 dark:text-blue-400"
                             }`}
                           >
                               {rowAmount < 0
@@ -298,10 +298,10 @@ export function ListView({
                           <span
                                   className={`px-1 md:px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 gap-1 ${
                               transaction.type === CombinedTransactionTypeEnum.INCOME
-                                      ? "bg-teal-100/50  text-teal-600"
+                                      ? "bg-teal-100/50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-500"
                                       : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                                      ? "bg-red-100/50 text-red-900"
-                                      : "bg-blue-100/50 text-blue-900"
+                                      ? "bg-red-100/50 text-red-900 dark:bg-red-950/40 dark:text-red-700"
+                                      : "bg-blue-100/50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-400"
                             }`}
                           >
                                   {transaction.type === CombinedTransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline" />}
@@ -314,7 +314,7 @@ export function ListView({
                       
                       {hasSubcategory && (
                         <p
-                          className="md:hidden mt-1 text-xs text-gray-600 truncate"
+                          className="md:hidden mt-1 text-xs text-gray-600 truncate dark:text-muted-foreground"
                           title={categoryLine}
                         >
                           {categoryLine}
@@ -322,7 +322,7 @@ export function ListView({
                       )}
 
                       <div className="flex items-center justify-between mt-1">
-                        <div className="flex items-center text-xs text-gray-600 flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center text-xs text-gray-600 flex-1 min-w-0 overflow-hidden dark:text-muted-foreground">
                           <span className="flex-shrink-0 whitespace-nowrap">
                             {new Date(transaction.date).toLocaleDateString()}
                           </span>

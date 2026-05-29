@@ -87,6 +87,7 @@ body > .profiler-results {
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-dark-mode: var(--primary-dark-mode);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -107,6 +108,7 @@ body > .profiler-results {
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
   --primary: oklch(34.88% 0.082 246.06);
+  --primary-dark-mode: oklch(34.88% 0.082 246.06);
   --primary-foreground: oklch(0.984 0.003 247.858);
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
@@ -139,14 +141,16 @@ body > .profiler-results {
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
   --card-foreground: oklch(0.984 0.003 247.858);
   --popover: oklch(0.208 0.042 265.755);
   --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
+  --primary: oklch(34.88% 0.082 246.06);
+  --primary-dark-mode: oklch(0.93 0.03 246.06);
+  --primary-foreground: oklch(0.984 0.003 247.858);
   --secondary: oklch(0.279 0.041 260.031);
   --secondary-foreground: oklch(0.984 0.003 247.858);
   --muted: oklch(0.279 0.041 260.031);
@@ -157,11 +161,16 @@ body > .profiler-results {
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  /* Dark charts: darker L, hues aligned to light tokens — no duplicate greens */
+  --chart-1: oklch(0.45 0.12 175);
+  --chart-2: oklch(0.52 0.18 25);
+  --chart-3: oklch(0.5 0.16 55);
+  --chart-4: oklch(0.42 0.1 246);
+  --chart-5: oklch(0.52 0.14 85);
+  --chart-6: oklch(0.5 0.14 290);
+  --chart-7: oklch(0.48 0.12 230);
+  --chart-8: oklch(0.5 0.1 75);
+  --chart-9: oklch(0.48 0.05 280);
   --sidebar: oklch(0.208 0.042 265.755);
   --sidebar-foreground: oklch(0.984 0.003 247.858);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -170,6 +179,7 @@ body > .profiler-results {
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+  --delete: #f986a3;
 }
 
 @layer base {
@@ -187,6 +197,38 @@ body > .profiler-results {
    See https://capacitorjs.com/docs/apis/system-bars */
 
 @layer utilities {
+  .text-primary-dark-mode {
+    color: var(--color-primary-dark-mode);
+  }
+
+  .dark .text-primary {
+    color: var(--color-primary-dark-mode);
+  }
+
+  .dark .text-primary\/50 {
+    color: color-mix(in oklab, var(--color-primary-dark-mode) 50%, transparent);
+  }
+
+  .dark .text-primary\/60 {
+    color: color-mix(in oklab, var(--color-primary-dark-mode) 60%, transparent);
+  }
+
+  .dark .text-primary\/70 {
+    color: color-mix(in oklab, var(--color-primary-dark-mode) 70%, transparent);
+  }
+
+  .dark .text-primary\/80 {
+    color: color-mix(in oklab, var(--color-primary-dark-mode) 80%, transparent);
+  }
+
+  .dark .hover\:text-primary:hover {
+    color: var(--color-primary-dark-mode);
+  }
+
+  .dark .hover\:text-primary\/80:hover {
+    color: color-mix(in oklab, var(--color-primary-dark-mode) 80%, transparent);
+  }
+
   .font-landing-title {
     font-family: var(--font-league-spartan), ui-sans-serif, system-ui, sans-serif;
   }
@@ -310,12 +352,12 @@ body > .profiler-results {
   .input-container {
     position: sticky !important;
     bottom: 0 !important;
-    background: white !important;
+    background: var(--background) !important;
     z-index: 10000 !important;
     padding-bottom: env(safe-area-inset-bottom, 0px);
     padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
-    border-top: 1px solid #e5e7eb !important;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1) !important;
+    border-top: 1px solid var(--border) !important;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2) !important;
   }
 
   /* Mobile-specific input handling */
@@ -328,7 +370,7 @@ body > .profiler-results {
       width: 100% !important;
       padding: 16px !important;
       padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px) !important;
-      background: white !important;
+      background: var(--background) !important;
       z-index: 10001 !important;
     }
 

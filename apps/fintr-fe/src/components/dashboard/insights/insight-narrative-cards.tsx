@@ -10,24 +10,24 @@ interface InsightNarrativeCardsProps {
 
 const severityStyles = {
   positive: {
-    container: "border-0 bg-teal-50",
-    icon: "bg-teal-600",
-    title: "text-green-800",
-    body: "text-green-700",
+    container: "border-0 bg-teal-50 dark:bg-teal-950/50",
+    icon: "bg-teal-600 dark:bg-teal-500",
+    title: "text-green-800 dark:text-teal-200",
+    body: "text-green-700 dark:text-teal-500/90",
     Icon: CheckCircle2,
   },
   neutral: {
-    container: "border-0 bg-primary/5",
-    icon: "bg-primary",
+    container: "border-0 bg-primary/5 dark:bg-muted",
+    icon: "bg-primary dark:bg-primary",
     title: "text-primary",
     body: "text-primary/70",
     Icon: Info,
   },
   warning: {
-    container: "border-0 bg-amber-50",
-    icon: "bg-amber-600",
-    title: "text-amber-900",
-    body: "text-amber-800",
+    container: "border-0 bg-amber-50 dark:bg-amber-950/50",
+    icon: "bg-amber-600 dark:bg-amber-500",
+    title: "text-amber-900 dark:text-amber-200",
+    body: "text-amber-800 dark:text-amber-300/90",
     Icon: AlertTriangle,
   },
 };
@@ -40,7 +40,7 @@ export const InsightNarrativeCards = ({
     return (
       <div className="space-y-4 animate-pulse">
         {[1, 2].map((key) => (
-          <div key={key} className="h-24 rounded-lg bg-gray-100" />
+          <div key={key} className="h-24 rounded-lg bg-gray-100 dark:bg-muted" />
         ))}
       </div>
     );
@@ -76,7 +76,7 @@ export const InsightNarrativeCards = ({
                       asChild
                       variant="outline"
                       size="sm"
-                      className="text-xs h-8"
+                      className="text-xs h-8 border-0 bg-white shadow-xs dark:bg-card dark:hover:bg-accent/50"
                     >
                       <Link href={insight.actionHref}>
                         {insight.actionLabel}

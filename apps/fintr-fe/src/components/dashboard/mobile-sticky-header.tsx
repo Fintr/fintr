@@ -199,6 +199,7 @@ function MobileStickyHeaderContent({ title }: MobileStickyHeaderProps) {
         className={`
           h-px
           bg-gray-200
+          dark:bg-border
           transition-all
           duration-300
           ease-in-out

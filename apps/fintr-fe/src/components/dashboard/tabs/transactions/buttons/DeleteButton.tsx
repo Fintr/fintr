@@ -2,6 +2,7 @@ import * as React from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { VariantProps } from "class-variance-authority";
 import { Trash2 } from "lucide-react";
+import { cn, transactionDeleteIconButtonClassName } from "@/lib/utils";
 
 interface DeleteButtonProps
   extends React.ComponentProps<"button">,
@@ -17,7 +18,7 @@ export const DeleteButton = ({
     <Button
       variant="ghost"
       size="icon"
-      className={`h-8 w-8 text-red-900 hover:bg-red-100/50 hover:text-red-900 ${className || ''}`}
+      className={cn(transactionDeleteIconButtonClassName, className)}
       {...props}
     >
       <Trash2 className="h-4 w-4" />

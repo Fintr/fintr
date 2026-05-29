@@ -12,6 +12,13 @@ interface SummaryStatTileProps {
   className?: string;
 }
 
+export const statTileSurfaceClassName =
+  "bg-[#f9f7f5] dark:bg-background p-4 rounded-lg shadow-sm";
+
+/** Matches the Budget Summary outer `Card` surface (not the inner stat tiles). */
+export const budgetSummaryCardSurfaceClassName =
+  "rounded-lg bg-white dark:bg-card dark:shadow-sm";
+
 export const SummaryStatTile = ({
   label,
   value,
@@ -21,7 +28,7 @@ export const SummaryStatTile = ({
   className,
 }: SummaryStatTileProps) => {
   return (
-    <div className={cn("bg-[#f9f7f5] p-4 rounded-lg", className)}>
+    <div className={cn(statTileSurfaceClassName, className)}>
       <div className="flex items-center justify-between gap-2 mb-1">
         <h4 className="text-sm font-medium text-primary/70">{label}</h4>
         {action}

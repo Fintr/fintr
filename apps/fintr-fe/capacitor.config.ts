@@ -83,25 +83,24 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
-      backgroundColor: "#ffffff",
+      backgroundColor: "#151921",
       showSpinner: false,
     },
     // Inject reliable safe-area CSS variables on Android WebView.
     // See https://capacitorjs.com/docs/apis/system-bars
     SystemBars: {
       insetsHandling: "css",
-      style: "DARK",
+      style: "LIGHT",
       hidden: false,
       animation: "NONE",
     },
     StatusBar: {
-      style: "dark",
-      // Match top bar background.
-      backgroundColor: "#FAFAF9",
+      style: "light",
+      backgroundColor: "#151921",
     },
     Browser: {
       presentationStyle: 'fullscreen',
-      toolbarColor: '#ffffff',
+      toolbarColor: '#151921',
       showTitle: true
     },
     // Keep WebView layout full-screen on iOS; keyboard overlays. JS uses keyboardHeight

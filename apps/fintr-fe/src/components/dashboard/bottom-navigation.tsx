@@ -58,6 +58,24 @@ export default function BottomNavigation() {
 
   const activeValue = getActiveValue();
 
+  const navItemClassName = (isActive: boolean) =>
+    cn(
+      "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2",
+      isActive ? "text-white dark:text-primary-dark-mode" : "text-white/70 dark:text-muted-foreground",
+    );
+
+  const navIconClassName = (isActive: boolean) =>
+    cn(
+      "h-5 w-5",
+      isActive ? "text-white dark:text-primary-dark-mode" : "text-white/70 dark:text-muted-foreground",
+    );
+
+  const navLabelClassName = (isActive: boolean) =>
+    cn(
+      "w-full truncate text-center text-xs font-medium",
+      isActive ? "text-white dark:text-primary-dark-mode" : "text-white/70 dark:text-muted-foreground",
+    );
+
   const handleReceiptSuccess = (suggestedTransactionPayload: any, receiptImage: File, draftId?: string) => {
     const prefilledData = {
       amount: suggestedTransactionPayload?.amount,
@@ -78,16 +96,13 @@ export default function BottomNavigation() {
     <>
       {isAndroidNative && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-40 h-12 md:hidden pointer-events-none"
-          style={{
-            backgroundColor: "#FAFAF9",
-          }}
+          className="fixed bottom-0 left-0 right-0 z-40 h-12 md:hidden pointer-events-none bg-[#FAFAF9] dark:bg-background"
         />
       )}
 
       <nav
         className={cn(
-          "fixed left-0 right-0 z-50 bg-primary shadow-xs border-t border-primary/20 md:hidden",
+          "fixed left-0 right-0 z-50 border-t border-primary/20 bg-primary shadow-xs md:hidden dark:border-border dark:bg-card",
           isAndroidNative
             ? ""
             : isIOSNative
@@ -102,22 +117,10 @@ export default function BottomNavigation() {
           {/* Transactions */}
           <Link
             href="/dashboard/"
-            className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2 min-w-0 ${
-              activeValue === "transactions"
-                ? "text-white"
-                : "text-white/70"
-            }`}
+            className={navItemClassName(activeValue === "transactions")}
           >
-            <FileText
-              className={`h-5 w-5 ${
-                activeValue === "transactions" ? "text-white" : "text-white/70"
-              }`}
-            />
-            <span
-              className={`text-xs font-medium truncate w-full text-center ${
-                activeValue === "transactions" ? "text-white" : "text-white/70"
-              }`}
-            >
+            <FileText className={navIconClassName(activeValue === "transactions")} />
+            <span className={navLabelClassName(activeValue === "transactions")}>
               Transactions
             </span>
           </Link>
@@ -125,20 +128,10 @@ export default function BottomNavigation() {
           {/* Budget */}
           <Link
             href="/dashboard/budgets"
-            className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2 min-w-0 ${
-              activeValue === "budgets" ? "text-white" : "text-white/70"
-            }`}
+            className={navItemClassName(activeValue === "budgets")}
           >
-            <Wallet
-              className={`h-5 w-5 ${
-                activeValue === "budgets" ? "text-white" : "text-white/70"
-              }`}
-            />
-            <span
-              className={`text-xs font-medium truncate w-full text-center ${
-                activeValue === "budgets" ? "text-white" : "text-white/70"
-              }`}
-            >
+            <Wallet className={navIconClassName(activeValue === "budgets")} />
+            <span className={navLabelClassName(activeValue === "budgets")}>
               Budget
             </span>
           </Link>
@@ -148,7 +141,7 @@ export default function BottomNavigation() {
             <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <PopoverTrigger asChild>
                 <Button
-                  className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 p-0 shadow-lg border-2 border-white/30 transition-all"
+                  className="h-14 w-14 rounded-full border-2 border-white/30 bg-primary p-0 shadow-lg transition-all hover:bg-primary/90 dark:border-border"
                   size="icon"
                   aria-label="Add Options"
                   data-tutorial-target="mobile-add-button"
@@ -220,20 +213,10 @@ export default function BottomNavigation() {
           <Link
             href="/dashboard/insights"
             data-tutorial-target="mobile-dashboard-button"
-            className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2 min-w-0 ${
-              activeValue === "insights" ? "text-white" : "text-white/70"
-            }`}
+            className={navItemClassName(activeValue === "insights")}
           >
-            <BarChart3
-              className={`h-5 w-5 ${
-                activeValue === "insights" ? "text-white" : "text-white/70"
-              }`}
-            />
-            <span
-              className={`text-xs font-medium truncate w-full text-center ${
-                activeValue === "insights" ? "text-white" : "text-white/70"
-              }`}
-            >
+            <BarChart3 className={navIconClassName(activeValue === "insights")} />
+            <span className={navLabelClassName(activeValue === "insights")}>
               Dashboard
             </span>
           </Link>
@@ -242,20 +225,10 @@ export default function BottomNavigation() {
           <Link
             href="/dashboard/app_settings"
             data-tutorial-target="mobile-menu-button"
-            className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2 min-w-0 ${
-              activeValue === "space_settings" ? "text-white" : "text-white/70"
-            }`}
+            className={navItemClassName(activeValue === "space_settings")}
           >
-            <Menu
-              className={`h-5 w-5 ${
-                activeValue === "space_settings" ? "text-white" : "text-white/70"
-              }`}
-            />
-            <span
-              className={`text-xs font-medium truncate w-full text-center ${
-                activeValue === "space_settings" ? "text-white" : "text-white/70"
-              }`}
-            >
+            <Menu className={navIconClassName(activeValue === "space_settings")} />
+            <span className={navLabelClassName(activeValue === "space_settings")}>
               Menu
             </span>
           </Link>

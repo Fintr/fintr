@@ -89,7 +89,7 @@ export const HealthScoreFactorRow = ({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span
-            className={`inline-flex items-center justify-center rounded-sm ${styles.badge} px-2 py-1 text-xs font-medium text-white ring-1 ring-inset`}
+            className={`inline-flex items-center justify-center rounded-sm ${styles.badge} px-2 py-1 text-xs font-medium text-white ring-1 ring-inset dark:ring-0`}
           >
             {percentage}
           </span>

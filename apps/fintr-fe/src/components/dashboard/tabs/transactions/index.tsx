@@ -716,12 +716,12 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   return (
     <>
       {/* Mobile Financial Summary Cards */}
-      <div className="px-2 md:px-0 md:hidden mb-4 space-y-4">
+      <div className="mb-4 space-y-4 px-2 md:hidden md:px-0">
         {/* Savings Card */}
-        <div className="relative overflow-hidden rounded-2xl bg-primary p-6 shadow-lg">
+        <div className="relative overflow-hidden rounded-2xl bg-primary p-6 shadow-lg dark:border dark:border-border dark:bg-card dark:shadow-sm">
           {/* Decorative shapes */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-600/20 rounded-full blur-2xl" />
+          <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-blue-600/20 blur-3xl dark:bg-primary/10" />
+          <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-purple-600/20 blur-2xl dark:bg-primary/5" />
           
           <div className="relative z-10">
             <p className="text-gray-400 text-md mb-2">Savings</p>
@@ -739,9 +739,9 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         </div>
 
         {/* Income & Expenses Card */}
-        <div className="relative overflow-hidden rounded-2xl bg-primary p-6 shadow-lg">
+        <div className="relative overflow-hidden rounded-2xl bg-primary p-6 shadow-lg dark:border dark:border-border dark:bg-card dark:shadow-sm">
           {/* Decorative shape */}
-          <div className="absolute top-0 left-0 w-20 h-20 bg-purple-600/20 rounded-full blur-2xl" />
+          <div className="absolute top-0 left-0 h-20 w-20 rounded-full bg-purple-600/20 blur-2xl dark:bg-primary/10" />
           
           <div className="relative z-10 grid grid-cols-2 gap-4">
             {/* Income Section */}
@@ -756,7 +756,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             </div>
 
             {/* Expenses Section */}
-            <div className="flex flex-col border-l border-gray-700 pl-4">
+            <div className="flex flex-col border-l border-gray-700 pl-4 dark:border-border">
               <div className="flex items-center gap-2 mb-1">
                 <ArrowDownLeft className="h-4 w-4 text-blue-400" />
                 <p className="text-gray-400 text-md">Expenses</p>
@@ -782,14 +782,14 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             <Button
               variant="ghost"
               onClick={() => setFiltersOpen(true)}
-              className="flex items-center gap-2 border-0 bg-white shadow-sm hover:bg-accent/50"
+              className="flex items-center gap-2 border-0 bg-white shadow-sm hover:bg-gray-100 dark:bg-card dark:hover:bg-accent/50"
               aria-label="Open transaction filters"
             >
               <Filter className="h-4 w-4" />
               <span className="hidden md:inline">Filters</span>
             </Button>
             {hasActiveFilters() && (
-              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
+              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white dark:border-background" />
             )}
           </div>
           {shouldShowV2Features() && (
@@ -847,7 +847,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="shrink-0 gap-1.5 h-9 border-0 bg-white text-xs shadow-xs sm:text-sm hover:bg-accent/50"
+                  className="shrink-0 gap-1.5 h-9 border-0 bg-white text-xs shadow-xs sm:text-sm hover:bg-gray-100 dark:bg-card dark:hover:bg-accent/50"
                   onClick={() => setShowBookedCurrencies((v) => !v)}
                   aria-pressed={showBookedCurrencies}
                   aria-label={

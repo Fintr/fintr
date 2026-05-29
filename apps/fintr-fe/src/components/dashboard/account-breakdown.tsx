@@ -173,10 +173,10 @@ const AccountTransactions = ({
 
   if (isLoading) {
     return (
-      <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+      <div className="mt-3 rounded-lg bg-gray-50 p-3 dark:bg-background">
         <div className="flex items-center justify-center py-4">
           <LoadingSpinner size="small" />
-          <span className="ml-2 text-sm text-gray-500">Loading transactions...</span>
+          <span className="ml-2 text-sm text-gray-500 dark:text-muted-foreground">Loading transactions...</span>
         </div>
       </div>
     );
@@ -192,8 +192,8 @@ const AccountTransactions = ({
 
   if (!data || !data.pages || data.pages.length === 0) {
     return (
-      <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-        <p className="text-sm text-gray-500">
+      <div className="mt-3 rounded-lg bg-gray-50 p-3 dark:bg-background">
+        <p className="text-sm text-gray-500 dark:text-muted-foreground">
           No transactions found for this account in the selected period.
         </p>
       </div>
@@ -202,8 +202,8 @@ const AccountTransactions = ({
 
   if (displayedTransactions.length === 0) {
     return (
-      <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-        <p className="text-sm text-gray-500">
+      <div className="mt-3 rounded-lg bg-gray-50 p-3 dark:bg-background">
+        <p className="text-sm text-gray-500 dark:text-muted-foreground">
           No transactions found for this account in the selected period.
         </p>
       </div>
@@ -232,17 +232,17 @@ const AccountTransactions = ({
   );
 
   return (
-    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-      <h4 className="text-sm font-semibold text-gray-700 mb-3">Recent Transactions</h4>
+    <div className="mt-3 rounded-lg bg-gray-50 p-3 dark:bg-background">
+      <h4 className="mb-3 text-sm font-semibold text-gray-700 dark:text-foreground">Recent Transactions</h4>
       <div className="max-h-96 overflow-y-auto overflow-x-hidden space-y-4">
         {sortedDates.map((date) => (
           <div key={date}>
-            <DayDivider date={date} textClassName="bg-gray-50" />
+            <DayDivider date={date} textClassName="bg-gray-50 dark:bg-background" />
             <div className="space-y-2">
               {transactionsByDate[date].map((transaction) => (
                 <div 
                   key={transaction.id}
-                  className="flex min-w-0 items-center justify-between rounded bg-white p-3 transition-colors hover:bg-gray-50"
+                  className="flex min-w-0 items-center justify-between rounded bg-white p-3 transition-colors hover:bg-gray-50 dark:bg-muted dark:hover:bg-muted/80"
                 >
                   <div className="flex items-center space-x-3 min-w-0 flex-1">
                     <div
@@ -392,7 +392,7 @@ const AccountBreakdownComponent = ({
     <Card className="border-0 shadow-sm">
       <CardHeader className="px-4">
         <CardTitle>Account Breakdown</CardTitle>
-        <div className="text-2xl font-bold text-teal-600">
+        <div className="text-2xl font-bold text-teal-600 dark:text-teal-500">
           {formatAmount(data.totalBalance)}
         </div>
       </CardHeader>
@@ -406,7 +406,7 @@ const AccountBreakdownComponent = ({
               return (
                 <div key={account.name} className="space-y-0">
                   <div
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="flex items-center justify-between rounded-lg bg-gray-50 p-3 cursor-pointer transition-colors hover:bg-gray-100 dark:bg-background dark:hover:bg-muted"
                     onClick={() => handleAccountClick(account.name)}
                   >
                     <div className="flex items-center space-x-3">
@@ -421,15 +421,21 @@ const AccountBreakdownComponent = ({
                     </div>
                     <div className="flex items-center space-x-2">
                       <div className="text-right">
-                        <div className={`text-sm font-semibold ${account.value < 0 ? 'text-red-900' : 'text-teal-600'}`}>
+                        <div
+                          className={`text-sm font-semibold ${
+                            account.value < 0
+                              ? "text-red-900 dark:text-red-700"
+                              : "text-teal-600 dark:text-teal-500"
+                          }`}
+                        >
                           {formatAmount(account.value)}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 dark:text-muted-foreground">
                           {account.percentage}
                         </div>
                       </div>
                       <ChevronRight 
-                        className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
+                        className={`h-4 w-4 text-gray-500 dark:text-muted-foreground transition-transform duration-300 ease-in-out ${
                           isExpanded ? 'rotate-90' : 'rotate-0'
                         }`} 
                       />

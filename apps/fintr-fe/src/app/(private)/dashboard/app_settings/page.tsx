@@ -20,6 +20,7 @@ import { useAtomValue } from "jotai";
 import { isAdminAtom } from "@/atoms/dashboardAtoms";
 import { useQueryClient } from "@tanstack/react-query";
 import { resetGlobalAuthLock } from "@/components/deep-link-handler";
+import { ThemeToggleCard } from "@/components/settings/theme-toggle-card";
 
 interface SettingsCard {
   title: string;
@@ -158,7 +159,7 @@ export default function AppSettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background p-2 pb-24 md:pb-4">
+    <div className="min-h-screen bg-background px-4 py-2 pb-24 md:pb-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -233,6 +234,7 @@ export default function AppSettingsPage() {
                     </Link>
                   );
                 })}
+                {section.title === "Settings" ? <ThemeToggleCard /> : null}
               </div>
             </div>
           ))}

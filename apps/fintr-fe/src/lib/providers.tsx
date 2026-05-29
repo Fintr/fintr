@@ -12,6 +12,7 @@ import AuthWrapper from "@/components/auth-wrapper";
 import DeepLinkHandler from "@/components/deep-link-handler";
 import SessionExpirationModal from "@/components/session-expiration-modal";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(() => new QueryClient({
@@ -28,23 +29,25 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }));
 
   return (
-    <JotaiProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ErrorBoundary>
-            <TutorialProvider>
-              <ToastSettingsProvider>
-                <DeepLinkHandler />
-                <SessionExpirationModal />
-                <ToasterWithSettings />
-                <AuthWrapper>
-                  {children}
-                </AuthWrapper>
-              </ToastSettingsProvider>
-            </TutorialProvider>
-          </ErrorBoundary>
-        </AuthProvider>
-      </QueryClientProvider>
-    </JotaiProvider>
+    <ThemeProvider>
+      <JotaiProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <ErrorBoundary>
+              <TutorialProvider>
+                <ToastSettingsProvider>
+                  <DeepLinkHandler />
+                  <SessionExpirationModal />
+                  <ToasterWithSettings />
+                  <AuthWrapper>
+                    {children}
+                  </AuthWrapper>
+                </ToastSettingsProvider>
+              </TutorialProvider>
+            </ErrorBoundary>
+          </AuthProvider>
+        </QueryClientProvider>
+      </JotaiProvider>
+    </ThemeProvider>
   );
 }

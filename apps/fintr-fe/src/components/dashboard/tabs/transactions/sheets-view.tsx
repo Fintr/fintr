@@ -524,7 +524,7 @@ export function SheetsView({
                                     className="cursor-pointer hover:opacity-70 transition-opacity"
                                     title="View image"
                                   >
-                                    <Image className="h-4 w-4 text-primary" />
+                                    <Image className="h-4 w-4 text-blue-700 dark:text-blue-500" />
                                   </button>
                                 )}
                               </div>

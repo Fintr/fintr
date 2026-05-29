@@ -102,7 +102,7 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
           <motion.div
             className={cn(
               "relative z-[2] mx-auto flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl shadow-lg",
-              isAndroidNative ? "bg-background" : "bg-white",
+              isAndroidNative ? "bg-background" : "bg-white dark:bg-card",
               panelClassName,
             )}
             style={

@@ -67,12 +67,13 @@ class GlobalErrorBoundary extends React.Component<
           justifyContent: 'center',
           padding: '24px',
           fontFamily: 'system-ui, -apple-system, sans-serif',
-          backgroundColor: '#fafaf9'
+          backgroundColor: 'var(--background, #fafaf9)',
+          color: 'var(--foreground, #0f172a)',
         }}>
           <h1 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '16px' }}>
             Critical Error
           </h1>
-          <p style={{ color: '#666', marginBottom: '24px', maxWidth: '400px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--muted-foreground, #666666)', marginBottom: '24px', maxWidth: '400px', textAlign: 'center' }}>
             {isStaleChunkError
               ? "A new version of Fintr is available. Reload the page to continue."
               : errorMsg}
@@ -80,7 +81,7 @@ class GlobalErrorBoundary extends React.Component<
           {!isStaleChunkError && (
           <pre style={{
             fontSize: '12px',
-            backgroundColor: '#f1f1f1',
+            backgroundColor: 'var(--muted, #f1f1f1)',
             padding: '16px',
             borderRadius: '8px',
             maxWidth: '100%',

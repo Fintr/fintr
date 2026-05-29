@@ -138,7 +138,7 @@ const SettingsPage = () => {
                   disabled={!usesEmail}
                 />
                 {user?.email_verified && (
-                  <div className="flex items-center text-teal-600 px-2 py-1 rounded-md bg-teal-100/50">
+                  <div className="flex items-center text-teal-600 px-2 py-1 rounded-md bg-teal-100/50 dark:bg-teal-950/40 dark:text-green-600">
                     <CheckCircle className="h-4 w-4 mr-1" />
                     <span className="text-sm font-medium">Verified</span>
                   </div>
@@ -212,15 +212,17 @@ const SettingsPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-red-300 px-2">
+        <Card className="border-red-300 px-2 dark:border-red-800">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-900/20">
-                <AlertTriangle className="h-5 w-5 text-red-900" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-900/20 dark:bg-red-800/20">
+                <AlertTriangle className="h-5 w-5 text-red-900 dark:text-red-800" />
               </div>
               <div>
-                <CardTitle className="text-red-900">Danger Zone</CardTitle>
-                <CardDescription className="text-red-900">
+                <CardTitle className="text-red-900 dark:text-red-800">
+                  Danger Zone
+                </CardTitle>
+                <CardDescription className="text-red-900 dark:text-red-800">
                   Permanently delete all your data and start over.
                 </CardDescription>
               </div>
@@ -228,7 +230,7 @@ const SettingsPage = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-muted-foreground">
                 This will permanently delete all your financial data, including transactions, 
                 accounts, budgets, and goals. This action cannot be undone.
               </p>
@@ -242,6 +244,7 @@ const SettingsPage = () => {
                 </Button>
                 <Button 
                   variant="destructive" 
+                  className="dark:bg-red-800 dark:hover:bg-red-800/90"
                   onClick={() => setIsDeleteAccountDialogOpen(true)}
                   aria-label="Delete account"
                 >
