@@ -70,6 +70,49 @@ RSpec.describe Insights::Operations::CreateNarratives, type: :operation do
       expect(savings[:calculation][:formula]).to include("÷")
     end
 
+    it "uses a 12-month lookback for emergency fund average monthly expenses" do
+      lookback_start = operation.send(
+        :emergency_fund_lookback_start_date,
+        end_date:
+      )
+      expect(lookback_start).to eq(end_date - 12.months + 1.day)
+
+      allow(operation).to receive(:find_emergency_fund_transactions).and_return(
+        Success(Transactions::Transaction.none)
+      )
+      allow(Insights::Operations::CreateSummaryStructure).to receive(:new).and_return(
+        instance_double(
+          Insights::Operations::CreateSummaryStructure,
+          call: Success(
+            total_income: Utils::Number.format_number(0),
+            total_expenses: Utils::Number.format_number(12_000),
+            net_savings: Utils::Number.format_number(-12_000)
+          )
+        )
+      )
+      allow(space.accounts).to receive_message_chain(:kept, :sum).and_return(12_000_00)
+
+      trailing = operation.send(:resolve_emergency_fund_expenses, params:)
+      expect(trailing).to be_success
+      expect(trailing.value!).to eq(12_000.to_d)
+
+      emergency = operation.send(
+        :emergency_fund_months,
+        space:,
+        trailing_expenses: trailing.value!
+      )
+      expect(emergency.value![:monthly_expenses]).to eq(1_000.to_d)
+
+      metrics = result.value![:metrics]
+      emergency_metric = metrics.find { |m| m[:key] == "emergency_fund" }
+
+      expect(emergency_metric[:calculation][:notes].first).to include("12 months")
+      expect(emergency_metric[:calculation][:notes].first).not_to include("1.0 months")
+      expect(emergency_metric[:calculation][:inputs]).to include(
+        hash_including(label: "Expenses (last 12 months)")
+      )
+    end
+
     context "when transactions use FilteredTransactions custom select" do
       let(:params) do
         super().merge(

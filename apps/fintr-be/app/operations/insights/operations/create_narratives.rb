@@ -4,6 +4,7 @@ module Insights
   module Operations
     class CreateNarratives < Dry::Operation
       BUSINESS_COGS_PATTERN = /inventory|supplies|materials|cogs|cost of goods|raw materials/i
+      EMERGENCY_FUND_LOOKBACK_MONTHS = 12
       MAX_INSIGHTS = 3
 
       class Contract < Dry::Validation::Contract
@@ -62,10 +63,10 @@ module Insights
 
         savings_rate = income.zero? ? 0.to_d : (net / income * 100)
         prior_savings_rate = prior_income.zero? ? 0.to_d : (prior_net / prior_income * 100)
+        trailing_expenses = step resolve_emergency_fund_expenses(params:)
         emergency_months = step emergency_fund_months(
           space:,
-          avg_monthly_expenses: expenses,
-          period_days: params[:period_days]
+          trailing_expenses:
         )
 
         metrics = [
@@ -99,7 +100,10 @@ module Insights
             calculation: emergency_fund_calculation(
               space:,
               emergency_months:,
-              period_days: params[:period_days]
+              lookback_start_date: emergency_fund_lookback_start_date(
+                end_date: params[:end_date]
+              ),
+              lookback_end_date: params[:end_date]
             )
           )
         ]
@@ -228,11 +232,46 @@ module Insights
         )
       end
 
-      def emergency_fund_months(space:, avg_monthly_expenses:, period_days:)
+      def resolve_emergency_fund_expenses(params:)
+        space = params[:space]
+        end_date = params[:end_date]
+        start_date = emergency_fund_lookback_start_date(end_date:)
+        transactions = step find_emergency_fund_transactions(
+          space:,
+          start_date:,
+          end_date:
+        )
+        summary = Insights::Operations::CreateSummaryStructure.new.call(
+          transactions:,
+          space:
+        )
+        return summary unless summary.success?
+
+        Success(decimal_from(summary.value![:total_expenses]))
+      end
+
+      def find_emergency_fund_transactions(space:, start_date:, end_date:)
+        Transactions::Queries::FilteredTransactions.call(
+          params: {
+            space_code: space.code,
+            start_date:,
+            end_date:,
+            balance_state: "calculated",
+            paginate: false,
+            without_initial_balance: true
+          }
+        )
+      end
+
+      def emergency_fund_lookback_start_date(end_date:)
+        (end_date - EMERGENCY_FUND_LOOKBACK_MONTHS.months + 1.day).to_date
+      end
+
+      def emergency_fund_months(space:, trailing_expenses:)
         liquid_cents = space.accounts.kept.sum { |a| a.balance.cents }
         liquid = liquid_cents / 100.0
-        months_in_period = [period_days.to_d / 30, 1].max
-        period_expenses = avg_monthly_expenses.to_d
+        months_in_period = EMERGENCY_FUND_LOOKBACK_MONTHS.to_d
+        period_expenses = trailing_expenses.to_d
         monthly_expenses = period_expenses / months_in_period
 
         if monthly_expenses.zero?
@@ -485,7 +524,7 @@ module Insights
         )
       end
 
-      def emergency_fund_calculation(space:, emergency_months:, period_days:)
+      def emergency_fund_calculation(space:, emergency_months:, lookback_start_date:, lookback_end_date:)
         currency = space.currency.presence || "PHP"
         liquid = emergency_months[:liquid]
         period_expenses = emergency_months[:period_expenses]
@@ -499,10 +538,13 @@ module Insights
             labeled_formula: "Total cash ÷ Average monthly expenses",
             inputs: [
               calculation_input(label: "Total cash (all accounts)", value: format_money(liquid, currency)),
-              calculation_input(label: "Expenses this period", value: format_money(period_expenses, currency)),
+              calculation_input(
+                label: "Expenses (last #{EMERGENCY_FUND_LOOKBACK_MONTHS} months)",
+                value: format_money(period_expenses, currency)
+              ),
               calculation_input(label: fund_label, value: display)
             ],
-            notes: ["Add expenses in this period to calculate coverage."]
+            notes: ["Add expenses in the last #{EMERGENCY_FUND_LOOKBACK_MONTHS} months to calculate coverage."]
           )
         end
 
@@ -511,7 +553,10 @@ module Insights
           formula: "#{format_money(liquid, currency)} ÷ #{format_money(monthly_expenses, currency)} = #{display}",
           inputs: [
             calculation_input(label: "Total cash (all accounts)", value: format_money(liquid, currency)),
-            calculation_input(label: "Expenses this period", value: format_money(period_expenses, currency)),
+            calculation_input(
+              label: "Expenses (last #{EMERGENCY_FUND_LOOKBACK_MONTHS} months)",
+              value: format_money(period_expenses, currency)
+            ),
             calculation_input(
               label: "Avg monthly expenses",
               value: format_money(monthly_expenses, currency)
@@ -519,8 +564,9 @@ module Insights
             calculation_input(label: fund_label, value: display)
           ],
           notes: [
-            "Avg monthly expenses = period expenses ÷ #{months_in_period.round(1)} months (from #{period_days}-day range).",
-            "Cash is the sum of balances on all active accounts in this space."
+            "Avg monthly expenses = expenses in the last #{EMERGENCY_FUND_LOOKBACK_MONTHS} months ÷ #{months_in_period.to_i} months (#{lookback_start_date}–#{lookback_end_date}).",
+            "Cash is the sum of balances on all active accounts in this space.",
+            "Independent of your selected insights date range."
           ]
         )
       end

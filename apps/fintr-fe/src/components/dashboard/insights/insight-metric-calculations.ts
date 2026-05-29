@@ -34,7 +34,7 @@ export const getMetricCalculation = (
             formula: "Total cash ÷ Average monthly expenses",
             details: [
               "Cash is the sum of balances on all active accounts in this space.",
-              "Average monthly expenses are based on total expenses in the selected period, scaled to one month.",
+              "Average monthly expenses are total expenses over the last 12 months, divided by 12.",
               "Shown in weeks (months × 4.33).",
             ],
           }
@@ -43,7 +43,7 @@ export const getMetricCalculation = (
             formula: "Total cash ÷ Average monthly expenses",
             details: [
               "Cash is the sum of balances on all active accounts in this space.",
-              "Average monthly expenses are based on total expenses in the selected period, scaled to one month.",
+              "Average monthly expenses are total expenses over the last 12 months, divided by 12.",
               "Target range is 3–6 months of expenses covered.",
             ],
           };
