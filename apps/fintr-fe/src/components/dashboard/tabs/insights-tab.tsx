@@ -39,6 +39,8 @@ import { InsightNarrativeCards } from "@/components/dashboard/insights/insight-n
 import { InsightMetricCards } from "@/components/dashboard/insights/insight-metric-cards";
 import { DashboardSummarySection } from "@/components/dashboard/insights/dashboard-summary-section";
 import { ExpenseBreakdownCenterLabel } from "@/components/dashboard/insights/expense-breakdown-center-label";
+import { ChartTooltipContent } from "@/components/dashboard/insights/chart-tooltip-content";
+import { rechartsTooltipProps } from "@/components/dashboard/insights/recharts-tooltip-props";
 import {
   LineChart as RechartsLineChart,
   Line,
@@ -692,23 +694,24 @@ const InsightsTab = () => {
               ) : (
                 <>
                   <div className="flex flex-col items-center justify-center py-6">
-                    <div className="relative w-40 h-40 mb-4">
-                      <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="relative mb-4 h-40 w-40">
+                      <div className="absolute inset-0 flex items-center justify-center border-0 ring-0 dark:border-0 dark:ring-0">
                         <div className="text-4xl font-bold text-primary">
                           {insightsData?.healthScores?.score || 0}
                         </div>
                       </div>
                       <svg
-                        className="w-full h-full"
+                        className="h-full w-full"
                         viewBox="0 0 100 100"
                         xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden
                       >
                         <circle
                           cx="50"
                           cy="50"
                           r="45"
                           fill="none"
-                          stroke="#e2e8f0"
+                          className="stroke-[#e2e8f0] dark:stroke-transparent"
                           strokeWidth="10"
                         />
                         <circle
@@ -716,7 +719,7 @@ const InsightsTab = () => {
                           cy="50"
                           r="45"
                           fill="none"
-                          stroke="#0A3D62"
+                          className="stroke-[#0A3D62] dark:stroke-[var(--chart-2)]"
                           strokeWidth="10"
                           strokeDasharray="282.7"
                           strokeDashoffset={282.7 - (282.7 * (insightsData?.healthScores?.score || 0) / 100)}
@@ -942,6 +945,7 @@ const InsightsTab = () => {
                           dataKey="value"
                           nameKey="name"
                           paddingAngle={2}
+                          stroke="var(--card)"
                           isAnimationActive={false}
                         >
                           {processedExpenseBreakdown.map((entry, index) => (
@@ -963,10 +967,11 @@ const InsightsTab = () => {
                           />
                         </Pie>
                         <RechartsTooltip
+                          {...rechartsTooltipProps}
                           formatter={(value: number, name: string, props: any) => {
                             if (name === "Other" && props.payload.details) {
                               return (
-                                <div>
+                                <div className="text-foreground">
                                   {formatAmount(value)}<br/>
                                  {props.payload.details.map((detail: { name: string; value: number; percent: string; }) => (
                                     <div key={detail.name}>
@@ -1035,14 +1040,14 @@ const InsightsTab = () => {
                   }))}
                   margin={{ top: 15, right: 30, left: 20, bottom: 15 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="month" 
-                    stroke="#888888"
-                    style={{ fontSize: '14px' }}
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis
+                    dataKey="month"
+                    stroke="var(--muted-foreground)"
+                    style={{ fontSize: "14px" }}
                   />
                   <YAxis
-                    stroke="#888888"
+                    stroke="var(--muted-foreground)"
                     domain={barChartYAxisDomain}
                     tickFormatter={(value) => {
                       // Always include sign for non-zero values; guarantees negatives are explicit
@@ -1052,23 +1057,20 @@ const InsightsTab = () => {
                     style={{ fontSize: '12px' }}
                   />
                   <RechartsTooltip
-                    formatter={(value: number, name: string) => {
-                      return [formatAmount(value), name];
-                    }}
-                    labelFormatter={(label) => `Month: ${label}`}
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      padding: '12px'
-                    }}
+                    cursor={{ stroke: "var(--border)", fill: "var(--muted)" }}
+                    content={
+                      <ChartTooltipContent
+                        labelFormatter={(month) => `Month: ${month}`}
+                        formatValue={(value) => formatAmount(value)}
+                      />
+                    }
                   />
                   <Legend 
                     wrapperStyle={{ paddingTop: '20px' }}
                   />
                   <ReferenceLine
                     y={0}
-                    stroke="#888888"
+                    stroke="var(--muted-foreground)"
                     strokeDasharray="3 3"
                     strokeWidth={1.5}
                   />
@@ -1171,15 +1173,23 @@ const InsightsTab = () => {
                     data={insightsData?.weeklySpending || weeklySpendingData}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="day" stroke="#888888" />
-                    <YAxis stroke="#888888" />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--border)"
+                    />
+                    <XAxis dataKey="day" stroke="var(--muted-foreground)" />
+                    <YAxis stroke="var(--muted-foreground)" />
                     <RechartsTooltip
-                      formatter={(value: number) => formatAmount(value)}
+                      cursor={{ stroke: "var(--border)", fill: "var(--muted)" }}
+                      content={
+                        <ChartTooltipContent
+                          formatValue={(value) => formatAmount(value)}
+                        />
+                      }
                     />
                     <Bar
                       dataKey="amount"
-                      fill="#0A3D62"
+                      fill="var(--primary-dark-mode)"
                       name="Spending"
                       radius={[4, 4, 0, 0]}
                     />

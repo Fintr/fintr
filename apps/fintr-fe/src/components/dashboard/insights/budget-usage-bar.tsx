@@ -28,7 +28,7 @@ export const BudgetUsageBar = ({
     <div className={cn("space-y-1", className)}>
       <Progress
         value={budgetUsageProgressValue(usagePercentage)}
-        className="h-2 bg-gray-200"
+        className="h-2 bg-gray-200 dark:bg-muted"
         indicatorClassName={getProgressColor(usagePercentage, "bg")}
       />
       {showCaption && (

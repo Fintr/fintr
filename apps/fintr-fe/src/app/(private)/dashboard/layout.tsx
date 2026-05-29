@@ -208,8 +208,8 @@ export default function Layout({
                     <span className="text-md text-primary/70">Savings: </span>
                     <span className={`text-md font-bold ${
                       parseFloat(data.financialSummary.netSavings) >= 0
-                        ? 'text-teal-600'
-                        : 'text-red-900'
+                        ? "text-teal-600 dark:text-teal-500"
+                        : "text-red-900 dark:text-red-700"
                     }`}>
                       {formatCurrency(parseFloat(data.financialSummary.netSavings), spaceCurrency)}
                     </span>
@@ -222,7 +222,7 @@ export default function Layout({
             <TabsWrapper>
               <div className="w-full">
                 {/* Desktop Horizontal Layout */}
-                <TabsList className="hidden md:flex w-full min-w-0 flex-nowrap overflow-x-auto bg-white">
+                <TabsList className="hidden md:flex w-full min-w-0 flex-nowrap overflow-x-auto bg-white dark:bg-card dark:shadow-sm">
                   <TabsTrigger asChild value="transactions">
                     <Link href="/dashboard/">Transactions</Link>
                   </TabsTrigger>

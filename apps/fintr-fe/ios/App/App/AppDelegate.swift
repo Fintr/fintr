@@ -60,10 +60,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
 
-        // Set the app background color to match web app's off-white background
+        // Dark theme background — oklch(0.129 0.042 264.695) ≈ #151921
         if let window = AppDelegate.keyWindow() {
-            // oklch(98.20% 0.004 91.45) converted to RGB: #FAF9F8
-            window.backgroundColor = UIColor(red: 0.98, green: 0.976, blue: 0.973, alpha: 1.0)
+            window.backgroundColor = UIColor(red: 0.082, green: 0.098, blue: 0.129, alpha: 1.0)
         }
         
         // Configure cache settings for the WebView

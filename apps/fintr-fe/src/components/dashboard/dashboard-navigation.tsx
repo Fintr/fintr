@@ -11,6 +11,7 @@ import NotificationsPopup from "@/components/dashboard/notifications-popup";
 import { NotificationProps } from "@/components/dashboard/notification-item";
 import NavDrawer from "@/components/dashboard/nav-drawer";
 import Link from "next/link";
+import { FintrLogo } from "@/components/brand/fintr-logo";
 import { shouldShowV2Features } from "@/lib/utils";
 import { resetGlobalAuthLock } from "@/components/deep-link-handler";
 import { useQueryClient } from "@tanstack/react-query";
@@ -147,18 +148,16 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
   return (
     <>
       <header className={`fixed w-full bg-background z-20 transition-all duration-300 ease-in-out ${
-        isScrolled ? "border-b border-gray-200 shadow-sm" : "border-b border-transparent"
+        isScrolled
+          ? "border-b border-gray-200 shadow-sm dark:border-border"
+          : "border-b border-transparent"
       }`}>
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           {/* Desktop: Logo left, Add Receipt, Add Transaction, Notifications, Avatar right */}
           <div className="hidden md:flex flex-row items-center justify-between h-16 w-full gap-2">
             <div className="flex items-center md:mr-4">
               <Link href="/dashboard" aria-label="Go to Dashboard">
-                <img
-                  src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
-                  alt="Fintr Logo"
-                  className="h-8 w-auto"
-                />
+                <FintrLogo className="h-8 w-auto" />
               </Link>
             </div>
             <div className="flex flex-1" />

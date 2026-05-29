@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Loan } from "@/services/loans/queries";
-import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
+import { cn, transactionDeleteIconButtonClassName } from "@/lib/utils";
 
 interface DeleteLoanModalProps {
   loan: Loan;
@@ -79,7 +79,10 @@ const DeleteLoanModal: React.FC<DeleteLoanModalProps> = ({
         <Button
           size="sm"
           variant="ghost"
-          className="h-6 w-6 p-0 text-red-900 hover:text-red-900 hover:bg-red-50"
+          className={cn(
+            transactionDeleteIconButtonClassName,
+            "h-6 w-6 p-0",
+          )}
           onClick={(e) => {
             e.stopPropagation();
             handleTriggerClick();

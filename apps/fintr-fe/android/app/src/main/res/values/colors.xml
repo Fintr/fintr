@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Top bar background (bg-background) -->
-    <color name="fintr_top_bar">#FAFAF9</color>
+    <!-- Top bar / safe-area background (bg-background, dark theme) -->
+    <color name="fintr_top_bar">#151921</color>
 
     <!-- Bottom navigation background (bg-primary) -->
     <color name="fintr_bottom_nav">#0A3D62</color>

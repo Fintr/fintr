@@ -5,6 +5,22 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** Expense amounts in the transactions list (and matching UI). */
+export const transactionExpenseAmountClassName =
+  "text-red-900 dark:!text-red-700";
+
+/** Expense type chips in the transactions list. */
+export const transactionExpenseBadgeClassName =
+  "bg-red-100/50 text-red-900 dark:bg-red-950/40 dark:!text-red-700";
+
+/** Icon delete control — same red + hover surface as transaction expense chips. */
+export const transactionDeleteIconButtonClassName = cn(
+  "h-8 w-8",
+  transactionExpenseAmountClassName,
+  "hover:bg-red-100/50 hover:text-red-900",
+  "dark:hover:bg-red-950/40 dark:hover:!text-red-700",
+);
+
 // Utility function to truncate text with responsive behavior
 export const truncateText = (text: string, maxLength: number = 10, responsive: boolean = true): string => {
   if (!text) return '';
@@ -192,18 +208,41 @@ export function getColor(chartKey?: string): string {
   return color;
 }
 
+const CHART_COLOR_TOKEN_COUNT = 9;
+
 export function getColorByIndex(index: number): string {
-  return CHART_COLORS[index % CHART_COLORS.length];
+  const chartIndex = (index % CHART_COLOR_TOKEN_COUNT) + 1;
+  return `var(--chart-${chartIndex})`;
 }
 
 export function getProgressColor(progress: number, type: "bg" | "font" | "all" = "all"): string {
   if (progress <= 80) {
-    return type === "bg" ? "bg-teal-600" : type === "font" ? "text-teal-600" : "bg-teal-600 text-teal-600"; // teal
-  } else if (progress <= 100) {
-    return type === "bg" ? "bg-[#CC5500]" : type === "font" ? "text-[#CC5500]" : "bg-[#CC5500] text-[#CC5500]"; // burnt orange
-  } else {
-    return type === "bg" ? "bg-red-900" : type === "font" ? "text-red-900" : "bg-red-900 text-red-900"; // burgundy
+    if (type === "bg") {
+      return "bg-teal-600 dark:bg-teal-600";
+    }
+    if (type === "font") {
+      return "text-teal-600 dark:text-teal-500";
+    }
+    return "bg-teal-600 text-teal-600 dark:bg-teal-600 dark:text-teal-500";
   }
+
+  if (progress <= 100) {
+    if (type === "bg") {
+      return "bg-[#CC5500] dark:bg-orange-400";
+    }
+    if (type === "font") {
+      return "text-[#CC5500] dark:text-orange-300";
+    }
+    return "bg-[#CC5500] text-[#CC5500] dark:bg-orange-400 dark:text-orange-300";
+  }
+
+  if (type === "bg") {
+    return "bg-red-900 dark:bg-red-700";
+  }
+  if (type === "font") {
+    return "text-red-900 dark:!text-red-700";
+  }
+  return "bg-red-900 text-red-900 dark:bg-red-700 dark:!text-red-700";
 }
 
 export function getNumberColor(value: number): string {

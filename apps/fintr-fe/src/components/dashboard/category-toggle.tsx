@@ -35,34 +35,22 @@ const CategoryToggle: React.FC<CategoryToggleProps> = ({
         onValueChange={(value) => onCategoryChange(value as CategoryToggleType)}
         className="w-full"
       >
-        <TabsList className="grid h-full w-full grid-cols-2 rounded-md bg-white md:grid-cols-4">
-          <TabsTrigger
-            value="expense"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
-          >
+        <TabsList className="grid h-full w-full grid-cols-2 rounded-md bg-white md:grid-cols-4 dark:rounded-lg dark:bg-card dark:shadow-sm">
+          <TabsTrigger value="expense" className="flex items-center gap-2">
             <Receipt className="h-4 w-4" />
             <span className="hidden sm:inline">Expense</span>
           </TabsTrigger>
-          <TabsTrigger
-            value="income"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
-          >
+          <TabsTrigger value="income" className="flex items-center gap-2">
             <Wallet className="h-4 w-4" />
             <span className="hidden sm:inline">Income</span>
           </TabsTrigger>
           {showV2Features && (
             <>
-              <TabsTrigger
-                value="goal"
-                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
-              >
+              <TabsTrigger value="goal" className="flex items-center gap-2">
                 <Target className="h-4 w-4" />
                 <span className="hidden sm:inline">Goal</span>
               </TabsTrigger>
-              <TabsTrigger
-                value="investment"
-                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"
-              >
+              <TabsTrigger value="investment" className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
                 <span className="hidden sm:inline">Investment</span>
               </TabsTrigger>

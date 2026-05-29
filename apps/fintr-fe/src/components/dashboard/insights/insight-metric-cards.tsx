@@ -38,7 +38,9 @@ const parseMonths = (value: string) => {
 
 const metricValueClassName = (metric: InsightMetric): string => {
   if (metric.key === "expense_change") {
-    return metric.trend === "expense" ? "text-red-900" : "text-teal-600";
+    return metric.trend === "expense"
+      ? "text-red-900 dark:text-red-700"
+      : "text-teal-600 dark:text-teal-500";
   }
 
   if (metric.key === "savings_rate" || metric.key === "gross_margin") {
@@ -47,12 +49,12 @@ const metricValueClassName = (metric: InsightMetric): string => {
     const strong = metric.key === "gross_margin" ? 30 : 20;
 
     if (pct >= strong) {
-      return "text-teal-600";
+      return "text-teal-600 dark:text-teal-500";
     }
     if (pct >= ok) {
-      return "text-primary";
+      return "text-primary dark:text-primary-dark-mode";
     }
-    return "text-red-900";
+    return "text-red-900 dark:text-red-700";
   }
 
   if (metric.key === "emergency_fund") {
@@ -61,15 +63,15 @@ const metricValueClassName = (metric: InsightMetric): string => {
     const monthsEquivalent = isWeeks ? amount / 4.33 : amount;
 
     if (monthsEquivalent >= 6) {
-      return "text-teal-600";
+      return "text-teal-600 dark:text-teal-500";
     }
     if (monthsEquivalent >= 3) {
-      return "text-primary";
+      return "text-primary dark:text-primary-dark-mode";
     }
-    return "text-red-900";
+    return "text-red-900 dark:text-red-700";
   }
 
-  return "text-primary";
+  return "text-primary dark:text-primary-dark-mode";
 };
 
 const CalculationPopover = ({

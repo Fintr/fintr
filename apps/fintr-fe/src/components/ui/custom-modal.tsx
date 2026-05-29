@@ -434,12 +434,11 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       {isAndroidNative && (
         <div
           className={cn(
-            "left-0 right-0 top-0 z-[100.5] pointer-events-none",
+            "left-0 right-0 top-0 z-[100.5] pointer-events-none bg-background",
             backdropUsesAbsoluteLayout ? "absolute" : "fixed",
           )}
           style={{
             height: "20px",
-            backgroundColor: "#FAFAF9",
           }}
         />
       )}
@@ -468,12 +467,11 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       {isAndroidNative && !androidBackdropFillsShell && (
         <div
           className={cn(
-            "left-0 right-0 bottom-0 z-[100.5] pointer-events-none",
+            "left-0 right-0 bottom-0 z-[100.5] pointer-events-none bg-background",
             backdropUsesAbsoluteLayout ? "absolute" : "fixed",
           )}
           style={{
             height: safeAreaInsetBottom > 0 ? `${safeAreaInsetBottom - 1}px` : "calc(var(--safe-area-inset-bottom, 0px) - 2px)",
-            backgroundColor: "#FAFAF9",
           }}
         />
       )}

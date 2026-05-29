@@ -326,8 +326,8 @@ const LoansTab = ({}: LoansTabProps) => {
 
         {isSuccess && sortedLoans.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">No loans yet</p>
-            <p className="text-sm text-gray-400">
+            <p className="text-gray-500 dark:text-muted-foreground mb-4">No loans yet</p>
+            <p className="text-sm text-gray-400 dark:text-muted-foreground">
               Start tracking your loans by clicking "Add Loan"
             </p>
           </div>
@@ -354,13 +354,13 @@ const LoansTab = ({}: LoansTabProps) => {
                 ? 'bg-red-900' 
                 : 'bg-teal-600';
               const textColorClass = isBorrowed 
-                ? 'text-red-900' 
-                : 'text-teal-600';
+                ? 'text-red-900 dark:text-red-700' 
+                : 'text-teal-600 dark:text-teal-500';
               const statusColorClass = loan.status === 'paid_off' 
-                ? 'bg-green-100 text-green-800' 
+                ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400' 
                 : loan.status === 'defaulted' 
-                ? 'bg-red-100 text-red-800' 
-                : 'bg-blue-100 text-blue-800';
+                ? 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-700' 
+                : 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400';
 
               return (
                 <React.Fragment key={loan.id}>
@@ -369,16 +369,16 @@ const LoansTab = ({}: LoansTabProps) => {
                       key={`divider-${currentDate}-${idx}`}
                       className="flex items-center my-5"
                     >
-                      <div className="border-t border-gray-300" style={{width: '2rem'}} />
+                      <div className="border-t border-gray-300 dark:border-border" style={{width: '2rem'}} />
                       <span className="text-xs font-semibold text-primary bg-background px-3">
                         {currentDate}
                       </span>
-                      <div className="flex-grow border-t border-gray-300" />
+                      <div className="flex-grow border-t border-gray-300 dark:border-border" />
                     </div>
                   )}
                   <div>
                     <div 
-                      className="flex min-h-[80px] items-center justify-between rounded bg-white p-3 transition-colors hover:bg-gray-100"
+                      className="flex min-h-[80px] items-center justify-between rounded bg-white p-3 transition-colors hover:bg-gray-100 dark:bg-card dark:hover:bg-accent/50"
                     >
                       <div
                         className={`w-1 rounded mr-3 flex-shrink-0 self-stretch ${colorClass}`}
@@ -411,12 +411,12 @@ const LoansTab = ({}: LoansTabProps) => {
                                   : { duration: 0.22, ease: LOAN_EXPAND_EASE }
                               }
                             >
-                              <ChevronDown className="h-4 w-4 text-gray-500" />
+                              <ChevronDown className="h-4 w-4 text-gray-500 dark:text-muted-foreground" />
                             </motion.span>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-600 relative">
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-600 dark:text-muted-foreground relative">
                           <div className="flex items-center gap-1">
                             <CalendarLucide className="h-3 w-3" />
                             <span>{loanDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
@@ -438,7 +438,7 @@ const LoansTab = ({}: LoansTabProps) => {
                         </div>
 
                         {loan.description && (
-                          <div className="md:hidden flex items-center gap-1 mt-1 mb-1 text-xs text-gray-600">
+                          <div className="md:hidden flex items-center gap-1 mt-1 mb-1 text-xs text-gray-600 dark:text-muted-foreground">
                             <FileText className="h-3 w-3 flex-shrink-0" />
                             <span className="truncate">{loan.description}</span>
                           </div>
@@ -449,14 +449,14 @@ const LoansTab = ({}: LoansTabProps) => {
                             <span className={`${textColorClass} font-medium`}>
                               {isBorrowed ? 'Borrowed' : 'Lent'}
                             </span>
-                            <span className="text-gray-500">
+                            <span className="text-gray-500 dark:text-muted-foreground">
                               <span className="font-medium">Term:</span> {loan.loanTermMonths} Month{loan.loanTermMonths !== 1 ? 's' : ''}
                             </span>
-                            <span className="text-gray-500">
+                            <span className="text-gray-500 dark:text-muted-foreground">
                               Matures: {new Date(loan.maturityDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </span>
                             {loan.files && loan.files.length > 0 && (
-                              <span className="text-gray-500">
+                              <span className="text-gray-500 dark:text-muted-foreground">
                                 {loan.files.length} file{loan.files.length > 1 ? 's' : ''}
                               </span>
                             )}
@@ -509,7 +509,7 @@ const LoansTab = ({}: LoansTabProps) => {
               </div>
             )}
             {!hasNextPage && sortedLoans.length > 0 && (
-              <div className="text-center py-4 text-sm text-gray-500">
+              <div className="text-center py-4 text-sm text-gray-500 dark:text-muted-foreground">
                 No more loans to load
               </div>
             )}
@@ -717,7 +717,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
   };
 
   return (
-    <div className="mt-2 p-4 bg-white border border-gray-200 rounded-lg">
+    <div className="mt-2 p-4 bg-white border border-gray-200 rounded-lg dark:bg-card dark:border-border">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pb-4 border-b">
         <div>
           <div className="text-xs text-gray-500 mb-1">Total Principal</div>

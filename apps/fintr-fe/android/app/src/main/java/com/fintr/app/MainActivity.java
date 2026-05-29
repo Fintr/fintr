@@ -96,8 +96,8 @@ public class MainActivity extends BridgeActivity {
     WindowInsetsControllerCompat controller =
         WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
     if (controller != null) {
-      controller.setAppearanceLightStatusBars(true);
-      controller.setAppearanceLightNavigationBars(true);
+      controller.setAppearanceLightStatusBars(false);
+      controller.setAppearanceLightNavigationBars(false);
     }
   }
 

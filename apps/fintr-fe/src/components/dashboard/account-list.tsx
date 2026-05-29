@@ -10,8 +10,17 @@ import {
 import {
   cn,
   formatCurrency as formatCurrencyWithCurrency,
-  getNumberColor,
 } from "@/lib/utils";
+
+const accountAmountColorClass = (value: number): string => {
+  if (value < 0) {
+    return "text-red-900 dark:text-red-700";
+  }
+  if (value > 0) {
+    return "text-teal-600 dark:text-teal-500";
+  }
+  return "text-gray-500 dark:text-muted-foreground";
+};
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { getCurrentRate } from "@/services/exchangeRates/queries";
@@ -122,7 +131,7 @@ const AccountList: React.FC<AccountListProps> = ({
               <span className="font-medium text-muted-foreground">…</span>
             ) : (
               <span
-                className={`font-medium ${getNumberColor(totalInSpaceCurrency)}`}
+                className={`font-medium ${accountAmountColorClass(totalInSpaceCurrency)}`}
               >
                 {formatCurrencyWithCurrency(
                   totalInSpaceCurrency,
@@ -166,7 +175,7 @@ const AccountList: React.FC<AccountListProps> = ({
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">{currency}</span>
                     {isSpaceCurrency ? (
-                      <span className={`font-medium ${getNumberColor(total)}`}>
+                      <span className={`font-medium ${accountAmountColorClass(total)}`}>
                         {formatCurrencyWithCurrency(total, currency)}
                       </span>
                     ) : (
@@ -179,7 +188,7 @@ const AccountList: React.FC<AccountListProps> = ({
                         }
                         className={cn(
                           "font-medium text-left hover:underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded",
-                          getNumberColor(total),
+                          accountAmountColorClass(total),
                         )}
                         title={`Show equivalent in ${spaceCurrency}`}
                       >
@@ -206,7 +215,7 @@ const AccountList: React.FC<AccountListProps> = ({
                   Total (in {spaceCurrency})
                 </span>
                 <span
-                  className={`font-medium ${getNumberColor(totalInSpaceCurrency)}`}
+                  className={`font-medium ${accountAmountColorClass(totalInSpaceCurrency)}`}
                 >
                   {formatCurrencyWithCurrency(
                     totalInSpaceCurrency,
@@ -226,19 +235,19 @@ const AccountList: React.FC<AccountListProps> = ({
             <Link
               key={account.id}
               href={`/dashboard/space_settings/accounts/detail?accountId=${encodeURIComponent(account.id)}`}
-              className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-primary/40 hover:bg-muted/20 transition-colors group"
+              className="group flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-primary/40 hover:bg-muted/20 dark:border-0 dark:bg-card dark:shadow-sm dark:hover:bg-accent/50"
             >
-              <div className="flex items-center min-w-0 flex-1">
+              <div className="flex min-w-0 flex-1 items-center">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{account.name}</p>
-                  <p className="text-sm text-gray-500 truncate">
+                  <p className="truncate font-medium">{account.name}</p>
+                  <p className="truncate text-sm text-gray-500 dark:text-muted-foreground">
                     {getCategoryLabel(account.accountCategory)}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+              <div className="ml-2 flex flex-shrink-0 items-center gap-2">
                 <span
-                  className={`text-lg font-medium ${getNumberColor(balanceAmount)}`}
+                  className={`text-lg font-medium ${accountAmountColorClass(balanceAmount)}`}
                 >
                   {formatCurrencyWithCurrency(
                     balanceAmount,

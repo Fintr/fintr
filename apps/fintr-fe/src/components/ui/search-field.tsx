@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 const searchFieldInputClassName = cn(
-  "h-auto min-h-9 w-full max-w-none border-0 bg-white p-2 pl-10 shadow-sm",
+  "h-auto min-h-9 w-full max-w-none border-0 bg-white p-2 pl-10 shadow-sm dark:bg-card",
   "focus-visible:border-transparent focus-visible:ring-0",
 );
 
@@ -25,7 +25,7 @@ export function SearchField({
     <div className={cn("relative min-w-0 flex-1 w-full", wrapperClassName)}>
       <Search
         className={cn(
-          "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400",
+          "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-muted-foreground",
           iconClassName,
         )}
         aria-hidden

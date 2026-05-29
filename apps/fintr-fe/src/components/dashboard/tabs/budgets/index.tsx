@@ -17,7 +17,11 @@ import {
 import { BudgetCategory } from "@/types/budgetTypes";
 import { z } from "zod";
 import { BudgetUsageBar } from "@/components/dashboard/insights/budget-usage-bar";
-import { formatCurrency, getProgressColor } from "@/lib/utils";
+import {
+  budgetSummaryCardSurfaceClassName,
+  statTileSurfaceClassName,
+} from "@/components/dashboard/insights/summary-stat-tile";
+import { cn, formatCurrency, getProgressColor } from "@/lib/utils";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import { NewBudgetDialog } from "./new-budget-dialog";
 import { EditBudgetDialog } from "./edit-budget-dialog";
@@ -506,7 +510,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-[#f9f7f5] p-4 rounded-lg">
+                <div className={statTileSurfaceClassName}>
                   <h4 className="text-sm font-medium text-primary/70 mb-1">
                     Total Budget
                   </h4>
@@ -514,7 +518,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                     {formatCurrency(totalBudget, spaceCurrency)}
                   </div>
                 </div>
-                <div className="bg-[#f9f7f5] p-4 rounded-lg">
+                <div className={statTileSurfaceClassName}>
                   <h4 className="text-sm font-medium text-primary/70 mb-1">
                     Total Spent
                   </h4>
@@ -536,11 +540,16 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                     }
                   />
                 </div>
-                <div className="bg-[#f9f7f5] p-4 rounded-lg">
+                <div className={statTileSurfaceClassName}>
                   <h4 className="text-sm font-medium text-primary/70 mb-1">
                     {isOverBudget ? "Over budget" : "Remaining"}
                   </h4>
-                  <div className={`text-2xl font-bold text-primary ${getProgressColor(budgetUsagePercentage, "font")}`}>
+                  <div
+                    className={cn(
+                      "text-2xl font-bold",
+                      getProgressColor(budgetUsagePercentage, "font"),
+                    )}
+                  >
                     {formatCurrency(totalRemaining, spaceCurrency)}
                   </div>
                 </div>
@@ -578,7 +587,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
               return (
                 <div
                   key={index}
-                  className="space-y-4 rounded-lg bg-white p-5"
+                  className={cn(budgetSummaryCardSurfaceClassName, "space-y-4 p-5")}
                 >
                   <div>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">

@@ -20,7 +20,7 @@ export const DownloadButton = ({
     <Button
       variant="ghost"
       className={cn(
-        "flex items-center gap-1 border-0 bg-white shadow-xs hover:bg-accent/50",
+        "flex items-center gap-1 border-0 bg-white shadow-xs hover:bg-gray-100 dark:bg-card dark:hover:bg-accent/50",
         className,
       )}
       onClick={onClick}

@@ -162,7 +162,7 @@ export default function OnboardingCompleted() {
             <div className="mb-6">
               <CompletionIcon />
             </div>
-            <CardTitle className="text-2xl text-primary dark:text-teal-400">
+            <CardTitle className="text-2xl text-primary dark:text-teal-600">
               Congratulations!
             </CardTitle>
             <CardDescription className="text-lg">
@@ -173,10 +173,10 @@ export default function OnboardingCompleted() {
           <CardContent className="space-y-6 px-6">
             <div className="text-center space-y-4">
               <div className="bg-teal-100/50 dark:bg-green-900/20 rounded-lg p-4 border border-teal-300 dark:border-green-800 flex flex-col items-center">
-                <h3 className="font-semibold text-green-800 dark:text-teal-300 mb-2">
+                <h3 className="font-semibold text-green-800 dark:text-teal-500 mb-2">
                   What's been set up:
                 </h3>
-                <ul className="text-sm text-green-700 dark:text-teal-300 space-y-1">
+                <ul className="text-sm text-green-700 dark:text-teal-500 space-y-1">
                   <li className="flex items-center flex-center"><Check className="h-4 w-4 mr-2" /> Budget categories</li>
                   <li className="flex items-center flex-center"><Check className="h-4 w-4 mr-2" /> Financial accounts</li>
                 </ul>

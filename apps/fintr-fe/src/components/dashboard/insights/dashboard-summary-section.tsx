@@ -54,22 +54,22 @@ export const DashboardSummarySection = ({
               value={formatAmount(summary?.totalIncome || 0)}
               valueClassName={
                 (summary?.totalIncome || 0) >= 0
-                  ? "text-teal-600"
-                  : "text-red-900"
+                  ? "text-teal-600 dark:text-teal-500"
+                  : "text-red-900 dark:text-red-700"
               }
             />
             <SummaryStatTile
               label="Total Expenses"
               value={formatAmount(summary?.totalExpenses || 0)}
-              valueClassName="text-red-900"
+              valueClassName="text-red-900 dark:text-red-700"
             />
             <SummaryStatTile
               label="Net Savings"
               value={formatAmount(summary?.netSavings || 0)}
               valueClassName={
                 (summary?.netSavings || 0) >= 0
-                  ? "text-teal-600"
-                  : "text-red-900"
+                  ? "text-teal-600 dark:text-teal-500"
+                  : "text-red-900 dark:text-red-700"
               }
             />
           </div>

@@ -32,7 +32,7 @@ export const ExpenseBreakdownCenterLabel = ({
         x={cx}
         y={cy - 10}
         textAnchor="middle"
-        fill="#6b7280"
+        fill="var(--muted-foreground)"
         fontSize={12}
       >
         Total Expenses
@@ -41,7 +41,7 @@ export const ExpenseBreakdownCenterLabel = ({
         x={cx}
         y={cy + 14}
         textAnchor="middle"
-        fill="#111827"
+        fill="var(--foreground)"
         fontSize={16}
         fontWeight={600}
       >
