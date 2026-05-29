@@ -353,8 +353,9 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     deleteBudgetMutation.mutateAsync(budgetId);
 
   return (
-    <Card className="border-0 shadow-none bg-transparent py-0 md:py-4 overflow-visible">
-      <CardHeader className="flex flex-row items-center justify-between overflow-visible">
+    <div className="px-2 md:px-0">
+    <Card className="border-0 shadow-none bg-transparent px-0 py-0 overflow-visible">
+      <CardHeader className="flex flex-row items-center justify-between gap-4 overflow-visible pt-2">
         <div>
           <CardTitle>Monthly Budget</CardTitle>
           <CardDescription>
@@ -384,7 +385,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
           />
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0">
         <FilterSheet
           open={filtersOpen}
           onOpenChange={setFiltersOpen}
@@ -490,7 +491,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
         </FilterSheet>
 
         {/* Budget Summary */}
-        <Card className="mb-6">
+        <Card className="mb-6 border-0 shadow-sm">
           <CardHeader className="px-4">
             <CardTitle>Budget Summary</CardTitle>
             <CardDescription>
@@ -548,7 +549,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
+        <div className="space-y-3 rounded-lg overflow-hidden">
           {isLoading ? (
             <div className="py-4 text-center">
               <LoadingSpinner size="medium" />
@@ -577,7 +578,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
               return (
                 <div
                   key={index}
-                  className="p-4 border rounded-lg space-y-4 bg-white"
+                  className="space-y-4 rounded-lg bg-white p-5"
                 >
                   <div>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
@@ -653,7 +654,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                   </div>
 
                   {category.subcategories.length > 0 && (
-                    <div className="space-y-3 border-t pt-3">
+                    <div className="space-y-4 border-t pt-3">
                       {(category.parentOnlySpent ?? 0) > 0 && (
                         <div className="space-y-1 pl-3">
                           <div className="flex items-center justify-between text-sm">
@@ -718,6 +719,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 };
 

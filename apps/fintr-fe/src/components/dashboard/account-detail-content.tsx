@@ -7,7 +7,6 @@ import {
   SquarePen,
   Trash2,
   CalendarIcon,
-  Search,
   Filter,
   ChevronLeft,
   Eye,
@@ -18,6 +17,7 @@ import type { DateRange } from "@daypicker/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/ui/search-field";
 import { Label } from "@/components/ui/label";
 import { CategoryFilterComboBox } from "@/components/ui/category-filter-combobox";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -875,21 +875,17 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       <div>
         <h2 className="text-lg font-semibold mb-3">Transactions</h2>
         <div className="flex flex-col md:flex-row gap-4 mb-4 md:items-center">
-          <div className="relative min-w-0 flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-            <Input
-              placeholder="Search Transactions"
-              className="w-full bg-white pl-10"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  setAppliedSearch(searchInput.trim());
-                }
-              }}
-              onBlur={() => setAppliedSearch(searchInput.trim())}
-            />
-          </div>
+          <SearchField
+            placeholder="Search Transactions"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                setAppliedSearch(searchInput.trim());
+              }
+            }}
+            onBlur={() => setAppliedSearch(searchInput.trim())}
+          />
           <div
             className={cn(
               "flex shrink-0 flex-wrap items-center justify-end gap-2 self-end w-full md:ml-auto md:w-auto md:self-center md:flex-nowrap",

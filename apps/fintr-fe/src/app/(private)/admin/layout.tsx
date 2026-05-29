@@ -67,7 +67,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
       {/* Mobile Header */}
-      <header className="flex items-center justify-between p-4 border-b md:hidden">
+      <header className="flex items-center justify-between p-6 border-b md:hidden">
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="icon">

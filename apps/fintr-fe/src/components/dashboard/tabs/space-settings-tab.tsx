@@ -624,29 +624,45 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
         {!hideTabs && (
           <div className="flex space-x-2 mb-6 overflow-x-auto">
             <Button
-              variant={activeMainTab === "categories" ? "default" : "outline"}
-              className={activeMainTab === "categories" ? "bg-primary" : "bg-white"}
+              variant={activeMainTab === "categories" ? "default" : "ghost"}
+              className={
+                activeMainTab === "categories"
+                  ? "bg-primary"
+                  : "border-0 bg-white shadow-xs"
+              }
               onClick={() => setActiveMainTab("categories")}
             >
               <Folder className="h-4 w-4 mr-2" /> Categories
             </Button>
             <Button
-              variant={activeMainTab === "accounts" ? "default" : "outline"}
-              className={activeMainTab === "accounts" ? "bg-primary" : "bg-white"}
+              variant={activeMainTab === "accounts" ? "default" : "ghost"}
+              className={
+                activeMainTab === "accounts"
+                  ? "bg-primary"
+                  : "border-0 bg-white shadow-xs"
+              }
               onClick={() => setActiveMainTab("accounts")}
             >
               <Users className="h-4 w-4 mr-2" /> Accounts
             </Button>
             <Button
-              variant={activeMainTab === "import" ? "default" : "outline"}
-              className={activeMainTab === "import" ? "bg-primary" : "bg-white"}
+              variant={activeMainTab === "import" ? "default" : "ghost"}
+              className={
+                activeMainTab === "import"
+                  ? "bg-primary"
+                  : "border-0 bg-white shadow-xs"
+              }
               onClick={() => setActiveMainTab("import")}
             >
               <Download className="h-4 w-4 mr-2" /> Import
             </Button>
             <Button
-              variant={activeMainTab === "subscriptions" ? "default" : "outline"}
-              className={activeMainTab === "subscriptions" ? "bg-primary" : "bg-white"}
+              variant={activeMainTab === "subscriptions" ? "default" : "ghost"}
+              className={
+                activeMainTab === "subscriptions"
+                  ? "bg-primary"
+                  : "border-0 bg-white shadow-xs"
+              }
               onClick={() => setActiveMainTab("subscriptions")}
             >
               <CreditCard className="h-4 w-4 mr-2" /> Subscriptions
@@ -1841,7 +1857,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                 ))}
               </div>
             ) : (
-              <Card>
+              <Card className="border-0 shadow-sm">
                 <CardHeader>
                   <CardTitle>No Active Subscription</CardTitle>
                   <CardDescription>

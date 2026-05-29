@@ -222,7 +222,7 @@ export default function Layout({
             <TabsWrapper>
               <div className="w-full">
                 {/* Desktop Horizontal Layout */}
-                <TabsList className="hidden md:flex w-full min-w-0 bg-white border flex-nowrap overflow-x-auto">
+                <TabsList className="hidden md:flex w-full min-w-0 flex-nowrap overflow-x-auto bg-white">
                   <TabsTrigger asChild value="transactions">
                     <Link href="/dashboard/">Transactions</Link>
                   </TabsTrigger>

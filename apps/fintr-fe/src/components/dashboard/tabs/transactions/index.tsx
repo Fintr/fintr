@@ -7,8 +7,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, List, Table2, CalendarDays, Plus, Filter, Eye, EyeOff } from "lucide-react";
+import { SearchField } from "@/components/ui/search-field";
+import { List, Table2, CalendarDays, Plus, Filter, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   useQueryClient,
@@ -780,9 +780,9 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           </div>
           <div className="relative">
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setFiltersOpen(true)}
-              className="flex items-center gap-2 bg-white"
+              className="flex items-center gap-2 border-0 bg-white shadow-sm hover:bg-accent/50"
               aria-label="Open transaction filters"
             >
               <Filter className="h-4 w-4" />
@@ -829,29 +829,25 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           />
 
           <div className="flex flex-col md:flex-row gap-4 mb-6 md:items-center">
-            <div className="relative min-w-0 flex-1 w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search Transactions"
-                className="pl-10 bg-white w-full"
-                value={searchInput}
-                onChange={handleSearchChange}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSearch();
-                  }
-                }}
-                onBlur={handleSearchBlur}
-              />
-            </div>
+            <SearchField
+              placeholder="Search Transactions"
+              value={searchInput}
+              onChange={handleSearchChange}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch();
+                }
+              }}
+              onBlur={handleSearchBlur}
+            />
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-end w-full md:ml-auto md:w-auto md:self-center">
               <DownloadButton onClick={handleDownloadTransactions} />
               {hasNonSpaceCurrencyInLoadedTransactions && (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="shrink-0 gap-1.5 h-9 text-xs sm:text-sm"
+                  className="shrink-0 gap-1.5 h-9 border-0 bg-white text-xs shadow-xs sm:text-sm hover:bg-accent/50"
                   onClick={() => setShowBookedCurrencies((v) => !v)}
                   aria-pressed={showBookedCurrencies}
                   aria-label={

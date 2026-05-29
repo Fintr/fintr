@@ -410,6 +410,14 @@ export const resolveAndroidNativeTopInsetPx = (
   return Math.min(lifted, MAX_ANDROID_STATUS_BAR_INSET_PX)
 }
 
+/** Inner padding for the fixed mobile sticky header title row. */
+export const MOBILE_STICKY_HEADER_CONTENT_CLASS = "px-4 py-2"
+
+/**
+ * Title row block height for {@link MOBILE_STICKY_HEADER_CONTENT_CLASS}; keep in sync with spacer calc.
+ */
+export const MOBILE_STICKY_HEADER_BODY_HEIGHT_PX = 40
+
 /**
  * Calculate header spacer height for mobile (fixed header + scrollable body).
  * Uses CSS env(safe-area-inset-top) for iOS and mobile browsers so layout stays
@@ -421,7 +429,7 @@ export const calculateHeaderSpacerHeight = (
   _isIOSNative: boolean,
   safeAreaInsetTop: number
 ): string => {
-  const baseHeight = 44
+  const baseHeight = MOBILE_STICKY_HEADER_BODY_HEIGHT_PX
 
   // Stable Android baseline: reserve status-bar breathing room without drift.
   if (isAndroidNative) {

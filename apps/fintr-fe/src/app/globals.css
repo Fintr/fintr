@@ -224,7 +224,7 @@ body > .profiler-results {
 
   /* Spacer below fixed mobile header so content doesn't sit under it */
   .mobile-header-spacer {
-    height: 44px;
+    height: 40px;
   }
 
   /* Android-only safe-area adjustments (3-button nav devices). */

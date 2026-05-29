@@ -14,8 +14,8 @@ import {
 } from "@/components/ui/table";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useAdminUsers } from "@/hooks/async/useAdminUsers";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchField } from "@/components/ui/search-field";
 import { Search } from "lucide-react";
 import { UserData } from "@/services/admin/user/queries";
 import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
@@ -119,21 +119,18 @@ export default function UsersPage() {
         <div className="flex flex-col gap-4 mb-6">
           <div className="space-y-2 max-w-xl">
             <Label htmlFor="admin-users-search">Search by email or name</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="admin-users-search"
-                placeholder="Email or full name"
-                className="pl-10 bg-white"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    applySearch();
-                  }
-                }}
-              />
-            </div>
+            <SearchField
+              id="admin-users-search"
+              placeholder="Email or full name"
+              iconClassName="text-muted-foreground"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  applySearch();
+                }
+              }}
+            />
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={applySearch}>

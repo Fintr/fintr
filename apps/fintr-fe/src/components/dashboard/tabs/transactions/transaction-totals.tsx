@@ -18,7 +18,7 @@ export function TransactionTotalsDisplay({
 }: TransactionTotalsDisplayProps) {
   if (isLoading) {
     return (
-      <fieldset className="border border-primary rounded-lg px-4 py-3 mb-4 w-full md:w-fit">
+      <fieldset className="border border-gray-300 rounded-lg px-4 py-3 mb-4 w-full md:w-fit">
         <legend className="text-xs font-medium text-muted-foreground px-1">
           Totals (including future transactions)
         </legend>
@@ -46,7 +46,7 @@ export function TransactionTotalsDisplay({
   }
 
   return (
-    <fieldset className="border border-primary rounded-lg px-4 py-3 mb-4 w-full md:w-fit">
+    <fieldset className="border border-gray-300 rounded-lg px-4 py-3 mb-4 w-full md:w-fit">
       <legend className="text-xs font-medium text-muted-foreground px-1">
         Totals (including future transactions)
       </legend>

@@ -29,7 +29,7 @@ export const DashboardSummarySection = ({
 }: DashboardSummarySectionProps) => {
   return (
     <Card
-      className="mb-2 border border-primary/10"
+      className="border-0 shadow-sm"
       data-tutorial-target="dashboard-summary"
     >
       <CardHeader className="px-4 pb-2">
