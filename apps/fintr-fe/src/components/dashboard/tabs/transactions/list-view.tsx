@@ -1,8 +1,7 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useState } from "react";
 import { IndexTransaction, CombinedTransactionTypeEnum, TransactionsPage } from "@/types/transactionTypes";
 import { formatCurrency, truncateText } from "@/lib/utils";
-import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Copy, Check, Image } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Image } from "lucide-react";
 import { InfiniteData } from "@tanstack/react-query";
 import {
   Popover,
@@ -47,45 +46,15 @@ export function ListView({
   loadMoreRef,
   showBookedCurrencies = false,
 }: ListViewProps) {
-  const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<Array<{ url: string; filename?: string; contentType?: string; byteSize?: number }>>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [hoveredCalculatedId, setHoveredCalculatedId] = useState<string | null>(null);
-  const copiedIdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { api } = useAuthApi();
   
   // Get space context for currency
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
-
-  const handleCopyId = async (id: string) => {
-    try {
-      // Check if navigator.clipboard is available (browser environment)
-      if (typeof window !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(id);
-        setCopiedId(id);
-        // Clear any existing timeout first
-        if (copiedIdTimeoutRef.current) {
-          clearTimeout(copiedIdTimeoutRef.current);
-        }
-        copiedIdTimeoutRef.current = setTimeout(() => setCopiedId(null), 2000); // Reset after 2 seconds
-      } else {
-        console.warn("Clipboard API not available");
-      }
-    } catch (err) {
-      console.error("Failed to copy ID:", err);
-    }
-  };
-
-  // Cleanup timeout on component unmount
-  useEffect(() => {
-    return () => {
-      if (copiedIdTimeoutRef.current) {
-        clearTimeout(copiedIdTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleImageClick = async (transaction: IndexTransaction) => {
     if (!api) return;
@@ -120,7 +89,7 @@ export function ListView({
   };
 
   return (
-    <div className="space-y-2 bg-white rounded-lg overflow-hidden p-2">
+    <div className="space-y-3 rounded-lg overflow-hidden">
       {isPending && (
         <div className="text-center py-4">
           <LoadingSpinner size="medium" />
@@ -211,11 +180,11 @@ export function ListView({
                       className="flex items-center my-5"
                     >
                       <div className="border-t border-gray-300" style={{width: '2rem'}} />
-                      <span className="text-xs font-semibold text-primary bg-white px-3">
+                      <span className="text-xs font-semibold text-primary bg-background px-3">
                         {currentDate}
                       </span>
                       <div className="flex-grow border-t border-gray-300" />
-                      <span className={`text-xs font-semibold bg-white px-3 ${
+                      <span className={`text-xs font-semibold bg-background px-3 ${
                         dailyNet >= 0 ? 'text-teal-600' : 'text-red-900'
                       }`}>
                         {dailyNet >= 0 ? '+' : ''}
@@ -226,8 +195,11 @@ export function ListView({
                   )}
                   <div 
                     className={cn(
-                      "transaction-item relative flex justify-between p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors cursor-pointer",
-                      hasSubcategory ? "items-stretch min-h-[78px] md:min-h-[60px]" : "items-center min-h-[60px]",
+                      "transaction-item relative flex justify-between p-3 bg-white rounded hover:bg-gray-100 transition-colors cursor-pointer",
+                      "items-stretch",
+                      hasSubcategory
+                        ? "min-h-[78px] md:min-h-[60px]"
+                        : "min-h-[60px]",
                     )}
                     onClick={() => {
                       if (!transaction.hasLoanPayment) {
@@ -270,8 +242,7 @@ export function ListView({
                     {/* Color indicator */}
                     <div
                       className={cn(
-                        "w-1 self-center rounded mr-3 flex-shrink-0",
-                        hasSubcategory ? "h-[80%] min-h-12" : "h-12",
+                        "w-1 shrink-0 self-center rounded mr-3 h-[90%] min-h-12",
                         transaction.type === CombinedTransactionTypeEnum.INCOME
                           ? "bg-teal-600"
                           : transaction.type === CombinedTransactionTypeEnum.EXPENSE
@@ -282,53 +253,29 @@ export function ListView({
                     
                     {/* Main content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1 md:gap-2">
-                        {/* This div contains the description and the ID popover */}
-                        <div className="flex items-center gap-1 md:gap-2 flex-auto min-w-0"> {/* Added flex-auto and min-w-0 */} 
-                          <h4 className="font-medium text-sm text-primary truncate"> {/* Removed flex-1 and min-w-0 */} 
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-start gap-1 md:gap-2">
+                          <h4
+                            className="line-clamp-2 min-w-0 flex-1 break-words font-medium text-sm text-primary"
+                            title={transaction.description}
+                          >
                             {transaction.description}
                           </h4>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCopyId(transaction.id);
-                                }}
-                                title={copiedId === transaction.id ? "Copied!" : `Click to copy ID: ${transaction.id}`}
-                              >
-                                {copiedId === transaction.id ? (
-                                  <Check className="h-3 w-3" />
-                                ) : (
-                                  <Copy className="h-3 w-3" />
-                                )}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-2">
-                              <p className="text-xs">
-                                {copiedId === transaction.id ? "Copied!" : `ID: ${transaction.id}`}
-                            </p>
-                            </PopoverContent>
-                          </Popover>
-                          {/* Image icon - only show when hasImage is true */}
                           {transaction.hasImage && (
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleImageClick(transaction);
                               }}
-                              className="cursor-pointer hover:opacity-70 transition-opacity"
+                              className="shrink-0 cursor-pointer transition-opacity hover:opacity-70"
                               title="View image"
                             >
-                              <Image className="h-4 w-4 min-w-4 min-h-4 text-primary" />
+                              <Image className="h-4 w-4 min-h-4 min-w-4 text-primary" />
                             </button>
                           )}
                         </div>
-                        {/* This div contains the amount and type badge */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex shrink-0 items-center gap-2">
                           <div
                                   className={`font-semibold text-sm ${
                               transaction.type === CombinedTransactionTypeEnum.INCOME

@@ -517,8 +517,9 @@ const InsightsTab = () => {
   };
 
   return (
-    <Card className="col-span-3 border-0 shadow-none bg-background py-0 md:py-4 overflow-visible">
-      <CardHeader className="flex flex-row items-center justify-between overflow-visible pt-2">
+    <div className="px-2 md:px-0">
+    <Card className="col-span-3 gap-8 border-0 shadow-none bg-transparent px-0 py-0 overflow-visible">
+      <CardHeader className="flex flex-row items-center justify-between gap-4 overflow-visible pt-2">
         <div>
           <CardTitle>Monthly Overview</CardTitle>
           <CardDescription>
@@ -542,7 +543,7 @@ const InsightsTab = () => {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 px-0">
         <FilterSheet
           open={filtersOpen}
           onOpenChange={setFiltersOpen}
@@ -676,7 +677,7 @@ const InsightsTab = () => {
         />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 md:gap-6">
-          <Card className="border-0" data-tutorial-target="financial-health-score">
+          <Card className="border-0 shadow-sm" data-tutorial-target="financial-health-score">
             <CardHeader className="px-4">
               <CardTitle>Financial Health Score</CardTitle>
               <CardDescription>
@@ -792,7 +793,7 @@ const InsightsTab = () => {
           </Card>
 
           {showV2Features ? (
-            <Card className="col-span-2 border-0">
+            <Card className="col-span-2 border-0 shadow-sm">
               <CardHeader>
                 <CardTitle>AI-Powered Insights</CardTitle>
                 <CardDescription>
@@ -902,11 +903,11 @@ const InsightsTab = () => {
             </Card>
           ) : (
             <Card
-              className="col-span-2 border-0"
+              className="col-span-2 border-0 shadow-sm"
               data-tutorial-target="expense-breakdown"
               data-testid="expense-breakdown"
             >
-              <CardHeader>
+              <CardHeader className="px-4 sm:px-6">
                 <CardTitle className="flex items-center gap-2">
                   <PieChart className="h-5 w-5 text-primary" />
                   Expense Breakdown
@@ -915,7 +916,7 @@ const InsightsTab = () => {
                   How your expenses are distributed
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 sm:px-6">
                 {isLoading || isChartsLoading ? (
                   <div className="text-center py-8">
                     <LoadingSpinner size="medium" />
@@ -1014,8 +1015,8 @@ const InsightsTab = () => {
           )}
         </div>
 
-        <Card className="border-0 mt-6">
-          <CardHeader>
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="px-4 sm:px-6">
             <CardTitle className="flex items-center gap-2">
               <LineChart className="h-5 w-5 text-primary" />
               Financial Trends
@@ -1024,7 +1025,7 @@ const InsightsTab = () => {
               Track your income (blue), expenses (red), and net savings (green) over time
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsLineChart
@@ -1150,7 +1151,7 @@ const InsightsTab = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-0 mt-6">
+        <Card className="border-0 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-primary" />
@@ -1198,7 +1199,7 @@ const InsightsTab = () => {
         />
 
         {showV2Features && (
-          <Card className="mt-6 border-0">
+          <Card className="mt-6 border-0 shadow-sm">
             <CardHeader>
               <CardTitle>Fintr Finance Assistant</CardTitle>
               <CardDescription>
@@ -1236,6 +1237,7 @@ const InsightsTab = () => {
         )}
       </CardContent>
     </Card>
+    </div>
   );
 };
 

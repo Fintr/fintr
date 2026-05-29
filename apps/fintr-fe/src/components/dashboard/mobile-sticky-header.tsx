@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import { MOBILE_STICKY_HEADER_CONTENT_CLASS } from "@/lib/platform-detection";
 import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import {
   CategoryKind,
@@ -160,7 +161,7 @@ function MobileStickyHeaderContent({ title }: MobileStickyHeaderProps) {
       `}
       style={isAndroidNative ? { paddingTop: "24px" } : undefined}
     >
-      <div className="px-2 py-2">
+      <div className={MOBILE_STICKY_HEADER_CONTENT_CLASS}>
         <div className="flex items-center">
           <Button
             variant="ghost"

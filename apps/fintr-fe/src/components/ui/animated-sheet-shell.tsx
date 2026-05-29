@@ -7,6 +7,8 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen"
+import { usePlatformDetection } from "@/hooks/usePlatformDetection"
+import { calculateAndroidBottomInsetPx } from "@/lib/platform-detection"
 
 const DEFAULT_HISTORY_KEY = "__fintrAnimatedSheet"
 
@@ -52,6 +54,16 @@ export function AnimatedSheetShell({
   const swipeActiveRef = React.useRef(false)
   const dragXRef = React.useRef(0)
   const reduceMotion = useReducedMotion()
+  const {
+    isAndroidNative,
+    isIOSNative,
+    safeAreaInsetBottom,
+    hasAndroid3ButtonNav,
+  } = usePlatformDetection()
+
+  const androidPanelBottomInsetPx = isAndroidNative
+    ? calculateAndroidBottomInsetPx(safeAreaInsetBottom, hasAndroid3ButtonNav)
+    : 0
 
   const panelOffScreen =
     side === "right" ? { x: "100%" } : { x: "-100%" }
@@ -311,11 +323,24 @@ export function AnimatedSheetShell({
           className={cn(
             "pointer-events-auto fixed z-[100] flex flex-col bg-background shadow-lg overscroll-contain",
             side === "right" &&
-              "inset-y-0 right-0 h-full max-h-[100dvh] border-l",
+              cn(
+                "top-0 right-0 border-l",
+                !isAndroidNative && "inset-y-0 h-full max-h-[100dvh]",
+                isIOSNative && "pb-[env(safe-area-inset-bottom,0px)]",
+              ),
             side === "left" &&
-              "inset-y-0 left-0 h-full max-h-[100dvh] border-r",
+              cn(
+                "top-0 left-0 border-r",
+                !isAndroidNative && "inset-y-0 h-full max-h-[100dvh]",
+                isIOSNative && "pb-[env(safe-area-inset-bottom,0px)]",
+              ),
             panelClassName,
           )}
+          style={
+            androidPanelBottomInsetPx > 0
+              ? { bottom: androidPanelBottomInsetPx }
+              : undefined
+          }
           initial={reduceMotion ? { opacity: 0 } : panelOffScreen}
           animate={
             reduceMotion

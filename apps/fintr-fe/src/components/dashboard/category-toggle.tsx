@@ -35,7 +35,7 @@ const CategoryToggle: React.FC<CategoryToggleProps> = ({
         onValueChange={(value) => onCategoryChange(value as CategoryToggleType)}
         className="w-full"
       >
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 h-full w-full bg-background bg-white rounded-md border border-gray-200">
+        <TabsList className="grid h-full w-full grid-cols-2 rounded-md bg-white md:grid-cols-4">
           <TabsTrigger
             value="expense"
             className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white"

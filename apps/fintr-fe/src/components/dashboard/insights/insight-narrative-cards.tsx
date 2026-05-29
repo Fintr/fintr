@@ -10,21 +10,21 @@ interface InsightNarrativeCardsProps {
 
 const severityStyles = {
   positive: {
-    container: "bg-teal-50 border-teal-200",
+    container: "border-0 bg-teal-50",
     icon: "bg-teal-600",
     title: "text-green-800",
     body: "text-green-700",
     Icon: CheckCircle2,
   },
   neutral: {
-    container: "bg-primary/5 border-primary/10",
+    container: "border-0 bg-primary/5",
     icon: "bg-primary",
     title: "text-primary",
     body: "text-primary/70",
     Icon: Info,
   },
   warning: {
-    container: "bg-amber-50 border-amber-200",
+    container: "border-0 bg-amber-50",
     icon: "bg-amber-600",
     title: "text-amber-900",
     body: "text-amber-800",
@@ -38,7 +38,7 @@ export const InsightNarrativeCards = ({
 }: InsightNarrativeCardsProps) => {
   if (isLoading) {
     return (
-      <div className="space-y-3 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         {[1, 2].map((key) => (
           <div key={key} className="h-24 rounded-lg bg-gray-100" />
         ))}
@@ -51,7 +51,7 @@ export const InsightNarrativeCards = ({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       {insights.map((insight) => {
         const styles = severityStyles[insight.severity];
         const Icon = styles.Icon;
@@ -59,7 +59,7 @@ export const InsightNarrativeCards = ({
         return (
           <div
             key={`${insight.type}-${insight.title}`}
-            className={`p-4 rounded-lg border ${styles.container}`}
+            className={`rounded-lg p-4 shadow-sm ${styles.container}`}
           >
             <div className="flex items-start gap-3">
               <div className={`text-white p-2 rounded-full ${styles.icon}`}>

@@ -378,7 +378,7 @@ const LoansTab = ({}: LoansTabProps) => {
                   )}
                   <div>
                     <div 
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded border hover:bg-gray-100 transition-colors min-h-[80px]"
+                      className="flex min-h-[80px] items-center justify-between rounded bg-white p-3 transition-colors hover:bg-gray-100"
                     >
                       <div
                         className={`w-1 rounded mr-3 flex-shrink-0 self-stretch ${colorClass}`}

@@ -1,9 +1,7 @@
 import * as React from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { VariantProps } from "class-variance-authority";
-import { generateTransactionsCsv } from "@/services/transactions/queries";
-import { useAuthApi } from "@/hooks/useAuthApi";
-import { TransactionIndexInputType } from "@/types/transactionTypes";
+import { cn } from "@/lib/utils";
 
 interface DownloadButtonProps
   extends React.ComponentProps<"button">,
@@ -20,8 +18,11 @@ export const DownloadButton = ({
 }: DownloadButtonProps) => {
   return (
     <Button
-      variant="outline"
-      className={`flex items-center gap-1 ${className || ''}`}
+      variant="ghost"
+      className={cn(
+        "flex items-center gap-1 border-0 bg-white shadow-xs hover:bg-accent/50",
+        className,
+      )}
       onClick={onClick}
       tabIndex={0} // Make button focusable
       onKeyDown={(e) => {

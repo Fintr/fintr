@@ -1023,7 +1023,7 @@ const SubscriptionsPage = () => {
         </div>
       ) : (
         shouldShowCreateButton && (
-          <Card>
+          <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle>No Active Subscription</CardTitle>
               <CardDescription>

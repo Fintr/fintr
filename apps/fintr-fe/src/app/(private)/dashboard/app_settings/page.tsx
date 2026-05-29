@@ -216,6 +216,7 @@ export default function AppSettingsPage() {
                           h-full
                           flex flex-col items-center justify-center
                           gap-3
+                          shadow-sm
                           transition-all
                           hover:shadow-md
                           hover:scale-[1.02]

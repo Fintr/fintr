@@ -498,13 +498,13 @@ describe("calculateHeaderSpacerHeight", () => {
   it("calculates height for Android native with safe area", () => {
     const height = calculateHeaderSpacerHeight(true, false, 30)
 
-    expect(height).toBe("calc(44px + 24px)")
+    expect(height).toBe("calc(40px + 24px)")
   })
 
   it("uses env() for iOS native like mobile browsers", () => {
     const height = calculateHeaderSpacerHeight(false, true, 47)
 
-    expect(height).toBe("calc(44px + env(safe-area-inset-top, 0px))")
+    expect(height).toBe("calc(40px + env(safe-area-inset-top, 0px))")
   })
 
   it("uses env() for iOS native regardless of JS safe-area arg (env() is source of truth)", () => {
@@ -512,31 +512,31 @@ describe("calculateHeaderSpacerHeight", () => {
     const heightWithSmallInset = calculateHeaderSpacerHeight(false, true, 20)
     const heightWithZeroInset = calculateHeaderSpacerHeight(false, true, 0)
 
-    expect(heightWithLargeInset).toBe("calc(44px + env(safe-area-inset-top, 0px))")
-    expect(heightWithSmallInset).toBe("calc(44px + env(safe-area-inset-top, 0px))")
-    expect(heightWithZeroInset).toBe("calc(44px + env(safe-area-inset-top, 0px))")
+    expect(heightWithLargeInset).toBe("calc(40px + env(safe-area-inset-top, 0px))")
+    expect(heightWithSmallInset).toBe("calc(40px + env(safe-area-inset-top, 0px))")
+    expect(heightWithZeroInset).toBe("calc(40px + env(safe-area-inset-top, 0px))")
   })
 
   it("uses env() fallback for mobile browsers", () => {
     const height = calculateHeaderSpacerHeight(false, false, 0)
 
-    expect(height).toBe("calc(44px + env(safe-area-inset-top, 0px))")
+    expect(height).toBe("calc(40px + env(safe-area-inset-top, 0px))")
   })
 
   it("applies a minimum top inset on Android native when inset is missing", () => {
     const androidHeight = calculateHeaderSpacerHeight(true, false, 0)
 
-    expect(androidHeight).toBe("calc(44px + 24px)")
+    expect(androidHeight).toBe("calc(40px + 24px)")
   })
 
   it("uses the larger of native top inset and the Android minimum", () => {
-    expect(calculateHeaderSpacerHeight(true, false, 5)).toBe("calc(44px + 24px)")
-    expect(calculateHeaderSpacerHeight(true, false, 48)).toBe("calc(44px + 24px)")
+    expect(calculateHeaderSpacerHeight(true, false, 5)).toBe("calc(40px + 24px)")
+    expect(calculateHeaderSpacerHeight(true, false, 48)).toBe("calc(40px + 24px)")
   })
 
   it("caps Android header spacer when top inset is inflated", () => {
     expect(calculateHeaderSpacerHeight(true, false, 120)).toBe(
-      "calc(44px + 24px)",
+      "calc(40px + 24px)",
     )
   })
 })

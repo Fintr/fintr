@@ -4,6 +4,7 @@ import React, { useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/ui/search-field";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -39,7 +40,6 @@ import { toast } from "sonner";
 import {
   Loader2,
   Gift,
-  Search,
   User,
   Building2,
   CheckCircle,
@@ -157,15 +157,12 @@ const FreeSubscriptionsPage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search by space name, owner email, or code..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <SearchField
+            placeholder="Search by space name, owner email, or code..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            wrapperClassName="w-full max-w-none"
+          />
         </CardContent>
       </Card>
 

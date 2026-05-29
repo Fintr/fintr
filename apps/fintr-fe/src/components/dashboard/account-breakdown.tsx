@@ -242,7 +242,7 @@ const AccountTransactions = ({
               {transactionsByDate[date].map((transaction) => (
                 <div 
                   key={transaction.id}
-                  className="flex items-center justify-between p-2 bg-white rounded border hover:bg-gray-50 transition-colors min-w-0"
+                  className="flex min-w-0 items-center justify-between rounded bg-white p-3 transition-colors hover:bg-gray-50"
                 >
                   <div className="flex items-center space-x-3 min-w-0 flex-1">
                     <div
@@ -359,7 +359,7 @@ const AccountBreakdownComponent = ({
 
   if (isLoading) {
     return (
-      <Card className="border-0">
+      <Card className="border-0 shadow-sm">
         <CardHeader className="px-4">
           <CardTitle>Account Breakdown</CardTitle>
         </CardHeader>
@@ -375,7 +375,7 @@ const AccountBreakdownComponent = ({
 
   if (!data || !data.breakdown || data.breakdown.length === 0) {
     return (
-      <Card className="border-0">
+      <Card className="border-0 shadow-sm">
         <CardHeader className="px-4">
           <CardTitle>Account Breakdown</CardTitle>
         </CardHeader>
@@ -389,7 +389,7 @@ const AccountBreakdownComponent = ({
   }
 
   return (
-    <Card className="border-0">
+    <Card className="border-0 shadow-sm">
       <CardHeader className="px-4">
         <CardTitle>Account Breakdown</CardTitle>
         <div className="text-2xl font-bold text-teal-600">

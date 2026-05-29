@@ -13,7 +13,7 @@ const DynamicTransactionsTab = dynamic(
 
 export default function page() {
   return (
-    <TabsContent value="transactions">
+    <TabsContent value="transactions" className="p-2">
       <Suspense
         fallback={
           <div className="flex justify-center py-12">
