@@ -195,7 +195,7 @@ export function ListView({
                   )}
                   <div 
                     className={cn(
-                      "transaction-item relative flex justify-between p-3 bg-white rounded hover:bg-gray-100 transition-colors cursor-pointer",
+                      "transaction-item relative flex justify-between p-3 bg-white rounded shadow-sm hover:bg-gray-100 transition-colors cursor-pointer",
                       "items-stretch",
                       hasSubcategory
                         ? "min-h-[78px] md:min-h-[60px]"
