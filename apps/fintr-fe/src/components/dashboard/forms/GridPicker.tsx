@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useRef, useEffect } from "react";
+import { Reorder, useDragControls } from "framer-motion";
 import { Label } from "../../ui/label";
 import { Button } from "../../ui/button";
-import { Edit2, X, Plus, ArrowLeft } from "lucide-react";
+import { Edit2, X, Plus, ArrowLeft, GripVertical, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CategoryCreationForm from "./CategoryCreationForm";
 import AccountCreationForm from "./AccountCreationForm";
@@ -102,6 +103,101 @@ const defaultDataTestId = (props: GridPickerProps): string | undefined => {
   return props.pickerKind === "category" ? "category-select" : undefined;
 };
 
+type CategoryOption = { label: string; value: string };
+
+const LONG_PRESS_MS = 500;
+
+const getCategoryStorageKey = (categoryType: CategoryTypeEnum) =>
+  `fintr-category-order-${categoryType}`;
+
+const getCategorySubStorageKey = (categoryType: CategoryTypeEnum, parentId: string) =>
+  `fintr-subcategory-order-${categoryType}-${parentId}`;
+
+const sortByStoredOrder = <T extends { value: string }>(items: T[], savedOrder: string[]): T[] =>
+  [...items].sort((a, b) => {
+    const ai = savedOrder.indexOf(a.value);
+    const bi = savedOrder.indexOf(b.value);
+    if (ai === -1 && bi === -1) return 0;
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+
+const loadOrderedCategories = (
+  categories: CategoryTreeOption[],
+  categoryType: CategoryTypeEnum,
+): CategoryTreeOption[] => {
+  if (typeof window === "undefined") return [...categories];
+  let sorted: CategoryTreeOption[];
+  try {
+    const saved = localStorage.getItem(getCategoryStorageKey(categoryType));
+    sorted = saved ? sortByStoredOrder(categories, JSON.parse(saved)) : [...categories];
+  } catch {
+    sorted = [...categories];
+  }
+  return sorted.map((cat) => {
+    if (!cat.children?.length) return cat;
+    try {
+      const savedChildren = localStorage.getItem(getCategorySubStorageKey(categoryType, cat.id));
+      if (savedChildren) {
+        return { ...cat, children: sortByStoredOrder(cat.children, JSON.parse(savedChildren)) };
+      }
+    } catch {}
+    return cat;
+  });
+};
+
+const DraggableCategoryItem: React.FC<{
+  option: CategoryOption;
+  isSelected: boolean;
+  childCount?: number;
+  onDrillIn?: () => void;
+}> = ({ option, isSelected, childCount, onDrillIn }) => {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={option}
+      dragListener={false}
+      dragControls={controls}
+      className={cn(
+        "flex list-none items-center justify-between rounded-lg border-2 bg-white px-4 py-3 select-none",
+        isSelected
+          ? "border-primary bg-primary/5 font-semibold text-primary"
+          : "border-gray-200 text-gray-700",
+      )}
+    >
+      <span className="flex-1 text-sm font-medium leading-tight">
+        {option.label}
+        {childCount ? (
+          <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+            {childCount} sub
+          </span>
+        ) : null}
+      </span>
+      <div className="flex items-center gap-1">
+        {onDrillIn && (
+          <button
+            type="button"
+            onClick={onDrillIn}
+            className="flex items-center gap-0.5 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+          >
+            Subs <ChevronRight className="h-3 w-3" />
+          </button>
+        )}
+        <div
+          className="ml-1 flex-shrink-0 touch-none cursor-grab p-1 text-gray-400 active:cursor-grabbing"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            controls.start(e);
+          }}
+        >
+          <GripVertical className="h-5 w-5" />
+        </div>
+      </div>
+    </Reorder.Item>
+  );
+};
+
 const GridPicker: React.FC<GridPickerProps> = (props) => {
   const isControlledOpen = props.open !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
@@ -111,6 +207,9 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
   const [selectedParent, setSelectedParent] = useState<CategoryTreeOption | null>(
     null,
   );
+  const [isArranging, setIsArranging] = useState(false);
+  const [arrangingParent, setArrangingParent] = useState<CategoryTreeOption | null>(null);
+
 
   const allowInlineCreate = props.allowInlineCreate ?? true;
   const hideTrigger = props.hideTrigger ?? false;
@@ -160,6 +259,15 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
     emptyMessage,
   } = props;
 
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
   const setPickerOpen = useCallback(
     (nextOpen: boolean) => {
       props.onOpenChange?.(nextOpen);
@@ -175,7 +283,10 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
     setShowCreation(false);
     setPickerStep("parents");
     setSelectedParent(null);
-  }, [setPickerOpen]);
+    setIsArranging(false);
+    setArrangingParent(null);
+    cancelLongPress();
+  }, [setPickerOpen, cancelLongPress]);
 
   const completeSelection = useCallback(
     (nextValue: string) => {
@@ -210,7 +321,74 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
     );
   };
 
+  const [orderedCategories, setOrderedCategories] = useState<CategoryTreeOption[]>(
+    () =>
+      props.pickerKind === "category"
+        ? loadOrderedCategories(categoryTree, props.categoryType)
+        : [],
+  );
+
+  const categoryValuesKey = categoryTree.map((o) => o.value).join(",");
+
+  useEffect(() => {
+    if (props.pickerKind !== "category") return;
+    setOrderedCategories((prev) => {
+      const updated = prev
+        .filter((p) => categoryTree.some((c) => c.value === p.value))
+        .map((p) => categoryTree.find((c) => c.value === p.value)!);
+      const newOnes = categoryTree.filter(
+        (c) => !prev.some((p) => p.value === c.value),
+      );
+      return [...updated, ...newOnes];
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryValuesKey, props.pickerKind]);
+
+  const handleSubReorder = useCallback(
+    (parentId: string, newChildOrder: CategoryTreeOption[]) => {
+      setOrderedCategories((prev) =>
+        prev.map((cat) =>
+          cat.id === parentId ? { ...cat, children: newChildOrder } : cat,
+        ),
+      );
+      if (props.pickerKind === "category") {
+        try {
+          localStorage.setItem(
+            getCategorySubStorageKey(props.categoryType, parentId),
+            JSON.stringify(newChildOrder.map((c) => c.value)),
+          );
+        } catch {}
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [props.pickerKind === "category" ? props.categoryType : null],
+  );
+
+  const handleReorder = useCallback(
+    (newOrder: CategoryTreeOption[]) => {
+      setOrderedCategories(newOrder);
+      if (props.pickerKind === "category") {
+        try {
+          localStorage.setItem(
+            getCategoryStorageKey(props.categoryType),
+            JSON.stringify(newOrder.map((o) => o.value)),
+          );
+        } catch {}
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [props.pickerKind === "category" ? props.categoryType : null],
+  );
+
+  const startLongPress = useCallback(() => {
+    if (props.pickerKind !== "category") return;
+    longPressTimer.current = setTimeout(() => {
+      setIsArranging(true);
+    }, LONG_PRESS_MS);
+  }, [props.pickerKind]);
+
   const handleSelect = (itemValue: string) => {
+    if (isArranging) return;
     completeSelection(itemValue);
   };
 
@@ -288,6 +466,9 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
   const backLabel =
     props.pickerKind === "category" ? "Back to Categories" : "Back to Accounts";
 
+  const displayOptions =
+    props.pickerKind === "category" ? orderedCategories : options;
+
   const renderCategoryGrid = () => {
     if (pickerStep === "children" && selectedParent) {
       const children = selectedParent.children ?? [];
@@ -352,7 +533,7 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
 
     return (
       <div className="grid grid-cols-3 gap-3">
-        {categoryTree.map((parent) => {
+        {orderedCategories.map((parent) => {
           const parentValue = formatCategoryPickerValue({
             categoryId: parent.id,
             subcategoryId: null,
@@ -366,6 +547,14 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
               key={parent.id}
               type="button"
               onClick={() => handleSelectParent(parent, false)}
+              onPointerDown={startLongPress}
+              onPointerUp={cancelLongPress}
+              onPointerLeave={cancelLongPress}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                cancelLongPress();
+                setIsArranging(true);
+              }}
               className={cn(
                 GRID_ITEM_BASE,
                 "flex-col gap-1",
@@ -402,37 +591,83 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
       <GridPickerModalShell open={isOpen} onRequestClose={closeModal}>
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h3 className="text-lg font-semibold text-primary">
-            {pickerStep === "children" && selectedParent
-              ? selectedParent.label
-              : modalTitle}
+            {isArranging
+              ? arrangingParent
+                ? `Arrange ${arrangingParent.label}`
+                : `Arrange ${modalTitle}`
+              : pickerStep === "children" && selectedParent
+                ? selectedParent.label
+                : modalTitle}
           </h3>
           <div className="flex gap-2">
-            {allowInlineCreate && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowCreation(true)}
-                className="h-8 w-8 p-0"
-                aria-label={
-                  props.pickerKind === "category"
-                    ? "Add new category"
-                    : "Add new account"
-                }
-              >
-                <Edit2 className="h-4 w-4" />
-              </Button>
+            {isArranging ? (
+              arrangingParent ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setArrangingParent(null)}
+                  className="h-8 px-3 text-sm font-semibold text-primary"
+                >
+                  Back
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setIsArranging(false); setArrangingParent(null); }}
+                  className="h-8 px-3 text-sm font-semibold text-primary"
+                >
+                  Done
+                </Button>
+              )
+            ) : (
+              <>
+                {props.pickerKind === "category" &&
+                  orderedCategories.length > 0 &&
+                  !showCreation &&
+                  pickerStep === "parents" && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsArranging(true)}
+                      className="h-8 w-8 p-0"
+                      aria-label="Arrange categories"
+                      title="Arrange categories"
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </Button>
+                  )}
+                {allowInlineCreate && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCreation(true)}
+                    className="h-8 w-8 p-0"
+                    aria-label={
+                      props.pickerKind === "category"
+                        ? "Add new category"
+                        : "Add new account"
+                    }
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={closeModal}
+                  className="h-8 w-8 p-0"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={closeModal}
-              className="h-8 w-8 p-0"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         </div>
 
@@ -457,6 +692,60 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
                 {backLabel}
               </Button>
             </div>
+          ) : isArranging && props.pickerKind === "category" ? (
+            <div>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Hold the grip handle and drag to rearrange.
+              </p>
+              {arrangingParent ? (
+                <Reorder.Group
+                  axis="y"
+                  values={arrangingParent.children ?? []}
+                  onReorder={(newOrder: CategoryTreeOption[]) => {
+                    const updated = { ...arrangingParent, children: newOrder };
+                    setArrangingParent(updated);
+                    handleSubReorder(arrangingParent.id, newOrder);
+                  }}
+                  className="m-0 list-none space-y-2 p-0"
+                >
+                  {(arrangingParent.children ?? []).map((child) => (
+                    <DraggableCategoryItem
+                      key={child.value}
+                      option={child}
+                      isSelected={
+                        parseCategoryPickerValue(value)?.subcategoryId === child.id
+                      }
+                    />
+                  ))}
+                </Reorder.Group>
+              ) : (
+                <Reorder.Group
+                  axis="y"
+                  values={orderedCategories}
+                  onReorder={handleReorder}
+                  className="m-0 list-none space-y-2 p-0"
+                >
+                  {orderedCategories.map((option) => (
+                    <DraggableCategoryItem
+                      key={option.value}
+                      option={option}
+                      isSelected={
+                        value === option.value ||
+                        parseCategoryPickerValue(value)?.categoryId === option.id
+                      }
+                      childCount={option.children?.length}
+                      onDrillIn={
+                        (option.children?.length ?? 0) > 0
+                          ? () => setArrangingParent(
+                              orderedCategories.find((c) => c.id === option.id) ?? option
+                            )
+                          : undefined
+                      }
+                    />
+                  ))}
+                </Reorder.Group>
+              )}
+            </div>
           ) : props.pickerKind === "category" && hierarchicalCategoryPicker ? (
             renderCategoryGrid()
           ) : options.length === 0 ? (
@@ -479,7 +768,7 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
-              {(options as Array<{ label: string; value: string }>).map(
+              {(displayOptions as Array<{ label: string; value: string }>).map(
                 (option) => {
                   const locked = optionLocked(option);
                   return (
@@ -489,6 +778,16 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
                       disabled={locked}
                       title={locked ? disabledOptionTitle : undefined}
                       onClick={() => handleSelect(option.value)}
+                      onPointerDown={startLongPress}
+                      onPointerUp={cancelLongPress}
+                      onPointerLeave={cancelLongPress}
+                      onContextMenu={(e) => {
+                        if (props.pickerKind === "category") {
+                          e.preventDefault();
+                          cancelLongPress();
+                          setIsArranging(true);
+                        }
+                      }}
                       className={cn(
                         GRID_ITEM_BASE,
                         locked
