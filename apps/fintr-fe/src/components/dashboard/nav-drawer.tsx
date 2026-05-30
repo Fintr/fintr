@@ -20,11 +20,12 @@ function NavDrawerThemeToggle() {
   }, []);
 
   const isDark = mounted && resolvedTheme === "dark";
+  const label = mounted ? (isDark ? "Dark Mode" : "Light Mode") : "Appearance";
 
   return (
     <button
       type="button"
-      className={`${navDrawerItemClassName} justify-between`}
+      className={navDrawerItemClassName}
       onClick={() => {
         if (!mounted) return;
         setTheme(isDark ? "light" : "dark");
@@ -38,16 +39,12 @@ function NavDrawerThemeToggle() {
           : "Appearance"
       }
     >
-      <span className="flex items-center gap-2">
-        {isDark ? (
-          <Moon className="h-4 w-4" aria-hidden />
-        ) : (
-          <Sun className="h-4 w-4" aria-hidden />
-        )}
-        <span>
-          {mounted ? (isDark ? "Dark Mode" : "Light Mode") : "Appearance"}
-        </span>
-      </span>
+      {isDark ? (
+        <Moon className="h-4 w-4 shrink-0 mr-2" aria-hidden />
+      ) : (
+        <Sun className="h-4 w-4 shrink-0 mr-2" aria-hidden />
+      )}
+      <span className="flex-1 text-left">{label}</span>
       {mounted ? (
         <Switch
           checked={isDark}
@@ -55,8 +52,11 @@ function NavDrawerThemeToggle() {
           onClick={(event) => event.stopPropagation()}
           aria-hidden
           tabIndex={-1}
+          className="shrink-0"
         />
-      ) : null}
+      ) : (
+        <span className="h-[1.15rem] w-8 shrink-0" aria-hidden />
+      )}
     </button>
   );
 }
