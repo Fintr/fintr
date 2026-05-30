@@ -11,6 +11,7 @@ import { resetGlobalAuthLock } from '@/components/deep-link-handler';
 import { isNativeCapacitor } from '@/lib/capacitor';
 import { getPublicBackendUrl } from '@/lib/public-backend-url';
 import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
+import { FintrLogo } from '@/components/brand/fintr-logo';
 
 // Helper function to detect if we're on iOS mobile
 const isIOSDevice = (): boolean => {
@@ -435,16 +436,16 @@ export default function AuthCallback() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-primary">Fintr</h1>
+          <FintrLogo className="mx-auto mb-2 h-12 w-auto dark:h-24" />
           <p className="text-muted-foreground mt-2">Your Personal Finance Assistant</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-card rounded-lg shadow-sm p-8">
           {status === 'processing' && (
             <div className="text-center space-y-4">
               <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
               <div>
-                <h2 className="text-xl font-semibold text-primary mb-2">
+                <h2 className="text-xl font-semibold text-foreground mb-2">
                   Completing Sign-In
                 </h2>
                 <p className="text-muted-foreground">
@@ -456,11 +457,11 @@ export default function AuthCallback() {
 
           {status === 'success' && (
             <div className="text-center space-y-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+              <div className="w-12 h-12 bg-green-950/40 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle className="h-8 w-8 text-green-400" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-primary mb-2">
+                <h2 className="text-xl font-semibold text-foreground mb-2">
                   Success!
                 </h2>
                 {(showCloseBrowserButton || isCapacitorFlow) ? (
@@ -486,11 +487,11 @@ export default function AuthCallback() {
 
           {status === 'error' && (
             <div className="text-center space-y-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                <AlertCircle className="h-8 w-8 text-red-600" />
+              <div className="w-12 h-12 bg-red-950/40 rounded-full flex items-center justify-center mx-auto">
+                <AlertCircle className="h-8 w-8 text-red-400" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-primary mb-2">
+                <h2 className="text-xl font-semibold text-foreground mb-2">
                   Authentication Failed
                 </h2>
                 <p className="text-muted-foreground">

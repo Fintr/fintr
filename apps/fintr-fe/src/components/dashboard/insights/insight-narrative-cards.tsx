@@ -40,7 +40,7 @@ export const InsightNarrativeCards = ({
     return (
       <div className="space-y-4 animate-pulse">
         {[1, 2].map((key) => (
-          <div key={key} className="h-24 rounded-lg bg-gray-100 dark:bg-muted" />
+          <div key={key} className="h-24 animate-pulse rounded-lg bg-muted" />
         ))}
       </div>
     );

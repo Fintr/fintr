@@ -27,7 +27,7 @@ import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog"
 import { AdjustAccountBalanceSwitchRow } from "@/components/dashboard/forms/adjust-account-balance-switch-row";
 import { useInfiniteLoans } from "@/hooks/async/useInfiniteLoans";
 import { useLoanPayments } from "@/hooks/async/useLoanPayments";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loan } from "@/services/loans/queries";
@@ -533,6 +533,30 @@ interface LoanDetailsExpandedProps {
   textColorClass: string;
 }
 
+const LOAN_TABLE_WRAPPER_CLASS =
+  "overflow-hidden rounded-lg border border-gray-200 dark:border-border dark:bg-background";
+
+const LOAN_TABLE_HEADER_CLASS =
+  "sticky top-0 z-10 bg-gray-50 dark:bg-muted";
+
+const LOAN_TABLE_HEAD_CLASS =
+  "px-3 py-2 text-xs font-medium whitespace-nowrap text-gray-600 dark:text-muted-foreground";
+
+const LOAN_TABLE_ROW_CLASS =
+  "hover:bg-gray-50 dark:hover:bg-accent/50";
+
+const LOAN_TABLE_CELL_CLASS =
+  "px-3 py-2 text-xs whitespace-nowrap text-gray-700 dark:text-foreground";
+
+const LOAN_TABLE_CELL_MUTED_CLASS =
+  "px-3 py-2 text-xs whitespace-nowrap text-gray-600 dark:text-muted-foreground";
+
+const LOAN_TABLE_PAID_ROW_CLASS =
+  "bg-blue-50 dark:bg-primary/10";
+
+const LOAN_TABLE_PAID_LABEL_CLASS =
+  "ml-1 text-xs font-medium text-blue-600 dark:text-primary-dark-mode";
+
 const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorrowed, textColorClass }) => {
   // Use backend schedule which incorporates actual payments and adjusts accordingly
   const schedule = React.useMemo(() => getAmortizationSchedule(loan), [loan]);
@@ -717,20 +741,20 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
   };
 
   return (
-    <div className="mt-2 p-4 bg-white border border-gray-200 rounded-lg dark:bg-card dark:border-border">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pb-4 border-b">
+    <div className="mt-2 rounded-lg border border-gray-200 bg-white p-4 dark:border-0 dark:bg-card">
+      <div className="mb-4 grid grid-cols-1 gap-4 border-b pb-4 dark:border-border md:grid-cols-3">
         <div>
-          <div className="text-xs text-gray-500 mb-1">Total Principal</div>
+          <div className="mb-1 text-xs text-gray-500 dark:text-muted-foreground">Total Principal</div>
           <div className="text-sm font-semibold text-primary">
             {formatCurrency(totalPrincipal, loan.principalAmountCurrency)}
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+          <div className="mb-1 flex items-center gap-1 text-xs text-gray-500 dark:text-muted-foreground">
             Total Interest
             <Popover>
               <PopoverTrigger asChild>
-                <button className="text-gray-400 hover:text-gray-600">
+                <button className="text-gray-400 hover:text-gray-600 dark:text-muted-foreground dark:hover:text-foreground">
                   <Info className="h-3 w-3" />
                 </button>
               </PopoverTrigger>
@@ -798,7 +822,7 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 mb-1">
+          <div className="mb-1 text-xs text-gray-500 dark:text-muted-foreground">
             Total Value
           </div>
           <div className={`text-sm font-semibold ${textColorClass}`}>
@@ -1168,59 +1192,59 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
           }}
           isDeleting={isDeleting}
         />
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <div className={LOAN_TABLE_WRAPPER_CLASS}>
           <div className="max-h-96 overflow-y-auto">
             <Table>
               {showPaymentsView ? (
                 <>
-                  <TableHeader className="bg-gray-50 sticky top-0 z-10">
-                    <TableRow className="hover:bg-gray-50">
-                      <TableHead className="text-xs font-medium text-gray-600 w-[120px] whitespace-nowrap px-3 py-2">Date</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-600 w-[100px] whitespace-nowrap px-3 py-2">Account</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-600 w-[110px] whitespace-nowrap text-right px-3 py-2">Principal</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-600 w-[110px] whitespace-nowrap text-right px-3 py-2">Interest</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-600 w-[110px] whitespace-nowrap text-right px-3 py-2">Total</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-600 w-[150px] whitespace-nowrap px-3 py-2">Notes</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-600 w-[100px] whitespace-nowrap text-right px-3 py-2">Actions</TableHead>
+                  <TableHeader className={LOAN_TABLE_HEADER_CLASS}>
+                    <TableRow className={LOAN_TABLE_ROW_CLASS}>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[120px]`}>Date</TableHead>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[100px]`}>Account</TableHead>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[110px] text-right`}>Principal</TableHead>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[110px] text-right`}>Interest</TableHead>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[110px] text-right`}>Total</TableHead>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[150px]`}>Notes</TableHead>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[100px] text-right`}>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {isLoadingPayments ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 px-3">
+                        <TableCell colSpan={7} className="px-3 py-8 text-center">
                           <LoadingSpinner />
                         </TableCell>
                       </TableRow>
                     ) : payments.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 px-3">
-                          <p className="text-gray-500 text-sm">No payments recorded yet</p>
+                        <TableCell colSpan={7} className="px-3 py-8 text-center">
+                          <p className="text-sm text-gray-500 dark:text-muted-foreground">No payments recorded yet</p>
                         </TableCell>
                       </TableRow>
                     ) : (
                       payments
                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                         .map((payment) => (
-                          <TableRow key={payment.id} className="hover:bg-gray-50">
-                            <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                          <TableRow key={payment.id} className={LOAN_TABLE_ROW_CLASS}>
+                            <TableCell className={LOAN_TABLE_CELL_CLASS}>
                               {format(new Date(payment.date), "MMM d, yyyy")}
                             </TableCell>
-                            <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                            <TableCell className={LOAN_TABLE_CELL_CLASS}>
                               {payment.accountName}
                             </TableCell>
-                            <TableCell className="text-xs text-gray-700 whitespace-nowrap text-right px-3 py-2">
+                            <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right`}>
                               {formatCurrency(payment.principalPayment, payment.currency)}
                             </TableCell>
-                            <TableCell className={`text-xs whitespace-nowrap text-right px-3 py-2 ${textColorClass}`}>
+                            <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right ${textColorClass}`}>
                               {formatCurrency(payment.interestPayment, payment.currency)}
                             </TableCell>
-                            <TableCell className="text-xs font-medium text-gray-700 whitespace-nowrap text-right px-3 py-2">
+                            <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right font-medium`}>
                               {formatCurrency(payment.totalPayment, payment.currency)}
                             </TableCell>
-                            <TableCell className="text-xs text-gray-500 truncate px-3 py-2" title={payment.notes || ""}>
+                            <TableCell className={`${LOAN_TABLE_CELL_MUTED_CLASS} truncate`} title={payment.notes || ""}>
                               {payment.notes || "-"}
                             </TableCell>
-                            <TableCell className="text-xs whitespace-nowrap text-right px-3 py-2">
+                            <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right`}>
                               <div className="flex items-center justify-end gap-1">
                                 <Button
                                   size="sm"
@@ -1259,43 +1283,44 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
                 </>
               ) : (
                 <>
-                  <TableHeader className="bg-gray-50 sticky top-0 z-10">
-                    <TableRow className="hover:bg-gray-50">
-                      <TableHead className="text-xs font-medium text-gray-600 w-[140px] whitespace-nowrap px-3 py-2">Date</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-600 w-[120px] whitespace-nowrap text-right px-3 py-2">Beginning</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-600 w-[120px] whitespace-nowrap text-right px-3 py-2">Payment</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-600 w-[120px] whitespace-nowrap text-right px-3 py-2">Principal</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-600 w-[120px] whitespace-nowrap text-right px-3 py-2">Interest</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-600 w-[120px] whitespace-nowrap text-right px-3 py-2">Balance</TableHead>
+                  <TableHeader className={LOAN_TABLE_HEADER_CLASS}>
+                    <TableRow className={LOAN_TABLE_ROW_CLASS}>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[140px]`}>Date</TableHead>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[120px] text-right`}>Beginning</TableHead>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[120px] text-right`}>Payment</TableHead>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[120px] text-right`}>Principal</TableHead>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[120px] text-right`}>Interest</TableHead>
+                      <TableHead className={`${LOAN_TABLE_HEAD_CLASS} w-[120px] text-right`}>Balance</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {schedule.map((payment, index) => (
                       <TableRow 
                         key={index} 
-                        className={`hover:bg-gray-50 ${
-                          payment.isActual ? 'bg-blue-50' : ''
-                        }`}
+                        className={cn(
+                          LOAN_TABLE_ROW_CLASS,
+                          payment.isActual && LOAN_TABLE_PAID_ROW_CLASS,
+                        )}
                       >
-                        <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                        <TableCell className={LOAN_TABLE_CELL_CLASS}>
                           <span>{payment.paymentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                           {payment.isActual && (
-                            <span className="text-xs text-blue-600 font-medium ml-1">(Paid)</span>
+                            <span className={LOAN_TABLE_PAID_LABEL_CLASS}>(Paid)</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-xs text-gray-700 whitespace-nowrap text-right px-3 py-2">
+                        <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right`}>
                           {formatCurrency(payment.beginningBalance, loan.outstandingBalanceCurrency)}
                         </TableCell>
-                        <TableCell className="text-xs font-medium whitespace-nowrap text-right px-3 py-2">
+                        <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right font-medium`}>
                           {formatCurrency(payment.paymentAmount, loan.outstandingBalanceCurrency)}
                         </TableCell>
-                        <TableCell className="text-xs text-gray-700 whitespace-nowrap text-right px-3 py-2">
+                        <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right`}>
                           {formatCurrency(payment.principalPayment, loan.outstandingBalanceCurrency)}
                         </TableCell>
-                        <TableCell className={`text-xs whitespace-nowrap text-right px-3 py-2 ${textColorClass}`}>
+                        <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right ${textColorClass}`}>
                           {formatCurrency(payment.interestPayment, loan.outstandingBalanceCurrency)}
                         </TableCell>
-                        <TableCell className="text-xs text-gray-600 whitespace-nowrap text-right px-3 py-2">
+                        <TableCell className={`${LOAN_TABLE_CELL_MUTED_CLASS} text-right`}>
                           {formatCurrency(payment.endingBalance, loan.outstandingBalanceCurrency)}
                         </TableCell>
                       </TableRow>
@@ -1308,8 +1333,8 @@ const LoanDetailsExpanded: React.FC<LoanDetailsExpandedProps> = ({ loan, isBorro
         </div>
       </div>
       
-      <div className="mt-4 pt-4 border-t">
-        <div className="text-xs text-gray-600">
+      <div className="mt-4 border-t pt-4 dark:border-border">
+        <div className="text-xs text-gray-600 dark:text-muted-foreground">
           <div className="flex justify-between items-center mb-1">
             <span>Principal Amount:</span>
             <span className="font-medium">{formatCurrency(loan.principalAmount, loan.principalAmountCurrency)}</span>

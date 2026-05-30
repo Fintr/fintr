@@ -133,7 +133,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
   };
   
   return (
-    <div className="mt-3 p-3 border border-gray-200 rounded-md bg-gray-50">
+    <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-0 dark:bg-muted">
       <div className={horizontal ? "flex gap-4 items-end" : "space-y-2"}>
         <div className={horizontal ? "flex-1" : "space-y-2"}>
           <Label htmlFor="new-account-name">Account Name</Label>
@@ -146,7 +146,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
               if (localErrors.name) setLocalErrors({...localErrors, name: undefined});
             }} 
             disabled={isLoading} 
-            className={localErrors.name || accountValidationErrors.name ? "border-red-800 focus-visible:ring-red-800 bg-white" : "bg-white"} 
+            className={localErrors.name || accountValidationErrors.name ? "border-red-800 focus-visible:ring-red-800" : undefined} 
           />
           {localErrors.name && <FormError>{localErrors.name}</FormError>}
           {!localErrors.name && accountValidationErrors.name && (
@@ -172,7 +172,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
           >
             <SelectTrigger 
               id="new-account-category"
-              className={localErrors.accountCategory || accountValidationErrors.accountCategory ? "border-red-800 focus-visible:ring-red-800 bg-white" : "bg-white"}
+              className={localErrors.accountCategory || accountValidationErrors.accountCategory ? "border-red-800 focus-visible:ring-red-800" : undefined}
             >
               <SelectValue placeholder="Select account category" />
             </SelectTrigger>
@@ -205,7 +205,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
               if (localErrors.balance) setLocalErrors({...localErrors, balance: undefined});
             }} 
             disabled={isLoading} 
-            className={localErrors.balance || accountValidationErrors.balance ? "border-red-800 focus-visible:ring-red-800 bg-white" : "bg-white"} 
+            className={localErrors.balance || accountValidationErrors.balance ? "border-red-800 focus-visible:ring-red-800" : undefined} 
           />
           {localErrors.balance && <FormError>{localErrors.balance}</FormError>}
           {!localErrors.balance && accountValidationErrors.balance && (
@@ -226,7 +226,6 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
             value={balanceCurrency}
             onChange={setBalanceCurrency}
             disabled={isLoading}
-            className="bg-white"
           />
         </div>
       </div>

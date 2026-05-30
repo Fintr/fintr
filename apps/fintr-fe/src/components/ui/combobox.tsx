@@ -10,6 +10,9 @@ import { OptionType } from "@/types/generalTypes";
  */
 export type ComboBoxItem = string | OptionType;
 
+export const comboboxInputClassName =
+  "flex min-h-10 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-4 py-3 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 dark:border-0 dark:bg-input/30 dark:shadow-none";
+
 /**
  * Props for the ComboBox component
  */
@@ -225,15 +228,15 @@ export const ComboBox = ({
       setOpen={setOpen}
     >
       {label && (
-        <Ariakit.ComboboxLabel className="block text-sm font-medium text-gray-700 mb-1">
+        <Ariakit.ComboboxLabel className="mb-1 block text-sm font-medium text-foreground">
           {label}
         </Ariakit.ComboboxLabel>
       )}
       <Ariakit.Combobox 
         placeholder={placeholder} 
         className={cn(
-          "flex h-9 items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 w-full",
-          disabled && "bg-gray-100 cursor-not-allowed",
+          comboboxInputClassName,
+          disabled && "cursor-not-allowed bg-gray-100 dark:bg-muted/50",
           className
         )}
         disabled={disabled}

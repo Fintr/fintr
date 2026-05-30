@@ -854,9 +854,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <div className="flex items-center justify-between">
               <Button
                 type="button"
-                variant="outline"
+                variant="default"
                 onClick={() => setShowDrafts(!showDrafts)}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground"
               >
                 <Receipt className="w-4 h-4 mr-2" />
                 Receipt Drafts

@@ -16,6 +16,7 @@ import {
 import {
   SummaryStatTile,
   summaryStatGridClassName,
+  statTilePlaceholderClassName,
 } from "@/components/dashboard/insights/summary-stat-tile";
 import { InsightMetric } from "@/services/insights/types";
 import { CalculationBreakdownContent } from "@/components/dashboard/insights/calculation-breakdown-content";
@@ -135,10 +136,7 @@ export const InsightMetricCards = ({
         {isLoading ? (
           <div className={summaryStatGridClassName(3)}>
             {[1, 2, 3].map((key) => (
-              <div
-                key={key}
-                className="bg-[#f9f7f5] p-4 rounded-lg h-[88px] animate-pulse"
-              />
+              <div key={key} className={statTilePlaceholderClassName} />
             ))}
           </div>
         ) : (

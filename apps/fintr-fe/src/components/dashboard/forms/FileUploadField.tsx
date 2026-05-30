@@ -122,13 +122,18 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
       ) : (
         /* File Upload Area */
         <div
-          className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+          className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer transition-colors hover:bg-gray-50 dark:border-border dark:hover:bg-muted/50"
           onClick={() => fileInputRef.current?.click()}
         >
           <div className="flex flex-col items-center">
-            <Upload className="h-8 w-8 text-gray-400 mb-1" />
-            <p className="text-sm text-gray-500">Drag & drop your file here or <span className="text-primary font-medium">browse files</span></p>
-            <p className="text-xs text-gray-400 mt-1">Supports: JPG, PNG, PDF (Max 5MB)</p>
+            <Upload className="mb-1 h-8 w-8 text-gray-400 dark:text-muted-foreground" />
+            <p className="text-sm text-gray-500 dark:text-muted-foreground">
+              Drag & drop your file here or{" "}
+              <span className="font-medium text-primary">browse files</span>
+            </p>
+            <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground/80">
+              Supports: JPG, PNG, PDF (Max 5MB)
+            </p>
             {file && !file.type?.startsWith('image/') && ( // Check if file exists and is not an image (already handled by preview)
               <p className="text-sm text-teal-600 mt-2">
                 File selected: {file.name}

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { LoadingFintrLogo } from "@/components/brand/fintr-logo";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import { calculateOnboardingScreenInsets } from "@/lib/platform-detection";
 
@@ -31,14 +31,7 @@ export function WorkspaceSetupGate({
     >
       <div className="text-center space-y-6 max-w-sm">
         <div className="flex justify-center">
-          <Image
-            src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
-            alt="Fintr Logo"
-            width={96}
-            height={96}
-            className="animate-pulse"
-            priority
-          />
+          <LoadingFintrLogo size={96} />
         </div>
         <div className="space-y-2">
           <h1 className="text-xl font-semibold text-foreground">{message}</h1>

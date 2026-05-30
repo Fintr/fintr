@@ -384,7 +384,7 @@ const AddTransactionDialog = ({
             onValueChange={(value) => setActiveTab(value as typeof activeTab)}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-4 mb-4 bg-white">
+            <TabsList className="mb-4 grid w-full grid-cols-4 bg-white dark:bg-card dark:shadow-sm">
               <TabsTrigger value="expense" data-tutorial-target="expense-tab">Expense</TabsTrigger>
               <TabsTrigger value="income" data-tutorial-target="income-tab">Income</TabsTrigger>
               <TabsTrigger value="transfer" data-tutorial-target="transfer-tab">Transfer</TabsTrigger>

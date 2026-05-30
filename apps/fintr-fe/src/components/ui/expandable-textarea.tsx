@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, forwardRef, TextareaHTMLAttributes } from 'react';
 import { handleMultilineNotesKeyDown } from '@/lib/multiline-notes-keydown';
+import { cn } from '@/lib/utils';
 
 interface ExpandableTextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string;
@@ -82,7 +83,13 @@ const ExpandableTextarea = forwardRef<HTMLTextAreaElement, ExpandableTextareaPro
         onChange={onChange}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
-        className={`resize-none w-full min-h-[40px] max-h-48 overflow-auto rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-all outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] ${className}`}
+        className={cn(
+          "resize-none w-full min-h-[40px] max-h-48 overflow-auto rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-all outline-none",
+          "dark:border-0 dark:bg-input/30 dark:shadow-none",
+          "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+          "dark:focus-visible:border-transparent",
+          className,
+        )}
         rows={1}
         {...props}
       />

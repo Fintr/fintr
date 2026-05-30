@@ -32,7 +32,7 @@ export function AdjustAccountBalanceSwitchRow({
   children,
 }: AdjustAccountBalanceSwitchRowProps) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 px-3 py-3">
+    <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 px-3 py-3 dark:border-0 dark:bg-muted">
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
         <Label htmlFor={id} className="text-sm font-medium text-primary">
           {label}
@@ -41,7 +41,7 @@ export function AdjustAccountBalanceSwitchRow({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="inline-flex shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-foreground"
               aria-label={infoAriaLabel}
             >
               <Info className="h-4 w-4" aria-hidden />

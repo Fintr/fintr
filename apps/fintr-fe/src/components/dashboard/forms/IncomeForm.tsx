@@ -25,7 +25,7 @@ import {
 } from "@/utils/accountSelectEditLocks";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
-import { numberFormatting } from "@/lib/utils";
+import { numberFormatting, cn } from "@/lib/utils";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import { createTransaction, updateTransaction } from "@/services/transactions/mutation";
 import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum } from "@/constants/transactionConstants";
@@ -714,11 +714,12 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                   type="button"
                   data-tutorial-target="deduct-taxes"
                   onClick={() => setDeductTaxes(!deductTaxes)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
-                    deductTaxes 
-                      ? 'bg-primary text-white border border-primary shadow-md' 
-                      : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
-                  }`}
+                  className={cn(
+                    "px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200",
+                    deductTaxes
+                      ? "bg-primary text-primary-foreground border border-primary shadow-md"
+                      : "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 dark:bg-input/30 dark:text-muted-foreground dark:border-0 dark:hover:bg-input/50",
+                  )}
                 >
                   Deduct Taxes
                 </button>
@@ -726,11 +727,12 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                   type="button"
                   data-tutorial-target="deduct-contributions"
                   onClick={() => setDeductContributions(!deductContributions)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
-                    deductContributions 
-                      ? 'bg-primary text-white border border-primary shadow-md' 
-                      : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
-                  }`}
+                  className={cn(
+                    "px-3 py-1 rounded-full text-xs font-medium transition-colors duration-200",
+                    deductContributions
+                      ? "bg-primary text-primary-foreground border border-primary shadow-md"
+                      : "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 dark:bg-input/30 dark:text-muted-foreground dark:border-0 dark:hover:bg-input/50",
+                  )}
                 >
                   Deduct Contributions
                 </button>

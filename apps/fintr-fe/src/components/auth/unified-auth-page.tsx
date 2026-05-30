@@ -7,12 +7,17 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Eye, EyeOff } from "lucide-react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { FintrLogo } from "@/components/brand/fintr-logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { smartInAppBrowserGoogleSignIn } from "@/services/auth/modal-google-signin";
 import { smartAppleSignIn } from "@/services/auth/in-app-apple-signin";
 import { isNativeCapacitor } from "@/lib/capacitor";
 import { initCapacitorBridgeIfNeeded } from "@/lib/capacitor-bridge-init";
+import { cn } from "@/lib/utils";
+
+const authInputClassName =
+  "border-0 shadow-none focus-visible:border-transparent focus-visible:ring-1 focus-visible:ring-ring/40";
 
 interface UnifiedAuthPageProps {
   onBack?: () => void;
@@ -268,12 +273,8 @@ const UnifiedAuthPage = ({
           </button>
         )}
         <div className="text-center mb-6">
-          <img
-            src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
-            alt="Fintr Logo"
-            className="h-12 w-auto mx-auto mb-4"
-          />
-          <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+          <FintrLogo className="mx-auto mb-4 h-12 w-auto dark:h-24" />
+          <h2 className="mb-2 text-2xl font-semibold text-primary dark:text-primary-dark-mode">
             Welcome
           </h2>
           <p className="text-gray-600 text-sm">
@@ -304,7 +305,7 @@ const UnifiedAuthPage = ({
         <Button
           onClick={handleGoogleSignIn}
           disabled={isLoading}
-          className="w-full flex items-center justify-center space-x-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-md py-2.5 px-4 font-medium"
+          className="w-full flex items-center justify-center space-x-3 bg-card hover:bg-accent/50 text-foreground border-0 shadow-none rounded-md py-2.5 px-4 font-medium"
         >
           {isLoading ? (
             <LoadingSpinner size="small" className="mr-2" />
@@ -362,7 +363,7 @@ const UnifiedAuthPage = ({
                 value={loginData.email}
                 onChange={handleLoginChange}
                 placeholder="Enter your email"
-                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                className={authInputClassName}
                 required
               />
             </div>
@@ -378,7 +379,7 @@ const UnifiedAuthPage = ({
                   value={loginData.password}
                   onChange={handleLoginChange}
                   placeholder="••••••••"
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 pr-10"
+                  className={cn(authInputClassName, "pr-10")}
                   required
                 />
                 <button
@@ -445,7 +446,7 @@ const UnifiedAuthPage = ({
                   value={registerData.firstName}
                   onChange={handleRegisterChange}
                   placeholder="John"
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className={authInputClassName}
                   required
                 />
               </div>
@@ -459,7 +460,7 @@ const UnifiedAuthPage = ({
                   value={registerData.lastName}
                   onChange={handleRegisterChange}
                   placeholder="Doe"
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className={authInputClassName}
                   required
                 />
               </div>
@@ -475,7 +476,7 @@ const UnifiedAuthPage = ({
                 value={registerData.email}
                 onChange={handleRegisterChange}
                 placeholder="Enter your email"
-                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                className={authInputClassName}
                 required
               />
             </div>
@@ -491,7 +492,7 @@ const UnifiedAuthPage = ({
                   value={registerData.password}
                   onChange={handleRegisterChange}
                   placeholder="At least 8 characters"
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 pr-10"
+                  className={cn(authInputClassName, "pr-10")}
                   required
                 />
                 <button
@@ -515,7 +516,7 @@ const UnifiedAuthPage = ({
                   value={registerData.confirmPassword}
                   onChange={handleRegisterChange}
                   placeholder="Re-enter your password"
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 pr-10"
+                  className={cn(authInputClassName, "pr-10")}
                   required
                 />
                 <button

@@ -43,7 +43,7 @@ export const FilterOptionPills = ({
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
               isSelected
                 ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                : "border-primary/15 bg-primary/5 text-primary hover:bg-primary/10",
+                : "border-primary/15 bg-primary/5 text-primary hover:bg-primary/10 dark:border-0 dark:bg-input/30 dark:text-muted-foreground dark:hover:bg-input/50",
             )}
           >
             {option.label}

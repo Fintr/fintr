@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { rechartsTooltipProps } from "@/components/dashboard/insights/recharts-tooltip-props";
 
 interface DailyActiveUsersChartProps {
   dailyActiveUsers: Record<string, number>;
@@ -84,6 +85,7 @@ export const DailyActiveUsersChart = ({
               />
               <YAxis tick={{ fontSize: 12 }} domain={[0, "dataMax + 1"]} />
               <Tooltip
+                {...rechartsTooltipProps}
                 labelFormatter={(_value, payload) => {
                   if (payload && payload[0]) {
                     return `Date: ${(payload[0].payload as { fullDate: string }).fullDate}`;

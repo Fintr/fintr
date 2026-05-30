@@ -18,6 +18,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useAuthApi } from "@/hooks/useAuthApi";
 
+const headerSecondaryButtonClassName =
+  "bg-card text-primary shadow-none hover:bg-primary hover:text-white";
+
 interface NavItem {
   title: string;
   href: string;
@@ -157,15 +160,15 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
           <div className="hidden md:flex flex-row items-center justify-between h-16 w-full gap-2">
             <div className="flex items-center md:mr-4">
               <Link href="/dashboard" aria-label="Go to Dashboard">
-                <FintrLogo className="h-8 w-auto" />
+                <FintrLogo className="h-8 dark:h-12 w-auto" />
               </Link>
             </div>
             <div className="flex flex-1" />
             <div className="flex flex-row items-center gap-2 md:gap-4">
               <Button
                 onClick={() => setIsAiChatOpen(true)}
-                variant="outline"
-                className="border-primary text-primary hover:bg-primary hover:text-white"
+                variant="ghost"
+                className={headerSecondaryButtonClassName}
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
                 AI Chat
@@ -174,8 +177,8 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
                 <>
                   <Button
                     onClick={() => setIsAddReceiptOpen(true)}
-                    variant="outline"
-                    className="border-primary text-primary hover:bg-primary hover:text-white"
+                    variant="ghost"
+                    className={headerSecondaryButtonClassName}
                     data-tutorial-target="add-receipt-button"
                   >
                     <Camera className="h-4 w-4 mr-2" />

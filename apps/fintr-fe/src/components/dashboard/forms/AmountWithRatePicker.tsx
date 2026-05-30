@@ -397,7 +397,7 @@ export function AmountWithRatePicker({
         <div className="flex flex-nowrap items-center shrink-0">
           {lockFromCurrency ? (
             <span
-              className="inline-flex h-9 items-center rounded-md border border-input bg-muted/50 px-2 text-xs font-medium text-muted-foreground"
+              className="inline-flex h-9 items-center rounded-md border-0 bg-muted/50 px-2 text-xs font-medium text-muted-foreground"
               aria-label="Amount currency (from account)"
             >
               {fromCurrency}
@@ -412,7 +412,7 @@ export function AmountWithRatePicker({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="shrink-0 text-xs font-medium h-9 px-2"
+                  className="h-9 shrink-0 border-0 px-2 text-xs font-medium shadow-none"
                   aria-label="Amount currency"
                 >
                   {fromCurrency}

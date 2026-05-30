@@ -21,6 +21,21 @@ import {
 import { gridPickerSubcategoryCountLabel } from "@/utils/categoryManagement";
 import { isCategoryTree } from "@/utils/categoryTreeOptions";
 
+const GRID_ITEM_BASE =
+  "flex min-h-[60px] items-center justify-center rounded-lg border-2 p-4 transition-all";
+
+const GRID_ITEM_DEFAULT =
+  "border-gray-200 font-medium text-gray-700 hover:border-primary/50 hover:bg-gray-50 dark:border-0 dark:bg-muted dark:text-primary-dark-mode dark:hover:border-0 dark:hover:bg-accent";
+
+const GRID_ITEM_SELECTED =
+  "border-primary bg-primary font-semibold text-primary-foreground shadow-sm dark:border-0";
+
+const GRID_ITEM_LOCKED =
+  "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400 opacity-60 dark:border-0 dark:bg-muted/50 dark:text-muted-foreground";
+
+const GRID_ITEM_ADD =
+  "flex min-h-[60px] items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 transition-all hover:border-primary hover:bg-primary/5 dark:border-0 dark:bg-muted dark:text-primary-dark-mode dark:hover:border-0 dark:hover:bg-accent";
+
 type GridPickerSharedProps = {
   label: string;
   value: string;
@@ -295,7 +310,7 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
             <button
               type="button"
               onClick={() => handleSelectChild(selectedParent, null)}
-              className="flex min-h-[60px] items-center justify-center rounded-lg border-2 border-gray-200 p-4 text-sm font-medium text-gray-700 transition-all hover:border-primary/50 hover:bg-gray-50"
+              className={cn(GRID_ITEM_BASE, GRID_ITEM_DEFAULT, "text-sm")}
             >
               Use parent only
             </button>
@@ -305,14 +320,14 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
                 type="button"
                 onClick={() => handleSelectChild(selectedParent, child.id)}
                 className={cn(
-                  "flex min-h-[60px] items-center justify-center rounded-lg border-2 p-4 transition-all",
+                  GRID_ITEM_BASE,
                   value ===
                     formatCategoryPickerValue({
                       categoryId: selectedParent.id,
                       subcategoryId: child.id,
                     })
-                    ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm"
-                    : "border-gray-200 font-medium text-gray-700 hover:border-primary/50 hover:bg-gray-50",
+                    ? GRID_ITEM_SELECTED
+                    : GRID_ITEM_DEFAULT,
                 )}
               >
                 <span className="text-center text-sm leading-tight">
@@ -324,7 +339,7 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
               <button
                 type="button"
                 onClick={() => setShowCreation(true)}
-                className="flex min-h-[60px] items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 transition-all hover:border-primary hover:bg-primary/5"
+                className={GRID_ITEM_ADD}
               >
                 <Plus className="h-4 w-4" />
                 <span className="text-sm font-medium">Add New</span>
@@ -352,11 +367,12 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
               type="button"
               onClick={() => handleSelectParent(parent, false)}
               className={cn(
-                "flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-lg border-2 p-4 transition-all",
+                GRID_ITEM_BASE,
+                "flex-col gap-1",
                 value === parentValue ||
                   parseCategoryPickerValue(value)?.categoryId === parent.id
-                  ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm"
-                  : "border-gray-200 font-medium text-gray-700 hover:border-primary/50 hover:bg-gray-50",
+                  ? GRID_ITEM_SELECTED
+                  : GRID_ITEM_DEFAULT,
               )}
             >
               <span className="text-center text-sm leading-tight">
@@ -372,7 +388,7 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
           <button
             type="button"
             onClick={() => setShowCreation(true)}
-            className="flex min-h-[60px] items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 transition-all hover:border-primary hover:bg-primary/5"
+            className={GRID_ITEM_ADD}
           >
             <Plus className="h-4 w-4" />
             <span className="text-sm font-medium">Add New</span>
@@ -454,7 +470,7 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
                 <button
                   type="button"
                   onClick={() => setShowCreation(true)}
-                  className="flex min-h-[60px] w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 transition-all hover:border-primary hover:bg-primary/5"
+                  className={cn(GRID_ITEM_ADD, "w-full")}
                 >
                   <Plus className="h-4 w-4" />
                   <span className="text-sm font-medium">Add New</span>
@@ -474,12 +490,12 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
                       title={locked ? disabledOptionTitle : undefined}
                       onClick={() => handleSelect(option.value)}
                       className={cn(
-                        "flex min-h-[60px] items-center justify-center rounded-lg border-2 p-4 transition-all",
+                        GRID_ITEM_BASE,
                         locked
-                          ? "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400 opacity-60"
+                          ? GRID_ITEM_LOCKED
                           : value === option.value
-                            ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm"
-                            : "border-gray-200 font-medium text-gray-700 hover:border-primary/50 hover:bg-gray-50",
+                            ? GRID_ITEM_SELECTED
+                            : GRID_ITEM_DEFAULT,
                       )}
                     >
                       <span className="text-center text-sm leading-tight">
@@ -493,7 +509,7 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
                 <button
                   type="button"
                   onClick={() => setShowCreation(true)}
-                  className="flex min-h-[60px] items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 transition-all hover:border-primary hover:bg-primary/5"
+                  className={GRID_ITEM_ADD}
                 >
                   <Plus className="h-4 w-4" />
                   <span className="text-sm font-medium">Add New</span>
@@ -518,16 +534,16 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
       <Button
         id={triggerId}
         type="button"
-        variant="outline"
+        variant="ghost"
         onClick={openModal}
         disabled={disabled}
         title={value ? displayLabel : undefined}
         data-testid={dataTestId}
         className={cn(
-          "h-auto w-full min-w-0 justify-start gap-0 overflow-hidden px-3 py-2 text-left text-sm font-normal",
+          "h-auto w-full min-w-0 justify-start gap-0 overflow-hidden bg-input/30 px-3 py-2 text-left text-sm font-normal hover:bg-input/50",
           categoryTriggerDisplay?.secondary ? "min-h-[52px]" : "min-h-10",
           !value && "text-muted-foreground",
-          error && error.length > 0 && "border-red-800 focus-visible:ring-red-800",
+          error && error.length > 0 && "ring-1 ring-red-800 focus-visible:ring-red-800",
         )}
       >
         {value ? (

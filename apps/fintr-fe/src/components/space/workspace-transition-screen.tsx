@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import Image from 'next/image';
+import { LoadingFintrLogo } from '@/components/brand/fintr-logo';
 
 interface WorkspaceTransitionScreenProps {
   isVisible: boolean;
@@ -58,13 +58,10 @@ export function WorkspaceTransitionScreen({
           <div className="relative">
             {/* Logo */}
             <div className="relative animate-pulse-logo">
-              <Image
-                src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
-                alt="Fintr Logo"
-                width={120}
-                height={120}
+              <LoadingFintrLogo
+                size={120}
+                pulseClassName=""
                 className="drop-shadow-2xl"
-                priority
               />
             </div>
           </div>

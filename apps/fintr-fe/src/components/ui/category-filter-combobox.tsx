@@ -2,6 +2,7 @@ import * as Ariakit from "@ariakit/react";
 import { matchSorter } from "match-sorter";
 import { startTransition, useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { comboboxInputClassName } from "@/components/ui/combobox";
 import { CategoryTreeOption } from "@/types/categoryTreeTypes";
 import {
   buildCategoryFilterOptions,
@@ -136,8 +137,8 @@ export const CategoryFilterComboBox = ({
       <Ariakit.Combobox
         placeholder={placeholder}
         className={cn(
-          "flex h-9 items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 w-full",
-          disabled && "bg-gray-100 cursor-not-allowed",
+          comboboxInputClassName,
+          disabled && "cursor-not-allowed bg-gray-100 dark:bg-muted/50",
           className,
         )}
         disabled={disabled}

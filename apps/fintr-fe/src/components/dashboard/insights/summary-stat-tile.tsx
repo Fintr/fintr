@@ -13,7 +13,10 @@ interface SummaryStatTileProps {
 }
 
 export const statTileSurfaceClassName =
-  "bg-[#f9f7f5] dark:bg-background p-4 rounded-lg shadow-sm";
+  "rounded-lg bg-[#f9f7f5] p-4 shadow-sm dark:bg-background";
+
+export const statTilePlaceholderClassName =
+  "h-[88px] animate-pulse rounded-lg bg-muted p-4";
 
 /** Matches the Budget Summary outer `Card` surface (not the inner stat tiles). */
 export const budgetSummaryCardSurfaceClassName =

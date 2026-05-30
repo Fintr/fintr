@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { LoadingFintrLogo } from "@/components/brand/fintr-logo";
 
 interface LoadingScreenProps {
   className?: string;
@@ -11,13 +11,7 @@ const LoadingScreen = ({
 }: LoadingScreenProps) => {
   return (
     <div className={className} data-testid="app-loading-screen">
-      <Image 
-        src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png" 
-        alt="Fintr Logo" 
-        width={logoSize} 
-        height={logoSize} 
-        className="animate-pulse"
-      />
+      <LoadingFintrLogo size={logoSize} />
     </div>
   );
 };

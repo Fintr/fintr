@@ -56,6 +56,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     },
   ];
 
+  const navLinkClassName = (href: string) =>
+    cn(
+      buttonVariants({ variant: "ghost" }),
+      "justify-start",
+      pathname === href
+        ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+    );
+
   useEffect(() => {
     if (isAdmin != null && !isAdmin) {
       router.push("/dashboard");
@@ -67,7 +76,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
       {/* Mobile Header */}
-      <header className="flex items-center justify-between p-6 border-b md:hidden">
+      <header className="flex items-center justify-between border-b border-border p-6 md:hidden">
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="icon">
@@ -85,13 +94,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={cn(
-                    buttonVariants({ variant: "ghost" }),
-                    pathname === item.href
-                      ? "bg-muted hover:bg-muted"
-                      : "hover:bg-transparent hover:underline",
-                    "justify-start"
-                  )}
+                  className={navLinkClassName(item.href)}
                   onClick={() => {
                     setActiveTab(item.title.toLowerCase());
                     setIsSheetOpen(false); // Close sheet on navigation
@@ -103,24 +106,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </nav>
           </SheetContent>
         </Sheet>
-        <h2 className="text-xl font-semibold">Admin Dashboard</h2>
+        <h2 className="text-xl font-semibold text-foreground">Admin Dashboard</h2>
       </header>
 
       {/* Desktop Sidebar */}
-      <aside className="w-64 border-r bg-gray-50 p-4 sticky top-0 hidden md:block">
-        <h2 className="text-xl font-semibold mb-6">Admin Dashboard</h2>
+      <aside className="sticky top-0 hidden w-64 border-r border-border bg-card p-4 md:block">
+        <h2 className="mb-6 text-xl font-semibold text-foreground">Admin Dashboard</h2>
         <nav className="flex flex-col space-y-1">
           {sidebarNavItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={cn(
-                buttonVariants({ variant: "ghost" }),
-                pathname === item.href
-                  ? "bg-muted hover:bg-muted"
-                  : "hover:bg-transparent hover:underline",
-                "justify-start"
-              )}
+              className={navLinkClassName(item.href)}
               onClick={() => setActiveTab(item.title.toLowerCase())}
             >
               {item.title}
