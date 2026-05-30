@@ -1,6 +1,6 @@
 # Fintr Frontend — Dark Mode Design Reference
 
-Fintr dashboard and authenticated UI run in **dark mode by default** (`ThemeProvider` → `defaultTheme="dark"`, `html` has `class="dark"`). New UI should be designed for dark first; keep light-mode classes only where public/marketing pages still need them.
+Fintr dashboard and authenticated UI run in **dark mode** on app routes. **Marketing pages** force **light** theme. **`defaultTheme` is `light`** when no route override applies — see `src/lib/theme-routes.ts`.
 
 **Source of truth for tokens:** `apps/fintr-fe/src/app/globals.css` (`.dark` block)  
 **Native shell hex (Capacitor):** `apps/fintr-fe/src/lib/theme-colors.ts` — keep in sync with CSS vars.

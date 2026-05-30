@@ -1,17 +1,12 @@
 ---
 name: fintr-dark-mode
 description: >-
-  Apply Fintr frontend dark mode design tokens, surface hierarchy, and component
-  patterns when building or styling dashboard UI in apps/fintr-fe. Use when
-  creating new features, pages, forms, modals, lists, cards, inputs, buttons,
-  charts, or any frontend work in the Fintr app; when the user mentions dark
-  mode, theme colors, or dashboard styling; or when replacing bg-white,
-  bg-gray-50, or border-gray-* utilities.
+Fintr dashboard and authenticated UI use **dark mode**. Marketing pages (`/`, `/pricing`, etc.) stay **light** — see `theme-routes.ts`. When building or styling dashboard UI in apps/fintr-fe, apply dark tokens. Use when creating new features, pages, forms, modals, lists, cards, inputs, buttons, charts, or any frontend work in the Fintr app; when the user mentions dark mode, theme colors, or dashboard styling; or when replacing bg-white, bg-gray-50, or border-gray-* utilities. Do not apply dark-mode overrides to marketing/landing page components unless explicitly requested.
 ---
 
 # Fintr dark mode (frontend)
 
-Fintr authenticated UI is **dark-first**. Before writing or reviewing frontend UI in `apps/fintr-fe`, read [DARK_MODE.md](../../../apps/fintr-fe/docs/DARK_MODE.md) and follow it.
+Fintr authenticated UI is **dark-first**. Marketing pages force **light** theme. Before writing or reviewing dashboard UI in `apps/fintr-fe`, read [DARK_MODE.md](../../../apps/fintr-fe/docs/DARK_MODE.md) and follow it. Skip dark-mode changes on landing-page components.
 
 ## Quick rules
 
