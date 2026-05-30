@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 const cardClassName = cn(
-  "bg-primary/10 text-primary",
+  "bg-primary/10 dark:bg-card text-primary",
   "rounded-lg p-4 md:p-6",
   "h-full w-full",
   "flex flex-col items-center justify-center",

@@ -11,7 +11,8 @@ const LIGHT_THEME_EXACT_PATHS = new Set([
 
 /**
  * Marketing / legal pages keep the original light landing design.
- * Auth, onboarding, and the signed-in app use dark theme.
+ * Auth, onboarding, and the signed-in app default to dark but respect the user's
+ * stored theme preference (nav drawer / settings toggle).
  * When the route is not yet known, default to light.
  */
 export const isLightThemePath = (

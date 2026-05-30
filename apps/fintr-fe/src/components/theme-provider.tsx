@@ -3,17 +3,17 @@
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { resolveThemeForPath } from "@/lib/theme-routes";
+import { isLightThemePath } from "@/lib/theme-routes";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const forcedTheme = resolveThemeForPath(pathname);
+  const isLightPath = isLightThemePath(pathname);
 
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="light"
-      forcedTheme={forcedTheme}
+      defaultTheme={isLightPath ? "light" : "dark"}
+      forcedTheme={isLightPath ? "light" : undefined}
       enableSystem={false}
       disableTransitionOnChange
       storageKey="fintr-theme"

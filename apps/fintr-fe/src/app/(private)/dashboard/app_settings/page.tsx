@@ -21,13 +21,27 @@ import { isAdminAtom } from "@/atoms/dashboardAtoms";
 import { useQueryClient } from "@tanstack/react-query";
 import { resetGlobalAuthLock } from "@/components/deep-link-handler";
 import { ThemeToggleCard } from "@/components/settings/theme-toggle-card";
+import { cn } from "@/lib/utils";
+
+const settingsMenuCardClassName = cn(
+  "bg-primary/10 dark:bg-card",
+  "text-primary",
+  "rounded-lg p-4 md:p-6",
+  "h-full",
+  "flex flex-col items-center justify-center",
+  "gap-3",
+  "shadow-sm",
+  "transition-all",
+  "hover:shadow-md hover:scale-[1.02]",
+  "cursor-pointer",
+  "border border-transparent",
+  "hover:border-primary/20",
+);
 
 interface SettingsCard {
   title: string;
   icon: React.ElementType;
   href: string;
-  color: string;
-  bgColor: string;
 }
 
 interface SettingsSection {
@@ -92,8 +106,6 @@ export default function AppSettingsPage() {
           title: "Loans",
           icon: FileText,
           href: "/dashboard/loans",
-          color: "text-primary",
-          bgColor: "bg-primary/10",
         },
       ],
     },
@@ -104,36 +116,26 @@ export default function AppSettingsPage() {
           title: "Categories",
           icon: Folder,
           href: "/dashboard/space_settings/categories",
-          color: "text-primary",
-          bgColor: "bg-primary/10",
         },
         {
           title: "Accounts",
           icon: Users,
           href: "/dashboard/space_settings/accounts",
-          color: "text-primary",
-          bgColor: "bg-primary/10",
         },
         {
           title: "Import",
           icon: Download,
           href: "/dashboard/space_settings/import",
-          color: "text-primary",
-          bgColor: "bg-primary/10",
         },
         {
           title: "Manage Subscription",
           icon: CreditCard,
           href: "/dashboard/space_settings/subscriptions",
-          color: "text-primary",
-          bgColor: "bg-primary/10",
         },
         {
           title: "Dashboard Settings",
           icon: Settings,
           href: "/dashboard/settings",
-          color: "text-primary",
-          bgColor: "bg-primary/10",
         },
       ],
     },
@@ -144,15 +146,11 @@ export default function AppSettingsPage() {
           title: "Support",
           icon: MessageSquare,
           href: "/crm/requests",
-          color: "text-primary",
-          bgColor: "bg-primary/10",
         },
         ...(isAdmin ? [{
           title: "Admin",
           icon: Users,
           href: "/admin",
-          color: "text-primary",
-          bgColor: "bg-primary/10",
         } as SettingsCard] : []),
       ],
     },
@@ -210,21 +208,7 @@ export default function AppSettingsPage() {
                       {...(card.title === "Loans" ? { "data-tutorial-target": "loan-menu-item" } : {})}
                     >
                       <div
-                        className={`
-                          ${card.bgColor}
-                          ${card.color}
-                          rounded-lg p-4 md:p-6
-                          h-full
-                          flex flex-col items-center justify-center
-                          gap-3
-                          shadow-sm
-                          transition-all
-                          hover:shadow-md
-                          hover:scale-[1.02]
-                          cursor-pointer
-                          border border-transparent
-                          hover:border-primary/20
-                        `}
+                        className={settingsMenuCardClassName}
                       >
                         <Icon className="h-8 w-8 md:h-10 md:w-10" />
                         <span className="text-xs md:text-sm font-medium text-center">

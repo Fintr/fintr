@@ -267,7 +267,7 @@ const UnifiedAuthPage = ({
         {onBack && !isNativeCapacitor() && (
           <button
             onClick={onBack}
-            className="flex items-center text-gray-600 hover:text-gray-800 mb-6"
+            className="mb-6 flex items-center text-primary hover:text-primary/80 dark:text-primary-dark-mode dark:hover:text-primary-dark-mode/80"
           >
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </button>
