@@ -1,0 +1,91 @@
+# Deploy fintr-fe to GCP (Kamal) on push to main.
+# Configure repository secrets — see docs/GCP_FRONTEND_DEPLOY.md
+
+name: Deploy Frontend (GCP)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/fintr-fe/**"
+      - "apps/fintr-be/config/deploy.fe.gcp.yml"
+      - "apps/fintr-be/bin/deploy-gcp-fe"
+      - "apps/fintr-be/config/kamal_ssh.gcp.config"
+      - ".github/workflows/deploy-gcp-fe.yml"
+
+concurrency:
+  group: deploy-gcp-fe
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/fintr-be
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          working-directory: apps/fintr-be
+          bundler-cache: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure SSH for Kamal
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.GCP_DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 34.21.206.91 >> ~/.ssh/known_hosts
+
+      - name: Write Kamal env files
+        env:
+          KAMAL_REGISTRY_USERNAME: ${{ secrets.KAMAL_REGISTRY_USERNAME }}
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
+          AUTH0_SECRET: ${{ secrets.AUTH0_SECRET }}
+          NEXT_PUBLIC_AUTH0_DOMAIN: ${{ secrets.NEXT_PUBLIC_AUTH0_DOMAIN }}
+          NEXT_PUBLIC_AUTH0_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_AUTH0_CLIENT_ID }}
+          NEXT_PUBLIC_AUTH0_CLIENT_SECRET: ${{ secrets.NEXT_PUBLIC_AUTH0_CLIENT_SECRET }}
+          NEXT_PUBLIC_AUTH0_AUDIENCE: ${{ secrets.NEXT_PUBLIC_AUTH0_AUDIENCE }}
+          NEXT_PUBLIC_ENVIRONMENT: ${{ secrets.NEXT_PUBLIC_ENVIRONMENT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          NEXT_PUBLIC_SHOW_V2: ${{ secrets.NEXT_PUBLIC_SHOW_V2 }}
+          NEXT_PUBLIC_MAINTENANCE_MODE: ${{ secrets.NEXT_PUBLIC_MAINTENANCE_MODE }}
+          NEXT_PUBLIC_MAINTENANCE_TITLE: ${{ secrets.NEXT_PUBLIC_MAINTENANCE_TITLE }}
+          NEXT_PUBLIC_MAINTENANCE_MESSAGE: ${{ secrets.NEXT_PUBLIC_MAINTENANCE_MESSAGE }}
+        run: |
+          cat > .env.production <<EOF
+          KAMAL_REGISTRY_USERNAME=${KAMAL_REGISTRY_USERNAME}
+          KAMAL_REGISTRY_PASSWORD=${KAMAL_REGISTRY_PASSWORD}
+          EOF
+
+          cat > ../fintr-fe/.env.gcp.production <<EOF
+          AUTH0_SECRET=${AUTH0_SECRET}
+          NEXT_PUBLIC_APP_BASE_URL=https://gcp.fintr.ai
+          NEXT_PUBLIC_BE_URL=https://api.fintr.ai
+          NEXT_PUBLIC_AUTH0_DOMAIN=${NEXT_PUBLIC_AUTH0_DOMAIN}
+          NEXT_PUBLIC_AUTH0_CLIENT_ID=${NEXT_PUBLIC_AUTH0_CLIENT_ID}
+          NEXT_PUBLIC_AUTH0_CLIENT_SECRET=${NEXT_PUBLIC_AUTH0_CLIENT_SECRET}
+          NEXT_PUBLIC_AUTH0_AUDIENCE=${NEXT_PUBLIC_AUTH0_AUDIENCE}
+          NEXT_PUBLIC_ENVIRONMENT=${NEXT_PUBLIC_ENVIRONMENT}
+          SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+          NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
+          NEXT_PUBLIC_SHOW_V2=${NEXT_PUBLIC_SHOW_V2}
+          FRONTEND_PROXY_HOST=gcp.fintr.ai
+          KAMAL_PROXY_SSL=true
+          NEXT_PUBLIC_MAINTENANCE_MODE=${NEXT_PUBLIC_MAINTENANCE_MODE}
+          NEXT_PUBLIC_MAINTENANCE_TITLE=${NEXT_PUBLIC_MAINTENANCE_TITLE}
+          NEXT_PUBLIC_MAINTENANCE_MESSAGE=${NEXT_PUBLIC_MAINTENANCE_MESSAGE}
+          EOF
+
+      - name: Deploy frontend to GCP
+        run: ./bin/deploy-gcp-fe

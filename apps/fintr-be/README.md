@@ -69,6 +69,25 @@ To download the dump it's a series of steps.
 ## Handling .env files
 Since we're using kamal, handling `.env` files is a little bit more primitive. We have local copies of the `.env.production` and `.env.staging`. Kamal will look at those `.env` files for reference and use those for production. Please coordinate with all other team members if you wish to update `.env.production` and `.env.staging`.
 
+## Google Cloud Platform (Kamal)
+
+GCP deploy configs mirror AWS (`deploy.yml` / `deploy.staging.yml`) but target `34.21.206.91` as `miguel.dagatan` via `~/.ssh/id_ed25519` (`config/kamal_ssh.gcp.config`). **Service names match AWS** (`fintr-be` / `fintr-be-staging`) so you can stand up GCP, copy data, then swap DNS from the old host.
+
+**Secrets** use the same local **`.env.production`** / **`.env.staging`** files as AWS (not committed). When the team has GCP IAM for [Secret Manager](https://cloud.google.com/secret-manager), you can migrate — see **[docs/GCP_SECRET_MANAGER.md](../../docs/GCP_SECRET_MANAGER.md)**.
+
+| Environment | Kamal config | Deploy command |
+|-------------|--------------|----------------|
+| Production  | `config/deploy.gcp.yml` | `./bin/deploy-gcp` or `./bin/kamal deploy -d gcp` |
+| Staging     | `config/deploy.gcp.staging.yml` | `./bin/deploy-gcp-staging` or `./bin/kamal deploy -d gcp.staging` |
+
+Uses **`.kamal/secrets`** (default), not `secrets.gcp` — same as AWS. Ensure `.env.production` / `.env.staging` exist locally.
+
+Proxy SSL is off by default (bare IP). After pointing a DNS name at the VM, set `proxy.ssl: true` and `proxy.host` to that hostname.
+
+**Note:** Both GCP configs use the same VM IP today; only run one environment per host unless you add a second machine.
+
+**Frontend (GCP):** `config/deploy.fe.gcp.yml` builds `apps/fintr-fe` and deploys with `./bin/deploy-gcp-fe`. CI: `.github/workflows/deploy-gcp-fe.yml` on push to `main`. See **[docs/GCP_FRONTEND_DEPLOY.md](../../docs/GCP_FRONTEND_DEPLOY.md)**.
+
 ## Sentry MCP Integration
 
 This project has Sentry MCP (Model Context Protocol) configured, allowing AI assistants to interact with Sentry for error tracking and issue analysis.

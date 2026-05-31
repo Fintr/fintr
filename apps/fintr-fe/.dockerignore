@@ -1,16 +1,13 @@
 node_modules
+.pnpm-store
 .next
 build
 out
 .git
 .gitignore
-Dockerfile
 .dockerignore
-.env
-.env.local
-.env.development
-.env.production
-.env.test
+.env*
+!.env*.example
 npm-debug.log*
 pnpm-debug.log*
 *.md
@@ -19,3 +16,6 @@ e2e
 .vitest
 coverage
 playwright-report
+android
+ios
+.capacitor

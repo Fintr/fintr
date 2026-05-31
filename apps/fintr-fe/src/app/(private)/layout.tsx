@@ -27,6 +27,8 @@ import {
 } from "@/lib/platform-detection";
 import { isDashboardShellRoute } from "@/lib/dashboard-shell-route";
 import { WeeklyFeedbackPrompt } from "@/components/feedback/weekly-feedback-prompt";
+import { MaintenanceScreen } from "@/components/maintenance/maintenance-screen";
+import { isMaintenanceModeEnabled } from "@/lib/maintenance-mode";
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const {
@@ -62,6 +64,13 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     isAuthenticated &&
     !isAuthLoading &&
     isUserContextLoading;
+  const maintenanceModeEnabled = isMaintenanceModeEnabled();
+  const shouldShowMaintenanceScreen =
+    maintenanceModeEnabled &&
+    isAuthenticated &&
+    !isAuthLoading &&
+    !isResolvingWorkspaceContext &&
+    isAdmin === false;
   const { shouldBlock: shouldBlockOnContextLoading } = useBootstrapLoadingTimeout(
     isResolvingWorkspaceContext,
   );
@@ -150,6 +159,14 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
             void refetchUserContext();
           }}
         />
+      </div>
+    );
+  }
+
+  if (shouldShowMaintenanceScreen) {
+    return (
+      <div className="min-h-screen bg-background text-primary">
+        <MaintenanceScreen />
       </div>
     );
   }
