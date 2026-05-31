@@ -276,10 +276,25 @@ Required environment variables (get from `miko@fintr.ai`):
 - `NEXT_PUBLIC_APP_BASE_URL`
 - And others as needed
 
+**Maintenance mode** (after login, blocks non-admin users; admins unaffected):
+
+- `NEXT_PUBLIC_MAINTENANCE_MODE=true` to enable
+- `NEXT_PUBLIC_MAINTENANCE_TITLE` / `NEXT_PUBLIC_MAINTENANCE_MESSAGE` (optional copy)
+
 For Capacitor development:
 
 - `CAPACITOR_SERVER_URL` - Set this to enable live reload (optional, for development only)
 
 
 
-sample deploy
+## GCP deploy (Kamal)
+
+Production static export deploys to GCP from the monorepo backend Kamal setup:
+
+```bash
+cd apps/fintr-be
+# apps/fintr-fe/.env.gcp.production (copy from .env.production) + registry in apps/fintr-be
+./bin/deploy-gcp-fe
+```
+
+Push to `main` triggers `.github/workflows/deploy-gcp-fe.yml` when `apps/fintr-fe/**` changes. See **[docs/GCP_FRONTEND_DEPLOY.md](../../docs/GCP_FRONTEND_DEPLOY.md)** for GitHub secrets and DNS/proxy notes.

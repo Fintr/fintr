@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Deploy fintr-be to GCP (secrets from .env.production, same as AWS deploy.yml).
+#
+# Usage (from apps/fintr-be):
+#   ./bin/deploy-gcp
+#   ./bin/deploy-gcp app logs
+
+set -euo pipefail
+
+app_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$app_root"
+
+config_file="config/deploy.gcp.yml"
+
+if [[ $# -eq 0 ]]
+then
+  exec ./bin/kamal deploy -c "$config_file"
+fi
+
+exec ./bin/kamal "$@" -c "$config_file"

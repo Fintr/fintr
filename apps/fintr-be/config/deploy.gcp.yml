@@ -11,15 +11,17 @@
       Pathname.pwd
     end
 %>
-<% require "dotenv"; Dotenv.load(fintr_be_root.join(".env.gcp").to_s, overwrite: true) %>
+<% require "dotenv"; Dotenv.load(fintr_be_root.join(".env.production").to_s, overwrite: true) %>
 # Google Cloud Platform production deploy (parallel to AWS until cutover).
-# Run from apps/fintr-be:
-#   set -a && source .env.gcp && set +a && ./bin/kamal deploy -c config/deploy.gcp.yml
+# Deploy (same secrets as AWS — local .env.production, not committed):
+#   ./bin/deploy-gcp
 #
 # Same service name as AWS (fintr-be) so migration is a host/DNS swap after data copy.
-# Secrets: .kamal/secrets.gcp — copy values from .env.production into .env.gcp (gitignored).
+# Secrets: default .kamal/secrets (ENV from .env.production above). Omit secrets_path — older Kamal rejects it.
+# Optional later: Google Secret Manager — docs/GCP_SECRET_MANAGER.md
 # SSH: miguel.dagatan@34.21.206.91 with ~/.ssh/id_ed25519 (see config/kamal_ssh.gcp.config).
-secrets_path: .kamal/secrets.gcp
+#
+# Deploy: ./bin/deploy-gcp   or   ./bin/kamal deploy -d gcp
 
 service: fintr-be
 
@@ -118,7 +120,7 @@ accessories:
       clear:
         POSTGRES_DB: fintr_production
         POSTGRES_USER: fintr_admin
-        POSTGRES_PASSWORD: <%= ENV['DATABASE_PASSWORD'] %>
+        POSTGRES_PASSWORD: <%= ENV.fetch("DATABASE_PASSWORD") %>
         POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
       secret:
         - DATABASE_PASSWORD

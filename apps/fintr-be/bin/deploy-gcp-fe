@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Deploy fintr-fe to GCP (build apps/fintr-fe, run on same VM as fintr-be).
+#
+# Env: apps/fintr-fe/.env.gcp.production (copy from .env.production + GCP hosts)
+#      apps/fintr-be/.env.production (Docker Hub / KAMAL_REGISTRY_*)
+#
+# Usage (from apps/fintr-be):
+#   ./bin/deploy-gcp-fe
+#   ./bin/deploy-gcp-fe app logs
+
+set -euo pipefail
+
+app_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$app_root"
+
+config_file="config/deploy.fe.gcp.yml"
+fe_gcp_dotenv="${app_root}/../fintr-fe/.env.gcp.production"
+be_dotenv="${app_root}/.env.production"
+
+if [[ ! -f "$fe_gcp_dotenv" ]]
+then
+  echo "deploy-gcp-fe: missing ${fe_gcp_dotenv}" >&2
+  echo "  Copy apps/fintr-fe/.env.production → .env.gcp.production and set gcp.fintr.ai values." >&2
+  echo "  See apps/fintr-fe/.env.gcp.production.example" >&2
+  exit 1
+fi
+
+if [[ ! -f "$be_dotenv" ]]
+then
+  echo "deploy-gcp-fe: missing ${be_dotenv} (KAMAL_REGISTRY_* for Docker Hub)" >&2
+  exit 1
+fi
+
+if [[ $# -eq 0 ]]
+then
+  exec ./bin/kamal deploy -c "$config_file"
+fi
+
+exec ./bin/kamal "$@" -c "$config_file"
