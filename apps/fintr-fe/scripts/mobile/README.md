@@ -39,7 +39,7 @@ This is your **all-in-one production workflow script**.
 1. **🧹 Cleans**: Removes `.next`, `out`, and old Capacitor configs
 2. **⚙️  Sets Up**: 
    - Unsets `CAPACITOR_SERVER_URL` (uses bundled files)
-   - Loads `.env.production`
+   - Loads `.env.mobile.production`
    - Overrides `NEXT_PUBLIC_APP_BASE_URL` to `https://www.fintr.ai`
 3. **🔨 Builds**: Creates static Next.js export in `out/` directory
 4. **🔄 Syncs**: Copies built files to iOS/Android native projects
@@ -186,7 +186,7 @@ env | grep CAPACITOR
 **Check:**
 1. Is `pnpm` installed? (`pnpm --version`)
 2. Are dependencies installed? (`pnpm install`)
-3. Does `.env.production` exist?
+3. Does `.env.mobile.production` exist?
 4. Is Capacitor CLI installed? (`npx cap --version`)
 
 ## 💡 Pro Tips

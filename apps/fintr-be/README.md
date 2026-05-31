@@ -69,24 +69,18 @@ To download the dump it's a series of steps.
 ## Handling .env files
 Since we're using kamal, handling `.env` files is a little bit more primitive. We have local copies of the `.env.production` and `.env.staging`. Kamal will look at those `.env` files for reference and use those for production. Please coordinate with all other team members if you wish to update `.env.production` and `.env.staging`.
 
-## Google Cloud Platform (Kamal)
+## Production deploy (Kamal)
 
-GCP deploy configs mirror AWS (`deploy.yml` / `deploy.staging.yml`) but target `34.21.206.91` as `miguel.dagatan` via `~/.ssh/id_ed25519` (`config/kamal_ssh.gcp.config`). **Service names match AWS** (`fintr-be` / `fintr-be-staging`) so you can stand up GCP, copy data, then swap DNS from the old host.
+Production API and frontend run on the same host (`api.fintr.ai` / `fintr.ai`). SSH and server host come from **`apps/fintr-be/.env.production`**: `KAMAL_SSH_USER`, `KAMAL_SSH_KEY_PATH`, `KAMAL_SSH_HOST` (the VM — often `api.fintr.ai`; not the public `fintr.ai` URL). See `.env.production.example`.
 
-**Secrets** use the same local **`.env.production`** / **`.env.staging`** files as AWS (not committed). When the team has GCP IAM for [Secret Manager](https://cloud.google.com/secret-manager), you can migrate — see **[docs/GCP_SECRET_MANAGER.md](../../docs/GCP_SECRET_MANAGER.md)**.
+| Component | Kamal config | Deploy command |
+|-----------|--------------|----------------|
+| API | `config/deploy.yml` | `./bin/kamal deploy` (from `apps/fintr-be`) |
+| Frontend | `config/deploy.fe.yml` | `./bin/deploy-fe` |
 
-| Environment | Kamal config | Deploy command |
-|-------------|--------------|----------------|
-| Production  | `config/deploy.gcp.yml` | `./bin/deploy-gcp` or `./bin/kamal deploy -d gcp` |
-| Staging     | `config/deploy.gcp.staging.yml` | `./bin/deploy-gcp-staging` or `./bin/kamal deploy -d gcp.staging` |
+Secrets: **`.kamal/secrets`** and local **`.env.production`** (API + `apps/fintr-fe/.env.production` for web/Kamal; Capacitor uses `apps/fintr-fe/.env.mobile.production`). CI frontend deploy: `.github/workflows/deploy-fe.yml` on push to `main`.
 
-Uses **`.kamal/secrets`** (default), not `secrets.gcp` — same as AWS. Ensure `.env.production` / `.env.staging` exist locally.
-
-Proxy SSL is off by default (bare IP). After pointing a DNS name at the VM, set `proxy.ssl: true` and `proxy.host` to that hostname.
-
-**Note:** Both GCP configs use the same VM IP today; only run one environment per host unless you add a second machine.
-
-**Frontend (GCP):** `config/deploy.fe.gcp.yml` builds `apps/fintr-fe` and deploys with `./bin/deploy-gcp-fe`. CI: `.github/workflows/deploy-gcp-fe.yml` on push to `main`. See **[docs/GCP_FRONTEND_DEPLOY.md](../../docs/GCP_FRONTEND_DEPLOY.md)**.
+Staging continues to use `config/deploy.staging.yml` (separate host).
 
 ## Sentry MCP Integration
 

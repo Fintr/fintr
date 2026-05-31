@@ -11,7 +11,27 @@
       Pathname.pwd
     end
 %>
-<% require "dotenv"; Dotenv.load(fintr_be_root.join(".env.production").to_s, overwrite: true) %>
+<%
+  require "dotenv"
+  Dotenv.load(fintr_be_root.join(".env.production").to_s, overwrite: true)
+
+  kamal_ssh_host = ENV["KAMAL_SSH_HOST"].to_s.strip
+  kamal_ssh_host = ENV["KAMAL_DEPLOY_HOST"].to_s.strip if kamal_ssh_host.empty?
+  kamal_ssh_host = "api.fintr.ai" if kamal_ssh_host.empty?
+
+  kamal_ssh_user = ENV["KAMAL_SSH_USER"].to_s.strip
+  kamal_ssh_user = "miguel.dagatan" if kamal_ssh_user.empty?
+
+  kamal_ssh_key = ENV["KAMAL_SSH_KEY_PATH"].to_s.strip
+  kamal_ssh_key = "~/.ssh/id_ed25519" if kamal_ssh_key.empty?
+
+  kamal_ssh_config_paths = ENV["KAMAL_SSH_CONFIG_PATHS"].to_s.split(",").map(&:strip).reject(&:empty?)
+  kamal_ssh_configs = [
+    fintr_be_root.join("config/kamal_ssh.config"),
+    fintr_be_root.join("config/kamal_ssh.production.config"),
+  ].select(&:exist?) + kamal_ssh_config_paths.map { |path| Pathname(path).expand_path }
+  kamal_ssh_configs.uniq!
+%>
 # Omit hooks_path/secrets_path so Docker-packaged Kamal (often older) validates; run from apps/fintr-be (./bin/kamal) so `.kamal/*` resolves.
 # Name of your application. Used to uniquely configure containers.
 service: fintr-be
@@ -23,12 +43,12 @@ image: adminfintr/fintr-be
 servers:
   web:
     hosts:
-      - api.fintr.ai
+      - <%= kamal_ssh_host %>
     options:
       network: 'private'
   job:
     hosts:
-      - api.fintr.ai
+      - <%= kamal_ssh_host %>
     cmd: bin/jobs
     options:
       network: 'private'
@@ -40,6 +60,7 @@ servers:
 proxy:
   ssl: true
   host: api.fintr.ai
+  forward_headers: true
   app_port: 3000 # The port your application container listens on (default: 80)
   healthcheck:
     path: /up # The path for the health check endpoint in your app (default: /up)
@@ -122,9 +143,13 @@ env:
 # Use a different ssh user than root
 #
 ssh:
-  user: ec2-user
+  user: "<%= kamal_ssh_user %>"
+  keys:
+    - <%= kamal_ssh_key %>
   config:
-    - <%= fintr_be_root.join("config/kamal_ssh.config").to_s %>
+<% kamal_ssh_configs.each do |config_path| %>
+    - <%= config_path.to_s %>
+<% end %>
 
 sshkit:
   # Default Kamal pool idle is 900s; shorter recycle avoids stale SSH during long local builds before remote pull.

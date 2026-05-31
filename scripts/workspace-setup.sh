@@ -22,6 +22,7 @@ declare -a FILES=(
     "apps/fintr-be/.env.production"
     "apps/fintr-fe/.env"
     "apps/fintr-fe/.env.production"
+    "apps/fintr-fe/.env.mobile.production"
 )
 
 # Track missing files

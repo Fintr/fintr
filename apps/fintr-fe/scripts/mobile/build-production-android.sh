@@ -17,7 +17,7 @@ echo ""
 if [ "${SKIP_EMULATOR:-}" = "1" ]; then
   echo "This script will (SKIP_EMULATOR=1 — no emulator):"
   echo "  1. Clean previous builds"
-  echo "  2. Load .env.production (production API URLs)"
+  echo "  2. Load .env.mobile.production (production API URLs)"
   echo "  3. Build Next.js static export for Capacitor"
   echo "  4. Sync to Android"
   echo "  5. Build release ${ANDROID_ARTIFACT:-apk} (Gradle; ANDROID_ARTIFACT=apk|aab)"
@@ -25,7 +25,7 @@ if [ "${SKIP_EMULATOR:-}" = "1" ]; then
 else
   echo "This script will:"
   echo "  1. Clean previous builds"
-  echo "  2. Load .env.production (production API URLs)"
+  echo "  2. Load .env.mobile.production (production API URLs)"
   echo "  3. Build Next.js static export for Capacitor"
   echo "  4. Sync to Android"
   echo "  5. Run on Android emulator (or show APK/AAB instructions)"
@@ -49,14 +49,8 @@ PRODUCTION_WEB_URL="https://www.fintr.ai"
 export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
 echo "App will load web app from: ${PRODUCTION_WEB_URL}"
 
-if [ -f .env.production ]; then
-  echo "Loading .env.production..."
-  set -a
-  source .env.production
-  set +a
-else
-  echo "Warning: .env.production not found"
-fi
+# shellcheck source=scripts/mobile/load-mobile-env.sh
+source "${SCRIPT_DIR}/load-mobile-env.sh"
 
 export NEXT_PUBLIC_APP_BASE_URL="${PRODUCTION_WEB_URL}"
 echo "Environment configured (NEXT_PUBLIC_BE_URL=${NEXT_PUBLIC_BE_URL:-not set})"

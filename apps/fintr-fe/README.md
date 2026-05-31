@@ -136,7 +136,7 @@ To test the app as it will run in production (production API, bundled assets, no
   ```bash
    ./scripts/mobile/build-production-android.sh
   ```
-   This cleans the build, loads `.env.production` (so the app uses `https://api.fintr.ai`), builds the static export, syncs to Android, and runs the app on the emulator. Start an AVD in Device Manager first if none is running.
+   This cleans the build, loads `.env.mobile.production` (so the app uses `https://api.fintr.ai`), builds the static export, syncs to Android, and runs the app on the emulator. Start an AVD in Device Manager first if none is running.
 2. **Install a release APK on a device**: After running the script once (so `out/` and Android assets are up to date), build and install the signed APK:
   ```bash
    cd android && ./gradlew assembleRelease
@@ -144,7 +144,7 @@ To test the app as it will run in production (production API, bundled assets, no
    Then install `android/app/build/outputs/apk/release/app-release.apk` on your device (or use **Build → Build Bundle(s) / APK(s) → Build APK(s)** in Android Studio).
 3. **Build AAB for Play Store**: Use `./scripts/mobile/build-android-aab.sh` (after a production build + sync as above).
 
-**View logs and network on device without USB:** The app can show an in-app devtools panel (Console, Network, etc.) on the phone. It appears automatically when running a **dev** build in the Capacitor app. For a **production** build, set `NEXT_PUBLIC_ERUDA=true` in `.env.production` (or in the env when running the build script), then rebuild. A small floating button appears on screen; tap it to open the panel. No USB or ADB required.
+**View logs and network on device without USB:** The app can show an in-app devtools panel (Console, Network, etc.) on the phone. It appears automatically when running a **dev** build in the Capacitor app. For a **production** build, set `NEXT_PUBLIC_ERUDA=true` in `.env.mobile.production` (or in the env when running the build script), then rebuild. A small floating button appears on screen; tap it to open the panel. No USB or ADB required.
 
 ## Troubleshooting
 
@@ -287,14 +287,13 @@ For Capacitor development:
 
 
 
-## GCP deploy (Kamal)
-
-Production static export deploys to GCP from the monorepo backend Kamal setup:
+## Production deploy (Kamal)
 
 ```bash
 cd apps/fintr-be
-# apps/fintr-fe/.env.gcp.production (copy from .env.production) + registry in apps/fintr-be
-./bin/deploy-gcp-fe
+# apps/fintr-fe/.env.production (web/Kamal at fintr.ai) + registry in apps/fintr-be/.env.production
+# Capacitor builds use .env.mobile.production instead — see .env.mobile.production.example
+./bin/deploy-fe
 ```
 
-Push to `main` triggers `.github/workflows/deploy-gcp-fe.yml` when `apps/fintr-fe/**` changes. See **[docs/GCP_FRONTEND_DEPLOY.md](../../docs/GCP_FRONTEND_DEPLOY.md)** for GitHub secrets and DNS/proxy notes.
+Push to `main` deploys the frontend via `.github/workflows/deploy-fe.yml` when `apps/fintr-fe/**` changes.

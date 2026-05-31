@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 echo "🚀 Production Build & Deploy to iOS"
 echo "===================================="
 echo ""
@@ -29,16 +32,9 @@ echo "🔧 App will load web app from: ${PRODUCTION_WEB_URL}"
 export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
 echo "✅ CAPACITOR_SERVER_URL set (app will use live website)"
 
-# Export all variables from .env.production
-if [ -f .env.production ]; then
-    echo "Loading environment variables from .env.production..."
-    # Use a safer method to export variables (handles values with spaces, special chars)
-    set -a
-    source .env.production
-    set +a
-else
-    echo "Warning: .env.production not found"
-fi
+# Capacitor native build uses .env.mobile.production (not Kamal web .env.production)
+# shellcheck source=scripts/mobile/load-mobile-env.sh
+source "${SCRIPT_DIR}/load-mobile-env.sh"
 
 # IMPORTANT: For Capacitor builds, we need to use the production web URL
 # as the base URL during build time, NOT the custom URL scheme

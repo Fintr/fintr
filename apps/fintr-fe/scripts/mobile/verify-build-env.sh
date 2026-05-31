@@ -1,64 +1,43 @@
 #!/bin/bash
+# Verify mobile production environment before building
 
-echo "🔍 Verifying Environment Variables in Build"
-echo "==========================================="
-echo ""
+set -e
 
-cd "$(dirname "$0")/../.."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Check if .env.production exists
-if [ ! -f ".env.production" ]; then
-    echo "❌ .env.production not found!"
+MOBILE_ENV_FILE=".env.mobile.production"
+
+if [ ! -f "$MOBILE_ENV_FILE" ]; then
+    echo "❌ ${MOBILE_ENV_FILE} not found!"
+    echo "   Copy .env.mobile.production.example → .env.mobile.production"
     exit 1
 fi
 
-echo "✅ .env.production exists"
+echo "✅ ${MOBILE_ENV_FILE} exists"
 echo ""
 
-# Check if out directory exists
-if [ ! -d "out" ]; then
-    echo "❌ 'out' directory not found - you need to build first"
-    echo "   Run: ./scripts/mobile/build-production.sh"
+BACKEND_URL=$(grep -E "^NEXT_PUBLIC_BE_URL=" "$MOBILE_ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+if [ -z "$BACKEND_URL" ]; then
+    echo "❌ NEXT_PUBLIC_BE_URL is not set in ${MOBILE_ENV_FILE}"
     exit 1
 fi
 
-echo "✅ 'out' directory exists"
+echo "✅ NEXT_PUBLIC_BE_URL=${BACKEND_URL}"
 echo ""
 
-# Check for backend URL in build
-BACKEND_URL=$(grep -o "NEXT_PUBLIC_BE_URL.*" .env.production | cut -d'=' -f2 | tr -d '"')
-echo "Looking for backend URL: $BACKEND_URL"
-echo ""
-
-if grep -r "$BACKEND_URL" out/ 2>/dev/null | head -1 > /dev/null; then
-    echo "✅ Backend URL found in build files"
+if [[ "$BACKEND_URL" == *"localhost"* ]] || [[ "$BACKEND_URL" == *"127.0.0.1"* ]]; then
+    echo "⚠️  Warning: Backend URL points to localhost"
+    echo "   For production mobile builds, use https://api.fintr.ai"
     echo ""
-    echo "Found in:"
-    grep -r "$BACKEND_URL" out/ 2>/dev/null | head -3 | cut -d':' -f1
-else
-    echo "❌ Backend URL NOT found in build files!"
-    echo "   This means environment variables weren't included in the build"
-    echo ""
-    echo "Solution:"
-    echo "   1. Make sure .env.production has NEXT_PUBLIC_BE_URL"
-    echo "   2. Rebuild: ./scripts/mobile/build-production.sh"
-    echo "   3. Make sure environment variables are exported before pnpm build"
 fi
 
-echo ""
-echo "Checking for environment variable references..."
-if grep -r "process.env.NEXT_PUBLIC_BE_URL" out/ 2>/dev/null | head -1 > /dev/null; then
-    echo "⚠️  Found 'process.env.NEXT_PUBLIC_BE_URL' in build (might be undefined)"
-    echo "   This suggests variables weren't replaced at build time"
-else
-    echo "✅ No process.env references found (variables were replaced)"
+AUTH0_DOMAIN=$(grep -E "^NEXT_PUBLIC_AUTH0_DOMAIN=" "$MOBILE_ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+if [ -z "$AUTH0_DOMAIN" ]; then
+    echo "❌ NEXT_PUBLIC_AUTH0_DOMAIN is not set"
+    exit 1
 fi
 
+echo "✅ NEXT_PUBLIC_AUTH0_DOMAIN=${AUTH0_DOMAIN}"
 echo ""
-echo "Checking for Auth0 domain..."
-AUTH0_DOMAIN=$(grep -o "NEXT_PUBLIC_AUTH0_DOMAIN.*" .env.production | cut -d'=' -f2 | tr -d '"')
-if grep -r "$AUTH0_DOMAIN" out/ 2>/dev/null | head -1 > /dev/null; then
-    echo "✅ Auth0 domain found in build"
-else
-    echo "❌ Auth0 domain NOT found in build"
-fi
+echo "✅ Mobile production environment looks good"

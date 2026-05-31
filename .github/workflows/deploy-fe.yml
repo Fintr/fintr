@@ -1,7 +1,6 @@
-# Deploy fintr-fe to GCP (Kamal) on push to main.
-# Configure repository secrets — see docs/GCP_FRONTEND_DEPLOY.md
+# Deploy fintr-fe to production (Kamal) on push to main.
 
-name: Deploy Frontend (GCP)
+name: Deploy Frontend (Production)
 
 on:
   push:
@@ -9,13 +8,13 @@ on:
       - main
     paths:
       - "apps/fintr-fe/**"
-      - "apps/fintr-be/config/deploy.fe.gcp.yml"
-      - "apps/fintr-be/bin/deploy-gcp-fe"
-      - "apps/fintr-be/config/kamal_ssh.gcp.config"
-      - ".github/workflows/deploy-gcp-fe.yml"
+      - "apps/fintr-be/config/deploy.fe.yml"
+      - "apps/fintr-be/bin/deploy-fe"
+      - "apps/fintr-be/config/kamal_ssh.production.config"
+      - ".github/workflows/deploy-fe.yml"
 
 concurrency:
-  group: deploy-gcp-fe
+  group: deploy-fe-production
   cancel-in-progress: true
 
 jobs:
@@ -44,7 +43,9 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.GCP_DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H 34.21.206.91 >> ~/.ssh/known_hosts
+          ssh-keyscan -H api.fintr.ai >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -H fintr.ai >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -H www.fintr.ai >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Write Kamal env files
         env:
@@ -66,11 +67,14 @@ jobs:
           cat > .env.production <<EOF
           KAMAL_REGISTRY_USERNAME=${KAMAL_REGISTRY_USERNAME}
           KAMAL_REGISTRY_PASSWORD=${KAMAL_REGISTRY_PASSWORD}
+          KAMAL_SSH_USER=miguel.dagatan
+          KAMAL_SSH_KEY_PATH=~/.ssh/id_ed25519
+          KAMAL_SSH_HOST=api.fintr.ai
           EOF
 
-          cat > ../fintr-fe/.env.gcp.production <<EOF
+          cat > ../fintr-fe/.env.production <<EOF
           AUTH0_SECRET=${AUTH0_SECRET}
-          NEXT_PUBLIC_APP_BASE_URL=https://gcp.fintr.ai
+          NEXT_PUBLIC_APP_BASE_URL=https://fintr.ai
           NEXT_PUBLIC_BE_URL=https://api.fintr.ai
           NEXT_PUBLIC_AUTH0_DOMAIN=${NEXT_PUBLIC_AUTH0_DOMAIN}
           NEXT_PUBLIC_AUTH0_CLIENT_ID=${NEXT_PUBLIC_AUTH0_CLIENT_ID}
@@ -80,12 +84,13 @@ jobs:
           SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
           NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
           NEXT_PUBLIC_SHOW_V2=${NEXT_PUBLIC_SHOW_V2}
-          FRONTEND_PROXY_HOST=gcp.fintr.ai
-          KAMAL_PROXY_SSL=true
+          FRONTEND_PROXY_HOST=fintr.ai
+          FRONTEND_PROXY_HOSTS=fintr.ai,www.fintr.ai
+          KAMAL_PROXY_FORWARD_HEADERS=true
           NEXT_PUBLIC_MAINTENANCE_MODE=${NEXT_PUBLIC_MAINTENANCE_MODE}
           NEXT_PUBLIC_MAINTENANCE_TITLE=${NEXT_PUBLIC_MAINTENANCE_TITLE}
           NEXT_PUBLIC_MAINTENANCE_MESSAGE=${NEXT_PUBLIC_MAINTENANCE_MESSAGE}
           EOF
 
-      - name: Deploy frontend to GCP
-        run: ./bin/deploy-gcp-fe
+      - name: Deploy frontend
+        run: ./bin/deploy-fe

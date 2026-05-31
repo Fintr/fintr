@@ -63,7 +63,7 @@ Temporarily add this to see the backend URL:
    useEffect(() => {
      const backendUrl = process.env.NEXT_PUBLIC_BE_URL;
      if (!backendUrl) {
-       alert("❌ Backend URL is UNDEFINED!\n\nCheck .env.production file");
+       alert("❌ Backend URL is UNDEFINED!\n\nCheck .env.mobile.production file");
      } else {
        console.log("✅ Backend URL:", backendUrl);
      }
@@ -98,15 +98,15 @@ CORS error
 
 ## Quick Fix Checklist
 
-1. **Check `.env.production` exists**:
+1. **Check `.env.mobile.production` exists**:
    ```bash
    cd fintr-fe
-   ls -la .env.production
+   ls -la .env.mobile.production
    ```
 
 2. **Verify it has the right values**:
    ```bash
-   cat .env.production
+   cat .env.mobile.production
    ```
 
 3. **Rebuild with environment variables**:
@@ -126,7 +126,7 @@ CORS error
 ## Common Issues Found in Console
 
 ### "Backend URL is not configured"
-- **Fix**: Make sure `.env.production` has `NEXT_PUBLIC_BE_URL=...`
+- **Fix**: Make sure `.env.mobile.production` has `NEXT_PUBLIC_BE_URL=...`
 
 ### "Failed to fetch" or Network errors
 - **Fix**: Check if backend URL is correct and accessible

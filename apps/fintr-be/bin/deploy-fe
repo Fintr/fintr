@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Deploy fintr-fe to production (Kamal, same host as api.fintr.ai).
+#
+# Usage (from apps/fintr-be):
+#   ./bin/deploy-fe
+#   ./bin/deploy-fe app logs
+
+set -euo pipefail
+
+app_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$app_root"
+
+config_file="config/deploy.fe.yml"
+fe_dotenv="${app_root}/../fintr-fe/.env.production"
+be_dotenv="${app_root}/.env.production"
+
+if [[ ! -f "$fe_dotenv" ]]
+then
+  echo "deploy-fe: missing ${fe_dotenv}" >&2
+  exit 1
+fi
+
+if [[ ! -f "$be_dotenv" ]]
+then
+  echo "deploy-fe: missing ${be_dotenv} (KAMAL_REGISTRY_* for Docker Hub)" >&2
+  exit 1
+fi
+
+if [[ $# -eq 0 ]]
+then
+  exec ./bin/kamal deploy -c "$config_file"
+fi
+
+exec ./bin/kamal "$@" -c "$config_file"
