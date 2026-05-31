@@ -1,0 +1,9 @@
+# Optional: copy to .kamal/ssh_config if you prefer a single SSH config file for GCP.
+# Kamal already uses config/kamal_ssh.gcp.config via deploy.gcp*.yml.
+
+Host 34.21.206.91
+  HostName 34.21.206.91
+  User miguel.dagatan
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
+  StrictHostKeyChecking accept-new

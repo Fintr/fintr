@@ -69,6 +69,26 @@ To download the dump it's a series of steps.
 ## Handling .env files
 Since we're using kamal, handling `.env` files is a little bit more primitive. We have local copies of the `.env.production` and `.env.staging`. Kamal will look at those `.env` files for reference and use those for production. Please coordinate with all other team members if you wish to update `.env.production` and `.env.staging`.
 
+## Google Cloud Platform (Kamal)
+
+GCP deploy configs mirror AWS (`deploy.yml` / `deploy.staging.yml`) but target `34.21.206.91` as `miguel.dagatan` via `~/.ssh/id_ed25519` (`config/kamal_ssh.gcp.config`). **Service names match AWS** (`fintr-be` / `fintr-be-staging`) so you can stand up GCP, copy data, then swap DNS from the old host.
+
+| Environment | Kamal config | Secrets | Local env (gitignored) |
+|-------------|--------------|---------|-------------------------|
+| Production  | `config/deploy.gcp.yml` | `.kamal/secrets.gcp` | `.env.gcp` (from `.env.production`) |
+| Staging     | `config/deploy.gcp.staging.yml` | `.kamal/secrets.gcp.staging` | `.env.gcp.staging` (from `.env.staging`) |
+
+From `apps/fintr-be` (source the env file so Kamal secrets `$VAR` references resolve):
+
+```bash
+set -a && source .env.gcp && set +a && ./bin/kamal deploy -c config/deploy.gcp.yml
+set -a && source .env.gcp.staging && set +a && ./bin/kamal deploy -c config/deploy.gcp.staging.yml
+```
+
+Proxy SSL is off by default (bare IP). After pointing a DNS name at the VM, set `proxy.ssl: true` and `proxy.host` to that hostname.
+
+**Note:** Both GCP configs use the same VM IP today; only run one environment per host unless you add a second machine.
+
 ## Sentry MCP Integration
 
 This project has Sentry MCP (Model Context Protocol) configured, allowing AI assistants to interact with Sentry for error tracking and issue analysis.
