@@ -133,7 +133,7 @@ Constants in `GridPicker.tsx`:
 | Context | Asset / component |
 | --- | --- |
 | Dark UI (nav, auth) | `<FintrLogo />` → `FINTR_LOGO_DARK_SRC` |
-| Bootstrap / loading screens | `<LoadingFintrLogo />` — blue PNG in light, white SVG in dark |
+| Bootstrap / loading screens | `<LoadingFintrLogo />` — navy SVG in light, white SVG in dark (same explicit height) |
 | Light/marketing | Remote PNG (`FINTR_LOGO_LIGHT_SRC`) |
 
 ---

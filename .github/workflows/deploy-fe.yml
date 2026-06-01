@@ -15,6 +15,7 @@ on:
       - "apps/fintr-be/config/kamal_ssh.production.config"
       - "apps/fintr-be/.kamal/secrets.fe"
       - "apps/fintr-be/bin/deploy-fe"
+      - "apps/fintr-be/config/kamal_ssh.ci.config"
       - ".github/workflows/deploy-fe.yml"
   workflow_dispatch:
 
@@ -66,13 +67,25 @@ jobs:
           password: ${{ vars.KAMAL_REGISTRY_PASSWORD }}
 
       - name: Configure SSH for Kamal
+        env:
+          FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY: ${{ vars.FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ vars.FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/fintr-gcp-key
+          chmod 700 ~/.ssh
+          printf '%s\n' "$FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/fintr-gcp-key
           chmod 600 ~/.ssh/fintr-gcp-key
-          ssh-keyscan -H "${{ vars.KAMAL_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
-          ssh-keyscan -H "${{ vars.FRONTEND_PROXY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
-          ssh-keyscan -H www.fintr.ai >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keygen -y -f ~/.ssh/fintr-gcp-key >/dev/null
+
+      - name: Verify SSH access to deploy host
+        env:
+          KAMAL_SSH_USER: ${{ vars.KAMAL_SSH_USER }}
+          KAMAL_SSH_HOST: ${{ vars.KAMAL_SSH_HOST }}
+        run: |
+          ssh -i ~/.ssh/fintr-gcp-key \
+            -F config/kamal_ssh.ci.config \
+            -o IdentitiesOnly=yes \
+            "${KAMAL_SSH_USER}@${KAMAL_SSH_HOST}" \
+            echo "SSH OK"
 
       - name: Write Kamal env files
         env:
@@ -100,8 +113,9 @@ jobs:
           KAMAL_REGISTRY_USERNAME=${KAMAL_REGISTRY_USERNAME}
           KAMAL_REGISTRY_PASSWORD=${KAMAL_REGISTRY_PASSWORD}
           KAMAL_SSH_USER=${KAMAL_SSH_USER}
-          KAMAL_SSH_KEY_PATH=${KAMAL_SSH_KEY_PATH}
+          KAMAL_SSH_KEY_PATH=/home/runner/.ssh/fintr-gcp-key
           KAMAL_SSH_HOST=${KAMAL_SSH_HOST}
+          KAMAL_SSH_CONFIG_PATHS=config/kamal_ssh.ci.config
           EOF
 
           cat > ../fintr-fe/.env.production <<EOF
