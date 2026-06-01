@@ -1,7 +1,6 @@
 # Production frontend deploy (Kamal). Runs ./bin/deploy-fe from apps/fintr-be.
 #
-# Credentials live in the GitHub Environment "fintr / production" (Settings → Environments).
-# Use Environment **variables** (vars.*) or **secrets** (secrets.*) there — not repo-level secrets only.
+# Credentials: GitHub Environment "fintr / production" (vars.*) + repo secret FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY.
 
 name: Deploy Frontend (Production)
 
@@ -49,14 +48,14 @@ jobs:
         env:
           KAMAL_REGISTRY_USERNAME: ${{ vars.KAMAL_REGISTRY_USERNAME }}
           KAMAL_REGISTRY_PASSWORD: ${{ vars.KAMAL_REGISTRY_PASSWORD }}
-          FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY: ${{ vars.FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY }}
+          FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY }}
         run: |
           missing=()
           [[ -z "$KAMAL_REGISTRY_USERNAME" ]] && missing+=("KAMAL_REGISTRY_USERNAME")
           [[ -z "$KAMAL_REGISTRY_PASSWORD" ]] && missing+=("KAMAL_REGISTRY_PASSWORD")
-          [[ -z "$FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY" ]] && missing+=("FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY")
+          [[ -z "$FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY" ]] && missing+=("FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY (environment secret)")
           if [[ ${#missing[@]} -gt 0 ]]; then
-            echo "::error::Missing environment variables in fintr / production: ${missing[*]}"
+            echo "::error::Missing in fintr / production: ${missing[*]}"
             exit 1
           fi
 
@@ -68,11 +67,11 @@ jobs:
 
       - name: Configure SSH for Kamal
         env:
-          FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY: ${{ vars.FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY }}
+          FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "$FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/fintr-gcp-key
+          echo "$FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/fintr-gcp-key
           chmod 600 ~/.ssh/fintr-gcp-key
           ssh-keygen -y -f ~/.ssh/fintr-gcp-key >/dev/null
 
