@@ -1,7 +1,7 @@
 Host staging-api.fintr.ai
     HostName staging-api.fintr.ai
     User root
-    IdentityFile /Users/mikodagatan/.ssh/id_ed25519
+    IdentityFile ~/.ssh/fintr-gcp-key
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
     IdentitiesOnly yes

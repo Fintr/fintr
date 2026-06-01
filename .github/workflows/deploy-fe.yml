@@ -1,4 +1,7 @@
-# Deploy fintr-fe to production (Kamal) on push to main.
+# Production frontend deploy (Kamal). Runs ./bin/deploy-fe from apps/fintr-be.
+#
+# Required secrets: FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY (contents of ~/.ssh/fintr-gcp-key),
+# KAMAL_REGISTRY_USERNAME, KAMAL_REGISTRY_PASSWORD, AUTH0_SECRET, NEXT_PUBLIC_AUTH0_* , etc.
 
 name: Deploy Frontend (Production)
 
@@ -9,9 +12,11 @@ on:
     paths:
       - "apps/fintr-fe/**"
       - "apps/fintr-be/config/deploy.fe.yml"
-      - "apps/fintr-be/bin/deploy-fe"
       - "apps/fintr-be/config/kamal_ssh.production.config"
+      - "apps/fintr-be/.kamal/secrets.fe"
+      - "apps/fintr-be/bin/deploy-fe"
       - ".github/workflows/deploy-fe.yml"
+  workflow_dispatch:
 
 concurrency:
   group: deploy-fe-production
@@ -41,8 +46,8 @@ jobs:
       - name: Configure SSH for Kamal
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.GCP_DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/fintr-gcp-key
+          chmod 600 ~/.ssh/fintr-gcp-key
           ssh-keyscan -H api.fintr.ai >> ~/.ssh/known_hosts 2>/dev/null || true
           ssh-keyscan -H fintr.ai >> ~/.ssh/known_hosts 2>/dev/null || true
           ssh-keyscan -H www.fintr.ai >> ~/.ssh/known_hosts 2>/dev/null || true
@@ -68,7 +73,7 @@ jobs:
           KAMAL_REGISTRY_USERNAME=${KAMAL_REGISTRY_USERNAME}
           KAMAL_REGISTRY_PASSWORD=${KAMAL_REGISTRY_PASSWORD}
           KAMAL_SSH_USER=miguel.dagatan
-          KAMAL_SSH_KEY_PATH=~/.ssh/id_ed25519
+          KAMAL_SSH_KEY_PATH=~/.ssh/fintr-gcp-key
           KAMAL_SSH_HOST=api.fintr.ai
           EOF
 
@@ -93,4 +98,7 @@ jobs:
           EOF
 
       - name: Deploy frontend
+        env:
+          KAMAL_REGISTRY_USERNAME: ${{ secrets.KAMAL_REGISTRY_USERNAME }}
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
         run: ./bin/deploy-fe

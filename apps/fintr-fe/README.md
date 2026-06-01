@@ -296,4 +296,4 @@ cd apps/fintr-be
 ./bin/deploy-fe
 ```
 
-Push to `main` deploys the frontend via `.github/workflows/deploy-fe.yml` when `apps/fintr-fe/**` changes.
+Push to `main` with any change under `apps/fintr-fe/**` runs [`.github/workflows/deploy-fe.yml`](../../.github/workflows/deploy-fe.yml) (`./bin/deploy-fe`). You can also trigger it manually from the Actions tab.

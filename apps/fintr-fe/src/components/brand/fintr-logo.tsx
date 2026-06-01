@@ -35,21 +35,28 @@ interface LoadingFintrLogoProps {
   pulseClassName?: string;
 }
 
-/** Pulsing logo for bootstrap / transition loading screens on dark backgrounds. */
+/** Pulsing logo for bootstrap / transition loading screens; follows app theme. */
 export function LoadingFintrLogo({
   size = 100,
   className,
   pulseClassName = "animate-pulse",
 }: LoadingFintrLogoProps) {
+  const imageClassName = "h-full w-auto";
+
   return (
     <div
       className={cn(pulseClassName, className)}
       style={{ height: size }}
     >
       <img
+        src={FINTR_LOGO_LIGHT_SRC}
+        alt="Fintr Logo"
+        className={cn(imageClassName, "dark:hidden")}
+      />
+      <img
         src={FINTR_LOGO_DARK_SRC}
         alt="Fintr Logo"
-        className="h-full w-auto"
+        className={cn(imageClassName, "hidden dark:block")}
       />
     </div>
   );

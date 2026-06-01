@@ -23,7 +23,7 @@
   kamal_ssh_user = "miguel.dagatan" if kamal_ssh_user.empty?
 
   kamal_ssh_key = ENV["KAMAL_SSH_KEY_PATH"].to_s.strip
-  kamal_ssh_key = "~/.ssh/id_ed25519" if kamal_ssh_key.empty?
+  kamal_ssh_key = "~/.ssh/fintr-gcp-key" if kamal_ssh_key.empty?
 
   kamal_ssh_config_paths = ENV["KAMAL_SSH_CONFIG_PATHS"].to_s.split(",").map(&:strip).reject(&:empty?)
   kamal_ssh_configs = [

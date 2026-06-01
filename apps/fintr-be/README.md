@@ -71,7 +71,9 @@ Since we're using kamal, handling `.env` files is a little bit more primitive. W
 
 ## Production deploy (Kamal)
 
-Production API and frontend run on the same host (`api.fintr.ai` / `fintr.ai`). SSH and server host come from **`apps/fintr-be/.env.production`**: `KAMAL_SSH_USER`, `KAMAL_SSH_KEY_PATH`, `KAMAL_SSH_HOST` (the VM — often `api.fintr.ai`; not the public `fintr.ai` URL). See `.env.production.example`.
+Production API and frontend run on the same host (`api.fintr.ai` / `fintr.ai`). Deploy SSH uses a **dedicated key** (`~/.ssh/fintr-gcp-key`), not your personal key. Set `KAMAL_SSH_USER`, `KAMAL_SSH_KEY_PATH`, and `KAMAL_SSH_HOST` in **`apps/fintr-be/.env.production`** — see `.env.production.example`.
+
+**GitHub Actions:** store the private key in secret `FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY`. The workflow writes it to `~/.ssh/fintr-gcp-key` on the runner (same path as local). The matching public key must be in `~/.ssh/authorized_keys` on the VM.
 
 | Component | Kamal config | Deploy command |
 |-----------|--------------|----------------|
