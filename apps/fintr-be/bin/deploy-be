@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Deploy fintr-be to production (Kamal).
+#
+# Usage (from apps/fintr-be):
+#   ./bin/deploy-be
+#   ./bin/deploy-be app logs
+
+set -euo pipefail
+
+app_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$app_root"
+
+config_file="config/deploy.yml"
+be_dotenv="${app_root}/.env.production"
+master_key="${app_root}/config/master.key"
+
+if [[ ! -f "$be_dotenv" ]]
+then
+  echo "deploy-be: missing ${be_dotenv}" >&2
+  exit 1
+fi
+
+if [[ ! -f "$master_key" ]]
+then
+  echo "deploy-be: missing ${master_key} (RAILS_MASTER_KEY for Kamal secrets)" >&2
+  exit 1
+fi
+
+set -a
+# shellcheck disable=SC1090
+source "$be_dotenv"
+set +a
+
+if [[ -z "${KAMAL_REGISTRY_USERNAME:-}" || -z "${KAMAL_REGISTRY_PASSWORD:-}" ]]
+then
+  echo "deploy-be: KAMAL_REGISTRY_USERNAME and KAMAL_REGISTRY_PASSWORD must be set" >&2
+  exit 1
+fi
+
+if [[ $# -eq 0 ]]
+then
+  exec ./bin/kamal deploy -c "$config_file"
+fi
+
+exec ./bin/kamal "$@" -c "$config_file"
