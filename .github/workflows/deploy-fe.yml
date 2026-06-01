@@ -1,7 +1,7 @@
 # Production frontend deploy (Kamal). Runs ./bin/deploy-fe from apps/fintr-be.
 #
-# Required secrets: FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY (contents of ~/.ssh/fintr-gcp-key),
-# KAMAL_REGISTRY_USERNAME, KAMAL_REGISTRY_PASSWORD, AUTH0_SECRET, NEXT_PUBLIC_AUTH0_* , etc.
+# Credentials live in the GitHub Environment "fintr / production" (Settings → Environments).
+# Use Environment **variables** (vars.*) or **secrets** (secrets.*) there — not repo-level secrets only.
 
 name: Deploy Frontend (Production)
 
@@ -25,6 +25,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: "fintr / production"
     timeout-minutes: 45
     defaults:
       run:
@@ -43,38 +44,64 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Verify deploy configuration
+        env:
+          KAMAL_REGISTRY_USERNAME: ${{ vars.KAMAL_REGISTRY_USERNAME }}
+          KAMAL_REGISTRY_PASSWORD: ${{ vars.KAMAL_REGISTRY_PASSWORD }}
+          FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY: ${{ vars.FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY }}
+        run: |
+          missing=()
+          [[ -z "$KAMAL_REGISTRY_USERNAME" ]] && missing+=("KAMAL_REGISTRY_USERNAME")
+          [[ -z "$KAMAL_REGISTRY_PASSWORD" ]] && missing+=("KAMAL_REGISTRY_PASSWORD")
+          [[ -z "$FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY" ]] && missing+=("FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY")
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            echo "::error::Missing environment variables in fintr / production: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.KAMAL_REGISTRY_USERNAME }}
+          password: ${{ vars.KAMAL_REGISTRY_PASSWORD }}
+
       - name: Configure SSH for Kamal
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/fintr-gcp-key
+          printf '%s\n' "${{ vars.FINTR_GCP_DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/fintr-gcp-key
           chmod 600 ~/.ssh/fintr-gcp-key
-          ssh-keyscan -H api.fintr.ai >> ~/.ssh/known_hosts 2>/dev/null || true
-          ssh-keyscan -H fintr.ai >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -H "${{ vars.KAMAL_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -H "${{ vars.FRONTEND_PROXY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
           ssh-keyscan -H www.fintr.ai >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Write Kamal env files
         env:
-          KAMAL_REGISTRY_USERNAME: ${{ secrets.KAMAL_REGISTRY_USERNAME }}
-          KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
-          AUTH0_SECRET: ${{ secrets.AUTH0_SECRET }}
-          NEXT_PUBLIC_AUTH0_DOMAIN: ${{ secrets.NEXT_PUBLIC_AUTH0_DOMAIN }}
-          NEXT_PUBLIC_AUTH0_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_AUTH0_CLIENT_ID }}
-          NEXT_PUBLIC_AUTH0_CLIENT_SECRET: ${{ secrets.NEXT_PUBLIC_AUTH0_CLIENT_SECRET }}
-          NEXT_PUBLIC_AUTH0_AUDIENCE: ${{ secrets.NEXT_PUBLIC_AUTH0_AUDIENCE }}
-          NEXT_PUBLIC_ENVIRONMENT: ${{ secrets.NEXT_PUBLIC_ENVIRONMENT }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
-          NEXT_PUBLIC_SHOW_V2: ${{ secrets.NEXT_PUBLIC_SHOW_V2 }}
-          NEXT_PUBLIC_MAINTENANCE_MODE: ${{ secrets.NEXT_PUBLIC_MAINTENANCE_MODE }}
-          NEXT_PUBLIC_MAINTENANCE_TITLE: ${{ secrets.NEXT_PUBLIC_MAINTENANCE_TITLE }}
-          NEXT_PUBLIC_MAINTENANCE_MESSAGE: ${{ secrets.NEXT_PUBLIC_MAINTENANCE_MESSAGE }}
+          KAMAL_REGISTRY_USERNAME: ${{ vars.KAMAL_REGISTRY_USERNAME }}
+          KAMAL_REGISTRY_PASSWORD: ${{ vars.KAMAL_REGISTRY_PASSWORD }}
+          KAMAL_SSH_USER: ${{ vars.KAMAL_SSH_USER }}
+          KAMAL_SSH_KEY_PATH: ${{ vars.KAMAL_SSH_KEY_PATH }}
+          KAMAL_SSH_HOST: ${{ vars.KAMAL_SSH_HOST }}
+          AUTH0_SECRET: ${{ vars.AUTH0_SECRET }}
+          NEXT_PUBLIC_AUTH0_DOMAIN: ${{ vars.NEXT_PUBLIC_AUTH0_DOMAIN }}
+          NEXT_PUBLIC_AUTH0_CLIENT_ID: ${{ vars.NEXT_PUBLIC_AUTH0_CLIENT_ID }}
+          NEXT_PUBLIC_AUTH0_CLIENT_SECRET: ${{ vars.NEXT_PUBLIC_AUTH0_CLIENT_SECRET }}
+          NEXT_PUBLIC_AUTH0_AUDIENCE: ${{ vars.NEXT_PUBLIC_AUTH0_AUDIENCE }}
+          NEXT_PUBLIC_ENVIRONMENT: ${{ vars.NEXT_PUBLIC_ENVIRONMENT }}
+          SENTRY_AUTH_TOKEN: ${{ vars.SENTRY_AUTH_TOKEN }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+          NEXT_PUBLIC_SHOW_V2: ${{ vars.NEXT_PUBLIC_SHOW_V2 }}
+          FRONTEND_PROXY_HOST: ${{ vars.FRONTEND_PROXY_HOST }}
+          FRONTEND_PROXY_HOSTS: ${{ vars.FRONTEND_PROXY_HOSTS }}
+          NEXT_PUBLIC_MAINTENANCE_MODE: ${{ vars.NEXT_PUBLIC_MAINTENANCE_MODE }}
+          NEXT_PUBLIC_MAINTENANCE_TITLE: ${{ vars.NEXT_PUBLIC_MAINTENANCE_TITLE }}
+          NEXT_PUBLIC_MAINTENANCE_MESSAGE: ${{ vars.NEXT_PUBLIC_MAINTENANCE_MESSAGE }}
         run: |
           cat > .env.production <<EOF
           KAMAL_REGISTRY_USERNAME=${KAMAL_REGISTRY_USERNAME}
           KAMAL_REGISTRY_PASSWORD=${KAMAL_REGISTRY_PASSWORD}
-          KAMAL_SSH_USER=miguel.dagatan
-          KAMAL_SSH_KEY_PATH=~/.ssh/fintr-gcp-key
-          KAMAL_SSH_HOST=api.fintr.ai
+          KAMAL_SSH_USER=${KAMAL_SSH_USER}
+          KAMAL_SSH_KEY_PATH=${KAMAL_SSH_KEY_PATH}
+          KAMAL_SSH_HOST=${KAMAL_SSH_HOST}
           EOF
 
           cat > ../fintr-fe/.env.production <<EOF
@@ -89,8 +116,8 @@ jobs:
           SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
           NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
           NEXT_PUBLIC_SHOW_V2=${NEXT_PUBLIC_SHOW_V2}
-          FRONTEND_PROXY_HOST=fintr.ai
-          FRONTEND_PROXY_HOSTS=fintr.ai,www.fintr.ai
+          FRONTEND_PROXY_HOST=${FRONTEND_PROXY_HOST}
+          FRONTEND_PROXY_HOSTS=${FRONTEND_PROXY_HOSTS}
           KAMAL_PROXY_FORWARD_HEADERS=true
           NEXT_PUBLIC_MAINTENANCE_MODE=${NEXT_PUBLIC_MAINTENANCE_MODE}
           NEXT_PUBLIC_MAINTENANCE_TITLE=${NEXT_PUBLIC_MAINTENANCE_TITLE}
@@ -99,6 +126,6 @@ jobs:
 
       - name: Deploy frontend
         env:
-          KAMAL_REGISTRY_USERNAME: ${{ secrets.KAMAL_REGISTRY_USERNAME }}
-          KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
+          KAMAL_REGISTRY_USERNAME: ${{ vars.KAMAL_REGISTRY_USERNAME }}
+          KAMAL_REGISTRY_PASSWORD: ${{ vars.KAMAL_REGISTRY_PASSWORD }}
         run: ./bin/deploy-fe

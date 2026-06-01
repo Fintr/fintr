@@ -31,6 +31,14 @@ set -a
 source "$be_dotenv"
 set +a
 
+if [[ -z "${KAMAL_REGISTRY_USERNAME:-}" || -z "${KAMAL_REGISTRY_PASSWORD:-}" ]]
+then
+  echo "deploy-fe: KAMAL_REGISTRY_USERNAME and KAMAL_REGISTRY_PASSWORD must be set" >&2
+  echo "  Local: apps/fintr-be/.env.production" >&2
+  echo "  CI: GitHub Actions secrets KAMAL_REGISTRY_USERNAME / KAMAL_REGISTRY_PASSWORD" >&2
+  exit 1
+fi
+
 if [[ $# -eq 0 ]]
 then
   exec ./bin/kamal deploy -c "$config_file"
