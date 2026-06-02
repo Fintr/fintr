@@ -18,6 +18,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  filterActiveBadgeClassName,
+  filterTriggerIconButtonClassName,
+} from "@/components/ui/filter-sheet";
 import { cn } from "@/lib/utils";
 import { ListView } from "@/components/dashboard/tabs/transactions/list-view";
 import { TransactionTotalsDisplay } from "@/components/dashboard/tabs/transactions/transaction-totals";
@@ -296,17 +300,14 @@ export function CategoryDetailTransactions({
         type="button"
         variant="outline"
         size="icon"
-        className="rounded-lg border-muted-foreground/25 bg-white text-foreground hover:bg-muted/60"
+        className={filterTriggerIconButtonClassName}
         onClick={openFiltersSheet}
         aria-label="Open transaction filters"
       >
         <Filter className="h-4 w-4" aria-hidden />
       </Button>
       {hasActiveFilters ? (
-        <span
-          className="absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full border-2 border-white bg-red-500"
-          aria-hidden
-        />
+        <span className={filterActiveBadgeClassName} aria-hidden />
       ) : null}
     </div>
   );

@@ -6,6 +6,18 @@ import { Button } from "@/components/ui/button";
 import { AnimatedSheetShell } from "@/components/ui/animated-sheet-shell";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
+/** Toolbar filter trigger with label (e.g. Budgets, Insights, Transactions). */
+export const filterTriggerButtonClassName =
+  "flex items-center gap-2 border-0 bg-white shadow-sm hover:bg-gray-100 dark:bg-card dark:hover:bg-accent/50";
+
+/** Icon-only filter trigger (account / category detail). */
+export const filterTriggerIconButtonClassName =
+  "rounded-lg border-muted-foreground/25 bg-white text-foreground hover:bg-muted/60 dark:border-border dark:bg-card dark:hover:bg-accent/50";
+
+/** Active-filters indicator dot on filter triggers. */
+export const filterActiveBadgeClassName =
+  "absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full border-2 border-white bg-red-500 dark:border-background";
+
 export type FilterSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;

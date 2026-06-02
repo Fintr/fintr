@@ -28,6 +28,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  filterActiveBadgeClassName,
+  filterTriggerIconButtonClassName,
+} from "@/components/ui/filter-sheet";
 import { cn, formatCurrency, getNumberColor } from "@/lib/utils";
 import DayDivider from "@/components/ui/day-divider";
 import LoadingSpinner from "@/components/ui/loading-spinner";
@@ -696,17 +700,14 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         type="button"
         variant="outline"
         size="icon"
-        className="rounded-lg border-muted-foreground/25 bg-white text-foreground hover:bg-muted/60"
+        className={filterTriggerIconButtonClassName}
         onClick={openFiltersSheet}
         aria-label="Open transaction filters"
       >
         <Filter className="h-4 w-4" aria-hidden />
       </Button>
       {hasActiveFilters ? (
-        <span
-          className="absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full border-2 border-white bg-red-500"
-          aria-hidden
-        />
+        <span className={filterActiveBadgeClassName} aria-hidden />
       ) : null}
     </div>
   );

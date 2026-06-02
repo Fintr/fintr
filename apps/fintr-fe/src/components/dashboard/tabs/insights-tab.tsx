@@ -68,7 +68,11 @@ import {
 } from "@/atoms/dashboardAtoms";
 import { CategoryFilterComboBox } from "@/components/ui/category-filter-combobox";
 import { FilterOptionPills } from "@/components/ui/filter-option-pills";
-import { FilterSheet } from "@/components/ui/filter-sheet";
+import {
+  FilterSheet,
+  filterActiveBadgeClassName,
+  filterTriggerButtonClassName,
+} from "@/components/ui/filter-sheet";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { HealthScoreFactorRow } from "@/components/dashboard/insights/health-score-factor-row";
@@ -531,16 +535,16 @@ const InsightsTab = () => {
         <div className="flex items-center gap-2">
           <div className="relative">
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setFiltersOpen(true)}
-              className="flex items-center gap-2 bg-white text-primary"
+              className={filterTriggerButtonClassName}
               aria-label="Open dashboard filters"
             >
               <Filter className="h-4 w-4" />
               <span className="hidden md:inline">Filters</span>
             </Button>
             {hasActiveFilters() && (
-              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
+              <span className={filterActiveBadgeClassName} aria-hidden />
             )}
           </div>
         </div>

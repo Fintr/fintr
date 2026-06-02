@@ -23,6 +23,10 @@ import { useInfiniteTransactions } from "@/hooks/async/useInfiniteTransactions";
 import { ArrowUpRight, ArrowDownLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { TransactionFiltersSheet, FilterTypes } from "./filters";
+import {
+  filterActiveBadgeClassName,
+  filterTriggerButtonClassName,
+} from "@/components/ui/filter-sheet";
 import { DownloadButton } from "./buttons/DownloadButton";
 import { DeleteButton } from "./buttons/DeleteButton";
 import { ViewModeButton } from "./buttons/ViewModeButton";
@@ -782,14 +786,14 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             <Button
               variant="ghost"
               onClick={() => setFiltersOpen(true)}
-              className="flex items-center gap-2 border-0 bg-white shadow-sm hover:bg-gray-100 dark:bg-card dark:hover:bg-accent/50"
+              className={filterTriggerButtonClassName}
               aria-label="Open transaction filters"
             >
               <Filter className="h-4 w-4" />
               <span className="hidden md:inline">Filters</span>
             </Button>
             {hasActiveFilters() && (
-              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white dark:border-background" />
+              <span className={filterActiveBadgeClassName} aria-hidden />
             )}
           </div>
           {shouldShowV2Features() && (

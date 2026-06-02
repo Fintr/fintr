@@ -39,7 +39,11 @@ import {
 } from "@/components/ui/select";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { FilterOptionPills } from "@/components/ui/filter-option-pills";
-import { FilterSheet } from "@/components/ui/filter-sheet";
+import {
+  FilterSheet,
+  filterActiveBadgeClassName,
+  filterTriggerButtonClassName,
+} from "@/components/ui/filter-sheet";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { monthNames, getYearOptions, getCurrentMonthDates } from "@/utils/dateUtils";
@@ -369,16 +373,16 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
         <div className="flex items-center gap-2">
           <div className="relative">
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setFiltersOpen(true)}
-              className="flex items-center gap-2 bg-white text-primary"
+              className={filterTriggerButtonClassName}
               aria-label="Open budget filters"
             >
               <Filter className="h-4 w-4" />
               <span className="hidden md:inline">Filters</span>
             </Button>
             {hasActiveFilters() && (
-              <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
+              <span className={filterActiveBadgeClassName} aria-hidden />
             )}
           </div>
           <NewBudgetDialog
