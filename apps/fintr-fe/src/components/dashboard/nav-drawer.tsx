@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { X, User, LogOut, Moon, Sun } from 'lucide-react';
 import Link from "next/link";
 import { useTheme } from "next-themes";
+import { applyThemeWithNativeSync } from "@/lib/sync-theme-to-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { SpaceSwitcher } from "@/components/space/space-switcher";
 import { Switch } from "@/components/ui/switch";
@@ -28,7 +29,7 @@ function NavDrawerThemeToggle() {
       className={navDrawerItemClassName}
       onClick={() => {
         if (!mounted) return;
-        setTheme(isDark ? "light" : "dark");
+        applyThemeWithNativeSync(setTheme, isDark ? "light" : "dark");
       }}
       disabled={!mounted}
       aria-label={
@@ -48,7 +49,9 @@ function NavDrawerThemeToggle() {
       {mounted ? (
         <Switch
           checked={isDark}
-          onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+          onCheckedChange={(checked) => {
+            applyThemeWithNativeSync(setTheme, checked ? "dark" : "light");
+          }}
           onClick={(event) => event.stopPropagation()}
           aria-hidden
           tabIndex={-1}

@@ -88,7 +88,7 @@ initialiser that runs before any `@capacitor/…` import and:
 - Defines `cap.fromNative` as the primary response delivery path.
 - Defines `cap.toNative` / `cap.nativePromise` / `cap.nativeCallback` backed by
   `androidBridge.postMessage`.
-- Sets `cap.PluginHeaders` for the `Browser`, `App`, and `CacheControl` plugins
+- Sets `cap.PluginHeaders` for `Browser`, `App`, `CacheControl`, `NavigationInfo`, `Appearance`, `Filesystem`, and `FileShare`
   so `registerPlugin()` chooses the native path.
 - Sets `win.androidBridge.onmessage` as a secondary response path.
 
@@ -152,6 +152,8 @@ public void clearCacheAndReload(PluginCall call) {
 | `src/services/auth/modal-google-signin.ts` | Call `initCapacitorBridgeIfNeeded()` before plugin import |
 | `src/services/auth/in-app-apple-signin.ts` | Call `initCapacitorBridgeIfNeeded()` before plugin import |
 | `src/components/deep-link-handler.tsx` | Call `initCapacitorBridgeIfNeeded()` before plugin import |
+| `android/.../FintrAppearanceBridge.java` | Direct `window.FintrAppearance.setTheme()` for status bar on release APK |
+| `src/lib/native-appearance.ts` | Prefers `FintrAppearance` JS bridge, then Capacitor `Appearance` plugin |
 | `src/components/auth/unified-auth-page.tsx` | Call `initCapacitorBridgeIfNeeded()` before plugin import |
 | `src/app/auth-callback/page.tsx` | Call `initCapacitorBridgeIfNeeded()` before plugin import |
 | `android/app/src/main/java/com/fintr/app/CacheControlPlugin.java` | Wrap WebView calls in `runOnUiThread` |

@@ -88,6 +88,10 @@ NEXTCONFIG
 
 cp next.config.ts next.config.ts.backup
 cp next.config.capacitor.ts next.config.ts
+
+# Local .env often sets NODE_ENV=development for `pnpm dev`. If that value is picked up
+# during `next build`, static export fails (PageNotFoundError: Cannot find module /_document).
+export NODE_ENV=production
 pnpm build
 mv next.config.ts.backup next.config.ts
 rm next.config.capacitor.ts
@@ -124,13 +128,68 @@ echo ""
 if [ "${SKIP_EMULATOR:-}" = "1" ]; then
   echo "Step 6: Building Android release (emulator skipped)..."
   echo ""
+
+  KEYSTORE_PROPERTIES="${PROJECT_ROOT}/android/keystore.properties"
+  if [ ! -f "$KEYSTORE_PROPERTIES" ]; then
+    echo "ERROR: Release builds must be signed to install on a device or upload to Play Store."
+    echo ""
+    echo "   android/keystore.properties is missing."
+    echo ""
+    echo "   One-time setup:"
+    echo "     cd android"
+    echo "     ./create-keystore.sh"
+    echo ""
+    echo "   Then re-run: make android-prod-apk"
+    echo ""
+    echo "   See android/SIGNING.md for details."
+    exit 1
+  fi
+
+  # keystore.properties points at the .jks file; both are required (neither is in git)
+  STORE_FILE="$(grep '^storeFile=' "$KEYSTORE_PROPERTIES" | cut -d= -f2- | tr -d '\r' | xargs)"
+  if [ -z "$STORE_FILE" ]; then
+    echo "ERROR: android/keystore.properties must set storeFile=..."
+    exit 1
+  fi
+  if [[ "$STORE_FILE" = /* ]]; then
+    KEYSTORE_JKS="$STORE_FILE"
+  elif [[ "$STORE_FILE" == app/* ]]; then
+    KEYSTORE_JKS="${PROJECT_ROOT}/android/${STORE_FILE}"
+  else
+    KEYSTORE_JKS="${PROJECT_ROOT}/android/app/${STORE_FILE}"
+  fi
+  if [ ! -f "$KEYSTORE_JKS" ]; then
+    echo "ERROR: Keystore file not found:"
+    echo "   ${KEYSTORE_JKS}"
+    echo ""
+    echo "   keystore.properties only tells Gradle where to look."
+    echo "   Copy your existing .jks from backup to that path (do not run create-keystore.sh"
+    echo "   if you already published to Play — use the original keystore file)."
+    echo ""
+    echo "   Expected with your current storeFile=${STORE_FILE}:"
+    echo "     android/app/fintr-release-key.jks"
+    exit 1
+  fi
+
   ARTIFACT="${ANDROID_ARTIFACT:-apk}"
   case "$ARTIFACT" in
     apk)
       cd android
       ./gradlew assembleRelease
+      RELEASE_APK_DIR="app/build/outputs/apk/release"
+      SIGNED_APK="${RELEASE_APK_DIR}/app-release.apk"
+      UNSIGNED_APK="${RELEASE_APK_DIR}/app-release-unsigned.apk"
       echo ""
-      echo "✅ Release APK: android/app/build/outputs/apk/release/app-release-unsigned.apk"
+      if [ -f "$SIGNED_APK" ]; then
+        echo "✅ Signed release APK (install this on your phone):"
+        echo "   android/${SIGNED_APK}"
+      elif [ -f "$UNSIGNED_APK" ]; then
+        echo "ERROR: Gradle produced an unsigned APK. Check android/keystore.properties and android/SIGNING.md"
+        exit 1
+      else
+        echo "ERROR: No release APK found in android/${RELEASE_APK_DIR}/"
+        exit 1
+      fi
       echo ""
       ;;
     aab)

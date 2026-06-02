@@ -16,7 +16,9 @@
         <item name="android:statusBarColor">@color/fintr_top_bar</item>
         <item name="android:navigationBarColor">@color/fintr_top_bar</item>
         <item name="android:enforceNavigationBarContrast">false</item>
-        <!-- Light icons on dark chrome -->
+        <item name="android:enforceStatusBarContrast">false</item>
+        <!-- Default launch chrome; MainActivity.applyAppearance() overrides at runtime -->
+        <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
     </style>
 

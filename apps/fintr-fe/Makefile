@@ -19,7 +19,7 @@ help:
 	@echo "  Android:"
 	@echo "    android-dev               - Sync and run Android (requires pnpm dev running)"
 	@echo "    android-live              - Dev build with live reload (build + sync + livereload)"
-	@echo "    android-prod-apk          - Production Android: export Next → cap sync → assembleRelease (no emulator)"
+	@echo "    android-prod-apk          - Production Android: signed release APK (requires android/keystore.properties)"
 	@echo "    android-prod-aab          - Same as android-prod-apk but bundleRelease for Play Store"
 	@echo "    android-reset-emulator    - Stop Android emulator, wipe data, and cold boot"
 	@echo "    android-stop-emulator     - Stop all running Android emulators"

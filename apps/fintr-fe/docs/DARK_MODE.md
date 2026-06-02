@@ -174,7 +174,8 @@ Light-mode marketing pages (`landing-page/*`, public routes) may keep cream `#f9
 4. Interactive text on dark: `text-primary-dark-mode`.
 5. Money values: teal / red semantic pair from table above.
 6. Export repeated class strings as named constants (see `summary-stat-tile`, `GridPicker`, `combobox`).
-7. If touching native chrome, update `theme-colors.ts` when `background` / `primary` / `card` change.
+7. If touching native chrome, update `theme-colors.ts` (`light` and `dark` palettes) when `background` / `primary` / `card` change.
+8. **Capacitor:** `NativeThemeSync` calls the `Appearance` plugin so Android/iOS status and navigation bars follow the in-app toggle; web text still comes from `next-themes` + semantic Tailwind tokens.
 
 ---
 
@@ -183,7 +184,9 @@ Light-mode marketing pages (`landing-page/*`, public routes) may keep cream `#f9
 | File | Purpose |
 | --- | --- |
 | `src/app/globals.css` | CSS variable definitions |
-| `src/lib/theme-colors.ts` | Native Android/iOS hex |
+| `src/lib/theme-colors.ts` | Native Android/iOS hex (`light` / `dark`) |
+| `src/lib/native-appearance.ts` | Sync meta theme-color + native bars |
+| `src/components/native-theme-sync.tsx` | Listens to `next-themes` on native |
 | `src/components/theme-provider.tsx` | Theme wiring |
 | `src/components/brand/fintr-logo.tsx` | Logo sources |
 | `.ai/skills/fintr-dark-mode/SKILL.md` | Agent skill — read before new frontend UI |

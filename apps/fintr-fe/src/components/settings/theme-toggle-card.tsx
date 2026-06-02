@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 import { Switch } from "@/components/ui/switch";
+import { applyThemeWithNativeSync } from "@/lib/sync-theme-to-native";
 import { cn } from "@/lib/utils";
 
 const cardClassName = cn(
@@ -30,7 +31,7 @@ export function ThemeToggleCard() {
   const isDark = mounted && resolvedTheme === "dark";
 
   const toggleTheme = () => {
-    setTheme(isDark ? "light" : "dark");
+    applyThemeWithNativeSync(setTheme, isDark ? "light" : "dark");
   };
 
   return (
@@ -58,7 +59,9 @@ export function ThemeToggleCard() {
       {mounted ? (
         <Switch
           checked={isDark}
-          onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+          onCheckedChange={(checked) => {
+            applyThemeWithNativeSync(setTheme, checked ? "dark" : "light");
+          }}
           onClick={(event) => event.stopPropagation()}
           aria-hidden
           tabIndex={-1}

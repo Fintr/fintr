@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
 import { initCapacitorKeyboardInsetBridge } from '@/lib/capacitor-keyboard-inset';
+import { syncNativeAppearanceFromStorage } from '@/lib/native-appearance';
 import { initializeSafeAreas } from '@/lib/navigation-info';
 
 export default function CapacitorLoader() {
@@ -30,10 +31,15 @@ export default function CapacitorLoader() {
       isFintrNativeApp
       && (/iPhone|iPad|iPod/i.test(ua) || platform === "ios");
 
+    if (isAndroidNative || isIOSNative) {
+      if (isAndroidNative) {
+        initCapacitorBridgeIfNeeded();
+      }
+
+      void syncNativeAppearanceFromStorage();
+    }
+
     if (isAndroidNative) {
-      // Initialize the Capacitor bridge first (needed for manual bridge mode)
-      initCapacitorBridgeIfNeeded();
-      
       // Then initialize safe areas by calling the Android native plugin
       // This ensures CSS variables and classes are properly set
       initializeSafeAreas().then((result) => {

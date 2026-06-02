@@ -1,5 +1,6 @@
 package com.fintr.app;
 
+import android.annotation.SuppressLint;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
@@ -16,6 +17,42 @@ import com.getcapacitor.BridgeActivity;
 import com.capacitorjs.plugins.filesystem.FilesystemPlugin;
 
 public class MainActivity extends BridgeActivity {
+
+  private static final String SYNC_APPEARANCE_JS =
+    "(function(){try{"
+      + "var t=localStorage.getItem('fintr-theme');"
+      + "if(t==='light'||t==='dark')return t;"
+      + "if(document.documentElement.classList.contains('dark'))return 'dark';"
+      + "return 'light';"
+      + "}catch(e){return 'dark';}})();";
+
+  private static final String INSTALL_APPEARANCE_OBSERVER_JS =
+    "(function(){try{"
+      + "if(window.__fintrAppearanceObserverInstalled)return;"
+      + "window.__fintrAppearanceObserverInstalled=true;"
+      + "var resolve=function(){"
+      + "var t=localStorage.getItem('fintr-theme');"
+      + "if(t==='light'||t==='dark')return t;"
+      + "if(document.documentElement.classList.contains('dark'))return 'dark';"
+      + "return 'light';"
+      + "};"
+      + "var pending=0;"
+      + "var push=function(){"
+      + "if(pending)cancelAnimationFrame(pending);"
+      + "pending=requestAnimationFrame(function(){"
+      + "pending=0;"
+      + "if(!window.FintrAppearance)return;"
+      + "var theme=resolve();"
+      + "if(window.FintrAppearance.setTheme)window.FintrAppearance.setTheme(theme);"
+      + "else if(window.FintrAppearance.syncFromDom)window.FintrAppearance.syncFromDom();"
+      + "});"
+      + "};"
+      + "new MutationObserver(push).observe(document.documentElement,{attributes:true,attributeFilter:['class']});"
+      + "push();"
+      + "}catch(e){}})();";
+
+  private boolean appearanceBridgeAttached = false;
+  private final FintrAppearanceBridge appearanceBridge = new FintrAppearanceBridge(this);
 
   /**
    * Get the system navigation mode from Settings.Secure.
@@ -55,57 +92,137 @@ public class MainActivity extends BridgeActivity {
     } catch (Exception e) {
       // Ignore; best-effort only.
     }
+    syncAppearanceFromWebStorage();
   }
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     registerPlugin(com.fintr.app.CacheControlPlugin.class);
-    // NavigationInfoPlugin provides safe area class injection for the web app
     registerPlugin(com.fintr.app.NavigationInfoPlugin.class);
+    registerPlugin(com.fintr.app.AppearancePlugin.class);
     registerPlugin(com.fintr.app.FileSharePlugin.class);
-    // Ensure Filesystem is on the bridge (required for CSV export / share). If
-    // capacitor.plugins.json fails to load a class on some devices, the plugin
-    // would be missing and native calls return "unable to find plugin: Filesystem".
     registerPlugin(FilesystemPlugin.class);
     WebView.setWebContentsDebuggingEnabled(true);
     super.onCreate(savedInstanceState);
     WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-    applySystemBarColors();
     configureWebViewCache();
-    // Apply insets immediately (synchronously if possible, then async as backup)
     setupWebSafeAreaInsets();
     ViewCompat.requestApplyInsets(getWindow().getDecorView());
   }
 
-  private void applySystemBarColors() {
-    int topBarColor = ContextCompat.getColor(this, R.color.fintr_top_bar);
-    int bottomNavColor = ContextCompat.getColor(this, R.color.fintr_bottom_nav);
+  @Override
+  public void onStart() {
+    super.onStart();
+    attachAppearanceBridge();
+    scheduleAppearanceSyncFromWeb();
+  }
+
+  @Override
+  public void onResume() {
+    super.onResume();
+    attachAppearanceBridge();
+    scheduleAppearanceSyncFromWeb();
+  }
+
+  public void applyAppearance(boolean isLight) {
+    runOnUiThread(() -> applyAppearanceInternal(isLight));
+  }
+
+  private void applyAppearanceInternal(boolean isLight) {
+    int topBarColor = ContextCompat.getColor(
+      this,
+      isLight ? R.color.fintr_top_bar_light : R.color.fintr_top_bar
+    );
 
     getWindow().setStatusBarColor(topBarColor);
-    // Use a light nav bar background with dark icons so the 3-button navigation
-    // is always visible.
     getWindow().setNavigationBarColor(topBarColor);
 
-    // Android 10+ can enforce contrast and override nav bar coloring; disable it.
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       getWindow().setNavigationBarContrastEnforced(false);
       getWindow().setStatusBarContrastEnforced(false);
     }
 
-    // Ensure Android doesn't treat navigation bar as "light" (which can wash out colors).
+    View decorView = getWindow().getDecorView();
     WindowInsetsControllerCompat controller =
-        WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        WindowCompat.getInsetsController(getWindow(), decorView);
     if (controller != null) {
-      controller.setAppearanceLightStatusBars(false);
-      controller.setAppearanceLightNavigationBars(false);
+      controller.setAppearanceLightStatusBars(isLight);
+      controller.setAppearanceLightNavigationBars(isLight);
+    }
+
+    applyLegacySystemBarAppearance(decorView, isLight);
+  }
+
+  private void applyLegacySystemBarAppearance(View decorView, boolean isLight) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+      return;
+    }
+
+    int flags = decorView.getSystemUiVisibility();
+    if (isLight) {
+      flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+      }
+    } else {
+      flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+      }
+    }
+    decorView.setSystemUiVisibility(flags);
+  }
+
+  @SuppressLint("JavascriptInterface")
+  private void attachAppearanceBridge() {
+    try {
+      WebView webView = getBridge().getWebView();
+      if (webView == null || appearanceBridgeAttached) {
+        return;
+      }
+      webView.addJavascriptInterface(appearanceBridge, "FintrAppearance");
+      appearanceBridgeAttached = true;
+      webView.evaluateJavascript(INSTALL_APPEARANCE_OBSERVER_JS, null);
+    } catch (Exception e) {
+      // Ignore — bridge may attach on a later lifecycle pass.
+    }
+  }
+
+  private void scheduleAppearanceSyncFromWeb() {
+    final View decorView = getWindow().getDecorView();
+    decorView.post(this::syncAppearanceFromWebStorage);
+    decorView.postDelayed(this::syncAppearanceFromWebStorage, 400);
+    decorView.postDelayed(this::syncAppearanceFromWebStorage, 1200);
+    decorView.postDelayed(this::syncAppearanceFromWebStorage, 3000);
+  }
+
+  public void syncAppearanceFromWebStorage() {
+    try {
+      WebView webView = getBridge().getWebView();
+      if (webView == null) {
+        return;
+      }
+
+      webView.evaluateJavascript(
+        SYNC_APPEARANCE_JS,
+        raw -> {
+          if (raw == null) {
+            return;
+          }
+          String theme = raw.replace("\"", "").trim();
+          boolean isLight = "light".equals(theme);
+          runOnUiThread(() -> applyAppearance(isLight));
+        }
+      );
+    } catch (Exception e) {
+      // Ignore
     }
   }
 
   private void setupWebSafeAreaInsets() {
     try {
       final View decorView = getWindow().getDecorView();
-      
-      // Apply insets immediately - try both sync and async approaches
+
       final Runnable applyInsetsRunnable = new Runnable() {
         @Override
         public void run() {
@@ -119,18 +236,12 @@ public class MainActivity extends BridgeActivity {
           }
         }
       };
-      
-      // Try immediately first (WebView might already be ready)
+
       applyInsetsRunnable.run();
-      
-      // Then schedule for when view is definitely ready
       decorView.post(applyInsetsRunnable);
-      
-      // And again after a short delay to ensure WebView is fully initialized
       decorView.postDelayed(applyInsetsRunnable, 100);
       decorView.postDelayed(applyInsetsRunnable, 500);
 
-      // Listen for changes
       ViewCompat.setOnApplyWindowInsetsListener(decorView, (v, insets) -> {
         applyWebSafeAreaInsets(insets);
         return insets;
@@ -144,38 +255,31 @@ public class MainActivity extends BridgeActivity {
 
   private void applyWebSafeAreaInsets(WindowInsetsCompat insets) {
     try {
-      // Get status bar height for top safe area
       int statusBarTop = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
-
-      // Detect navigation mode
       final boolean is3ButtonNav = isButtonNavigation();
-
-      // Use fixed values: 48px for 3-button nav, 16px for gesture nav
-      // This ensures consistency with CSS and layout calculations
       final int finalNavHeight = is3ButtonNav ? 48 : 16;
 
-      // Apply to WebView if ready
       WebView webView = getBridge().getWebView();
       if (webView == null) return;
 
-      // Build JavaScript to inject CSS variables AND apply CSS classes
-      String jsCode = 
-          "(function(){" +
-          "try {" +
-          "var html = document.documentElement;" +
-          "html.classList.add('fintr-native-android');" +
-          "html.style.setProperty('--safe-area-inset-top','" + statusBarTop + "px');" +
-          "html.style.setProperty('--safe-area-inset-bottom','" + finalNavHeight + "px');" +
-          (is3ButtonNav ? "html.classList.add('fintr-has-3btn-nav');" : "html.classList.remove('fintr-has-3btn-nav');") +
-          "console.log('[AndroidNative] Safe area applied: top=" + statusBarTop + "px, bottom=" + finalNavHeight + "px, 3btn=" + is3ButtonNav + "');" +
-          "return 'SUCCESS';" +
-          "} catch(e) {" +
-          "console.error('[AndroidNative] Error:', e.message);" +
-          "return 'ERROR: ' + e.message;" +
-          "}" +
-          "})();";
+      String jsCode =
+          "(function(){"
+          + "try {"
+          + "var html = document.documentElement;"
+          + "html.classList.add('fintr-native-android');"
+          + "html.style.setProperty('--safe-area-inset-top','" + statusBarTop + "px');"
+          + "html.style.setProperty('--safe-area-inset-bottom','" + finalNavHeight + "px');"
+          + (is3ButtonNav ? "html.classList.add('fintr-has-3btn-nav');" : "html.classList.remove('fintr-has-3btn-nav');")
+          + "console.log('[AndroidNative] Safe area applied: top=" + statusBarTop + "px, bottom=" + finalNavHeight + "px, 3btn=" + is3ButtonNav + "');"
+          + "return 'SUCCESS';"
+          + "} catch(e) {"
+          + "console.error('[AndroidNative] Error:', e.message);"
+          + "return 'ERROR: ' + e.message;"
+          + "}"
+          + "})();";
 
       webView.evaluateJavascript(jsCode, null);
+      syncAppearanceFromWebStorage();
     } catch (Exception e) {
       // Ignore - will retry on next inset change
     }
@@ -185,7 +289,7 @@ public class MainActivity extends BridgeActivity {
     try {
       WebView webView = getBridge().getWebView();
       if (webView == null) return;
-      
+
       WebSettings webSettings = webView.getSettings();
       webSettings.setDomStorageEnabled(true);
       webSettings.setDatabaseEnabled(true);

@@ -19,6 +19,7 @@ class CapacitorViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(FileSharePlugin())
+        bridge?.registerPluginInstance(AppearancePlugin())
     }
 
     override func viewDidLoad() {

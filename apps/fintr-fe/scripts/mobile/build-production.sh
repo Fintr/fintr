@@ -80,6 +80,10 @@ cp next.config.ts next.config.ts.backup
 # Use the Capacitor config
 cp next.config.capacitor.ts next.config.ts
 
+# Local .env often sets NODE_ENV=development for `pnpm dev`. If that value is picked up
+# during `next build`, static export fails (PageNotFoundError: Cannot find module /_document).
+export NODE_ENV=production
+
 # Build the Next.js app
 pnpm build
 

@@ -135,24 +135,48 @@ const CreateSubscriptionWizard: React.FC<CreateSubscriptionWizardProps> = ({
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
             <div
-              className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                currentStep === "plan" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
+              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                currentStep === "plan"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-100"
               }`}
             >
-              {currentStep !== "plan" ? <Check className="h-4 w-4" /> : "1"}
+              {currentStep !== "plan" ? (
+                <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+              ) : (
+                "1"
+              )}
             </div>
-            <span className={currentStep === "plan" ? "font-semibold" : ""}>Choose Plan</span>
+            <span
+              className={
+                currentStep === "plan"
+                  ? "font-semibold text-foreground"
+                  : "text-muted-foreground"
+              }
+            >
+              Choose Plan
+            </span>
           </div>
-          <div className="flex-1 h-0.5 bg-gray-200 mx-4" />
+          <div className="flex-1 h-0.5 bg-border mx-4" />
           <div className="flex items-center space-x-2">
             <div
-              className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                currentStep === "review" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
+              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                currentStep === "review"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               2
             </div>
-            <span className={currentStep === "review" ? "font-semibold" : ""}>Review</span>
+            <span
+              className={
+                currentStep === "review"
+                  ? "font-semibold text-foreground"
+                  : "text-muted-foreground"
+              }
+            >
+              Review
+            </span>
           </div>
         </div>
 
@@ -212,15 +236,15 @@ const CreateSubscriptionWizard: React.FC<CreateSubscriptionWizardProps> = ({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h4 className="font-semibold mb-2">Selected Plan</h4>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="font-semibold">{selectedPlan.name}</p>
-                    <p className="text-sm text-gray-600">{selectedPlan.description}</p>
-                    <p className="text-lg font-bold mt-2">
+                  <h4 className="font-semibold mb-2 text-foreground">Selected Plan</h4>
+                  <div className="bg-muted/50 border border-border p-4 rounded-lg">
+                    <p className="font-semibold text-foreground">{selectedPlan.name}</p>
+                    <p className="text-sm text-muted-foreground">{selectedPlan.description}</p>
+                    <p className="text-lg font-bold mt-2 text-foreground">
                       {formatCurrency(selectedPlan.priceCents / 100, selectedPlan.priceCurrency)}/
                       {selectedPlan.interval}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       {selectedPlan.tokenLimit} tokens included
                     </p>
                   </div>

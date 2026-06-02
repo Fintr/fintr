@@ -457,8 +457,8 @@ export default function AuthCallback() {
 
           {status === 'success' && (
             <div className="text-center space-y-4">
-              <div className="w-12 h-12 bg-green-950/40 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle className="h-8 w-8 text-green-400" />
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-950/40 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-foreground mb-2">
@@ -487,8 +487,8 @@ export default function AuthCallback() {
 
           {status === 'error' && (
             <div className="text-center space-y-4">
-              <div className="w-12 h-12 bg-red-950/40 rounded-full flex items-center justify-center mx-auto">
-                <AlertCircle className="h-8 w-8 text-red-400" />
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-950/40 rounded-full flex items-center justify-center mx-auto">
+                <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-foreground mb-2">

@@ -72,24 +72,88 @@ const FILESHARE_PLUGIN_HEADER: PluginHeaderEntry = {
   methods: [{ name: 'shareStream', rtype: 'promise' }],
 };
 
+const APPEARANCE_PLUGIN_HEADER: PluginHeaderEntry = {
+  name: 'Appearance',
+  methods: [{ name: 'setAppearance', rtype: 'promise' }],
+};
+
+const NAVIGATION_INFO_PLUGIN_HEADER: PluginHeaderEntry = {
+  name: 'NavigationInfo',
+  methods: [
+    { name: 'getNavigationInfo', rtype: 'promise' },
+    { name: 'applySafeAreaClasses', rtype: 'promise' },
+  ],
+};
+
+const CACHE_CONTROL_PLUGIN_HEADER: PluginHeaderEntry = {
+  name: 'CacheControl',
+  methods: [{ name: 'clearCacheAndReload', rtype: 'promise' }],
+};
+
+const FINTR_NATIVE_PLUGIN_HEADERS: PluginHeaderEntry[] = [
+  APPEARANCE_PLUGIN_HEADER,
+  NAVIGATION_INFO_PLUGIN_HEADER,
+  CACHE_CONTROL_PLUGIN_HEADER,
+  FILESYSTEM_PLUGIN_HEADER,
+  FILESHARE_PLUGIN_HEADER,
+];
+
+type CapacitorBridgeCap = {
+  PluginHeaders?: PluginHeaderEntry[];
+  Plugins?: Record<string, unknown>;
+  nativePromise?: (
+    pluginName: string,
+    methodName: string,
+    options: unknown,
+  ) => Promise<unknown>;
+};
+
 /**
  * When native-bridge injection succeeds partially, PluginHeaders can list Browser/App
- * but omit Filesystem/FileShare — we used to return early and never append them, so
- * registerPlugin() kept the web shims (shareStream no-op). Merge missing entries only.
+ * but omit Fintr custom plugins — registerPlugin() then keeps web shims forever.
  */
-function mergeFilesystemAndFileShareIfMissing(cap: {
-  PluginHeaders?: PluginHeaderEntry[];
-}): void {
+function mergeFintrNativePluginHeadersIfMissing(cap: CapacitorBridgeCap): void {
   if (!cap.PluginHeaders) {
     cap.PluginHeaders = [];
   }
   const headers = cap.PluginHeaders;
   const names = new Set(headers.map((h) => h.name));
-  if (!names.has('Filesystem')) {
-    headers.push(FILESYSTEM_PLUGIN_HEADER);
+  for (const header of FINTR_NATIVE_PLUGIN_HEADERS) {
+    if (!names.has(header.name)) {
+      headers.push(header);
+    }
   }
-  if (!names.has('FileShare')) {
-    headers.push(FILESHARE_PLUGIN_HEADER);
+}
+
+function ensureFintrNativePluginImplementations(cap: CapacitorBridgeCap): void {
+  if (typeof cap.nativePromise !== 'function') return;
+
+  const Plugins = (cap.Plugins = cap.Plugins || {}) as Record<
+    string,
+    Record<string, (...args: unknown[]) => Promise<unknown>>
+  >;
+
+  if (!Plugins.Appearance) {
+    Plugins.Appearance = {
+      setAppearance: (options: unknown) =>
+        cap.nativePromise!('Appearance', 'setAppearance', options),
+    };
+  }
+
+  if (!Plugins.NavigationInfo) {
+    Plugins.NavigationInfo = {
+      getNavigationInfo: () =>
+        cap.nativePromise!('NavigationInfo', 'getNavigationInfo', {}),
+      applySafeAreaClasses: () =>
+        cap.nativePromise!('NavigationInfo', 'applySafeAreaClasses', {}),
+    };
+  }
+
+  if (!Plugins.CacheControl) {
+    Plugins.CacheControl = {
+      clearCacheAndReload: () =>
+        cap.nativePromise!('CacheControl', 'clearCacheAndReload', {}),
+    };
   }
 }
 
@@ -110,7 +174,8 @@ export const initCapacitorBridgeIfNeeded = (): void => {
     Array.isArray(cap.PluginHeaders) && cap.PluginHeaders.length > 0;
 
   if (hadInjectionHeaders) {
-    mergeFilesystemAndFileShareIfMissing(cap);
+    mergeFintrNativePluginHeadersIfMissing(cap);
+    ensureFintrNativePluginImplementations(cap);
     return;
   }
 
@@ -313,19 +378,9 @@ export const initCapacitorBridgeIfNeeded = (): void => {
         { name: 'removeAllListeners', rtype: 'promise' },
       ],
     },
-    {
-      name: 'CacheControl',
-      methods: [
-        { name: 'clearCacheAndReload', rtype: 'promise' },
-      ],
-    },
-    {
-      name: 'NavigationInfo',
-      methods: [
-        { name: 'getNavigationInfo', rtype: 'promise' },
-        { name: 'applySafeAreaClasses', rtype: 'promise' },
-      ],
-    },
+    CACHE_CONTROL_PLUGIN_HEADER,
+    NAVIGATION_INFO_PLUGIN_HEADER,
+    APPEARANCE_PLUGIN_HEADER,
     FILESYSTEM_PLUGIN_HEADER,
     FILESHARE_PLUGIN_HEADER,
   ];
@@ -357,6 +412,11 @@ export const initCapacitorBridgeIfNeeded = (): void => {
   Plugins.NavigationInfo = {
     getNavigationInfo: () => cap.nativePromise('NavigationInfo', 'getNavigationInfo', {}),
     applySafeAreaClasses: () => cap.nativePromise('NavigationInfo', 'applySafeAreaClasses', {}),
+  };
+
+  Plugins.Appearance = {
+    setAppearance: (options: unknown) =>
+      cap.nativePromise('Appearance', 'setAppearance', options),
   };
 
   win.Capacitor = cap;
