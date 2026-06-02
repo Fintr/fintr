@@ -12,6 +12,9 @@ import { Button } from "../../ui/button";
 import { Upload, CalendarIcon, Receipt } from "lucide-react";
 import { Calendar } from "../../ui/calendar";
 import { CalendarPopover } from "@/components/ui/calendar-popover";
+import { FormControlField } from "@/components/ui/form-control-field";
+import { formControlInteractiveSurfaceClassName } from "@/components/ui/form-control-surface";
+import { cn, numberFormatting } from "@/lib/utils";
 import { format, endOfMonth } from "date-fns";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { expenseCategoryOptionsAtom, accountOptionsAtom } from "@/atoms/dashboardAtoms";
@@ -19,7 +22,6 @@ import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
-import { numberFormatting } from "@/lib/utils";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import * as z from "zod"; 
 import { createTransaction, updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
@@ -886,17 +888,27 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         )}
 
         {/* Date + Amount: on mobile stack (Date row, then Amount row); on desktop side-by-side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2 min-w-0">
-            <Label htmlFor="date" className="text-sm">Date</Label>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormControlField label="Date" htmlFor="date">
             <CalendarPopover
               modal
               open={datePickerOpen}
               onOpenChange={setDatePickerOpen}
               trigger={
-                <Button variant={"outline"} className="w-full justify-start text-left font-normal text-sm">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn(
+                    "h-full w-full justify-start text-left font-normal text-sm",
+                    formControlInteractiveSurfaceClassName,
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                  {date ? (
+                    format(date, "MMM d, yyyy")
+                  ) : (
+                    <span className="text-sm">Pick a date</span>
+                  )}
                 </Button>
               }
             >
@@ -913,20 +925,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 defaultMonth={date || new Date()}
               />
             </CalendarPopover>
-            {suggestedDate && date && suggestedDate.toDateString() !== date.toDateString() && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setDate(suggestedDate)}
-                  className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer border border-primary/30"
-                >
-                  Use AI date: {format(suggestedDate, "MMM d, yyyy")}
-                </button>
-              </div>
-            )}
-          </div>
+          </FormControlField>
 
-          {/* Amount + currency + rates */}
           <div className="min-w-0">
           <AmountWithRatePicker
             id="amount"
@@ -953,27 +953,38 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           />
           </div>
         </div>
+        {suggestedDate && date && suggestedDate.toDateString() !== date.toDateString() && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setDate(suggestedDate)}
+              className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20 cursor-pointer"
+            >
+              Use AI date: {format(suggestedDate, "MMM d, yyyy")}
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
-          {/* Schedule Type Field */}
-          <div className="space-y-2 min-w-0">
-            <Label htmlFor="scheduleType" className="text-sm">Schedule Type</Label>
-            <Select
-              value={formState.scheduleType}
-              onValueChange={(value) => handleFieldChange("scheduleType", value)}
-            >
-              <SelectTrigger 
-                id="scheduleType" 
-                className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+          <div className="min-w-0">
+            <FormControlField label="Schedule Type" htmlFor="scheduleType">
+              <Select
+                value={formState.scheduleType}
+                onValueChange={(value) => handleFieldChange("scheduleType", value)}
               >
-                <SelectValue placeholder="Select schedule type" className="text-sm" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ScheduleTypeEnum.ONE_TIME} className="text-sm">One-Time</SelectItem>
-                <SelectItem value={ScheduleTypeEnum.REPEAT} className="text-sm">Recurring</SelectItem>
-                <SelectItem value={ScheduleTypeEnum.INSTALLMENT} className="text-sm">Installment</SelectItem>
-              </SelectContent>
-            </Select>
+                <SelectTrigger
+                  id="scheduleType"
+                  className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                >
+                  <SelectValue placeholder="Select schedule type" className="text-sm" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ScheduleTypeEnum.ONE_TIME} className="text-sm">One-Time</SelectItem>
+                  <SelectItem value={ScheduleTypeEnum.REPEAT} className="text-sm">Recurring</SelectItem>
+                  <SelectItem value={ScheduleTypeEnum.INSTALLMENT} className="text-sm">Installment</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormControlField>
             {formSubmitted && formErrors.scheduleType?.map((error) => (
               <FormError key={error}>{error}</FormError>
             ))}
@@ -1022,27 +1033,32 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
               </div>
             )}
           </div>
-          
-          {/* Category Field */}
-          <GridPicker
-            pickerKind="category"
-            label="Expense Category"
-            value={formState.categoryName}
-            onChange={(v) => handleFieldChange("categoryName", v)}
-            categories={categoryOptions}
-            error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
-            categoryType={CategoryTypeEnum.EXPENSE}
-            onCategoryCreated={handleCategoryCreated}
-            disabled={isCategoryLockedForEdit}
-          />
-        </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {/* Account Field */}
-          <div className="space-y-2 min-w-0">
+          <FormControlField label="Expense Category" htmlFor="category">
+            <GridPicker
+              pickerKind="category"
+              label="Expense Category"
+              hideLabel
+              value={formState.categoryName}
+              onChange={(v) => handleFieldChange("categoryName", v)}
+              categories={categoryOptions}
+              error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
+              categoryType={CategoryTypeEnum.EXPENSE}
+              onCategoryCreated={handleCategoryCreated}
+              disabled={isCategoryLockedForEdit}
+            />
+          </FormControlField>
+        </div>
+        {formSubmitted && formErrors.categoryName?.map((error) => (
+          <FormError key={error}>{error}</FormError>
+        ))}
+
+        <div className="min-w-0">
+          <FormControlField label="Account" htmlFor="accountName">
             <GridPicker
               pickerKind="account"
               label="Account"
+              hideLabel
               triggerId="accountName"
               value={formState.accountName}
               onChange={(accountName) => handleFieldChange("accountName", accountName)}
@@ -1063,26 +1079,29 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 )
               }
             />
-            {accountCurrencyDiffersFromSpace && selectedAccount?.currency && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Account currency: {selectedAccount.currency} (differs from space: {effectiveSpaceCurrency})
-              </p>
-            )}
-          </div>
+          </FormControlField>
+          {accountCurrencyDiffersFromSpace && selectedAccount?.currency && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Account currency: {selectedAccount.currency} (differs from space: {effectiveSpaceCurrency})
+            </p>
+          )}
+        </div>
 
-          {/* Description Field */}
-          <div className="min-w-0">
-            <Label htmlFor="description" className="text-sm">Note (Optional)</Label>
-            <NotesAutocomplete
-              id="description"
-              value={formState.description || ""}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange("description", e.target.value)}
-              categoryName={formState.categoryName}
-              transactionType="expense"
-              placeholder="Add additional details"
-              className="mt-1"
-            />
-          </div>
+        <div className="min-w-0 space-y-2">
+          <Label htmlFor="description" className="text-sm">
+            Note (Optional)
+          </Label>
+          <NotesAutocomplete
+            id="description"
+            value={formState.description || ""}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+              handleFieldChange("description", e.target.value)
+            }
+            categoryName={formState.categoryName}
+            transactionType="expense"
+            placeholder="Add additional details"
+            className="text-sm"
+          />
         </div>
 
         {/* File Upload Field */}

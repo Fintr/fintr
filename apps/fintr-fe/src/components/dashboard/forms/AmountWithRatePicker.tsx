@@ -9,7 +9,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TrendingUp, Loader2, Check } from "lucide-react";
 import { FormError } from "@/components/ui/form-error";
 import { RollingNumber } from "@/components/ui/rolling-number";
-import { formatAmountWithCode, formatWithDelimiters, numberFormatting } from "@/lib/utils";
+import {
+  cn,
+  formatAmountWithCode,
+  formatWithDelimiters,
+  numberFormatting,
+} from "@/lib/utils";
 import {
   getCurrentRate,
   getRecentRates,
@@ -17,6 +22,10 @@ import {
 } from "@/services/exchangeRates/queries";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import type { AccountOptionWithCurrency } from "@/types/generalTypes";
+import {
+  formControlHeightClassName,
+  formControlInteractiveSurfaceClassName,
+} from "@/components/ui/form-control-surface";
 import {
   CURRENCIES,
   getCountryCodeForCurrency,
@@ -387,8 +396,8 @@ export function AmountWithRatePicker({
   ]);
 
   return (
-    <div className="space-y-3">
-      <Label htmlFor={id} className="text-sm">
+    <div className="grid grid-rows-[1.25rem_auto] gap-2">
+      <Label htmlFor={id} className="self-end text-sm leading-none">
         {label}
       </Label>
       {/* Row 1: [Currency] [Amount] [Rates]. Row 2 (when conversion): aligned with amount "→ PHP ###" and "(rate: ...)". */}
@@ -397,7 +406,10 @@ export function AmountWithRatePicker({
         <div className="flex flex-nowrap items-center shrink-0">
           {lockFromCurrency ? (
             <span
-              className="inline-flex h-9 items-center rounded-md border-0 bg-muted/50 px-2 text-xs font-medium text-muted-foreground"
+              className={cn(
+                "inline-flex items-center px-2 text-xs font-medium text-muted-foreground",
+                formControlHeightClassName,
+              )}
               aria-label="Amount currency (from account)"
             >
               {fromCurrency}
@@ -411,8 +423,10 @@ export function AmountWithRatePicker({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  className="h-9 shrink-0 border-0 px-2 text-xs font-medium shadow-none"
+                  className={cn(
+                    "shrink-0 px-2 text-xs font-medium",
+                    formControlInteractiveSurfaceClassName,
+                  )}
                   aria-label="Amount currency"
                 >
                   {fromCurrency}
@@ -474,8 +488,11 @@ export function AmountWithRatePicker({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  className="shrink-0 h-9 gap-1 px-2 sm:gap-1.5 sm:px-3 font-medium border-dashed hover:border-primary/50 hover:bg-primary/5"
+                  className={cn(
+                    "shrink-0 gap-1 px-2 font-medium border-dashed sm:gap-1.5 sm:px-3",
+                    formControlInteractiveSurfaceClassName,
+                    "hover:border-primary/50 hover:bg-primary/5",
+                  )}
                   aria-label="Exchange rate options"
                 >
                   <TrendingUp className="h-4 w-4 shrink-0" />

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNoteSuggestions } from '@/hooks/async/useNoteSuggestions';
 import { handleMultilineNotesKeyDown } from '@/lib/multiline-notes-keydown';
 import { cn } from '@/lib/utils';
+import { formControlSurfaceClassName } from '@/components/ui/form-control-surface';
 
 interface NotesAutocompleteProps {
   id?: string;
@@ -183,11 +184,10 @@ const NotesAutocomplete: React.FC<NotesAutocompleteProps> = ({
         disabled={disabled}
         rows={1}
         className={cn(
-          "resize-none w-full min-h-[40px] max-h-48 overflow-auto rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-all outline-none",
-          "dark:border-0 dark:bg-input/30 dark:shadow-none",
-          "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-          "dark:focus-visible:border-transparent",
-          className
+          "resize-none w-full min-h-[40px] max-h-48 overflow-auto rounded-md px-3 py-2 text-sm transition-all outline-none",
+          formControlSurfaceClassName,
+          "focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+          className,
         )}
         autoComplete="off"
       />

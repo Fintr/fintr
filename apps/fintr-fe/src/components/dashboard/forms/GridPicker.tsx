@@ -18,6 +18,7 @@ import {
   getCategoryTriggerDisplay,
   parseCategoryPickerValue,
 } from "@/types/categoryTreeTypes";
+import { formControlInteractiveSurfaceClassName } from "@/components/ui/form-control-surface";
 import { gridPickerSubcategoryCountLabel } from "@/utils/categoryManagement";
 import { isCategoryTree } from "@/utils/categoryTreeOptions";
 
@@ -53,6 +54,8 @@ type GridPickerSharedProps = {
   onOpenChange?: (open: boolean) => void;
   /** Hide the trigger button; use with controlled `open` for flows that open the sheet elsewhere. */
   hideTrigger?: boolean;
+  /** Omit the built-in label (e.g. when wrapped in FormControlField). */
+  hideLabel?: boolean;
   /** Called after a value is chosen and the sheet closes. */
   onAfterSelect?: () => void;
 };
@@ -114,6 +117,7 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
 
   const allowInlineCreate = props.allowInlineCreate ?? true;
   const hideTrigger = props.hideTrigger ?? false;
+  const hideLabel = props.hideLabel ?? false;
   const triggerId = defaultTriggerId(props);
   const placeholder = defaultPlaceholder(props);
   const modalTitle = defaultModalTitle(props);
@@ -526,10 +530,12 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
   }
 
   return (
-    <div className="space-y-2 min-w-0">
-      <Label htmlFor={triggerId} className="text-sm">
-        {label}
-      </Label>
+    <div className={cn("min-w-0", hideLabel ? "h-full w-full" : "space-y-2")}>
+      {!hideLabel ? (
+        <Label htmlFor={triggerId} className="text-sm">
+          {label}
+        </Label>
+      ) : null}
 
       <Button
         id={triggerId}
@@ -540,8 +546,12 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
         title={value ? displayLabel : undefined}
         data-testid={dataTestId}
         className={cn(
-          "h-auto w-full min-w-0 justify-start gap-0 overflow-hidden bg-input/30 px-3 py-2 text-left text-sm font-normal hover:bg-input/50",
-          categoryTriggerDisplay?.secondary ? "min-h-[52px]" : "min-h-10",
+          "w-full min-w-0 justify-start gap-0 overflow-hidden text-left font-normal",
+          formControlInteractiveSurfaceClassName,
+          hideLabel && "h-full",
+          categoryTriggerDisplay?.secondary
+            ? "h-auto min-h-[52px]"
+            : "",
           !value && "text-muted-foreground",
           error && error.length > 0 && "ring-1 ring-red-800 focus-visible:ring-red-800",
         )}

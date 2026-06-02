@@ -2,6 +2,7 @@ import * as Ariakit from "@ariakit/react";
 import { matchSorter } from "match-sorter";
 import { startTransition, useMemo, useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { formControlInteractiveSurfaceClassName } from "@/components/ui/form-control-surface";
 import { SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
 import { OptionType } from "@/types/generalTypes";
 
@@ -10,8 +11,10 @@ import { OptionType } from "@/types/generalTypes";
  */
 export type ComboBoxItem = string | OptionType;
 
-export const comboboxInputClassName =
-  "flex min-h-10 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-4 py-3 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 dark:border-0 dark:bg-input/30 dark:shadow-none";
+export const comboboxInputClassName = cn(
+  "flex w-full items-center justify-between whitespace-nowrap rounded-md ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+  formControlInteractiveSurfaceClassName,
+);
 
 /**
  * Props for the ComboBox component
