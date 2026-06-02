@@ -87,7 +87,7 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
     : "Enter new expense category";
   
   return (
-    <div className="mt-3 p-3 border border-gray-200 rounded-md bg-gray-50">
+    <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-0 dark:bg-muted">
       <div className={horizontal ? "flex gap-4 items-end" : ""}>
         <div className={horizontal ? "flex-1" : "space-y-2"}>
           <Label htmlFor="new-category-name">Category Name</Label>
@@ -99,7 +99,11 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
               setCategoryName(e.target.value);
               if (localErrors.name) setLocalErrors({}); 
             }}
-            className={localErrors.name || categoryValidationErrors.name ? "border-red-800 focus-visible:ring-red-800 bg-white" : "bg-white"}
+            className={
+              localErrors.name || categoryValidationErrors.name
+                ? "border-red-800 focus-visible:ring-red-800"
+                : undefined
+            }
             disabled={isLoading}
           />
           {localErrors.name && <FormError>{localErrors.name}</FormError>}
