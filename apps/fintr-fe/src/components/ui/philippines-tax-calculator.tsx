@@ -216,10 +216,12 @@ export function PhilippinesTaxCalculator({
       </CardHeader>
       <CardContent className="space-y-3 md:px-4">
         {/* Gross Income Display */}
-        <div className="p-2 border border-blue-200 rounded-md bg-blue-50">
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-blue-900 text-xs">Monthly Gross Income</span>
-            <span className="text-sm font-bold text-blue-900">
+        <div className="rounded-md border border-blue-200 bg-blue-50 p-2 dark:border-blue-800/50 dark:bg-blue-950/40">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-blue-900 dark:text-blue-300">
+              Monthly Gross Income
+            </span>
+            <span className="text-sm font-bold text-blue-900 dark:text-blue-300">
               {formatCurrency(grossIncome)}
             </span>
           </div>
@@ -227,28 +229,28 @@ export function PhilippinesTaxCalculator({
 
         {/* Deductions Breakdown */}
         <div className="space-y-1">
-          <h4 className="font-medium text-gray-900 text-xs">Deductions</h4>
+          <h4 className="text-xs font-medium text-foreground">Deductions</h4>
           
           <div className="space-y-1">
             {deductContributions && (
               <>
-                <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                  <span className="text-xs text-gray-600">SSS Contribution</span>
-                  <span className="font-medium text-red-900 text-xs">
+                <div className="flex items-center justify-between border-b border-border py-1">
+                  <span className="text-xs text-muted-foreground">SSS Contribution</span>
+                  <span className="text-xs font-medium text-red-900 dark:text-red-400">
                     -{formatCurrency(result.sssContribution)}
                   </span>
                 </div>
                 
-                <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                  <span className="text-xs text-gray-600">PhilHealth Contribution</span>
-                  <span className="font-medium text-red-900 text-xs">
+                <div className="flex items-center justify-between border-b border-border py-1">
+                  <span className="text-xs text-muted-foreground">PhilHealth Contribution</span>
+                  <span className="text-xs font-medium text-red-900 dark:text-red-400">
                     -{formatCurrency(result.philhealthContribution)}
                   </span>
                 </div>
                 
-                <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                  <span className="text-xs text-gray-600">Pag-IBIG Contribution</span>
-                  <span className="font-medium text-red-900 text-xs">
+                <div className="flex items-center justify-between border-b border-border py-1">
+                  <span className="text-xs text-muted-foreground">Pag-IBIG Contribution</span>
+                  <span className="text-xs font-medium text-red-900 dark:text-red-400">
                     -{formatCurrency(result.pagibigContribution)}
                   </span>
                 </div>
@@ -256,9 +258,9 @@ export function PhilippinesTaxCalculator({
             )}
             
             {deductTaxes && (
-              <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                <span className="text-xs text-gray-600">Income Tax</span>
-                <span className="font-medium text-red-900 text-xs">
+              <div className="flex items-center justify-between border-b border-border py-1">
+                <span className="text-xs text-muted-foreground">Income Tax</span>
+                <span className="text-xs font-medium text-red-900 dark:text-red-400">
                   -{formatCurrency(result.incomeTax)}
                 </span>
               </div>
@@ -267,20 +269,24 @@ export function PhilippinesTaxCalculator({
         </div>
 
         {/* Total Deductions */}
-        <div className="p-2 border border-red-200 rounded-md bg-red-50">
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-red-900 text-xs">Total Deductions</span>
-            <span className="text-sm font-bold text-red-900">
+        <div className="rounded-md border border-red-200 bg-red-50 p-2 dark:border-red-800/50 dark:bg-red-950/40">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-red-900 dark:text-red-400">
+              Total Deductions
+            </span>
+            <span className="text-sm font-bold text-red-900 dark:text-red-400">
               -{formatCurrency(result.totalDeductions)}
             </span>
           </div>
         </div>
 
         {/* Net Income */}
-        <div className="p-2 border-1 border-teal-600 rounded-md bg-teal-50">
-          <div className="flex justify-between items-center">
-            <span className="font-bold text-teal-600 text-sm">Net Income</span>
-            <span className="text-lg font-bold text-teal-600">
+        <div className="rounded-md border border-teal-600 bg-teal-50 p-2 dark:border-teal-700 dark:bg-teal-950/40">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-teal-600 dark:text-teal-400">
+              Net Income
+            </span>
+            <span className="text-lg font-bold text-teal-600 dark:text-teal-400">
               {formatCurrency(result.netIncome)}
             </span>
           </div>

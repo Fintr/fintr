@@ -12,6 +12,11 @@ import { X } from 'lucide-react';
 
 const TUTORIAL_Z_INDEX = 10050;
 
+/** Brand navy on white tooltip — bypasses `.dark .text-primary` (light blue on dark UI). */
+const tooltipTextClass = "text-[color:var(--primary)]";
+const tooltipTextMutedClass =
+  "text-[color:color-mix(in_oklab,var(--primary)_70%,transparent)]";
+
 const isTourTargetVisible = (selector: string): boolean => {
   const element = document.querySelector(selector) as HTMLElement | null;
   if (!element) {
@@ -50,7 +55,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
       ref={tooltipProps.ref}
       role={tooltipProps.role}
       aria-modal={tooltipProps['aria-modal']}
-      className="relative bg-white rounded-lg p-4 min-w-[260px] max-w-[min(100vw-2rem,20rem)] shadow-lg"
+      className={`relative bg-white rounded-lg p-4 min-w-[260px] max-w-[min(100vw-2rem,20rem)] shadow-lg ${tooltipTextClass}`}
       style={{ zIndex: TUTORIAL_Z_INDEX + 2 }}
       data-testid="tutorial-tooltip"
     >
@@ -62,7 +67,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
           e.stopPropagation();
           onSkipClick();
         }}
-        className="absolute right-2 top-2 rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+        className={`absolute right-2 top-2 rounded-full p-2 ${tooltipTextMutedClass} hover:bg-primary/10 hover:text-[color:var(--primary)]`}
       >
         <X className="h-4 w-4" />
       </button>
@@ -75,12 +80,12 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
             e.stopPropagation();
             onSkipClick();
           }}
-          className="text-primary bg-transparent border-none cursor-pointer text-sm py-2 min-h-[44px]"
+          className={`${tooltipTextClass} bg-transparent border-none cursor-pointer text-sm py-2 min-h-[44px]`}
         >
           Skip tour
         </button>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
+          <span className={`text-xs ${tooltipTextMutedClass}`}>
             {index + 1}/{size}
           </span>
           <button
@@ -232,10 +237,10 @@ const TutorialOverlay: React.FC = () => {
           target: finalTarget,
           content: (
             <div>
-              <h3 className="text-lg font-semibold text-primary mb-2">
+              <h3 className={`text-lg font-semibold mb-2 ${tooltipTextClass}`}>
                 {step.title}
               </h3>
-              <p className="text-sm text-primary/70">
+              <p className={`text-sm ${tooltipTextMutedClass}`}>
                 {step.description}
               </p>
             </div>

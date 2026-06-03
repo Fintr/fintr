@@ -168,7 +168,7 @@ export default function OnboardingStep4() {
                       variant="ghost"
                       size="sm"
                       onClick={() => deleteAccount(index)}
-                      className="z-20 absolute top-2 right-2 h-6 w-6 p-0 text-muted-foreground bg-white hover:text-destructive hover:bg-destructive/10"
+                      className="z-20 absolute top-2 right-2 h-6 w-6 p-0 bg-muted text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
                       <X className="h-4 w-4" />
                     </Button>

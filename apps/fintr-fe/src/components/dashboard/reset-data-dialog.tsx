@@ -18,6 +18,7 @@ import { resetData } from '@/services/auth/user/mutations';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ResetDataDialogProps {
   isOpen: boolean;
@@ -75,12 +76,14 @@ const ResetDataDialog = ({ isOpen, onClose }: ResetDataDialogProps) => {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-900/20">
-              <AlertTriangle className="h-5 w-5 text-red-900" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-800/15 dark:bg-red-800/25">
+              <AlertTriangle className="h-5 w-5 text-red-800 dark:text-red-400" />
             </div>
             <div>
-              <DialogTitle className="text-red-900">Reset All Data</DialogTitle>
-              <DialogDescription className="text-red-900">
+              <DialogTitle className="text-red-800 dark:text-red-400">
+                Reset All Data
+              </DialogTitle>
+              <DialogDescription className="text-red-800/90 dark:text-red-400/90">
                 This action cannot be undone.
               </DialogDescription>
             </div>
@@ -88,17 +91,22 @@ const ResetDataDialog = ({ isOpen, onClose }: ResetDataDialogProps) => {
         </DialogHeader>
         
         <div className="space-y-4">
-          <div className="rounded-lg bg-red-100/50 p-4">
-            <p className="text-sm text-red-800">
-              <strong>Warning:</strong> This will permanently delete all your financial data, 
-              transactions, accounts, budgets, and goals. You will be redirected to the 
-              account setup page to start fresh.
+          <div className="rounded-lg border border-red-200 bg-red-100/50 p-4 dark:border-red-800/50 dark:bg-red-950/40">
+            <p className="text-sm text-red-900 dark:text-red-200">
+              <strong className="text-red-800 dark:text-red-300">Warning:</strong>{' '}
+              This will permanently delete all your financial data, transactions, accounts,
+              budgets, and goals. You will be redirected to the account setup page to start
+              fresh.
             </p>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="confirm-text" className="text-sm font-medium">
-              Type <span className="font-mono font-bold">"{CONFIRMATION_TEXT}"</span> to confirm:
+            <Label htmlFor="confirm-text" className="text-sm font-medium text-foreground">
+              Type{' '}
+              <span className="font-mono font-bold text-red-800 dark:text-red-400">
+                "{CONFIRMATION_TEXT}"
+              </span>{' '}
+              to confirm:
             </Label>
             <Input
               id="confirm-text"
@@ -126,6 +134,11 @@ const ResetDataDialog = ({ isOpen, onClose }: ResetDataDialogProps) => {
             onClick={handleResetData}
             disabled={!isConfirmValid || isLoading}
             aria-label="Confirm reset data"
+            className={cn(
+              "dark:bg-red-800 dark:hover:bg-red-800/90",
+              "disabled:opacity-100",
+              "disabled:dark:bg-red-950/80 disabled:dark:text-red-300/45 disabled:dark:hover:bg-red-950/80",
+            )}
           >
             {isLoading ? 'Resetting...' : 'Reset Data'}
           </Button>

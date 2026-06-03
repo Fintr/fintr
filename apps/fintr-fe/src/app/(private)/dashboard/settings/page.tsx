@@ -212,17 +212,17 @@ const SettingsPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-red-300 px-2 dark:border-red-800">
+        <Card className="border-red-800 px-2">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-900/20 dark:bg-red-800/20">
-                <AlertTriangle className="h-5 w-5 text-red-900 dark:text-red-800" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-800/20">
+                <AlertTriangle className="h-5 w-5 text-red-800" />
               </div>
               <div>
-                <CardTitle className="text-red-900 dark:text-red-800">
+                <CardTitle className="text-red-800">
                   Danger Zone
                 </CardTitle>
-                <CardDescription className="text-red-900 dark:text-red-800">
+                <CardDescription className="text-red-800">
                   Permanently delete all your data and start over.
                 </CardDescription>
               </div>
@@ -230,13 +230,14 @@ const SettingsPage = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-muted-foreground">
+              <p className="text-sm text-red-800/90">
                 This will permanently delete all your financial data, including transactions, 
                 accounts, budgets, and goals. This action cannot be undone.
               </p>
               <div className="flex gap-2">
                 <Button 
-                  variant="destructive" 
+                  variant="destructive"
+                  className="dark:bg-red-800 dark:hover:bg-red-800/90"
                   onClick={() => setIsResetDialogOpen(true)}
                   aria-label="Reset all data"
                 >
