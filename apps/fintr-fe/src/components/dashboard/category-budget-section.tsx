@@ -131,7 +131,7 @@ export function CategoryBudgetSection({
   };
 
   return (
-    <section className="space-y-3 rounded-lg border border-primary/10 bg-white p-4">
+    <section className="space-y-3 rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -157,7 +157,9 @@ export function CategoryBudgetSection({
           <LoadingSpinner size="small" />
         </div>
       ) : isError ? (
-        <p className="text-sm text-red-900">Could not load budget for this month.</p>
+        <p className="text-sm text-red-900 dark:text-red-400">
+          Could not load budget for this month.
+        </p>
       ) : isEditing || !hasBudget ? (
         <EditBudgetForm
           budget={budgetCategory}
@@ -198,7 +200,7 @@ export function CategoryBudgetSection({
             </div>
             <Progress
               value={budgetPercentage > 100 ? 100 : budgetPercentage}
-              className="h-2 bg-gray-200"
+              className="h-2 bg-muted"
               indicatorClassName={getProgressColor(budgetPercentage, "bg")}
             />
           </div>
@@ -248,7 +250,7 @@ export function CategoryBudgetSection({
                     {sub.id || sub.spent > 0 ? (
                       <Progress
                         value={subPercentage > 100 ? 100 : subPercentage}
-                        className="h-1.5 bg-gray-100"
+                        className="h-1.5 bg-muted/60"
                         indicatorClassName={getProgressColor(subPercentage, "bg")}
                       />
                     ) : null}

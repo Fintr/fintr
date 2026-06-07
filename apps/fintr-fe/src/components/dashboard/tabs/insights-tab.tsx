@@ -122,6 +122,55 @@ const weeklySpendingData = [
   { day: "Sun", amount: 1100 },
 ];
 
+const FINANCIAL_HEALTH_GAUGE_CIRCUMFERENCE = 282.7;
+
+const financialHealthGaugeStrokeClass = (score: number): string => {
+  if (score >= 80) {
+    return "stroke-teal-600";
+  }
+
+  return "stroke-[#0A3D62] dark:stroke-[var(--chart-2)]";
+};
+
+function FinancialHealthGauge({ score }: { score: number }) {
+  return (
+    <div className="relative mb-4 h-40 w-40">
+      <div className="absolute inset-0 flex items-center justify-center border-0 ring-0 dark:border-0 dark:ring-0">
+        <div className="text-4xl font-bold text-primary">{score}</div>
+      </div>
+      <svg
+        className="h-full w-full"
+        viewBox="0 0 100 100"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden
+      >
+        <circle
+          cx="50"
+          cy="50"
+          r="45"
+          fill="none"
+          className="stroke-[#e2e8f0] dark:stroke-transparent"
+          strokeWidth="10"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r="45"
+          fill="none"
+          className={financialHealthGaugeStrokeClass(score)}
+          strokeWidth="10"
+          strokeDasharray={FINANCIAL_HEALTH_GAUGE_CIRCUMFERENCE}
+          strokeDashoffset={
+            FINANCIAL_HEALTH_GAUGE_CIRCUMFERENCE
+              - (FINANCIAL_HEALTH_GAUGE_CIRCUMFERENCE * score / 100)
+          }
+          transform="rotate(-90 50 50)"
+        />
+      </svg>
+    </div>
+  );
+}
+
 const InsightsTab = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const currentMonth = new Date()
@@ -698,39 +747,9 @@ const InsightsTab = () => {
               ) : (
                 <>
                   <div className="flex flex-col items-center justify-center py-6">
-                    <div className="relative mb-4 h-40 w-40">
-                      <div className="absolute inset-0 flex items-center justify-center border-0 ring-0 dark:border-0 dark:ring-0">
-                        <div className="text-4xl font-bold text-primary">
-                          {insightsData?.healthScores?.score || 0}
-                        </div>
-                      </div>
-                      <svg
-                        className="h-full w-full"
-                        viewBox="0 0 100 100"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden
-                      >
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          fill="none"
-                          className="stroke-[#e2e8f0] dark:stroke-transparent"
-                          strokeWidth="10"
-                        />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          fill="none"
-                          className="stroke-[#0A3D62] dark:stroke-[var(--chart-2)]"
-                          strokeWidth="10"
-                          strokeDasharray="282.7"
-                          strokeDashoffset={282.7 - (282.7 * (insightsData?.healthScores?.score || 0) / 100)}
-                          transform="rotate(-90 50 50)"
-                        />
-                      </svg>
-                    </div>
+                    <FinancialHealthGauge
+                      score={insightsData?.healthScores?.score || 0}
+                    />
                     <div className="text-center">
                       <h3 className="text-lg font-medium text-primary">
                         {insightsData?.healthScores?.rating || "Good"}
