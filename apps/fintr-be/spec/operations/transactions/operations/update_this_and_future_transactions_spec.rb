@@ -140,10 +140,7 @@ RSpec.describe Transactions::Operations::UpdateThisAndFutureTransactions do
         allow(Transactions::Operations::CreateRepeatTransactions).to receive(:new).and_return(create_repeat_operation)
         allow(create_repeat_operation).to receive(:call).and_return(Success())
 
-        # Mock the DeleteThisTransaction operation
-        delete_operation = instance_double(Transactions::Operations::DeleteThisTransaction)
-        allow(Transactions::Operations::DeleteThisTransaction).to receive(:new).and_return(delete_operation)
-        allow(delete_operation).to receive(:call).and_return(Success())
+        allow(Transactions::Operations::DeleteThisTransaction).to receive(:new).and_call_original
       end
 
       it 'updates this and future transactions' do
@@ -475,17 +472,20 @@ RSpec.describe Transactions::Operations::UpdateThisAndFutureTransactions do
     let(:pending_transactions) { instance_double(ActiveRecord::Relation) }
     let(:pending_transaction1) { instance_double(Transactions::Transaction) }
     let(:pending_transaction2) { instance_double(Transactions::Transaction) }
+    let(:delete_operation) { instance_double(Transactions::Operations::DeleteThisTransaction) }
 
     before do
-      allow(pending_transactions).to receive(:delete_all).and_return(2)
+      allow(Transactions::Operations::DeleteThisTransaction).to receive(:new).and_return(delete_operation)
+      allow(delete_operation).to receive(:call).and_return(Success(true))
+      allow(pending_transactions).to receive(:find_each).and_yield(pending_transaction1).and_yield(pending_transaction2)
     end
 
-    it 'deletes all pending transactions' do
-      allow(pending_transactions).to receive(:delete_all).and_return(2)
-
+    it 'deletes pending transactions through DeleteThisTransaction' do
       result = operation.send(:delete_pending_transactions, pending_transactions: pending_transactions)
       expect(result).to be_success
       expect(result.value!).to eq(pending_transactions)
+      expect(delete_operation).to have_received(:call).with(transaction: pending_transaction1)
+      expect(delete_operation).to have_received(:call).with(transaction: pending_transaction2)
     end
   end
 

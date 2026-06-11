@@ -10,8 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_20_120000) do
-
+ActiveRecord::Schema[8.1].define(version: 2026_06_11_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -37,6 +36,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_20_120000) do
   create_enum "onboarding_step_enum", ["income", "budgets", "accounts", "completed", "currency"]
   create_enum "repeat_interval", ["every_day", "every_week", "every_2_weeks", "every_month", "every_2_months", "every_3_months", "every_6_months", "every_year"]
   create_enum "schedule_type", ["one_time", "repeat", "installment"]
+
+  create_table "account_versions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "cause"
+    t.datetime "created_at"
+    t.string "event", null: false
+    t.uuid "item_id", null: false
+    t.string "item_type", null: false
+    t.text "object"
+    t.text "object_changes"
+    t.string "operation"
+    t.uuid "space_id"
+    t.string "whodunnit"
+    t.index ["created_at"], name: "index_account_versions_on_created_at"
+    t.index ["item_type", "item_id"], name: "index_account_versions_on_item_type_and_item_id"
+    t.index ["space_id"], name: "index_account_versions_on_space_id"
+  end
 
   create_table "accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.enum "account_category", null: false, enum_type: "account_category"
@@ -560,6 +575,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_20_120000) do
     t.index ["type"], name: "index_spaces_on_type"
     t.index ["xendit_customer_id"], name: "index_spaces_on_xendit_customer_id"
     t.index ["xendit_customer_reference_id"], name: "index_spaces_on_xendit_customer_reference_id"
+  end
+
+  create_table "transaction_versions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "cause"
+    t.datetime "created_at"
+    t.string "event", null: false
+    t.uuid "item_id", null: false
+    t.string "item_type", null: false
+    t.text "object"
+    t.text "object_changes"
+    t.string "operation"
+    t.uuid "space_id"
+    t.string "whodunnit"
+    t.index ["created_at"], name: "index_transaction_versions_on_created_at"
+    t.index ["item_type", "item_id"], name: "index_transaction_versions_on_item_type_and_item_id"
+    t.index ["space_id"], name: "index_transaction_versions_on_space_id"
   end
 
   create_table "transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

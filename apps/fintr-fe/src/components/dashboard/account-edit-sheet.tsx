@@ -195,7 +195,11 @@ const AccountEditSheet: React.FC<AccountEditSheetProps> = ({
                   : ""
               }
               disabled
-              className="bg-gray-50"
+              readOnly
+              className={cn(
+                "bg-muted/50 text-foreground",
+                "disabled:cursor-default disabled:opacity-100",
+              )}
             />
           </div>
           <div className="space-y-2">

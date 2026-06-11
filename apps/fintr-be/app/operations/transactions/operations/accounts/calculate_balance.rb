@@ -51,7 +51,6 @@ module Transactions
           return Success(transaction) if transaction.balance_state == "calculated" # NOTE: Need to be idempotent
 
           if skip_calculation
-            transaction.update(balance_state: "calculated")
             return Success(transaction)
           end
 
@@ -75,7 +74,14 @@ module Transactions
             balance_state: "calculated"
           )
 
-          account.save!
+          save_result = SaveAccount.new.call(
+            account:,
+            cause: "transaction_calculate_balance",
+            whodunnit: transaction.user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
+
           transaction.save!
           Success(transaction)
         rescue ActiveRecord::ActiveRecordError => e

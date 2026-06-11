@@ -47,13 +47,21 @@ module Imports
           unless account
             # Try to create, but handle race condition if another process created it
             begin
-              account = Transactions::Account.create!(
-                space: space,
-                name: "Import",
-                balance_cents: 0,
-                balance_currency: space.currency.presence || "PHP",
-                account_category: "cash"
+              save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+                cause: "import_account_create",
+                operation: self.class.name,
+                action: "create",
+                attributes: {
+                  space: space,
+                  name: "Import",
+                  balance_cents: 0,
+                  balance_currency: space.currency.presence || "PHP",
+                  account_category: "cash",
+                }
               )
+              return save_result if save_result.failure?
+
+              account = save_result.value!
             rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
               # Race condition: account was created by another process between find and create
               # Find it now

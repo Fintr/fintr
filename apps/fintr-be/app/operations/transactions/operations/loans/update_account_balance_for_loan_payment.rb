@@ -105,7 +105,13 @@ module Transactions
           new_balance = old_balance + balance_reversal.amount
 
           old_account.assign_attributes(balance: Money.from_amount(new_balance, old_account.balance_currency))
-          old_account.save!
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            account: old_account,
+            cause: "loan_payment_revert_balance",
+            whodunnit: params[:loan].user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
 
           Success(old_account)
         rescue ActiveRecord::ActiveRecordError => e
@@ -137,7 +143,13 @@ module Transactions
           new_balance = old_balance + balance_change.amount
 
           account.assign_attributes(balance: Money.from_amount(new_balance, account.balance_currency))
-          account.save!
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            account:,
+            cause: "loan_payment_apply_balance",
+            whodunnit: params[:loan].user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
 
           Success(account)
         rescue ActiveRecord::ActiveRecordError => e

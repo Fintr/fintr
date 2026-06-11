@@ -36,6 +36,10 @@ import { cn, formatCurrency, getNumberColor } from "@/lib/utils";
 import DayDivider from "@/components/ui/day-divider";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import {
+  formatTransactionDayDividerDate,
+  getTransactionDayGroupKey,
+} from "@/utils/dateUtils";
+import {
   IndexTransaction,
   CombinedTransactionTypeEnum,
 } from "@/types/transactionTypes";
@@ -147,12 +151,7 @@ const TransactionSection = ({
 
   const byDate = transactions.reduce(
     (acc, transaction) => {
-      const date = new Date(transaction.date).toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+      const date = getTransactionDayGroupKey(transaction.date);
       if (!acc[date]) acc[date] = [];
       acc[date].push(transaction);
       return acc;
@@ -172,7 +171,10 @@ const TransactionSection = ({
       <div className="rounded-lg border bg-card divide-y">
         {sortedDates.map((date) => (
           <div key={date} className="p-3 space-y-2">
-            <DayDivider date={date} textClassName="bg-card" />
+            <DayDivider
+              date={formatTransactionDayDividerDate(byDate[date][0].date)}
+              textClassName="bg-card"
+            />
             <div className="space-y-2">
               {byDate[date].map((transaction) => (
                 <div

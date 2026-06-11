@@ -54,7 +54,14 @@ module Transactions
         account.assign_attributes(
           balance: Money.from_amount(new_balance, account.balance_currency)
         )
-        account.save!
+        save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+          account:,
+          cause: "transaction_delete_revert_balance",
+          whodunnit: transaction.user_id,
+          operation: self.class.name
+        )
+        return save_result if save_result.failure?
+
         Success(account)
       end
 

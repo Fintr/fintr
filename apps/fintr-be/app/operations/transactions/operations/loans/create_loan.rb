@@ -143,7 +143,13 @@ module Transactions
 
           # Update account balance
           account.assign_attributes(balance: Money.from_amount(new_balance, account.balance_currency))
-          account.save!
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            account:,
+            cause: "loan_create_apply_balance",
+            whodunnit: loan.user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
 
           Success(account)
         rescue ActiveRecord::ActiveRecordError => e

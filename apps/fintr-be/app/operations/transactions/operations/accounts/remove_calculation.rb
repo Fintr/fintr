@@ -67,7 +67,14 @@ module Transactions
           )
           transaction.assign_attributes(balance_state: "pending")
 
-          account.save!
+          save_result = SaveAccount.new.call(
+            account:,
+            cause: "transaction_remove_balance",
+            whodunnit: transaction.user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
+
           transaction.save!
           Success(transaction)
         rescue ActiveRecord::ActiveRecordError => e

@@ -4,6 +4,7 @@ module CategoryAssignable
   extend ActiveSupport::Concern
 
   included do
+    belongs_to :category, class_name: "Transactions::Category"
     belongs_to :subcategory,
                class_name: "Transactions::Category",
                optional: true

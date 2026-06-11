@@ -16,7 +16,6 @@ module Transactions
           end
         end
 
-
         def validate(params:)
           contract = Contract.new.call(**params)
           return Failure(contract.errors.to_h) unless contract.success?
@@ -50,27 +49,70 @@ module Transactions
 
         def update_balance(from:, transaction:, account:)
           account.reload
+
           case from
           when :previous
-            account.balance_cents -= step transaction_amount(transaction:, from:)
+            return Success(account) if skip_previous_revert?(transaction:)
+
+            signed_effect = step signed_balance_effect(transaction:, account:, from:)
+            new_balance = (
+              BigDecimal(account.balance.amount.to_s) - BigDecimal(signed_effect.to_s)
+            ).round(2)
           when :current
-            account.balance_cents += step transaction_amount(transaction:, from:)
+            signed_effect = step signed_balance_effect(transaction:, account:, from:)
+            new_balance = (
+              BigDecimal(account.balance.amount.to_s) + BigDecimal(signed_effect.to_s)
+            ).round(2)
           else
             return Failure(action: "not supported")
           end
-          account.save!
+
+          account.assign_attributes(
+            balance: Money.from_amount(new_balance, account.balance_currency)
+          )
+          save_result = SaveAccount.new.call(
+            account:,
+            cause: balance_update_cause(from:),
+            whodunnit: transaction.user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
+
           Success(account)
         rescue StandardError => e
           Failure(account: "failed to save", error: e)
         end
 
-        def transaction_amount(transaction:, from:)
-          result = if from == :previous
-            transaction.is_a?(Transactions::Expense) ? -transaction.amount_cents_was : transaction.amount_cents_was
-          else
-            transaction.is_a?(Transactions::Expense) ? -transaction.amount_cents : transaction.amount_cents
+        def balance_update_cause(from:)
+          from == :previous ? "transaction_update_balance_revert" : "transaction_update_balance_apply"
+        end
+
+        def skip_previous_revert?(transaction:)
+          transaction.balance_state_was == "calculated" &&
+            transaction.balance_cents_was.zero?
+        end
+
+        def signed_balance_effect(transaction:, account:, from:)
+          effect_transaction = transaction_for_effect(transaction:, from:)
+          effect_result = ::Transactions::Operations::Accounts::ResolveSignedBalanceEffect.new.call(
+            transaction: effect_transaction,
+            account:
+          )
+          return effect_result unless effect_result.success?
+
+          Success(effect_result.value![:amount])
+        end
+
+        def transaction_for_effect(transaction:, from:)
+          return transaction if from == :current
+
+          transaction.dup.tap do |copy|
+            copy.id = transaction.id
+            copy.amount_cents = transaction.amount_cents_was
+            copy.amount_currency = transaction.amount_currency_was
+            copy.type = transaction.attribute_in_database(:type)
+            copy.readonly!
           end
-          Success(result)
         end
       end
     end

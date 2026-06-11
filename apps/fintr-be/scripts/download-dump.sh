@@ -24,6 +24,12 @@
 # - LOCAL_DB_USER: Database user (defaults to 'fintr_rails')
 # - LOCAL_DB_PORT: Database port (defaults to '5433')
 # - FINTR_BE_ROOT: Override backend app root (optional)
+#
+# Remote SSH (from apps/fintr-be/.env.production or .env.staging — same as Kamal deploy):
+# - KAMAL_SSH_HOST: Production VM hostname (default: api.fintr.ai)
+# - KAMAL_DEPLOY_HOST: Legacy alias for KAMAL_SSH_HOST
+# - KAMAL_SSH_USER: SSH user (default: miguel.dagatan for production, ubuntu for staging)
+# - KAMAL_SSH_KEY_PATH: SSH private key (default: ~/.ssh/fintr-gcp-key)
 
 set -euo pipefail
 
@@ -87,6 +93,71 @@ load_env_file() {
 load_env_file "$MONOREPO_ROOT/.env"
 load_env_file "$FINTR_BE_ROOT/.env"
 load_env_file "$FINTR_BE_ROOT/.env.local"
+
+resolve_ssh_connection() {
+  local env_dotenv=""
+
+  if [ "$ENVIRONMENT" == "staging" ]; then
+    env_dotenv="$FINTR_BE_ROOT/.env.staging"
+  else
+    env_dotenv="$FINTR_BE_ROOT/.env.production"
+  fi
+
+  if [ -f "$env_dotenv" ]; then
+    echo "📄 Loading deploy environment from ${env_dotenv#$MONOREPO_ROOT/}..."
+    set -a
+    # shellcheck source=/dev/null
+    source "$env_dotenv"
+    set +a
+  fi
+
+  SSH_HOST="${KAMAL_SSH_HOST:-}"
+  if [ -z "$SSH_HOST" ]; then
+    SSH_HOST="${KAMAL_DEPLOY_HOST:-}"
+  fi
+  if [ -z "$SSH_HOST" ]; then
+    if [ "$ENVIRONMENT" == "staging" ]; then
+      SSH_HOST="staging-api.fintr.ai"
+    else
+      SSH_HOST="api.fintr.ai"
+    fi
+  fi
+
+  SSH_USER="${KAMAL_SSH_USER:-}"
+  if [ -z "$SSH_USER" ]; then
+    if [ "$ENVIRONMENT" == "staging" ]; then
+      SSH_USER="ubuntu"
+    else
+      SSH_USER="miguel.dagatan"
+    fi
+  fi
+
+  SSH_KEY="${KAMAL_SSH_KEY_PATH:-~/.ssh/fintr-gcp-key}"
+  SSH_KEY="${SSH_KEY/#\~/$HOME}"
+
+  SSH_OPTS=()
+  if [ -f "$SSH_KEY" ]; then
+    SSH_OPTS+=(-i "$SSH_KEY")
+    echo "   🔑 Using SSH key: $SSH_KEY"
+  else
+    echo "   ⚠️  SSH key not found: $SSH_KEY"
+    echo "      Set KAMAL_SSH_KEY_PATH in ${env_dotenv#$MONOREPO_ROOT/}"
+  fi
+
+  local ssh_config_paths=(
+    "$FINTR_BE_ROOT/config/kamal_ssh.config"
+  )
+
+  if [ "$ENVIRONMENT" != "staging" ] && [ -f "$FINTR_BE_ROOT/config/kamal_ssh.production.config" ]; then
+    ssh_config_paths+=("$FINTR_BE_ROOT/config/kamal_ssh.production.config")
+  fi
+
+  for ssh_config in "${ssh_config_paths[@]}"; do
+    if [ -f "$ssh_config" ]; then
+      SSH_OPTS+=(-F "$ssh_config")
+    fi
+  done
+}
 
 # Configuration
 ENVIRONMENT="${1:-production}"
@@ -162,21 +233,13 @@ echo "   Local dump path: $LOCAL_DUMP_PATH"
 echo ""
 
 # Step 1: Create dump using direct Docker commands via SSH
-# Get SSH host and user from deploy config
-SSH_HOST=$(grep -A 5 "^servers:" "$CONFIG_FILE" | grep -E "^\s+- " | head -1 | sed 's/.*-\s*//' | tr -d '"' | tr -d ' ' || echo "")
-SSH_USER=$(grep -A 2 "^ssh:" "$CONFIG_FILE" | grep "user:" | sed 's/.*user:\s*//' | tr -d '"' | tr -d ' ' || echo "ec2-user")
+# Resolve SSH settings from deploy env (deploy.yml uses ERB — do not grep the YAML)
+resolve_ssh_connection
 
-if [ -z "$SSH_HOST" ]; then
-  echo "❌ Could not determine SSH host from config file"
+if [ -z "$SSH_HOST" ] || [[ "$SSH_HOST" == *"<%"* ]]; then
+  echo "❌ Could not determine SSH host"
+  echo "   Set KAMAL_SSH_HOST in apps/fintr-be/.env.production (or .env.staging)"
   exit 1
-fi
-
-# Check for SSH key (common location based on user's alias)
-SSH_KEY="${HOME}/.ssh/aws-fintr-sg.pem"
-SSH_OPTS=""
-if [ -f "$SSH_KEY" ]; then
-  SSH_OPTS="-i $SSH_KEY"
-  echo "   🔑 Using SSH key: $SSH_KEY"
 fi
 
 echo "📋 Step 1: Creating database dump on remote server..."
@@ -186,18 +249,18 @@ echo ""
 
 # Test SSH connection first
 echo "   🔌 Testing SSH connection..."
-if ! ssh $SSH_OPTS -o ConnectTimeout=10 -o BatchMode=yes "${SSH_USER}@${SSH_HOST}" "echo 'SSH connection successful'" 2>&1; then
+if ! ssh "${SSH_OPTS[@]}" -o ConnectTimeout=10 -o BatchMode=yes "${SSH_USER}@${SSH_HOST}" "echo 'SSH connection successful'" 2>&1; then
   echo ""
   echo "   ❌ SSH connection failed!"
   echo ""
   echo "   Troubleshooting:"
   echo "   1. Check if you can connect manually:"
-  echo "      ssh $SSH_OPTS ${SSH_USER}@${SSH_HOST}"
+  echo "      ssh -i ${SSH_KEY:-~/.ssh/fintr-gcp-key} ${SSH_USER}@${SSH_HOST}"
   echo ""
   echo "   2. If you need to add your SSH key to the agent:"
-  echo "      ssh-add ~/.ssh/aws-fintr-sg.pem"
+  echo "      ssh-add ${SSH_KEY:-~/.ssh/fintr-gcp-key}"
   echo ""
-  echo "   3. Check your SSH config (~/.ssh/config) for the host"
+  echo "   3. Verify KAMAL_SSH_HOST, KAMAL_SSH_USER, and KAMAL_SSH_KEY_PATH in apps/fintr-be/.env.production"
   echo ""
   exit 1
 fi
@@ -211,11 +274,11 @@ SERVER_DUMP_PATH="${SERVER_DUMP_DIR}/${DUMP_FILENAME}"
 
 # Step 1a: Find postgres container
 echo "   🔍 Finding postgres container..."
-echo "   Running: ssh $SSH_OPTS ${SSH_USER}@${SSH_HOST} 'docker ps --format \"{{.Names}}\"'"
+echo "   Running: ssh ${SSH_USER}@${SSH_HOST} 'docker ps --format \"{{.Names}}\"'"
 echo ""
 
 # First, list all containers for debugging
-ALL_CONTAINERS=$(ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker ps --format '{{.Names}}'" 2>&1)
+ALL_CONTAINERS=$(ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "docker ps --format '{{.Names}}'" 2>&1)
 if [ $? -ne 0 ]; then
   echo "   ❌ Failed to list containers on remote server"
   echo "   Error output:"
@@ -248,7 +311,7 @@ echo ""
 
 DUMP_CMD="PGPASSWORD=\"\${POSTGRES_PASSWORD}\" pg_dump -h localhost -p 5432 -U \"$DB_USER\" -d \"$DB_NAME\" --no-owner --no-privileges --clean --if-exists -f \"$CONTAINER_DUMP_PATH\""
 
-if ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER sh -c '$DUMP_CMD'" 2>&1; then
+if ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER sh -c '$DUMP_CMD'" 2>&1; then
   echo "   ✅ Dump created inside container"
 else
   echo "   ❌ Failed to create dump inside container"
@@ -257,8 +320,8 @@ fi
 
 # Verify dump file exists in container
 echo "   🔍 Verifying dump file in container..."
-if ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER test -f \"$CONTAINER_DUMP_PATH\"" 2>/dev/null; then
-  CONTAINER_SIZE=$(ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER sh -c 'stat -c%s \"$CONTAINER_DUMP_PATH\" 2>/dev/null || echo 0'" 2>/dev/null | tr -d ' ')
+if ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER test -f \"$CONTAINER_DUMP_PATH\"" 2>/dev/null; then
+  CONTAINER_SIZE=$(ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER sh -c 'stat -c%s \"$CONTAINER_DUMP_PATH\" 2>/dev/null || echo 0'" 2>/dev/null | tr -d ' ')
   if [ "$CONTAINER_SIZE" = "0" ] || [ -z "$CONTAINER_SIZE" ]; then
     echo "   ❌ Dump file is empty in container!"
     exit 1
@@ -273,13 +336,13 @@ echo ""
 
 # Step 1c: Copy from container to server filesystem
 echo "   📋 Copying dump from container to server..."
-ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "mkdir -p $SERVER_DUMP_DIR" 2>/dev/null || true
+ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "mkdir -p $SERVER_DUMP_DIR" 2>/dev/null || true
 
-if ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker cp $POSTGRES_CONTAINER:$CONTAINER_DUMP_PATH $SERVER_DUMP_PATH" 2>&1; then
+if ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "docker cp $POSTGRES_CONTAINER:$CONTAINER_DUMP_PATH $SERVER_DUMP_PATH" 2>&1; then
   echo "   ✅ Dump copied to server: $SERVER_DUMP_PATH"
   
   # Verify file on server
-  SERVER_SIZE=$(ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "stat -c%s $SERVER_DUMP_PATH 2>/dev/null || echo 0" 2>/dev/null | tr -d ' ')
+  SERVER_SIZE=$(ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "stat -c%s $SERVER_DUMP_PATH 2>/dev/null || echo 0" 2>/dev/null | tr -d ' ')
   if [ "$SERVER_SIZE" = "0" ] || [ -z "$SERVER_SIZE" ]; then
     echo "   ❌ Dump file is empty on server!"
     exit 1
@@ -292,24 +355,24 @@ fi
 
 # Clean up container dump file
 echo "   🧹 Cleaning up dump file in container..."
-ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER rm -f \"$CONTAINER_DUMP_PATH\"" 2>/dev/null || true
+ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "docker exec $POSTGRES_CONTAINER rm -f \"$CONTAINER_DUMP_PATH\"" 2>/dev/null || true
 
 echo ""
 
 # Step 1d: Download from server to local using scp
 echo "   📥 Downloading dump file from server to local..."
-if scp $SSH_OPTS "${SSH_USER}@${SSH_HOST}:${SERVER_DUMP_PATH}" "$LOCAL_DUMP_PATH" 2>&1; then
+if scp "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}:${SERVER_DUMP_PATH}" "$LOCAL_DUMP_PATH" 2>&1; then
   echo "   ✅ Dump file downloaded successfully"
 else
   echo "   ❌ Failed to download dump file via scp"
   echo "   You can try downloading manually:"
-  echo "   scp $SSH_OPTS ${SSH_USER}@${SSH_HOST}:${SERVER_DUMP_PATH} $LOCAL_DUMP_PATH"
+  echo "   scp -i ${SSH_KEY:-~/.ssh/fintr-gcp-key} ${SSH_USER}@${SSH_HOST}:${SERVER_DUMP_PATH} $LOCAL_DUMP_PATH"
   exit 1
 fi
 
 # Clean up server dump file
 echo "   🧹 Cleaning up dump file on server..."
-ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "rm -f $SERVER_DUMP_PATH" 2>/dev/null || true
+ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "rm -f $SERVER_DUMP_PATH" 2>/dev/null || true
 
 # Verify local file
 if [ ! -f "$LOCAL_DUMP_PATH" ] || [ ! -s "$LOCAL_DUMP_PATH" ]; then

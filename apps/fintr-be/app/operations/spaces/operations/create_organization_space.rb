@@ -33,7 +33,7 @@ module Spaces
           _               = step join_user_to_space(validated_params, space, user)
           _               = step assign_admin_role(space, user)
           _               = step copy_categories(space, reference_space)
-          _               = step copy_accounts(space, reference_space)
+          _               = step copy_accounts(space, reference_space, user)
 
           space
         end
@@ -133,16 +133,23 @@ module Spaces
         Failure(errors: e.record.errors.full_messages, error: e, expected: true)
       end
 
-      def copy_accounts(space, reference_space)
+      def copy_accounts(space, reference_space, user)
         accounts = reference_space.accounts
 
         accounts.each do |account|
-          Transactions::Account.create!(
-            name: account.name,
-            space: space,
-            account_category: account.account_category,
-            balance: Money.new(0, account.balance_currency)
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            cause: "organization_account_copy",
+            whodunnit: user.id,
+            operation: self.class.name,
+            action: "create",
+            attributes: {
+              name: account.name,
+              space: space,
+              account_category: account.account_category,
+              balance: Money.new(0, account.balance_currency),
+            }
           )
+          return save_result if save_result.failure?
         end
 
         Success()

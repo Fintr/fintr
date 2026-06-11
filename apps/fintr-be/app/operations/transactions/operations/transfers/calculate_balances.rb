@@ -62,7 +62,13 @@ module Transactions
           from_account.assign_attributes(
             balance: Money.from_amount(from_new_balance, from_account.balance_currency)
           )
-          from_account.save!
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            account: from_account,
+            cause: "transfer_calculate_balance",
+            whodunnit: transfer.user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
 
           Success(from_account)
         rescue ActiveRecord::ActiveRecordError => e
@@ -90,7 +96,13 @@ module Transactions
           to_account.assign_attributes(
             balance: Money.from_amount(to_new_balance, to_account.balance_currency)
           )
-          to_account.save!
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            account: to_account,
+            cause: "transfer_calculate_balance",
+            whodunnit: transfer.user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
 
           Success(to_account)
         rescue ActiveRecord::ActiveRecordError => e

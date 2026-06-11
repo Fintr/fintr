@@ -370,57 +370,19 @@ RSpec.describe Transactions::Operations::Accounts::UpdateCalculateBalance do
       end
     end
 
-    describe '#transaction_amount' do
-      context 'when from is :previous' do
-        it 'returns the previous amount_cents for income' do
-          result = operation.send(:transaction_amount,
-                                  transaction: updated_transaction,
-                                  from: :previous)
-          expect(result).to be_success
-          expect(result.value!).to eq(200_00)
-        end
+    describe '#skip_previous_revert?' do
+      it 'skips revert when a calculated row never received a running balance snapshot' do
+        transaction = create(
+          :expense_transaction,
+          account: account_one,
+          space: space,
+          amount: 200.00,
+          balance: Money.from_amount(0, "PHP"),
+          balance_state: "calculated"
+        )
+        transaction.account = account_two
 
-        it 'returns the negative previous amount_cents for expense' do
-          original_expense_transaction = create(:expense_transaction,
-                                                account: account_one,
-                                                space: space,
-                                                amount: 70.00) # Original amount
-          updated_expense_transaction = original_expense_transaction.tap do |t|
-            t.amount = 50.00 # New amount
-          end
-
-          result = operation.send(:transaction_amount,
-                                  transaction: updated_expense_transaction,
-                                  from: :previous)
-          expect(result).to be_success
-          expect(result.value!).to eq(-70_00)
-        end
-      end
-
-      context 'when from is :current' do
-        it 'returns the current amount_cents for income' do
-          result = operation.send(:transaction_amount,
-                                  transaction: updated_transaction,
-                                  from: :current)
-          expect(result).to be_success
-          expect(result.value!).to eq(300_00)
-        end
-
-        it 'returns the negative current amount_cents for expense' do
-          original_expense_transaction = create(:expense_transaction,
-                                                account: account_one,
-                                                space: space,
-                                                amount: 50.00) # Original amount
-          updated_expense_transaction = original_expense_transaction.tap do |t|
-            t.amount = 60.00 # New amount
-          end
-
-          result = operation.send(:transaction_amount,
-                                  transaction: updated_expense_transaction,
-                                  from: :current)
-          expect(result).to be_success
-          expect(result.value!).to eq(-60_00)
-        end
+        expect(operation.send(:skip_previous_revert?, transaction:)).to be(true)
       end
     end
   end

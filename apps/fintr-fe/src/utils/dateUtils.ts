@@ -52,6 +52,47 @@ export const getCurrentMonthDates = () => {
   };
 };
 
+const TRANSACTION_DATE_LOCALE = "en-US";
+
+/** Stable day bucket for grouping transactions (no weekday). */
+export function getTransactionDayGroupKey(dateInput: Date | string): string {
+  return new Date(dateInput).toLocaleDateString(TRANSACTION_DATE_LOCALE, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+/** Day divider label, e.g. "June 11, 2026 – Thursday". */
+export function formatTransactionDayDividerDate(dateInput: Date | string): string {
+  const date = new Date(dateInput);
+  const datePart = date.toLocaleDateString(TRANSACTION_DATE_LOCALE, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const dayPart = date.toLocaleDateString(TRANSACTION_DATE_LOCALE, {
+    weekday: "long",
+  });
+
+  return `${datePart} – ${dayPart}`;
+}
+
+/** Compact row date, e.g. "6/11/2026 – Thursday". */
+export function formatTransactionRowDate(dateInput: Date | string): string {
+  const date = new Date(dateInput);
+  const datePart = date.toLocaleDateString(TRANSACTION_DATE_LOCALE, {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+  });
+  const dayPart = date.toLocaleDateString(TRANSACTION_DATE_LOCALE, {
+    weekday: "long",
+  });
+
+  return `${datePart} – ${dayPart}`;
+}
+
 /**
  * Wide range for account detail / history views (API requires start and end dates).
  */

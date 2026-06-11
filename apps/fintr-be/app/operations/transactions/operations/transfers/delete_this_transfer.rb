@@ -53,11 +53,13 @@ module Transactions
 
           revert_transfer_balance!(
             account: from_account,
-            signed_effect: from_effect.value![:amount]
+            signed_effect: from_effect.value![:amount],
+            transfer:
           )
           revert_transfer_balance!(
             account: to_account,
-            signed_effect: to_effect.value![:amount]
+            signed_effect: to_effect.value![:amount],
+            transfer:
           )
 
           Success([from_account, to_account])
@@ -68,7 +70,7 @@ module Transactions
           )
         end
 
-        def revert_transfer_balance!(account:, signed_effect:)
+        def revert_transfer_balance!(account:, signed_effect:, transfer:)
           old_balance = account.balance.amount
           new_balance = (
             BigDecimal(old_balance.to_s) - BigDecimal(signed_effect.to_s)
@@ -76,7 +78,13 @@ module Transactions
           account.assign_attributes(
             balance: Money.from_amount(new_balance, account.balance_currency)
           )
-          account.save!
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            account:,
+            cause: "transfer_delete_revert_balance",
+            whodunnit: transfer.user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
         end
 
         def delete_transfer_fee_transaction(transfer:)

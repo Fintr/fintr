@@ -122,7 +122,13 @@ module Transactions
         if records.any?
           account = parent_transaction.account
           account.assign_attributes(balance: account_balance)
-          account.save!
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            account:,
+            cause: "repeat_transaction_apply_balance",
+            whodunnit: parent_transaction.user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
         end
 
         Transaction.bulk_import(

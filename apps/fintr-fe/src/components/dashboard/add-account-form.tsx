@@ -97,14 +97,13 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
             onChange={(e) => setName(e.target.value)}
             required
             disabled={isCreating}
-            className="bg-white"
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="account-category">Account Category</Label>
           <Select value={accountCategory} onValueChange={setAccountCategory} >
-            <SelectTrigger id="account-category" className="bg-white">
+            <SelectTrigger id="account-category">
               <SelectValue placeholder="Select account category" />
             </SelectTrigger>
             <SelectContent>
@@ -124,7 +123,6 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
             value={balanceCurrency}
             onChange={setBalanceCurrency}
             disabled={isCreating}
-            className="bg-white"
           />
         </div>
 
@@ -139,8 +137,8 @@ const AddAccountForm: React.FC<AddAccountFormProps> = ({
               id="current-balance"
               className={
                 getCurrencySymbol(balanceCurrency).length > 1
-                  ? "pl-16 bg-white"
-                  : "pl-8 bg-white"
+                  ? "pl-16"
+                  : "pl-8"
               }
               placeholder="0.00"
               value={balanceInput.displayValue}

@@ -74,17 +74,13 @@ RSpec.describe Transactions::Operations::Accounts::CalculateBalance do
           }
         end
 
-        before do
-          transaction.update!(balance_state: 'calculated')
-        end
-
-        it 'updates transaction balance_state to calculated without recalculating balance' do
+        it 'leaves the transaction pending without changing the account balance' do
           current_balance = account.balance.amount
           result = operation.call(params_skip_calculation)
 
           expect(result).to be_success
           expect(account.reload.balance.amount).to eq(current_balance)
-          expect(transaction.reload.balance_state).to eq('calculated')
+          expect(transaction.reload.balance_state).to eq('pending')
         end
       end
 
@@ -262,11 +258,7 @@ RSpec.describe Transactions::Operations::Accounts::CalculateBalance do
       end
 
       context 'when skip_calculation is true' do
-        before do
-          transaction.update!(balance_state: 'calculated')
-        end
-
-        it 'updates transaction balance_state to calculated and does not change account balance' do
+        it 'does not change account balance and leaves the transaction pending' do
           old_account_balance = account.balance.amount
           result = operation.send(:calculate_balance,
                                   transaction: transaction,
@@ -275,7 +267,7 @@ RSpec.describe Transactions::Operations::Accounts::CalculateBalance do
 
           expect(result).to be_success
           expect(account.reload.balance.amount).to eq(old_account_balance)
-          expect(transaction.reload.balance_state).to eq('calculated')
+          expect(transaction.reload.balance_state).to eq('pending')
         end
       end
 
