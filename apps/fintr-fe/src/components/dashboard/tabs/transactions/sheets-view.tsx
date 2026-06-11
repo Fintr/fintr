@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/popover";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { indexTransactionDisplayMoney } from "@/utils/indexTransactionDisplay";
+import { formatTransactionRowDate } from "@/utils/dateUtils";
 
 interface SheetsViewProps {
     isPending: boolean;
@@ -184,7 +185,7 @@ export function SheetsView({
                           >
                             <PopoverTrigger asChild>
                               <div
-                                className="absolute top-0 right-0 w-0 h-0 border-l-[5px] border-l-transparent border-t-[5px] border-t-primary cursor-pointer hover:border-t-primary/90 transition-colors z-10"
+                                className="absolute top-0 right-0 w-0 h-0 border-l-[5px] border-l-transparent border-t-[5px] border-t-primary dark:border-t-[var(--primary-dark-mode)] cursor-pointer hover:border-t-primary/90 dark:hover:border-t-[color-mix(in_oklab,var(--primary-dark-mode)_90%,transparent)] transition-colors z-10"
                                 role="button"
                                 tabIndex={0}
                                 onMouseEnter={() => setHoveredCalculatedId(transaction.id)}
@@ -268,9 +269,7 @@ export function SheetsView({
                                 onKeyDown(e, transaction, "date")
                               }
                             >
-                              {new Date(
-                                transaction.date
-                              ).toLocaleDateString()}
+                              {formatTransactionRowDate(transaction.date)}
                             </div>
                           )}
                         </td>

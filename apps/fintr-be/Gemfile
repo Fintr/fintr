@@ -104,3 +104,5 @@ group :development do
   # Optional: flamegraphs via ?pp=flamegraph / async-flamegraph
   gem "stackprof", require: false
 end
+
+gem "paper_trail", "~> 17.0"

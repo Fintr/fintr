@@ -63,7 +63,14 @@ module Transactions
             )
           )
           account.assign_attributes(balance_currency: params[:balance_currency])
-          account.save!
+          save_result = SaveAccount.new.call(
+            account:,
+            cause: "account_create",
+            whodunnit: params[:user_id],
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
+
           Success(account)
         rescue ActiveRecord::RecordInvalid => e
           Failure(**account.errors.to_hash, error: e, expected: true)

@@ -216,7 +216,7 @@ RSpec.describe Transactions::Operations::Loans::ReverseAccountBalanceForLoanPaym
       it 'returns account_name error in the failure' do
         result = operation.call(valid_params)
         expect(result.failure).to have_key(:account_name)
-        expect(result.failure[:account_name]).to eq('failed to update')
+        expect(result.failure[:account_name]).to eq('failed to reverse')
       end
 
       it 'includes the error in the failure' do

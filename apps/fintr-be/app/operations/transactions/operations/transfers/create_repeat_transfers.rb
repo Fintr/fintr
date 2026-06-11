@@ -154,11 +154,23 @@ module Transactions
           # Update account balances
           to_account = parent_transfer.from_account
           to_account.assign_attributes(balance: to_account_balance)
-          to_account.save!
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            account: to_account,
+            cause: "repeat_transfer_apply_balance",
+            whodunnit: parent_transfer.user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
 
           from_account = parent_transfer.to_account
           from_account.assign_attributes(balance: from_account_balance)
-          from_account.save!
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            account: from_account,
+            cause: "repeat_transfer_apply_balance",
+            whodunnit: parent_transfer.user_id,
+            operation: self.class.name
+          )
+          return save_result if save_result.failure?
 
           Success()
         end

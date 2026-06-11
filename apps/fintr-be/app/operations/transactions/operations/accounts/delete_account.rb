@@ -41,7 +41,14 @@ module Transactions
         end
 
         def delete_account(account:)
-          account.discard!
+          save_result = SaveAccount.new.call(
+            account:,
+            cause: "account_discard",
+            operation: self.class.name,
+            action: "discard"
+          )
+          return save_result if save_result.failure?
+
           Success(account)
         end
       end

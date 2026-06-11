@@ -1,17 +1,15 @@
 # frozen_string_literal: true
 
 class Budget < ApplicationRecord
-  belongs_to :space, class_name: "Spaces::Space"
-  belongs_to :category, class_name: "Transactions::Category"
-
   include CategoryAssignable
+
+  belongs_to :space, class_name: "Spaces::Space"
 
   monetize :amount_cents, allow_nil: false
   monetize :spent_cents, allow_nil: false
 
   validates :date, presence: true
   validate :category_is_expense
-  validate :category_must_be_parent
   validate :only_one_budget_for_month
 
   delegate :month, :year, to: :date
@@ -43,12 +41,6 @@ class Budget < ApplicationRecord
     return if category.expense?
 
     errors.add(:category, "must be an expense category")
-  end
-
-  def category_must_be_parent
-    return if category.root?
-
-    errors.add(:category_id, "must be a parent category")
   end
 
   def only_one_budget_for_month

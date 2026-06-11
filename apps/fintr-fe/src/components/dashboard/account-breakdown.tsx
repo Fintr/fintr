@@ -18,6 +18,10 @@ import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useAccountTransactions } from "@/hooks/async/useAccountTransactions";
 import { IndexTransaction, CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import DayDivider from "@/components/ui/day-divider";
+import {
+  formatTransactionDayDividerDate,
+  getTransactionDayGroupKey,
+} from "@/utils/dateUtils";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface AccountBreakdownProps {
@@ -212,12 +216,7 @@ const AccountTransactions = ({
 
   // Group displayed transactions by date and sort
   const transactionsByDate = displayedTransactions.reduce((acc, transaction) => {
-    const date = new Date(transaction.date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    const date = getTransactionDayGroupKey(transaction.date);
     
     if (!acc[date]) {
       acc[date] = [];
@@ -237,7 +236,12 @@ const AccountTransactions = ({
       <div className="max-h-96 overflow-y-auto overflow-x-hidden space-y-4">
         {sortedDates.map((date) => (
           <div key={date}>
-            <DayDivider date={date} textClassName="bg-gray-50 dark:bg-background" />
+            <DayDivider
+              date={formatTransactionDayDividerDate(
+                transactionsByDate[date][0].date,
+              )}
+              textClassName="bg-gray-50 dark:bg-background"
+            />
             <div className="space-y-2">
               {transactionsByDate[date].map((transaction) => (
                 <div 

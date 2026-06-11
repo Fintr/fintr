@@ -163,4 +163,5 @@ RSpec.describe Transactions::Transaction, type: :model do
       end
     end
   end
+
 end

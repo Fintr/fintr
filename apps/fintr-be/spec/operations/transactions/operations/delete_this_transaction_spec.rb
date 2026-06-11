@@ -186,7 +186,7 @@ RSpec.describe Transactions::Operations::DeleteThisTransaction do
       end
     end
 
-    context 'when account save fails' do
+    context 'when account balance revert fails' do
       let(:transaction) { create(:transaction, user:, space:, account:, category:, balance_state: "calculated") }
 
       it 'rolls back the transaction' do

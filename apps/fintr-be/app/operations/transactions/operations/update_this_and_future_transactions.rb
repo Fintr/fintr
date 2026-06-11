@@ -78,7 +78,10 @@ module Transactions
       end
 
       def delete_pending_transactions(pending_transactions:)
-        pending_transactions.delete_all
+        pending_transactions.find_each do |pending_transaction|
+          Transactions::Operations::DeleteThisTransaction.new.call(transaction: pending_transaction)
+        end
+
         Success(pending_transactions)
       end
 

@@ -93,11 +93,37 @@ module Transactions
             return Failure(action: "not supported")
           end
 
-          from_account.save!
-          to_account.save!
+          cause = balance_update_cause(from:)
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            account: from_account,
+            cause:,
+            whodunnit: transfer.user_id,
+            operation: self.class.name
+          )
+          return map_save_failure(save_result) if save_result.failure?
+
+          save_result = ::Transactions::Operations::Accounts::SaveAccount.new.call(
+            account: to_account,
+            cause:,
+            whodunnit: transfer.user_id,
+            operation: self.class.name
+          )
+          return map_save_failure(save_result) if save_result.failure?
+
           Success({ from_account: from_account, to_account: to_account })
         rescue StandardError => e
           Failure(accounts: "failed to save", error: e)
+        end
+
+        def balance_update_cause(from:)
+          from == :previous ? "transfer_update_balance_revert" : "transfer_update_balance_apply"
+        end
+
+        def map_save_failure(save_result)
+          Failure(
+            accounts: "failed to save",
+            error: save_result.failure[:error]
+          )
         end
 
         def transfer_amount(transfer:, from:)

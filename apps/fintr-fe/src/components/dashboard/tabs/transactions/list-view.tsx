@@ -17,6 +17,11 @@ import { toast } from "sonner";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { cn } from "@/lib/utils";
 import { indexTransactionDisplayMoney } from "@/utils/indexTransactionDisplay";
+import {
+  formatTransactionDayDividerDate,
+  formatTransactionRowDate,
+  getTransactionDayGroupKey,
+} from "@/utils/dateUtils";
 
 interface ListViewProps {
   isPending: boolean;
@@ -113,11 +118,7 @@ export function ListView({
             const dailyTotals: Record<string, number> = {};
             const dailyCurrencies: Record<string, Set<string>> = {};
             uniqueTransactions.forEach((transaction) => {
-              const dateKey = new Date(transaction.date).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              });
+              const dateKey = getTransactionDayGroupKey(transaction.date);
               if (!dailyTotals[dateKey]) {
                 dailyTotals[dateKey] = 0;
                 dailyCurrencies[dateKey] = new Set();
@@ -135,11 +136,7 @@ export function ListView({
             
             return uniqueTransactions.map((transaction: IndexTransaction, idx: number) => {
               const transactionDate = new Date(transaction.date);
-              const currentDate = transactionDate.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              });
+              const currentDate = getTransactionDayGroupKey(transactionDate);
               let showDivider = false;
 
               if (currentDate !== lastDisplayedDate) {
@@ -181,7 +178,7 @@ export function ListView({
                     >
                       <div className="border-t border-gray-300 dark:border-border" style={{width: '2rem'}} />
                       <span className="text-xs font-semibold text-primary bg-background px-3">
-                        {currentDate}
+                        {formatTransactionDayDividerDate(transactionDate)}
                       </span>
                       <div className="flex-grow border-t border-gray-300 dark:border-border" />
                       <span className={`text-xs font-semibold bg-background px-3 ${
@@ -219,7 +216,7 @@ export function ListView({
                       >
                         <PopoverTrigger asChild>
                           <div
-                            className="absolute top-0 right-0 w-0 h-0 border-l-[5px] border-l-transparent border-t-[5px] border-t-primary cursor-pointer hover:border-t-primary/90 transition-colors z-10"
+                            className="absolute top-0 right-0 w-0 h-0 border-l-[5px] border-l-transparent border-t-[5px] border-t-primary dark:border-t-[var(--primary-dark-mode)] cursor-pointer hover:border-t-primary/90 dark:hover:border-t-[color-mix(in_oklab,var(--primary-dark-mode)_90%,transparent)] transition-colors z-10"
                             role="button"
                             tabIndex={0}
                             onMouseEnter={() => setHoveredCalculatedId(transaction.id)}
@@ -324,7 +321,7 @@ export function ListView({
                       <div className="flex items-center justify-between mt-1">
                         <div className="flex items-center text-xs text-gray-600 flex-1 min-w-0 overflow-hidden dark:text-muted-foreground">
                           <span className="flex-shrink-0 whitespace-nowrap">
-                            {new Date(transaction.date).toLocaleDateString()}
+                            {formatTransactionRowDate(transaction.date)}
                           </span>
                           <span
                             className="hidden md:block truncate ml-4"

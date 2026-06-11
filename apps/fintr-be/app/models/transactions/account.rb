@@ -20,6 +20,7 @@ module Transactions
     }.freeze
 
     include Discard::Model
+    include Versionable
 
     belongs_to :space, class_name: "Spaces::Space"
     has_many :transactions, dependent: nil

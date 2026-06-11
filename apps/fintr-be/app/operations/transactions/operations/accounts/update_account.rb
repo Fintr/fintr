@@ -42,7 +42,15 @@ module Transactions
         def update_account(account:, params:)
           attrs = { name: params[:name] }
           attrs[:balance_currency] = params[:balance_currency] if params[:balance_currency].present?
-          account.update!(attrs)
+          save_result = SaveAccount.new.call(
+            account:,
+            cause: "account_update",
+            operation: self.class.name,
+            action: "update",
+            attributes: attrs
+          )
+          return save_result if save_result.failure?
+
           Success(account)
         rescue ActiveRecord::RecordInvalid => e
           Failure(**account.errors.to_hash, error: e, expected: true)
