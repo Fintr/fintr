@@ -21,13 +21,29 @@ module Transactions
 
         def call(params)
           params              = step validate(params:)
+          space               = step find_space(params:)
           accounts            = step get_accounts(params:)
           serialized_accounts = step serialize(accounts:)
+          balance_totals      = step compute_balance_totals(accounts:, space:)
 
-          { accounts: serialized_accounts }
+          {
+            accounts: serialized_accounts,
+            balance_totals: balance_totals
+          }
         end
 
         private
+
+        def find_space(params:)
+          space = Spaces::Space.find_by(id: params[:space_id])
+          return Failure(space_id: "not found") unless space
+
+          Success(space)
+        end
+
+        def compute_balance_totals(accounts:, space:)
+          ComputeBalanceTotals.new.call(accounts: accounts.to_a, space:)
+        end
 
         def get_accounts(params:)
           query_result = Transactions::Queries::Accounts::DashboardAccounts

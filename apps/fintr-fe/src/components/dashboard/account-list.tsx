@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Account } from "@/types/accountTypes";
+import { Account, AccountBalanceTotals } from "@/types/accountTypes";
 import {
   ChevronDown,
   ChevronUp,
@@ -11,6 +11,16 @@ import {
   cn,
   formatCurrency as formatCurrencyWithCurrency,
 } from "@/lib/utils";
+
+const CASH_TOTAL_CATEGORIES = new Set([
+  "cash",
+  "savings",
+  "debit",
+  "e_wallet",
+  "investment",
+]);
+
+const PAYABLE_TOTAL_CATEGORIES = new Set(["credit_card"]);
 
 const accountAmountColorClass = (value: number): string => {
   if (value < 0) {
@@ -29,12 +39,54 @@ import Link from "next/link";
 
 interface AccountListProps {
   accounts: Account[];
+  balanceTotals?: AccountBalanceTotals | null;
   /** Optional override for space currency (e.g. when not inside space context). */
   totalBalanceCurrency?: string;
 }
 
+interface TotalDisplayProps {
+  label: string;
+  amount: number;
+  currency: string;
+  isLoading: boolean;
+  align?: "left" | "center" | "right";
+  className?: string;
+}
+
+const TotalDisplay: React.FC<TotalDisplayProps> = ({
+  label,
+  amount,
+  currency,
+  isLoading,
+  align = "right",
+  className,
+}) => (
+  <div
+    className={cn(
+      "rounded-lg border border-gray-200 bg-white px-4 py-3 text-xl",
+      "dark:border-border dark:bg-card dark:shadow-sm",
+      align === "left" && "text-left",
+      align === "center" && "text-center",
+      align === "right" && "text-right",
+      className,
+    )}
+  >
+    <div className="text-sm text-muted-foreground font-normal">{label}</div>
+    {isLoading ? (
+      <span className="font-medium text-muted-foreground">…</span>
+    ) : (
+      <span
+        className={`font-medium ${accountAmountColorClass(amount)}`}
+      >
+        {formatCurrencyWithCurrency(amount, currency)}
+      </span>
+    )}
+  </div>
+);
+
 const AccountList: React.FC<AccountListProps> = ({
   accounts,
+  balanceTotals,
   totalBalanceCurrency: totalBalanceCurrencyProp,
 }) => {
   const { api } = useAuthApi();
@@ -89,13 +141,42 @@ const AccountList: React.FC<AccountListProps> = ({
       .finally(() => setRatesLoading(false));
   }, [api, spaceCurrency, accountCurrencies.join(",")]);
 
-  const totalInSpaceCurrency = React.useMemo(() => {
-    return accounts.reduce((sum, account) => {
+  const balanceInSpaceCurrency = React.useCallback(
+    (account: Account) => {
       const currency = account.balanceCurrency ?? "PHP";
       const rate = ratesToSpace[currency] ?? 1;
-      return sum + parseBalance(account.balance) * rate;
-    }, 0);
-  }, [accounts, ratesToSpace]);
+      return parseBalance(account.balance) * rate;
+    },
+    [ratesToSpace],
+  );
+
+  const totalInSpaceCurrency = React.useMemo(() => {
+    return accounts.reduce(
+      (sum, account) => sum + balanceInSpaceCurrency(account),
+      0,
+    );
+  }, [accounts, balanceInSpaceCurrency]);
+
+  const cashOnlyInSpaceCurrency = React.useMemo(() => {
+    if (balanceTotals) return balanceTotals.cashTotal;
+
+    return accounts
+      .filter((account) => CASH_TOTAL_CATEGORIES.has(account.accountCategory))
+      .reduce((sum, account) => sum + balanceInSpaceCurrency(account), 0);
+  }, [accounts, balanceInSpaceCurrency, balanceTotals]);
+
+  const payableOnlyInSpaceCurrency = React.useMemo(() => {
+    if (balanceTotals) return balanceTotals.payableTotal;
+
+    return accounts
+      .filter((account) => PAYABLE_TOTAL_CATEGORIES.has(account.accountCategory))
+      .reduce((sum, account) => sum + balanceInSpaceCurrency(account), 0);
+  }, [accounts, balanceInSpaceCurrency, balanceTotals]);
+
+  const displayTotalInSpaceCurrency = balanceTotals?.total ?? totalInSpaceCurrency;
+  const totalsCurrency =
+    balanceTotals?.currency ?? spaceCurrency;
+  const currencySuffix = ` (in ${totalsCurrency})`;
 
   const balancesByCurrency = React.useMemo(() => {
     const byCurrency = new Map<string, number>();
@@ -119,26 +200,30 @@ const AccountList: React.FC<AccountListProps> = ({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
-        <div className="flex justify-end">
-          <div className="text-xl text-right">
-            <div className="text-sm text-muted-foreground font-normal">
-              Total
-              {accountCurrencies.length > 1 && (
-                <span className="font-normal"> (in {spaceCurrency})</span>
-              )}
-            </div>
-            {ratesLoading ? (
-              <span className="font-medium text-muted-foreground">…</span>
-            ) : (
-              <span
-                className={`font-medium ${accountAmountColorClass(totalInSpaceCurrency)}`}
-              >
-                {formatCurrencyWithCurrency(
-                  totalInSpaceCurrency,
-                  spaceCurrency,
-                )}
-              </span>
-            )}
+        <div className="flex flex-col gap-4 mb-2">
+          <TotalDisplay
+            label={`Total${currencySuffix}`}
+            amount={displayTotalInSpaceCurrency}
+            currency={totalsCurrency}
+            isLoading={ratesLoading && !balanceTotals}
+            align="center"
+            className="w-full"
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <TotalDisplay
+              label={`Cash only${currencySuffix}`}
+              amount={cashOnlyInSpaceCurrency}
+              currency={totalsCurrency}
+              isLoading={ratesLoading && !balanceTotals}
+              align="left"
+            />
+            <TotalDisplay
+              label={`Credit Card${currencySuffix}`}
+              amount={payableOnlyInSpaceCurrency}
+              currency={totalsCurrency}
+              isLoading={ratesLoading && !balanceTotals}
+              align="right"
+            />
           </div>
         </div>
         <div className="flex justify-between items-center">
@@ -215,11 +300,11 @@ const AccountList: React.FC<AccountListProps> = ({
                   Total (in {spaceCurrency})
                 </span>
                 <span
-                  className={`font-medium ${accountAmountColorClass(totalInSpaceCurrency)}`}
+                  className={`font-medium ${accountAmountColorClass(displayTotalInSpaceCurrency)}`}
                 >
                   {formatCurrencyWithCurrency(
-                    totalInSpaceCurrency,
-                    spaceCurrency,
+                    displayTotalInSpaceCurrency,
+                    totalsCurrency,
                   )}
                 </span>
               </div>

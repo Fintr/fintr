@@ -249,6 +249,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
   // Fetch accounts from API
   const {
     accounts,
+    balanceTotals,
     isLoading: accountsLoading,
     isError: accountsError
   } = useAccounts();
@@ -777,7 +778,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                   No accounts found. Add your first account to get started.
                 </p>
               ) : (
-                <AccountList accounts={accounts} />
+                <AccountList
+                  accounts={accounts}
+                  balanceTotals={balanceTotals}
+                />
               )}
             </div>
           </>

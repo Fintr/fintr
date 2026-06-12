@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useAuthApi from '../useAuthApi';
 import { fetchAccounts } from '@/services/transactions/accounts/queries';
 import { createAccount, updateAccount, deleteAccount, adjustAccountBalance, CreateAccountType, UpdateAccountType, AdjustAccountBalanceType } from '@/services/transactions/accounts/mutation';
-import { Account } from '@/types/accountTypes';
+import { Account, AccountBalanceTotals } from '@/types/accountTypes';
 import { toast } from 'sonner';
 import {
   ACCOUNT_ADJUSTMENT_HISTORY_KEY,
@@ -137,6 +137,25 @@ export const useAccounts = () => {
     return accountsArray;
   };
 
+  const getBalanceTotals = (): AccountBalanceTotals | null => {
+    if (!accounts) return null;
+
+    const totals =
+      accounts.data?.balanceTotals ??
+      accounts.balanceTotals ??
+      accounts.data?.balance_totals ??
+      accounts.balance_totals;
+
+    if (!totals) return null;
+
+    return {
+      total: Number(totals.total ?? 0),
+      cashTotal: Number(totals.cashTotal ?? totals.cash_total ?? 0),
+      payableTotal: Number(totals.payableTotal ?? totals.payable_total ?? 0),
+      currency: totals.currency ?? "PHP",
+    };
+  };
+
   // Helper function to get account category options from response
   const getAccountCategoryOptions = (): { label: string; value: string }[] => {
     if (!accounts) return [];
@@ -154,6 +173,7 @@ export const useAccounts = () => {
 
   return {
     accounts: getAccountsData(),
+    balanceTotals: getBalanceTotals(),
     accountCategoryOptions: getAccountCategoryOptions(),
     isLoading,
     isError,
