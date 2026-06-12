@@ -17,7 +17,7 @@ module Transactions
         end
 
         field :account_category do |record|
-          Transactions::Account::ACCOUNT_CATEGORY_LABELS[record.account_category.to_sym]
+          record.account_category
         end
       end
     end

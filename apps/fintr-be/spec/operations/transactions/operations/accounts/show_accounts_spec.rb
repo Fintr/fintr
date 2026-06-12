@@ -11,13 +11,24 @@ RSpec.describe Transactions::Operations::Accounts::ShowAccounts do
 
   let(:mock_accounts) { [build_stubbed(:account, space: space)] }
   let(:mock_serialized_accounts) { [{ id: mock_accounts.first.id, name: mock_accounts.first.name, balance: "100.00" }] }
+  let(:mock_balance_totals) do
+    {
+      total: 100.0,
+      cash_total: 100.0,
+      payable_total: 0.0,
+      currency: "PHP"
+    }
+  end
 
   let(:mock_dashboard_accounts_query) { instance_double(Transactions::Queries::Accounts::DashboardAccounts) }
   let(:mock_dashboard_account_serializer) { class_double(Transactions::Serializers::Accounts::DashboardAccountSerializer) }
+  let(:mock_compute_balance_totals) { instance_double(Transactions::Operations::Accounts::ComputeBalanceTotals) }
 
   before do
     allow(Transactions::Queries::Accounts::DashboardAccounts).to receive(:call).and_return(Dry::Monads::Success(mock_accounts))
     allow(Transactions::Serializers::Accounts::DashboardAccountSerializer).to receive(:render_as_hash).and_return(mock_serialized_accounts)
+    allow(Transactions::Operations::Accounts::ComputeBalanceTotals).to receive(:new).and_return(mock_compute_balance_totals)
+    allow(mock_compute_balance_totals).to receive(:call).and_return(Dry::Monads::Success(mock_balance_totals))
   end
 
   describe '#call' do
@@ -30,7 +41,12 @@ RSpec.describe Transactions::Operations::Accounts::ShowAccounts do
 
       it 'returns the aggregated accounts data' do
         result = call_operation.value!
-        expect(result).to eq({ accounts: mock_serialized_accounts })
+        expect(result).to eq(
+          {
+            accounts: mock_serialized_accounts,
+            balance_totals: mock_balance_totals
+          }
+        )
       end
 
       it 'calls DashboardAccounts query with correct parameters' do

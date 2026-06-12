@@ -32,4 +32,11 @@ export interface Account {
   accountCategory: string; // Added accountCategory field from backend
   createdAt?: string;
   updatedAt?: string;
-} 
+}
+
+export interface AccountBalanceTotals {
+  total: number;
+  cashTotal: number;
+  payableTotal: number;
+  currency: string;
+}

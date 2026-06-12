@@ -19,6 +19,20 @@ module Transactions
       investment: "Investment"
     }.freeze
 
+    # Asset-like categories included in the "Cash only" accounts total.
+    CASH_TOTAL_CATEGORIES = %w[
+      cash
+      savings
+      debit
+      e_wallet
+      investment
+    ].freeze
+
+    # Liability categories included in the "Payable (Credit card)" accounts total.
+    PAYABLE_TOTAL_CATEGORIES = %w[
+      credit_card
+    ].freeze
+
     include Discard::Model
     include Versionable
 
@@ -52,6 +66,14 @@ module Transactions
           label: value
         }
       end
+    end
+
+    def self.cash_total_category?(category)
+      CASH_TOTAL_CATEGORIES.include?(category.to_s)
+    end
+
+    def self.payable_total_category?(category)
+      PAYABLE_TOTAL_CATEGORIES.include?(category.to_s)
     end
   end
 end
