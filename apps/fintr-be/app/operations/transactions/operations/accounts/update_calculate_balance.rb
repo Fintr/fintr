@@ -12,7 +12,6 @@ module Transactions
 
           rule(:transaction) do
             key.failure("must be a transaction") unless value.is_a?(Transactions::Transaction)
-            key.failure("must be a transaction with changes") unless value.changed?
           end
         end
 
@@ -26,6 +25,9 @@ module Transactions
         include FailureHandler
 
         def call(params)
+          transaction = params[:transaction]
+          return transaction if transaction.is_a?(Transactions::Transaction) && !transaction.changed?
+
           ActiveRecord::Base.transaction do
             params              = step validate(params:)
             transaction         = step dig_transaction(params:)

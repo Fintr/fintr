@@ -82,6 +82,31 @@ RSpec.describe Transactions::Operations::Accounts::UpdateCalculateBalance do
           expect(returned_transaction.description).to eq("Updated Expense and Account")
         end
       end
+
+      context 'when transaction has no changes' do
+        let(:unchanged_transaction) do
+          create(:income_transaction,
+                 account: account_one,
+                 space: space,
+                 amount: 200.00)
+        end
+
+        let(:params) do
+          {
+            transaction: unchanged_transaction
+          }
+        end
+
+        it 'returns success without updating account balances' do
+          original_balance = account_one.balance
+
+          result = operation.call(params)
+
+          expect(result).to be_success
+          expect(result.value!).to eq(unchanged_transaction)
+          expect(account_one.reload.balance).to eq(original_balance)
+        end
+      end
     end
 
     context 'with invalid parameters' do
@@ -106,29 +131,6 @@ RSpec.describe Transactions::Operations::Accounts::UpdateCalculateBalance do
           expect(result).to be_failure
           expect(result.failure).to have_key(:transaction)
           expect(result.failure[:transaction]).to include("must be a transaction")
-        end
-      end
-
-      context 'when transaction has no changes' do
-        let(:unchanged_transaction) do
-          create(:income_transaction,
-                 account: account_one,
-                 space: space,
-                 amount: 200.00)
-        end
-
-        let(:params) do
-          {
-            transaction: unchanged_transaction
-          }
-        end
-
-        it 'returns validation failure' do
-          result = operation.call(params)
-
-          expect(result).to be_failure
-          expect(result.failure).to have_key(:transaction)
-          expect(result.failure[:transaction]).to include("must be a transaction with changes")
         end
       end
 
