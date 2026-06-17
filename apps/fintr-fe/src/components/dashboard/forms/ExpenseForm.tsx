@@ -965,7 +965,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="min-w-0">
             <FormControlField label="Schedule Type" htmlFor="scheduleType">
               <Select

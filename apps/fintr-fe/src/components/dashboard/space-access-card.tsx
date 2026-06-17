@@ -596,48 +596,55 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
               No users have access to this space
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="max-h-[21.5rem] overflow-y-auto overscroll-contain sm:max-h-[14.5rem]">
+              <div className="space-y-2 pr-1">
               {users.map((user: SpaceUser) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                  className="flex flex-col gap-3 rounded-lg border p-3 hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="mt-0.5 shrink-0">
                       {getRoleIcon(user.role)}
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-sm break-words">
-                          {user.fullName?.trim() || user.email || "—"}
-                        </div>
-                        <div className="text-xs text-gray-500 break-all">
-                          {user.email}
-                        </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium break-words">
+                        {user.fullName?.trim() || user.email || "—"}
+                      </div>
+                      <div className="text-xs text-muted-foreground break-all">
+                        {user.email}
                       </div>
                     </div>
-                    <Badge variant={getRoleBadgeVariant(user.role)}>
-                      {user.role}
-                    </Badge>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">
-                      Joined {new Date(user.joinedAt).toLocaleDateString()}
-                    </span>
-                    
+
+                  <div className="flex w-full items-end justify-between gap-2 sm:w-auto sm:items-center sm:justify-end">
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
+                      <Badge variant={getRoleBadgeVariant(user.role)}>
+                        {user.role}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        Joined {new Date(user.joinedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
                     {/* Transfer Ownership - only show for owner, and not for the owner user */}
                     {isOwner && user.role !== "owner" && (
-                      <Dialog 
-                        open={transferDialogUserId === user.id} 
-                        onOpenChange={(open) => setTransferDialogUserId(open ? user.id : null)}
+                      <Dialog
+                        open={transferDialogUserId === user.id}
+                        onOpenChange={(open) =>
+                          setTransferDialogUserId(open ? user.id : null)
+                        }
                       >
                         <DialogTrigger asChild>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="gap-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            aria-label="Make owner"
+                            className="gap-1.5 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                           >
                             <Shield className="h-3.5 w-3.5" />
-                            Make Owner
+                            <span className="hidden sm:inline">Make Owner</span>
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
@@ -676,7 +683,8 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          aria-label="Remove user"
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -685,7 +693,7 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
                         <DialogHeader>
                           <DialogTitle>Remove User Access</DialogTitle>
                           <DialogDescription>
-                            Are you sure you want to remove <strong>{user.fullName}</strong> from this space? 
+                            Are you sure you want to remove <strong>{user.fullName}</strong> from this space?
                             They will lose access to all data and features in this space.
                           </DialogDescription>
                         </DialogHeader>
@@ -706,9 +714,11 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
                       </DialogContent>
                     </Dialog>
                     )}
+                    </div>
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           )}
         </div>

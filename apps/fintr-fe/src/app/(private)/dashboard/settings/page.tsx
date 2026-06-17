@@ -216,13 +216,13 @@ const SettingsPage = () => {
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-800/20">
-                <AlertTriangle className="h-5 w-5 text-red-800" />
+                <AlertTriangle className="h-5 w-5 text-red-800 dark:text-red-400" />
               </div>
               <div>
-                <CardTitle className="text-red-800">
+                <CardTitle className="text-red-800 dark:text-red-400">
                   Danger Zone
                 </CardTitle>
-                <CardDescription className="text-red-800">
+                <CardDescription className="text-red-800 dark:text-red-300">
                   Permanently delete all your data and start over.
                 </CardDescription>
               </div>
@@ -230,7 +230,7 @@ const SettingsPage = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <p className="text-sm text-red-800/90">
+              <p className="text-sm text-red-800/90 dark:text-red-300">
                 This will permanently delete all your financial data, including transactions, 
                 accounts, budgets, and goals. This action cannot be undone.
               </p>

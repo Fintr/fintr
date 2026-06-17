@@ -753,7 +753,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
            </div>
          )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Schedule Type Field */}
           <div className="space-y-2 min-w-0">
             <Label htmlFor="scheduleType" className="text-sm">Schedule Type</Label>
@@ -817,7 +817,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Account Field */}
           <div className="space-y-2 min-w-0">
             <GridPicker
