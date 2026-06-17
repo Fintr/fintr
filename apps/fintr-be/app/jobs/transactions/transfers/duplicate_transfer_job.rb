@@ -10,9 +10,11 @@ module Transactions
         Transactions::Operations::Transfers::CreateRepeatTransfers
           .new
           .call(
-            transfer_id:,
-            date_start: date + 1.month,
-            date_end: date + 1.month
+            params: {
+              transfer_id:,
+              date_start: date + 1.month,
+              date_end: date + 1.month,
+            }
           )
       end
     end

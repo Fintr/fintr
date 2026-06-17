@@ -19,9 +19,11 @@ RSpec.describe Transactions::Transfers::DuplicateTransferJob, type: :job do
       job.perform(transfer_id)
 
       expect(operation_instance).to have_received(:call).with(
-        transfer_id: transfer_id,
-        date_start: today + 1.month,
-        date_end: today + 1.month
+        params: {
+          transfer_id: transfer_id,
+          date_start: today + 1.month,
+          date_end: today + 1.month,
+        }
       )
     end
 

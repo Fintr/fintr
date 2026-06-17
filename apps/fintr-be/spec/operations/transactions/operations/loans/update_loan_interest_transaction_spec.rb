@@ -281,6 +281,31 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanInterestTransaction do
         )
       end
 
+      context 'when interest transaction already has the same attributes' do
+        let(:interest_transaction) do
+          create(
+            :expense_transaction,
+            user: user,
+            space: space,
+            account: account,
+            amount: interest_amount,
+            date: loan_payment.date,
+            description: "Interest expense from #{entity.full_name}"
+          )
+        end
+
+        before do
+          loan_payment.update!(transaction_id: interest_transaction.id)
+          allow(Transactions::Operations::Accounts::UpdateCalculateBalance).to receive(:new).and_call_original
+        end
+
+        it 'returns success without failing on unchanged transaction' do
+          result = operation.call(valid_params)
+
+          expect(result).to be_success
+        end
+      end
+
       context 'when loan type is borrowed' do
         it 'sets description to interest expense' do
           result = operation.call(valid_params)
