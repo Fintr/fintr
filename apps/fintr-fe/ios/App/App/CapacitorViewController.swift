@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import WebKit
 
 /// Root bridge controller: adjusts WKWebView frame so CSS safe-area and native insets do not double-count.
 /// Frame updates are deferred off the layout pass and skip no-op updates to avoid main-thread hangs
@@ -7,6 +8,7 @@ import Capacitor
 class CapacitorViewController: CAPBridgeViewController {
     private var hasAdjustedFrame = false
     private var observer: NSObjectProtocol?
+    private let connectionGate = FintrConnectionGate()
     private var lastAppliedTop: CGFloat?
     private var lastAppliedLeft: CGFloat?
     private var lastAppliedRight: CGFloat?
@@ -20,10 +22,24 @@ class CapacitorViewController: CAPBridgeViewController {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(FileSharePlugin())
         bridge?.registerPluginInstance(AppearancePlugin())
+        beginConnectivityGate()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        beginConnectivityGate()
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        view.backgroundColor = FintrLaunchColors.lightBackground
+
+        if let webView = webView as? WKWebView {
+            webView.isOpaque = true
+            webView.backgroundColor = FintrLaunchColors.lightBackground
+            webView.scrollView.backgroundColor = FintrLaunchColors.lightBackground
+        }
 
         observer = NotificationCenter.default.addObserver(
             forName: NSNotification.Name("CAPBridgeDidLoad"),
@@ -34,6 +50,10 @@ class CapacitorViewController: CAPBridgeViewController {
                 self?.setupWebViewPadding()
             }
         }
+    }
+
+    private func beginConnectivityGate() {
+        connectionGate.beginInitialGate(webView: webView as? WKWebView, bridge: bridge)
     }
 
     deinit {

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#151921" />
+    <meta name="color-scheme" content="dark" />
+    <title>Fintr — Offline</title>
+    <style>
+      :root {
+        --background: #151921;
+        --foreground: #f8fafc;
+        --muted: #94a3b8;
+        --card: #1c2230;
+        --border: #2a3142;
+        --icon-bg: rgba(10, 61, 98, 0.2);
+        --icon-color: #60a5fa;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: #151921;
+        color-scheme: dark;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      body {
+        display: flex;
+        min-height: 100vh;
+        min-height: 100dvh;
+        align-items: center;
+        justify-content: center;
+        padding:
+          max(24px, env(safe-area-inset-top))
+          max(20px, env(safe-area-inset-right))
+          max(24px, env(safe-area-inset-bottom))
+          max(20px, env(safe-area-inset-left));
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        background: var(--background);
+        color: var(--foreground);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .shell {
+        width: 100%;
+        max-width: 22rem;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 2rem;
+      }
+
+      .brand img {
+        display: block;
+        height: 8rem;
+        width: auto;
+      }
+
+      .brand-text {
+        display: none;
+        font-size: 7rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--foreground);
+      }
+
+      .brand-text.brand-text--fallback {
+        display: block;
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        background: var(--card);
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+      }
+
+      .icon-wrap {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 4rem;
+        height: 4rem;
+        margin-bottom: 1rem;
+        border-radius: 9999px;
+        background: var(--icon-bg);
+        color: var(--icon-color);
+      }
+
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+        line-height: 1.3;
+      }
+
+      p {
+        margin: 0;
+        font-size: 0.9375rem;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+
+      .hint {
+        margin-top: 1.25rem;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <div class="brand" aria-label="Fintr">
+        <img
+          src="/fintr-logo-white-transparent.svg"
+          alt=""
+          class="brand-img"
+          onerror="this.hidden=true;this.nextElementSibling.classList.add('brand-text--fallback')"
+        />
+        <span class="brand-text">Fintr</span>
+      </div>
+
+      <section class="card" aria-labelledby="offline-title">
+        <div class="icon-wrap" aria-hidden="true">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M12 20h.01" />
+            <path d="M8.5 16.429a5 5 0 0 1 7 0" />
+            <path d="M5 12.859a10 10 0 0 1 5.17-2.69" />
+            <path d="M19 12.859a10 10 0 0 0-2.007-1.523" />
+            <path d="M2 8.82a15 15 0 0 1 4.177-2.643" />
+            <path d="M22 8.82a15 15 0 0 0-11.288-3.764" />
+            <path d="m2 2 20 20" />
+          </svg>
+        </div>
+
+        <h1 id="offline-title">You're offline</h1>
+        <p>
+          We couldn't reach Fintr. Check your internet connection and try again.
+          Your data is safe — we'll pick up where you left off once you're back
+          online.
+        </p>
+        <p class="hint">Wi‑Fi or mobile data required to sync.</p>
+      </section>
+    </main>
+
+    <script>
+      (function forceOfflineDarkChrome() {
+        document.documentElement.style.backgroundColor = "#151921";
+        document.documentElement.style.colorScheme = "dark";
+
+        try {
+          if (
+            window.FintrAppearance
+            && typeof window.FintrAppearance.setTheme === "function"
+          ) {
+            window.FintrAppearance.setTheme("dark");
+          }
+        } catch (e) {
+          // Ignore bridge access errors.
+        }
+
+        try {
+          if (
+            window.webkit
+            && window.webkit.messageHandlers
+            && window.webkit.messageHandlers.fintrOfflineAppearance
+          ) {
+            window.webkit.messageHandlers.fintrOfflineAppearance.postMessage("dark");
+          }
+        } catch (e) {
+          // Ignore bridge access errors.
+        }
+      })();
+    </script>
+  </body>
+</html>

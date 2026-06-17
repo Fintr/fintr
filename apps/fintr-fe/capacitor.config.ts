@@ -55,16 +55,20 @@ const buildServerUrl = (baseUrl: string | undefined): string | undefined => {
 const serverConfig = serverUrl
   ? {
       url: buildServerUrl(serverUrl),
+      errorPath: 'offline.html',
       ...(serverUrl.startsWith("http://") && { cleartext: true }),
     }
-  : undefined;
+  : {
+      errorPath: 'offline.html',
+    };
 
 const config: CapacitorConfig = {
   appId: 'com.fintr.app',
   appName: 'Fintr',
   webDir: 'out',
   // Server URL: app loads web content from this URL (dev: localhost, prod: https://www.fintr.ai)
-  ...(serverConfig && { server: serverConfig }),
+  // errorPath: bundled offline.html shown when the remote server cannot be reached
+  server: serverConfig,
   // FintrNativeApp is appended to the WebView user-agent so that JavaScript running inside
   // the WebView (including code served from https://www.fintr.ai) can reliably detect it is
   // running inside the native Capacitor app, independently of the Capacitor bridge injection
@@ -73,6 +77,7 @@ const config: CapacitorConfig = {
     scheme: 'fintrapp',
     contentInset: 'never',
     appendUserAgent: 'FintrNativeApp',
+    backgroundColor: '#FAFAF8',
   },
   android: {
     // Same as iOS for consistent Origin (fintrapp://) and CORS.
@@ -83,7 +88,7 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
-      backgroundColor: "#151921",
+      backgroundColor: "#FAFAF8",
       showSpinner: false,
     },
     // Inject reliable safe-area CSS variables on Android WebView.

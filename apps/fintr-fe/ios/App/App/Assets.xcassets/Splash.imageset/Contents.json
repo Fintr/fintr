@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "splash-1024x1024.png",
+      "filename" : "fintr-logo@1x.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "splash-1024x1024@2x.png",
+      "filename" : "fintr-logo@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "splash-1024x1024@3x.png",
+      "filename" : "fintr-logo@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }
