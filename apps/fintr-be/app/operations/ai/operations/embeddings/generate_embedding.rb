@@ -45,10 +45,11 @@ module Ai
 
         def generate_embedding_vector(content:)
           client = OpenAI::Client.new(access_token: ENV["OPENAI_API_KEY"])
+          embedding_model = Rails.configuration.x.llm.embedding_model
 
           response = client.embeddings(
             parameters: {
-              model: "text-embedding-3-small",
+              model: embedding_model,
               input: content
             }
           )
@@ -84,7 +85,7 @@ module Ai
         def build_metadata(embeddable:)
           case embeddable
           when Transactions::Transaction
-            {
+            metadata = {
               embeddable_type: embeddable.class.name,
               transaction_type: embeddable.type,
               category: embeddable.category.name,
@@ -97,6 +98,8 @@ module Ai
                               end,
               date: embeddable.date.iso8601
             }
+            metadata[:subcategory] = embeddable.subcategory.name if embeddable.subcategory_id.present?
+            metadata
           when Transactions::Transfer
             {
               embeddable_type: embeddable.class.name,

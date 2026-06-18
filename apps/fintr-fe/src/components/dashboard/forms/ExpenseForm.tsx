@@ -889,43 +889,56 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
         {/* Date + Amount: on mobile stack (Date row, then Amount row); on desktop side-by-side */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormControlField label="Date" htmlFor="date">
-            <CalendarPopover
-              modal
-              open={datePickerOpen}
-              onOpenChange={setDatePickerOpen}
-              trigger={
-                <Button
+          <div className="min-w-0">
+            <FormControlField label="Date" htmlFor="date">
+              <CalendarPopover
+                modal
+                open={datePickerOpen}
+                onOpenChange={setDatePickerOpen}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "h-full w-full justify-start text-left font-normal text-sm",
+                      formControlInteractiveSurfaceClassName,
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                    {date ? (
+                      format(date, "MMM d, yyyy")
+                    ) : (
+                      <span className="text-sm">Pick a date</span>
+                    )}
+                  </Button>
+                }
+              >
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(d) => {
+                    setDate(d);
+                    if (d) setDatePickerOpen(false);
+                  }}
+                  autoFocus
+                  toDate={maxDate}
+                  toYear={currentYear}
+                  defaultMonth={date || new Date()}
+                />
+              </CalendarPopover>
+            </FormControlField>
+            {suggestedDate && date && suggestedDate.toDateString() !== date.toDateString() && (
+              <div className="mt-2 flex justify-end md:justify-start">
+                <button
                   type="button"
-                  variant="outline"
-                  className={cn(
-                    "h-full w-full justify-start text-left font-normal text-sm",
-                    formControlInteractiveSurfaceClassName,
-                  )}
+                  onClick={() => setDate(suggestedDate)}
+                  className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20 cursor-pointer"
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                  {date ? (
-                    format(date, "MMM d, yyyy")
-                  ) : (
-                    <span className="text-sm">Pick a date</span>
-                  )}
-                </Button>
-              }
-            >
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(d) => {
-                  setDate(d);
-                  if (d) setDatePickerOpen(false);
-                }}
-                autoFocus
-                toDate={maxDate}
-                toYear={currentYear}
-                defaultMonth={date || new Date()}
-              />
-            </CalendarPopover>
-          </FormControlField>
+                  Use AI date: {format(suggestedDate, "MMM d, yyyy")}
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="min-w-0">
           <AmountWithRatePicker
@@ -953,17 +966,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           />
           </div>
         </div>
-        {suggestedDate && date && suggestedDate.toDateString() !== date.toDateString() && (
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => setDate(suggestedDate)}
-              className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20 cursor-pointer"
-            >
-              Use AI date: {format(suggestedDate, "MMM d, yyyy")}
-            </button>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="min-w-0">

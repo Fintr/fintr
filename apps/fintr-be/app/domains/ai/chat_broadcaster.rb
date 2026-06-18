@@ -42,6 +42,22 @@ module Ai
       )
     end
 
+    # Broadcast an agent tool step while the agent loop runs
+    # @param conversation_id [String]
+    # @param step [Hash]
+    def agent_step(
+      conversation_id,
+      step
+    )
+      broadcast(
+        conversation_id,
+        {
+          status: "processing",
+          agent_step: step
+        },
+      )
+    end
+
     # Broadcast completion
     # @param conversation_id [String]
     # @param content [String]

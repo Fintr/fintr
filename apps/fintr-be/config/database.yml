@@ -34,6 +34,8 @@ development:
     pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i + 2 %>
     timeout: 5000
     checkout_timeout: 5
+    # Prevents Kerberos/GSS checks during forked Solid Queue worker connections (macOS segfault).
+    gssencmode: disable
   cache:
     <<: *primary_development
     database: fintr_development_cache

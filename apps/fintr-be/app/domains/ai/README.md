@@ -236,14 +236,37 @@ Environment variables:
 OPENROUTER_API_KEY=your_openrouter_key
 
 # Optional but recommended
-OPENAI_API_KEY=your_openai_key  # For fallback
+OPENAI_API_KEY=your_openai_key  # For fallback and embeddings
 APP_URL=https://your-app.com
+
+# Agentic RAG (RubyLLM tool loop)
+AI_AGENTIC_RAG_ENABLED=false          # Kill switch; set true to enable agentic pipeline
+LLM_DEFAULT_MODEL=google/gemini-2.5-flash-lite
+LLM_AGENT_MODEL=google/gemini-2.5-flash-lite  # Model for tool-calling agent loop
+LLM_AGENT_PROVIDER=openrouter         # openrouter or openai (auto-detects from keys)
+LLM_EMBEDDING_MODEL=text-embedding-3-small
+LLM_FAST_MODEL=openai/gpt-4o-mini
+LLM_REQUEST_TIMEOUT=120
+LLM_MAX_RETRIES=3
+LLM_TOOL_CONCURRENCY=true
 
 # Optional
 OPENROUTER_PROVIDER_ORDER=OpenAI,Anthropic,Google
 ENABLE_STRUCTURED_RESPONSES=true
 MAX_CHART_ITEMS=6
 ```
+
+### Agentic vs single-shot RAG
+
+When `AI_AGENTIC_RAG_ENABLED=true`, `AiChatJob` runs a RubyLLM agent that calls tools iteratively:
+
+- `search_transactions` — semantic vector search (reuses `VectorSearcher`)
+- `query_financial_data` — structured aggregates (reuses `DataRetriever`)
+- `fetch_transaction` — detail lookup by `[txn:N]` id
+- `list_accounts` — orient the agent to available accounts
+- `note` — reasoning trail stored in message metadata
+
+When disabled (default), the existing single-shot pipeline runs unchanged.
 
 ## Migration from Old Code
 

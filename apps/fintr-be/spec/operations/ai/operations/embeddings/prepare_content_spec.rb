@@ -8,63 +8,103 @@ RSpec.describe Ai::Operations::Embeddings::PrepareContent, type: :operation do
     let(:user) { create(:user) }
     let(:space) { create(:personal_space) }
     let(:account) { create(:account, space: space) }
-    let(:category) { create(:category, space: space) }
+    let(:category) { create(:category, :expense, space: space) }
 
     context "when embeddable is a Transactions::Expense" do
-      let(:transaction) { create(:expense_transaction, space: space, account: account, category: category, description: "Coffee purchase", amount: Money.from_amount(5.00, "PHP"), date: Date.parse("2024-01-15")) }
+      let(:transaction) do
+        create(
+          :expense_transaction,
+          space: space,
+          account: account,
+          category: category,
+          description: "Coffee purchase",
+          amount: Money.from_amount(5.00, "PHP"),
+          date: Date.parse("2024-01-15")
+        )
+      end
 
       it "builds transaction content with negative amount display" do
         result = operation.call(embeddable: transaction)
 
         expect(result).to be_success
         expect(result.value!).to eq(
-          "Transaction: Coffee purchase, " \
-          "Amount: -₱5.00, " \
-          "Category: #{category.name}, " \
-          "Account: #{account.name}, " \
-          "Date: January 15, 2024, " \
-          "Type: Transactions::Expense, " \
-          "Space: #{space.name}"
+          "Coffee purchase. -₱5.00 expense in #{category.name} via #{account.name} on January 15, 2024."
+        )
+      end
+    end
+
+    context "when embeddable is a Transactions::Expense with a subcategory" do
+      let(:subcategory) { create(:category, :subcategory, parent: category) }
+      let(:transaction) do
+        create(
+          :expense_transaction,
+          space: space,
+          account: account,
+          category: category,
+          subcategory: subcategory,
+          description: "Coffee purchase",
+          amount: Money.from_amount(5.00, "PHP"),
+          date: Date.parse("2024-01-15")
+        )
+      end
+
+      it "includes the subcategory in the category label" do
+        result = operation.call(embeddable: transaction)
+
+        expect(result).to be_success
+        expect(result.value!).to eq(
+          "Coffee purchase. -₱5.00 expense in #{category.name}, #{subcategory.name} " \
+          "via #{account.name} on January 15, 2024."
         )
       end
     end
 
     context "when embeddable is a Transactions::Income" do
-      let(:transaction) { create(:income_transaction, space: space, account: account, category: category, description: "Salary payment", amount: Money.from_amount(3000.00, "PHP"), date: Date.parse("2024-01-15")) }
+      let(:category) { create(:category, space: space) }
+      let(:transaction) do
+        create(
+          :income_transaction,
+          space: space,
+          account: account,
+          category: category,
+          description: "Salary payment",
+          amount: Money.from_amount(3000.00, "PHP"),
+          date: Date.parse("2024-01-15")
+        )
+      end
 
       it "builds transaction content with positive amount display" do
         result = operation.call(embeddable: transaction)
 
         expect(result).to be_success
         expect(result.value!).to eq(
-          "Transaction: Salary payment, " \
-          "Amount: +₱3,000.00, " \
-          "Category: #{category.name}, " \
-          "Account: #{account.name}, " \
-          "Date: January 15, 2024, " \
-          "Type: Transactions::Income, " \
-          "Space: #{space.name}"
+          "Salary payment. +₱3,000.00 income in #{category.name} via #{account.name} on January 15, 2024."
         )
       end
     end
 
     context "when embeddable is a Transactions::Transfer" do
       let(:to_account) { create(:account, space: space) }
-      let(:transfer) { create(:transfer, space: space, from_account: account, to_account: to_account, description: "Monthly savings transfer", amount: Money.from_amount(1000.00, "PHP"), transaction_cost: Money.from_amount(0.00, "PHP"), date: Date.parse("2024-01-15")) }
+      let(:transfer) do
+        create(
+          :transfer,
+          space: space,
+          from_account: account,
+          to_account: to_account,
+          description: "Monthly savings transfer",
+          amount: Money.from_amount(1000.00, "PHP"),
+          transaction_cost: Money.from_amount(0.00, "PHP"),
+          date: Date.parse("2024-01-15")
+        )
+      end
 
       it "builds transfer content" do
         result = operation.call(embeddable: transfer)
 
         expect(result).to be_success
         expect(result.value!).to eq(
-          "Transfer: Monthly savings transfer, " \
-          "Amount: ₱1,000.00, " \
-          "From Account: #{account.name}, " \
-          "To Account: #{to_account.name}, " \
-          "Transaction Cost: ₱0.00, " \
-          "Date: January 15, 2024, " \
-          "Type: Transfer, " \
-          "Space: #{space.name}"
+          "Monthly savings transfer. ₱1,000.00 transfer from #{account.name} to #{to_account.name} " \
+          "with ₱0.00 fee on January 15, 2024."
         )
       end
     end
