@@ -7,7 +7,6 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Filter } from "lucide-react";
 import {
@@ -29,24 +28,22 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { DeleteBudgetDialog } from "./delete-budget-dialog";
 import { useAtom, useAtomValue } from "jotai";
 import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
-import { dateFilterStartDateAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom, dateFilterTypeAtom, monthYearToDateRange } from "@/atoms/dateFilterAtoms";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { FilterOptionPills } from "@/components/ui/filter-option-pills";
+import { dateFilterStartDateAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom, dateFilterTypeAtom } from "@/atoms/dateFilterAtoms";
+import { DateFilterFields } from "@/components/ui/date-filter-fields";
 import {
   FilterSheet,
   filterActiveBadgeClassName,
   filterTriggerButtonClassName,
 } from "@/components/ui/filter-sheet";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { monthNames, getYearOptions, getCurrentMonthDates } from "@/utils/dateUtils";
+import { monthNames, getCurrentMonthDates } from "@/utils/dateUtils";
+import {
+  DateFilterPresetId,
+  DateFilterTypeSelector,
+  getPresetDateRange,
+  inferDateFilterTypeSelector,
+  matchPresetFromDateRange,
+} from "@/utils/dateFilterPresets";
+import { resolveQueryDateRange } from "@/utils/resolveQueryDateRange";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 
@@ -70,17 +67,18 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   const [monthYear] = useAtom(dateFilterMonthYearAtom);
   const [filterType] = useAtom(dateFilterTypeAtom);
   
-  const yearOptions = getYearOptions();
   const currentYear = new Date().getFullYear().toString();
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
     .toLowerCase();
-  const currentMonthNumber = new Date().getMonth() + 1;
   
-  // Local state for filter type selector (single month vs custom)
-  const [filterTypeSelector, setFilterTypeSelector] = useState<"single" | "custom">(() => {
-    return filterType === "single" ? "single" : "custom";
-  });
+  // Local state for filter type selector (single month vs predefined vs custom)
+  const [filterTypeSelector, setFilterTypeSelector] =
+    useState<DateFilterTypeSelector>(() =>
+      inferDateFilterTypeSelector(startDate, endDate),
+    );
+  const [selectedPreset, setSelectedPreset] =
+    useState<DateFilterPresetId>("this_week");
   
   // Local state for custom date range picker
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined } | undefined>(() => {
@@ -130,9 +128,15 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     if (filterType === "single") {
       setFilterTypeSelector("single");
     } else {
-      setFilterTypeSelector("custom");
+      const matchedPreset = matchPresetFromDateRange(startDate, endDate);
+      if (matchedPreset) {
+        setFilterTypeSelector("predefined");
+        setSelectedPreset(matchedPreset);
+      } else {
+        setFilterTypeSelector("custom");
+      }
     }
-  }, [filterType]);
+  }, [filterType, startDate, endDate]);
   
   // Format the selected month/year for display
   const getFormattedDate = () => {
@@ -247,10 +251,9 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   };
   
   // Handle filter type selector change
-  const handleFilterTypeChange = (value: "single" | "custom") => {
+  const handleFilterTypeChange = (value: DateFilterTypeSelector) => {
     setFilterTypeSelector(value);
     if (value === "single") {
-      // Reset local state to current month when switching to single
       const { firstDay, lastDay } = getCurrentMonthDates();
       const currentMonthNum = new Date().getMonth() + 1;
       const currentYearNum = new Date().getFullYear();
@@ -261,23 +264,35 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
         from: new Date(firstDay),
         to: new Date(lastDay),
       });
+    } else if (value === "predefined") {
+      const { startDate: presetStart, endDate: presetEnd } =
+        getPresetDateRange(selectedPreset);
+      setDateRange({
+        from: new Date(presetStart),
+        to: new Date(presetEnd),
+      });
+    } else if (appliedStartDate && appliedEndDate) {
+      setDateRange({
+        from: new Date(appliedStartDate),
+        to: new Date(appliedEndDate),
+      });
     } else {
-      // When switching to custom, initialize date range picker with current applied dates
-      // or leave it undefined if user wants to select fresh
-      if (appliedStartDate && appliedEndDate) {
-        setDateRange({
-          from: new Date(appliedStartDate),
-          to: new Date(appliedEndDate),
-        });
-      } else {
-        // If no applied dates, initialize with current month
-        const { firstDay, lastDay } = getCurrentMonthDates();
-        setDateRange({
-          from: new Date(firstDay),
-          to: new Date(lastDay),
-        });
-      }
+      const { firstDay, lastDay } = getCurrentMonthDates();
+      setDateRange({
+        from: new Date(firstDay),
+        to: new Date(lastDay),
+      });
     }
+  };
+
+  const handlePresetChange = (preset: DateFilterPresetId) => {
+    setSelectedPreset(preset);
+    const { startDate: presetStart, endDate: presetEnd } =
+      getPresetDateRange(preset);
+    setDateRange({
+      from: new Date(presetStart),
+      to: new Date(presetEnd),
+    });
   };
 
   useEffect(() => {
@@ -288,7 +303,18 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     const frame = requestAnimationFrame(() => {
       setSelectedMonth(monthYear.selectedMonth);
       setSelectedYear(monthYear.selectedYear);
-      setFilterTypeSelector(filterType === "single" ? "single" : "custom");
+      const inferredType = inferDateFilterTypeSelector(
+        appliedStartDate,
+        appliedEndDate,
+      );
+      setFilterTypeSelector(inferredType);
+      const matchedPreset = matchPresetFromDateRange(
+        appliedStartDate,
+        appliedEndDate,
+      );
+      if (matchedPreset) {
+        setSelectedPreset(matchedPreset);
+      }
 
       if (appliedStartDate && appliedEndDate) {
         setDateRange({
@@ -305,6 +331,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     const { firstDay, lastDay } = getCurrentMonthDates();
 
     setFilterTypeSelector("single");
+    setSelectedPreset("this_week");
     setSelectedMonth(currentMonth);
     setSelectedYear(currentYear);
     setDateRange({
@@ -320,36 +347,14 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
 
   // Handle applying filters
   const handleApplyFilters = () => {
-    let queryStartDate: string;
-    let queryEndDate: string;
-    
-    if (filterTypeSelector === "single") {
-      // For single month filter, use selectedMonth and selectedYear
-      const dateRange = monthYearToDateRange(
-        selectedMonth,
-        selectedYear,
-        selectedMonth,
-        selectedYear
-      );
-      queryStartDate = dateRange.startDate;
-      queryEndDate = dateRange.endDate;
-    } else {
-      // For custom range filter, use dateRange picker
-      if (dateRange?.from && dateRange?.to) {
-        queryStartDate = format(dateRange.from, "yyyy-MM-dd");
-        queryEndDate = format(dateRange.to, "yyyy-MM-dd");
-      } else if (dateRange?.from) {
-        // If only from is selected, use the same date for both
-        queryStartDate = format(dateRange.from, "yyyy-MM-dd");
-        queryEndDate = format(dateRange.from, "yyyy-MM-dd");
-      } else {
-        // Fallback to current dates if nothing is selected
-        const { firstDay, lastDay } = getCurrentMonthDates();
-        queryStartDate = firstDay;
-        queryEndDate = lastDay;
-      }
-    }
-    
+    const { queryStartDate, queryEndDate } = resolveQueryDateRange({
+      filterTypeSelector,
+      selectedMonth,
+      selectedYear,
+      selectedPreset,
+      dateRange,
+    });
+
     setAppliedStartDate(queryStartDate);
     setAppliedEndDate(queryEndDate);
     setStartDate(queryStartDate);
@@ -402,100 +407,20 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
           onApply={handleApplyFilters}
           applyDisabled={isLoading}
         >
-          <div className="space-y-2">
-            <Label>Filter Type</Label>
-            <FilterOptionPills
-              ariaLabel="Filter type"
-              value={filterTypeSelector}
-              onChange={(value) =>
-                handleFilterTypeChange(value as "single" | "custom")
-              }
-              options={[
-                { value: "single", label: "Single Month" },
-                { value: "custom", label: "Custom Range" },
-              ]}
-            />
-          </div>
-
-          {filterTypeSelector === "single" ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Month</Label>
-                <Select
-                  value={selectedMonth}
-                  onValueChange={handleMonthChange}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select month" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {monthNames
-                      .filter(
-                        (month, index) =>
-                          parseInt(selectedYear) !==
-                            new Date().getFullYear() ||
-                          index < currentMonthNumber,
-                      )
-                      .map((month, idx) => (
-                        <SelectItem
-                          key={`${month.value}-${idx}`}
-                          value={month.value}
-                        >
-                          {month.label}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Year</Label>
-                <Select value={selectedYear} onValueChange={handleYearChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {yearOptions.map((year, idx) => (
-                      <SelectItem key={`${year}-${idx}`} value={year}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label>Date Range</Label>
-              <DateRangePicker
-                open={dateRangePickerOpen}
-                onOpenChange={setDateRangePickerOpen}
-                selected={dateRange}
-                onSelect={handleDateRangeSelect}
-                trigger={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "MMM d, yyyy")} –{" "}
-                          {format(dateRange.to, "MMM d, yyyy")}
-                        </>
-                      ) : (
-                        format(dateRange.from, "MMM d, yyyy")
-                      )
-                    ) : (
-                      <span>Pick a date range</span>
-                    )}
-                  </Button>
-                }
-              />
-            </div>
-          )}
+          <DateFilterFields
+            filterTypeSelector={filterTypeSelector}
+            onFilterTypeChange={handleFilterTypeChange}
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            onMonthChange={handleMonthChange}
+            onYearChange={handleYearChange}
+            selectedPreset={selectedPreset}
+            onPresetChange={handlePresetChange}
+            dateRange={dateRange}
+            onDateRangeSelect={handleDateRangeSelect}
+            dateRangePickerOpen={dateRangePickerOpen}
+            onDateRangePickerOpenChange={setDateRangePickerOpen}
+          />
         </FilterSheet>
 
         {/* Budget Summary */}
