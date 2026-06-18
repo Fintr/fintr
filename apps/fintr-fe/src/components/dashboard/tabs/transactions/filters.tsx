@@ -1,26 +1,14 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { CategoryFilterComboBox } from "@/components/ui/category-filter-combobox";
-import { FilterOptionPills } from "@/components/ui/filter-option-pills";
+import { DateFilterFields } from "@/components/ui/date-filter-fields";
 import { FilterSheet } from "@/components/ui/filter-sheet";
 import { Input } from "@/components/ui/input";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { useAtom } from "jotai";
 import {
   getCurrentMonthDates,
-  getYearOptions,
   monthNames,
 } from "@/utils/dateUtils";
 import { useAtomValue } from "jotai";
@@ -33,8 +21,15 @@ import {
   dateFilterEndDateAtom,
   dateFilterMonthYearAtom,
   dateFilterTypeAtom,
-  monthYearToDateRange,
 } from "@/atoms/dateFilterAtoms";
+import {
+  DateFilterPresetId,
+  DateFilterTypeSelector,
+  getPresetDateRange,
+  inferDateFilterTypeSelector,
+  matchPresetFromDateRange,
+} from "@/utils/dateFilterPresets";
+import { resolveQueryDateRange } from "@/utils/resolveQueryDateRange";
 
 export interface FilterTypes {
   selectedMonth: string;
@@ -67,21 +62,22 @@ export function TransactionFiltersSheet({
 }: TransactionFiltersSheetProps) {
   const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
   const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
-  const yearOptions = getYearOptions();
   const currentYear = new Date().getFullYear().toString();
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
     .toLowerCase();
-  const currentMonthNumber = new Date().getMonth() + 1;
 
   const [startDate, setStartDate] = useAtom(dateFilterStartDateAtom);
   const [endDate, setEndDate] = useAtom(dateFilterEndDateAtom);
   const [monthYear] = useAtom(dateFilterMonthYearAtom);
   const [filterType] = useAtom(dateFilterTypeAtom);
 
-  const [filterTypeSelector, setFilterTypeSelector] = useState<"single" | "custom">(() => {
-    return filterType === "single" ? "single" : "custom";
-  });
+  const [filterTypeSelector, setFilterTypeSelector] =
+    useState<DateFilterTypeSelector>(() =>
+      inferDateFilterTypeSelector(startDate, endDate),
+    );
+  const [selectedPreset, setSelectedPreset] =
+    useState<DateFilterPresetId>("this_week");
 
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined } | undefined>(() => {
     if (startDate && endDate) {
@@ -107,9 +103,15 @@ export function TransactionFiltersSheet({
     if (filterType === "single") {
       setFilterTypeSelector("single");
     } else {
-      setFilterTypeSelector("custom");
+      const matchedPreset = matchPresetFromDateRange(startDate, endDate);
+      if (matchedPreset) {
+        setFilterTypeSelector("predefined");
+        setSelectedPreset(matchedPreset);
+      } else {
+        setFilterTypeSelector("custom");
+      }
     }
-  }, [filterType]);
+  }, [filterType, startDate, endDate]);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [appliedMinAmount, setAppliedMinAmount] = useState("");
@@ -141,7 +143,18 @@ export function TransactionFiltersSheet({
     }
 
     const frame = requestAnimationFrame(() => {
-      setFilterTypeSelector(filterType === "single" ? "single" : "custom");
+      const inferredType = inferDateFilterTypeSelector(
+        appliedFilters.queryStartDate,
+        appliedFilters.queryEndDate,
+      );
+      setFilterTypeSelector(inferredType);
+      const matchedPreset = matchPresetFromDateRange(
+        appliedFilters.queryStartDate,
+        appliedFilters.queryEndDate,
+      );
+      if (matchedPreset) {
+        setSelectedPreset(matchedPreset);
+      }
       setFilters({
         selectedMonth: appliedFilters.selectedMonth,
         selectedYear: appliedFilters.selectedYear,
@@ -196,7 +209,7 @@ export function TransactionFiltersSheet({
     }
   };
 
-  const handleFilterTypeChange = (value: "single" | "custom") => {
+  const handleFilterTypeChange = (value: DateFilterTypeSelector) => {
     setFilterTypeSelector(value);
     if (value === "single") {
       const { firstDay, lastDay } = getCurrentMonthDates();
@@ -215,6 +228,13 @@ export function TransactionFiltersSheet({
         from: new Date(firstDay),
         to: new Date(lastDay),
       });
+    } else if (value === "predefined") {
+      const { startDate: presetStart, endDate: presetEnd } =
+        getPresetDateRange(selectedPreset);
+      setDateRange({
+        from: new Date(presetStart),
+        to: new Date(presetEnd),
+      });
     } else if (startDate && endDate) {
       setDateRange({
         from: new Date(startDate),
@@ -223,30 +243,24 @@ export function TransactionFiltersSheet({
     }
   };
 
-  const buildAppliedFilters = (): FilterTypes => {
-    let queryStartDate: string;
-    let queryEndDate: string;
+  const handlePresetChange = (preset: DateFilterPresetId) => {
+    setSelectedPreset(preset);
+    const { startDate: presetStart, endDate: presetEnd } =
+      getPresetDateRange(preset);
+    setDateRange({
+      from: new Date(presetStart),
+      to: new Date(presetEnd),
+    });
+  };
 
-    if (filterTypeSelector === "single") {
-      const { startDate: newStartDate, endDate: newEndDate } = monthYearToDateRange(
-        filters.selectedMonth,
-        filters.selectedYear,
-        filters.selectedMonth,
-        filters.selectedYear,
-      );
-      queryStartDate = newStartDate;
-      queryEndDate = newEndDate;
-    } else if (dateRange?.from && dateRange?.to) {
-      queryStartDate = format(dateRange.from, "yyyy-MM-dd");
-      queryEndDate = format(dateRange.to, "yyyy-MM-dd");
-    } else if (dateRange?.from) {
-      queryStartDate = format(dateRange.from, "yyyy-MM-dd");
-      queryEndDate = format(dateRange.from, "yyyy-MM-dd");
-    } else {
-      const { firstDay, lastDay } = getCurrentMonthDates();
-      queryStartDate = firstDay;
-      queryEndDate = lastDay;
-    }
+  const buildAppliedFilters = (): FilterTypes => {
+    const { queryStartDate, queryEndDate } = resolveQueryDateRange({
+      filterTypeSelector,
+      selectedMonth: filters.selectedMonth,
+      selectedYear: filters.selectedYear,
+      selectedPreset,
+      dateRange,
+    });
 
     const categoryValue = selectedCategory || "all";
 
@@ -276,6 +290,7 @@ export function TransactionFiltersSheet({
     setStartDate(firstDay);
     setEndDate(lastDay);
     setFilterTypeSelector("single");
+    setSelectedPreset("this_week");
     setDateRange({
       from: new Date(firstDay),
       to: new Date(lastDay),
@@ -312,107 +327,20 @@ export function TransactionFiltersSheet({
       onReset={handleReset}
       onApply={handleApply}
     >
-      <div className="space-y-2">
-        <Label>Filter Type</Label>
-        <FilterOptionPills
-          ariaLabel="Filter type"
-          value={filterTypeSelector}
-          onChange={(value) =>
-            handleFilterTypeChange(value as "single" | "custom")
-          }
-          options={[
-            { value: "single", label: "Single Month" },
-            { value: "custom", label: "Custom Range" },
-          ]}
-        />
-      </div>
-
-      {filterTypeSelector === "single" ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Month</Label>
-            <Select
-              value={filters.selectedMonth}
-              onValueChange={(value) =>
-                handleFilterChange("selectedMonth", value)
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select month" />
-              </SelectTrigger>
-              <SelectContent>
-                {monthNames
-                  .filter(
-                    (month, index) =>
-                      parseInt(filters.selectedYear) !==
-                        new Date().getFullYear() ||
-                      index < currentMonthNumber,
-                  )
-                  .map((month, idx) => (
-                    <SelectItem
-                      key={`${month.value}-${idx}`}
-                      value={month.value}
-                    >
-                      {month.label}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Year</Label>
-            <Select
-              value={filters.selectedYear}
-              onValueChange={(value) =>
-                handleFilterChange("selectedYear", value)
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select year" />
-              </SelectTrigger>
-              <SelectContent>
-                {yearOptions.map((year, idx) => (
-                  <SelectItem key={`${year}-${idx}`} value={year}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <Label>Date Range</Label>
-          <DateRangePicker
-            open={dateRangePickerOpen}
-            onOpenChange={setDateRangePickerOpen}
-            selected={dateRange}
-            onSelect={handleDateRangeSelect}
-            trigger={
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-start text-left font-normal"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>
-                      {format(dateRange.from, "MMM d, yyyy")} –{" "}
-                      {format(dateRange.to, "MMM d, yyyy")}
-                    </>
-                  ) : (
-                    format(dateRange.from, "MMM d, yyyy")
-                  )
-                ) : (
-                  <span>Pick a date range</span>
-                )}
-              </Button>
-            }
-          />
-        </div>
-      )}
+      <DateFilterFields
+        filterTypeSelector={filterTypeSelector}
+        onFilterTypeChange={handleFilterTypeChange}
+        selectedMonth={filters.selectedMonth}
+        selectedYear={filters.selectedYear}
+        onMonthChange={(value) => handleFilterChange("selectedMonth", value)}
+        onYearChange={(value) => handleFilterChange("selectedYear", value)}
+        selectedPreset={selectedPreset}
+        onPresetChange={handlePresetChange}
+        dateRange={dateRange}
+        onDateRangeSelect={handleDateRangeSelect}
+        dateRangePickerOpen={dateRangePickerOpen}
+        onDateRangePickerOpenChange={setDateRangePickerOpen}
+      />
 
       <div className="space-y-2">
         <Label>Categories</Label>

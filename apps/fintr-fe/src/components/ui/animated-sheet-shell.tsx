@@ -8,9 +8,11 @@ import { cn } from "@/lib/utils"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen"
 import { usePlatformDetection } from "@/hooks/usePlatformDetection"
-import { calculateAndroidBottomInsetPx } from "@/lib/platform-detection"
 
 const DEFAULT_HISTORY_KEY = "__fintrAnimatedSheet"
+
+/** Matches {@link MobileStickyHeader} Android status-bar clearance. */
+const ANDROID_SHEET_TOP_PADDING_PX = 24
 
 const SHEET_BACKDROP_DURATION = 0.2
 const SHEET_PANEL_DURATION = 0.38
@@ -54,16 +56,16 @@ export function AnimatedSheetShell({
   const swipeActiveRef = React.useRef(false)
   const dragXRef = React.useRef(0)
   const reduceMotion = useReducedMotion()
-  const {
-    isAndroidNative,
-    isIOSNative,
-    safeAreaInsetBottom,
-    hasAndroid3ButtonNav,
-  } = usePlatformDetection()
+  const { isAndroidNative } = usePlatformDetection()
 
-  const androidPanelBottomInsetPx = isAndroidNative
-    ? calculateAndroidBottomInsetPx(safeAreaInsetBottom, hasAndroid3ButtonNav)
-    : 0
+  const panelSafeAreaStyle: React.CSSProperties | undefined = isAndroidNative
+    ? { paddingTop: ANDROID_SHEET_TOP_PADDING_PX }
+    : undefined
+
+  const nativeSheetSafeAreaClasses = cn(
+    "inset-y-0 h-full max-h-[100dvh]",
+    !isAndroidNative && "pt-safe-top",
+  )
 
   const panelOffScreen =
     side === "right" ? { x: "100%" } : { x: "-100%" }
@@ -321,26 +323,14 @@ export function AnimatedSheetShell({
           aria-labelledby={titleId}
           data-animated-sheet-panel=""
           className={cn(
-            "pointer-events-auto fixed z-[100] flex flex-col bg-background shadow-lg overscroll-contain",
+            "pointer-events-auto fixed z-[100] flex flex-col overflow-hidden bg-background shadow-lg overscroll-contain",
             side === "right" &&
-              cn(
-                "top-0 right-0 border-l",
-                !isAndroidNative && "inset-y-0 h-full max-h-[100dvh]",
-                isIOSNative && "pb-[env(safe-area-inset-bottom,0px)]",
-              ),
+              cn("top-0 right-0 border-l", nativeSheetSafeAreaClasses),
             side === "left" &&
-              cn(
-                "top-0 left-0 border-r",
-                !isAndroidNative && "inset-y-0 h-full max-h-[100dvh]",
-                isIOSNative && "pb-[env(safe-area-inset-bottom,0px)]",
-              ),
+              cn("top-0 left-0 border-r", nativeSheetSafeAreaClasses),
             panelClassName,
           )}
-          style={
-            androidPanelBottomInsetPx > 0
-              ? { bottom: androidPanelBottomInsetPx }
-              : undefined
-          }
+          style={panelSafeAreaStyle}
           initial={reduceMotion ? { opacity: 0 } : panelOffScreen}
           animate={
             reduceMotion
