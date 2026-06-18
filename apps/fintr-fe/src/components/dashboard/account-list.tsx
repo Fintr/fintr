@@ -381,9 +381,9 @@ const AccountList: React.FC<AccountListProps> = ({
             <Link
               key={account.id}
               href={`/dashboard/space_settings/accounts/detail?accountId=${encodeURIComponent(account.id)}`}
-              className="group flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-primary/40 hover:bg-muted/20 dark:border-0 dark:bg-card dark:shadow-sm dark:hover:bg-accent/50"
+              className="group flex items-start justify-between rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-primary/40 hover:bg-muted/20 dark:border-0 dark:bg-card dark:shadow-sm dark:hover:bg-accent/50"
             >
-              <div className="flex min-w-0 flex-1 items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
                 <div
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/60 text-muted-foreground"
                   aria-hidden
@@ -391,13 +391,15 @@ const AccountList: React.FC<AccountListProps> = ({
                   <AccountIcon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{account.name}</p>
-                  <p className="truncate text-sm text-gray-500 dark:text-muted-foreground">
+                  <p className="font-medium break-words leading-snug">
+                    {account.name}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-muted-foreground">
                     {getCategoryLabel(account.accountCategory)}
                   </p>
                 </div>
               </div>
-              <div className="ml-2 flex flex-shrink-0 items-center gap-2">
+              <div className="ml-2 flex flex-shrink-0 items-center gap-2 self-center">
                 <AnimatedCurrency
                   amount={balanceAmount}
                   currency={account.balanceCurrency ?? "PHP"}
