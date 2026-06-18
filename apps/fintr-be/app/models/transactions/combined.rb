@@ -6,7 +6,9 @@ module Transactions
       "Transactions::Transaction" => "transaction",
       "Transactions::Transfer" => "transfer",
       "Transactions::Expense" => "expense",
-      "Transactions::Income" => "income"
+      "Transactions::Income" => "income",
+      "Transactions::Loan" => "loan_disbursement",
+      "Transactions::LoanPayment" => "loan_payment",
     }.freeze
 
     self.table_name = "combined_transactions"
@@ -41,6 +43,8 @@ module Transactions
     end
 
     def in_series?
+      return false if %w[Transactions::Loan Transactions::LoanPayment].include?(transactable_type)
+
       transactable.in_series?
     end
   end

@@ -20,6 +20,8 @@ import { shouldShowV2Features } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { ACCOUNT_DETAIL_ACTIVITIES_KEY } from "@/hooks/async/useAccountDetailActivities";
+import { ACCOUNT_DETAIL_TRANSACTIONS_KEY } from "@/hooks/async/useAccountDetailTransactions";
 
 interface AddTransactionDialogProps {
   onAddTransaction?: (transaction: any) => void;
@@ -277,7 +279,17 @@ const AddTransactionDialog = ({
       queryKey: ["accounts"],
       refetchType: 'active',
     });
-    
+    queryClient.invalidateQueries({
+      queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
+      refetchType: "active",
+      exact: false,
+    });
+    queryClient.invalidateQueries({
+      queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
+      refetchType: "active",
+      exact: false,
+    });
+
     // Invalidate dashboard query to refresh financial summary
     queryClient.invalidateQueries({
       queryKey: ["dashboard"],

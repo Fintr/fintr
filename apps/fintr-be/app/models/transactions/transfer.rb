@@ -4,6 +4,7 @@ module Transactions
   class Transfer < ApplicationRecord
     include Repeatable
     include HasCurrencyConversion
+    include Versionable
 
     belongs_to :user, class_name: "Auth::User"
     belongs_to :space, class_name: "Spaces::Space"

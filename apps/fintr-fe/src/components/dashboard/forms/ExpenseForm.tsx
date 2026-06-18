@@ -246,9 +246,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             "",
         ).trim() || null
       : null;
-  /** Target for amount conversion preview + rate API: account currency, or edit fallback from saved booking. */
-  const amountPickerTargetCurrency =
-    accountLedgerCurrency ?? editBookedCurrency;
   const accountCurrencyDiffersFromSpace =
     accountLedgerCurrency != null &&
     accountLedgerCurrency !== effectiveSpaceCurrency;
@@ -301,6 +298,20 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       const exchangeRateSource = (source === "auto" || source === "recent" ? source : "manual") as "auto" | "manual" | "recent";
       return { originalCurrency, exchangeRate, exchangeRateSource };
     });
+
+  /** Target for amount conversion preview + rate API: account currency, edit fallback, or space when amount currency differs. */
+  const amountPickerTargetCurrency = useMemo(
+    () =>
+      accountLedgerCurrency ??
+      editBookedCurrency ??
+      (amountCurrency !== effectiveSpaceCurrency ? effectiveSpaceCurrency : null),
+    [
+      accountLedgerCurrency,
+      editBookedCurrency,
+      amountCurrency,
+      effectiveSpaceCurrency,
+    ],
+  );
 
   const defaultCurrencySetRef = useRef(false);
   useEffect(() => {

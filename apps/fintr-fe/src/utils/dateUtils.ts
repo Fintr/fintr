@@ -78,19 +78,15 @@ export function formatTransactionDayDividerDate(dateInput: Date | string): strin
   return `${datePart} – ${dayPart}`;
 }
 
-/** Compact row date, e.g. "6/11/2026 – Thursday". */
+/** Compact row date, e.g. "6/11/2026". */
 export function formatTransactionRowDate(dateInput: Date | string): string {
   const date = new Date(dateInput);
-  const datePart = date.toLocaleDateString(TRANSACTION_DATE_LOCALE, {
+
+  return date.toLocaleDateString(TRANSACTION_DATE_LOCALE, {
     month: "numeric",
     day: "numeric",
     year: "numeric",
   });
-  const dayPart = date.toLocaleDateString(TRANSACTION_DATE_LOCALE, {
-    weekday: "long",
-  });
-
-  return `${datePart} – ${dayPart}`;
 }
 
 /**

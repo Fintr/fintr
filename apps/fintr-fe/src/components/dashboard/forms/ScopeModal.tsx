@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Label } from "../../ui/label";
 import { AlertTriangle } from "lucide-react";
 import { UpdateScopeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
-import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { ActivitiesTypeEnum, CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export type UpdateScope = UpdateScopeEnum;
@@ -34,7 +34,7 @@ interface ScopeModalProps {
   hasScheduleChanges?: boolean;
   operationType: OperationType;
   inSeries?: boolean; // New prop to determine if transaction is part of a series
-  transactionType?: CombinedTransactionTypeEnum; // New prop to determine transaction type
+  transactionType?: CombinedTransactionTypeEnum | ActivitiesTypeEnum;
 }
 
 const ScopeModal: React.FC<ScopeModalProps> = ({
@@ -60,8 +60,16 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
   const showOnlyThisOnly = !inSeries;
 
   // Determine entity type strings for use throughout the component
-  const entityType = transactionType === CombinedTransactionTypeEnum.TRANSFER ? "Transfer" : "Transaction";
-  const entityTypeLower = transactionType === CombinedTransactionTypeEnum.TRANSFER ? "transfer" : "transaction";
+  const entityType =
+    transactionType === CombinedTransactionTypeEnum.TRANSFER ||
+    transactionType === ActivitiesTypeEnum.TRANSFER
+      ? "Transfer"
+      : "Transaction";
+  const entityTypeLower =
+    transactionType === CombinedTransactionTypeEnum.TRANSFER ||
+    transactionType === ActivitiesTypeEnum.TRANSFER
+      ? "transfer"
+      : "transaction";
 
   const handleConfirm = () => {
     onConfirm(selectedScope);

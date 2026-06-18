@@ -52,7 +52,16 @@ module Transactions
         return Success(relation) if category_filter_blank?(params)
 
         if params[:category_id].present?
-          relation = relation.where(category_id: params[:category_id])
+          relation = relation.where(
+            "combined_transactions.category_id = :category_id OR " \
+            "combined_transactions.transactable_type IN (:non_category_types)",
+            category_id: params[:category_id],
+            non_category_types: [
+              "Transactions::Transfer",
+              "Transactions::Loan",
+              "Transactions::LoanPayment",
+            ]
+          )
 
           if params[:subcategory_id].present?
             relation = relation.joins(

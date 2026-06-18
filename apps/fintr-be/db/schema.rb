@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_11_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_18_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -425,6 +425,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_130000) do
     t.index ["user_id"], name: "index_imports_on_user_id"
   end
 
+  create_table "loan_payment_versions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "cause"
+    t.datetime "created_at"
+    t.string "event", null: false
+    t.uuid "item_id", null: false
+    t.string "item_type", null: false
+    t.text "object"
+    t.text "object_changes"
+    t.string "operation"
+    t.uuid "space_id"
+    t.string "whodunnit"
+    t.index ["created_at"], name: "index_loan_payment_versions_on_created_at"
+    t.index ["item_type", "item_id"], name: "index_loan_payment_versions_on_item_type_and_item_id"
+    t.index ["space_id"], name: "index_loan_payment_versions_on_space_id"
+  end
+
   create_table "loan_payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "account_id", null: false
     t.boolean "adjusts_account_balance", default: true, null: false
@@ -443,6 +459,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_130000) do
     t.index ["loan_id", "date"], name: "index_loan_payments_on_loan_id_and_date"
     t.index ["loan_id"], name: "index_loan_payments_on_loan_id"
     t.index ["transaction_id"], name: "index_loan_payments_on_transaction_id"
+  end
+
+  create_table "loan_versions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "cause"
+    t.datetime "created_at"
+    t.string "event", null: false
+    t.uuid "item_id", null: false
+    t.string "item_type", null: false
+    t.text "object"
+    t.text "object_changes"
+    t.string "operation"
+    t.uuid "space_id"
+    t.string "whodunnit"
+    t.index ["created_at"], name: "index_loan_versions_on_created_at"
+    t.index ["item_type", "item_id"], name: "index_loan_versions_on_item_type_and_item_id"
+    t.index ["space_id"], name: "index_loan_versions_on_space_id"
   end
 
   create_table "loans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -645,6 +677,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_130000) do
     t.index ["space_id"], name: "index_transactions_categories_on_space_id"
   end
 
+  create_table "transfer_versions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "cause"
+    t.datetime "created_at"
+    t.string "event", null: false
+    t.uuid "item_id", null: false
+    t.string "item_type", null: false
+    t.text "object"
+    t.text "object_changes"
+    t.string "operation"
+    t.uuid "space_id"
+    t.string "whodunnit"
+    t.index ["created_at"], name: "index_transfer_versions_on_created_at"
+    t.index ["item_type", "item_id"], name: "index_transfer_versions_on_item_type_and_item_id"
+    t.index ["space_id"], name: "index_transfer_versions_on_space_id"
+  end
+
   create_table "transfers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.bigint "amount_cents", default: 0, null: false
     t.string "amount_currency", default: "PHP", null: false
@@ -783,6 +831,174 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_130000) do
   add_foreign_key "transfers", "users"
   add_foreign_key "user_activities", "users"
 
+  create_view "account_activities", sql_definition: <<-SQL
+      SELECT ((transactions.id)::text || ':tx'::text) AS id,
+      transactions.type AS activitable_type,
+      transactions.id AS activitable_id,
+      transactions.account_id,
+      transactions.space_id,
+      (transactions.date)::timestamp without time zone AS date,
+      transactions.amount_cents,
+      transactions.amount_currency,
+      transactions.description,
+          CASE
+              WHEN ((transactions.type)::text = 'Transactions::Income'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS to_account_name,
+          CASE
+              WHEN ((transactions.type)::text = 'Transactions::Expense'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS from_account_name,
+      transactions_categories.name AS category_name,
+      transactions_categories.id AS category_id,
+      transactions.balance_cents,
+      transactions.balance_currency,
+      NULL::bigint AS transaction_cost_cents,
+      NULL::character varying AS transaction_cost_currency,
+      transactions.balance_state,
+          CASE
+              WHEN ((transactions.type)::text = 'Transactions::Income'::text) THEN 'income'::text
+              WHEN ((transactions.type)::text = 'Transactions::Expense'::text) THEN 'expense'::text
+              ELSE NULL::text
+          END AS activity_kind,
+      NULL::uuid AS loan_id,
+      NULL::character varying AS entity_name,
+      NULL::character varying AS loan_type,
+      transactions.created_at
+     FROM (((transactions
+       JOIN accounts ON ((accounts.id = transactions.account_id)))
+       JOIN spaces ON ((spaces.id = transactions.space_id)))
+       JOIN transactions_categories ON ((transactions_categories.id = transactions.category_id)))
+    WHERE (((transactions.type)::text = ANY ((ARRAY['Transactions::Income'::character varying, 'Transactions::Expense'::character varying])::text[])) AND (NOT (EXISTS ( SELECT 1
+             FROM loan_payments
+            WHERE (loan_payments.transaction_id = transactions.id)))))
+  UNION ALL
+   SELECT ((transfers.id)::text || ':out'::text) AS id,
+      'Transactions::Transfer'::character varying AS activitable_type,
+      transfers.id AS activitable_id,
+      transfers.from_account_id AS account_id,
+      transfers.space_id,
+      (transfers.date)::timestamp without time zone AS date,
+      transfers.amount_cents,
+      transfers.amount_currency,
+      transfers.description,
+      to_accounts.name AS to_account_name,
+      from_accounts.name AS from_account_name,
+      NULL::character varying AS category_name,
+      NULL::uuid AS category_id,
+      NULL::bigint AS balance_cents,
+      NULL::character varying AS balance_currency,
+      transfers.transaction_cost_cents,
+      transfers.transaction_cost_currency,
+      transfers.balance_state,
+      'transfer'::text AS activity_kind,
+      NULL::uuid AS loan_id,
+      NULL::character varying AS entity_name,
+      NULL::character varying AS loan_type,
+      transfers.created_at
+     FROM (((transfers
+       JOIN spaces ON ((spaces.id = transfers.space_id)))
+       JOIN accounts to_accounts ON ((to_accounts.id = transfers.to_account_id)))
+       JOIN accounts from_accounts ON ((from_accounts.id = transfers.from_account_id)))
+  UNION ALL
+   SELECT ((transfers.id)::text || ':in'::text) AS id,
+      'Transactions::Transfer'::character varying AS activitable_type,
+      transfers.id AS activitable_id,
+      transfers.to_account_id AS account_id,
+      transfers.space_id,
+      (transfers.date)::timestamp without time zone AS date,
+      transfers.amount_cents,
+      transfers.amount_currency,
+      transfers.description,
+      to_accounts.name AS to_account_name,
+      from_accounts.name AS from_account_name,
+      NULL::character varying AS category_name,
+      NULL::uuid AS category_id,
+      NULL::bigint AS balance_cents,
+      NULL::character varying AS balance_currency,
+      transfers.transaction_cost_cents,
+      transfers.transaction_cost_currency,
+      transfers.balance_state,
+      'transfer'::text AS activity_kind,
+      NULL::uuid AS loan_id,
+      NULL::character varying AS entity_name,
+      NULL::character varying AS loan_type,
+      transfers.created_at
+     FROM (((transfers
+       JOIN spaces ON ((spaces.id = transfers.space_id)))
+       JOIN accounts to_accounts ON ((to_accounts.id = transfers.to_account_id)))
+       JOIN accounts from_accounts ON ((from_accounts.id = transfers.from_account_id)))
+  UNION ALL
+   SELECT ((loans.id)::text || ':loan'::text) AS id,
+      'Transactions::Loan'::character varying AS activitable_type,
+      loans.id AS activitable_id,
+      loans.account_id,
+      loans.space_id,
+      (loans.date)::timestamp without time zone AS date,
+      loans.principal_amount_cents AS amount_cents,
+      loans.currency AS amount_currency,
+      COALESCE(loans.description, ('Loan — '::text || (entities.full_name)::text)) AS description,
+          CASE
+              WHEN ((loans.loan_type)::text = 'borrowed'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS to_account_name,
+          CASE
+              WHEN ((loans.loan_type)::text = 'lent'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS from_account_name,
+      NULL::character varying AS category_name,
+      NULL::uuid AS category_id,
+      NULL::bigint AS balance_cents,
+      NULL::character varying AS balance_currency,
+      NULL::bigint AS transaction_cost_cents,
+      NULL::character varying AS transaction_cost_currency,
+      NULL::balance_state AS balance_state,
+      'loan_disbursement'::text AS activity_kind,
+      loans.id AS loan_id,
+      entities.full_name AS entity_name,
+      loans.loan_type,
+      loans.created_at
+     FROM (((loans
+       JOIN accounts ON ((accounts.id = loans.account_id)))
+       JOIN spaces ON ((spaces.id = loans.space_id)))
+       JOIN entities ON ((entities.id = loans.entity_id)))
+    WHERE (loans.adjusts_account_balance = true)
+  UNION ALL
+   SELECT ((loan_payments.id)::text || ':payment'::text) AS id,
+      'Transactions::LoanPayment'::character varying AS activitable_type,
+      loan_payments.id AS activitable_id,
+      loan_payments.account_id,
+      loans.space_id,
+      (loan_payments.date)::timestamp without time zone AS date,
+      loan_payments.total_payment_cents AS amount_cents,
+      loan_payments.currency AS amount_currency,
+      COALESCE(loan_payments.notes, ('Loan payment — '::text || (entities.full_name)::text)) AS description,
+          CASE
+              WHEN ((loans.loan_type)::text = 'lent'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS to_account_name,
+          CASE
+              WHEN ((loans.loan_type)::text = 'borrowed'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS from_account_name,
+      NULL::character varying AS category_name,
+      NULL::uuid AS category_id,
+      NULL::bigint AS balance_cents,
+      NULL::character varying AS balance_currency,
+      NULL::bigint AS transaction_cost_cents,
+      NULL::character varying AS transaction_cost_currency,
+      NULL::balance_state AS balance_state,
+      'loan_payment'::text AS activity_kind,
+      loans.id AS loan_id,
+      entities.full_name AS entity_name,
+      loans.loan_type,
+      loan_payments.created_at
+     FROM (((loan_payments
+       JOIN loans ON ((loans.id = loan_payments.loan_id)))
+       JOIN accounts ON ((accounts.id = loan_payments.account_id)))
+       JOIN entities ON ((entities.id = loans.entity_id)))
+    WHERE (loan_payments.adjusts_account_balance = true);
+  SQL
   create_view "combined_transactions", sql_definition: <<-SQL
       SELECT 'Transactions::Transfer'::character varying AS transactable_type,
       transfers.id AS transactable_id,
@@ -800,7 +1016,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_130000) do
       transfers.transaction_cost_cents,
       transfers.transaction_cost_currency,
       transfers.balance_state,
-      transfers.created_at
+      transfers.created_at,
+      NULL::uuid AS loan_id,
+      NULL::character varying AS entity_name,
+      NULL::character varying AS loan_type
      FROM (((transfers
        JOIN spaces ON ((spaces.id = transfers.space_id)))
        JOIN accounts to_accounts ON ((to_accounts.id = transfers.to_account_id)))
@@ -828,10 +1047,80 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_130000) do
       NULL::bigint AS transaction_cost_cents,
       NULL::character varying AS transaction_cost_currency,
       transactions.balance_state,
-      transactions.created_at
+      transactions.created_at,
+      NULL::uuid AS loan_id,
+      NULL::character varying AS entity_name,
+      NULL::character varying AS loan_type
      FROM (((transactions
        JOIN accounts ON ((accounts.id = transactions.account_id)))
        JOIN spaces ON ((spaces.id = transactions.space_id)))
-       JOIN transactions_categories ON ((transactions_categories.id = transactions.category_id)));
+       JOIN transactions_categories ON ((transactions_categories.id = transactions.category_id)))
+    WHERE (((transactions.type)::text = ANY ((ARRAY['Transactions::Income'::character varying, 'Transactions::Expense'::character varying])::text[])) AND (NOT (EXISTS ( SELECT 1
+             FROM loan_payments
+            WHERE (loan_payments.transaction_id = transactions.id)))))
+  UNION ALL
+   SELECT 'Transactions::Loan'::character varying AS transactable_type,
+      loans.id AS transactable_id,
+      loans.space_id,
+      loans.date,
+      loans.principal_amount_cents AS amount_cents,
+      loans.currency AS amount_currency,
+      COALESCE(loans.description, ('Loan — '::text || (entities.full_name)::text)) AS description,
+          CASE
+              WHEN ((loans.loan_type)::text = 'borrowed'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS to_account_name,
+          CASE
+              WHEN ((loans.loan_type)::text = 'lent'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS from_account_name,
+      NULL::bigint AS balance_cents,
+      NULL::character varying AS balance_currency,
+      NULL::character varying AS category_name,
+      NULL::uuid AS category_id,
+      NULL::bigint AS transaction_cost_cents,
+      NULL::character varying AS transaction_cost_currency,
+      NULL::balance_state AS balance_state,
+      loans.created_at,
+      loans.id AS loan_id,
+      entities.full_name AS entity_name,
+      loans.loan_type
+     FROM (((loans
+       JOIN accounts ON ((accounts.id = loans.account_id)))
+       JOIN spaces ON ((spaces.id = loans.space_id)))
+       JOIN entities ON ((entities.id = loans.entity_id)))
+    WHERE (loans.adjusts_account_balance = true)
+  UNION ALL
+   SELECT 'Transactions::LoanPayment'::character varying AS transactable_type,
+      loan_payments.id AS transactable_id,
+      loans.space_id,
+      loan_payments.date,
+      loan_payments.total_payment_cents AS amount_cents,
+      loan_payments.currency AS amount_currency,
+      COALESCE(loan_payments.notes, ('Loan payment — '::text || (entities.full_name)::text)) AS description,
+          CASE
+              WHEN ((loans.loan_type)::text = 'lent'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS to_account_name,
+          CASE
+              WHEN ((loans.loan_type)::text = 'borrowed'::text) THEN accounts.name
+              ELSE NULL::character varying
+          END AS from_account_name,
+      NULL::bigint AS balance_cents,
+      NULL::character varying AS balance_currency,
+      NULL::character varying AS category_name,
+      NULL::uuid AS category_id,
+      NULL::bigint AS transaction_cost_cents,
+      NULL::character varying AS transaction_cost_currency,
+      NULL::balance_state AS balance_state,
+      loan_payments.created_at,
+      loans.id AS loan_id,
+      entities.full_name AS entity_name,
+      loans.loan_type
+     FROM (((loan_payments
+       JOIN loans ON ((loans.id = loan_payments.loan_id)))
+       JOIN accounts ON ((accounts.id = loan_payments.account_id)))
+       JOIN entities ON ((entities.id = loans.entity_id)))
+    WHERE (loan_payments.adjusts_account_balance = true);
   SQL
 end

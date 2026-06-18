@@ -218,8 +218,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             "",
         ).trim() || null
       : null;
-  const amountPickerTargetCurrency =
-    accountLedgerCurrency ?? editBookedCurrency;
   const accountCurrencyDiffersFromSpace =
     accountLedgerCurrency != null &&
     accountLedgerCurrency !== effectiveSpaceCurrency;
@@ -272,6 +270,19 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       const exchangeRateSource = (source === "auto" || source === "recent" ? source : "manual") as "auto" | "manual" | "recent";
       return { originalCurrency, exchangeRate, exchangeRateSource };
     });
+
+  const amountPickerTargetCurrency = useMemo(
+    () =>
+      accountLedgerCurrency ??
+      editBookedCurrency ??
+      (amountCurrency !== effectiveSpaceCurrency ? effectiveSpaceCurrency : null),
+    [
+      accountLedgerCurrency,
+      editBookedCurrency,
+      amountCurrency,
+      effectiveSpaceCurrency,
+    ],
+  );
 
   const defaultCurrencySetRef = useRef(false);
   useEffect(() => {

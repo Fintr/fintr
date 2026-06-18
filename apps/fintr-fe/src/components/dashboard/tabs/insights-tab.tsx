@@ -70,7 +70,8 @@ import {
 import { getCurrentMonthDates, monthNames } from "@/utils/dateUtils";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { HealthScoreFactorRow } from "@/components/dashboard/insights/health-score-factor-row";
-import AccountBreakdownComponent from "@/components/dashboard/account-breakdown";
+// @ai-context INSIGHTS_ACCOUNT_BREAKDOWN_CARD — hidden from Insights tab; restore block below to re-show.
+// import AccountBreakdownComponent from "@/components/dashboard/account-breakdown";
 import {
   dateFilterStartDateAtom,
   dateFilterEndDateAtom,
@@ -303,10 +304,10 @@ const InsightsTab = () => {
     expenseBreakdown,
     monthlySpending,
     weeklySpending,
-    accountBreakdown,
+    // accountBreakdown,
     isLoading,
     isError,
-    isAccountLoading,
+    // isAccountLoading,
     isChartsLoading,
     refetch,
   } = useInsightsQueries(getInsightsParams);
@@ -317,7 +318,7 @@ const InsightsTab = () => {
     expenseBreakdown,
     monthlySpending,
     weeklySpending,
-    accountBreakdown,
+    // accountBreakdown,
   };
 
   // Calculate Y-axis domain for bar chart with padding
@@ -1135,6 +1136,8 @@ const InsightsTab = () => {
           </CardContent>
         </Card>
 
+        {/* @ai-context INSIGHTS_ACCOUNT_BREAKDOWN_CARD — Account Breakdown + per-account recent transactions (see account-breakdown.tsx) */}
+        {/*
         <AccountBreakdownComponent
           data={insightsData?.accountBreakdown || { totalBalance: 0, breakdown: [] }}
           isLoading={isAccountLoading}
@@ -1142,6 +1145,7 @@ const InsightsTab = () => {
           transactionsStartDate={startDate}
           transactionsEndDate={endDate}
         />
+        */}
 
         {showV2Features && (
           <Card className="mt-6 border-0 shadow-sm">

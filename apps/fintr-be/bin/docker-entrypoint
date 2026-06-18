@@ -12,6 +12,7 @@ if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
   # DISABLE_DATABASE_ENVIRONMENT_CHECK=1 ./bin/rails db:drop:cache # Apply this first as we're not sure of our migrations
   
   ./bin/rails db:migrate
+  ./bin/rails db:verify_uuid_primary_keys
   # ./bin/rails db:create:primary
   # ./bin/rails db:create:cache
   # ./bin/rails db:migrate:primary

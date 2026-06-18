@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 const searchFieldInputClassName = cn(
-  "h-auto min-h-9 w-full max-w-none border-0 bg-white p-2 pl-10 shadow-sm dark:bg-card",
+  "h-10 min-h-10 w-full max-w-none border-0 bg-white px-3 py-2 pl-10 shadow-sm dark:bg-card",
   "focus-visible:border-transparent focus-visible:ring-0",
 );
 

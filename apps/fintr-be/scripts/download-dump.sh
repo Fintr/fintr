@@ -710,7 +710,7 @@ else
   echo "   1. Check the import log: $IMPORT_LOG"
   echo "   2. Verify the dump file has data: grep -c 'INSERT\\|COPY' $LOCAL_DUMP_PATH"
   echo "   3. Check all schemas: docker exec $LOCAL_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -c '\\dn'"
-  echo "   4. You may need to run migrations: rails db:migrate"
+  echo "   4. You may need to run migrations: rails db:migrate (restores UUID primary keys if the dump omitted constraints)"
 fi
 
 echo ""

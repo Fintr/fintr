@@ -23,7 +23,7 @@ const AddAccountSheet: React.FC<AddAccountSheetProps> = ({
 
   return (
     <>
-      <div className="flex w-full justify-end sm:w-auto sm:shrink-0">
+      <div className="flex shrink-0 justify-end">
         <Button
           type="button"
           size="lg"

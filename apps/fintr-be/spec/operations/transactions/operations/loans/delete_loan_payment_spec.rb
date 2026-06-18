@@ -92,13 +92,10 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoanPayment do
 
     let(:params) { valid_params }
     let(:reverse_balance_operation) { instance_double(Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment) }
-    let(:delete_transaction_operation) { instance_double(Transactions::Operations::DeleteThisTransaction) }
 
     before do
       allow(Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment).to receive(:new).and_return(reverse_balance_operation)
       allow(reverse_balance_operation).to receive(:call).and_return(Success(account))
-      allow(Transactions::Operations::DeleteThisTransaction).to receive(:new).and_return(delete_transaction_operation)
-      allow(delete_transaction_operation).to receive(:call).and_return(Success(nil))
     end
 
     context 'with valid parameters' do
@@ -133,39 +130,6 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoanPayment do
         # Balance should change after payment deletion
         expect(loan.outstanding_balance).not_to eq(initial_outstanding)
       end
-
-      context 'when loan payment has a transaction_record' do
-        let!(:interest_transaction) do
-          create(
-            :expense_transaction,
-            user: user,
-            space: space,
-            account: account,
-            balance_state: 'calculated'
-          )
-        end
-
-        before do
-          loan_payment.update!(transaction_id: interest_transaction.id)
-        end
-
-        it 'deletes the interest transaction' do
-          call_operation
-          expect(Transactions::Operations::DeleteThisTransaction).to have_received(:new)
-          expect(delete_transaction_operation).to have_received(:call).with(transaction: interest_transaction)
-        end
-      end
-
-      context 'when loan payment does not have a transaction_record' do
-        before do
-          loan_payment.update!(transaction_id: nil)
-        end
-
-        it 'does not attempt to delete a transaction' do
-          call_operation
-          expect(delete_transaction_operation).not_to have_received(:call)
-        end
-      end
     end
 
     describe 'Validation Failures' do
@@ -174,7 +138,6 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoanPayment do
 
         before do
           allow(Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment).to receive(:new)
-          allow(Transactions::Operations::DeleteThisTransaction).to receive(:new)
         end
 
         it { is_expected.to be_failure }
@@ -189,7 +152,6 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoanPayment do
 
         before do
           allow(Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment).to receive(:new)
-          allow(Transactions::Operations::DeleteThisTransaction).to receive(:new)
         end
 
         it { is_expected.to be_failure }
@@ -204,7 +166,6 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoanPayment do
 
         before do
           allow(Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment).to receive(:new)
-          allow(Transactions::Operations::DeleteThisTransaction).to receive(:new)
         end
 
         it { is_expected.to be_failure }
@@ -221,7 +182,6 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoanPayment do
 
         before do
           allow(Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment).to receive(:new)
-          allow(Transactions::Operations::DeleteThisTransaction).to receive(:new)
         end
 
         it { is_expected.to be_failure }
@@ -253,7 +213,6 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoanPayment do
 
         before do
           allow(Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment).to receive(:new)
-          allow(Transactions::Operations::DeleteThisTransaction).to receive(:new)
         end
 
         it { is_expected.to be_failure }
@@ -272,28 +231,6 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoanPayment do
 
         it 'returns the failure from ReverseAccountBalanceForLoanPayment' do
           expect(call_operation.failure).to include(account_name: 'failed to update')
-        end
-      end
-
-      context 'when delete_interest_transaction fails' do
-        let!(:interest_transaction) do
-          create(
-            :expense_transaction,
-            user: user,
-            space: space,
-            account: account
-          )
-        end
-
-        before do
-          loan_payment.update!(transaction_id: interest_transaction.id)
-          allow(delete_transaction_operation).to receive(:call).and_return(Failure(transaction: ['delete failed']))
-        end
-
-        it { is_expected.to be_failure }
-
-        it 'returns the failure from DeleteThisTransaction' do
-          expect(call_operation.failure).to include(transaction: ['delete failed'])
         end
       end
 

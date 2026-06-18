@@ -192,7 +192,7 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
         </div>
 
         {subcategories.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center border rounded-lg bg-muted/20">
+          <p className="text-sm text-muted-foreground py-6 text-center border rounded-lg bg-muted/20">
             No subcategories yet. Add one to organize transactions under{" "}
             {parent.name}.
           </p>

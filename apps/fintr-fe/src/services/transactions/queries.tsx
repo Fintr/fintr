@@ -29,6 +29,7 @@ function omitUndefinedParams(
 
 export type FetchAccountTransactionsPageParams = {
   spaceCode: string;
+  accountId?: string;
   accountName: string;
   startDate: string;
   endDate: string;
@@ -45,6 +46,7 @@ export const fetchAccountTransactionsPage = async (
 ): Promise<TransactionsPage> => {
   const {
     spaceCode,
+    accountId,
     accountName,
     startDate,
     endDate,
@@ -62,6 +64,7 @@ export const fetchAccountTransactionsPage = async (
   const requestParams = omitUndefinedParams({
     spaceCode,
     accountName,
+    ...(accountId ? { accountId } : {}),
     startDate,
     endDate,
     searchQuery,

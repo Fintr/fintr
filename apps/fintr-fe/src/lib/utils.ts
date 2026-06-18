@@ -245,6 +245,16 @@ export function getProgressColor(progress: number, type: "bg" | "font" | "all" =
   return "bg-red-900 text-red-900 dark:bg-red-700 dark:!text-red-700";
 }
 
+export function getOverBudgetOverflowProgressColor(
+  type: "bg" | "font" = "bg",
+): string {
+  if (type === "bg") {
+    return "bg-red-400 dark:bg-red-400";
+  }
+
+  return "text-red-400 dark:text-red-400";
+}
+
 export function getNumberColor(value: number): string {
   if (value < 0) {
     return "text-red-900"; // negative values

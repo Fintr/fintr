@@ -21,6 +21,7 @@ import { isAdminAtom } from "@/atoms/dashboardAtoms";
 import { useQueryClient } from "@tanstack/react-query";
 import { resetGlobalAuthLock } from "@/components/deep-link-handler";
 import { ThemeToggleCard } from "@/components/settings/theme-toggle-card";
+import { ProfileSunAvatar } from "@/components/settings/profile-sun-avatar";
 import { cn } from "@/lib/utils";
 
 const settingsMenuCardClassName = cn(
@@ -160,34 +161,25 @@ export default function AppSettingsPage() {
     <div className="min-h-screen bg-background px-4 py-2 pb-24 md:pb-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-            Hi {user?.name || "User"}
+        <div className="mb-6 flex flex-col items-center px-4 py-8 text-center">
+          <ProfileSunAvatar
+            src={user?.picture}
+            name={user?.name}
+            alt={user?.name ? `${user.name}'s profile photo` : "Profile photo"}
+          />
+
+          <h1 className="text-2xl font-bold text-primary md:text-3xl">
+            {user?.name || "User"}
           </h1>
-          
-          {/* Login Method and Email */}
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
               {loginProvider}
             </span>
-            <span className="text-primary/70 text-sm break-all">
+            <span className="break-all text-sm text-primary/70">
               {user?.email}
             </span>
           </div>
-          
-          <p className="text-primary/70 text-sm md:text-base">
-            Manage your settings and preferences
-          </p>
-        </div>
-
-        {/* Space Management Section */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-primary mb-4">Space Management</h2>
-          <SpaceSwitcher 
-            showSpaceSwitcher={true} 
-            isMobile={false}
-            defaultExpanded={true}
-          />
         </div>
 
         {/* Menu Sections */}
@@ -222,6 +214,16 @@ export default function AppSettingsPage() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Space Management Section */}
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold text-primary mb-4">Space Management</h2>
+          <SpaceSwitcher 
+            showSpaceSwitcher={true} 
+            isMobile={false}
+            defaultExpanded={true}
+          />
         </div>
 
         {/* Log Out Section */}

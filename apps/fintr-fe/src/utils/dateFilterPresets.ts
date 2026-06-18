@@ -22,7 +22,11 @@ export type DateFilterMainPresetId =
   | "this_year"
   | "last_year";
 
-export type DateFilterRelativePresetId = "a_month_ago" | "two_months_ago";
+export type DateFilterRelativePresetId =
+  | "a_week_ago"
+  | "two_weeks_ago"
+  | "a_month_ago"
+  | "two_months_ago";
 
 export type DateFilterPresetId =
   | DateFilterMainPresetId
@@ -50,6 +54,8 @@ export const DATE_FILTER_PRESETS: DateFilterPreset[] = [
 ];
 
 export const DATE_FILTER_RELATIVE_PRESETS: DateFilterPreset[] = [
+  { id: "a_week_ago", label: "A Week Ago" },
+  { id: "two_weeks_ago", label: "2 Weeks Ago" },
   { id: "a_month_ago", label: "A Month Ago" },
   { id: "two_months_ago", label: "2 Months Ago" },
 ];
@@ -125,6 +131,16 @@ export const getPresetDateRange = (
         endDate: formatYmd(endOfYear(previousYear)),
       };
     }
+    case "a_week_ago":
+      return {
+        startDate: formatYmd(subWeeks(referenceDate, 1)),
+        endDate: formatYmd(referenceDate),
+      };
+    case "two_weeks_ago":
+      return {
+        startDate: formatYmd(subWeeks(referenceDate, 2)),
+        endDate: formatYmd(referenceDate),
+      };
     case "a_month_ago":
       return {
         startDate: formatYmd(subMonths(referenceDate, 1)),

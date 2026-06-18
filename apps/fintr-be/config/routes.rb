@@ -99,6 +99,7 @@ Rails.application.routes.draw do
         resources :accounts, only: %i[index create update destroy] do
           member do
             post "adjust_balance"
+            get "activities"
           end
         end
         resources :transfers, only: %i[create show update destroy]

@@ -2,6 +2,8 @@
 
 module Transactions
   class Loan < ApplicationRecord
+    include Versionable
+
     belongs_to :user, class_name: "Auth::User"
     belongs_to :space, class_name: "Spaces::Space"
     belongs_to :entity, class_name: "Entities::Entity"
@@ -83,6 +85,30 @@ module Transactions
       when "lent"
         outstanding_balance   # Positive for asset
       end
+    end
+
+    def amount
+      principal_amount
+    end
+
+    def amount_currency
+      currency
+    end
+
+    def in_series?
+      false
+    end
+
+    def amount_in_space_currency
+      @amount_in_space_currency ||= ::ExchangeRates::Operations::AmountInSpaceForTransactable.display_payload(
+        transactable: self,
+      )
+    end
+
+    def amount_numeric_for_space_total
+      @amount_numeric_for_space_total ||= ::ExchangeRates::Operations::AmountInSpaceForTransactable.totals_amount_decimal(
+        transactable: self,
+      )
     end
 
     # Income method - interest income for lent loans

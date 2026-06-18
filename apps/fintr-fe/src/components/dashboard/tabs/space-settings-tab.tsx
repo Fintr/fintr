@@ -30,7 +30,6 @@ import CategoryToggle, { CategoryToggleType } from "../category-toggle";
 import CategoryListCard from "../category-list-card";
 import CategoryList from "../category-list";
 import AccountList from "../account-list";
-import AddAccountSheet from "../add-account-sheet";
 import CategoryFormDialog from "../category-form-dialog";
 import DeleteCategoryDialog from "../delete-category-dialog";
 import { ImportWizard } from "@/components/import/import-wizard";
@@ -621,7 +620,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
           {getHeaderDescription()}
         </CardDescription>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent className="px-2 sm:px-8">
         {/* Main Navigation Buttons */}
         {!hideTabs && (
           <Tabs
@@ -752,16 +751,15 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
 
         {/* Accounts Tab Content */}
         {activeMainTab === "accounts" && (
-          <>
-            <h3 className="hidden md:block text-2xl font-bold mb-4 text-primary">
-              Account Management
-            </h3>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-2">
+              <h3 className="text-2xl font-bold text-primary md:hidden">
+                Accounts
+              </h3>
               <p className="text-gray-500">
                 Manage your financial accounts, track balances, and organize
                 your money
               </p>
-              <AddAccountSheet />
             </div>
 
             <div className="w-full">
@@ -773,10 +771,6 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                 <p className="bg-red-800 text-center py-4">
                   Error loading accounts. Please try again.
                 </p>
-              ) : accounts.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">
-                  No accounts found. Add your first account to get started.
-                </p>
               ) : (
                 <AccountList
                   accounts={accounts}
@@ -784,7 +778,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                 />
               )}
             </div>
-          </>
+          </div>
         )}
 
         {/* Import & Export Tab Content */}

@@ -131,7 +131,13 @@ module Budgets
                   scope.where(subcategory_id: budget.subcategory_id)
         end
 
-        scope.sum(:amount_cents).to_d / 100
+        transaction_spent = scope.sum(:amount_cents).to_d / 100
+        transaction_spent + loan_interest_spent_for_budget(
+          budget:,
+          space_id:,
+          start_date:,
+          end_date:,
+        )
       end
 
       def parent_spent(category_id:, space_id:, start_date:, end_date:)
@@ -193,6 +199,20 @@ module Budgets
           .calculated
           .where(space_id:)
           .where(date: start_date..end_date)
+      end
+
+      def loan_interest_spent_for_budget(budget:, space_id:, start_date:, end_date:)
+        category = budget.category
+        return 0.to_d unless category.name.in?(%w[Interest Expense Interest Income])
+
+        loan_type = category.name == "Interest Expense" ? "borrowed" : "lent"
+
+        Transactions::LoanPayment
+          .joins(:loan)
+          .where(loans: { space_id:, loan_type: })
+          .where(date: start_date..end_date)
+          .sum(:interest_payment_cents)
+          .to_d / 100
       end
     end
   end

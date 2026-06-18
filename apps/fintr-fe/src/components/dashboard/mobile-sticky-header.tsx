@@ -75,6 +75,7 @@ export const shouldShowImmediateBackButton = (pathname: string): boolean => {
     "/dashboard/space_settings/accounts",
     "/dashboard/space_settings/import",
     "/dashboard/space_settings/subscriptions",
+    "/dashboard/loans",
   ];
 
   return immediateBackPrefixes.some((prefix) => pathname.startsWith(prefix));

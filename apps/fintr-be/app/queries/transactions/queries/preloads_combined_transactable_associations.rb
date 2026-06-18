@@ -20,6 +20,9 @@ module Transactions
             :space,
             :category,
             :subcategory,
+            :account,
+            :entity,
+            { loan: :entity },
             { files_attachments: :blob }
           ]
         )

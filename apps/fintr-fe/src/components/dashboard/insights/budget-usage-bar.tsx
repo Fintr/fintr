@@ -1,7 +1,12 @@
 "use client";
 
 import { Progress } from "@/components/ui/progress";
-import { cn, getProgressColor } from "@/lib/utils";
+import {
+  cn,
+  getOverBudgetOverflowProgressColor,
+  getProgressColor,
+} from "@/lib/utils";
+import { getBudgetOverflowPercentage } from "@/lib/budgetUsage";
 
 export interface BudgetUsageBarProps {
   usagePercentage: number;
@@ -10,8 +15,61 @@ export interface BudgetUsageBarProps {
   overAmountLabel?: string;
 }
 
+export interface BudgetProgressProps {
+  usagePercentage: number;
+  className?: string;
+}
+
 export const budgetUsageProgressValue = (usagePercentage: number) =>
   Math.min(Math.max(usagePercentage, 0), 100);
+
+export const BudgetProgress = ({
+  usagePercentage,
+  className,
+}: BudgetProgressProps) => {
+  const overflowPercentage = getBudgetOverflowPercentage(usagePercentage);
+  const isOverBudget = usagePercentage > 100;
+
+  if (!isOverBudget) {
+    return (
+      <Progress
+        value={budgetUsageProgressValue(usagePercentage)}
+        className={className}
+        indicatorClassName={getProgressColor(usagePercentage, "bg")}
+      />
+    );
+  }
+
+  const basePercentage = 100 - overflowPercentage;
+
+  return (
+    <div
+      className={cn(
+        "relative w-full overflow-hidden rounded-full",
+        className,
+      )}
+    >
+      <div className="flex h-full w-full">
+        {overflowPercentage > 0 ? (
+          <div
+            className={cn(
+              "h-full transition-all",
+              getProgressColor(usagePercentage, "bg"),
+            )}
+            style={{ width: `${overflowPercentage}%` }}
+          />
+        ) : null}
+        <div
+          className={cn(
+            "h-full transition-all",
+            getOverBudgetOverflowProgressColor("bg"),
+          )}
+          style={{ width: `${basePercentage}%` }}
+        />
+      </div>
+    </div>
+  );
+};
 
 export const BudgetUsageBar = ({
   usagePercentage,
@@ -26,10 +84,9 @@ export const BudgetUsageBar = ({
 
   return (
     <div className={cn("space-y-1", className)}>
-      <Progress
-        value={budgetUsageProgressValue(usagePercentage)}
-        className="h-2 bg-gray-200 dark:bg-muted"
-        indicatorClassName={getProgressColor(usagePercentage, "bg")}
+      <BudgetProgress
+        usagePercentage={usagePercentage}
+        className="h-2 bg-gray-200 dark:bg-muted/40"
       />
       {showCaption && (
         <p className="text-xs text-primary/60">

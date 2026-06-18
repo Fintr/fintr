@@ -52,7 +52,6 @@ module Transactions
             _                   = step update_account_balance(loan_payment:, loan:, account:)
             loan_payment        = step save_loan_payment(loan_payment:)
             _                   = step process_loan_payment(loan_payment:)
-            _                   = step update_interest_transaction(loan_payment:, loan:)
             _                   = step update_loan(loan:)
 
             loan_payment.reload
@@ -161,14 +160,6 @@ module Transactions
           return operation unless operation.success?
 
           Success(operation.value!)
-        end
-
-        def update_interest_transaction(loan_payment:, loan:)
-          UpdateLoanInterestTransaction.new.call(
-            loan_payment: loan_payment,
-            loan: loan,
-            interest_amount: loan_payment.interest_payment
-          )
         end
 
         def update_loan(loan:)

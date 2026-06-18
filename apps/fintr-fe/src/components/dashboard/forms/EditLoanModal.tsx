@@ -3,7 +3,7 @@ import { CustomModal } from "@/components/ui/custom-modal";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit } from "lucide-react";
+import { SquarePen, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useQueryClient } from "@tanstack/react-query";
@@ -15,15 +15,18 @@ import EntityCreationForm from "./EntityCreationForm";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import { handleMultilineNotesKeyDown } from "@/lib/multiline-notes-keydown";
+import { LOAN_DETAIL_KEY } from "@/hooks/async/useLoan";
 
 interface EditLoanModalProps {
   loan: Loan;
   onUpdated?: () => void;
+  triggerVariant?: "inline" | "toolbar";
 }
 
 const EditLoanModal: React.FC<EditLoanModalProps> = ({
   loan,
   onUpdated,
+  triggerVariant = "inline",
 }) => {
   const { api } = useAuthApi();
   const queryClient = useQueryClient();
@@ -147,6 +150,7 @@ const EditLoanModal: React.FC<EditLoanModalProps> = ({
 
       toast.success("Loan updated successfully");
       queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, loan.id] });
       onUpdated?.();
       setIsOpen(false);
     } catch (error: unknown) {
@@ -161,19 +165,30 @@ const EditLoanModal: React.FC<EditLoanModalProps> = ({
     }
   };
 
+  const isToolbarTrigger = triggerVariant === "toolbar";
+
   return (
     <>
       <Button
-        size="sm"
-        variant="ghost"
-        className="h-6 w-6 p-0 text-primary hover:text-primary hover:bg-primary/10"
+        type="button"
+        size={isToolbarTrigger ? "icon" : "sm"}
+        variant={isToolbarTrigger ? "outline" : "ghost"}
+        className={
+          isToolbarTrigger
+            ? "rounded-lg border-muted-foreground/25 text-foreground hover:bg-muted/60"
+            : "h-6 w-6 p-0 text-primary hover:text-primary hover:bg-primary/10"
+        }
         onClick={(e) => {
           e.stopPropagation();
           setIsOpen(true);
         }}
         aria-label={`Edit loan with ${loan.entityName}`}
       >
-        <Edit className="h-3 w-3" />
+        {isToolbarTrigger ? (
+          <SquarePen className="h-4 w-4" aria-hidden />
+        ) : (
+          <Edit className="h-3 w-3" />
+        )}
       </Button>
 
       <CustomModal

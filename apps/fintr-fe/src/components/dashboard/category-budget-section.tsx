@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { BudgetProgress } from "@/components/dashboard/insights/budget-usage-bar";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useAtomValue } from "jotai";
 import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
@@ -198,10 +198,9 @@ export function CategoryBudgetSection({
                 </span>
               </span>
             </div>
-            <Progress
-              value={budgetPercentage > 100 ? 100 : budgetPercentage}
+            <BudgetProgress
+              usagePercentage={budgetPercentage}
               className="h-2 bg-muted"
-              indicatorClassName={getProgressColor(budgetPercentage, "bg")}
             />
           </div>
 
@@ -248,10 +247,9 @@ export function CategoryBudgetSection({
                       </span>
                     </div>
                     {sub.id || sub.spent > 0 ? (
-                      <Progress
-                        value={subPercentage > 100 ? 100 : subPercentage}
+                      <BudgetProgress
+                        usagePercentage={subPercentage}
                         className="h-1.5 bg-muted/60"
-                        indicatorClassName={getProgressColor(subPercentage, "bg")}
                       />
                     ) : null}
                   </div>

@@ -18,3 +18,13 @@ export const formatUsageCaption = (
 
   return `${display}% of budget used`;
 };
+
+export const getBudgetOverflowPercentage = (usagePercentage: number): number => {
+  if (usagePercentage <= 100) {
+    return 0;
+  }
+
+  const remainder = usagePercentage % 100;
+
+  return remainder === 0 ? 0 : remainder;
+};

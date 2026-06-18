@@ -56,10 +56,32 @@ module Transactions
         type_mapping = {
           "Transactions::Income" => "income",
           "Transactions::Expense" => "expense",
-          "Transactions::Transfer" => "transfer"
+          "Transactions::Transfer" => "transfer",
+          "Transactions::Loan" => "loan_disbursement",
+          "Transactions::LoanPayment" => "loan_payment",
         }
 
         type_mapping[record.transactable_type]
+      end
+
+      field :loan_id do |record|
+        record.try(:loan_id)
+      end
+
+      field :entity_name do |record|
+        record.try(:entity_name)
+      end
+
+      field :loan_type do |record|
+        record.try(:loan_type)
+      end
+
+      field :is_loan_activity do |record|
+        %w[Transactions::Loan Transactions::LoanPayment].include?(record.transactable_type)
+      end
+
+      field :activitable_id do |record|
+        record.transactable_id
       end
 
       field :in_series do |record|
@@ -67,11 +89,11 @@ module Transactions
       end
 
       field :has_image do |record|
-        record.transactable.files.attached?
+        record.transactable.respond_to?(:files) && record.transactable.files.attached?
       end
 
-      field :has_loan_payment do |record|
-        record.transactable.respond_to?(:loan_payment) && record.transactable.loan_payment.present?
+      field :has_loan_payment do |_record|
+        false
       end
 
       field :calculated do |record|

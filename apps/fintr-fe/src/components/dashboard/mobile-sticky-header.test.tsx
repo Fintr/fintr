@@ -36,6 +36,10 @@ describe("shouldShowImmediateBackButton", () => {
         "/dashboard/space_settings/categories/detail?categoryId=1&kind=expense",
       ),
     ).toBe(true);
+    expect(
+      shouldShowImmediateBackButton("/dashboard/loans/detail"),
+    ).toBe(true);
+    expect(shouldShowImmediateBackButton("/dashboard/loans")).toBe(true);
   });
 
   it("returns false for main dashboard tabs until scroll", () => {
@@ -65,6 +69,32 @@ describe("MobileStickyHeader — back button on category pages", () => {
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams("categoryId=1&kind=expense"),
     );
+
+    const MobileStickyHeader = (await import("./mobile-sticky-header")).default;
+    render(<MobileStickyHeader />);
+
+    expect(screen.getByRole("button", { name: /go back/i })).toHaveClass(
+      "opacity-100",
+    );
+  });
+
+  it("shows back button before scroll on loan detail", async () => {
+    mockUsePathname.mockReturnValue("/dashboard/loans/detail");
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams("loanId=abc-123"),
+    );
+
+    const MobileStickyHeader = (await import("./mobile-sticky-header")).default;
+    render(<MobileStickyHeader />);
+
+    expect(screen.getByRole("button", { name: /go back/i })).toHaveClass(
+      "opacity-100",
+    );
+  });
+
+  it("shows back button before scroll on loans list", async () => {
+    mockUsePathname.mockReturnValue("/dashboard/loans");
+    mockUseSearchParams.mockReturnValue(new URLSearchParams());
 
     const MobileStickyHeader = (await import("./mobile-sticky-header")).default;
     render(<MobileStickyHeader />);
