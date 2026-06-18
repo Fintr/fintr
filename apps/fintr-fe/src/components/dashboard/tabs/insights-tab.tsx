@@ -26,6 +26,7 @@ import {
   BarChart3,
   Filter,
   Eye,
+  CalendarIcon,
 } from "lucide-react";
 import { useInsightsQueries } from "@/hooks/async/useInsightsQueries";
 import { InsightNarrativeCards } from "@/components/dashboard/insights/insight-narrative-cards";
