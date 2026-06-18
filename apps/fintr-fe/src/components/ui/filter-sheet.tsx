@@ -14,7 +14,7 @@ export const filterTriggerButtonClassName =
 
 /** Icon-only filter trigger (account / category detail). */
 export const filterTriggerIconButtonClassName =
-  "rounded-lg border-muted-foreground/25 bg-white text-foreground hover:bg-muted/60 dark:border-border dark:bg-card dark:hover:bg-accent/50";
+  "h-10 min-h-10 w-10 min-w-10 rounded-lg border-muted-foreground/25 bg-white text-foreground hover:bg-muted/60 dark:border-border dark:bg-card dark:hover:bg-accent/50";
 
 /** Active-filters indicator dot on filter triggers. */
 export const filterActiveBadgeClassName =

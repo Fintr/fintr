@@ -16,12 +16,14 @@ interface DeleteLoanModalProps {
   loan: Loan;
   onDelete: (loanId: string) => Promise<any>;
   isLoading?: boolean;
+  triggerVariant?: "inline" | "toolbar";
 }
 
 const DeleteLoanModal: React.FC<DeleteLoanModalProps> = ({
   loan,
   onDelete,
   isLoading = false,
+  triggerVariant = "inline",
 }) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -73,23 +75,38 @@ const DeleteLoanModal: React.FC<DeleteLoanModalProps> = ({
     : loan.principalAmount;
   const loanCurrency = loan.principalAmountCurrency || 'PHP';
 
+  const isToolbarTrigger = triggerVariant === "toolbar";
+
   return (
     <Dialog open={internalIsOpen} onOpenChange={handleOpenChangeFromDialog}>
       <DialogTrigger asChild>
         <Button
-          size="sm"
-          variant="ghost"
-          className={cn(
-            transactionDeleteIconButtonClassName,
-            "h-6 w-6 p-0",
-          )}
+          type="button"
+          size={isToolbarTrigger ? "icon" : "sm"}
+          variant={isToolbarTrigger ? "outline" : "ghost"}
+          className={
+            isToolbarTrigger
+              ? "rounded-lg border-red-800/35 text-red-800 hover:bg-red-100/50 hover:text-red-800 dark:hover:bg-red-950/40"
+              : cn(
+                  transactionDeleteIconButtonClassName,
+                  "h-6 w-6 p-0",
+                )
+          }
           onClick={(e) => {
             e.stopPropagation();
             handleTriggerClick();
           }}
           disabled={isDeleting}
+          aria-label={`Delete loan with ${loanDisplayName}`}
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2
+            className={
+              isToolbarTrigger
+                ? "h-4 w-4 text-red-800"
+                : "h-3 w-3"
+            }
+            aria-hidden
+          />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">

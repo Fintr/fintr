@@ -10,6 +10,7 @@ module Transactions
           optional(:category_id).maybe(:string)
           optional(:subcategory_id).maybe(:string)
           optional(:account_name).maybe(:string)
+          optional(:account_id).maybe(:string)
           required(:start_date).value(:date)
           required(:end_date).value(:date)
           optional(:page).value(:integer)

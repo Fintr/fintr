@@ -5,10 +5,12 @@ s:
 mmigrate:
 	mise exec -- bundle exec rails db:migrate
 	mise exec -- bundle exec rake db:clean_timescaledb_schemas
+	mise exec -- bundle exec rake db:verify_uuid_primary_keys
 
 migrate:
 	bundle exec rails db:migrate
 	bundle exec rake db:clean_timescaledb_schemas
+	bundle exec rake db:verify_uuid_primary_keys
 
 clean-schemas:
 	bundle exec rake db:clean_timescaledb_schemas 

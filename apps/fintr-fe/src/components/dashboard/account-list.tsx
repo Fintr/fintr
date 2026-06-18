@@ -6,18 +6,21 @@ import {
   ChevronUp,
   Info,
   ChevronRight,
+  Wallet,
+  CreditCard,
 } from "lucide-react";
 import {
   cn,
-  formatCurrency as formatCurrencyWithCurrency,
 } from "@/lib/utils";
+import AddAccountSheet from "@/components/dashboard/add-account-sheet";
+import { AnimatedCurrency } from "@/components/ui/animated-currency";
+import { getAccountCategoryIcon } from "@/utils/accountCategoryIcon";
 
 const CASH_TOTAL_CATEGORIES = new Set([
   "cash",
   "savings",
   "debit",
   "e_wallet",
-  "investment",
 ]);
 
 const PAYABLE_TOTAL_CATEGORIES = new Set(["credit_card"]);
@@ -45,12 +48,14 @@ interface AccountListProps {
 }
 
 interface TotalDisplayProps {
-  label: string;
+  label?: string;
   amount: number;
   currency: string;
   isLoading: boolean;
   align?: "left" | "center" | "right";
+  variant?: "card" | "plain";
   className?: string;
+  icon?: React.ReactNode;
 }
 
 const TotalDisplay: React.FC<TotalDisplayProps> = ({
@@ -59,30 +64,73 @@ const TotalDisplay: React.FC<TotalDisplayProps> = ({
   currency,
   isLoading,
   align = "right",
+  variant = "card",
   className,
-}) => (
-  <div
-    className={cn(
-      "rounded-lg border border-gray-200 bg-white px-4 py-3 text-xl",
-      "dark:border-border dark:bg-card dark:shadow-sm",
-      align === "left" && "text-left",
-      align === "center" && "text-center",
-      align === "right" && "text-right",
-      className,
-    )}
-  >
-    <div className="text-sm text-muted-foreground font-normal">{label}</div>
-    {isLoading ? (
-      <span className="font-medium text-muted-foreground">…</span>
-    ) : (
-      <span
-        className={`font-medium ${accountAmountColorClass(amount)}`}
-      >
-        {formatCurrencyWithCurrency(amount, currency)}
-      </span>
-    )}
-  </div>
-);
+  icon,
+}) => {
+  const hasIcon = Boolean(icon);
+
+  return (
+    <div
+      className={cn(
+        "px-4 py-3",
+        variant === "card" && [
+          "rounded-lg bg-white",
+          "dark:bg-card dark:shadow-sm",
+        ],
+        variant === "plain" && "border-0 bg-transparent shadow-none",
+        !hasIcon && align === "left" && "text-left",
+        !hasIcon && align === "center" && "text-center",
+        !hasIcon && align === "right" && "text-right",
+        className,
+      )}
+    >
+      <div className={cn(hasIcon && "flex items-center gap-3")}>
+        {hasIcon ? (
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/60 text-muted-foreground"
+            aria-hidden
+          >
+            {icon}
+          </div>
+        ) : null}
+        <div className={cn(hasIcon && "min-w-0 flex-1 text-left")}>
+          {label ? (
+            <div className="text-sm font-normal text-muted-foreground">
+              {label}
+            </div>
+          ) : null}
+          {isLoading ? (
+            <span
+              className={cn(
+                "block font-semibold text-muted-foreground",
+                variant === "plain" && "text-2xl md:text-3xl",
+                variant === "card" && "text-base md:text-lg",
+                label && "mt-1",
+              )}
+            >
+              …
+            </span>
+          ) : (
+            <AnimatedCurrency
+              amount={amount}
+              currency={currency}
+              enabled={!isLoading}
+              maximumFractionDigits={variant === "card" ? 0 : undefined}
+              className={cn(
+                "block font-semibold tracking-tight",
+                variant === "plain" && "text-2xl md:text-3xl",
+                variant === "card" && "text-base md:text-lg",
+                label && "mt-1",
+                accountAmountColorClass(amount),
+              )}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AccountList: React.FC<AccountListProps> = ({
   accounts,
@@ -176,7 +224,6 @@ const AccountList: React.FC<AccountListProps> = ({
   const displayTotalInSpaceCurrency = balanceTotals?.total ?? totalInSpaceCurrency;
   const totalsCurrency =
     balanceTotals?.currency ?? spaceCurrency;
-  const currencySuffix = ` (in ${totalsCurrency})`;
 
   const balancesByCurrency = React.useMemo(() => {
     const byCurrency = new Map<string, number>();
@@ -198,41 +245,45 @@ const AccountList: React.FC<AccountListProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-col gap-4 mb-2">
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           <TotalDisplay
-            label={`Total${currencySuffix}`}
+            label="Total Balance"
             amount={displayTotalInSpaceCurrency}
             currency={totalsCurrency}
             isLoading={ratesLoading && !balanceTotals}
             align="center"
+            variant="plain"
             className="w-full"
           />
           <div className="grid grid-cols-2 gap-4">
             <TotalDisplay
-              label={`Cash only${currencySuffix}`}
+              label="Cash only"
               amount={cashOnlyInSpaceCurrency}
               currency={totalsCurrency}
               isLoading={ratesLoading && !balanceTotals}
-              align="left"
+              icon={<Wallet className="h-5 w-5" />}
             />
             <TotalDisplay
-              label={`Credit Card${currencySuffix}`}
+              label="Credit Card"
               amount={payableOnlyInSpaceCurrency}
               currency={totalsCurrency}
               isLoading={ratesLoading && !balanceTotals}
-              align="right"
+              icon={<CreditCard className="h-5 w-5" />}
             />
           </div>
         </div>
-        <div className="flex justify-between items-center">
-          <h3 className="text-xl font-medium">Your Accounts</h3>
+        <div className="mt-2 flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-4">
+            <h3 className="text-xl font-medium">Your Accounts</h3>
+            <AddAccountSheet />
+          </div>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="text-muted-foreground hover:text-foreground -mr-2"
+            className="text-muted-foreground hover:text-foreground w-fit -ml-3"
             onClick={() => setShowMoreInfo((v) => !v)}
           >
             {showMoreInfo ? (
@@ -260,9 +311,14 @@ const AccountList: React.FC<AccountListProps> = ({
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">{currency}</span>
                     {isSpaceCurrency ? (
-                      <span className={`font-medium ${accountAmountColorClass(total)}`}>
-                        {formatCurrencyWithCurrency(total, currency)}
-                      </span>
+                      <AnimatedCurrency
+                        amount={total}
+                        currency={currency}
+                        className={cn(
+                          "font-medium",
+                          accountAmountColorClass(total),
+                        )}
+                      />
                     ) : (
                       <button
                         type="button"
@@ -277,17 +333,20 @@ const AccountList: React.FC<AccountListProps> = ({
                         )}
                         title={`Show equivalent in ${spaceCurrency}`}
                       >
-                        {formatCurrencyWithCurrency(total, currency)}
+                        <AnimatedCurrency
+                          amount={total}
+                          currency={currency}
+                        />
                       </button>
                     )}
                   </div>
                   {!isSpaceCurrency && showConverted && !ratesLoading && (
                     <div className="text-xs text-muted-foreground pl-1 flex justify-end">
                       ≈{" "}
-                      {formatCurrencyWithCurrency(
-                        convertedInSpace,
-                        spaceCurrency,
-                      )}{" "}
+                      <AnimatedCurrency
+                        amount={convertedInSpace}
+                        currency={spaceCurrency}
+                      />{" "}
                       <span className="italic">(today&apos;s rate)</span>
                     </div>
                   )}
@@ -297,16 +356,16 @@ const AccountList: React.FC<AccountListProps> = ({
             {accountCurrencies.length > 1 && !ratesLoading && (
               <div className="flex justify-between items-center text-sm pt-1.5 border-t border-gray-200 mt-1.5">
                 <span className="text-muted-foreground font-medium">
-                  Total (in {spaceCurrency})
+                  Total
                 </span>
-                <span
-                  className={`font-medium ${accountAmountColorClass(displayTotalInSpaceCurrency)}`}
-                >
-                  {formatCurrencyWithCurrency(
-                    displayTotalInSpaceCurrency,
-                    totalsCurrency,
+                <AnimatedCurrency
+                  amount={displayTotalInSpaceCurrency}
+                  currency={totalsCurrency}
+                  className={cn(
+                    "font-medium",
+                    accountAmountColorClass(displayTotalInSpaceCurrency),
                   )}
-                </span>
+                />
               </div>
             )}
           </div>
@@ -316,13 +375,21 @@ const AccountList: React.FC<AccountListProps> = ({
       <div className="space-y-4">
         {accounts.map((account) => {
           const balanceAmount = parseBalance(account.balance);
+          const AccountIcon = getAccountCategoryIcon(account.accountCategory);
+
           return (
             <Link
               key={account.id}
               href={`/dashboard/space_settings/accounts/detail?accountId=${encodeURIComponent(account.id)}`}
               className="group flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-primary/40 hover:bg-muted/20 dark:border-0 dark:bg-card dark:shadow-sm dark:hover:bg-accent/50"
             >
-              <div className="flex min-w-0 flex-1 items-center">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/60 text-muted-foreground"
+                  aria-hidden
+                >
+                  <AccountIcon className="h-5 w-5" />
+                </div>
                 <div className="min-w-0">
                   <p className="truncate font-medium">{account.name}</p>
                   <p className="truncate text-sm text-gray-500 dark:text-muted-foreground">
@@ -331,14 +398,14 @@ const AccountList: React.FC<AccountListProps> = ({
                 </div>
               </div>
               <div className="ml-2 flex flex-shrink-0 items-center gap-2">
-                <span
-                  className={`text-lg font-medium ${accountAmountColorClass(balanceAmount)}`}
-                >
-                  {formatCurrencyWithCurrency(
-                    balanceAmount,
-                    account.balanceCurrency ?? "PHP",
+                <AnimatedCurrency
+                  amount={balanceAmount}
+                  currency={account.balanceCurrency ?? "PHP"}
+                  className={cn(
+                    "text-lg font-medium",
+                    accountAmountColorClass(balanceAmount),
                   )}
-                </span>
+                />
                 <ChevronRight
                   className="h-5 w-5 text-muted-foreground group-hover:text-foreground"
                   aria-hidden

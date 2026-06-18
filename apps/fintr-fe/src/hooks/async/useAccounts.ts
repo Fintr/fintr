@@ -8,6 +8,7 @@ import {
   ACCOUNT_ADJUSTMENT_HISTORY_KEY,
   ACCOUNT_DETAIL_TRANSACTIONS_KEY,
 } from "@/hooks/async/useAccountDetailTransactions";
+import { ACCOUNT_DETAIL_ACTIVITIES_KEY } from "@/hooks/async/useAccountDetailActivities";
 
 export const useAccounts = () => {
   const { api } = useAuthApi({
@@ -38,6 +39,7 @@ export const useAccounts = () => {
       // Invalidate dashboard query to refresh account options
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY] });
       queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
       toast.success(`Account "${variables.name}" created successfully`);
@@ -56,6 +58,7 @@ export const useAccounts = () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY] });
       queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
       // Don't show toast here since the edit dialog handles it
@@ -77,6 +80,7 @@ export const useAccounts = () => {
         // Invalidate dashboard query to refresh account options
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
+        queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY] });
         queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
         queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
         toast.success(`Account deleted successfully`);
@@ -104,6 +108,7 @@ export const useAccounts = () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['filteredTransactions'] });
       queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY] });
       queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
     },

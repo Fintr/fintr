@@ -7,15 +7,12 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Filter } from "lucide-react";
 import {
   enrichCategoriesWithSubcategoryTree,
   transformBudgetsToCategories,
 } from "@/services/budgets/queries";
-import { BudgetCategory } from "@/types/budgetTypes";
-import { z } from "zod";
-import { BudgetUsageBar } from "@/components/dashboard/insights/budget-usage-bar";
+import { BudgetProgress, BudgetUsageBar } from "@/components/dashboard/insights/budget-usage-bar";
 import {
   budgetSummaryCardSurfaceClassName,
   statTileSurfaceClassName,
@@ -582,12 +579,9 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                         </div>
                       </div>
                     </div>
-                    <Progress
-                      value={budgetPercentage > 100 ? 100 : budgetPercentage}
-                      className="h-2 bg-gray-200"
-                      indicatorClassName={
-                        getProgressColor(budgetPercentage, "bg")
-                      }
+                    <BudgetProgress
+                      usagePercentage={budgetPercentage}
+                      className="h-2 bg-gray-200 dark:bg-muted/40"
                     />
                   </div>
 
@@ -640,10 +634,9 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                                 )}
                               </span>
                             </div>
-                            <Progress
-                              value={subPercentage > 100 ? 100 : subPercentage}
-                              className="h-1.5 bg-gray-100"
-                              indicatorClassName={getProgressColor(subPercentage, "bg")}
+                            <BudgetProgress
+                              usagePercentage={subPercentage}
+                              className="h-1.5 bg-gray-100 dark:bg-muted/30"
                             />
                           </div>
                         );

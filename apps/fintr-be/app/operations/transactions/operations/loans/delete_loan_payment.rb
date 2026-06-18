@@ -32,7 +32,6 @@ module Transactions
             account         = loan_payment.account
 
             _               = step reverse_account_balance(loan_payment:, loan:, account:)
-            _               = step delete_interest_transaction(loan_payment:)
             _               = step delete_loan_payment(loan_payment:)
             _               = step update_loan(loan:)
 
@@ -74,14 +73,6 @@ module Transactions
           return operation unless operation.success?
 
           Success(operation.value!)
-        end
-
-        def delete_interest_transaction(loan_payment:)
-          return Success(nil) unless loan_payment.transaction_record
-
-          Transactions::Operations::DeleteThisTransaction.new.call(
-            transaction: loan_payment.transaction_record
-          )
         end
 
         def update_loan(loan:)

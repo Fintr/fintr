@@ -33,6 +33,7 @@ import {
   filterTriggerIconButtonClassName,
 } from "@/components/ui/filter-sheet";
 import { cn, formatCurrency, getNumberColor } from "@/lib/utils";
+import { AnimatedCurrency } from "@/components/ui/animated-currency";
 import DayDivider from "@/components/ui/day-divider";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import {
@@ -40,6 +41,8 @@ import {
   getTransactionDayGroupKey,
 } from "@/utils/dateUtils";
 import {
+  ActivitiesTypeEnum,
+  IndexActivity,
   IndexTransaction,
   CombinedTransactionTypeEnum,
 } from "@/types/transactionTypes";
@@ -47,10 +50,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAccounts } from "@/hooks/async/useAccounts";
 import {
   useAccountAdjustmentHistory,
-  useAccountDetailTransactions,
-  ACCOUNT_DETAIL_TRANSACTIONS_KEY,
   ACCOUNT_ADJUSTMENT_HISTORY_KEY,
 } from "@/hooks/async/useAccountDetailTransactions";
+import {
+  useAccountDetailActivities,
+  ACCOUNT_DETAIL_ACTIVITIES_KEY,
+} from "@/hooks/async/useAccountDetailActivities";
+import { activityRecordId } from "@/utils/activityDisplay";
 import { getWideAccountHistoryDateRange } from "@/utils/dateUtils";
 import {
   expenseCategoryOptionsAtom,
@@ -303,7 +309,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
     DeleteScopeEnum.THIS_ONLY,
   );
   const [transactionToDelete, setTransactionToDelete] =
-    useState<IndexTransaction | null>(null);
+    useState<IndexActivity | null>(null);
   const [showBookedCurrencies, setShowBookedCurrencies] = useState(false);
 
   const [filterBaseline, setFilterBaseline] = useState(() =>
@@ -388,15 +394,15 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
 
   const queryEnabled = Boolean(account);
 
-  const mainQuery = useAccountDetailTransactions({
-    accountName,
+  const mainQuery = useAccountDetailActivities({
+    accountId: account?.id ?? "",
     startDate: appliedStart,
     endDate: appliedEnd,
     categoryFilter: appliedCategory,
     searchQuery: appliedSearch,
     ...(appliedMin !== 0 ? { minAmount: appliedMin } : {}),
     ...(appliedMax !== 999999 ? { maxAmount: appliedMax } : {}),
-    enabled: queryEnabled,
+    enabled: queryEnabled && !!account?.id,
   });
 
   const adjustmentQuery = useAccountAdjustmentHistory({
@@ -417,7 +423,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
     };
 
     return pages.some((page) =>
-      (page.transactions ?? []).some((tx) => {
+      (page.activities ?? []).some((tx) => {
         const amountCcy = normalizedIso(tx.amountCurrency);
         const bookedCcy = normalizedIso(tx.bookedAmountCurrency);
         return (
@@ -440,7 +446,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       deleteScope: DeleteScope;
       transactionType?: string;
     }) => {
-      if (deleteData.transactionType === CombinedTransactionTypeEnum.TRANSFER) {
+      if (deleteData.transactionType === ActivitiesTypeEnum.TRANSFER) {
         return deleteTransfer(api, {
           id: deleteData.id,
           deleteScope: deleteData.deleteScope,
@@ -467,7 +473,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         exact: false,
       });
       queryClient.invalidateQueries({
-        queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
+        queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
         refetchType: "active",
         exact: false,
       });
@@ -497,14 +503,23 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
     };
   }, []);
 
-  const handleEditRow = (transaction: IndexTransaction) => {
-    if (transaction.hasLoanPayment) {
+  const handleEditRow = (row: IndexTransaction | IndexActivity) => {
+    const activity = row as IndexActivity;
+    if (activity.isLoanActivity && activity.loanId) {
+      router.push(`/dashboard/loans/detail?loanId=${activity.loanId}`);
+      return;
+    }
+    if (activity.hasLoanPayment) {
       toast.error(
         "This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.",
       );
       return;
     }
-    setSelectedTransaction(transaction);
+    setSelectedTransaction({
+      ...activity,
+      id: activityRecordId(activity),
+      type: activity.type as unknown as CombinedTransactionTypeEnum,
+    });
     setEditDialogOpen(true);
   };
 
@@ -529,7 +544,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       exact: false,
     });
     queryClient.invalidateQueries({
-      queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
+      queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
       refetchType: "active",
       exact: false,
     });
@@ -543,32 +558,37 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   };
 
   const handleDeleteRow = (id: string) => {
-    let transaction: IndexTransaction | null = null;
+    let activity: IndexActivity | null = null;
     if (mainQuery.data?.pages) {
       for (const page of mainQuery.data.pages) {
-        const found = page.transactions.find((t) => t.id === id);
+        const found = page.activities.find((row) => row.id === id);
         if (found) {
-          transaction = found;
+          activity = found;
           break;
         }
       }
     }
 
-    if (transaction?.hasLoanPayment) {
+    if (activity?.isLoanActivity) {
+      toast.error("Loan activity is managed from the Loans tab.");
+      return;
+    }
+
+    if (activity?.hasLoanPayment) {
       toast.error(
         "This transaction is linked to a loan payment and cannot be deleted. Delete the loan payment instead.",
       );
       return;
     }
 
-    setTransactionToDelete(transaction);
+    setTransactionToDelete(activity);
     setDeleteScopeModalOpen(true);
   };
 
   const handleDeleteConfirm = (scope: Scope) => {
     if (transactionToDelete) {
       deleteMutation.mutate({
-        id: transactionToDelete.id,
+        id: activityRecordId(transactionToDelete),
         deleteScope: scope as DeleteScope,
         transactionType: transactionToDelete.type,
       });
@@ -695,6 +715,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   };
 
   const currencyCode = account?.balanceCurrency ?? "PHP";
+  const balanceAmount = parseBalance(account?.balance ?? "0");
 
   const renderFiltersTrigger = (wrapperClassName: string) => (
     <div className={cn("relative", wrapperClassName)}>
@@ -743,43 +764,50 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         Accounts
       </Link>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-primary truncate">
-            {account?.name}
-          </h1>
-          <p className="text-sm text-muted-foreground capitalize">
-            {account?.accountCategory?.replace(/_/g, " ")}
-          </p>
-          <p
-            className={`text-2xl font-semibold mt-2 ${getNumberColor(parseBalance(account?.balance ?? "0"))}`}
-          >
-            {formatCurrency(parseBalance(account?.balance ?? "0"), currencyCode)}
-          </p>
+      <div className="text-left">
+        <h1 className="text-2xl font-bold text-primary truncate">
+          {account?.name}
+        </h1>
+        <p className="text-sm text-muted-foreground capitalize">
+          {account?.accountCategory?.replace(/_/g, " ")}
+        </p>
+      </div>
+
+      <div className="px-4 py-3 text-center">
+        <div className="text-sm font-normal text-muted-foreground">
+          Total Balance
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 justify-end flex-shrink-0">
-          {renderFiltersTrigger("md:hidden")}
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="rounded-lg border-muted-foreground/25 text-foreground hover:bg-muted/60"
-            onClick={() => setEditOpen(true)}
-            aria-label="Edit account"
-          >
-            <SquarePen className="h-4 w-4" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="rounded-lg border-destructive/35 text-destructive hover:bg-destructive/10"
-            onClick={() => setDeleteOpen(true)}
-            aria-label="Delete account"
-          >
-            <Trash2 className="h-4 w-4" aria-hidden />
-          </Button>
-        </div>
+        <AnimatedCurrency
+          amount={balanceAmount}
+          currency={currencyCode}
+          className={cn(
+            "mt-1 block text-2xl font-semibold tracking-tight md:text-3xl",
+            getNumberColor(balanceAmount),
+          )}
+        />
+      </div>
+
+      <div className="flex items-center justify-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="rounded-lg border-muted-foreground/25 text-foreground hover:bg-muted/60"
+          onClick={() => setEditOpen(true)}
+          aria-label="Edit account"
+        >
+          <SquarePen className="h-4 w-4" aria-hidden />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="rounded-lg border-red-800/35 text-red-800 hover:bg-red-800/10 dark:text-red-400 dark:border-red-800/50 dark:hover:bg-red-800/20"
+          onClick={() => setDeleteOpen(true)}
+          aria-label="Delete account"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden />
+        </Button>
       </div>
 
       <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
@@ -876,26 +904,28 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       </Sheet>
 
       <div>
-        <h2 className="text-lg font-semibold mb-3">Transactions</h2>
+        <h2 className="text-lg font-semibold mb-3">Activity</h2>
         <div className="flex flex-col md:flex-row gap-4 mb-4 md:items-center">
-          <SearchField
-            placeholder="Search Transactions"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                setAppliedSearch(searchInput.trim());
-              }
-            }}
-            onBlur={() => setAppliedSearch(searchInput.trim())}
-          />
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <SearchField
+              placeholder="Search activity"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  setAppliedSearch(searchInput.trim());
+                }
+              }}
+              onBlur={() => setAppliedSearch(searchInput.trim())}
+            />
+            {renderFiltersTrigger("shrink-0")}
+          </div>
           <div
             className={cn(
               "flex shrink-0 flex-wrap items-center justify-end gap-2 self-end w-full md:ml-auto md:w-auto md:self-center md:flex-nowrap",
               !hasNonSpaceCurrencyInLoadedTransactions && "hidden md:flex",
             )}
           >
-            {renderFiltersTrigger("hidden md:block shrink-0")}
             {hasNonSpaceCurrencyInLoadedTransactions ? (
               <Button
                 type="button"
@@ -928,6 +958,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         />
 
         <ListView
+          variant="activities"
           isPending={accountsLoading || (queryEnabled && mainQuery.isFetching)}
           isError={mainQuery.isError}
           error={mainQuery.error as Error | null}

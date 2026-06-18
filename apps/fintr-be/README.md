@@ -56,6 +56,8 @@ Coordinate with Miko (miko@fintr.ai), you should log-in in staging. Then Miko wi
 ### Migration
 To migrate, please run `make migrate`. We're using timescaledb for the pgvectorscale capabilities. It's adding up lines in the `schema.rb` that renders the application unable to use so this command will remove those lines from the schemas.
 
+`make migrate` also runs `db:verify_uuid_primary_keys` so core tables keep a UUID primary key on `id`. If you import a database dump locally (`pg_restore` / `download-dump.sh`), constraints may be missing; run `rails db:migrate` — migration `RestoreUuidPrimaryKeysOnCoreTables` re-adds them when absent. Production runs the same check on container boot after migrate.
+
 To remove the lines only, run `bundle exec rails db:clean_timescaledb_schemas`
 
 ### Download dump - EC2 # Deprecated

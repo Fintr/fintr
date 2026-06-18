@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "../../ui/select";
 import { Button } from "../../ui/button";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ChevronDown } from "lucide-react";
 import { Calendar } from "../../ui/calendar";
 import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { format } from "date-fns";
@@ -31,6 +31,12 @@ import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
 import GridPicker from "./GridPicker";
 import FileUploadField from "./FileUploadField";
 import { AdjustAccountBalanceSwitchRow } from "@/components/dashboard/forms/adjust-account-balance-switch-row";
+import {
+  convertLoanTermDisplay,
+  formatLoanTermUnitLabel,
+  loanTermToMonths,
+  type LoanTermUnit,
+} from "@/utils/formatLoanTerm";
 
 interface LoanFormProps {
   date?: Date | undefined;
@@ -77,6 +83,24 @@ const LoanForm: React.FC<LoanFormProps> = ({
   const [showEntityCreation, setShowEntityCreation] = useState(false);
   const [isCreatingEntity, setIsCreatingEntity] = useState(false);
   const [adjustsAccountBalance, setAdjustsAccountBalance] = useState(true);
+  const [loanTermUnit, setLoanTermUnit] = useState<LoanTermUnit>("years");
+
+  const toggleLoanTermUnit = () => {
+    const currentUnit = loanTermUnit;
+    const nextUnit: LoanTermUnit =
+      currentUnit === "months" ? "years" : "months";
+    const nextTerm = convertLoanTermDisplay(
+      loanForm.loanTerm,
+      currentUnit,
+      nextUnit,
+    );
+
+    setLoanTermUnit(nextUnit);
+    setLoanForm((prev) => ({
+      ...prev,
+      loanTerm: nextTerm,
+    }));
+  };
 
   const fetchEntityOptions = useCallback(async (query: string): Promise<Array<{ label: string; value: string }>> => {
     try {
@@ -179,7 +203,9 @@ const LoanForm: React.FC<LoanFormProps> = ({
       errors.interestRate = "Interest rate must be between 0 and 100";
     }
 
-    if (!loanForm.loanTerm || parseInt(loanForm.loanTerm) <= 0) {
+    const loanTermMonths = loanTermToMonths(loanForm.loanTerm, loanTermUnit);
+
+    if (!loanForm.loanTerm || loanTermMonths <= 0) {
       errors.loanTerm = "Loan term is required and must be greater than 0";
     }
 
@@ -214,6 +240,11 @@ const LoanForm: React.FC<LoanFormProps> = ({
     setValidationErrors({});
 
             try {
+              const loanTermMonths = loanTermToMonths(
+                loanForm.loanTerm,
+                loanTermUnit,
+              );
+
               const loanData = {
                 principalAmount: numberFormatting.cleanForBackend(principalAmountInput.displayValue),
                 interestRate: parseFloat(loanForm.interestRate),
@@ -221,7 +252,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
                 loanType: loanForm.type,
                 entityName: loanForm.entityName.trim(),
                 accountName: loanForm.accountName.trim(),
-                loanTermMonths: parseInt(loanForm.loanTerm),
+                loanTermMonths,
                 description: loanForm.description || "",
                 adjustsAccountBalance,
                 ...(loanForm.receipt && { file: loanForm.receipt })
@@ -245,6 +276,7 @@ const LoanForm: React.FC<LoanFormProps> = ({
                 loanTerm: "",
                 receipt: null,
               });
+              setLoanTermUnit("years");
               setShowCustomAccountInput(false);
               principalAmountInput.reset();
               setAdjustsAccountBalance(true);
@@ -372,14 +404,14 @@ const LoanForm: React.FC<LoanFormProps> = ({
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="loan-term" className="text-sm">Loan Term (Months)</Label>
+          <Label htmlFor="loan-term" className="text-sm">Loan Term</Label>
           <div className="relative">
             <Input
               id="loan-term"
               type="number"
-              inputMode="numeric"
-              min="1"
-              step="1"
+              inputMode="decimal"
+              min={loanTermUnit === "months" ? "1" : "0.1"}
+              step={loanTermUnit === "months" ? "1" : "0.1"}
               placeholder="0"
               value={loanForm.loanTerm}
               onChange={(e) => {
@@ -388,11 +420,17 @@ const LoanForm: React.FC<LoanFormProps> = ({
                   setValidationErrors({ ...validationErrors, loanTerm: "" });
                 }
               }}
-              className="pr-16 text-sm"
+              className="pr-20 text-sm"
             />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500 text-sm">
-              Month{parseInt(loanForm.loanTerm) !== 1 ? "s" : ""}
-            </div>
+            <button
+              type="button"
+              onClick={toggleLoanTermUnit}
+              className="absolute inset-y-0 right-0 flex cursor-pointer items-center gap-0.5 pr-3 text-sm text-muted-foreground hover:text-foreground"
+              aria-label={`Switch loan term unit to ${loanTermUnit === "months" ? "years" : "months"}`}
+            >
+              {formatLoanTermUnitLabel(loanTermUnit, loanForm.loanTerm)}
+              <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            </button>
           </div>
           {formSubmitted && validationErrors.loanTerm && (
             <FormError message={Array.isArray(validationErrors.loanTerm) ? validationErrors.loanTerm[0] : validationErrors.loanTerm} />

@@ -84,6 +84,7 @@ module Api
           :category_id,
           :subcategory_id,
           :account_name,
+          :account_id,
           :min_amount,
           :max_amount,
           :search_query,

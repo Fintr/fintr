@@ -19,13 +19,12 @@ module Transactions
       investment: "Investment"
     }.freeze
 
-    # Asset-like categories included in the "Cash only" accounts total.
+    # Liquid cash categories included in the "Cash only" accounts total.
     CASH_TOTAL_CATEGORIES = %w[
       cash
       savings
       debit
       e_wallet
-      investment
     ].freeze
 
     # Liability categories included in the "Payable (Credit card)" accounts total.

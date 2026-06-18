@@ -97,58 +97,60 @@ export function SpaceSwitcher({
         {/* Space List */}
         {showSpaceList && (
           <div className="mt-2 space-y-1">
-            {/* Personal Spaces */}
-            {personalSpaces
-              .filter(space => space.code !== currentSpace?.code)
-              .map((space) => (
-                <button
-                  key={space.code}
-                  onClick={() => handleSpaceSwitch(space.code)}
-                  className="flex w-full items-center justify-between rounded p-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-muted"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+            <div className="max-h-36 space-y-1 overflow-y-auto overscroll-contain pr-1">
+              {/* Personal Spaces */}
+              {personalSpaces
+                .filter(space => space.code !== currentSpace?.code)
+                .map((space) => (
+                  <button
+                    key={space.code}
+                    onClick={() => handleSpaceSwitch(space.code)}
+                    className="flex w-full items-center justify-between rounded p-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-muted"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <div className="w-2 h-2 bg-green-500 rounded-full" />
+                        {space.hasNewInvitation && (
+                          <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                        )}
+                      </div>
+                      <span className="text-sm">{space.name}</span>
                       {space.hasNewInvitation && (
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       )}
                     </div>
-                    <span className="text-sm">{space.name}</span>
-                    {space.hasNewInvitation && (
-                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                    )}
-                  </div>
-                  <Check className="h-3 w-3 text-green-600" />
-                </button>
-              ))
-            }
-            {/* Organization Spaces */}
-            {organizationSpaces
-              .filter(space => space.code !== currentSpace?.code)
-              .map((space) => (
-                <button
-                  key={space.code}
-                  onClick={() => handleSpaceSwitch(space.code)}
-                  className="flex w-full items-center justify-between rounded p-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-muted"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                    <Check className="h-3 w-3 text-green-600" />
+                  </button>
+                ))
+              }
+              {/* Organization Spaces */}
+              {organizationSpaces
+                .filter(space => space.code !== currentSpace?.code)
+                .map((space) => (
+                  <button
+                    key={space.code}
+                    onClick={() => handleSpaceSwitch(space.code)}
+                    className="flex w-full items-center justify-between rounded p-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-muted"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                        {space.hasNewInvitation && (
+                          <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                        )}
+                      </div>
+                      <span className="text-sm">{space.name}</span>
                       {space.hasNewInvitation && (
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       )}
+                      <Badge variant="outline" className="text-xs">
+                        {space.userRole}
+                      </Badge>
                     </div>
-                    <span className="text-sm">{space.name}</span>
-                    {space.hasNewInvitation && (
-                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                    )}
-                    <Badge variant="outline" className="text-xs">
-                      {space.userRole}
-                    </Badge>
-                  </div>
-                  <Check className="h-3 w-3 text-green-600" />
-                </button>
-              ))}
+                    <Check className="h-3 w-3 text-green-600" />
+                  </button>
+                ))}
+            </div>
 
             {/* Create Organization Space */}
             <button

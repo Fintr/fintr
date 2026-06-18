@@ -2,9 +2,13 @@
 
 module Transactions
   class LoanPayment < ApplicationRecord
+    include Versionable
+
     belongs_to :loan, class_name: "Transactions::Loan"
     belongs_to :account, class_name: "Transactions::Account"
     belongs_to :transaction_record, class_name: "Transactions::Transaction", optional: true, foreign_key: :transaction_id
+
+    delegate :space_id, :space, to: :loan, allow_nil: true
 
     monetize :principal_payment_cents, with_model_currency: :currency
     monetize :interest_payment_cents, with_model_currency: :currency
@@ -15,6 +19,34 @@ module Transactions
     validates :interest_payment_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
     validates :total_payment_cents, presence: true, numericality: { greater_than: 0 }
     validates :account, presence: true
+
+    def value
+      total_payment
+    end
+
+    def amount
+      total_payment
+    end
+
+    def amount_currency
+      currency
+    end
+
+    def in_series?
+      false
+    end
+
+    def amount_in_space_currency
+      @amount_in_space_currency ||= ::ExchangeRates::Operations::AmountInSpaceForTransactable.display_payload(
+        transactable: self,
+      )
+    end
+
+    def amount_numeric_for_space_total
+      @amount_numeric_for_space_total ||= ::ExchangeRates::Operations::AmountInSpaceForTransactable.totals_amount_decimal(
+        transactable: self,
+      )
+    end
 
     # CRITICAL: Process payment and recalculate loan
     after_update :reprocess_payment
@@ -54,31 +86,16 @@ module Transactions
 
       # Recalculate loan balance
       loan.recalculate_outstanding_balance!
-
-      # Create corresponding transaction entries for double-entry bookkeeping
-      create_transaction_entries
     end
 
     def reprocess_payment
       # Recalculate everything if payment was modified
       loan.recalculate_outstanding_balance!
-      update_transaction_entries
     end
 
     def recalculate_loan
       # Recalculate if payment was deleted
       loan.recalculate_outstanding_balance!
-    end
-
-    def create_transaction_entries
-      # Create the actual transaction records for double-entry bookkeeping
-      # This integrates with your existing transaction system
-      # Implementation would depend on your transaction creation patterns
-    end
-
-    def update_transaction_entries
-      # Update transaction entries if payment was modified
-      # Implementation would depend on your transaction update patterns
     end
   end
 end

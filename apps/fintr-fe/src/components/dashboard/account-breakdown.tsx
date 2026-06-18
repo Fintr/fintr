@@ -1,19 +1,18 @@
+/**
+ * @ai-context INSIGHTS_ACCOUNT_BREAKDOWN_CARD
+ * Insights "Account Breakdown" card: total balance, account list with % share,
+ * expandable recent transactions per account. Render is commented out in insights-tab.tsx;
+ * say "bring back account breakdown" to restore.
+ */
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import { AccountBreakdown } from "@/services/insights/types";
 import { 
-  Wallet, 
-  CreditCard, 
-  Smartphone, 
-  PiggyBank, 
-  TrendingUp, 
-  DollarSign,
-  Building2,
-  Coins,
   ChevronDown,
   ChevronRight
 } from "lucide-react";
+import { getAccountCategoryIcon } from "@/utils/accountCategoryIcon";
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useAccountTransactions } from "@/hooks/async/useAccountTransactions";
 import { IndexTransaction, CombinedTransactionTypeEnum } from "@/types/transactionTypes";
@@ -36,27 +35,8 @@ interface AccountBreakdownProps {
 }
 
 const getAccountIcon = (category: string) => {
-  const categoryLower = category.toLowerCase();
-  
-  switch (categoryLower) {
-    case 'cash':
-      return <Wallet className="h-4 w-4" />;
-    case 'bank':
-      return <Building2 className="h-4 w-4" />;
-    case 'debit':
-    case 'credit_card':
-      return <CreditCard className="h-4 w-4" />;
-    case 'e_wallet':
-      return <Smartphone className="h-4 w-4" />;
-    case 'investment':
-      return <TrendingUp className="h-4 w-4" />;
-    case 'loan':
-      return <DollarSign className="h-4 w-4" />;
-    case 'savings':
-      return <PiggyBank className="h-4 w-4" />;
-    default:
-      return <Wallet className="h-4 w-4" />;
-  }
+  const Icon = getAccountCategoryIcon(category);
+  return <Icon className="h-4 w-4" />;
 };
 
 const CustomTooltip = ({ active, payload, currencyCode }: { active?: boolean; payload?: any[]; currencyCode?: string }) => {

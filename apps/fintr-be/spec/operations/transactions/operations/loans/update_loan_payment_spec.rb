@@ -152,15 +152,12 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
     let(:params) { valid_params }
     let(:calculate_interest_operation) { instance_double(Transactions::Operations::Loans::CalculateLoanPaymentInterest) }
     let(:update_account_balance_operation) { instance_double(Transactions::Operations::Loans::UpdateAccountBalanceForLoanPayment) }
-    let(:update_interest_transaction_operation) { instance_double(Transactions::Operations::Loans::UpdateLoanInterestTransaction) }
 
     before do
       allow(Transactions::Operations::Loans::CalculateLoanPaymentInterest).to receive(:new).and_return(calculate_interest_operation)
       allow(calculate_interest_operation).to receive(:call).and_return(Success(Money.from_amount(849.32, 'PHP')))
       allow(Transactions::Operations::Loans::UpdateAccountBalanceForLoanPayment).to receive(:new).and_return(update_account_balance_operation)
       allow(update_account_balance_operation).to receive(:call).and_return(Success(account))
-      allow(Transactions::Operations::Loans::UpdateLoanInterestTransaction).to receive(:new).and_return(update_interest_transaction_operation)
-      allow(update_interest_transaction_operation).to receive(:call).and_return(Success(nil))
     end
 
     context 'with valid parameters' do
@@ -299,15 +296,6 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
         )
       end
 
-      it 'calls UpdateLoanInterestTransaction' do
-        call_operation
-        expect(update_interest_transaction_operation).to have_received(:call).with(
-          loan_payment: loan_payment,
-          loan: loan,
-          interest_amount: loan_payment.interest_payment
-        )
-      end
-
       it 'recalculates the loan outstanding balance' do
         initial_outstanding = loan.reload.outstanding_balance
         call_operation
@@ -324,7 +312,6 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
         before do
           allow(Transactions::Operations::Loans::CalculateLoanPaymentInterest).to receive(:new)
           allow(Transactions::Operations::Loans::UpdateAccountBalanceForLoanPayment).to receive(:new)
-          allow(Transactions::Operations::Loans::UpdateLoanInterestTransaction).to receive(:new)
         end
 
         it { is_expected.to be_failure }
@@ -340,7 +327,6 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
         before do
           allow(Transactions::Operations::Loans::CalculateLoanPaymentInterest).to receive(:new)
           allow(Transactions::Operations::Loans::UpdateAccountBalanceForLoanPayment).to receive(:new)
-          allow(Transactions::Operations::Loans::UpdateLoanInterestTransaction).to receive(:new)
         end
 
         it { is_expected.to be_failure }
@@ -356,7 +342,6 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
         before do
           allow(Transactions::Operations::Loans::CalculateLoanPaymentInterest).to receive(:new)
           allow(Transactions::Operations::Loans::UpdateAccountBalanceForLoanPayment).to receive(:new)
-          allow(Transactions::Operations::Loans::UpdateLoanInterestTransaction).to receive(:new)
         end
 
         it { is_expected.to be_failure }
@@ -374,7 +359,6 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
         before do
           allow(Transactions::Operations::Loans::CalculateLoanPaymentInterest).to receive(:new)
           allow(Transactions::Operations::Loans::UpdateAccountBalanceForLoanPayment).to receive(:new)
-          allow(Transactions::Operations::Loans::UpdateLoanInterestTransaction).to receive(:new)
         end
 
         it { is_expected.to be_failure }
@@ -407,7 +391,6 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
         before do
           allow(Transactions::Operations::Loans::CalculateLoanPaymentInterest).to receive(:new)
           allow(Transactions::Operations::Loans::UpdateAccountBalanceForLoanPayment).to receive(:new)
-          allow(Transactions::Operations::Loans::UpdateLoanInterestTransaction).to receive(:new)
         end
 
         it { is_expected.to be_failure }
@@ -482,18 +465,6 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
 
         it 'returns the error message' do
           expect(call_operation.failure).to have_key(:error)
-        end
-      end
-
-      context 'when update_interest_transaction fails' do
-        before do
-          allow(update_interest_transaction_operation).to receive(:call).and_return(Failure(error: 'Transaction update failed'))
-        end
-
-        it { is_expected.to be_failure }
-
-        it 'returns the failure from UpdateLoanInterestTransaction' do
-          expect(call_operation.failure).to include(error: 'Transaction update failed')
         end
       end
 

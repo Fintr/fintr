@@ -43,6 +43,19 @@ module Api
           return render_unprocessable_content(details: operation.failure) unless operation.success?
           render_success(data: operation.value!)
         end
+
+        def activities
+          query = ::Transactions::Queries::FilteredAccountActivities.call(params: activity_params)
+
+          return render_unprocessable_content(details: query.failure) unless query.success?
+
+          render_paginated(
+            query.value!,
+            serializer: ::Transactions::Serializers::FilteredAccountActivitySerializer,
+            key: :activities
+          )
+        end
+
         private
 
         def create_params
@@ -59,6 +72,24 @@ module Api
 
         def delete_params
           params.permit(:id)
+        end
+
+        def activity_params
+          with_current_params(
+            params.permit(
+              :id,
+              :start_date,
+              :end_date,
+              :category_name,
+              :category_id,
+              :subcategory_id,
+              :min_amount,
+              :max_amount,
+              :search_query,
+              :page,
+              :per_page
+            ).to_h.merge(account_id: params[:id])
+          )
         end
       end
     end

@@ -8,6 +8,9 @@ import {
   CreateLoanPaymentType,
   LoanPayment 
 } from '@/services/loans/payments';
+import { LOAN_DETAIL_KEY } from '@/hooks/async/useLoan';
+import { ACCOUNT_DETAIL_ACTIVITIES_KEY } from '@/hooks/async/useAccountDetailActivities';
+import { ACCOUNT_DETAIL_TRANSACTIONS_KEY } from '@/hooks/async/useAccountDetailTransactions';
 
 export const useLoanPayments = (loanId: string) => {
   const { api } = useAuthApi({
@@ -27,10 +30,19 @@ export const useLoanPayments = (loanId: string) => {
     mutationFn: (paymentData: Omit<CreateLoanPaymentType, 'loanId'>) =>
       createLoanPayment(api, loanId, paymentData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loanPayments', loanId] });
-      queryClient.invalidateQueries({ queryKey: ['loans'] });
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ["loanPayments", loanId] });
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, loanId] });
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({
+        queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
+        exact: false,
+      });
     },
   });
 
@@ -38,10 +50,19 @@ export const useLoanPayments = (loanId: string) => {
     mutationFn: ({ paymentId, paymentData }: { paymentId: string; paymentData: Partial<Omit<CreateLoanPaymentType, 'loanId'>> }) =>
       updateLoanPayment(api, loanId, paymentId, paymentData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loanPayments', loanId] });
-      queryClient.invalidateQueries({ queryKey: ['loans'] });
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ["loanPayments", loanId] });
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, loanId] });
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({
+        queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
+        exact: false,
+      });
     },
   });
 
@@ -49,10 +70,19 @@ export const useLoanPayments = (loanId: string) => {
     mutationFn: (paymentId: string) =>
       deleteLoanPayment(api, loanId, paymentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loanPayments', loanId] });
-      queryClient.invalidateQueries({ queryKey: ['loans'] });
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ["loanPayments", loanId] });
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, loanId] });
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({
+        queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
+        exact: false,
+      });
     },
   });
 

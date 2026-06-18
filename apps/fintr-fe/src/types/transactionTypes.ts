@@ -32,6 +32,36 @@ export interface IndexTransaction {
   hasImage: boolean;
   hasLoanPayment?: boolean;
   calculated?: boolean;
+  activitableId?: string;
+  isLoanActivity?: boolean;
+  loanType?: "borrowed" | "lent";
+  loanId?: string;
+  entityName?: string;
+}
+
+export interface IndexActivity {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  amountCurrency?: string;
+  bookedAmount?: number;
+  bookedAmountCurrency?: string;
+  categoryName: string;
+  subcategoryName?: string | null;
+  fromAccountName: string;
+  toAccountName: string;
+  type: ActivitiesTypeEnum;
+  inSeries: boolean;
+  hasImage: boolean;
+  hasLoanPayment?: boolean;
+  calculated?: boolean;
+  /** Underlying record id (differs from activity row id for transfers). */
+  activitableId?: string;
+  isLoanActivity?: boolean;
+  loanType?: "borrowed" | "lent";
+  loanId?: string;
+  entityName?: string;
 }
 
 export interface TransactionIndexInputType {
@@ -92,17 +122,34 @@ export interface TransactionTotals {
 // Define the expected structure of the API response for infinite query
 export interface TransactionsPage {
   transactions: IndexTransaction[];
-  nextPage: number | null; // Page number for the next fetch, or null if last page
+  nextPage: number | null;
   totalPages: number | null;
   totalCount: number | null;
   totals: TransactionTotals | null;
-  // Add other pagination info if available (e.g., totalPages, totalCount)
+}
+
+export interface ActivitiesPage {
+  activities: IndexActivity[];
+  nextPage: number | null;
+  totalPages: number | null;
+  totalCount: number | null;
+  totals: TransactionTotals | null;
 }
 
 export enum CombinedTransactionTypeEnum {
   EXPENSE = "expense",
   INCOME = "income",
-  TRANSFER = "transfer"
+  TRANSFER = "transfer",
+  LOAN_DISBURSEMENT = "loan_disbursement",
+  LOAN_PAYMENT = "loan_payment",
+}
+
+export enum ActivitiesTypeEnum {
+  EXPENSE = "expense",
+  INCOME = "income",
+  TRANSFER = "transfer",
+  LOAN_DISBURSEMENT = "loan_disbursement",
+  LOAN_PAYMENT = "loan_payment",
 }
 
 export enum ScheduleTypeEnum {

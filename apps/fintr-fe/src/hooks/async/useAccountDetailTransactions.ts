@@ -10,6 +10,7 @@ export const ACCOUNT_ADJUSTMENT_HISTORY_KEY = "accountAdjustmentHistory" as cons
 const BALANCE_ADJUSTMENT_SEARCH = "Balance adjustment";
 
 type UseAccountDetailTransactionsParams = {
+  accountId?: string;
   accountName: string;
   startDate: string;
   endDate: string;
@@ -21,6 +22,7 @@ type UseAccountDetailTransactionsParams = {
 };
 
 export const useAccountDetailTransactions = ({
+  accountId,
   accountName,
   startDate,
   endDate,
@@ -40,6 +42,7 @@ export const useAccountDetailTransactions = ({
     queryKey: [
       ACCOUNT_DETAIL_TRANSACTIONS_KEY,
       spaceCode,
+      accountId,
       accountName,
       startDate,
       endDate,
@@ -51,6 +54,7 @@ export const useAccountDetailTransactions = ({
     queryFn: ({ pageParam = 1 }) =>
       fetchAccountTransactionsPage(api, {
         spaceCode,
+        accountId,
         accountName,
         startDate,
         endDate,
@@ -63,8 +67,9 @@ export const useAccountDetailTransactions = ({
     getNextPageParam: (lastPage) => lastPage.nextPage,
     enabled: enabled && !!spaceCode && !!accountName,
     retry: false,
+    refetchOnMount: "always",
     refetchOnWindowFocus: false,
-    staleTime: 30000,
+    staleTime: 0,
     cacheTime: 300000,
   });
 };

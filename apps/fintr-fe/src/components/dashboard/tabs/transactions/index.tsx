@@ -782,20 +782,6 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
               {getDescription()}
             </CardDescription>
           </div>
-          <div className="relative">
-            <Button
-              variant="ghost"
-              onClick={() => setFiltersOpen(true)}
-              className={filterTriggerButtonClassName}
-              aria-label="Open transaction filters"
-            >
-              <Filter className="h-4 w-4" />
-              <span className="hidden md:inline">Filters</span>
-            </Button>
-            {hasActiveFilters() && (
-              <span className={filterActiveBadgeClassName} aria-hidden />
-            )}
-          </div>
           {shouldShowV2Features() && (
             <div className="flex items-center space-x-2">
               <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:gap-2">
@@ -833,25 +819,40 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           />
 
           <div className="flex flex-col md:flex-row gap-4 mb-6 md:items-center">
-            <SearchField
-              placeholder="Search Transactions"
-              value={searchInput}
-              onChange={handleSearchChange}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSearch();
-                }
-              }}
-              onBlur={handleSearchBlur}
-            />
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <SearchField
+                placeholder="Search Transactions"
+                value={searchInput}
+                onChange={handleSearchChange}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+                onBlur={handleSearchBlur}
+              />
+              <div className="relative shrink-0">
+                <Button
+                  variant="ghost"
+                  onClick={() => setFiltersOpen(true)}
+                  className={filterTriggerButtonClassName}
+                  aria-label="Open transaction filters"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span className="hidden md:inline">Filters</span>
+                </Button>
+                {hasActiveFilters() && (
+                  <span className={filterActiveBadgeClassName} aria-hidden />
+                )}
+              </div>
+            </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-end w-full md:ml-auto md:w-auto md:self-center">
               <DownloadButton onClick={handleDownloadTransactions} />
               {hasNonSpaceCurrencyInLoadedTransactions && (
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
-                  className="shrink-0 gap-1.5 h-9 border-0 bg-white text-xs shadow-xs sm:text-sm hover:bg-gray-100 dark:bg-card dark:hover:bg-accent/50"
+                  className="flex shrink-0 items-center gap-1 border-0 bg-white shadow-xs hover:bg-gray-100 dark:bg-card dark:hover:bg-accent/50"
                   onClick={() => setShowBookedCurrencies((v) => !v)}
                   aria-pressed={showBookedCurrencies}
                   aria-label={

@@ -102,5 +102,8 @@ jobs:
       - name: Clean TimescaleDB schemas
         run: bundle exec rake db:clean_timescaledb_schemas
 
+      - name: Verify UUID primary keys
+        run: bundle exec rake db:verify_uuid_primary_keys
+
       - name: Run specs
         run: bundle exec rspec

@@ -520,24 +520,26 @@ export function CategoryDetailTransactions({
       </Sheet>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <SearchField
-          placeholder="Search transactions"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              setAppliedSearch(searchInput.trim());
-            }
-          }}
-          onBlur={() => setAppliedSearch(searchInput.trim())}
-        />
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <SearchField
+            placeholder="Search transactions"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                setAppliedSearch(searchInput.trim());
+              }
+            }}
+            onBlur={() => setAppliedSearch(searchInput.trim())}
+          />
+          {renderFiltersTrigger()}
+        </div>
         <div
           className={cn(
             "flex shrink-0 flex-wrap items-center justify-end gap-2 self-end w-full sm:w-auto sm:self-center",
             !hasNonSpaceCurrencyInLoadedTransactions && "sm:justify-end",
           )}
         >
-          {renderFiltersTrigger()}
           {hasNonSpaceCurrencyInLoadedTransactions ? (
             <Button
               type="button"

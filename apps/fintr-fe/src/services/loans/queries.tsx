@@ -125,3 +125,25 @@ export const fetchLoansPage = async (
   }
 };
 
+/**
+ * Fetch a single loan by id
+ */
+export const fetchLoanById = async (
+  api: AxiosInstance,
+  loanId: string,
+): Promise<Loan> => {
+  try {
+    const response = await api.get(`/transactions/loans/${loanId}`);
+    return response.data?.data;
+  } catch (error) {
+    const axiosError = error as AxiosError;
+
+    if (axiosError.response?.data) {
+      throw axiosError.response.data;
+    }
+
+    console.error("Error fetching loan:", error);
+    throw new Error("Failed to fetch loan");
+  }
+};
+

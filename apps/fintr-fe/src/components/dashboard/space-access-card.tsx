@@ -517,6 +517,10 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
               {showAddForm ? "Cancel" : "Add user"}
             </Button>
           </div>
+          <p className="text-sm text-muted-foreground">
+            Invite other users to use Fintr, then add them here.
+            They can switch to your space from Space Management in the menu.
+          </p>
 
           {showAddForm && (
             <div className="space-y-3 p-3 rounded-lg border bg-muted/30">

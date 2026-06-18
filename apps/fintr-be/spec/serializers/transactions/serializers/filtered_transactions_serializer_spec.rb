@@ -60,44 +60,8 @@ RSpec.describe Transactions::Serializers::FilteredTransactionsSerializer do
   end
 
   describe ':has_loan_payment field' do
-    context 'when loan_payment is present' do
-      let(:transaction_record) do
-        OpenStruct.new(
-          id: record_id,
-          date: record_date,
-          description: record_description,
-          account_name: record_account_name,
-          category_name: record_category_name,
-          value: new_mock_money.call(record_amount),
-          balance: new_mock_money.call(record_balance),
-          type: "Transactions::Expense",
-          loan_payment: OpenStruct.new(id: SecureRandom.uuid)
-        )
-      end
-
-      it 'returns true' do
-        expect(serialized_hash[:has_loan_payment]).to be true
-      end
-    end
-
-    context 'when loan_payment is nil' do
-      let(:transaction_record) do
-        OpenStruct.new(
-          id: record_id,
-          date: record_date,
-          description: record_description,
-          account_name: record_account_name,
-          category_name: record_category_name,
-          value: new_mock_money.call(record_amount),
-          balance: new_mock_money.call(record_balance),
-          type: "Transactions::Expense",
-          loan_payment: nil
-        )
-      end
-
-      it 'returns false' do
-        expect(serialized_hash[:has_loan_payment]).to be false
-      end
+    it 'always returns false' do
+      expect(serialized_hash[:has_loan_payment]).to be(false)
     end
   end
 

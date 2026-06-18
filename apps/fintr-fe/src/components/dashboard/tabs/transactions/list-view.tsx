@@ -1,7 +1,15 @@
 import React, { useState } from "react";
-import { IndexTransaction, CombinedTransactionTypeEnum, TransactionsPage } from "@/types/transactionTypes";
+import { useRouter } from "next/navigation";
+import {
+  ActivitiesPage,
+  ActivitiesTypeEnum,
+  CombinedTransactionTypeEnum,
+  IndexActivity,
+  IndexTransaction,
+  TransactionsPage,
+} from "@/types/transactionTypes";
 import { formatCurrency, truncateText } from "@/lib/utils";
-import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Image } from "lucide-react";
+import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Image, Landmark } from "lucide-react";
 import { InfiniteData } from "@tanstack/react-query";
 import {
   Popover,
@@ -22,23 +30,54 @@ import {
   formatTransactionRowDate,
   getTransactionDayGroupKey,
 } from "@/utils/dateUtils";
+import {
+  activityCategoryLine,
+  activityPresentsAsIncome,
+  activityPresentsAsTransfer,
+  activityRecordId,
+  activityRowIsEditable,
+} from "@/utils/activityDisplay";
 
 interface ListViewProps {
+  variant?: "transactions" | "activities";
   isPending: boolean;
   isError: boolean;
   error: Error | null;
   isSuccess: boolean;
-  data?: InfiniteData<TransactionsPage>;
+  data?: InfiniteData<TransactionsPage> | InfiniteData<ActivitiesPage>;
   isFetchingNextPage: boolean;
   hasNextPage: boolean;
-  onRowEdit: (transaction: IndexTransaction) => void;
-  onRowDelete: (transactionId: string) => void;
+  onRowEdit: (row: IndexTransaction | IndexActivity) => void;
+  onRowDelete: (rowId: string) => void;
   loadMoreRef: React.RefObject<HTMLDivElement>;
   /** When true, row amounts use booked (ledger) currency from the API instead of space-normalized. */
   showBookedCurrencies?: boolean;
 }
 
+function flattenRows(
+  data: InfiniteData<TransactionsPage> | InfiniteData<ActivitiesPage>,
+  variant: "transactions" | "activities",
+): Array<IndexTransaction | IndexActivity> {
+  return data.pages.flatMap((page) => {
+    const row = page as TransactionsPage & ActivitiesPage;
+    const rows =
+      variant === "activities"
+        ? (row.activities ?? row.transactions ?? [])
+        : (row.transactions ?? row.activities ?? []);
+
+    return rows;
+  });
+}
+
+function rowCount(
+  data: InfiniteData<TransactionsPage> | InfiniteData<ActivitiesPage>,
+  variant: "transactions" | "activities",
+): number {
+  return flattenRows(data, variant).length;
+}
+
 export function ListView({
+  variant = "transactions",
   isPending,
   isError,
   error,
@@ -51,6 +90,7 @@ export function ListView({
   loadMoreRef,
   showBookedCurrencies = false,
 }: ListViewProps) {
+  const router = useRouter();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<Array<{ url: string; filename?: string; contentType?: string; byteSize?: number }>>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -61,16 +101,21 @@ export function ListView({
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
 
-  const handleImageClick = async (transaction: IndexTransaction) => {
+  const handleImageClick = async (row: IndexTransaction | IndexActivity) => {
     if (!api) return;
 
     try {
       let transactionData;
-      
-      if (transaction.type === CombinedTransactionTypeEnum.TRANSFER) {
-        transactionData = await fetchTransferById(api, transaction.id);
+
+      const recordId =
+        variant === "activities" && "activitableId" in row
+          ? (row.activitableId ?? row.id)
+          : row.id;
+
+      if (row.type === CombinedTransactionTypeEnum.TRANSFER) {
+        transactionData = await fetchTransferById(api, recordId);
       } else {
-        transactionData = await fetchTransactionById(api, transaction.id);
+        transactionData = await fetchTransactionById(api, recordId);
       }
 
       if (transactionData?.files && Array.isArray(transactionData.files) && transactionData.files.length > 0) {
@@ -108,34 +153,42 @@ export function ListView({
           {(() => {
             let lastDisplayedDate: string | null = null;
             
-            // Flatten all transactions and deduplicate by ID as a safety measure
-            const allTransactions = data.pages.flatMap(page => page.transactions);
-            const uniqueTransactions = allTransactions.filter((transaction, index, array) => 
-              array.findIndex(t => t.id === transaction.id) === index
+            // Flatten rows and deduplicate by ID as a safety measure
+            const allRows = flattenRows(data, variant);
+            const uniqueRows = allRows.filter((row, index, array) =>
+              array.findIndex((r) => r.id === row.id) === index,
             );
-            
+
+            if (uniqueRows.length === 0) {
+              return (
+                <p className="text-sm text-muted-foreground py-6 text-center border rounded-lg bg-muted/20">
+                  No activity for this account in the selected range.
+                </p>
+              );
+            }
+
             // Daily net (income - expense) in space-normalized amounts for a consistent subtotal bar.
             const dailyTotals: Record<string, number> = {};
             const dailyCurrencies: Record<string, Set<string>> = {};
-            uniqueTransactions.forEach((transaction) => {
-              const dateKey = getTransactionDayGroupKey(transaction.date);
+            uniqueRows.forEach((row) => {
+              const dateKey = getTransactionDayGroupKey(row.date);
               if (!dailyTotals[dateKey]) {
                 dailyTotals[dateKey] = 0;
                 dailyCurrencies[dateKey] = new Set();
               }
-              const amount = Number(transaction.amount) || 0;
-              const rowCurrency = transaction.amountCurrency ?? spaceCurrency;
-              if (transaction.type === CombinedTransactionTypeEnum.INCOME) {
+              const amount = Number(row.amount) || 0;
+              const rowCurrency = row.amountCurrency ?? spaceCurrency;
+              if (activityPresentsAsIncome(row)) {
                 dailyTotals[dateKey] += amount;
                 dailyCurrencies[dateKey].add(rowCurrency);
-              } else if (transaction.type === CombinedTransactionTypeEnum.EXPENSE) {
+              } else if (!activityPresentsAsTransfer(row)) {
                 dailyTotals[dateKey] -= Math.abs(amount);
                 dailyCurrencies[dateKey].add(rowCurrency);
               }
             });
-            
-            return uniqueTransactions.map((transaction: IndexTransaction, idx: number) => {
-              const transactionDate = new Date(transaction.date);
+
+            return uniqueRows.map((row: IndexTransaction | IndexActivity, idx: number) => {
+              const transactionDate = new Date(row.date);
               const currentDate = getTransactionDayGroupKey(transactionDate);
               let showDivider = false;
 
@@ -153,24 +206,25 @@ export function ListView({
 
               const { amount: rowAmount, currency: rowCurrencyCode } =
                 indexTransactionDisplayMoney(
-                  transaction,
+                  row,
                   spaceCurrency,
-                  showBookedCurrencies
+                  showBookedCurrencies,
                 );
 
-              const subcategoryName = transaction.subcategoryName?.trim();
+              const subcategoryName = row.subcategoryName?.trim();
               const hasSubcategory = Boolean(subcategoryName);
-              const categoryLine = hasSubcategory
-                ? `${transaction.categoryName} › ${subcategoryName}`
-                : transaction.categoryName;
+              const categoryLine =
+                activityCategoryLine(row as IndexActivity);
+              const presentsAsIncome = activityPresentsAsIncome(row);
+              const presentsAsTransfer = activityPresentsAsTransfer(row);
 
               const accountLine =
-                transaction.fromAccountName && transaction.toAccountName
-                  ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
-                  : transaction.fromAccountName || transaction.toAccountName || "";
+                row.fromAccountName && row.toAccountName
+                  ? `${row.fromAccountName} → ${row.toAccountName}`
+                  : row.fromAccountName || row.toAccountName || "";
 
               return (
-                <React.Fragment key={transaction.id}>
+                <React.Fragment key={row.id}>
                   {showDivider && (
                     <div
                       key={`divider-${currentDate}-${idx}`}
@@ -199,15 +253,30 @@ export function ListView({
                         : "min-h-[60px]",
                     )}
                     onClick={() => {
-                      if (!transaction.hasLoanPayment) {
-                        onRowEdit(transaction);
+                      if (
+                        "isLoanActivity" in row &&
+                        row.isLoanActivity &&
+                        row.loanId
+                      ) {
+                        router.push(
+                          `/dashboard/loans/detail?loanId=${row.loanId}`,
+                        );
+                        return;
+                      }
+
+                      if (
+                        variant === "activities"
+                          ? activityRowIsEditable(row as IndexActivity)
+                          : activityRowIsEditable(row as IndexActivity)
+                      ) {
+                        onRowEdit(row);
                       }
                     }}
                   >
                     {/* Calculated indicator - triangle in upper right corner */}
-                    {transaction.calculated && (
+                    {row.calculated && (
                       <Popover
-                        open={hoveredCalculatedId === transaction.id}
+                        open={hoveredCalculatedId === row.id}
                         onOpenChange={(open) => {
                           if (!open) {
                             setHoveredCalculatedId(null);
@@ -219,7 +288,7 @@ export function ListView({
                             className="absolute top-0 right-0 w-0 h-0 border-l-[5px] border-l-transparent border-t-[5px] border-t-primary dark:border-t-[var(--primary-dark-mode)] cursor-pointer hover:border-t-primary/90 dark:hover:border-t-[color-mix(in_oklab,var(--primary-dark-mode)_90%,transparent)] transition-colors z-10"
                             role="button"
                             tabIndex={0}
-                            onMouseEnter={() => setHoveredCalculatedId(transaction.id)}
+                            onMouseEnter={() => setHoveredCalculatedId(row.id)}
                             onMouseLeave={() => setHoveredCalculatedId(null)}
                           />
                         </PopoverTrigger>
@@ -229,7 +298,7 @@ export function ListView({
                           sideOffset={6}
                           className="w-auto p-1.5 bg-black/80 text-white text-xs border-0 shadow-lg"
                           onOpenAutoFocus={(e) => e.preventDefault()}
-                          onMouseEnter={() => setHoveredCalculatedId(transaction.id)}
+                          onMouseEnter={() => setHoveredCalculatedId(row.id)}
                           onMouseLeave={() => setHoveredCalculatedId(null)}
                         >
                           Calculated
@@ -240,11 +309,11 @@ export function ListView({
                     <div
                       className={cn(
                         "w-1 shrink-0 self-center rounded mr-3 h-[90%] min-h-12",
-                        transaction.type === CombinedTransactionTypeEnum.INCOME
+                        presentsAsIncome
                           ? "bg-teal-600"
-                          : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                            ? "bg-red-900"
-                            : "bg-blue-900",
+                          : presentsAsTransfer
+                            ? "bg-blue-900"
+                            : "bg-red-900",
                       )}
                     />
                     
@@ -254,16 +323,16 @@ export function ListView({
                         <div className="flex min-w-0 flex-1 items-start gap-1 md:gap-2">
                           <h4
                             className="line-clamp-2 min-w-0 flex-1 break-words font-medium text-sm text-primary dark:text-primary-dark-mode"
-                            title={transaction.description}
+                            title={row.description}
                           >
-                            {transaction.description}
+                            {row.description}
                           </h4>
-                          {transaction.hasImage && (
+                          {row.hasImage && (
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleImageClick(transaction);
+                                handleImageClick(row);
                               }}
                               className="shrink-0 cursor-pointer transition-opacity hover:opacity-70"
                               title="View image"
@@ -275,11 +344,11 @@ export function ListView({
                         <div className="flex shrink-0 items-center gap-2">
                           <div
                                   className={`font-semibold text-sm ${
-                              transaction.type === CombinedTransactionTypeEnum.INCOME
+                              presentsAsIncome
                                 ? "text-teal-600 dark:text-teal-500"
-                                      : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                                ? "text-red-900 dark:text-red-700"
-                                : "text-blue-900 dark:text-blue-400"
+                                      : presentsAsTransfer
+                                ? "text-blue-900 dark:text-blue-400"
+                                : "text-red-900 dark:text-red-700"
                             }`}
                           >
                               {rowAmount < 0
@@ -294,17 +363,31 @@ export function ListView({
                           </div>
                           <span
                                   className={`px-1 md:px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 gap-1 ${
-                              transaction.type === CombinedTransactionTypeEnum.INCOME
+                              presentsAsIncome
                                       ? "bg-teal-100/50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-500"
-                                      : transaction.type === CombinedTransactionTypeEnum.EXPENSE
-                                      ? "bg-red-100/50 text-red-900 dark:bg-red-950/40 dark:text-red-700"
-                                      : "bg-blue-100/50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-400"
+                                      : presentsAsTransfer
+                                      ? "bg-blue-100/50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-400"
+                                      : "bg-red-100/50 text-red-900 dark:bg-red-950/40 dark:text-red-700"
                             }`}
                           >
-                                  {transaction.type === CombinedTransactionTypeEnum.INCOME && <ArrowUpRight className="h-3 w-3 inline" />}
-                                  {transaction.type === CombinedTransactionTypeEnum.EXPENSE && <ArrowDownLeft className="h-3 w-3 inline" />}
-                                  {transaction.type === CombinedTransactionTypeEnum.TRANSFER && <ArrowLeftRight className="h-3 w-3 inline" />}
-                            <span className="hidden md:inline">{transaction.type}</span>
+                                  {presentsAsIncome && <ArrowUpRight className="h-3 w-3 inline" />}
+                                  {!presentsAsIncome && !presentsAsTransfer && <ArrowDownLeft className="h-3 w-3 inline" />}
+                                  {presentsAsTransfer && <ArrowLeftRight className="h-3 w-3 inline" />}
+                                  {(row.type === ActivitiesTypeEnum.LOAN_DISBURSEMENT ||
+                                    row.type === ActivitiesTypeEnum.LOAN_PAYMENT ||
+                                    row.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT ||
+                                    row.type === CombinedTransactionTypeEnum.LOAN_PAYMENT) && (
+                                    <Landmark className="h-3 w-3 inline" />
+                                  )}
+                            <span className="hidden md:inline">
+                              {row.type === ActivitiesTypeEnum.LOAN_DISBURSEMENT ||
+                              row.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT
+                                ? "loan"
+                                : row.type === ActivitiesTypeEnum.LOAN_PAYMENT ||
+                                    row.type === CombinedTransactionTypeEnum.LOAN_PAYMENT
+                                  ? "payment"
+                                  : row.type}
+                            </span>
                           </span>
                         </div>
                       </div>
@@ -321,7 +404,7 @@ export function ListView({
                       <div className="flex items-center justify-between mt-1">
                         <div className="flex items-center text-xs text-gray-600 flex-1 min-w-0 overflow-hidden dark:text-muted-foreground">
                           <span className="flex-shrink-0 whitespace-nowrap">
-                            {formatTransactionRowDate(transaction.date)}
+                            {formatTransactionRowDate(row.date)}
                           </span>
                           <span
                             className="hidden md:block truncate ml-4"
@@ -364,10 +447,9 @@ export function ListView({
           <div ref={loadMoreRef} style={{ height: "10px" }} />
         </>
       )}
-      {isSuccess &&
-        (!data || data.pages.every((p) => p.transactions.length === 0)) && (
+      {isSuccess && (!data || rowCount(data, variant) === 0) && (
           <div className="text-center py-8 text-gray-500">
-            No transactions found
+            {variant === "activities" ? "No activity found" : "No transactions found"}
           </div>
         )}
       {isFetchingNextPage && (
@@ -378,9 +460,9 @@ export function ListView({
       {!hasNextPage &&
         isSuccess &&
         data &&
-        !data.pages.every((p) => p.transactions.length === 0) && (
+        rowCount(data, variant) > 0 && (
           <div className="text-center py-2 text-xs text-gray-400">
-            No more transactions
+            {variant === "activities" ? "No more activity" : "No more transactions"}
           </div>
         )}
 

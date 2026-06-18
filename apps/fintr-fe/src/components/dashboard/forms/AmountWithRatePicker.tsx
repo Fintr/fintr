@@ -400,10 +400,10 @@ export function AmountWithRatePicker({
       <Label htmlFor={id} className="self-end text-sm leading-none">
         {label}
       </Label>
-      {/* Row 1: [Currency] [Amount] [Rates]. Row 2 (when conversion): aligned with amount "→ PHP ###" and "(rate: ...)". */}
-      <div className="grid gap-x-2 gap-y-2 w-full min-w-0" style={{ gridTemplateColumns: "auto 1fr auto" }}>
-        {/* Currency on the left: locked label or search + list */}
-        <div className="flex flex-nowrap items-center shrink-0">
+      <div className="space-y-2 w-full min-w-0">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+          {/* Currency on the left: locked label or search + list */}
+          <div className="flex shrink-0 flex-nowrap items-center">
           {lockFromCurrency ? (
             <span
               className={cn(
@@ -471,7 +471,7 @@ export function AmountWithRatePicker({
             </Popover>
           )}
         </div>
-        <div className="min-w-0 flex items-center">
+        <div className="min-w-0 flex flex-1 items-center basis-[10rem]">
           <CalculatorInput
             id={id}
             name={id}
@@ -481,7 +481,7 @@ export function AmountWithRatePicker({
             className={`w-full min-w-0 ${inputClassName}`}
           />
         </div>
-        <div className="flex flex-nowrap items-center shrink-0">
+        <div className="flex shrink-0 flex-nowrap items-center">
           {!hideRatePicker && pairReady && (
             <Popover open={popoverOpen} onOpenChange={handleOpenPopover}>
               <PopoverTrigger asChild>
@@ -524,16 +524,16 @@ export function AmountWithRatePicker({
                     );
                     return (
                       <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
-                        <span className="text-muted-foreground">
-                          {formatRateForLabel(displayedRateDate)}:{" "}
-                        </span>
-                        <span className="font-medium">
+                        <p className="text-muted-foreground">
+                          {formatRateForLabel(displayedRateDate)}:
+                        </p>
+                        <p className="font-medium">
                           {formatWithDelimiters(q.displayValue, {
                             minFractionDigits: RATE_DISPLAY_DECIMALS,
                             maxFractionDigits: RATE_DISPLAY_DECIMALS,
                           })}{" "}
                           {q.unitCurrency} per 1 {q.baseCurrency}
-                        </span>
+                        </p>
                       </div>
                     );
                   })()}
@@ -632,9 +632,9 @@ export function AmountWithRatePicker({
                       })()}
                     >
                       {isManualRateApplied ? (
-                        <Check className="h-4 w-4 text-primary mr-1.5 shrink-0" aria-hidden />
+                        <Check className="h-4 w-4 text-primary-foreground mr-1.5 shrink-0" aria-hidden />
                       ) : null}
-                      Apply
+                      {isManualRateApplied ? "Applied" : "Apply"}
                     </Button>
                   </div>
                 </div>
@@ -642,64 +642,61 @@ export function AmountWithRatePicker({
             </Popover>
           )}
         </div>
+        </div>
         {fxPreviewActive && (
-          <>
-            <div />
-            <div className="flex flex-col gap-0.5 min-w-0 pl-3 border-l-2 border-primary/20 py-0.5">
-              {conversion && amountNumeric > 0 ? (
-                <>
-                  <p className="text-sm font-semibold text-primary tracking-tight">
-                    → {ledgerTargetCurrency ?? "Account"}{" "}
-                    <RollingNumber
-                      value={formatWithDelimiters(convertedAmount, {
-                        minFractionDigits: 3,
-                        maxFractionDigits: 3,
-                      })}
-                      className="text-primary"
-                    />
+          <div className="min-w-0 border-l-2 border-primary/20 py-0.5 pl-3">
+            {conversion && amountNumeric > 0 ? (
+              <>
+                <p className="text-sm font-semibold text-primary tracking-tight">
+                  → {ledgerTargetCurrency ?? "Account"}{" "}
+                  <RollingNumber
+                    value={formatWithDelimiters(convertedAmount, {
+                      minFractionDigits: 3,
+                      maxFractionDigits: 3,
+                    })}
+                    className="text-primary"
+                  />
+                </p>
+                {ledgerTargetCurrency != null ? (
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    (
+                    {(() => {
+                      const q = humanFxQuote(
+                        conversion.exchangeRate,
+                        fromCurrency,
+                        ledgerTargetCurrency,
+                      );
+                      return (
+                        <>
+                          <RollingNumber
+                            value={formatWithDelimiters(q.displayValue, {
+                              minFractionDigits: RATE_DISPLAY_DECIMALS,
+                              maxFractionDigits: RATE_DISPLAY_DECIMALS,
+                            })}
+                            className="text-muted-foreground"
+                          />{" "}
+                          {q.unitCurrency} per 1 {q.baseCurrency}
+                        </>
+                      );
+                    })()}
+                    {conversion.exchangeRateSource !== "auto" && " · manual/recent"})
                   </p>
-                  {ledgerTargetCurrency != null ? (
-                    <p className="text-xs text-muted-foreground tabular-nums">
-                      (
-                      {(() => {
-                        const q = humanFxQuote(
-                          conversion.exchangeRate,
-                          fromCurrency,
-                          ledgerTargetCurrency,
-                        );
-                        return (
-                          <>
-                            <RollingNumber
-                              value={formatWithDelimiters(q.displayValue, {
-                                minFractionDigits: RATE_DISPLAY_DECIMALS,
-                                maxFractionDigits: RATE_DISPLAY_DECIMALS,
-                              })}
-                              className="text-muted-foreground"
-                            />{" "}
-                            {q.unitCurrency} per 1 {q.baseCurrency}
-                          </>
-                        );
-                      })()}
-                      {conversion.exchangeRateSource !== "auto" && " · manual/recent"})
-                    </p>
-                  ) : null}
-                </>
-              ) : ledgerTargetCurrency != null ? (
-                <p className="text-xs text-muted-foreground">
-                  → {ledgerTargetCurrency} — enter amount and choose a rate
-                </p>
-              ) : initialConversion == null ? (
-                <p className="text-xs text-muted-foreground">
-                  Select an account to preview the amount in the account currency.
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Enter amount to see the converted value.
-                </p>
-              )}
-            </div>
-            <div />
-          </>
+                ) : null}
+              </>
+            ) : ledgerTargetCurrency != null ? (
+              <p className="text-xs text-muted-foreground">
+                → {ledgerTargetCurrency} — enter amount and choose a rate
+              </p>
+            ) : initialConversion == null ? (
+              <p className="text-xs text-muted-foreground">
+                Select an account to preview the amount in the account currency.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Enter amount to see the converted value.
+              </p>
+            )}
+          </div>
         )}
       </div>
       {errors.length > 0 &&

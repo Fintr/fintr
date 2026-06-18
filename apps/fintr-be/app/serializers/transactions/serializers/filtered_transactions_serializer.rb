@@ -28,8 +28,8 @@ module Transactions
         end
       end
 
-      field :has_loan_payment do |transaction|
-        transaction.loan_payment.present?
+      field :has_loan_payment do |_transaction|
+        false
       end
     end
   end

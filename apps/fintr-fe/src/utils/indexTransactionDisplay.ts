@@ -1,8 +1,13 @@
 import type { IndexTransaction } from "@/types/transactionTypes";
 
+type IndexRowMoneyFields = Pick<
+  IndexTransaction,
+  "amount" | "amountCurrency" | "bookedAmount" | "bookedAmountCurrency"
+>;
+
 /** Space-normalized row vs ledger (booked) amount/currency for list / sheets. */
 export function indexTransactionDisplayMoney(
-  transaction: IndexTransaction,
+  transaction: IndexRowMoneyFields,
   spaceCurrency: string,
   showBookedCurrencies: boolean
 ): { amount: number; currency: string } {
