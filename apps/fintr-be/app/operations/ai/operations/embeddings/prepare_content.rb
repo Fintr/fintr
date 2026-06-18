@@ -20,7 +20,21 @@ module Ai
         private
 
         def build_transaction_content(transaction)
-          amount_display = case transaction.type
+          "#{transaction.description}. " \
+          "#{format_amount_display(transaction)} #{human_transaction_type(transaction)} " \
+          "in #{format_category_label(transaction)} via #{transaction.account.name} " \
+          "on #{format_date(transaction.date)}."
+        end
+
+        def build_transfer_content(transfer)
+          "#{transfer.description}. " \
+          "#{transfer.amount.format} transfer from #{transfer.from_account.name} " \
+          "to #{transfer.to_account.name} with #{transfer.transaction_cost.format} fee " \
+          "on #{format_date(transfer.date)}."
+        end
+
+        def format_amount_display(transaction)
+          case transaction.type
           when "Transactions::Expense"
             "-#{transaction.amount.format}"
           when "Transactions::Income"
@@ -28,25 +42,28 @@ module Ai
           else
             transaction.amount.format
           end
-
-          "Transaction: #{transaction.description}, " \
-          "Amount: #{amount_display}, " \
-          "Category: #{transaction.category.name}, " \
-          "Account: #{transaction.account.name}, " \
-          "Date: #{transaction.date.strftime('%B %d, %Y')}, " \
-          "Type: #{transaction.type}, " \
-          "Space: #{transaction.space.name}"
         end
 
-        def build_transfer_content(transfer)
-          "Transfer: #{transfer.description}, " \
-          "Amount: #{transfer.amount.format}, " \
-          "From Account: #{transfer.from_account.name}, " \
-          "To Account: #{transfer.to_account.name}, " \
-          "Transaction Cost: #{transfer.transaction_cost.format}, " \
-          "Date: #{transfer.date.strftime('%B %d, %Y')}, " \
-          "Type: Transfer, " \
-          "Space: #{transfer.space.name}"
+        def human_transaction_type(transaction)
+          case transaction.type
+          when "Transactions::Expense"
+            "expense"
+          when "Transactions::Income"
+            "income"
+          else
+            "transaction"
+          end
+        end
+
+        def format_category_label(transaction)
+          label = transaction.category.name
+          return label if transaction.subcategory_id.blank?
+
+          "#{label}, #{transaction.subcategory.name}"
+        end
+
+        def format_date(date)
+          date.strftime("%B %d, %Y")
         end
 
         def return_failure

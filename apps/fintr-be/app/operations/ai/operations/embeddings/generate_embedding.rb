@@ -84,7 +84,7 @@ module Ai
         def build_metadata(embeddable:)
           case embeddable
           when Transactions::Transaction
-            {
+            metadata = {
               embeddable_type: embeddable.class.name,
               transaction_type: embeddable.type,
               category: embeddable.category.name,
@@ -97,6 +97,8 @@ module Ai
                               end,
               date: embeddable.date.iso8601
             }
+            metadata[:subcategory] = embeddable.subcategory.name if embeddable.subcategory_id.present?
+            metadata
           when Transactions::Transfer
             {
               embeddable_type: embeddable.class.name,
