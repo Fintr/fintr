@@ -1,5 +1,8 @@
 #!/usr/bin/env ruby
 
+# macOS fork safety: disable GSS before Rails loads pg (see config/database.yml).
+ENV["PGGSSENCMODE"] = "disable"
+
 require_relative "../config/environment"
 require "solid_queue/cli"
 

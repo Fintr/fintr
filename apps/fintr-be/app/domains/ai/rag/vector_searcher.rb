@@ -4,8 +4,9 @@ module Ai
   module Rag
     # Performs vector search using embeddings
     class VectorSearcher
-      DEFAULT_LIMIT = 20
-      DEFAULT_THRESHOLD = 0.7
+      DEFAULT_LIMIT = 30
+      DEFAULT_THRESHOLD = 0.65
+      DEFAULT_CANDIDATE_LIMIT = 150
 
       def initialize(
         embedding_generator: nil,
@@ -18,16 +19,18 @@ module Ai
       # Search for similar vectors
       # @param query [String]
       # @param space_id [String]
-      # @param filters [Hash]
-      # @param limit [Integer]
+      # @param filters [Hash] hard scope only (date, account, transaction type) — no text prefilters
+      # @param limit [Integer] max results returned after ranking
       # @param threshold [Float]
+      # @param candidate_limit [Integer] neighbors fetched before threshold/limit trimming
       # @return [Array<Hash>]
       def search(
         query:,
         space_id:,
         filters: {},
         limit: DEFAULT_LIMIT,
-        threshold: DEFAULT_THRESHOLD
+        threshold: DEFAULT_THRESHOLD,
+        candidate_limit: DEFAULT_CANDIDATE_LIMIT
       )
         query_embedding = generate_embedding(query)
 
@@ -37,6 +40,7 @@ module Ai
           filters,
           limit,
           threshold,
+          candidate_limit,
         )
 
         format_results(results)
@@ -59,7 +63,8 @@ module Ai
         space_id,
         filters,
         limit,
-        threshold
+        threshold,
+        candidate_limit
       )
         scope = build_scope(space_id, filters)
 
@@ -67,6 +72,7 @@ module Ai
           query_embedding,
           limit: limit,
           threshold: threshold,
+          candidate_limit: candidate_limit,
         )
       end
 
@@ -77,8 +83,16 @@ module Ai
           scope = scope.where(embeddable_type: filters[:embeddable_type])
         end
 
+        if filters[:transaction_type].present?
+          type = transaction_type_class(filters[:transaction_type])
+          scope = scope.where("metadata->>'transaction_type' = ?", type) if type
+        end
+
         if filters[:category].present?
-          scope = scope.where("metadata->>'category' ILIKE ?", "%#{filters[:category]}%")
+          scope = CategoryFilter.apply_to_embeddings(
+            scope,
+            category_name: filters[:category],
+          )
         end
 
         if filters[:account].present?
@@ -96,6 +110,14 @@ module Ai
         scope
       end
 
+      def transaction_type_class(type)
+        case type.to_s
+        when "expense" then "Transactions::Expense"
+        when "income" then "Transactions::Income"
+        when "transfer" then "Transactions::Transfer"
+        end
+      end
+
       def format_results(results)
         results.map do |embedding|
           {
@@ -105,7 +127,7 @@ module Ai
             content: embedding.content,
             metadata: embedding.metadata,
             similarity_score: 1 - embedding.neighbor_distance,
-            distance: embedding.neighbor_distance
+            distance: embedding.neighbor_distance,
           }
         end
       end

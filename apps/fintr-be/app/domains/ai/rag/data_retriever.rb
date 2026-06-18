@@ -168,8 +168,38 @@ module Ai
         sorted.first(limit)
       end
 
-      def execute_and_format(query, _analysis)
-        query.limit(10).map { |t| serialize_transaction(t) }
+      def execute_and_format(query, analysis)
+        total_cents = query.sum(:amount_cents)
+        count = query.count
+        return [] if count.zero?
+
+        sample_limit = [analysis.limit || 10, 15].min
+        sample = query
+          .order(date: :desc, amount_cents: :desc)
+          .limit(sample_limit)
+          .map { |transaction| serialize_transaction(transaction) }
+
+        aggregate = {
+          aggregate: true,
+          total: Money.new(total_cents).format,
+          total_cents: total_cents,
+          count: count,
+          transactions: sample,
+        }
+
+        if topic_breakdown?(analysis) && count.positive?
+          breakdown_rows = query.includes(:subcategory)
+          aggregate[:topic_breakdown] = TopicBreakdownBuilder.build(breakdown_rows)
+        end
+
+        [aggregate]
+      end
+
+      def topic_breakdown?(analysis)
+        filters = analysis.filters || {}
+        filters[:search_term].present? ||
+          filters[:categories].present? ||
+          filters[:topic_terms].present?
       end
 
       def execute_trend_query(query, analysis)
@@ -221,6 +251,7 @@ module Ai
           amount_cents: transaction.amount_cents,
           description: transaction.description,
           category: transaction.category&.name,
+          subcategory: transaction.subcategory&.name,
           account: transaction.account&.name,
           date: transaction.date.to_s,
           type: transaction.type&.demodulize&.downcase

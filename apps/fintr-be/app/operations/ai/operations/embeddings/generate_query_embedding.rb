@@ -27,10 +27,11 @@ module Ai
 
         def generate_embedding_vector(params:)
           client = OpenAI::Client.new(access_token: ENV["OPENAI_API_KEY"])
+          embedding_model = Rails.configuration.x.llm.embedding_model
 
           response = client.embeddings(
             parameters: {
-              model: "text-embedding-3-small",
+              model: embedding_model,
               input: params[:query]
             }
           )

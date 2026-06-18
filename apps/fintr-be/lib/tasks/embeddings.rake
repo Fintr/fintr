@@ -105,6 +105,58 @@ namespace :embeddings do
     puts "💡 Use 'rails embeddings:stats' to monitor progress."
   end
 
+  desc "Delete and recreate all embeddings for all spaces belonging to one or more user emails"
+  task :recreate_for_email, [:emails] => :environment do |_task, args|
+    emails = parse_recreate_emails(args[:emails])
+
+    if emails.empty?
+      puts "❌ Error: Please provide at least one email"
+      puts "Usage: rails embeddings:recreate_for_email[email1@example.com,email2@example.com]"
+      puts "   or: EMAILS=email1@example.com,email2@example.com rails embeddings:recreate_for_email"
+      exit 1
+    end
+
+    puts "🔄 Recreating embeddings for #{emails.count} #{'email'.pluralize(emails.count)}"
+
+    missing_emails = []
+    processed_space_ids = []
+
+    emails.each do |email|
+      normalized_email = Auth::User.normalize_email_for_lookup(email)
+      user = Auth::User.find_by(email: normalized_email)
+
+      if user.nil?
+        missing_emails << normalized_email
+        puts "⚠️  No user found with email #{normalized_email}"
+        next
+      end
+
+      spaces = user.spaces
+      puts ""
+      puts "👤 #{user.email} (#{spaces.count} #{'space'.pluralize(spaces.count)})"
+
+      if spaces.empty?
+        puts "✅ User has no spaces."
+        next
+      end
+
+      spaces.find_each do |space|
+        next if processed_space_ids.include?(space.id)
+
+        processed_space_ids << space.id
+        recreate_embeddings_for_space(space)
+      end
+    end
+
+    puts ""
+    if missing_emails.any?
+      puts "⚠️  Skipped #{missing_emails.count} unknown #{'email'.pluralize(missing_emails.count)}: #{missing_emails.join(', ')}"
+    end
+
+    puts "✅ All embedding jobs enqueued for #{processed_space_ids.count} #{'space'.pluralize(processed_space_ids.count)}!"
+    puts "💡 Use 'rails embeddings:stats' to monitor progress."
+  end
+
   desc "Regenerate all embeddings (delete existing and create new ones)"
   task regenerate_all: :environment do
     puts "🔄 Regenerating all embeddings..."
@@ -206,6 +258,44 @@ namespace :embeddings do
   end
 
   private
+
+  def parse_recreate_emails(emails_arg)
+    raw = emails_arg.presence || ENV.fetch("EMAILS", nil)
+    return [] if raw.blank?
+
+    raw.split(",").map { |email| email.strip }.reject(&:blank?).uniq
+  end
+
+  def recreate_embeddings_for_space(space)
+    puts ""
+    puts "🔄 Space: #{space.name} (#{space.id})"
+
+    deleted_count = Ai::RagEmbedding.where(space_id: space.id).delete_all
+    puts "🗑️  Deleted #{deleted_count} existing embeddings"
+
+    transactions = space.transactions.includes(:category, :account, :subcategory)
+    transfers = space.transfers.includes(:from_account, :to_account)
+    total_records = transactions.count + transfers.count
+
+    puts "📊 Found #{transactions.count} transactions"
+    puts "📊 Found #{transfers.count} transfers"
+    puts "📊 Total records to process: #{total_records}"
+
+    if total_records.zero?
+      puts "✅ No transactions or transfers in this space."
+      return
+    end
+
+    puts "🚀 Enqueueing individual embedding jobs..."
+
+    puts "🔄 Enqueueing transaction embedding jobs..."
+    enqueue_embedding_jobs(transactions)
+
+    puts "🔄 Enqueueing transfer embedding jobs..."
+    enqueue_embedding_jobs(transfers)
+
+    puts "✅ Embedding jobs enqueued for space: #{space.name}"
+  end
 
   def enqueue_embedding_jobs(records)
     success_count = 0

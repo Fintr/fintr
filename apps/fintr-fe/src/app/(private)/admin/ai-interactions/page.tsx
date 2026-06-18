@@ -15,6 +15,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useAiInteractions, AiInteraction, AiInteractionStats } from "@/services/admin/ai-interactions";
 import { formatDistanceToNow } from "date-fns";
 import { Eye, Search, Filter, BarChart3, Users, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { AiInteractionAuditDetails } from "@/components/admin/ai-interaction-audit";
 import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
 
 export default function AiInteractionsPage() {
@@ -314,14 +315,7 @@ export default function AiInteractionsPage() {
                                         </div>
                                       </div>
 
-                                      {interaction.enhanced_prompt && (
-                                        <div>
-                                          <h4 className="font-medium mb-2">Enhanced Prompt Sent to OpenAI</h4>
-                                          <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
-                                            <p className="text-sm whitespace-pre-wrap">{interaction.enhanced_prompt}</p>
-                                          </div>
-                                        </div>
-                                      )}
+                                      <AiInteractionAuditDetails interaction={interaction} />
 
                                       {interaction.response && (
                                         <div>
@@ -369,16 +363,6 @@ export default function AiInteractionsPage() {
                                         </div>
                                       </div>
 
-                                      {interaction.metadata && Object.keys(interaction.metadata).length > 0 && (
-                                        <div>
-                                          <h4 className="font-medium mb-2">Metadata</h4>
-                                          <div className="bg-muted p-3 rounded-md">
-                                            <pre className="text-xs overflow-auto">
-                                              {JSON.stringify(interaction.metadata, null, 2)}
-                                            </pre>
-                                          </div>
-                                        </div>
-                                      )}
                                     </div>
                                   </ScrollArea>
                                 </DialogContent>
@@ -461,14 +445,7 @@ export default function AiInteractionsPage() {
                                       </div>
                                     </div>
 
-                                    {interaction.enhanced_prompt && (
-                                      <div>
-                                        <h4 className="font-medium mb-2">Enhanced Prompt Sent to OpenAI</h4>
-                                        <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
-                                          <p className="text-sm whitespace-pre-wrap">{interaction.enhanced_prompt}</p>
-                                        </div>
-                                      </div>
-                                    )}
+                                    <AiInteractionAuditDetails interaction={interaction} />
 
                                     {interaction.response && (
                                       <div>
@@ -516,16 +493,6 @@ export default function AiInteractionsPage() {
                                       </div>
                                     </div>
 
-                                    {interaction.metadata && Object.keys(interaction.metadata).length > 0 && (
-                                      <div>
-                                        <h4 className="font-medium mb-2">Metadata</h4>
-                                        <div className="bg-muted p-3 rounded-md">
-                                          <pre className="text-xs overflow-auto">
-                                            {JSON.stringify(interaction.metadata, null, 2)}
-                                          </pre>
-                                        </div>
-                                      </div>
-                                    )}
                                   </div>
                                 </ScrollArea>
                               </DialogContent>

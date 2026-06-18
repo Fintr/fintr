@@ -13,12 +13,12 @@ module Ai
         },
         # Chat over structured data: Gemini and GPT-3.5 are cheaper and sufficient for Q&A; no need for latest flagship.
         generation: {
-          primary: "google/gemini-2.5-flash-lite",
-          fallback: "openai/gpt-3.5-turbo",
-          complex: "google/gemini-2.5-flash-lite"
+          primary: Rails.configuration.x.llm.default_model,
+          fallback: Rails.configuration.x.llm.fast_model,
+          complex: Rails.configuration.x.llm.default_model
         },
         embeddings: {
-          primary: "openai/text-embedding-3-small"
+          primary: "#{Rails.configuration.x.llm.embedding_model}"
         }
       }.freeze
 
