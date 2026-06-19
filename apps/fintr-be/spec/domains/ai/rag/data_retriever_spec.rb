@@ -15,7 +15,7 @@ RSpec.describe Ai::Rag::DataRetriever do
         aggregations: {},
         filters: {
           transaction_type: ["expense"],
-          categories: ["coffee"],
+          categories: ["coffee"]
         },
         time_range: { period: "this_year" },
         sorting: { field: "amount", direction: "desc" },
@@ -76,7 +76,7 @@ RSpec.describe Ai::Rag::DataRetriever do
           aggregations: {},
           filters: {
             transaction_type: ["expense"],
-            search_term: "dining",
+            search_term: "dining"
           },
           time_range: { period: "this_year" },
           sorting: { field: "amount", direction: "desc" },
@@ -111,9 +111,9 @@ RSpec.describe Ai::Rag::DataRetriever do
               content: "Lansangan Meals expense in Dine Out & Entertainment, Dine out",
               metadata: {
                 "category" => category.name,
-                "subcategory" => dine_out_subcategory.name,
-              },
-            },
+                "subcategory" => dine_out_subcategory.name
+              }
+            }
           ],
         )
 

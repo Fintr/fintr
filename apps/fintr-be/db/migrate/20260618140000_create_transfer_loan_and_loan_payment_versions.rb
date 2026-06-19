@@ -110,7 +110,7 @@ class CreateTransferLoanAndLoanPaymentVersions < ActiveRecord::Migration[8.1]
       whodunnit: record.try(:user_id),
       controller_info: {
         cause: "backfill",
-        operation: "db:migrate:create_transfer_loan_and_loan_payment_versions",
+        operation: "db:migrate:create_transfer_loan_and_loan_payment_versions"
       },
     ) do
       PaperTrail::Events::Update.new(record, true, false, force_changes).data

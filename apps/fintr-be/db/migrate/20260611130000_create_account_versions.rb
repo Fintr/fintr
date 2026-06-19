@@ -70,7 +70,7 @@ class CreateAccountVersions < ActiveRecord::Migration[8.1]
     PaperTrail.request(
       controller_info: {
         cause: "backfill",
-        operation: "db:migrate:create_account_versions",
+        operation: "db:migrate:create_account_versions"
       }
     ) do
       PaperTrail::Events::Update.new(account, true, false, force_changes).data

@@ -90,7 +90,9 @@ RSpec.describe Insights::Operations::CreateNarratives, type: :operation do
           )
         )
       )
-      allow(space.accounts).to receive_message_chain(:kept, :sum).and_return(12_000_00)
+      kept_accounts = instance_double(ActiveRecord::Relation)
+      allow(space.accounts).to receive(:kept).and_return(kept_accounts)
+      allow(kept_accounts).to receive(:sum).and_return(12_000_00)
 
       trailing = operation.send(:resolve_emergency_fund_expenses, params:)
       expect(trailing).to be_success

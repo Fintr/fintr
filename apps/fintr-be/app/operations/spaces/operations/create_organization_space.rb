@@ -146,7 +146,7 @@ module Spaces
               name: account.name,
               space: space,
               account_category: account.account_category,
-              balance: Money.new(0, account.balance_currency),
+              balance: Money.new(0, account.balance_currency)
             }
           )
           return save_result if save_result.failure?

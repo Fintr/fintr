@@ -51,7 +51,7 @@ module Ai
             name: name,
             arguments: normalize_arguments(arguments),
             result: truncated ? serialized_result.truncate(MAX_RESULT_LENGTH) : serialized_result,
-            result_truncated: truncated,
+            result_truncated: truncated
           }
 
           @tool_call_trail << entry
@@ -68,7 +68,7 @@ module Ai
         def add_step(kind:, label:, detail: nil)
           step = {
             kind: kind,
-            label: label.to_s.truncate(160),
+            label: label.to_s.truncate(160)
           }
           step[:result] = detail if detail.present?
           @steps << step

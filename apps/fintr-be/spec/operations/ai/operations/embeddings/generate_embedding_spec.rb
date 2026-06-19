@@ -340,7 +340,7 @@ RSpec.describe Ai::Operations::Embeddings::GenerateEmbedding, type: :operation d
 
         expect(openai_client).to have_received(:embeddings).with(
           parameters: {
-            model: "text-embedding-3-small",
+            model: "openai/text-embedding-3-small",
             input: content
           }
         )

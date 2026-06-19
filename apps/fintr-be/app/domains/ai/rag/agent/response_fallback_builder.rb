@@ -21,7 +21,7 @@ module Ai
           "this_week" => "this week",
           "last_week" => "last week",
           "this_year" => "this year",
-          "last_year" => "last year",
+          "last_year" => "last year"
         }.freeze
 
         def self.build(agent_result)
@@ -178,7 +178,7 @@ module Ai
             {
               description: match[:description].strip,
               amount_cents: parse_peso_to_cents(match[:amount]),
-              date: match[:date].strip,
+              date: match[:date].strip
             }
           end
         end
@@ -198,7 +198,7 @@ module Ai
             {
               description: match[:description].strip,
               amount_cents: parse_peso_to_cents(match[:amount]),
-              date: match[:date].strip,
+              date: match[:date].strip
             }
           end
         end

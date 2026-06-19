@@ -118,7 +118,7 @@ module Transactions
             whodunnit: params[:whodunnit]&.to_s,
             controller_info: {
               cause: params[:cause],
-              operation: params[:operation],
+              operation: params[:operation]
             }
           ) do
             yield

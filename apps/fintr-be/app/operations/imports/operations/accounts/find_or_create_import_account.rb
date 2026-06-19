@@ -56,7 +56,7 @@ module Imports
                   name: "Import",
                   balance_cents: 0,
                   balance_currency: space.currency.presence || "PHP",
-                  account_category: "cash",
+                  account_category: "cash"
                 }
               )
               return save_result if save_result.failure?

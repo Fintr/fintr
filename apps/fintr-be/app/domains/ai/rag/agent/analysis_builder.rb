@@ -51,7 +51,7 @@ module Ai
           aggregations = if normalized_group_by.any?
             {
               group_by: normalized_group_by,
-              metrics: %w[sum count],
+              metrics: %w[sum count]
             }
           else
             {}
@@ -109,7 +109,7 @@ module Ai
           account:
         )
           filters = {
-            transaction_type: Array(transaction_type.presence || "expense"),
+            transaction_type: Array(transaction_type.presence || "expense")
           }
 
           filters[:categories] = Array(category).compact if category.present?

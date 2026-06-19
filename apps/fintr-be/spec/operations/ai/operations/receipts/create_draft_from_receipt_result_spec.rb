@@ -463,9 +463,6 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
 
     context "when category does not exist" do
       let!(:fallback_category) { create(:category, :expense, space:, name: "Shopping") }
-
-      before { category.destroy! }
-
       let(:transaction_params) do
         {
           params: {
@@ -486,6 +483,9 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
         }
       end
 
+      before { category.destroy! }
+
+
       it "creates a draft using a fallback category from the space" do
         result = operation.call(transaction_params)
         expect(result).to be_success
@@ -497,9 +497,6 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
 
     context "when account does not exist" do
       let!(:fallback_account) { create(:account, space:, name: "Debit Card") }
-
-      before { account.destroy! }
-
       let(:transaction_params) do
         {
           params: {
@@ -519,6 +516,9 @@ RSpec.describe Ai::Operations::Receipts::CreateDraftFromReceiptResult, type: :op
           }
         }
       end
+
+      before { account.destroy! }
+
 
       it "creates a draft using a fallback account from the space" do
         result = operation.call(transaction_params)

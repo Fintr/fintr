@@ -143,27 +143,27 @@ module Ai
                 messages: [
                   {
                     role: "system",
-                    content: system_prompt,
+                    content: system_prompt
                   },
                   {
                     role: "user",
                     content: [
                       {
                         type: "text",
-                        text: "Extract total, date, category, and account from this receipt.",
+                        text: "Extract total, date, category, and account from this receipt."
                       },
                       {
                         type: "image_url",
                         image_url: {
                           url: base64_image,
-                          detail: vision_image_detail,
-                        },
-                      },
-                    ],
-                  },
+                          detail: vision_image_detail
+                        }
+                      }
+                    ]
+                  }
                 ],
                 temperature: 0.0,
-                max_tokens: vision_max_tokens,
+                max_tokens: vision_max_tokens
               }.merge(::Ai::Llm::VisionClient.openrouter_chat_extras)
             )
 

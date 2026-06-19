@@ -88,7 +88,7 @@ module Ai
               search_term: search_term,
               semantic_query: semantic_query,
               account: account,
-              limit: limit,
+              limit: limit
             }.compact
 
             if @collector.limit_reached?(MAX_TOOL_CALLS)
@@ -150,7 +150,7 @@ module Ai
 
           def format_aggregate(item)
             lines = [
-              "Total: #{item[:total]} across #{item[:count]} transactions",
+              "Total: #{item[:total]} across #{item[:count]} transactions"
             ]
 
             if item[:topic_breakdown].present?

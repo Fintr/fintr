@@ -84,7 +84,7 @@ module Transactions
             whodunnit: transfer.user_id,
             operation: self.class.name
           )
-          return save_result if save_result.failure?
+          save_result if save_result.failure?
         end
 
         def delete_transfer_fee_transaction(transfer:)

@@ -53,7 +53,7 @@ module Ai
             tool_arguments = {
               query: query,
               period: period,
-              account: account,
+              account: account
             }.compact
 
             if @collector.limit_reached?(MAX_TOOL_CALLS)
@@ -68,7 +68,7 @@ module Ai
               time_range: time_range,
               filters: {
                 account: account,
-                transaction_type: ["expense"],
+                transaction_type: ["expense"]
               },
             )
 

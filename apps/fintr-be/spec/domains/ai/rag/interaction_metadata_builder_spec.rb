@@ -15,11 +15,11 @@ RSpec.describe Ai::Rag::InteractionMetadataBuilder do
             name: "search_transactions",
             arguments: { query: "food" },
             result: "No results",
-            result_truncated: false,
-          },
+            result_truncated: false
+          }
         ],
         reasoning_notes: ["Checking food spending"],
-        cited_embedding_ids: [],
+        cited_embedding_ids: []
       }
 
       metadata = described_class.for_agentic(result)
@@ -38,8 +38,8 @@ RSpec.describe Ai::Rag::InteractionMetadataBuilder do
             name: "search_transactions",
             arguments: { query: "food" },
             result: "No results",
-            result_truncated: false,
-          },
+            result_truncated: false
+          }
         ],
       )
 

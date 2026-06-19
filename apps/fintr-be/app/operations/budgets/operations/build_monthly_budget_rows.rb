@@ -190,7 +190,7 @@ module Budgets
           budget: 0,
           spent:,
           date: nil,
-          amount_currency: nil,
+          amount_currency: nil
         }
       end
 
@@ -203,7 +203,7 @@ module Budgets
 
       def loan_interest_spent_for_budget(budget:, space_id:, start_date:, end_date:)
         category = budget.category
-        return 0.to_d unless category.name.in?(%w[Interest Expense Interest Income])
+        return 0.to_d unless category.name.in?(["Interest Expense", "Interest Income"])
 
         loan_type = category.name == "Interest Expense" ? "borrowed" : "lent"
 

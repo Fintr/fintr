@@ -73,9 +73,6 @@ RSpec.describe Transactions::Queries::FilteredAccountActivities do
     }
   end
 
-  before do
-  end
-
   describe ".call" do
     it "returns initial balance and loan disbursement activities for the account" do
       result = described_class.call(params: default_params)

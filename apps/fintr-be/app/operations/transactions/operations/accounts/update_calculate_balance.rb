@@ -90,8 +90,9 @@ module Transactions
         end
 
         def skip_previous_revert?(transaction:)
-          transaction.balance_state_was == "calculated" &&
-            transaction.balance_cents_was.zero?
+          transaction.balance_state_was == "pending" ||
+            (transaction.balance_state_was == "calculated" &&
+              transaction.balance_cents_was.zero?)
         end
 
         def signed_balance_effect(transaction:, account:, from:)

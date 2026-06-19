@@ -3,7 +3,7 @@
 require "rails_helper"
 
 RSpec.describe "RAG topic search integration" do # rubocop:disable RSpec/DescribeClass
-  let(:space) { create(:space) } 
+  let(:space) { create(:space) }
   let(:dine_out_category) { create(:category, :expense, space: space, name: "Dine Out & Entertainment") }
   let(:dine_out_subcategory) do
     create(
@@ -32,7 +32,7 @@ RSpec.describe "RAG topic search integration" do # rubocop:disable RSpec/Describ
       aggregations: {},
       filters: {
         transaction_type: ["expense"],
-        search_term: search_term,
+        search_term: search_term
       },
       time_range: { period: period },
       sorting: { field: "amount", direction: "desc" },
@@ -58,10 +58,10 @@ RSpec.describe "RAG topic search integration" do # rubocop:disable RSpec/Describ
         "subcategory" => subcategory_label,
         "description" => transaction.description,
         "account" => transaction.account.name,
-        "date" => transaction.date.iso8601,
+        "date" => transaction.date.iso8601
       },
       distance: distance,
-      similarity_score: 1 - distance,
+      similarity_score: 1 - distance
     }
   end
 
@@ -182,7 +182,7 @@ RSpec.describe "RAG topic search integration" do # rubocop:disable RSpec/Describ
           vector_result_for(lansangan, distance: 0.45),
           vector_result_for(mcdonalds, distance: 0.46),
           vector_result_for(carinderia, distance: 0.47),
-          vector_result_for(dog_food, distance: 0.55),
+          vector_result_for(dog_food, distance: 0.55)
         ]
       end
 

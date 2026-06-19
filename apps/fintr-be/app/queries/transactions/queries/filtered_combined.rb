@@ -59,7 +59,7 @@ module Transactions
             non_category_types: [
               "Transactions::Transfer",
               "Transactions::Loan",
-              "Transactions::LoanPayment",
+              "Transactions::LoanPayment"
             ]
           )
 

@@ -184,7 +184,7 @@ module Ai
           total: Money.new(total_cents).format,
           total_cents: total_cents,
           count: count,
-          transactions: sample,
+          transactions: sample
         }
 
         if topic_breakdown?(analysis) && count.positive?

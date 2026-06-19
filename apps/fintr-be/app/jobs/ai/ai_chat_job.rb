@@ -30,7 +30,7 @@ module Ai
       agent_result = {
         cited_embedding_ids: [],
         steps: [],
-        searched: false,
+        searched: false
       }
 
       on_content = lambda do |content|
@@ -69,7 +69,7 @@ module Ai
           agentic: true,
           searched: agent_result[:searched],
           steps: agent_result[:steps],
-          tool_calls: agent_result[:tool_calls],
+          tool_calls: agent_result[:tool_calls]
         },
       )
 

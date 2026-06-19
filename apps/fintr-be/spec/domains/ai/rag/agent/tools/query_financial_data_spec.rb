@@ -36,10 +36,10 @@ RSpec.describe Ai::Rag::Agent::Tools::QueryFinancialData do
                 date: Date.current.to_s,
                 description: "Starbucks Coffee",
                 amount: "₱500.00",
-                category: category.name,
-              },
-            ],
-          },
+                category: category.name
+              }
+            ]
+          }
         ],
       )
 
@@ -69,10 +69,10 @@ RSpec.describe Ai::Rag::Agent::Tools::QueryFinancialData do
             total_cents: 725_00,
             count: 2,
             topic_breakdown: [
-              { label: "Vendor A", total: "₱725.00", count: 2, total_cents: 725_00 },
+              { label: "Vendor A", total: "₱725.00", count: 2, total_cents: 725_00 }
             ],
-            transactions: [],
-          },
+            transactions: []
+          }
         ],
       )
 

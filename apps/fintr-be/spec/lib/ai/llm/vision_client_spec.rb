@@ -74,7 +74,7 @@ RSpec.describe Ai::Llm::VisionClient do
 
       expect(described_class.openrouter_chat_extras).to eq(
         provider: {
-          sort: "latency",
+          sort: "latency"
         },
       )
     end

@@ -7,7 +7,7 @@ RSpec.describe Ai::Rag::CategoryConsensusFilter do
     {
       embeddable_id: embeddable_id,
       distance: distance,
-      metadata: { "category" => category },
+      metadata: { "category" => category }
     }
   end
 
@@ -18,7 +18,7 @@ RSpec.describe Ai::Rag::CategoryConsensusFilter do
         result_for(category: "Dine Out & Entertainment", distance: 0.46, embeddable_id: "dine-2"),
         result_for(category: "Dine Out & Entertainment", distance: 0.47, embeddable_id: "dine-3"),
         result_for(category: "Pet", distance: 0.55, embeddable_id: "pet-1"),
-        result_for(category: "Food & Groceries", distance: 0.58, embeddable_id: "grocery-1"),
+        result_for(category: "Food & Groceries", distance: 0.58, embeddable_id: "grocery-1")
       ]
 
       filtered = described_class.filter_results(results)

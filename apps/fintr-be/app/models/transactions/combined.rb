@@ -8,7 +8,7 @@ module Transactions
       "Transactions::Expense" => "expense",
       "Transactions::Income" => "income",
       "Transactions::Loan" => "loan_disbursement",
-      "Transactions::LoanPayment" => "loan_payment",
+      "Transactions::LoanPayment" => "loan_payment"
     }.freeze
 
     self.table_name = "combined_transactions"

@@ -23,7 +23,7 @@ RSpec.describe Ai::Rag::TopicBreakdownBuilder do
       rows = described_class.build(
         [
           { description: "Starbucks", amount_cents: 225_00 },
-          { description: "starbucks", amount_cents: 500_00 },
+          { description: "starbucks", amount_cents: 500_00 }
         ],
       )
 
@@ -37,7 +37,7 @@ RSpec.describe Ai::Rag::TopicBreakdownBuilder do
       rows = described_class.build(
         [
           { description: "Starbucks", amount_cents: 1_395_00 },
-          { description: "Starbucks Coffee", amount_cents: 1_885_00 },
+          { description: "Starbucks Coffee", amount_cents: 1_885_00 }
         ],
       )
 
@@ -51,7 +51,7 @@ RSpec.describe Ai::Rag::TopicBreakdownBuilder do
       rows = described_class.build(
         [
           { description: "Coffee Mate", amount_cents: 112_95 },
-          { description: "Coffee Maker", amount_cents: 1_034_10 },
+          { description: "Coffee Maker", amount_cents: 1_034_10 }
         ],
       )
 
@@ -66,7 +66,7 @@ RSpec.describe Ai::Rag::TopicBreakdownBuilder do
           { description: "Vendor A", amount_cents: 500_00 },
           { description: "Vendor A", amount_cents: 225_00 },
           { description: "Vendor B", amount_cents: 480_00 },
-          { description: "Vendor C", amount_cents: 99_00 },
+          { description: "Vendor C", amount_cents: 99_00 }
         ],
         max_groups: 2,
       )

@@ -42,8 +42,8 @@ module Ai
 
           {
             provider: {
-              sort: "latency",
-            },
+              sort: "latency"
+            }
           }
         end
         # Returns an OpenAI-compatible client (either OpenAI or OpenRouter).

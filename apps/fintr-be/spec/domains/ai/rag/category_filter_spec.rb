@@ -48,7 +48,7 @@ RSpec.describe Ai::Rag::CategoryFilter do
           category: parent_category.name,
           subcategory: subcategory.name,
           account: account.name,
-          date: coffee_transaction.date.iso8601,
+          date: coffee_transaction.date.iso8601
         },
       )
     end

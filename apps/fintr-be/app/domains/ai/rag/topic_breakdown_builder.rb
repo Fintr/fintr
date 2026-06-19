@@ -47,7 +47,7 @@ module Ai
               label: label,
               count: txns.size,
               total_cents: total_cents,
-              total: Money.new(total_cents).format,
+              total: Money.new(total_cents).format
             }
           end.sort_by { |row| -row[:total_cents] }
 
@@ -179,8 +179,8 @@ module Ai
               label: "Others",
               count: others_count,
               total_cents: others_cents,
-              total: Money.new(others_cents).format,
-            },
+              total: Money.new(others_cents).format
+            }
           ]
         end
       end

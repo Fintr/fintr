@@ -64,7 +64,7 @@ RSpec.describe Ai::Rag::TopicFilter do
         content: "Morning latte expense",
         metadata: {
           category: parent_category.name,
-          subcategory: subcategory.name,
+          subcategory: subcategory.name
         },
       )
     end
@@ -76,7 +76,7 @@ RSpec.describe Ai::Rag::TopicFilter do
         embeddable: description_transaction,
         content: "Starbucks Coffee expense",
         metadata: {
-          category: parent_category.name,
+          category: parent_category.name
         },
       )
     end

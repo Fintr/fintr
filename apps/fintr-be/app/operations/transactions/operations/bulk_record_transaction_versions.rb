@@ -13,7 +13,7 @@ module Transactions
 
         context = {
           cause: cause.presence || PaperTrail.request.controller_info&.dig(:cause),
-          operation: operation.presence || PaperTrail.request.controller_info&.dig(:operation),
+          operation: operation.presence || PaperTrail.request.controller_info&.dig(:operation)
         }
         whodunnit = whodunnit.presence || PaperTrail.request.whodunnit
 

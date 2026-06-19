@@ -13,7 +13,7 @@ module Transactions
             params: {
               transfer_id:,
               date_start: date + 1.month,
-              date_end: date + 1.month,
+              date_end: date + 1.month
             }
           )
       end
