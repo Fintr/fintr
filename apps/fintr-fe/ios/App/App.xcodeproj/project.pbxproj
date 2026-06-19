@@ -17,6 +17,10 @@
 		504EC31A1FED79650016851F /* CapacitorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3191FED79650016851F /* CapacitorViewController.swift */; };
 		F8E7D6C51B2A394857463021 /* FileSharePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E7D6C51B2A394857463020 /* FileSharePlugin.swift */; };
 		A9B8C7D61E2F405968574031 /* AppearancePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B8C7D61E2F405968574030 /* AppearancePlugin.swift */; };
+		B7C8D9E01F2A405968574041 /* OfflineAppearanceBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C8D9E01F2A405968574040 /* OfflineAppearanceBridge.swift */; };
+		C1D2E3F41F2A405968574051 /* FintrServerReachability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F41F2A405968574050 /* FintrServerReachability.swift */; };
+		C1D2E3F41F2A405968574053 /* FintrConnectionGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F41F2A405968574052 /* FintrConnectionGate.swift */; };
+		C1D2E3F41F2A405968574055 /* FintrLaunchColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F41F2A405968574054 /* FintrLaunchColors.swift */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
 /* End PBXBuildFile section */
@@ -36,6 +40,10 @@
 		504EC3191FED79650016851F /* CapacitorViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapacitorViewController.swift; sourceTree = "<group>"; };
 		F8E7D6C51B2A394857463020 /* FileSharePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSharePlugin.swift; sourceTree = "<group>"; };
 		A9B8C7D61E2F405968574030 /* AppearancePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearancePlugin.swift; sourceTree = "<group>"; };
+		B7C8D9E01F2A405968574040 /* OfflineAppearanceBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineAppearanceBridge.swift; sourceTree = "<group>"; };
+		C1D2E3F41F2A405968574050 /* FintrServerReachability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FintrServerReachability.swift; sourceTree = "<group>"; };
+		C1D2E3F41F2A405968574052 /* FintrConnectionGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FintrConnectionGate.swift; sourceTree = "<group>"; };
+		C1D2E3F41F2A405968574054 /* FintrLaunchColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FintrLaunchColors.swift; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
@@ -92,6 +100,10 @@
 				504EC3191FED79650016851F /* CapacitorViewController.swift */,
 				F8E7D6C51B2A394857463020 /* FileSharePlugin.swift */,
 				A9B8C7D61E2F405968574030 /* AppearancePlugin.swift */,
+				B7C8D9E01F2A405968574040 /* OfflineAppearanceBridge.swift */,
+				C1D2E3F41F2A405968574050 /* FintrServerReachability.swift */,
+				C1D2E3F41F2A405968574052 /* FintrConnectionGate.swift */,
+				C1D2E3F41F2A405968574054 /* FintrLaunchColors.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -234,6 +246,10 @@
 				504EC31A1FED79650016851F /* CapacitorViewController.swift in Sources */,
 				F8E7D6C51B2A394857463021 /* FileSharePlugin.swift in Sources */,
 				A9B8C7D61E2F405968574031 /* AppearancePlugin.swift in Sources */,
+				B7C8D9E01F2A405968574041 /* OfflineAppearanceBridge.swift in Sources */,
+				C1D2E3F41F2A405968574051 /* FintrServerReachability.swift in Sources */,
+				C1D2E3F41F2A405968574053 /* FintrConnectionGate.swift in Sources */,
+				C1D2E3F41F2A405968574055 /* FintrLaunchColors.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -374,13 +390,13 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2D7JCZ3SVD;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.24;
+				MARKETING_VERSION = 1.9;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fintr.app;
 				PRODUCT_NAME = fintrapp;
@@ -400,13 +416,13 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2D7JCZ3SVD;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.24;
+				MARKETING_VERSION = 1.9;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fintr.app;
 				PRODUCT_NAME = fintrapp;
 				PROVISIONING_PROFILE_SPECIFIER = "";

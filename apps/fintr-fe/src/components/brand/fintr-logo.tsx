@@ -9,6 +9,9 @@ export const FINTR_LOGO_LIGHT_SRC =
 export const FINTR_LOGO_NAVY_SRC =
   "https://raw.githubusercontent.com/Fintr/Fintr-Logos/refs/heads/main/Fintr_Logo_Deep%20Navy_Transparent.svg";
 
+/** Logo on #FAFAF8 for splash / loading screens (matches native Splash.imageset). */
+export const FINTR_LOGO_SPLASH_SRC = "/fintr-logo-splash.png";
+
 /** White transparent wordmark for dark backgrounds (Fintr/Fintr-Logos). */
 export const FINTR_LOGO_DARK_SRC = "https://raw.githubusercontent.com/Fintr/Fintr-Logos/refs/heads/main/Fintr_Logo_White_Transparent.svg";
 

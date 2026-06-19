@@ -1,6 +1,7 @@
 package com.fintr.app;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
@@ -13,6 +14,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.core.view.WindowInsetsCompat;
+import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeActivity;
 import com.capacitorjs.plugins.filesystem.FilesystemPlugin;
 
@@ -53,6 +55,7 @@ public class MainActivity extends BridgeActivity {
 
   private boolean appearanceBridgeAttached = false;
   private final FintrAppearanceBridge appearanceBridge = new FintrAppearanceBridge(this);
+  private final FintrConnectionGate connectionGate = new FintrConnectionGate(this);
 
   /**
    * Get the system navigation mode from Settings.Secure.
@@ -96,6 +99,17 @@ public class MainActivity extends BridgeActivity {
   }
 
   @Override
+  protected void load() {
+    bridge = bridgeBuilder.addPlugins(initialPlugins).setConfig(config).create();
+
+    this.keepRunning = bridge.shouldKeepRunning();
+    this.onNewIntent(getIntent());
+
+    installOfflineErrorHandler();
+    connectionGate.beginInitialGate(bridge);
+  }
+
+  @Override
   protected void onCreate(Bundle savedInstanceState) {
     registerPlugin(com.fintr.app.CacheControlPlugin.class);
     registerPlugin(com.fintr.app.NavigationInfoPlugin.class);
@@ -105,15 +119,21 @@ public class MainActivity extends BridgeActivity {
     WebView.setWebContentsDebuggingEnabled(true);
     super.onCreate(savedInstanceState);
     WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+    applyAppearance(true);
     configureWebViewCache();
     setupWebSafeAreaInsets();
     ViewCompat.requestApplyInsets(getWindow().getDecorView());
+    final View decorView = getWindow().getDecorView();
+    decorView.post(this::installOfflineErrorHandler);
+    decorView.postDelayed(this::installOfflineErrorHandler, 100);
+    decorView.postDelayed(this::installOfflineErrorHandler, 500);
   }
 
   @Override
   public void onStart() {
     super.onStart();
     attachAppearanceBridge();
+    installOfflineErrorHandler();
     scheduleAppearanceSyncFromWeb();
   }
 
@@ -121,6 +141,7 @@ public class MainActivity extends BridgeActivity {
   public void onResume() {
     super.onResume();
     attachAppearanceBridge();
+    installOfflineErrorHandler();
     scheduleAppearanceSyncFromWeb();
   }
 
@@ -151,6 +172,23 @@ public class MainActivity extends BridgeActivity {
     }
 
     applyLegacySystemBarAppearance(decorView, isLight);
+    applyWebContainerBackground(topBarColor);
+  }
+
+  private void applyWebContainerBackground(int color) {
+    try {
+      WebView webView = getBridge().getWebView();
+      if (webView == null) {
+        return;
+      }
+
+      webView.setBackgroundColor(color);
+      if (webView.getParent() instanceof View) {
+        ((View) webView.getParent()).setBackgroundColor(color);
+      }
+    } catch (Exception e) {
+      // Bridge may not be ready yet.
+    }
   }
 
   private void applyLegacySystemBarAppearance(View decorView, boolean isLight) {
@@ -200,6 +238,17 @@ public class MainActivity extends BridgeActivity {
     try {
       WebView webView = getBridge().getWebView();
       if (webView == null) {
+        return;
+      }
+
+      String currentUrl = webView.getUrl();
+      String errorUrl = getBridge().getErrorUrl();
+      if (
+        errorUrl != null
+        && currentUrl != null
+        && currentUrl.startsWith(errorUrl)
+      ) {
+        runOnUiThread(() -> applyAppearance(false));
         return;
       }
 
@@ -296,6 +345,25 @@ public class MainActivity extends BridgeActivity {
       webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
     } catch (Exception e) {
       // Ignore - will configure when WebView is ready
+    }
+  }
+
+  private void installOfflineErrorHandler() {
+    try {
+      Bridge bridge = getBridge();
+      if (bridge == null) {
+        return;
+      }
+
+      if (bridge.getWebView() == null) {
+        return;
+      }
+
+      if (!(bridge.getWebViewClient() instanceof FintrBridgeWebViewClient)) {
+        bridge.setWebViewClient(new FintrBridgeWebViewClient(bridge, connectionGate));
+      }
+    } catch (Exception e) {
+      // Bridge may not be ready yet; retry on a later lifecycle pass.
     }
   }
 }

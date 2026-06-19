@@ -60,9 +60,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
 
-        // Dark theme background — oklch(0.129 0.042 264.695) ≈ #151921
+        // Default launch chrome is light; offline flow switches to darkBackground.
         if let window = AppDelegate.keyWindow() {
-            window.backgroundColor = UIColor(red: 0.082, green: 0.098, blue: 0.129, alpha: 1.0)
+            window.backgroundColor = FintrLaunchColors.lightBackground
         }
         
         // Configure cache settings for the WebView

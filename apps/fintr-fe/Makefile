@@ -11,7 +11,7 @@ LOCAL_CAPACITOR_SERVER_URL := http://localhost:5173
 # (Do not use localhost on Android emulator; it points to the emulator itself.)
 LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR := http://10.0.2.2:5173
 
-.PHONY: help android-dev android-live android-prod-apk android-prod-aab android-reset-emulator android-stop-emulator android-clean-build ios-app ios-dev ios-prod ios-live ios-open ios-clean ios-stop-simulator sync-android sync-ios open-android open-ios
+.PHONY: help android-dev android-live android-prod-apk android-prod-aab android-reset-emulator android-stop-emulator android-clean-build ios-app ios-dev ios-prod ios-live ios-open ios-clean ios-reset-packages ios-stop-simulator sync-android sync-ios open-android open-ios
 
 # Default target
 help:
@@ -34,6 +34,7 @@ help:
 	@echo "    ios-live                  - iOS dev build with live reload"
 	@echo "    ios-open                  - Open iOS project in Xcode"
 	@echo "    ios-clean                 - Clean iOS build and derived data"
+	@echo "    ios-reset-packages        - Fix corrupted Facebook/SwiftPM SDK cache"
 	@echo "    ios-stop-simulator        - Stop iOS Simulator"
 	@echo "    sync-ios                  - Sync Capacitor to iOS"
 	@echo "    open-ios                  - Open iOS project in Xcode (alias)"
@@ -231,13 +232,16 @@ ios-open:
 	@echo "📱 Opening Xcode..."
 	@pnpm cap open ios
 
+ios-reset-packages:
+	@./scripts/mobile/reset-ios-packages.sh
+
 ios-clean:
 	@echo "🧹 Cleaning iOS build..."
 	@if [ -d "ios" ]; then \
-		echo "   Cleaning derived data and build folders..."; \
-		rm -rf ~/Library/Developer/Xcode/DerivedData/App-* 2>/dev/null || true; \
-		rm -rf ios/build 2>/dev/null || true; \
-		rm -rf ios/App/build 2>/dev/null || true; \
+		echo "   Cleaning derived data, SwiftPM artifacts, and build folders..."; \
+		./scripts/mobile/reset-ios-packages.sh; \
+		echo "   Uninstalling app from booted simulator (clears cached launch screen)..."; \
+		xcrun simctl uninstall booted com.fintr.app 2>/dev/null || true; \
 		echo "✅ iOS build cleaned"; \
 	else \
 		echo "❌ iOS directory not found. Run 'pnpm cap sync ios' first"; \
