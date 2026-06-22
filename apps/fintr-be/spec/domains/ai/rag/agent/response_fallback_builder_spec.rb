@@ -9,14 +9,14 @@ RSpec.describe Ai::Rag::Agent::ResponseFallbackBuilder do
         {
           name: "query_financial_data",
           arguments: { search_term: "coffee", period: "this_year" },
-          result: <<~TEXT.strip,
+          result: <<~TEXT.strip
             Results for spending_analysis (this_year):
             Total: ₱8,554.00 across 42 transactions
             Breakdown:
             - Starbucks: ₱3,000.00 (10 transactions)
             - Others: ₱5,554.00 (32 transactions)
           TEXT
-        },
+        }
       ]
       detailed_content = <<~TEXT.strip
         For this year, you had 42 matching purchases totaling ₱8,554.00.
@@ -41,14 +41,14 @@ RSpec.describe Ai::Rag::Agent::ResponseFallbackBuilder do
           {
             name: "query_financial_data",
             arguments: { search_term: "coffee", period: "this_year" },
-            result: <<~TEXT.strip,
+            result: <<~TEXT.strip
               Results for spending_analysis (this_year):
               Total: ₱8,554.00 across 42 transactions
               Breakdown:
               - Starbucks: ₱3,000.00 (10 transactions)
               - Others: ₱5,554.00 (32 transactions)
             TEXT
-          },
+          }
         ],
       )
 
@@ -68,9 +68,9 @@ RSpec.describe Ai::Rag::Agent::ResponseFallbackBuilder do
             arguments: {
               search_term: "cigarettes",
               period: "last_year",
-              query_type: "transaction_search",
+              query_type: "transaction_search"
             },
-            result: <<~TEXT.strip,
+            result: <<~TEXT.strip
               Results for transaction_search (last_year):
               - 2025-12-10 00:00:00 UTC: Alfonso coke cigarettes — ₱1,357.00 (Food & Groceries) [txn:abc]
               - 2025-11-08 00:00:00 UTC: Cigarettes coke mismo — ₱1,208.00 (Food & Groceries) [txn:def]
@@ -78,7 +78,7 @@ RSpec.describe Ai::Rag::Agent::ResponseFallbackBuilder do
               - 2025-11-16 00:00:00 UTC: Cigarettes — ₱1,020.00 (Food & Groceries) [txn:jkl]
               - 2025-09-21 00:00:00 UTC: Cigarettes — ₱850.00 (Food & Groceries) [txn:mno]
             TEXT
-          },
+          }
         ],
       )
 
@@ -95,13 +95,13 @@ RSpec.describe Ai::Rag::Agent::ResponseFallbackBuilder do
           {
             name: "query_financial_data",
             arguments: { search_term: "coffee", period: "this_year" },
-            result: <<~TEXT.strip,
+            result: <<~TEXT.strip
               Results for spending_analysis (this_year):
               Total: ₱8,554.00 across 42 transactions
               Breakdown:
               - Starbucks: ₱3,000.00 (10 transactions)
             TEXT
-          },
+          }
         ],
       )
 

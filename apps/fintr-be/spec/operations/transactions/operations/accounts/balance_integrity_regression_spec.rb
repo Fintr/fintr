@@ -3,7 +3,10 @@
 require 'rails_helper'
 
 # Regression probes for Joan Perez / BDO Payables ghost balance investigation.
-RSpec.describe 'Account balance integrity regressions' do
+module BalanceIntegrityRegression
+end
+
+RSpec.describe BalanceIntegrityRegression do
   let(:user) { create(:user) }
   let(:space) { create(:personal_space) }
 

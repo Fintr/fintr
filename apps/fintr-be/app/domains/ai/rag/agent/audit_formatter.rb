@@ -15,7 +15,7 @@ module Ai
               "### Tool call #{index}: #{name}",
               "Arguments: #{arguments.to_json}",
               "Result#{truncated ? ' (truncated)' : ''}:",
-              result.to_s,
+              result.to_s
             ]
 
             lines.join("\n")

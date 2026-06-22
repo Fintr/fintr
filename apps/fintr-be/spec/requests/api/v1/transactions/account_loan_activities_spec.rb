@@ -49,7 +49,7 @@ RSpec.describe "Account-scoped loan activity", type: :request do
     {
       start_date: "1996-01-01",
       end_date: "2026-12-31",
-      page: 1,
+      page: 1
     }
   end
 

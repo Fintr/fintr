@@ -79,7 +79,7 @@ RSpec.describe Admin::Queries::SpacesForFreeSubscriptionQuery, type: :query do
         params: {
           search_query: "high@example.com",
           page: 1,
-          per_page: 25,
+          per_page: 25
         },
       )
 

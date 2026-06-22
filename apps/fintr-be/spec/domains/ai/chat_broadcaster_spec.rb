@@ -13,7 +13,7 @@ RSpec.describe Ai::ChatBroadcaster do
         "chat_#{conversation_id}",
         {
           status: "processing",
-          agent_step: step,
+          agent_step: step
         },
       )
 

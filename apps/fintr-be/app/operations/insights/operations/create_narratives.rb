@@ -201,11 +201,11 @@ module Insights
                  else
                    "Cash negative this period — net #{formatted_net}. Review operating costs."
                  end
-               elsif net >= 0
+        elsif net >= 0
                  "You kept #{formatted_net} this period."
-               else
+        else
                  "You spent #{format_money(net.abs, currency)} more than you earned."
-               end
+        end
 
         sentiment = net >= 0 ? "positive" : "negative"
         Success(text:, sentiment:)
@@ -219,11 +219,11 @@ module Insights
 
         tier = if count < 10
                  "sparse"
-               elsif count < 30 || categorized_percent < 70
+        elsif count < 30 || categorized_percent < 70
                  "building"
-               else
+        else
                  "complete"
-               end
+        end
 
         Success(
           transaction_count: count,
@@ -289,9 +289,9 @@ module Insights
         display = if space.is_a?(Spaces::OrganizationSpace)
                     weeks = (months * 4.33).round(1)
                     "#{weeks} weeks"
-                  else
+        else
                     "#{months.round(1)} months"
-                  end
+        end
         Success(
           display:,
           months:,

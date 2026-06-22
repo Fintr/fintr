@@ -45,7 +45,7 @@ RSpec.describe Transactions::Operations::Accounts::SaveAccount do
           name: "PaperTrail Test",
           balance_cents: 0,
           balance_currency: "PHP",
-          account_category: "cash",
+          account_category: "cash"
         }
       )
 

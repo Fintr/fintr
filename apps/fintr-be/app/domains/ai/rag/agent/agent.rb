@@ -55,7 +55,7 @@ module Ai
             searched: collector.searched?,
             agentic: true,
             model: Rails.configuration.x.llm.agent_model,
-            provider: Rails.configuration.x.llm.agent_provider,
+            provider: Rails.configuration.x.llm.agent_provider
           }
 
           result[:content] = ResponseFallbackBuilder.build(result)
@@ -124,7 +124,7 @@ module Ai
               space_id: space_id,
               collector: collector,
             ),
-            Tools::Note.new(collector: collector),
+            Tools::Note.new(collector: collector)
           ]
         end
 
@@ -138,7 +138,7 @@ module Ai
             searched: collector.searched?,
             agentic: true,
             model: Rails.configuration.x.llm.agent_model,
-            provider: Rails.configuration.x.llm.agent_provider,
+            provider: Rails.configuration.x.llm.agent_provider
           }
         end
 
@@ -163,7 +163,7 @@ module Ai
 
           {
             kind: tool_call.name,
-            label: label,
+            label: label
           }
         end
       end

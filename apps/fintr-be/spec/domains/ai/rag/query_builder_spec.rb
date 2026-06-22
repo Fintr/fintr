@@ -15,7 +15,7 @@ RSpec.describe Ai::Rag::QueryBuilder do
       aggregations: {},
       filters: {
         transaction_type: ["expense"],
-        search_term: "dining",
+        search_term: "dining"
       },
       time_range: { period: "last_month" },
       sorting: { field: "amount", direction: "desc" },

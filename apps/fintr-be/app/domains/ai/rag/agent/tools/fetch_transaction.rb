@@ -61,7 +61,7 @@ module Ai
               "Amount: #{transaction.amount.format}",
               "Category: #{transaction.category&.name}",
               "Account: #{transaction.account&.name}",
-              "Type: #{transaction.type&.demodulize&.downcase}",
+              "Type: #{transaction.type&.demodulize&.downcase}"
             ].join("\n")
 
             audit_and_return(

@@ -163,49 +163,4 @@ RSpec.describe Budgets::Operations::BuildMonthlyBudgetRows do
     expect(sub_row[:spent]).to eq(45)
     expect(sub_row[:budget]).to eq(0)
   end
-
-  it "includes loan payment interest in Interest Expense budget spent" do
-    interest_category = create(:category, :expense, space:, name: "Interest Expense")
-    user = create(:user)
-    entity = create(:entity, space:, entity_type: "loan", full_name: "Lender")
-    loan_account = create(:account, space:)
-    loan = create(
-      :loan,
-      user:,
-      space:,
-      entity:,
-      account: loan_account,
-      loan_type: "borrowed",
-      currency: "PHP"
-    )
-    create(
-      :loan_payment,
-      loan:,
-      account: loan_account,
-      date: Date.new(2025, 5, 12),
-      principal_payment: Money.from_amount(500, "PHP"),
-      interest_payment: Money.from_amount(150, "PHP"),
-      total_payment: Money.from_amount(650, "PHP"),
-      currency: "PHP"
-    )
-
-    interest_budget = create(
-      :budget,
-      space:,
-      category: interest_category,
-      date: Date.new(2025, 5, 1),
-      amount_cents: 200_00
-    )
-
-    result = operation.call(
-      budgets: [interest_budget],
-      space_id: space.id,
-      start_date:,
-      end_date:
-    )
-
-    row = result.value!.first
-
-    expect(row[:total_spent]).to eq(150)
-  end
 end

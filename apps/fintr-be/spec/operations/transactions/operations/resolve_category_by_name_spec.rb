@@ -16,7 +16,7 @@ RSpec.describe Transactions::Operations::ResolveCategoryByName do
       {
         space_id: space.id,
         category_name: "Food",
-        category_type: "expense",
+        category_type: "expense"
       }
     end
 
@@ -35,7 +35,7 @@ RSpec.describe Transactions::Operations::ResolveCategoryByName do
       {
         space_id: space.id,
         category_name: "Groceries",
-        category_type: "expense",
+        category_type: "expense"
       }
     end
 
@@ -54,7 +54,7 @@ RSpec.describe Transactions::Operations::ResolveCategoryByName do
       {
         space_id: space.id,
         category_name: "Missing",
-        category_type: "expense",
+        category_type: "expense"
       }
     end
 

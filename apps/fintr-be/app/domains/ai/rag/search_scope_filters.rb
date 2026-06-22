@@ -11,7 +11,7 @@ module Ai
           filters: {}
         )
           hard = {
-            embeddable_type: "Transactions::Transaction",
+            embeddable_type: "Transactions::Transaction"
           }
 
           account = filters[:accounts]&.first || filters[:account]
@@ -47,7 +47,7 @@ module Ai
           when "custom"
             {
               from: parse_date(time_range[:start_date]),
-              to: parse_date(time_range[:end_date]),
+              to: parse_date(time_range[:end_date])
             }
           else
             {}
@@ -59,7 +59,7 @@ module Ai
         def range_for(range)
           {
             from: range.begin.to_date,
-            to: range.end.to_date,
+            to: range.end.to_date
           }
         end
 

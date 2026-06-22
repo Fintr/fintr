@@ -72,7 +72,7 @@ class CreateTransactionVersions < ActiveRecord::Migration[8.1]
       whodunnit: transaction.user_id,
       controller_info: {
         cause: "backfill",
-        operation: "db:migrate:create_transaction_versions",
+        operation: "db:migrate:create_transaction_versions"
       }
     ) do
       PaperTrail::Events::Update.new(transaction, true, false, force_changes).data

@@ -97,7 +97,7 @@ module Api
             {
               search_query: p[:search_query].presence,
               page: p[:page],
-              per_page: p[:per_page].presence,
+              per_page: p[:per_page].presence
             }
           end
         end

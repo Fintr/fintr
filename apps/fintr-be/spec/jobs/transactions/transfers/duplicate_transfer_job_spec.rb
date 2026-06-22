@@ -22,7 +22,7 @@ RSpec.describe Transactions::Transfers::DuplicateTransferJob, type: :job do
         params: {
           transfer_id: transfer_id,
           date_start: today + 1.month,
-          date_end: today + 1.month,
+          date_end: today + 1.month
         }
       )
     end

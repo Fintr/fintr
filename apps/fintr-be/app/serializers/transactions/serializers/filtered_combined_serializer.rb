@@ -58,7 +58,7 @@ module Transactions
           "Transactions::Expense" => "expense",
           "Transactions::Transfer" => "transfer",
           "Transactions::Loan" => "loan_disbursement",
-          "Transactions::LoanPayment" => "loan_payment",
+          "Transactions::LoanPayment" => "loan_payment"
         }
 
         type_mapping[record.transactable_type]

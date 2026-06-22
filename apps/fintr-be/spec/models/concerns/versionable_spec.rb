@@ -44,7 +44,7 @@ RSpec.shared_examples "versionable" do |version_class:, record_factory:|
       PaperTrail.request(
         controller_info: {
           cause: "spec_versionable",
-          operation: "VersionableSpec",
+          operation: "VersionableSpec"
         }
       ) do
         if record.is_a?(Transactions::Account)

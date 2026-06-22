@@ -229,7 +229,11 @@ module Transactions
 
         case
         when transaction.balance_state_was == "pending" && transaction.balance_state == "calculated"
-          result = Transactions::Operations::Accounts::CalculateBalance.new.call(transaction_id: transaction.id)
+          result = if transaction.changes.key?("account_id")
+                     Transactions::Operations::Accounts::UpdateCalculateBalance.new.call(transaction:)
+          else
+                     Transactions::Operations::Accounts::CalculateBalance.new.call(transaction_id: transaction.id)
+          end
           return result if result.failure?
         when transaction.balance_state_was == "calculated" && transaction.balance_state == "pending"
           result = Transactions::Operations::Accounts::RemoveCalculation.new.call(transaction_id: transaction.id)

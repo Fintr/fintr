@@ -12,7 +12,7 @@ module Ai
           steps: result[:steps],
           tool_calls: result[:tool_calls],
           reasoning_notes: result[:reasoning_notes],
-          cited_embedding_ids: result[:cited_embedding_ids],
+          cited_embedding_ids: result[:cited_embedding_ids]
         }.compact
       end
 

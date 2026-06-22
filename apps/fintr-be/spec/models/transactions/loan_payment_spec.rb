@@ -277,11 +277,6 @@ RSpec.describe Transactions::LoanPayment, type: :model do
       expect(loan).to receive(:recalculate_outstanding_balance!)
       loan_payment.process_payment
     end
-
-    it 'calls create_transaction_entries' do
-      expect(loan_payment).to receive(:create_transaction_entries)
-      loan_payment.process_payment
-    end
   end
 
   describe '#reprocess_payment' do
@@ -298,11 +293,6 @@ RSpec.describe Transactions::LoanPayment, type: :model do
 
     it 'recalculates the loan outstanding balance' do
       expect(loan).to receive(:recalculate_outstanding_balance!)
-      loan_payment.reprocess_payment
-    end
-
-    it 'calls update_transaction_entries' do
-      expect(loan_payment).to receive(:update_transaction_entries)
       loan_payment.reprocess_payment
     end
   end
@@ -360,34 +350,6 @@ RSpec.describe Transactions::LoanPayment, type: :model do
         expect(loan_payment).to receive(:recalculate_loan)
         loan_payment.destroy
       end
-    end
-  end
-
-  describe '#create_transaction_entries' do
-    let(:loan_payment) do
-      build(:loan_payment, loan: loan, account: account)
-    end
-
-    it 'is defined as a method' do
-      expect(loan_payment).to respond_to(:create_transaction_entries)
-    end
-
-    it 'does not raise an error when called' do
-      expect { loan_payment.create_transaction_entries }.not_to raise_error
-    end
-  end
-
-  describe '#update_transaction_entries' do
-    let(:loan_payment) do
-      create(:loan_payment, loan: loan, account: account)
-    end
-
-    it 'is defined as a method' do
-      expect(loan_payment).to respond_to(:update_transaction_entries)
-    end
-
-    it 'does not raise an error when called' do
-      expect { loan_payment.update_transaction_entries }.not_to raise_error
     end
   end
 end

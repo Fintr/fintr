@@ -63,6 +63,11 @@ module Transactions
             )
           )
           account.assign_attributes(balance_currency: params[:balance_currency])
+          if params[:balance].zero?
+            account.assign_attributes(
+              balance: Money.from_amount(0, params[:balance_currency])
+            )
+          end
           save_result = SaveAccount.new.call(
             account:,
             cause: "account_create",

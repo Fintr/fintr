@@ -15,16 +15,16 @@ RSpec.describe Ai::Rag::SemanticTransactionResolver do
           embeddable_id: "txn-1",
           distance: 0.4,
           content: "Groceries",
-          metadata: { "category" => "Food & Groceries" },
+          metadata: { "category" => "Food & Groceries" }
         },
         {
           embeddable_type: "Transactions::Transaction",
           embeddable_id: "txn-2",
           distance: 0.5,
           content: "Market",
-          metadata: { "category" => "Food & Groceries" },
+          metadata: { "category" => "Food & Groceries" }
         },
-        { embeddable_type: "Transactions::Transfer", embeddable_id: "transfer-1", distance: 0.4, content: "Transfer", metadata: {} },
+        { embeddable_type: "Transactions::Transfer", embeddable_id: "transfer-1", distance: 0.4, content: "Transfer", metadata: {} }
       ],
     )
 
@@ -45,26 +45,26 @@ RSpec.describe Ai::Rag::SemanticTransactionResolver do
           embeddable_type: "Transactions::Transaction",
           embeddable_id: "txn-dine-1",
           distance: 0.45,
-          metadata: { "category" => "Dine Out & Entertainment" },
+          metadata: { "category" => "Dine Out & Entertainment" }
         },
         {
           embeddable_type: "Transactions::Transaction",
           embeddable_id: "txn-dine-2",
           distance: 0.46,
-          metadata: { "category" => "Dine Out & Entertainment" },
+          metadata: { "category" => "Dine Out & Entertainment" }
         },
         {
           embeddable_type: "Transactions::Transaction",
           embeddable_id: "txn-dine-3",
           distance: 0.47,
-          metadata: { "category" => "Dine Out & Entertainment" },
+          metadata: { "category" => "Dine Out & Entertainment" }
         },
         {
           embeddable_type: "Transactions::Transaction",
           embeddable_id: "txn-pet-1",
           distance: 0.55,
-          metadata: { "category" => "Pet" },
-        },
+          metadata: { "category" => "Pet" }
+        }
       ],
     )
 
@@ -88,16 +88,16 @@ RSpec.describe Ai::Rag::SemanticTransactionResolver do
           content: "Lansangan Meals expense in Dine Out & Entertainment, Dine out via Cash",
           metadata: {
             "category" => "Dine Out & Entertainment",
-            "subcategory" => "Dine out",
-          },
+            "subcategory" => "Dine out"
+          }
         },
         {
           embeddable_type: "Transactions::Transaction",
           embeddable_id: "txn-dine-2",
           distance: 0.61,
           content: "Pancake house expense in Dine Out & Entertainment, Dine out",
-          metadata: { "category" => "Dine Out & Entertainment" },
-        },
+          metadata: { "category" => "Dine Out & Entertainment" }
+        }
       ],
     )
 
