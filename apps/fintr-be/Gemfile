@@ -25,7 +25,7 @@ gem "openssl", "~> 4.0.2"
 
 
 # DRY Operations, Validation
-gem "dry-operation", "~> 1.0"
+gem "dry-operation", "~> 1.1"
 gem "dry-validation", "~> 1.11"
 
 # Serialization
@@ -34,7 +34,7 @@ gem "oj", "~> 3.16"
 
 # Authentication
 gem "jwt", "~> 2.7"
-gem "auth0", "~> 5.12"
+gem "auth0", "~> 5.20"
 
 # Money
 gem "money-rails", "~> 3.0"
@@ -58,7 +58,7 @@ gem "ice_cube", "~> 0.17.0"
 # OCR and Image Processing
 gem "rtesseract", "~> 3.1"
 gem "mini_magick", "~> 5.3"
-gem "ruby-vips", "~> 2.2"
+gem "ruby-vips", "~> 2.3"
 
 # AI Processing
 gem "ruby-openai", "~> 8.3"
@@ -80,7 +80,7 @@ gem "sentry-ruby"
 gem "sentry-rails"
 
 # Soft deletes
-gem "discard", "~> 1.4"
+gem "discard", "~> 2.0"
 
 group :development, :test do
   gem "debug", platforms: %i[ mri mswin mswin64 mingw x64_mingw ], require: "debug/prelude"
