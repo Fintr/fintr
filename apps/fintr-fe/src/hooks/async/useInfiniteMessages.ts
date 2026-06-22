@@ -48,6 +48,7 @@ export const useInfiniteMessages = ({
       return fetchMessagesPage(api, { pageParam, queryKey })
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 1,
     enabled: !!conversationId && !!api && (hasUserScrolled || !hasInitialized),
     retry: false,
     refetchOnWindowFocus: false,

@@ -56,6 +56,7 @@ export const useInfiniteTransactions = ({
     queryFn: ({ pageParam = 1, queryKey }) =>
       fetchTransactionsPage(api, { pageParam, queryKey }),
     getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 1,
     enabled: manualOnly
       ? false
       : !!enabled

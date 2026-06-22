@@ -101,7 +101,7 @@ export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = f
   const isUserContextLoading =
     queryEnabled &&
     !isUserContextResolved &&
-    (currentUserQuery.isLoading || currentUserQuery.isFetching);
+    (currentUserQuery.isPending || currentUserQuery.isFetching);
 
   return {
     spaceCode,

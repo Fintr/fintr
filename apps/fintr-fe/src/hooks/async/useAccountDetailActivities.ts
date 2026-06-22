@@ -52,6 +52,7 @@ export const useAccountDetailActivities = ({
         ...(maxAmount !== undefined ? { maxAmount } : {}),
       }),
     getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 1,
     enabled: enabled && !!accountId,
     retry: false,
     refetchOnMount: "always",

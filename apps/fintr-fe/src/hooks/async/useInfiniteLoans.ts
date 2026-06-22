@@ -27,6 +27,7 @@ export const useInfiniteLoans = ({
     queryKey: ["loans"],
     queryFn: ({ pageParam = 1 }) => fetchLoansPage(api, { pageParam }),
     getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 1,
     enabled: !!api,
     retry: false,
     refetchOnWindowFocus: false,

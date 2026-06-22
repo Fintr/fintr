@@ -52,6 +52,7 @@ export const useAccountTransactions = ({
         ]
       }),
     getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 1,
     enabled: enabled && !!spaceCode && !!accountName,
     retry: false,
     refetchOnWindowFocus: false,
