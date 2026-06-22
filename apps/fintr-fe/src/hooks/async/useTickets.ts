@@ -35,8 +35,8 @@ export const useTickets = ({
       }
       return fetchTicketsPage(api, { page, status, type, searchQuery });
     },
-    enabled: isAuthenticated, // Only run if user is authenticated
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    enabled: isAuthenticated,
+    staleTime: 30000,
   });
 };
 
@@ -59,7 +59,7 @@ export const useTicket = (ticketId: string) => {
       }
       return fetchTicketById(api, ticketId);
     },
-    enabled: !!ticketId && isAuthenticated, // Only run if ticketId exists and user is authenticated
+    enabled: !!ticketId && isAuthenticated,
     staleTime: 30000,
   });
 };
@@ -74,17 +74,18 @@ export const useCreateTicket = () => {
   });
 
   return useMutation({
-    mutationFn: (payload: CreateTicketPayload) => createTicket(api, payload),
-    onSuccess: (data) => {
-      // Invalidate tickets list to refresh the data
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      toast.success('Support ticket created successfully!');
-      return data;
-    },
-    onError: (error: any) => {
-      console.error('Error creating ticket:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create ticket';
-      toast.error(errorMessage);
+    mutationFn: async (payload: CreateTicketPayload) => {
+      try {
+        const data = await createTicket(api, payload);
+        await queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        toast.success('Support ticket created successfully!');
+        return data;
+      } catch (error: any) {
+        console.error('Error creating ticket:', error);
+        const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create ticket';
+        toast.error(errorMessage);
+        throw error;
+      }
     },
   });
 };
@@ -100,26 +101,21 @@ export const useCreateTicketResponse = (ticketId: string) => {
   });
 
   return useMutation({
-    mutationFn: (payload: CreateResponsePayload) => {
-      // Use admin endpoint if user is admin, otherwise use regular endpoint
-      if (isAdmin) {
-        return createAdminTicketResponse(api, ticketId, payload);
-      } else {
-        return createTicketResponse(api, ticketId, payload);
+    mutationFn: async (payload: CreateResponsePayload) => {
+      try {
+        const data = isAdmin
+          ? await createAdminTicketResponse(api, ticketId, payload)
+          : await createTicketResponse(api, ticketId, payload);
+        await queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
+        await queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        toast.success('Response sent successfully!');
+        return data;
+      } catch (error: any) {
+        console.error('Error creating response:', error);
+        const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send response';
+        toast.error(errorMessage);
+        throw error;
       }
-    },
-    onSuccess: (data) => {
-      // Invalidate the specific ticket to refresh its responses
-      queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
-      // Also invalidate tickets list in case status changed
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      toast.success('Response sent successfully!');
-      return data;
-    },
-    onError: (error: any) => {
-      console.error('Error creating response:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send response';
-      toast.error(errorMessage);
     },
   });
 };
@@ -134,19 +130,19 @@ export const useUpdateAdminTicket = (ticketId: string) => {
   });
 
   return useMutation({
-    mutationFn: (payload: UpdateTicketPayload) => updateAdminTicket(api, ticketId, payload),
-    onSuccess: (data) => {
-      // Invalidate the specific ticket to refresh its data
-      queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
-      // Also invalidate tickets list in case status changed
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      toast.success('Ticket updated successfully!');
-      return data;
-    },
-    onError: (error: any) => {
-      console.error('Error updating ticket:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update ticket';
-      toast.error(errorMessage);
+    mutationFn: async (payload: UpdateTicketPayload) => {
+      try {
+        const data = await updateAdminTicket(api, ticketId, payload);
+        await queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
+        await queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        toast.success('Ticket updated successfully!');
+        return data;
+      } catch (error: any) {
+        console.error('Error updating ticket:', error);
+        const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update ticket';
+        toast.error(errorMessage);
+        throw error;
+      }
     },
   });
 };

@@ -285,18 +285,25 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     }
   }, [hasNonSpaceCurrencyInLoadedTransactions, showBookedCurrencies]);
 
-  // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (deleteData: { id: string; deleteScope: DeleteScope; transactionType?: string }) => {
-      // Use the appropriate delete function based on transaction type
+    mutationFn: async (deleteData: {
+      id: string;
+      deleteScope: DeleteScope;
+      transactionType?: string;
+    }) => {
+      let result;
       if (deleteData.transactionType === CombinedTransactionTypeEnum.TRANSFER) {
-        return deleteTransfer(api, { id: deleteData.id, deleteScope: deleteData.deleteScope });
+        result = await deleteTransfer(api, {
+          id: deleteData.id,
+          deleteScope: deleteData.deleteScope,
+        });
       } else {
-        return deleteTransaction(api, { id: deleteData.id, deleteScope: deleteData.deleteScope });
+        result = await deleteTransaction(api, {
+          id: deleteData.id,
+          deleteScope: deleteData.deleteScope,
+        });
       }
-    },
-    onSuccess: () => {
-      // Invalidate queries to refresh the transaction list
+
       queryClient.invalidateQueries({
         queryKey: [
           "transactions",
@@ -309,31 +316,20 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           appliedFilters.searchQuery,
         ],
       });
-      
-      // Invalidate dashboard query to refresh financial summary
       queryClient.invalidateQueries({
         queryKey: ["dashboard", spaceCode, startDate, endDate],
       });
-      // Invalidate accounts to refresh account balances after delete
       queryClient.invalidateQueries({
         queryKey: ["accounts"],
         refetchType: "active",
       });
-      // Invalidate insights query so Insights tab reflects latest stats
       queryClient.invalidateQueries({
         queryKey: ["insights"],
         refetchType: "active",
         exact: false,
       });
-      
-      setDeleteScopeModalOpen(false);
-      // Reset transaction state after a delay to prevent visual glitch
-      deleteSuccessTimeoutRef.current = setTimeout(() => {
-        setTransactionToDelete(null);
-      }, 300);
-    },
-    onError: (error) => {
-      console.error('Error deleting transaction:', error);
+
+      return result;
     },
   });
 
@@ -655,11 +651,24 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
 
   const handleDeleteConfirm = (scope: Scope) => {
     if (transactionToDelete) {
-      deleteMutation.mutate({
-        id: transactionToDelete.id,
-        deleteScope: scope as DeleteScope,
-        transactionType: transactionToDelete.type,
-      });
+      deleteMutation.mutate(
+        {
+          id: transactionToDelete.id,
+          deleteScope: scope as DeleteScope,
+          transactionType: transactionToDelete.type,
+        },
+        {
+          onSuccess: () => {
+            setDeleteScopeModalOpen(false);
+            deleteSuccessTimeoutRef.current = setTimeout(() => {
+              setTransactionToDelete(null);
+            }, 300);
+          },
+          onError: (error) => {
+            console.error("Error deleting transaction:", error);
+          },
+        },
+      );
     }
   };
 

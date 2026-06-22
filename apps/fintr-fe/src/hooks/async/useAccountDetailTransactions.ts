@@ -70,7 +70,7 @@ export const useAccountDetailTransactions = ({
     refetchOnMount: "always",
     refetchOnWindowFocus: false,
     staleTime: 0,
-    cacheTime: 300000,
+    gcTime: 300000,
   });
 };
 
@@ -116,6 +116,6 @@ export const useAccountAdjustmentHistory = ({
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 30000,
-    cacheTime: 300000,
+    gcTime: 300000,
   });
 };

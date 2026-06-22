@@ -91,7 +91,6 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const router = useRouter();
 
-  // Update space mutation (name, currency, and/or default transaction currency)
   const updateSpaceMutation = useMutation({
     mutationFn: async (params: {
       name: string;
@@ -108,107 +107,90 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
           defaultTransactionCurrency: params.defaultTransactionCurrency,
         }),
       });
-      return response.data.data.space;
-    },
-    onSuccess: (updatedSpace) => {
+      const updatedSpace = response.data.data.space;
+
       toast.success("Space updated successfully");
       setIsEditingSpaceName(false);
       setSpaceName(updatedSpace.name);
       setSpaceCurrency(updatedSpace.currency ?? "PHP");
       setDefaultCurrency(
-        updatedSpace.defaultTransactionCurrency ?? updatedSpace.currency ?? ""
+        updatedSpace.defaultTransactionCurrency ?? updatedSpace.currency ?? "",
       );
 
-      // Update atoms immediately for instant UI update
       if (currentSpace?.id === updatedSpace.id) {
         setCurrentSpace(updatedSpace);
       }
 
-      // Update the space in availableSpacesAtom
       setAvailableSpaces((prevSpaces) =>
         prevSpaces.map((space) =>
-          space.id === updatedSpace.id ? updatedSpace : space
-        )
+          space.id === updatedSpace.id ? updatedSpace : space,
+        ),
       );
 
-      // Invalidate all relevant queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       queryClient.invalidateQueries({
         queryKey: ["space-context", currentSpace?.code],
       });
       queryClient.invalidateQueries({ queryKey: ["space-context"] });
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to update space name");
+
+      return updatedSpace;
     },
   });
 
-  // Leave space mutation
   const leaveSpaceMutation = useMutation({
     mutationFn: async () => {
       if (!currentSpace?.code) throw new Error("No space selected");
-      return spacesApi.leaveSpace(api, currentSpace.code);
-    },
-    onSuccess: () => {
-      toast.success("Successfully left the space");
-      setShowLeaveDialog(false);
+      await spacesApi.leaveSpace(api, currentSpace.code);
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      // Switch to first available space or redirect
-      router.push("/dashboard");
-      window.location.reload();
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to leave space");
     },
   });
 
-  // Delete space mutation
   const deleteSpaceMutation = useMutation({
     mutationFn: async () => {
       if (!currentSpace?.code) throw new Error("No space selected");
-      return spacesApi.deleteSpace(api, currentSpace.code);
-    },
-    onSuccess: () => {
-      toast.success("Space deleted successfully");
-      setShowDeleteDialog(false);
-      setDeleteConfirmText("");
+      await spacesApi.deleteSpace(api, currentSpace.code);
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      // Redirect to dashboard and reload to switch spaces
-      router.push("/dashboard");
-      window.location.reload();
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to delete space");
     },
   });
 
-  // Transfer ownership mutation
   const transferOwnershipMutation = useMutation({
     mutationFn: async (newOwnerId: string) => {
       if (!currentSpace?.code) throw new Error("No space selected");
       return spacesApi.transferOwnership(api, currentSpace.code, newOwnerId);
-    },
-    onSuccess: () => {
-      toast.success("Ownership transferred successfully. Refreshing...");
-      setTransferDialogUserId(null);
-      // Force page reload to refresh all state including isOwner
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to transfer ownership");
     },
   });
 
   const [transferDialogUserId, setTransferDialogUserId] = useState<string | null>(null);
 
   const handleTransferOwnership = (userId: string) => {
-    transferOwnershipMutation.mutate(userId);
+    transferOwnershipMutation.mutate(userId, {
+      onSuccess: () => {
+        toast.success("Ownership transferred successfully. Refreshing...");
+        setTransferDialogUserId(null);
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      },
+      onError: (error: any) => {
+        toast.error(
+          error.response?.data?.message || "Failed to transfer ownership",
+        );
+      },
+    });
   };
 
   const handleLeaveSpace = () => {
-    leaveSpaceMutation.mutate();
+    leaveSpaceMutation.mutate(undefined, {
+      onSuccess: () => {
+        toast.success("Successfully left the space");
+        setShowLeaveDialog(false);
+        router.push("/dashboard");
+        window.location.reload();
+      },
+      onError: (error: any) => {
+        toast.error(error.response?.data?.message || "Failed to leave space");
+      },
+    });
   };
 
   const handleDeleteSpace = () => {
@@ -216,7 +198,18 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
       toast.error("Please type the space name to confirm deletion");
       return;
     }
-    deleteSpaceMutation.mutate();
+    deleteSpaceMutation.mutate(undefined, {
+      onSuccess: () => {
+        toast.success("Space deleted successfully");
+        setShowDeleteDialog(false);
+        setDeleteConfirmText("");
+        router.push("/dashboard");
+        window.location.reload();
+      },
+      onError: (error: any) => {
+        toast.error(error.response?.data?.message || "Failed to delete space");
+      },
+    });
   };
 
   const handleUpdateSpaceName = async () => {
@@ -224,9 +217,13 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
       toast.error("Space name cannot be empty");
       return;
     }
-    await updateSpaceMutation.mutateAsync({
-      name: spaceName.trim(),
-    });
+    try {
+      await updateSpaceMutation.mutateAsync({
+        name: spaceName.trim(),
+      });
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update space name");
+    }
   };
 
   const spaceCurrencyChanged =
@@ -253,6 +250,8 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
         currency: spaceCurrencyValue,
         defaultTransactionCurrency: defaultCurrencyValue,
       });
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update space name");
     } finally {
       setIsSavingCurrencies(false);
     }

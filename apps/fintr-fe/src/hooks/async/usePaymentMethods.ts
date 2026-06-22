@@ -19,30 +19,30 @@ export const usePaymentMethods = () => {
     queryKey: ["paymentMethods"],
     queryFn: () => fetchPaymentMethods(api),
     staleTime: 30000,
-    cacheTime: 300000,
+    gcTime: 300000,
   });
 
   const initializeLinkingMutation = useMutation({
-    mutationFn: (data: InitializeLinkingRequest) =>
-      initializeAccountLinking(api, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
+    mutationFn: async (data: InitializeLinkingRequest) => {
+      const result = await initializeAccountLinking(api, data);
+      await queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
+      return result;
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreatePaymentMethodRequest) =>
-      createPaymentMethod(api, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
+    mutationFn: async (data: CreatePaymentMethodRequest) => {
+      const result = await createPaymentMethod(api, data);
+      await queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
+      return result;
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (paymentMethodId: string) =>
-      deletePaymentMethod(api, paymentMethodId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
+    mutationFn: async (paymentMethodId: string) => {
+      const result = await deletePaymentMethod(api, paymentMethodId);
+      await queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
+      return result;
     },
   });
 
@@ -60,4 +60,3 @@ export const usePaymentMethods = () => {
     isDeleting: deleteMutation.isPending,
   };
 };
-

@@ -14,6 +14,6 @@ export const useLoan = (loanId: string) => {
     queryFn: () => fetchLoanById(api, loanId),
     enabled: !!loanId,
     staleTime: 30000,
-    cacheTime: 300000,
+    gcTime: 300000,
   });
 };

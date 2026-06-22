@@ -16,7 +16,15 @@ export const useAccounts = () => {
   });
   const queryClient = useQueryClient();
 
-  // Fetch accounts query
+  const invalidateAccountQueries = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['accounts'] });
+    await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    await queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
+    await queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY] });
+    await queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
+    await queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
+  };
+
   const {
     data: accounts,
     isLoading,
@@ -29,102 +37,71 @@ export const useAccounts = () => {
     enabled: !!api,
   });
 
-  // Create account mutation
   const createAccountMutation = useMutation({
-    mutationFn: (accountData: CreateAccountType) => 
-      createAccount(api, accountData),
-    onSuccess: (newAccount, variables) => {
-      // Invalidate and refetch accounts
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      // Invalidate dashboard query to refresh account options
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
-      toast.success(`Account "${variables.name}" created successfully`);
-    },
-    onError: (error: any) => {
-      console.error('Error creating account:', error);
-      toast.error('Failed to create account. Please try again.');
-    },
-  });
-
-  // Update account mutation
-  const updateAccountMutation = useMutation({
-    mutationFn: ({ accountId, updateData }: { accountId: string; updateData: UpdateAccountType }) => 
-      updateAccount(api, accountId, updateData),
-    onSuccess: (updatedAccount, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
-      // Don't show toast here since the edit dialog handles it
-    },
-    onError: (error: any) => {
-      console.error('Error updating account:', error);
-      // Don't show toast here since the EditAccountDialog handles it
-      throw error; // Re-throw to let the dialog handle the error
-    },
-  });
-
-  // Delete account mutation
-  const deleteAccountMutation = useMutation({
-    mutationFn: (accountId: string) => deleteAccount(api, accountId),
-    onSuccess: (response, accountId) => {
-      // Invalidate and refetch accounts only if the deletion was successful
-      if (response?.success === true) {
-        queryClient.invalidateQueries({ queryKey: ['accounts'] });
-        // Invalidate dashboard query to refresh account options
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
-        queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY] });
-        queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
-        queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
-        toast.success(`Account deleted successfully`);
-      } else {
-        // If backend returns success: false, re-throw to display error from dialog
-        throw new Error(response?.error?.message || "Failed to delete account.");
+    mutationFn: async (accountData: CreateAccountType) => {
+      try {
+        const newAccount = await createAccount(api, accountData);
+        await invalidateAccountQueries();
+        toast.success(`Account "${accountData.name}" created successfully`);
+        return newAccount;
+      } catch (error: any) {
+        console.error('Error creating account:', error);
+        toast.error('Failed to create account. Please try again.');
+        throw error;
       }
     },
-    onError: (error: any) => {
-      console.error('Error deleting account:', error);
-      // Re-throw to let the dialog handle the error message and not close
-      throw error;
+  });
+
+  const updateAccountMutation = useMutation({
+    mutationFn: async ({ accountId, updateData }: { accountId: string; updateData: UpdateAccountType }) => {
+      try {
+        const updatedAccount = await updateAccount(api, accountId, updateData);
+        await invalidateAccountQueries();
+        return updatedAccount;
+      } catch (error: any) {
+        console.error('Error updating account:', error);
+        throw error;
+      }
     },
   });
 
-  // Adjust account balance mutation
+  const deleteAccountMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      try {
+        const response = await deleteAccount(api, accountId);
+        if (response?.success !== true) {
+          throw new Error(response?.error?.message || "Failed to delete account.");
+        }
+        await invalidateAccountQueries();
+        toast.success(`Account deleted successfully`);
+        return response;
+      } catch (error: any) {
+        console.error('Error deleting account:', error);
+        throw error;
+      }
+    },
+  });
+
   const adjustAccountBalanceMutation = useMutation({
-    mutationFn: ({ accountId, adjustmentData }: { accountId: string; adjustmentData: AdjustAccountBalanceType }) => 
-      adjustAccountBalance(api, accountId, adjustmentData),
-    onSuccess: (response, variables) => {
-      // Invalidate and refetch accounts
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      // Invalidate dashboard and transactions to show the new adjustment transaction
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['filteredTransactions'] });
-      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
-    },
-    onError: (error: any) => {
-      console.error('Error adjusting account balance:', error);
-      throw error;
+    mutationFn: async ({ accountId, adjustmentData }: { accountId: string; adjustmentData: AdjustAccountBalanceType }) => {
+      try {
+        const response = await adjustAccountBalance(api, accountId, adjustmentData);
+        await invalidateAccountQueries();
+        await queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        await queryClient.invalidateQueries({ queryKey: ['filteredTransactions'] });
+        return response;
+      } catch (error: any) {
+        console.error('Error adjusting account balance:', error);
+        throw error;
+      }
     },
   });
 
-  // Helper function to get accounts data from response
   const getAccountsData = (): Account[] => {
     if (!accounts) return [];
     
     console.log('Raw accounts data from API:', accounts);
     
-    // Handle the actual API response structure based on the provided data
     let accountsArray: Account[] = [];
     
     if (accounts.data?.accounts) {
@@ -161,11 +138,9 @@ export const useAccounts = () => {
     };
   };
 
-  // Helper function to get account category options from response
   const getAccountCategoryOptions = (): { label: string; value: string }[] => {
     if (!accounts) return [];
     
-    // Handle the response structure to extract account category options
     if (accounts.data?.accountCategoryOptions) {
       return accounts.data.accountCategoryOptions;
     }
@@ -185,12 +160,12 @@ export const useAccounts = () => {
     error,
     refetch,
     createAccount: createAccountMutation.mutateAsync,
-    isCreating: createAccountMutation.isLoading,
+    isCreating: createAccountMutation.isPending,
     updateAccount: updateAccountMutation.mutateAsync,
-    isUpdating: updateAccountMutation.isLoading,
+    isUpdating: updateAccountMutation.isPending,
     deleteAccount: deleteAccountMutation.mutateAsync,
-    isDeleting: deleteAccountMutation.isLoading,
+    isDeleting: deleteAccountMutation.isPending,
     adjustAccountBalance: adjustAccountBalanceMutation.mutateAsync,
-    isAdjusting: adjustAccountBalanceMutation.isLoading,
+    isAdjusting: adjustAccountBalanceMutation.isPending,
   };
 }; 

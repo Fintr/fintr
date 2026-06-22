@@ -31,9 +31,8 @@ export const useImport = (importId?: string) => {
     queryKey: ['import', importId],
     queryFn: () => fetchImport({ api: api!, importId: importId! }),
     enabled: !!api && !!importId,
-    refetchInterval: (data) => {
-      // Poll for updates if import is processing
-      const status = data?.data?.import?.status;
+    refetchInterval: (query) => {
+      const status = query.state.data?.data?.import?.status;
       return status === 'processing' || status === 'pending' ? 2000 : false;
     },
   });
@@ -67,14 +66,12 @@ export const useImports = (spaceId?: string, status?: string, page: number = 1, 
     enabled: !!api,
   });
 
-  // Debug: Log the parsed data
   React.useEffect(() => {
     console.log('Imports hook - Full data:', importsData);
     console.log('Imports hook - Parsed imports:', importsData?.data?.imports);
     console.log('Imports hook - Pagination:', importsData?.data?.pagination);
   }, [importsData]);
 
-  // Handle both response structures: response.data.data.imports or response.data.imports
   const imports = importsData?.data?.imports || importsData?.imports || [];
   const pagination = importsData?.data?.pagination || importsData?.pagination;
 
@@ -119,25 +116,25 @@ export const useCreateImport = () => {
 
   return useMutation({
     mutationFn: async ({ file, importLocation, metadata, spaceId }: { file: File; importLocation: 'onboarding' | 'settings'; metadata?: Record<string, any>; spaceId?: string }) => {
-      // Get spaceId from API if not provided
-      let effectiveSpaceId = spaceId;
-      if (!effectiveSpaceId) {
-        const userResponse = await api!.get('/auth/private');
-        effectiveSpaceId = userResponse.data?.data?.spaceId;
+      try {
+        let effectiveSpaceId = spaceId;
+        if (!effectiveSpaceId) {
+          const userResponse = await api!.get('/auth/private');
+          effectiveSpaceId = userResponse.data?.data?.spaceId;
+        }
+        const response = await createImport({ api: api!, file, spaceId: effectiveSpaceId || '', importLocation, metadata });
+        await queryClient.invalidateQueries({ queryKey: ['imports'] });
+        toast.success('Import started successfully');
+        return response;
+      } catch (error: any) {
+        const errorMessage =
+          error?.response?.data?.error?.message ||
+          error?.response?.data?.error?.details?.error ||
+          error?.response?.data?.error?.details?.errors?.base?.[0] ||
+          'Failed to create import';
+        toast.error(errorMessage);
+        throw error;
       }
-      return createImport({ api: api!, file, spaceId: effectiveSpaceId || '', importLocation, metadata });
-    },
-    onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: ['imports'] });
-      toast.success('Import started successfully');
-    },
-    onError: (error: any) => {
-      const errorMessage =
-        error?.response?.data?.error?.message ||
-        error?.response?.data?.error?.details?.error ||
-        error?.response?.data?.error?.details?.errors?.base?.[0] ||
-        'Failed to create import';
-      toast.error(errorMessage);
     },
   });
 };
@@ -147,14 +144,17 @@ export const useRevertImport = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (importId: string) => revertImport({ api: api!, importId }),
-    onSuccess: (response, importId) => {
-      queryClient.invalidateQueries({ queryKey: ['imports'] });
-      queryClient.invalidateQueries({ queryKey: ['import', importId] });
-      toast.success('Import reverted successfully');
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error?.message || 'Failed to revert import');
+    mutationFn: async (importId: string) => {
+      try {
+        const response = await revertImport({ api: api!, importId });
+        await queryClient.invalidateQueries({ queryKey: ['imports'] });
+        await queryClient.invalidateQueries({ queryKey: ['import', importId] });
+        toast.success('Import reverted successfully');
+        return response;
+      } catch (error: any) {
+        toast.error(error?.response?.data?.error?.message || 'Failed to revert import');
+        throw error;
+      }
     },
   });
 };
@@ -164,15 +164,17 @@ export const useUpdateImportRecord = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ importId, importRecordId, data }: { importId: string; importRecordId: string; data: any }) =>
-      updateImportRecord({ api: api!, importId, importRecordId, data }),
-    onSuccess: (response, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['importRecords', variables.importId] });
-      queryClient.invalidateQueries({ queryKey: ['import', variables.importId] });
-      toast.success('Record updated successfully');
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error?.message || 'Failed to update record');
+    mutationFn: async ({ importId, importRecordId, data }: { importId: string; importRecordId: string; data: any }) => {
+      try {
+        const response = await updateImportRecord({ api: api!, importId, importRecordId, data });
+        await queryClient.invalidateQueries({ queryKey: ['importRecords', importId] });
+        await queryClient.invalidateQueries({ queryKey: ['import', importId] });
+        toast.success('Record updated successfully');
+        return response;
+      } catch (error: any) {
+        toast.error(error?.response?.data?.error?.message || 'Failed to update record');
+        throw error;
+      }
     },
   });
 };
@@ -182,15 +184,17 @@ export const useImportSingleRecord = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ importId, importRecordId }: { importId: string; importRecordId: string }) =>
-      importSingleRecord({ api: api!, importId, importRecordId }),
-    onSuccess: (response, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['importRecords', variables.importId] });
-      queryClient.invalidateQueries({ queryKey: ['import', variables.importId] });
-      toast.success('Record imported successfully');
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error?.message || 'Failed to import record');
+    mutationFn: async ({ importId, importRecordId }: { importId: string; importRecordId: string }) => {
+      try {
+        const response = await importSingleRecord({ api: api!, importId, importRecordId });
+        await queryClient.invalidateQueries({ queryKey: ['importRecords', importId] });
+        await queryClient.invalidateQueries({ queryKey: ['import', importId] });
+        toast.success('Record imported successfully');
+        return response;
+      } catch (error: any) {
+        toast.error(error?.response?.data?.error?.message || 'Failed to import record');
+        throw error;
+      }
     },
   });
 };
@@ -199,13 +203,15 @@ export const useDownloadSampleTemplate = () => {
   const { api } = useAuthApi();
 
   return useMutation({
-    mutationFn: () => downloadSampleTemplate(api!),
-    onSuccess: () => {
-      toast.success('Template downloaded successfully');
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error?.message || 'Failed to download template');
+    mutationFn: async () => {
+      try {
+        const result = await downloadSampleTemplate(api!);
+        toast.success('Template downloaded successfully');
+        return result;
+      } catch (error: any) {
+        toast.error(error?.response?.data?.error?.message || 'Failed to download template');
+        throw error;
+      }
     },
   });
 };
-

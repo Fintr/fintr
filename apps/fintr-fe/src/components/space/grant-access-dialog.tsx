@@ -57,18 +57,13 @@ export function GrantAccessDialog({ open, onOpenChange }: GrantAccessDialogProps
     mutationFn: async (data: GrantAccessForm) => {
       const response = await api.post(
         `/spaces/${currentSpace?.code}/users/grant_access`,
-        data
+        data,
       );
-      return response.data;
-    },
-    onSuccess: (data) => {
       toast.success("Access granted successfully!");
-      setAccessLink(data.data.access_link);
+      setAccessLink(response.data.data.access_link);
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["space-users"] });
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to grant access");
+      return response.data;
     },
   });
 
@@ -82,7 +77,11 @@ export function GrantAccessDialog({ open, onOpenChange }: GrantAccessDialogProps
   };
 
   const onSubmit = async (data: GrantAccessForm) => {
-    await grantAccessMutation.mutateAsync(data);
+    try {
+      await grantAccessMutation.mutateAsync(data);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to grant access");
+    }
   };
 
   return (
@@ -157,9 +156,9 @@ export function GrantAccessDialog({ open, onOpenChange }: GrantAccessDialogProps
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={grantAccessMutation.isLoading}
+                  disabled={grantAccessMutation.isPending}
                 >
-                  {grantAccessMutation.isLoading ? "Granting..." : "Grant Access"}
+                  {grantAccessMutation.isPending ? "Granting..." : "Grant Access"}
                 </Button>
               </DialogFooter>
             </form>

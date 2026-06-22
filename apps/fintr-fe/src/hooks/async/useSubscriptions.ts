@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery, InfiniteData } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import {
@@ -29,8 +29,8 @@ export const useSubscriptionPlans = () => {
   const { data, isLoading, isError, error, refetch } = useQuery<SubscriptionPlan[]>({
     queryKey: ["subscriptionPlans"],
     queryFn: () => fetchSubscriptionPlans(api),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   return {
@@ -50,8 +50,8 @@ export const useCurrentSubscription = () => {
   const { data, isLoading, isError, error, refetch } = useQuery<SpaceSubscription[]>({
     queryKey: ["currentSubscription"],
     queryFn: () => fetchCurrentSubscription(api),
-    staleTime: 1 * 60 * 1000, // 1 minute
-    cacheTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const subscriptions = data || [];
@@ -60,7 +60,7 @@ export const useCurrentSubscription = () => {
 
   return {
     subscriptions,
-    subscription: activeSubscription || cancelledSubscriptions[0] || null, // For backward compatibility
+    subscription: activeSubscription || cancelledSubscriptions[0] || null,
     activeSubscription,
     cancelledSubscriptions,
     isLoading,
@@ -70,6 +70,24 @@ export const useCurrentSubscription = () => {
   };
 };
 
+const attachSubscriptionErrorMessage = (error: any) => {
+  let message = "Failed to create subscription";
+  if (error?.response?.data?.error?.message) {
+    message = error.response.data.error.message;
+    const details = error.response.data.error.details;
+    if (details && typeof details === "object") {
+      const detailStr = Object.entries(details)
+        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+        .join("; ");
+      if (detailStr) message += ` (${detailStr})`;
+    }
+  } else if (error?.message) {
+    message = error.message;
+  }
+  error.displayMessage = message;
+  return error;
+};
+
 export const useCreateSubscription = () => {
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
@@ -77,29 +95,15 @@ export const useCreateSubscription = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (data: CreateSubscriptionRequest) =>
-      createSubscription(api, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
-      queryClient.invalidateQueries({ queryKey: ["subscriptionPlans"] });
-    },
-    onError: (error: any) => {
-      // Extract readable error message
-      let message = "Failed to create subscription";
-      if (error?.response?.data?.error?.message) {
-        message = error.response.data.error.message;
-        const details = error.response.data.error.details;
-        if (details && typeof details === "object") {
-          const detailStr = Object.entries(details)
-            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
-            .join("; ");
-          if (detailStr) message += ` (${detailStr})`;
-        }
-      } else if (error?.message) {
-        message = error.message;
+    mutationFn: async (data: CreateSubscriptionRequest) => {
+      try {
+        const result = await createSubscription(api, data);
+        await queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+        await queryClient.invalidateQueries({ queryKey: ["subscriptionPlans"] });
+        return result;
+      } catch (error: any) {
+        throw attachSubscriptionErrorMessage(error);
       }
-      // Attach processed message for components to use
-      error.displayMessage = message;
     },
   });
 
@@ -118,11 +122,11 @@ export const useCreateSponsorSubscription = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (data: CreateSponsorSubscriptionRequest) =>
-      createSponsorSubscription(api, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
-      queryClient.invalidateQueries({ queryKey: ["subscriptionPlans"] });
+    mutationFn: async (data: CreateSponsorSubscriptionRequest) => {
+      const result = await createSponsorSubscription(api, data);
+      await queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+      await queryClient.invalidateQueries({ queryKey: ["subscriptionPlans"] });
+      return result;
     },
   });
 
@@ -141,10 +145,11 @@ export const useCancelSubscription = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (subscriptionId: string) => cancelSubscription(api, subscriptionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
-      queryClient.invalidateQueries({ queryKey: ["subscriptionPlans"] });
+    mutationFn: async (subscriptionId: string) => {
+      const result = await cancelSubscription(api, subscriptionId);
+      await queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+      await queryClient.invalidateQueries({ queryKey: ["subscriptionPlans"] });
+      return result;
     },
   });
 
@@ -163,10 +168,10 @@ export const useSimulateCyclePayment = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (data: SimulateCyclePaymentRequest) =>
-      simulateCyclePayment(api, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+    mutationFn: async (data: SimulateCyclePaymentRequest) => {
+      const result = await simulateCyclePayment(api, data);
+      await queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+      return result;
     },
   });
 
@@ -185,10 +190,10 @@ export const useForceAttemptCycle = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (data: ForceAttemptCycleRequest) =>
-      forceAttemptCycle(api, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+    mutationFn: async (data: ForceAttemptCycleRequest) => {
+      const result = await forceAttemptCycle(api, data);
+      await queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+      return result;
     },
   });
 
@@ -207,11 +212,11 @@ export const useUpdateSubscription = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: ({ subscriptionId, data }: { subscriptionId: string; data: UpdateSubscriptionRequest }) =>
-      updateSubscription(api, subscriptionId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
-      queryClient.invalidateQueries({ queryKey: ["subscriptionPlans"] });
+    mutationFn: async ({ subscriptionId, data }: { subscriptionId: string; data: UpdateSubscriptionRequest }) => {
+      const result = await updateSubscription(api, subscriptionId, data);
+      await queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+      await queryClient.invalidateQueries({ queryKey: ["subscriptionPlans"] });
+      return result;
     },
   });
 
@@ -223,7 +228,6 @@ export const useUpdateSubscription = () => {
   };
 };
 
-// Admin hooks for sponsor codes and free subscriptions
 import {
   fetchSponsorCodes,
   fetchSponsorCode,
@@ -236,9 +240,9 @@ import {
   CreateSponsorCodeRequest,
   SponsorCode,
   SponsorCodeWithUsers,
-  SpaceForFreeSubscription,
   CreateFreeSubscriptionRequest,
   RemoveFreeSubscriptionRequest,
+  SpacesForFreeSubscriptionPage,
 } from "@/services/finance/subscriptions/admin";
 
 export const useSponsorCodes = () => {
@@ -286,9 +290,10 @@ export const useCreateSponsorCode = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (data: CreateSponsorCodeRequest) => createSponsorCode(api, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sponsorCodes"] });
+    mutationFn: async (data: CreateSponsorCodeRequest) => {
+      const result = await createSponsorCode(api, data);
+      await queryClient.invalidateQueries({ queryKey: ["sponsorCodes"] });
+      return result;
     },
   });
 
@@ -307,11 +312,11 @@ export const useUpdateSponsorCode = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { active: boolean } }) =>
-      updateSponsorCode(api, id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sponsorCodes"] });
-      queryClient.invalidateQueries({ queryKey: ["sponsorCode"] });
+    mutationFn: async ({ id, data }: { id: string; data: { active: boolean } }) => {
+      const result = await updateSponsorCode(api, id, data);
+      await queryClient.invalidateQueries({ queryKey: ["sponsorCodes"] });
+      await queryClient.invalidateQueries({ queryKey: ["sponsorCode"] });
+      return result;
     },
   });
 
@@ -329,9 +334,10 @@ export const useDeleteSponsorCode = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (id: string) => deleteSponsorCode(api, id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sponsorCodes"] });
+    mutationFn: async (id: string) => {
+      const result = await deleteSponsorCode(api, id);
+      await queryClient.invalidateQueries({ queryKey: ["sponsorCodes"] });
+      return result;
     },
   });
 
@@ -342,7 +348,6 @@ export const useDeleteSponsorCode = () => {
   };
 };
 
-// Free subscriptions admin hooks
 export const useInfiniteSpacesForFreeSubscription = ({
   searchQuery,
   loadMoreRef,
@@ -363,14 +368,21 @@ export const useInfiniteSpacesForFreeSubscription = ({
     isFetchingNextPage,
     isLoading,
     refetch,
-  } = useInfiniteQuery({
+  } = useInfiniteQuery<
+    SpacesForFreeSubscriptionPage,
+    Error,
+    InfiniteData<SpacesForFreeSubscriptionPage>,
+    string[],
+    number
+  >({
     queryKey: ["spacesForFreeSubscription", searchQuery],
-    queryFn: ({ pageParam = 1 }) =>
+    queryFn: ({ pageParam }) =>
       fetchSpacesForFreeSubscriptionPage(api, {
         pageParam,
         searchQuery,
       }),
-    getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -424,10 +436,11 @@ export const useCreateFreeSubscription = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (data: CreateFreeSubscriptionRequest) => createFreeSubscription(api, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["spacesForFreeSubscription"] });
-      queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+    mutationFn: async (data: CreateFreeSubscriptionRequest) => {
+      const result = await createFreeSubscription(api, data);
+      await queryClient.invalidateQueries({ queryKey: ["spacesForFreeSubscription"] });
+      await queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+      return result;
     },
   });
 
@@ -446,10 +459,11 @@ export const useRemoveFreeSubscription = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (data: RemoveFreeSubscriptionRequest) => removeFreeSubscription(api, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["spacesForFreeSubscription"] });
-      queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+    mutationFn: async (data: RemoveFreeSubscriptionRequest) => {
+      const result = await removeFreeSubscription(api, data);
+      await queryClient.invalidateQueries({ queryKey: ["spacesForFreeSubscription"] });
+      await queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
+      return result;
     },
   });
 
@@ -460,4 +474,3 @@ export const useRemoveFreeSubscription = () => {
     data: mutation.data,
   };
 };
-

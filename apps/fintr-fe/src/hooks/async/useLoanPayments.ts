@@ -18,71 +18,51 @@ export const useLoanPayments = (loanId: string) => {
   });
   const queryClient = useQueryClient();
 
+  const invalidateLoanPaymentQueries = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["loanPayments", loanId] });
+    await queryClient.invalidateQueries({ queryKey: ["loans"] });
+    await queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, loanId] });
+    await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    await queryClient.invalidateQueries({
+      queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
+      exact: false,
+    });
+    await queryClient.invalidateQueries({
+      queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
+      exact: false,
+    });
+  };
+
   const { data, isLoading, isError, error, refetch } = useQuery<LoanPayment[]>({
     queryKey: ['loanPayments', loanId],
     queryFn: () => fetchLoanPayments(api, loanId),
     enabled: !!loanId,
     staleTime: 30000,
-    cacheTime: 300000,
+    gcTime: 300000,
   });
 
   const createMutation = useMutation({
-    mutationFn: (paymentData: Omit<CreateLoanPaymentType, 'loanId'>) =>
-      createLoanPayment(api, loanId, paymentData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loanPayments", loanId] });
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, loanId] });
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      queryClient.invalidateQueries({
-        queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
-        exact: false,
-      });
+    mutationFn: async (paymentData: Omit<CreateLoanPaymentType, 'loanId'>) => {
+      const result = await createLoanPayment(api, loanId, paymentData);
+      await invalidateLoanPaymentQueries();
+      return result;
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ paymentId, paymentData }: { paymentId: string; paymentData: Partial<Omit<CreateLoanPaymentType, 'loanId'>> }) =>
-      updateLoanPayment(api, loanId, paymentId, paymentData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loanPayments", loanId] });
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, loanId] });
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      queryClient.invalidateQueries({
-        queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
-        exact: false,
-      });
+    mutationFn: async ({ paymentId, paymentData }: { paymentId: string; paymentData: Partial<Omit<CreateLoanPaymentType, 'loanId'>> }) => {
+      const result = await updateLoanPayment(api, loanId, paymentId, paymentData);
+      await invalidateLoanPaymentQueries();
+      return result;
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (paymentId: string) =>
-      deleteLoanPayment(api, loanId, paymentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loanPayments", loanId] });
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, loanId] });
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      queryClient.invalidateQueries({
-        queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
-        exact: false,
-      });
+    mutationFn: async (paymentId: string) => {
+      const result = await deleteLoanPayment(api, loanId, paymentId);
+      await invalidateLoanPaymentQueries();
+      return result;
     },
   });
 
@@ -95,10 +75,8 @@ export const useLoanPayments = (loanId: string) => {
     createPayment: createMutation.mutateAsync,
     updatePayment: updateMutation.mutateAsync,
     deletePayment: deleteMutation.mutateAsync,
-    isCreating: createMutation.isLoading,
-    isUpdating: updateMutation.isLoading,
-    isDeleting: deleteMutation.isLoading,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
   };
 };
-
-

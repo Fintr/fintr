@@ -230,17 +230,17 @@ export default function CreateTicketForm({ onSuccess }: CreateTicketFormProps) {
         description="Add images to help explain your issue"
         maxImages={5}
         maxSizeInMB={10}
-        disabled={createTicketMutation.isLoading}
+        disabled={createTicketMutation.isPending}
       />
 
       {/* Submit Button */}
       <div className="flex justify-end space-x-4 pt-6">
         <Button
           type="submit"
-          disabled={createTicketMutation.isLoading}
+          disabled={createTicketMutation.isPending}
           className="bg-primary hover:bg-primary/90"
         >
-          {createTicketMutation.isLoading ? (
+          {createTicketMutation.isPending ? (
             <ButtonLoader text="Creating..." />
           ) : (
             'Create Ticket'

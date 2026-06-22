@@ -111,24 +111,40 @@ export const WeeklyFeedbackDialog = ({
         improveAreas: payload.improveAreas,
         notes: payload.notes,
       }),
-    onSuccess: () => {
-      toast.success("Thanks — your feedback helps us improve Fintr.");
-      resetForm();
-      onOpenChange(false);
-    },
-    onError: (err: unknown) => {
-      const ax = err as { response?: { data?: { error?: { details?: unknown } } } };
-      const details = ax.response?.data?.error?.details as Record<string, unknown> | undefined;
-      const periodErr =
-        details &&
-        typeof details === "object" &&
-        ("periodKey" in details || "period_key" in details);
-      const msg = periodErr
-        ? "You already sent feedback for this week."
-        : "Could not send feedback. Please try again.";
-      toast.error(msg);
-    },
   });
+
+  const handleSubmitFeedback = () => {
+    mutation.mutate(
+      {
+        likedAreas: [...likes],
+        improveAreas: [...improve],
+        notes: notes.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Thanks — your feedback helps us improve Fintr.");
+          resetForm();
+          onOpenChange(false);
+        },
+        onError: (err: unknown) => {
+          const ax = err as {
+            response?: { data?: { error?: { details?: unknown } } };
+          };
+          const details = ax.response?.data?.error?.details as
+            | Record<string, unknown>
+            | undefined;
+          const periodErr =
+            details &&
+            typeof details === "object" &&
+            ("periodKey" in details || "period_key" in details);
+          const msg = periodErr
+            ? "You already sent feedback for this week."
+            : "Could not send feedback. Please try again.";
+          toast.error(msg);
+        },
+      },
+    );
+  };
 
   const canSubmit = useMemo(() => {
     const n = notes.trim();
@@ -217,13 +233,7 @@ export const WeeklyFeedbackDialog = ({
                   type="button"
                   className="w-full rounded-full"
                   disabled={!canSubmit || mutation.isPending}
-                  onClick={() =>
-                    mutation.mutate({
-                      likedAreas: [...likes],
-                      improveAreas: [...improve],
-                      notes: notes.trim() || undefined,
-                    })
-                  }
+                  onClick={handleSubmitFeedback}
                 >
                   {mutation.isPending ? "Sending…" : "Send feedback"}
                 </Button>

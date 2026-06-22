@@ -1,6 +1,5 @@
 import { fetchBudgetsPage } from "@/services/budgets/queries";
 import {
-  isError,
   useMutation,
   useQuery,
   useQueryClient,
@@ -9,7 +8,7 @@ import useAuthApi from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
 import { updateBudget, createBudget, deleteBudget } from "@/services/budgets/mutations";
 import { UpdateBudgetPayload } from "@/services/budgets/mutations";
-import { BudgetsPage, CreateBudgetPayload } from "@/types/budgetTypes";
+import { CreateBudgetPayload } from "@/types/budgetTypes";
 export const useBudgetsData = (startDate: string, endDate: string) => {
   const queryClient = useQueryClient();
   const [spaceCode] = useLocalStorage("spaceCode", "");
@@ -25,44 +24,51 @@ export const useBudgetsData = (startDate: string, endDate: string) => {
     enabled: !!spaceCode && !!startDate && !!endDate,
   });
 
+  const invalidateBudgets = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["budgets", spaceCode, startDate, endDate],
+      refetchType: "active",
+    });
+  };
+
   const updateBudgetMutation = useMutation(
     {
-      mutationFn: ({ budgetId, data }: { budgetId: string; data: UpdateBudgetPayload }) => updateBudget(api, budgetId, data),
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: ["budgets", spaceCode, startDate, endDate],
-          refetchType: "active",
-        });
-      },
-      onError: (error) => {
-        console.error("Error updating budget:", error);
+      mutationFn: async ({ budgetId, data }: { budgetId: string; data: UpdateBudgetPayload }) => {
+        try {
+          const result = await updateBudget(api, budgetId, data);
+          await invalidateBudgets();
+          return result;
+        } catch (error) {
+          console.error("Error updating budget:", error);
+          throw error;
+        }
       },
     }
   );
 
   const createBudgetMutation = useMutation({
-    mutationFn: (payload: CreateBudgetPayload) => createBudget(api, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["budgets", spaceCode, startDate, endDate],
-        refetchType: "active",
-      });
-    },
-    onError: (error) => {
-      console.error("Error creating budget:", error);
+    mutationFn: async (payload: CreateBudgetPayload) => {
+      try {
+        const result = await createBudget(api, payload);
+        await invalidateBudgets();
+        return result;
+      } catch (error) {
+        console.error("Error creating budget:", error);
+        throw error;
+      }
     },
   });
 
   const deleteBudgetMutation = useMutation({
-    mutationFn: (budgetId: string) => deleteBudget(api, budgetId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["budgets", spaceCode, startDate, endDate],
-        refetchType: "active",
-      });
-    },
-    onError: (error) => {
-      console.error("Error deleting budget:", error);
+    mutationFn: async (budgetId: string) => {
+      try {
+        const result = await deleteBudget(api, budgetId);
+        await invalidateBudgets();
+        return result;
+      } catch (error) {
+        console.error("Error deleting budget:", error);
+        throw error;
+      }
     },
   });
 

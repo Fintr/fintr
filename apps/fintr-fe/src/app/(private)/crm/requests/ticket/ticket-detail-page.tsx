@@ -344,19 +344,19 @@ export default function TicketDetailPage() {
               variant="compact"
               maxImages={3}
               maxSizeInMB={10}
-              disabled={createResponseMutation.isLoading}
+              disabled={createResponseMutation.isPending}
             />
 
             <div className="flex justify-end">
               <Button
                 onClick={handleSendReply}
                 disabled={
-                  createResponseMutation.isLoading ||
+                  createResponseMutation.isPending ||
                   (!replyText.trim() && replyImages.length === 0)
                 }
                 className="bg-primary hover:bg-primary/90"
               >
-                {createResponseMutation.isLoading ? (
+                {createResponseMutation.isPending ? (
                   <ButtonLoader text="Sending..." />
                 ) : (
                   <>

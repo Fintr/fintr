@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { deleteTransaction } from '@/services/transactions/mutation';
 import { DeleteScopeEnum } from '@/constants/transactionConstants';
@@ -38,23 +38,27 @@ const DraftItems: React.FC<DraftItemsProps> = ({
   onDraftsInvalidate 
 }) => {
   const { api } = useAuthApi();
-  const queryClient = useQueryClient();
 
   const deleteDraftMutation = useMutation({
-    mutationFn: (draftId: string) => deleteTransaction(api, { id: draftId, deleteScope: DeleteScopeEnum.THIS_ONLY }),
-    onSuccess: () => {
+    mutationFn: async (draftId: string) => {
+      const result = await deleteTransaction(api, {
+        id: draftId,
+        deleteScope: DeleteScopeEnum.THIS_ONLY,
+      });
       toast.success('Draft deleted successfully');
       onDraftsInvalidate();
-    },
-    onError: (error) => {
-      console.error('Error deleting draft:', error);
-      toast.error('Failed to delete draft');
+      return result;
     },
   });
 
   const handleDeleteDraft = (e: React.MouseEvent, draftId: string) => {
-    e.stopPropagation(); // Prevent triggering the draft selection
-    deleteDraftMutation.mutate(draftId);
+    e.stopPropagation();
+    deleteDraftMutation.mutate(draftId, {
+      onError: (error) => {
+        console.error('Error deleting draft:', error);
+        toast.error('Failed to delete draft');
+      },
+    });
   };
 
   if (drafts.length === 0) {

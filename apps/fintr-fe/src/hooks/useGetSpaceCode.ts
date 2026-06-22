@@ -66,7 +66,7 @@ export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = f
     },
     enabled: queryEnabled,
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     retry: (failureCount, error) => {
       const status = (error as AxiosError)?.response?.status;
 

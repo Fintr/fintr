@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useAuthApi } from "../useAuthApi";
 import {
   AdminUsersPagePayload,
@@ -35,7 +35,7 @@ export const useAdminUsers = ({
           searchQuery,
         },
       ),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 30_000,

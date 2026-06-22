@@ -23,7 +23,7 @@ export const useTransactionCategories = () => {
 
   // Mutation for creating categories
   const createCategoryMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       name,
       categoryType,
       parentId,
@@ -31,35 +31,31 @@ export const useTransactionCategories = () => {
       name: string;
       categoryType: CategoryTypeEnum;
       parentId?: string | null;
-    }) =>
-      createTransactionCategory(api, { name, categoryType, parentId }),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
-      // Invalidate dashboard query if expense category is created
-      if (variables.categoryType === CategoryTypeEnum.EXPENSE) {
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    }) => {
+      try {
+        const result = await createTransactionCategory(api, { name, categoryType, parentId });
+        await queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
+        if (categoryType === CategoryTypeEnum.EXPENSE) {
+          await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        }
+        return result;
+      } catch (error) {
+        console.error("Error creating category:", error);
+        throw error;
       }
-    },
-    onError: (error) => {
-      console.error("Error creating category:", error);
     },
   });
 
   // Mutation for updating categories
   const updateCategoryMutation = useMutation({
-    mutationFn: ({ categoryId, updateData }: { categoryId: string; updateData: { name: string } }) =>
-      updateTransactionCategory(api, categoryId, updateData),
-    onMutate: async ({ categoryId, updateData }) => {
-      // Cancel any outgoing refetches
+    mutationFn: async ({ categoryId, updateData }: { categoryId: string; updateData: { name: string } }) => {
       await queryClient.cancelQueries({ queryKey: ["transactionCategories", spaceCode] });
 
-      // Snapshot the previous value
       const previousData = queryClient.getQueryData(["transactionCategories", spaceCode]);
 
-      // Optimistically update the cache
       queryClient.setQueryData(["transactionCategories", spaceCode], (old: any) => {
         if (!old?.data) return old;
-        
+
         return {
           ...old,
           data: {
@@ -74,36 +70,33 @@ export const useTransactionCategories = () => {
         };
       });
 
-      return { previousData };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousData) {
-        queryClient.setQueryData(["transactionCategories", spaceCode], context.previousData);
+      try {
+        const result = await updateTransactionCategory(api, categoryId, updateData);
+        return result;
+      } catch (err) {
+        if (previousData) {
+          queryClient.setQueryData(["transactionCategories", spaceCode], previousData);
+        }
+        throw err;
+      } finally {
+        await queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
       }
-    },
-    onSettled: () => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
     },
   });
 
   // Mutation for deleting categories
   const deleteCategoryMutation = useMutation({
-    mutationFn: (categoryId: string) => deleteTransactionCategory(api, categoryId),
-    // onMutate is removed to disable optimistic updates for deletion.
-    onError: (err, categoryId) => {
-      // Rollback is not explicitly needed here as onMutate is removed, 
-      // and no optimistic update is performed.
-      console.error("Error deleting category:", err);
-    },
-    onSuccess: (data) => {
-      // Only invalidate and refetch if the backend operation was successful
-      if (data?.success === true) {
-        queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
-        // Invalidate dashboard query to refresh expense category options
-        // We invalidate for all category deletions since we can't determine the type from the response
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    mutationFn: async (categoryId: string) => {
+      try {
+        const result = await deleteTransactionCategory(api, categoryId);
+        if (result?.success === true) {
+          await queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
+          await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        }
+        return result;
+      } catch (err) {
+        console.error("Error deleting category:", err);
+        throw err;
       }
     },
   });
@@ -130,4 +123,4 @@ export const useTransactionCategories = () => {
     deleteCategoryMutation,
     createCategoryMutation,
   };
-}; 
+};
