@@ -441,23 +441,24 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   }, [hasNonSpaceCurrencyInLoadedTransactions, showBookedCurrencies]);
 
   const deleteMutation = useMutation({
-    mutationFn: (deleteData: {
+    mutationFn: async (deleteData: {
       id: string;
       deleteScope: DeleteScope;
       transactionType?: string;
     }) => {
+      let result;
       if (deleteData.transactionType === ActivitiesTypeEnum.TRANSFER) {
-        return deleteTransfer(api, {
+        result = await deleteTransfer(api, {
+          id: deleteData.id,
+          deleteScope: deleteData.deleteScope,
+        });
+      } else {
+        result = await deleteTransaction(api, {
           id: deleteData.id,
           deleteScope: deleteData.deleteScope,
         });
       }
-      return deleteTransaction(api, {
-        id: deleteData.id,
-        deleteScope: deleteData.deleteScope,
-      });
-    },
-    onSuccess: () => {
+
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({
         queryKey: ["dashboard", spaceCode],
@@ -482,13 +483,8 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         refetchType: "active",
         exact: false,
       });
-      setDeleteScopeModalOpen(false);
-      deleteSuccessTimeoutRef.current = setTimeout(() => {
-        setTransactionToDelete(null);
-      }, 300);
-    },
-    onError: (error) => {
-      console.error("Error deleting transaction:", error);
+
+      return result;
     },
   });
 
@@ -587,11 +583,24 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
 
   const handleDeleteConfirm = (scope: Scope) => {
     if (transactionToDelete) {
-      deleteMutation.mutate({
-        id: activityRecordId(transactionToDelete),
-        deleteScope: scope as DeleteScope,
-        transactionType: transactionToDelete.type,
-      });
+      deleteMutation.mutate(
+        {
+          id: activityRecordId(transactionToDelete),
+          deleteScope: scope as DeleteScope,
+          transactionType: transactionToDelete.type,
+        },
+        {
+          onSuccess: () => {
+            setDeleteScopeModalOpen(false);
+            deleteSuccessTimeoutRef.current = setTimeout(() => {
+              setTransactionToDelete(null);
+            }, 300);
+          },
+          onError: (error) => {
+            console.error("Error deleting transaction:", error);
+          },
+        },
+      );
     }
   };
 

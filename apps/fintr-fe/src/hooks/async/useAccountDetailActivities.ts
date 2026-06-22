@@ -57,6 +57,6 @@ export const useAccountDetailActivities = ({
     refetchOnMount: "always",
     refetchOnWindowFocus: false,
     staleTime: 0,
-    cacheTime: 300000,
+    gcTime: 300000,
   });
 };

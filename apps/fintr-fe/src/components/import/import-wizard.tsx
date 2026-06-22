@@ -186,10 +186,10 @@ export const ImportWizard: React.FC<ImportWizardProps> = ({
                 </p>
                 <Button
                   onClick={handleDownloadTemplate}
-                  disabled={downloadTemplateMutation.isLoading}
+                  disabled={downloadTemplateMutation.isPending}
                   variant="outline"
                 >
-                  {downloadTemplateMutation.isLoading ? (
+                  {downloadTemplateMutation.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Downloading...
@@ -241,10 +241,10 @@ export const ImportWizard: React.FC<ImportWizardProps> = ({
             <div className="flex gap-4">
               <Button
                 onClick={handleUpload}
-                disabled={!selectedFile || isUploading || createImportMutation.isLoading}
+                disabled={!selectedFile || isUploading || createImportMutation.isPending}
                 className="flex-1"
               >
-                {isUploading || createImportMutation.isLoading ? (
+                {isUploading || createImportMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Uploading...

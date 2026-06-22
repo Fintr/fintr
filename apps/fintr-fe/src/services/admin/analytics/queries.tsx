@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { AxiosInstance } from "axios";
 
@@ -110,11 +110,11 @@ export const useUserAnalytics = (monthlyOcrPage: number = 1) => {
       });
       return response.data;
     },
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 300_000,
-    cacheTime: 600_000,
+    gcTime: 600_000,
   });
 };
 
@@ -135,7 +135,7 @@ export const useUserActivityDrilldown = (date: string | null) => {
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 60_000,
-    cacheTime: 300_000,
+    gcTime: 300_000,
   });
 };
 

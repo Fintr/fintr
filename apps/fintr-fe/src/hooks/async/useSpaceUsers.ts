@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { spacesApi } from '@/services/spaces/api';
-import { SpaceUser, GrantAccessRequest } from '@/types/spaceTypes';
+import { GrantAccessRequest } from '@/types/spaceTypes';
 import { toast } from 'sonner';
 
 export const useSpaceUsers = () => {
@@ -10,7 +10,6 @@ export const useSpaceUsers = () => {
   const [spaceCode] = useLocalStorage("spaceCode", "");
   const queryClient = useQueryClient();
 
-  // Fetch space users
   const {
     data: users,
     isLoading,
@@ -19,34 +18,35 @@ export const useSpaceUsers = () => {
   } = useQuery({
     queryKey: ['spaceUsers', spaceCode],
     queryFn: () => spacesApi.getSpaceUsers(api, spaceCode),
-    enabled: !!spaceCode && isAuthenticated, // Only run if spaceCode exists and user is authenticated
-    staleTime: 30000, // 30 seconds
+    enabled: !!spaceCode && isAuthenticated,
+    staleTime: 30000,
   });
 
-
-  // Grant access mutation
   const grantAccessMutation = useMutation({
-    mutationFn: (data: GrantAccessRequest) => 
-      spacesApi.grantAccess(api, spaceCode, data),
-    onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: ['spaceUsers', spaceCode] });
-      toast.success('Access granted successfully');
-    },
-    onError: (error: any) => {
-      toast.error(`Failed to grant access: ${error.response?.data?.message || error.message}`);
+    mutationFn: async (data: GrantAccessRequest) => {
+      try {
+        const response = await spacesApi.grantAccess(api, spaceCode, data);
+        await queryClient.invalidateQueries({ queryKey: ['spaceUsers', spaceCode] });
+        toast.success('Access granted successfully');
+        return response;
+      } catch (error: any) {
+        toast.error(`Failed to grant access: ${error.response?.data?.message || error.message}`);
+        throw error;
+      }
     },
   });
 
-  // Remove user mutation
   const removeUserMutation = useMutation({
-    mutationFn: (userId: string) => 
-      spacesApi.removeUser(api, spaceCode, userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['spaceUsers', spaceCode] });
-      toast.success('User removed successfully');
-    },
-    onError: (error: any) => {
-      toast.error(`Failed to remove user: ${error.response?.data?.message || error.message}`);
+    mutationFn: async (userId: string) => {
+      try {
+        const response = await spacesApi.removeUser(api, spaceCode, userId);
+        await queryClient.invalidateQueries({ queryKey: ['spaceUsers', spaceCode] });
+        toast.success('User removed successfully');
+        return response;
+      } catch (error: any) {
+        toast.error(`Failed to remove user: ${error.response?.data?.message || error.message}`);
+        throw error;
+      }
     },
   });
 
@@ -58,7 +58,6 @@ export const useSpaceUsers = () => {
     removeUserMutation.mutate(userId);
   };
 
-  // Access users from the correct path: axios response -> data -> data -> users
   const usersList = (users as any)?.data?.data?.users || [];
   
   return {
@@ -68,7 +67,7 @@ export const useSpaceUsers = () => {
     refetch,
     grantAccess,
     removeUser,
-    isGrantingAccess: grantAccessMutation.isLoading,
-    isRemovingUser: removeUserMutation.isLoading,
+    isGrantingAccess: grantAccessMutation.isPending,
+    isRemovingUser: removeUserMutation.isPending,
   };
 };

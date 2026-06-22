@@ -61,83 +61,72 @@ export function useSpaceContext(api: AxiosInstance) {
   // Space switching mutation
   const switchSpaceMutation = useMutation({
     mutationFn: async (spaceCode: string) => {
-      const space = spaces?.find(s => s.code === spaceCode);
-      if (!space) {
-        throw new Error('Space not found');
-      }
-
-      console.log('🔄 Starting space switch to:', space.name);
-
-      // Show transition screen immediately
-      setTransitionState({
-        isTransitioning: true,
-        destinationSpace: space,
-      });
-
-      console.log('🎬 Transition state set, overlay should appear now');
-
-      // Small delay to ensure the slide-in animation starts smoothly
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Update the current space
-      setCurrentSpace(space);
-      
-      // Update localStorage for persistence
-      if (typeof window !== 'undefined') {
-        localStorage.setItem("spaceCode", spaceCode);
-        window.dispatchEvent(new CustomEvent('spaceCodeChanged', { detail: { spaceCode } }));
-      }
-
-      // Mark invitation as seen if this space has a new invitation
-      if (space.hasNewInvitation) {
-        try {
-          await spacesApi.markSeen(api, spaceCode);
-        } catch (error) {
-          console.error('Failed to mark invitation as seen:', error);
+      try {
+        const space = spaces?.find(s => s.code === spaceCode);
+        if (!space) {
+          throw new Error('Space not found');
         }
+
+        console.log('🔄 Starting space switch to:', space.name);
+
+        setTransitionState({
+          isTransitioning: true,
+          destinationSpace: space,
+        });
+
+        console.log('🎬 Transition state set, overlay should appear now');
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        setCurrentSpace(space);
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem("spaceCode", spaceCode);
+          window.dispatchEvent(new CustomEvent('spaceCodeChanged', { detail: { spaceCode } }));
+        }
+
+        if (space.hasNewInvitation) {
+          try {
+            await spacesApi.markSeen(api, spaceCode);
+          } catch (error) {
+            console.error('Failed to mark invitation as seen:', error);
+          }
+        }
+
+        queryClient.invalidateQueries({ queryKey: ["spaces"] });
+        queryClient.invalidateQueries({ queryKey: ["space-context"] });
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["budgets"] });
+        queryClient.invalidateQueries({ queryKey: ["insights"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["transactionCategories"] });
+        queryClient.invalidateQueries({ queryKey: ["transactionDrafts"] });
+        queryClient.invalidateQueries({ queryKey: ["accounts"] });
+        queryClient.invalidateQueries({ queryKey: ["spaceUsers"] });
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        queryClient.invalidateQueries({ queryKey: ["tickets"] });
+        queryClient.invalidateQueries({ queryKey: ["messages"] });
+        queryClient.invalidateQueries({ queryKey: ["ai", "usage"] });
+
+        await new Promise(resolve => setTimeout(resolve, 2500));
+
+        router.push('/dashboard');
+
+        await new Promise(resolve => setTimeout(resolve, 400));
+
+        setTransitionState({
+          isTransitioning: false,
+          destinationSpace: null,
+        });
+
+        return { space };
+      } catch (error) {
+        setTransitionState({
+          isTransitioning: false,
+          destinationSpace: null,
+        });
+        throw error;
       }
-
-      return { space };
-    },
-    onSuccess: async (data, spaceCode) => {
-      // Invalidate all space-scoped queries when workspace is switched
-      queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      queryClient.invalidateQueries({ queryKey: ["space-context"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["budgets"] });
-      queryClient.invalidateQueries({ queryKey: ["insights"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["transactionCategories"] });
-      queryClient.invalidateQueries({ queryKey: ["transactionDrafts"] });
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["spaceUsers"] });
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      queryClient.invalidateQueries({ queryKey: ["tickets"] });
-      queryClient.invalidateQueries({ queryKey: ["messages"] });
-      queryClient.invalidateQueries({ queryKey: ["ai", "usage"] });
-
-      // Keep showing the transition screen for smooth experience (2.5 seconds total)
-      // This ensures users see the full slide-in animation and the pulsating logo
-      await new Promise(resolve => setTimeout(resolve, 2500));
-
-      // Navigate to transactions tab
-      router.push('/dashboard');
-
-      // Wait a bit before hiding transition screen (allows page to start loading)
-      await new Promise(resolve => setTimeout(resolve, 400));
-
-      // Hide transition screen with slide-out animation
-      setTransitionState({
-        isTransitioning: false,
-        destinationSpace: null,
-      });
-    },
-    onError: () => {
-      // Hide transition screen on error
-      setTransitionState({
-        isTransitioning: false,
-        destinationSpace: null,
-      });
     },
   });
 
@@ -154,12 +143,10 @@ export function useSpaceContext(api: AxiosInstance) {
         if (space) {
           setCurrentSpace(space);
         } else if (spaces.length > 0) {
-          // If saved space not found, default to first space and update localStorage
           setCurrentSpace(spaces[0]);
           localStorage.setItem("spaceCode", spaces[0].code);
         }
       } else if (spaces.length > 0) {
-        // Default to first space if no saved preference
         setCurrentSpace(spaces[0]);
         localStorage.setItem("spaceCode", spaces[0].code);
       }
@@ -190,8 +177,7 @@ export function useSpaceContext(api: AxiosInstance) {
     spaceContext,
     switchSpace,
     isLoading: spacesLoading || contextLoading,
-    isSwitching: switchSpaceMutation.isPending || switchSpaceMutation.isLoading,
+    isSwitching: switchSpaceMutation.isPending,
     transitionState,
   };
 }
-

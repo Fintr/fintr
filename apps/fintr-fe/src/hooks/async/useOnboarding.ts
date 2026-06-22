@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useEffect } from 'react';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import {
   saveCurrencyStepData,
@@ -24,7 +25,7 @@ export const useOnboarding = (step?: string) => {
   const queryClient = useQueryClient();
   const [budgetCategories, setBudgetCategories] = useAtom(onboardingBudgetCategoriesAtom);
   const [accountsData, setAccountsData] = useAtom(onboardingAccountsDataAtom);
-  const [onboardingDataFromAtom, setOnboardingData] = useAtom(onboardingDataAtom);
+  const setOnboardingData = useSetAtom(onboardingDataAtom);
   const setOnboardingStep = useSetAtom(onboardingStepAtom);
   const currentOnboardingStep = useAtomValue(onboardingStepAtom);
   const setAccountCategories = useSetAtom(onboardingAccountCategoriesAtom);
@@ -64,180 +65,144 @@ export const useOnboarding = (step?: string) => {
     queryKey: ['onboarding', step],
     queryFn: () => getOnboardingData({ api, step: step! }),
     enabled: shouldFetchData,
-    onSuccess: (response: any) => {
-      // If we're on the budgets step and response contains budget data, populate the atom
-      console.log('budgets', response.data)
-      if (step === 'budgets' && response && response.data) {
-        if (response.data.budgetsData) {
-          setBudgetCategories(response.data.budgetsData);
-          setOnboardingData({...onboardingDataFromAtom, incomeData: {
-            income: response.data.incomeData.income,
-          }})
-          console.log('onboardingDataFromAtom', onboardingDataFromAtom)
-        }
-      }
-      // If we're on the accounts step and response contains account data, populate the atoms
-      if (step === 'accounts' && response && response.data) {
-        if (response.data.accountsData) {
-          setAccountsData(response.data.accountsData);
-        }
-        if (response.data.accountCategories) {
-          setAccountCategories(response.data.accountCategories);
-        }
-      }
-    },
   });
+
+  useEffect(() => {
+    if (!onboardingData) return;
+
+    const response = onboardingData as any;
+
+    if (step === 'budgets' && response?.data) {
+      if (response.data.budgetsData) {
+        setBudgetCategories(response.data.budgetsData);
+        setOnboardingData((current) => ({
+          ...current,
+          incomeData: {
+            income: response.data.incomeData.income,
+          },
+        }));
+      }
+    }
+
+    if (step === 'accounts' && response?.data) {
+      if (response.data.accountsData) {
+        setAccountsData(response.data.accountsData);
+      }
+      if (response.data.accountCategories) {
+        setAccountCategories(response.data.accountCategories);
+      }
+    }
+  }, [
+    onboardingData,
+    step,
+    setBudgetCategories,
+    setOnboardingData,
+    setAccountsData,
+    setAccountCategories,
+  ]);
 
   // Save currency step mutation
   const saveCurrencyStepMutation = useMutation({
-    mutationFn: (data: Omit<SaveCurrencyStepArgs, 'api'>) =>
-      saveCurrencyStepData({ api, ...data }),
-    onSuccess: (_response, variables) => {
+    mutationFn: async (data: Omit<SaveCurrencyStepArgs, 'api'>) => {
+      const response = await saveCurrencyStepData({ api, ...data });
       setOnboardingStep('income');
       setOnboardingData((current) => ({
         ...current,
         step: 'income',
-        currency: variables.currency.toUpperCase(),
+        currency: data.currency.toUpperCase(),
       }));
       invalidateUserContext();
       invalidateWorkspaceLists();
       toast.success('Currency set successfully');
-    },
-    onError: (error: any) => {
-      console.error('Error saving currency step:', error);
+      return response;
     },
   });
 
   // Save step 1 data mutation
   const saveStep1Mutation = useMutation({
-    mutationFn: (data: Omit<SaveStep1DataArgs, 'api'>) => 
-      saveStep1Data({ api, ...data }),
-    onSuccess: (response: any) => {
-      setOnboardingStep('budgets');
-      invalidateUserContext();
+    mutationFn: async (data: Omit<SaveStep1DataArgs, 'api'>) => {
+      try {
+        const response: any = await saveStep1Data({ api, ...data });
+        setOnboardingStep('budgets');
+        invalidateUserContext();
 
-      if (response && response.data) {
-        setBudgetCategories(response.data.budgetsData);
+        if (response?.data) {
+          setBudgetCategories(response.data.budgetsData);
+        }
+
+        toast.success('Income information saved successfully');
+        return response;
+      } catch (error) {
+        console.error('Error saving step 1 data:', error);
+        throw error;
       }
-      
-      toast.success('Income information saved successfully');
-    },
-    onError: (error: any) => {
-      console.error('Error saving step 1 data:', error);
-      // Don't show toast here - let the calling component handle it
     },
   });
 
   // Save step 2 data mutation
   const saveStep2Mutation = useMutation({
-    mutationFn: (data: Omit<SaveStep2DataArgs, 'api'>) => 
-      saveStep2Data({ api, ...data }),
-    onSuccess: (response: any) => {
-      setOnboardingStep('accounts');
-      invalidateUserContext();
+    mutationFn: async (data: Omit<SaveStep2DataArgs, 'api'>) => {
+      try {
+        const response: any = await saveStep2Data({ api, ...data });
+        setOnboardingStep('accounts');
+        invalidateUserContext();
 
-      if (response && response.data) {
-        setAccountsData(response.data.accountsData)
-        setAccountCategories(response.data.accountCategories)
-        
-        // Update income requirements from the response
-        setIncomeRequirements({
-          salaryIncome: !!response.data.salaryIncome,
-          businessIncome: !!response.data.businessIncome
-        });
+        if (response?.data) {
+          setAccountsData(response.data.accountsData);
+          setAccountCategories(response.data.accountCategories);
+
+          setIncomeRequirements({
+            salaryIncome: !!response.data.salaryIncome,
+            businessIncome: !!response.data.businessIncome,
+          });
+        }
+
+        toast.success('Budget categories saved successfully');
+        return response;
+      } catch (error) {
+        console.error('Error saving step 2 data:', error);
+        throw error;
       }
-      
-      toast.success('Budget categories saved successfully');
-    },
-    onError: (error: any) => {
-      console.error('Error saving step 2 data:', error);
-      // Don't show toast here - let the calling component handle it
     },
   });
 
   // Skip onboarding mutation
   const skipOnboardingMutation = useMutation({
-    mutationFn: () => skipOnboardingSetup({ api }),
-    onMutate: async () => {
+    mutationFn: async () => {
       await queryClient.cancelQueries({ queryKey: ['currentUser'] });
       const previousStep = currentOnboardingStep;
       setOnboardingStep('completed');
-      return { previousStep };
-    },
-    onSuccess: () => {
-      setOnboardingStep('completed');
-      invalidateUserContext();
-    },
-    onError: (error: any, _variables, context) => {
-      console.error('Error skipping onboarding:', error);
-      if (context?.previousStep != null) {
-        setOnboardingStep(context.previousStep);
+
+      try {
+        const response = await skipOnboardingSetup({ api });
+        invalidateUserContext();
+        return response;
+      } catch (error) {
+        console.error('Error skipping onboarding:', error);
+        if (previousStep != null) {
+          setOnboardingStep(previousStep);
+        }
+        void queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+        throw error;
       }
-      void queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     },
   });
 
   // Save step 3 data mutation
   const saveStep3Mutation = useMutation({
-    mutationFn: (data: Omit<SaveStep3DataArgs, 'api'>) => 
-      saveStep3Data({ api, ...data }),
-    onSuccess: () => {
-      setOnboardingStep('import');
-      invalidateUserContext();
-      
-      toast.success('Accounts setup completed successfully');
-    },
-    onError: (error: any) => {
-      console.error('Error saving step 3 data:', error);
-      // Don't show toast here - let the calling component handle it
+    mutationFn: async (data: Omit<SaveStep3DataArgs, 'api'>) => {
+      try {
+        const response = await saveStep3Data({ api, ...data });
+        setOnboardingStep('import');
+        invalidateUserContext();
+        toast.success('Accounts setup completed successfully');
+        return response;
+      } catch (error) {
+        console.error('Error saving step 3 data:', error);
+        throw error;
+      }
     },
   });
-
-  const saveCurrencyStepDataAsync = (data: Omit<SaveCurrencyStepArgs, 'api'>) => {
-    return new Promise((resolve, reject) => {
-      saveCurrencyStepMutation.mutate(data, {
-        onSuccess: (result) => resolve(result),
-        onError: (error) => reject(error),
-      });
-    });
-  };
-
-  // Create async wrapper functions
-  const saveStep1DataAsync = (data: Omit<SaveStep1DataArgs, 'api'>) => {
-    return new Promise((resolve, reject) => {
-      saveStep1Mutation.mutate(data, {
-        onSuccess: (result) => resolve(result),
-        onError: (error) => reject(error)
-      });
-    });
-  };
-
-  const saveStep2DataAsync = (data: Omit<SaveStep2DataArgs, 'api'>) => {
-    return new Promise((resolve, reject) => {
-      saveStep2Mutation.mutate(data, {
-        onSuccess: (result) => resolve(result),
-        onError: (error) => reject(error)
-      });
-    });
-  };
-
-  const saveStep3DataAsync = (data: Omit<SaveStep3DataArgs, 'api'>) => {
-    return new Promise((resolve, reject) => {
-      saveStep3Mutation.mutate(data, {
-        onSuccess: (result) => resolve(result),
-        onError: (error) => reject(error),
-      });
-    });
-  };
-
-  const skipOnboardingAsync = () => {
-    return new Promise((resolve, reject) => {
-      skipOnboardingMutation.mutate(undefined, {
-        onSuccess: (result) => resolve(result),
-        onError: (error) => reject(error),
-      });
-    });
-  };
 
   return {
     // Query data
@@ -246,25 +211,25 @@ export const useOnboarding = (step?: string) => {
     isOnboardingError,
     onboardingError,
     refetchOnboarding,
-    
+
     // Mutations (async versions)
-    saveCurrencyStepData: saveCurrencyStepDataAsync,
-    saveStep1Data: saveStep1DataAsync,
-    saveStep2Data: saveStep2DataAsync,
-    saveStep3Data: saveStep3DataAsync,
-    skipOnboarding: skipOnboardingAsync,
+    saveCurrencyStepData: saveCurrencyStepMutation.mutateAsync,
+    saveStep1Data: saveStep1Mutation.mutateAsync,
+    saveStep2Data: saveStep2Mutation.mutateAsync,
+    saveStep3Data: saveStep3Mutation.mutateAsync,
+    skipOnboarding: skipOnboardingMutation.mutateAsync,
     isUpdating:
-      saveCurrencyStepMutation.isLoading ||
-      saveStep1Mutation.isLoading ||
-      saveStep2Mutation.isLoading ||
-      saveStep3Mutation.isLoading ||
-      skipOnboardingMutation.isLoading,
-    
+      saveCurrencyStepMutation.isPending ||
+      saveStep1Mutation.isPending ||
+      saveStep2Mutation.isPending ||
+      saveStep3Mutation.isPending ||
+      skipOnboardingMutation.isPending,
+
     // Mutation errors
     step1Error: saveStep1Mutation.error,
     step2Error: saveStep2Mutation.error,
     step3Error: saveStep3Mutation.error,
-    
+
     // Mutation results
     step1Result: saveStep1Mutation.data,
     step2Result: saveStep2Mutation.data,

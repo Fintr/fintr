@@ -20,7 +20,6 @@ export const useConversations = () => {
   });
   const queryClient = useQueryClient();
 
-  // Fetch conversations query
   const {
     data: conversations,
     isLoading,
@@ -31,11 +30,10 @@ export const useConversations = () => {
     queryKey: ['conversations'],
     queryFn: () => getConversations(api),
     enabled: !!api,
-    staleTime: 2 * 60 * 1000, // Data considered fresh for 2 minutes
-    cacheTime: 5 * 60 * 1000, // Data stays in cache for 5 minutes
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
-  // Fetch single conversation query
   const fetchConversation = async (conversationId: string): Promise<ConversationWithMessages | null> => {
     try {
       return await getConversation(api, conversationId);
@@ -45,45 +43,45 @@ export const useConversations = () => {
     }
   };
 
-  // Create conversation mutation
   const createConversationMutation = useMutation({
-    mutationFn: (params: CreateConversationParams) => 
-      createConversation(api, params),
-    onSuccess: (newConversation) => {
-      // Invalidate and refetch conversations
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-    },
-    onError: (error: any) => {
-      console.error('Error creating conversation:', error);
+    mutationFn: async (params: CreateConversationParams) => {
+      try {
+        const newConversation = await createConversation(api, params);
+        await queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        return newConversation;
+      } catch (error: any) {
+        console.error('Error creating conversation:', error);
+        throw error;
+      }
     },
   });
 
-  // Update conversation mutation
   const updateConversationMutation = useMutation({
-    mutationFn: ({ conversationId, params }: { conversationId: string; params: UpdateConversationParams }) => 
-      updateConversation(api, conversationId, params),
-    onSuccess: () => {
-      // Invalidate and refetch conversations
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-    },
-    onError: (error: any) => {
-      console.error('Error updating conversation:', error);
+    mutationFn: async ({ conversationId, params }: { conversationId: string; params: UpdateConversationParams }) => {
+      try {
+        const result = await updateConversation(api, conversationId, params);
+        await queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        return result;
+      } catch (error: any) {
+        console.error('Error updating conversation:', error);
+        throw error;
+      }
     },
   });
 
-  // Delete conversation mutation
   const deleteConversationMutation = useMutation({
-    mutationFn: (conversationId: string) => deleteConversation(api, conversationId),
-    onSuccess: () => {
-      // Invalidate and refetch conversations
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-    },
-    onError: (error: any) => {
-      console.error('Error deleting conversation:', error);
+    mutationFn: async (conversationId: string) => {
+      try {
+        const result = await deleteConversation(api, conversationId);
+        await queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        return result;
+      } catch (error: any) {
+        console.error('Error deleting conversation:', error);
+        throw error;
+      }
     },
   });
 
-  // Helper function to get conversations data
   const getConversationsData = (): Conversation[] => {
     if (!conversations) return [];
     return Array.isArray(conversations) ? conversations : [];
@@ -97,11 +95,11 @@ export const useConversations = () => {
     fetchConversations,
     fetchConversation,
     createNewConversation: createConversationMutation.mutateAsync,
-    isCreating: createConversationMutation.isLoading,
+    isCreating: createConversationMutation.isPending,
     updateConversationTitle: (conversationId: string, params: UpdateConversationParams) => 
       updateConversationMutation.mutateAsync({ conversationId, params }),
-    isUpdating: updateConversationMutation.isLoading,
+    isUpdating: updateConversationMutation.isPending,
     removeConversation: deleteConversationMutation.mutateAsync,
-    isDeleting: deleteConversationMutation.isLoading,
+    isDeleting: deleteConversationMutation.isPending,
   };
 };

@@ -70,18 +70,18 @@ const GoalSection = ({  }: GoalSectionProps) => {
     }
   }, [dashboardData]);
 
-  const { mutate: updateDefinition, status: updateStatus } = useMutation<any, Error, UpdateFinancialFreedomDescriptionType>({ // Use any for success data
-    mutationFn: (data) => updateFinancialFreedomDescription(api, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] }); // Invalidate dashboard query to refetch updated goal description
+  const { mutate: updateDefinition, isPending: isUpdatePending } = useMutation<
+    any,
+    Error,
+    UpdateFinancialFreedomDescriptionType
+  >({
+    mutationFn: async (data) => {
+      const result = await updateFinancialFreedomDescription(api, data);
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Definition Updated", {
         description: "Your financial freedom definition has been updated.",
       });
-    },
-    onError: (error) => {
-      toast.error("Update Failed", {
-        description: error.message || "Failed to update financial freedom definition.",
-      });
+      return result;
     },
   });
 
@@ -388,10 +388,21 @@ const GoalSection = ({  }: GoalSectionProps) => {
                     className="absolute right-3 bottom-3 bg-primary hover:bg-primary/80 rounded-full p-2 h-8 w-8"
                     size="icon"
                     onClick={() => {
-                      updateDefinition({ description: financialFreedomDefinition });
+                      updateDefinition(
+                        { description: financialFreedomDefinition },
+                        {
+                          onError: (error) => {
+                            toast.error("Update Failed", {
+                              description:
+                                error.message ||
+                                "Failed to update financial freedom definition.",
+                            });
+                          },
+                        },
+                      );
                       setOpen(false);
                     }}
-                    disabled={updateStatus === 'loading'}
+                    disabled={isUpdatePending}
                   >
                     <ArrowRight className="h-4 w-4" />
                   </Button>

@@ -313,35 +313,32 @@ export function CategoryDetailTransactions({
   );
 
   const deleteMutation = useMutation({
-    mutationFn: (deleteData: {
+    mutationFn: async (deleteData: {
       id: string;
       deleteScope: DeleteScope;
       transactionType?: string;
     }) => {
+      let result;
       if (deleteData.transactionType === CombinedTransactionTypeEnum.TRANSFER) {
-        return deleteTransfer(api, {
+        result = await deleteTransfer(api, {
+          id: deleteData.id,
+          deleteScope: deleteData.deleteScope,
+        });
+      } else {
+        result = await deleteTransaction(api, {
           id: deleteData.id,
           deleteScope: deleteData.deleteScope,
         });
       }
 
-      return deleteTransaction(api, {
-        id: deleteData.id,
-        deleteScope: deleteData.deleteScope,
-      });
-    },
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["budgets"] });
       queryClient.invalidateQueries({ queryKey: ["insights"] });
-      setDeleteScopeModalOpen(false);
-      setTransactionToDelete(null);
       toast.success("Transaction deleted");
-    },
-    onError: () => {
-      toast.error("Failed to delete transaction");
+
+      return result;
     },
   });
 
@@ -396,11 +393,22 @@ export function CategoryDetailTransactions({
 
   const handleDeleteConfirm = (scope: Scope) => {
     if (transactionToDelete) {
-      deleteMutation.mutate({
-        id: transactionToDelete.id,
-        deleteScope: scope as DeleteScope,
-        transactionType: transactionToDelete.type,
-      });
+      deleteMutation.mutate(
+        {
+          id: transactionToDelete.id,
+          deleteScope: scope as DeleteScope,
+          transactionType: transactionToDelete.type,
+        },
+        {
+          onSuccess: () => {
+            setDeleteScopeModalOpen(false);
+            setTransactionToDelete(null);
+          },
+          onError: () => {
+            toast.error("Failed to delete transaction");
+          },
+        },
+      );
     }
   };
 

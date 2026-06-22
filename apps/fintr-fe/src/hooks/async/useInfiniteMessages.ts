@@ -52,7 +52,7 @@ export const useInfiniteMessages = ({
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 30000, // 30 seconds
-    cacheTime: 300000, // 5 minutes
+    gcTime: 300000, // 5 minutes
   });
 
   // Mark as initialized after first page is fetched

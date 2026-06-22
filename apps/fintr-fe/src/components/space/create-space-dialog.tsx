@@ -79,21 +79,16 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
   const createSpaceMutation = useMutation({
     mutationFn: async (data: CreateSpaceForm) => {
       const response = await api.post("/spaces", data);
-      return response.data;
-    },
-    onSuccess: (data) => {
       toast.success("Organization space created successfully!");
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       onOpenChange(false);
       form.reset();
-      
-      // Switch to the newly created space
-      if (data.data?.space?.code) {
-        switchSpace(data.data.space.code);
+
+      if (response.data.data?.space?.code) {
+        switchSpace(response.data.data.space.code);
       }
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to create space");
+
+      return response.data;
     },
   });
 
@@ -101,6 +96,8 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
     setIsSubmitting(true);
     try {
       await createSpaceMutation.mutateAsync(data);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to create space");
     } finally {
       setIsSubmitting(false);
     }

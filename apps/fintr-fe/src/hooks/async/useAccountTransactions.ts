@@ -56,6 +56,6 @@ export const useAccountTransactions = ({
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 30000,
-    cacheTime: 300000,
+    gcTime: 300000,
   });
 };

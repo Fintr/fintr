@@ -121,19 +121,18 @@ export default function Layout({
     setDashboardShellReady,
   ]);
 
-  const { mutate: updateDefinition, status: updateStatus } = useMutation<any, Error, UpdateFinancialFreedomDescriptionType>({
-    mutationFn: (data) => updateFinancialFreedomDescription(api, data),
-    onSuccess: () => {
+  const { mutate: updateDefinition, isPending: isUpdatePending } = useMutation<
+    any,
+    Error,
+    UpdateFinancialFreedomDescriptionType
+  >({
+    mutationFn: async (data) => {
+      const result = await updateFinancialFreedomDescription(api, data);
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Definition Updated", {
         description: "Your financial freedom definition has been updated.",
       });
-      setIsEditingGoalDescription(false);
-    },
-    onError: (error) => {
-      toast.error("Update Failed", {
-        description: error.message || "Failed to update financial freedom definition.",
-      });
+      return result;
     },
   });
 
@@ -182,9 +181,23 @@ export default function Layout({
                         className="absolute right-3 bottom-3 bg-primary hover:bg-primary/80 rounded-full p-2 h-8 w-8"
                         size="icon"
                         onClick={() => {
-                          updateDefinition({ description: goalDescription });
+                          updateDefinition(
+                            { description: goalDescription },
+                            {
+                              onSuccess: () => {
+                                setIsEditingGoalDescription(false);
+                              },
+                              onError: (error) => {
+                                toast.error("Update Failed", {
+                                  description:
+                                    error.message ||
+                                    "Failed to update financial freedom definition.",
+                                });
+                              },
+                            },
+                          );
                         }}
-                        disabled={updateStatus === 'loading'}
+                        disabled={isUpdatePending}
                       >
                         <ArrowRight className="h-4 w-4" />
                       </Button>

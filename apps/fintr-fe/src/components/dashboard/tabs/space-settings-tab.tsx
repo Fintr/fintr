@@ -515,7 +515,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
     <CategoryFormDialog
       category={item}
       onUpdate={handleUpdateCategory}
-      isLoading={updateCategoryMutation.isLoading}
+      isLoading={updateCategoryMutation.isPending}
       trigger={
         <EditButton onClick={() => {}} />
       }
@@ -543,7 +543,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
     <DeleteCategoryDialog
       category={item}
       onDelete={handleDeleteCategoryAction}
-      isLoading={deleteCategoryMutation.isLoading}
+      isLoading={deleteCategoryMutation.isPending}
     />
   );
 
