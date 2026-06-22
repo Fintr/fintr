@@ -42,7 +42,7 @@ export async function routeOnboardingApi(
     })
   })
 
-  await page.route("**/api/v1/spaces/**", async (route) => {
+  await page.route("**/api/v1/spaces**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",

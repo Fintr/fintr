@@ -1,7 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
-import { auth0LocalStorageKeySuffix } from "./helpers/auth0-storage-suffix";
 import { buildDashboardApiJson } from "./helpers/dashboard-api-mock";
-import { getCurrentIsoWeekKey } from "@/config/weekly-feedback";
+import { primeWeeklyFeedbackDismissed } from "./helpers/prime-weekly-feedback-dismissed";
+import { setAuthStorageForE2e } from "./helpers/set-auth-storage";
 
 const MOCK_USER = {
   user_id: "e2e-narrative-filter-user",
@@ -181,42 +181,10 @@ async function mockInsightsWithCategorySpike(page: Page) {
 }
 
 async function setupAuth(page: Page) {
-  const domain = auth0LocalStorageKeySuffix();
-  const mockTokens = {
-    access_token: "mock_token",
-    id_token: "mock_id_token",
-    refresh_token: "mock_refresh",
-    expires_in: 3600,
-    token_type: "Bearer",
-    scope: "openid profile email",
-  };
-  const expiresAt = Date.now() + 3_600_000;
-  const weekKey = getCurrentIsoWeekKey(new Date());
-  await page.addInitScript(
-    ({ domain, mockTokens, expiresAt, weekKey }) => {
-      localStorage.setItem(`@@auth0@@.access_token.${domain}`, mockTokens.access_token);
-      localStorage.setItem(`@@auth0@@.id_token.${domain}`, mockTokens.id_token);
-      localStorage.setItem(`@@auth0@@.refresh_token.${domain}`, mockTokens.refresh_token || "");
-      localStorage.setItem(`@@auth0@@.expires_at.${domain}`, expiresAt.toString());
-      localStorage.setItem(
-        `@@auth0@@.user.${domain}`,
-        JSON.stringify({ sub: "user123", email: "test@example.com", name: "Test User" }),
-      );
-      localStorage.setItem(`@@auth0@@.scope.${domain}`, mockTokens.scope);
-      localStorage.setItem(`@@auth0@@.issued_at.${domain}`, Date.now().toString());
-      localStorage.setItem(
-        "fintr_auth_data",
-        JSON.stringify({
-          tokens: mockTokens,
-          user: { sub: "user123", email: "test@example.com", name: "Test User" },
-        }),
-      );
-      localStorage.setItem("spaceCode", "TEST-SPACE-NARRATIVE-FILTER");
-      localStorage.setItem("fintr_weekly_feedback_v1_lastActionAt", String(Date.now()));
-      localStorage.setItem("fintr_weekly_feedback_v1_lastPromptWeekKey", weekKey);
-    },
-    { domain, mockTokens, expiresAt, weekKey },
-  );
+  await setAuthStorageForE2e(page, {
+    spaceCode: "TEST-SPACE-NARRATIVE-FILTER",
+  })
+  await primeWeeklyFeedbackDismissed(page)
 }
 
 test.describe("Insights narrative category filter link", () => {
@@ -284,7 +252,7 @@ test.describe("Insights narrative category filter link", () => {
       { waitUntil: "domcontentloaded" },
     );
 
-    await expect(page.getByText("All Transactions")).toBeVisible({
+    await expect(page.getByRole("tabpanel", { name: "Transactions" })).toBeVisible({
       timeout: 30_000,
     });
 

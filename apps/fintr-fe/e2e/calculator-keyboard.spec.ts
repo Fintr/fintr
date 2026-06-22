@@ -1,101 +1,11 @@
 import { test, expect, Page } from "@playwright/test"
-import { auth0LocalStorageKeySuffix } from "./helpers/auth0-storage-suffix"
-import { routeDashboardApi } from "./helpers/dashboard-api-mock"
+import { mockCommonDashboardApi } from "./helpers/mock-common-api"
 import { primeWeeklyFeedbackDismissed } from "./helpers/prime-weekly-feedback-dismissed"
+import { setAuthStorageForE2e } from "./helpers/set-auth-storage"
+
 const MIN_TOUCH_TARGET_PX = 44
 const MOBILE_CALC_BUTTON_MIN_HEIGHT_PX = 48
 const MIN_ROW_GAP_PX = 8
-
-async function mockApiCalls(page: Page) {
-  await page.route("**/api/v1/auth/private", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        data: {
-          spaceCode: "test-space",
-          isAdmin: false,
-          onboardingStep: "completed",
-          desktopTutorial: true,
-          mobileTutorial: true,
-        },
-      }),
-    })
-  })
-
-  await page.route("**/api/v1/spaces/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        spaces: [{ id: "space-1", name: "Test Space", is_organization: false }],
-        current_space: { id: "space-1", name: "Test Space" },
-      }),
-    })
-  })
-
-  await routeDashboardApi(page)
-
-  await page.route("**/api/v1/transactions**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        data: [],
-        pagination: { page: 1, limit: 50, total: 0 },
-      }),
-    })
-  })
-
-  await page.route("**/api/v1/accounts**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        data: [
-          { id: "acc1", name: "Cash", currency: "PHP", type: "cash" },
-        ],
-      }),
-    })
-  })
-
-  await page.route("**/api/v1/categories/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        data: [
-          { id: "cat1", name: "Food", type: "expense" },
-        ],
-      }),
-    })
-  })
-}
-
-async function setAuthStorage(page: Page) {
-  const domainSuffix = auth0LocalStorageKeySuffix()
-  await page.addInitScript((domain) => {
-    const mockUser = { sub: "user123", email: "test@example.com", name: "Test User" }
-    const mockTokens = {
-      access_token: "mock_token",
-      id_token: "mock_id_token",
-      refresh_token: "mock_refresh",
-      expires_in: 3600,
-      token_type: "Bearer",
-      scope: "openid profile email",
-    }
-    const expiresAt = Date.now() + 3600000
-    localStorage.setItem(`@@auth0@@.access_token.${domain}`, mockTokens.access_token)
-    localStorage.setItem(`@@auth0@@.id_token.${domain}`, mockTokens.id_token)
-    localStorage.setItem(`@@auth0@@.refresh_token.${domain}`, mockTokens.refresh_token || "")
-    localStorage.setItem(`@@auth0@@.expires_at.${domain}`, expiresAt.toString())
-    localStorage.setItem(`@@auth0@@.user.${domain}`, JSON.stringify(mockUser))
-    localStorage.setItem(`@@auth0@@.scope.${domain}`, mockTokens.scope)
-    localStorage.setItem(`@@auth0@@.issued_at.${domain}`, Date.now().toString())
-    localStorage.setItem("fintr_auth_data", JSON.stringify({ tokens: mockTokens, user: mockUser }))
-    localStorage.setItem("spaceCode", "test-space")
-  }, domainSuffix)
-}
 
 async function applyAndroidThreeButtonNavClasses(page: Page) {
   await page.evaluate(() => {
@@ -199,9 +109,9 @@ function maxConsecutiveTopJump(positions: number[]): number {
 test.describe("Calculator keyboard layout", () => {
   test.setTimeout(90_000)
   test.beforeEach(async ({ page }) => {
-    await setAuthStorage(page)
+    await setAuthStorageForE2e(page)
     await primeWeeklyFeedbackDismissed(page)
-    await mockApiCalls(page)
+    await mockCommonDashboardApi(page)
   })
 
   test("mobile bottom-sheet keys meet minimum height and row spacing", async ({ page }) => {
@@ -267,7 +177,7 @@ test.describe("Calculator keyboard layout", () => {
     expect(firstFocusPositions.some((top) => top >= 0)).toBe(true)
     expect(firstFocusJump).toBeLessThan(24)
 
-    await page.keyboard.press("Escape")
+    await page.getByRole("heading", { name: "Add Transaction" }).click()
     await expect(page.locator("[data-calculator-keyboard]")).toHaveCount(0)
 
     const secondFocusPositions = await sampleKeyboardTopPositions(page, amountInput)

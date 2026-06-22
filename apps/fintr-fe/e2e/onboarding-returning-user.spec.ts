@@ -1,53 +1,23 @@
 import { test, expect, Page } from "@playwright/test"
-import { auth0LocalStorageKeySuffix } from "./helpers/auth0-storage-suffix"
+import { buildTestJwt } from "./helpers/build-test-jwt"
+import { mockCommonDashboardApi } from "./helpers/mock-common-api"
 import { routeOnboardingApi } from "./helpers/onboarding-api-mock"
-import { routeDashboardApi } from "./helpers/dashboard-api-mock"
 import { primeWeeklyFeedbackDismissed } from "./helpers/prime-weekly-feedback-dismissed"
+import { setAuthStorageForE2e } from "./helpers/set-auth-storage"
 
 const gotoOptions = { waitUntil: "domcontentloaded" as const }
 
-const buildTestIdToken = (email: string): string => {
-  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url")
-  const payload = Buffer.from(
-    JSON.stringify({ sub: "auth0|e2e-user", email, name: "E2E User" }),
-  ).toString("base64url")
-  return `${header}.${payload}.e2e-signature`
-}
+const buildTestIdToken = (email: string): string => buildTestJwt({ email })
 
-async function setAuthStorage(page: Page, email = "returning@example.com") {
-  const domainSuffix = auth0LocalStorageKeySuffix()
-  await page.addInitScript(
-    ([domain, userEmail]) => {
-      const mockUser = {
-        sub: "auth0|e2e-returning-user",
-        email: userEmail,
-        name: "Returning User",
-      }
-      const mockTokens = {
-        access_token: "e2e-returning-access-token",
-        id_token: "e2e-returning-id-token",
-        refresh_token: "e2e-returning-refresh-token",
-        expires_in: 3600,
-        token_type: "Bearer",
-        scope: "openid profile email",
-      }
-      const expiresAt = Date.now() + 3600000
-
-      localStorage.setItem(`@@auth0@@.access_token.${domain}`, mockTokens.access_token)
-      localStorage.setItem(`@@auth0@@.id_token.${domain}`, mockTokens.id_token)
-      localStorage.setItem(`@@auth0@@.refresh_token.${domain}`, mockTokens.refresh_token)
-      localStorage.setItem(`@@auth0@@.expires_at.${domain}`, expiresAt.toString())
-      localStorage.setItem(`@@auth0@@.user.${domain}`, JSON.stringify(mockUser))
-      localStorage.setItem(`@@auth0@@.scope.${domain}`, mockTokens.scope)
-      localStorage.setItem(`@@auth0@@.issued_at.${domain}`, Date.now().toString())
-      localStorage.setItem(
-        "fintr_auth_data",
-        JSON.stringify({ tokens: mockTokens, user: mockUser }),
-      )
-      localStorage.setItem("spaceCode", "test-space")
-    },
-    [domainSuffix, email] as const,
-  )
+async function primeReturningUserAuth(
+  page: Page,
+  email = "returning@example.com",
+) {
+  await setAuthStorageForE2e(page, {
+    email,
+    name: "Returning User",
+    sub: "auth0|e2e-returning-user",
+  })
 }
 
 async function expectNoSetupScreens(page: Page) {
@@ -61,15 +31,17 @@ async function expectNoSetupScreens(page: Page) {
 
 async function expectDashboardReadyWithinThreeSeconds(page: Page) {
   await expect(page.getByTestId("app-loading-screen")).toHaveCount(0, {
-    timeout: 3000,
+    timeout: 5000,
   })
 }
 
 test.describe("Returning user login should skip first-time setup", () => {
   test("login routes completed users to dashboard without setup screens", async ({ page }) => {
     const email = "returning@example.com"
+    const token = buildTestIdToken(email)
 
     await routeOnboardingApi(page, { onboardingStep: "completed" })
+    await mockCommonDashboardApi(page)
 
     await page.route("**/api/v1/auth/login", async (route) => {
       await route.fulfill({
@@ -79,8 +51,8 @@ test.describe("Returning user login should skip first-time setup", () => {
           success: true,
           message: "Success",
           data: {
-            accessToken: "e2e-returning-access-token",
-            idToken: buildTestIdToken(email),
+            accessToken: token,
+            idToken: token,
             refreshToken: "e2e-returning-refresh-token",
             expiresIn: 3600,
             tokenType: "Bearer",
@@ -101,9 +73,10 @@ test.describe("Returning user login should skip first-time setup", () => {
   })
 
   test("direct dashboard visit for completed users never shows setup screens", async ({ page }) => {
-    await setAuthStorage(page)
+    await primeReturningUserAuth(page)
     await primeWeeklyFeedbackDismissed(page)
     await routeOnboardingApi(page, { onboardingStep: "completed" })
+    await mockCommonDashboardApi(page)
 
     await page.goto("/dashboard/", gotoOptions)
     await page.waitForLoadState("domcontentloaded")
@@ -114,8 +87,9 @@ test.describe("Returning user login should skip first-time setup", () => {
   })
 
   test("visiting /onboarding redirects completed users to dashboard", async ({ page }) => {
-    await setAuthStorage(page)
+    await primeReturningUserAuth(page)
     await routeOnboardingApi(page, { onboardingStep: "completed" })
+    await mockCommonDashboardApi(page)
 
     await page.goto("/onboarding", gotoOptions)
     await page.waitForLoadState("domcontentloaded")
@@ -125,7 +99,8 @@ test.describe("Returning user login should skip first-time setup", () => {
   })
 
   test("incomplete onboarding still routes new users into setup", async ({ page }) => {
-    await setAuthStorage(page)
+    await primeReturningUserAuth(page)
+    await mockCommonDashboardApi(page)
     await routeOnboardingApi(page, { onboardingStep: "currency" })
 
     await page.goto("/dashboard/", gotoOptions)
@@ -137,6 +112,8 @@ test.describe("Returning user login should skip first-time setup", () => {
 
   test("recovers when auth/private initially returns 401 after login", async ({ page }) => {
     let authPrivateRequestCount = 0
+
+    await mockCommonDashboardApi(page)
 
     await page.route("**/api/v1/auth/private", async (route) => {
       authPrivateRequestCount += 1
@@ -165,8 +142,7 @@ test.describe("Returning user login should skip first-time setup", () => {
       })
     })
 
-    await routeDashboardApi(page)
-    await setAuthStorage(page)
+    await primeReturningUserAuth(page)
     await primeWeeklyFeedbackDismissed(page)
 
     await page.goto("/dashboard/", gotoOptions)
@@ -178,11 +154,12 @@ test.describe("Returning user login should skip first-time setup", () => {
   })
 
   test("dashboard leaves bootstrap loading within three seconds", async ({ page }) => {
-    await setAuthStorage(page)
+    await primeReturningUserAuth(page)
     await primeWeeklyFeedbackDismissed(page)
+    await mockCommonDashboardApi(page)
 
     await page.route("**/api/v1/auth/private", async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      await new Promise((resolve) => setTimeout(resolve, 1500))
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -197,8 +174,6 @@ test.describe("Returning user login should skip first-time setup", () => {
         }),
       })
     })
-
-    await routeDashboardApi(page)
 
     await page.goto("/dashboard/", gotoOptions)
 

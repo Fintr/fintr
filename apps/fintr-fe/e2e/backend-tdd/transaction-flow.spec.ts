@@ -1,7 +1,7 @@
 import { test, expect, Page } from "@playwright/test"
-import { auth0LocalStorageKeySuffix } from "../helpers/auth0-storage-suffix"
 import { buildDashboardApiJson } from "../helpers/dashboard-api-mock"
-import { getCurrentIsoWeekKey } from "@/config/weekly-feedback"
+import { primeWeeklyFeedbackDismissed } from "../helpers/prime-weekly-feedback-dismissed"
+import { setAuthStorageForE2e } from "../helpers/set-auth-storage"
 
 /**
  * Backend TDD E2E Test: Transaction Creation Flow
@@ -68,7 +68,7 @@ async function mockApiCalls(page: Page, transactions: Array<{
     })
   })
 
-  await page.route("**/api/v1/spaces/**", async (route) => {
+  await page.route("**/api/v1/spaces**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -150,37 +150,45 @@ async function mockApiCalls(page: Page, transactions: Array<{
 }
 
 async function setupAuth(page: Page) {
-  const domain = auth0LocalStorageKeySuffix()
-  const mockTokens = {
-    access_token: "mock_token",
-    id_token: "mock_id_token",
-    refresh_token: "mock_refresh",
-    expires_in: 3600,
-    token_type: "Bearer",
-    scope: "openid profile email",
+  await setAuthStorageForE2e(page, {
+    spaceCode: MOCK_USER.space_code,
+  })
+  await primeWeeklyFeedbackDismissed(page)
+}
+
+async function openAddTransactionEntry(page: Page) {
+  const viewport = page.viewportSize()
+  const useMobileEntry = viewport != null && viewport.width < 768
+  const mobileFab = page.locator('[data-tutorial-target="mobile-add-button"]')
+  const desktopAdd = page.locator('[data-tutorial-target="add-transaction-button"]')
+  const mobileAdd = page.locator('[data-tutorial-target="mobile-add-transaction"]')
+
+  if (useMobileEntry) {
+    await expect(mobileFab).toBeVisible({ timeout: 30_000 })
+    await mobileFab.click()
+    await expect(mobileAdd).toBeVisible({ timeout: 5000 })
+    await mobileAdd.dispatchEvent("pointerdown")
+    await page.waitForTimeout(250)
+    return
   }
-  const expiresAt = Date.now() + 3600000
-  const weekKey = getCurrentIsoWeekKey(new Date())
-  await page.addInitScript(({ domain, mockTokens, expiresAt, weekKey }) => {
-    localStorage.setItem(`@@auth0@@.access_token.${domain}`, mockTokens.access_token)
-    localStorage.setItem(`@@auth0@@.id_token.${domain}`, mockTokens.id_token)
-    localStorage.setItem(`@@auth0@@.refresh_token.${domain}`, mockTokens.refresh_token || "")
-    localStorage.setItem(`@@auth0@@.expires_at.${domain}`, expiresAt.toString())
-    localStorage.setItem(`@@auth0@@.user.${domain}`, JSON.stringify({ sub: "user123", email: "test@example.com", name: "Test User" }))
-    localStorage.setItem(`@@auth0@@.scope.${domain}`, mockTokens.scope)
-    localStorage.setItem(`@@auth0@@.issued_at.${domain}`, Date.now().toString())
-    localStorage.setItem("fintr_auth_data", JSON.stringify({ tokens: mockTokens, user: { sub: "user123", email: "test@example.com", name: "Test User" } }))
-    localStorage.setItem("spaceCode", "TEST-SPACE-789")
-    localStorage.setItem("fintr_weekly_feedback_v1_lastActionAt", String(Date.now()))
-    localStorage.setItem("fintr_weekly_feedback_v1_lastPromptWeekKey", weekKey)
-  }, { domain, mockTokens, expiresAt, weekKey })
+
+  await expect(desktopAdd).toBeVisible({ timeout: 30_000 })
+  await desktopAdd.click()
 }
 
 async function waitForDashboardAddTransaction(page: Page) {
   await page.waitForLoadState("domcontentloaded")
+  const viewport = page.viewportSize()
+  const useMobileEntry = viewport != null && viewport.width < 768
+  const mobileFab = page.locator('[data-tutorial-target="mobile-add-button"]')
   const desktopAdd = page.locator('[data-tutorial-target="add-transaction-button"]')
-  const mobileAdd = page.locator('[data-tutorial-target="mobile-add-transaction"]')
-  await expect(desktopAdd.or(mobileAdd)).toBeVisible({ timeout: 30000 })
+
+  if (useMobileEntry) {
+    await expect(mobileFab).toBeVisible({ timeout: 30_000 })
+    return
+  }
+
+  await expect(desktopAdd).toBeVisible({ timeout: 30_000 })
 }
 
 test.describe("Transaction Creation Flow", () => {
@@ -207,51 +215,44 @@ test.describe("Transaction Creation Flow", () => {
       await expect(transactionsList).toBeVisible()
     }
 
-    const addButton = page
-      .locator(
-        '[data-tutorial-target="add-transaction-button"], [data-tutorial-target="mobile-add-transaction"]'
-      )
-      .first()
-    if (await addButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await addButton.click()
-      await page.waitForTimeout(500)
+    await openAddTransactionEntry(page)
+    await page.waitForTimeout(500)
 
-      const amountInput = page.locator("input[name='amount'], input[placeholder*='amount' i]").first()
-      if (await amountInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await amountInput.fill("1500")
-        await page.keyboard.press("Escape")
+    const amountInput = page.locator("input[name='amount'], input[placeholder*='amount' i]").first()
+    if (await amountInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await amountInput.fill("1500")
+      await page.keyboard.press("Escape")
+      await page.waitForTimeout(300)
+
+      const noteInput = page.locator("input[name='note'], input[placeholder*='note' i], textarea[name='note']").first()
+      if (await noteInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await noteInput.fill("Grocery shopping")
+      }
+
+      const categorySelect = page.locator("button:has-text('Category'), [data-testid='category-select']").first()
+      if (await categorySelect.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await categorySelect.click()
         await page.waitForTimeout(300)
-
-        const noteInput = page.locator("input[name='note'], input[placeholder*='note' i], textarea[name='note']").first()
-        if (await noteInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await noteInput.fill("Grocery shopping")
+        const foodOption = page.locator("text=Food").first()
+        if (await foodOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await foodOption.click()
         }
+      }
 
-        const categorySelect = page.locator("button:has-text('Category'), [data-testid='category-select']").first()
-        if (await categorySelect.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await categorySelect.click()
-          await page.waitForTimeout(300)
-          const foodOption = page.locator("text=Food").first()
-          if (await foodOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await foodOption.click()
-          }
+      const accountSelect = page.locator("button:has-text('Account'), [data-testid='account-select']").first()
+      if (await accountSelect.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await accountSelect.click()
+        await page.waitForTimeout(300)
+        const cashOption = page.locator("text=Cash").first()
+        if (await cashOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await cashOption.click()
         }
+      }
 
-        const accountSelect = page.locator("button:has-text('Account'), [data-testid='account-select']").first()
-        if (await accountSelect.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await accountSelect.click()
-          await page.waitForTimeout(300)
-          const cashOption = page.locator("text=Cash").first()
-          if (await cashOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await cashOption.click()
-          }
-        }
-
-        const submitButton = page.locator("button[type='submit'], button:has-text('Save'), button:has-text('Add')").last()
-        if (await submitButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await submitButton.click()
-          await page.waitForTimeout(1500)
-        }
+      const submitButton = page.locator("button[type='submit'], button:has-text('Save'), button:has-text('Add')").last()
+      if (await submitButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await submitButton.click()
+        await page.waitForTimeout(1500)
       }
     }
 
@@ -277,31 +278,24 @@ test.describe("Transaction Creation Flow", () => {
     await page.goto("/dashboard/", { waitUntil: "domcontentloaded" })
     await waitForDashboardAddTransaction(page)
 
-    const addButton = page
-      .locator(
-        '[data-tutorial-target="add-transaction-button"], [data-tutorial-target="mobile-add-transaction"]'
-      )
-      .first()
-    if (await addButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await addButton.click()
-      await page.waitForTimeout(500)
+    await openAddTransactionEntry(page)
+    await page.waitForTimeout(500)
 
-      const amountInput = page.locator("input[name='amount'], input[placeholder*='amount' i]").first()
-      if (await amountInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await amountInput.fill("2500")
-        await page.keyboard.press("Escape")
-        await page.waitForTimeout(300)
+    const amountInput = page.locator("input[name='amount'], input[placeholder*='amount' i]").first()
+    if (await amountInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await amountInput.fill("2500")
+      await page.keyboard.press("Escape")
+      await page.waitForTimeout(300)
 
-        const noteInput = page.locator("input[name='note'], input[placeholder*='note' i], textarea[name='note']").first()
-        if (await noteInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await noteInput.fill("Electric bill")
-        }
+      const noteInput = page.locator("input[name='note'], input[placeholder*='note' i], textarea[name='note']").first()
+      if (await noteInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await noteInput.fill("Electric bill")
+      }
 
-        const submitButton = page.locator("button[type='submit'], button:has-text('Save'), button:has-text('Add')").last()
-        if (await submitButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await submitButton.click()
-          await page.waitForTimeout(1500)
-        }
+      const submitButton = page.locator("button[type='submit'], button:has-text('Save'), button:has-text('Add')").last()
+      if (await submitButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await submitButton.click()
+        await page.waitForTimeout(1500)
       }
     }
 

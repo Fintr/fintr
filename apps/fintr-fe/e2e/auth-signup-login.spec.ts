@@ -3,14 +3,11 @@ import {
   parseApiErrorMessage,
   parseAuthTokenPayload,
 } from "../src/services/auth/parse-auth-response";
+import { buildTestJwt } from "./helpers/build-test-jwt";
+import { mockCommonDashboardApi } from "./helpers/mock-common-api";
+import { setAuthStorageForE2e } from "./helpers/set-auth-storage";
 
-const buildTestIdToken = (email: string): string => {
-  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(
-    JSON.stringify({ sub: "auth0|e2e-user", email, name: "E2E User" }),
-  ).toString("base64url");
-  return `${header}.${payload}.e2e-signature`;
-};
+const buildTestIdToken = (email: string): string => buildTestJwt({ email });
 
 test.describe("Username/password auth API contract", () => {
   test("parseAuthTokenPayload reads direct camelCase token data", () => {
@@ -119,7 +116,7 @@ test.describe("Username/password auth API contract", () => {
     });
 
     await page.goto("/auth");
-    await page.getByRole("button", { name: "Sign Up", exact: true }).click();
+    await page.getByRole("tab", { name: "Sign Up" }).click();
     await expect(page.locator("#register-first-name")).toBeVisible();
 
     await page.locator("#register-first-name").fill("E2E");
@@ -143,13 +140,7 @@ test.describe("Username/password auth API contract", () => {
     const uniqueEmail = `e2e-${Date.now()}@example.com`;
     let signupRequestCount = 0;
 
-    await page.route("**/api/v1/**", async (route) => {
-      const headers = { ...route.request().headers() };
-      delete headers.authorization;
-      headers["x-e2e-test-auth"] = "playwright";
-      headers["x-e2e-test-user-id"] = "00000000-0000-0000-0000-000000000099";
-      await route.continue({ headers });
-    });
+    await mockCommonDashboardApi(page);
 
     await page.route("**/api/v1/auth/signup", async (route) => {
       signupRequestCount += 1;
@@ -160,7 +151,7 @@ test.describe("Username/password auth API contract", () => {
           success: true,
           message: "Account created successfully",
           data: {
-            accessToken: "e2e-access-token",
+            accessToken: buildTestIdToken(uniqueEmail),
             idToken: buildTestIdToken(uniqueEmail),
             refreshToken: "e2e-refresh-token",
             expiresIn: 3600,
@@ -172,7 +163,7 @@ test.describe("Username/password auth API contract", () => {
     });
 
     await page.goto("/auth");
-    await page.locator('button[data-slot="button"]', { hasText: "Sign Up" }).click();
+    await page.getByRole("tab", { name: "Sign Up" }).click();
 
     await page.locator("#register-first-name").fill("E2E");
     await page.locator("#register-last-name").fill("User");
@@ -190,7 +181,7 @@ test.describe("Username/password auth API contract", () => {
           return keys.some(
             (key) =>
               key.includes("access_token") &&
-              localStorage.getItem(key) === "e2e-access-token",
+              localStorage.getItem(key)?.includes("e2e-signature"),
           );
         }),
       )
