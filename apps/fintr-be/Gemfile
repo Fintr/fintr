@@ -80,7 +80,7 @@ gem "sentry-ruby"
 gem "sentry-rails"
 
 # Soft deletes
-gem "discard", "~> 1.4"
+gem "discard", "~> 2.0"
 
 group :development, :test do
   gem "debug", platforms: %i[ mri mswin mswin64 mingw x64_mingw ], require: "debug/prelude"
