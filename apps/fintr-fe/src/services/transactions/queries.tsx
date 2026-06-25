@@ -20,11 +20,26 @@ function optionalAmountQueryParam(raw: unknown): number | undefined {
 }
 
 function omitUndefinedParams(
-  record: Record<string, string | number | undefined>,
-): Record<string, string | number> {
+  record: Record<string, string | number | string[] | undefined>,
+): Record<string, string | number | string[]> {
   return Object.fromEntries(
     Object.entries(record).filter(([, v]) => v !== undefined),
-  ) as Record<string, string | number>;
+  ) as Record<string, string | number | string[]>;
+}
+
+function parseSerializedFilterValues(raw: unknown): string[] {
+  if (typeof raw !== "string" || raw.trim() === "") {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.map((value) => String(value)).filter(Boolean)
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 export type FetchAccountTransactionsPageParams = {
@@ -127,7 +142,7 @@ export const fetchTransactionsPage = async (
   }
 ): Promise<TransactionsPage> => {
   // Extract other parameters from the queryKey
-  const [_key, spaceCode, categoryFilter, startDate, endDate, minAmount, maxAmount, searchQuery, accountName] = queryKey as [
+  const [_key, spaceCode, categoryFiltersSerialized, startDate, endDate, minAmount, maxAmount, searchQuery, accountNamesSerialized] = queryKey as [
     string,
     string,
     string,
@@ -136,15 +151,13 @@ export const fetchTransactionsPage = async (
     unknown,
     unknown,
     string,
-    string?,
+    string,
   ];
 
   const minIncluded = optionalAmountQueryParam(minAmount);
   const maxIncluded = optionalAmountQueryParam(maxAmount);
-
-  const categoryAssignment = parseCategoryPickerValue(
-    categoryFilter && categoryFilter !== "all" ? categoryFilter : "",
-  );
+  const categoryFilters = parseSerializedFilterValues(categoryFiltersSerialized);
+  const accountNames = parseSerializedFilterValues(accountNamesSerialized);
 
   const requestParams = omitUndefinedParams({
     spaceCode,
@@ -152,20 +165,10 @@ export const fetchTransactionsPage = async (
     endDate,
     page: pageParam,
     searchQuery,
-    ...(accountName ? { accountName } : {}),
+    ...(accountNames.length > 0 ? { accountNames } : {}),
     ...(minIncluded !== undefined ? { minAmount: minIncluded } : {}),
     ...(maxIncluded !== undefined ? { maxAmount: maxIncluded } : {}),
-    ...(categoryAssignment?.categoryId
-      ? { categoryId: categoryAssignment.categoryId }
-      : {}),
-    ...(categoryAssignment?.subcategoryId
-      ? { subcategoryId: categoryAssignment.subcategoryId }
-      : {}),
-    ...(!categoryAssignment?.categoryId &&
-    categoryFilter &&
-    categoryFilter !== "all"
-      ? { categoryName: categoryFilter }
-      : {}),
+    ...(categoryFilters.length > 0 ? { categoryFilters } : {}),
   });
 
   console.log('Fetching transactions page:', requestParams);

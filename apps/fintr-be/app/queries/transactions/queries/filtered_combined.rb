@@ -4,6 +4,8 @@ module Transactions
   module Queries
     class FilteredCombined < Transactions::Queries::BaseQuery
       include CombinedAccountJoinFilter
+      include CombinedCategoryFilter
+      include CategoryFilterValidation
 
       # Contract defined in app/queries/transactions/queries/filtered_transactions.rb
 
@@ -17,6 +19,9 @@ module Transactions
 
         @space = Spaces::Space.find_by(code: params[:space_code])
         return Failure(space_code: "Not found") if @space.blank?
+
+        category_filter_failure = validate_category_filter_tokens(params:, space: @space)
+        return Failure(category_filter_failure) if category_filter_failure.present?
 
         Success(contract.to_h)
       end
@@ -49,39 +54,11 @@ module Transactions
       end
 
       def by_category(relation, params)
-        return Success(relation) if category_filter_blank?(params)
-
-        if params[:category_id].present?
-          relation = relation.where(
-            "combined_transactions.category_id = :category_id OR " \
-            "combined_transactions.transactable_type IN (:non_category_types)",
-            category_id: params[:category_id],
-            non_category_types: [
-              "Transactions::Transfer",
-              "Transactions::Loan",
-              "Transactions::LoanPayment"
-            ]
-          )
-
-          if params[:subcategory_id].present?
-            relation = relation.joins(
-              "INNER JOIN transactions ON transactions.id = combined_transactions.transactable_id " \
-              "AND combined_transactions.transactable_type IN " \
-              "('Transactions::Income', 'Transactions::Expense')",
-            )
-              .where(transactions: { subcategory_id: params[:subcategory_id] })
-          end
-
-          return Success(relation)
-        end
-
-        relation = relation.where(category_name: params[:category_name])
-        Success(relation)
+        apply_combined_category_filters(relation, params)
       end
 
       def category_filter_blank?(params)
-        ["all", "", nil].include?(params[:category_name]) &&
-          params[:category_id].blank?
+        combined_category_filter_blank?(params)
       end
 
       def by_account(relation, params)

@@ -2,6 +2,7 @@ import {
   CategoryTreeOption,
   formatCategoryPickerValue,
   getCategoryDisplayLabel,
+  parseCategoryPickerValue,
 } from "@/types/categoryTreeTypes";
 import { OptionType } from "@/types/generalTypes";
 
@@ -90,3 +91,45 @@ export const getCategoryFilterDisplayLabel = (
 
 export const isCategoryFilterSectionValue = (value: string): boolean =>
   value === EXPENSE_SECTION_VALUE || value === INCOME_SECTION_VALUE;
+
+export const collectSelectedParentCategoryIds = (
+  values: string[],
+): Set<string> => {
+  const parentIds = new Set<string>();
+
+  for (const value of values) {
+    const assignment = parseCategoryPickerValue(value);
+
+    if (assignment && !assignment.subcategoryId) {
+      parentIds.add(assignment.categoryId);
+    }
+  }
+
+  return parentIds;
+};
+
+export const isCategoryOptionCoveredByParentSelection = (
+  optionValue: string,
+  selectedParentCategoryIds: Set<string>,
+): boolean => {
+  const assignment = parseCategoryPickerValue(optionValue);
+
+  if (!assignment?.subcategoryId) {
+    return false;
+  }
+
+  return selectedParentCategoryIds.has(assignment.categoryId);
+};
+
+export const removeSubcategoriesForParent = (
+  values: string[],
+  parentCategoryId: string,
+): string[] =>
+  values.filter((value) => {
+    const assignment = parseCategoryPickerValue(value);
+
+    return !(
+      assignment?.categoryId === parentCategoryId
+      && assignment.subcategoryId
+    );
+  });

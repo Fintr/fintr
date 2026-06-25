@@ -89,6 +89,8 @@ module Api
           :max_amount,
           :search_query,
           :page,
+          category_filters: [],
+          account_names: [],
         ).to_h
       end
 

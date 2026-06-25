@@ -3,6 +3,9 @@
 module Transactions
   module Queries
     class FilteredAccountActivities < Transactions::Queries::BaseQuery
+      include AccountActivityCategoryFilter
+      include CategoryFilterValidation
+
       class Contract < Dry::Validation::Contract
         params do
           required(:account_id).value(:string)
@@ -15,6 +18,7 @@ module Transactions
           optional(:category_name).maybe(:string)
           optional(:category_id).maybe(:string)
           optional(:subcategory_id).maybe(:string)
+          optional(:category_filters).array(:string)
           optional(:min_amount).maybe(:integer, gteq?: 0)
           optional(:max_amount).maybe(:integer)
         end
@@ -55,6 +59,12 @@ module Transactions
           return Failure(assignment.failure) if assignment.failure?
         end
 
+        category_filter_failure = validate_category_filter_tokens(
+          params:,
+          space: @account.space,
+        )
+        return Failure(category_filter_failure) if category_filter_failure.present?
+
         Success(contract.to_h)
       end
 
@@ -78,39 +88,11 @@ module Transactions
       end
 
       def by_category(relation, params)
-        return Success(relation) if category_filter_blank?(params)
-
-        if params[:category_id].present?
-          relation = relation.where(
-            "account_activities.category_id = :category_id OR " \
-            "account_activities.activity_kind IN (:non_category_kinds)",
-            category_id: params[:category_id],
-            non_category_kinds: %w[transfer loan_disbursement loan_payment]
-          )
-
-          if params[:subcategory_id].present?
-            relation = relation
-              .joins(<<~SQL.squish)
-                INNER JOIN transactions activity_subcat_tx
-                  ON activity_subcat_tx.id = account_activities.activitable_id
-                 AND account_activities.activitable_type IN (
-                   'Transactions::Income',
-                   'Transactions::Expense'
-                 )
-              SQL
-              .where(activity_subcat_tx: { subcategory_id: params[:subcategory_id] })
-          end
-
-          return Success(relation)
-        end
-
-        relation = relation.where(category_name: params[:category_name])
-        Success(relation)
+        apply_account_activity_category_filters(relation, params)
       end
 
       def category_filter_blank?(params)
-        ["all", "", nil].include?(params[:category_name]) &&
-          params[:category_id].blank?
+        account_activity_category_filter_blank?(params)
       end
 
       def by_search_query(relation, params)

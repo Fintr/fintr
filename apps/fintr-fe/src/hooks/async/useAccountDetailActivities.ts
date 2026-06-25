@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAuthApi } from "../useAuthApi";
 import { fetchAccountActivitiesPage } from "@/services/transactions/accountActivities";
+import { serializeFilterValues } from "@/utils/transactionFilterValues";
 
 export const ACCOUNT_DETAIL_ACTIVITIES_KEY = "accountDetailActivities" as const;
 
@@ -8,7 +9,7 @@ type UseAccountDetailActivitiesParams = {
   accountId: string;
   startDate: string;
   endDate: string;
-  categoryFilter: string;
+  categoryFilters: string[];
   searchQuery: string;
   minAmount?: number;
   maxAmount?: number;
@@ -19,7 +20,7 @@ export const useAccountDetailActivities = ({
   accountId,
   startDate,
   endDate,
-  categoryFilter,
+  categoryFilters,
   minAmount,
   maxAmount,
   searchQuery,
@@ -35,7 +36,7 @@ export const useAccountDetailActivities = ({
       accountId,
       startDate,
       endDate,
-      categoryFilter,
+      serializeFilterValues(categoryFilters),
       minAmount,
       maxAmount,
       searchQuery,
@@ -45,7 +46,7 @@ export const useAccountDetailActivities = ({
         accountId,
         startDate,
         endDate,
-        categoryFilter,
+        categoryFilters,
         searchQuery,
         page: pageParam,
         ...(minAmount !== undefined ? { minAmount } : {}),

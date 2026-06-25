@@ -87,7 +87,8 @@ module Api
               :max_amount,
               :search_query,
               :page,
-              :per_page
+              :per_page,
+              category_filters: [],
             ).to_h.merge(account_id: params[:id])
           )
         end

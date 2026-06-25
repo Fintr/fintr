@@ -69,6 +69,8 @@ export interface TransactionIndexInputType {
   categoryName?: string;
   categoryId?: string;
   subcategoryId?: string;
+  categoryFilters?: string[];
+  accountNames?: string[];
   startDate: string;
   endDate: string;
   minAmount: number | string;

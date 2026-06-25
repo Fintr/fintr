@@ -1,20 +1,20 @@
 import { AxiosInstance } from "axios";
-import { parseCategoryPickerValue } from "@/types/categoryTreeTypes";
 import { ActivitiesPage } from "@/types/transactionTypes";
+import { normalizeFilterValues } from "@/utils/transactionFilterValues";
 
 function omitUndefinedParams(
-  record: Record<string, string | number | undefined>,
-): Record<string, string | number> {
+  record: Record<string, string | number | string[] | undefined>,
+): Record<string, string | number | string[]> {
   return Object.fromEntries(
     Object.entries(record).filter(([, v]) => v !== undefined),
-  ) as Record<string, string | number>;
+  ) as Record<string, string | number | string[]>;
 }
 
 export type FetchAccountActivitiesPageParams = {
   accountId: string;
   startDate: string;
   endDate: string;
-  categoryFilter: string;
+  categoryFilters: string[];
   searchQuery: string;
   page: number;
   minAmount?: number;
@@ -29,16 +29,14 @@ export const fetchAccountActivitiesPage = async (
     accountId,
     startDate,
     endDate,
-    categoryFilter,
+    categoryFilters,
     searchQuery,
     page,
     minAmount,
     maxAmount,
   } = params;
 
-  const categoryAssignment = parseCategoryPickerValue(
-    categoryFilter && categoryFilter !== "all" ? categoryFilter : "",
-  );
+  const normalizedCategoryFilters = normalizeFilterValues(categoryFilters);
 
   const requestParams = omitUndefinedParams({
     startDate,
@@ -47,16 +45,8 @@ export const fetchAccountActivitiesPage = async (
     page,
     ...(minAmount !== undefined ? { minAmount } : {}),
     ...(maxAmount !== undefined ? { maxAmount } : {}),
-    ...(categoryAssignment?.categoryId
-      ? { categoryId: categoryAssignment.categoryId }
-      : {}),
-    ...(categoryAssignment?.subcategoryId
-      ? { subcategoryId: categoryAssignment.subcategoryId }
-      : {}),
-    ...(!categoryAssignment?.categoryId &&
-    categoryFilter &&
-    categoryFilter !== "all"
-      ? { categoryName: categoryFilter }
+    ...(normalizedCategoryFilters.length > 0
+      ? { categoryFilters: normalizedCategoryFilters }
       : {}),
   });
 

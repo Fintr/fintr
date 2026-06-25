@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCategoryFilterOptions,
+  collectSelectedParentCategoryIds,
   EXPENSE_SECTION_VALUE,
   getCategoryFilterDisplayLabel,
   INCOME_SECTION_VALUE,
+  isCategoryOptionCoveredByParentSelection,
+  removeSubcategoriesForParent,
 } from "./categoryFilterOptions";
 import {
   CategoryTreeOption,
@@ -99,5 +102,48 @@ describe("getCategoryFilterDisplayLabel", () => {
         incomeTrees,
       ),
     ).toBe("Salary");
+  });
+});
+
+describe("parent category selection helpers", () => {
+  const groceriesValue = formatCategoryPickerValue({
+    categoryId: EXPENSE_PARENT_ID,
+    subcategoryId: EXPENSE_SUB_ID,
+  });
+
+  it("collects selected parent category ids", () => {
+    expect(
+      collectSelectedParentCategoryIds([
+        EXPENSE_PARENT_ID,
+        groceriesValue,
+        INCOME_PARENT_ID,
+      ]),
+    ).toEqual(new Set([EXPENSE_PARENT_ID, INCOME_PARENT_ID]));
+  });
+
+  it("detects subcategories covered by a selected parent", () => {
+    const selectedParents = collectSelectedParentCategoryIds([EXPENSE_PARENT_ID]);
+
+    expect(
+      isCategoryOptionCoveredByParentSelection(
+        groceriesValue,
+        selectedParents,
+      ),
+    ).toBe(true);
+    expect(
+      isCategoryOptionCoveredByParentSelection(
+        INCOME_PARENT_ID,
+        selectedParents,
+      ),
+    ).toBe(false);
+  });
+
+  it("removes subcategories when a parent category is selected", () => {
+    expect(
+      removeSubcategoriesForParent(
+        [groceriesValue, INCOME_PARENT_ID],
+        EXPENSE_PARENT_ID,
+      ),
+    ).toEqual([INCOME_PARENT_ID]);
   });
 });
