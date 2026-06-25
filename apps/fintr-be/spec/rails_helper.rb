@@ -49,6 +49,10 @@ RSpec.configure do |config|
   config.include Dry::Monads[:result], type: :operation
   config.include ActiveSupport::Testing::TimeHelpers
 
+  config.before do
+    ExchangeRates::RateLookupCache.reset
+  end
+
   # RSpec Rails uses metadata to mix in different behaviours to your tests,
   # for example enabling you to call `get` and `post` in request specs. e.g.:
   #

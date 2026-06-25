@@ -3,7 +3,19 @@
 module Transactions
   module Queries
     module CategoryFilterTokens
+      EXPENSE_KIND_TOKEN = "__section_expense__"
+      INCOME_KIND_TOKEN = "__section_income__"
+
+      KIND_TOKENS = [
+        EXPENSE_KIND_TOKEN,
+        INCOME_KIND_TOKEN,
+      ].freeze
+
       module_function
+
+      def kind_token?(token)
+        KIND_TOKENS.include?(token.to_s)
+      end
 
       def normalize(params)
         tokens = Array(params[:category_filters]).map(&:to_s).reject(&:blank?)

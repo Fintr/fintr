@@ -49,10 +49,16 @@ module Api
 
           return render_unprocessable_content(details: query.failure) unless query.success?
 
-          render_paginated(
+          totals_query = ::Transactions::Queries::AccountActivityTotalsByType.call(
+            params: activity_params,
+          )
+          totals_by_type = totals_query.success? ? totals_query.value! : { income: 0.0, expense: 0.0, transfer: 0.0 }
+
+          render_paginated_with_totals(
             query.value!,
             serializer: ::Transactions::Serializers::FilteredAccountActivitySerializer,
-            key: :activities
+            key: :activities,
+            totals: totals_by_type,
           )
         end
 

@@ -16,10 +16,18 @@ import {
 import {
   buildCategoryFilterOptions,
   CategoryFilterOption,
+  areAllExpenseCategoriesSelected,
+  areAllIncomeCategoriesSelected,
   collectSelectedParentCategoryIds,
+  EXPENSE_SECTION_VALUE,
+  expandExpenseCategorySelection,
+  expandIncomeCategorySelection,
   getCategoryFilterDisplayLabel,
+  INCOME_SECTION_VALUE,
   isCategoryFilterSectionValue,
   isCategoryOptionCoveredByParentSelection,
+  isExpenseCategoryFilterValue,
+  isIncomeCategoryFilterValue,
   removeSubcategoriesForParent,
 } from "@/utils/categoryFilterOptions";
 
@@ -88,6 +96,16 @@ export const CategoryFilterComboBox = ({
         return true;
       }
 
+      if (option.sectionHeader) {
+        if (option.value === EXPENSE_SECTION_VALUE) {
+          return !areAllExpenseCategoriesSelected(values, expenseOptions);
+        }
+
+        if (option.value === INCOME_SECTION_VALUE) {
+          return !areAllIncomeCategoriesSelected(values, incomeOptions);
+        }
+      }
+
       if (multiple && selectedSet.has(option.value)) {
         return false;
       }
@@ -104,7 +122,14 @@ export const CategoryFilterComboBox = ({
 
       return true;
     },
-    [multiple, selectedSet, selectedParentCategoryIds],
+    [
+      multiple,
+      selectedSet,
+      selectedParentCategoryIds,
+      values,
+      expenseOptions,
+      incomeOptions,
+    ],
   );
 
   const pills = useMemo(
@@ -112,8 +137,13 @@ export const CategoryFilterComboBox = ({
       values.map((pickerValue) => ({
         value: pickerValue,
         label: resolveDisplayLabel(pickerValue),
+        variant: isIncomeCategoryFilterValue(pickerValue, incomeOptions)
+          ? "income"
+          : isExpenseCategoryFilterValue(pickerValue, expenseOptions)
+            ? "expense"
+            : "default",
       })),
-    [resolveDisplayLabel, values],
+    [resolveDisplayLabel, values, expenseOptions, incomeOptions],
   );
 
   useEffect(() => {
@@ -166,7 +196,9 @@ export const CategoryFilterComboBox = ({
 
     if (showAllOnFocus && open && searchValue.length === 0) {
       return allOptions.filter(
-        (option) => option.disabled || isOptionAvailable(option),
+        (option) =>
+          (option.sectionHeader && isOptionAvailable(option))
+          || (!option.sectionHeader && isOptionAvailable(option)),
       );
     }
 
@@ -176,7 +208,9 @@ export const CategoryFilterComboBox = ({
 
     if (searchValue.length === 0) {
       return allOptions.filter(
-        (option) => option.disabled || isOptionAvailable(option),
+        (option) =>
+          (option.sectionHeader && isOptionAvailable(option))
+          || (!option.sectionHeader && isOptionAvailable(option)),
       );
     }
 
@@ -185,7 +219,7 @@ export const CategoryFilterComboBox = ({
     let currentSection: CategoryFilterOption | null = null;
 
     for (const option of allOptions) {
-      if (option.disabled) {
+      if (option.sectionHeader) {
         currentSection = option;
         continue;
       }
@@ -198,7 +232,11 @@ export const CategoryFilterComboBox = ({
         continue;
       }
 
-      if (currentSection && !result.includes(currentSection)) {
+      if (
+        currentSection
+        && isOptionAvailable(currentSection)
+        && !result.includes(currentSection)
+      ) {
         result.push(currentSection);
       }
 
@@ -224,10 +262,10 @@ export const CategoryFilterComboBox = ({
       allOptions.some(
         (option) =>
           !option.disabled
-          && !isCategoryFilterSectionValue(option.value)
-          && option.value === nextValue,
+          && option.value === nextValue
+          && isOptionAvailable(option),
       ),
-    [allOptions],
+    [allOptions, isOptionAvailable],
   );
 
   const handleComboboxValueChange = (nextValue: string) => {
@@ -242,7 +280,7 @@ export const CategoryFilterComboBox = ({
   };
 
   const handleSingleSelect = (option: CategoryFilterOption) => {
-    if (option.disabled || isCategoryFilterSectionValue(option.value)) {
+    if (option.disabled) {
       return;
     }
 
@@ -252,11 +290,22 @@ export const CategoryFilterComboBox = ({
   };
 
   const handleMultiSelect = (option: CategoryFilterOption) => {
-    if (option.disabled || isCategoryFilterSectionValue(option.value)) {
+    if (option.disabled) {
       return;
     }
 
     if (selectedSet.has(option.value)) {
+      return;
+    }
+
+    if (isCategoryFilterSectionValue(option.value)) {
+      const nextValues =
+        option.value === EXPENSE_SECTION_VALUE
+          ? expandExpenseCategorySelection(values, expenseOptions)
+          : expandIncomeCategorySelection(values, incomeOptions);
+
+      onValuesChange?.(nextValues);
+      setSearchValue("");
       return;
     }
 
@@ -317,7 +366,7 @@ export const CategoryFilterComboBox = ({
                 hideOnClick={!multiple}
                 className={cn(
                   "relative flex w-full cursor-default select-none items-center rounded-sm px-1 text-sm outline-none focus:text-accent-foreground data-[disabled]:pointer-events-none",
-                  option.disabled
+                  option.sectionHeader
                     ? "text-muted-foreground font-semibold uppercase tracking-wide text-xs py-2"
                     : "data-[disabled]:opacity-50",
                 )}
@@ -331,6 +380,7 @@ export const CategoryFilterComboBox = ({
                   className={cn(
                     "w-full px-2 py-1 rounded-sm",
                     !option.disabled && "hover:bg-accent",
+                    option.sectionHeader && "font-semibold uppercase tracking-wide text-xs",
                     option.indentLevel === 1 && "pl-6",
                   )}
                 >

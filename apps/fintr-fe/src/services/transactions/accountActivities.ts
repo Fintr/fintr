@@ -57,6 +57,7 @@ export const fetchAccountActivitiesPage = async (
   const activities = response?.data?.data?.activities || [];
   const totalPages = response?.data?.data?.pagination?.totalPages || 1;
   const totalCount = response?.data?.data?.pagination?.totalCount || 0;
+  const totals = response?.data?.data?.totals || null;
   const currentPage = page;
   const nextPage = currentPage < totalPages ? currentPage + 1 : null;
 
@@ -76,6 +77,6 @@ export const fetchAccountActivitiesPage = async (
     nextPage,
     totalPages,
     totalCount,
-    totals: null,
+    totals,
   };
 };

@@ -24,7 +24,6 @@ import DayDivider from "@/components/ui/day-divider";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import {
   formatTransactionDayDividerDate,
-  getCurrentMonthDates,
   getTransactionDayGroupKey,
 } from "@/utils/dateUtils";
 import {
@@ -47,8 +46,6 @@ import { activityRecordId } from "@/utils/activityDisplay";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import AccountEditSheet from "@/components/dashboard/account-edit-sheet";
 import AccountDeleteDialog from "@/components/dashboard/account-delete-dialog";
-import { useAtom } from "jotai";
-import { dateFilterEndDateAtom, dateFilterStartDateAtom } from "@/atoms/dateFilterAtoms";
 import {
   FilterTypes,
   TransactionFiltersSheet,
@@ -68,6 +65,8 @@ import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { getCurrentRate } from "@/services/exchangeRates/queries";
+import { getPresetDateRange } from "@/utils/dateFilterPresets";
 import { toast } from "sonner";
 
 type AccountDetailContentProps = {
@@ -316,30 +315,31 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
     useState<IndexActivity | null>(null);
   const [showBookedCurrencies, setShowBookedCurrencies] = useState(false);
 
-  const { firstDay, lastDay } = getCurrentMonthDates();
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
     .toLowerCase();
   const currentYear = new Date().getFullYear().toString();
-  const [startDate] = useAtom(dateFilterStartDateAtom);
-  const [endDate] = useAtom(dateFilterEndDateAtom);
 
-  const [appliedFilters, setAppliedFilters] = useState<FilterTypes>(() => ({
-    selectedMonth: currentMonth,
-    selectedYear: currentYear,
-    startMonth: currentMonth,
-    startYear: currentYear,
-    endMonth: currentMonth,
-    endYear: currentYear,
-    selectedCategories: [],
-    appliedCategories: [],
-    queryStartDate: startDate || firstDay,
-    queryEndDate: endDate || lastDay,
-    appliedMinAmount: "",
-    appliedMaxAmount: "",
-    searchQuery: "",
-    appliedAccounts: [],
-  }));
+  const [appliedFilters, setAppliedFilters] = useState<FilterTypes>(() => {
+    const { startDate, endDate } = getPresetDateRange("all_time");
+
+    return {
+      selectedMonth: currentMonth,
+      selectedYear: currentYear,
+      startMonth: currentMonth,
+      startYear: currentYear,
+      endMonth: currentMonth,
+      endYear: currentYear,
+      selectedCategories: [],
+      appliedCategories: [],
+      queryStartDate: startDate,
+      queryEndDate: endDate,
+      appliedMinAmount: "",
+      appliedMaxAmount: "",
+      searchQuery: "",
+      appliedAccounts: [],
+    };
+  });
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
 
@@ -377,9 +377,10 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   };
 
   const hasActiveFilters = useMemo(() => {
+    const allTimeRange = getPresetDateRange("all_time");
     const isDefaultDateRange =
-      appliedFilters.queryStartDate === firstDay
-      && appliedFilters.queryEndDate === lastDay;
+      appliedFilters.queryStartDate === allTimeRange.startDate
+      && appliedFilters.queryEndDate === allTimeRange.endDate;
 
     return (
       !isDefaultDateRange
@@ -389,7 +390,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       || appliedFilters.searchQuery !== ""
       || hasAppliedAccountFilters(appliedFilters.appliedAccounts)
     );
-  }, [appliedFilters, firstDay, lastDay]);
+  }, [appliedFilters]);
 
   const minAmount = parseOptionalAmount(appliedFilters.appliedMinAmount);
   const maxAmount = parseOptionalAmount(appliedFilters.appliedMaxAmount);
@@ -669,7 +670,33 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   ]);
 
   const currencyCode = account?.balanceCurrency ?? "PHP";
-  const balanceAmount = parseBalance(account?.balance ?? "0");
+  const accountBalance = parseBalance(account?.balance ?? "0");
+  const [balanceRateToSpace, setBalanceRateToSpace] = useState(1);
+  const [balanceRateLoading, setBalanceRateLoading] = useState(false);
+
+  const needsBalanceConversion = useMemo(
+    () =>
+      currencyCode.trim().toUpperCase() !== spaceCurrency.trim().toUpperCase(),
+    [currencyCode, spaceCurrency],
+  );
+
+  useEffect(() => {
+    if (!api || !needsBalanceConversion) {
+      setBalanceRateToSpace(1);
+      setBalanceRateLoading(false);
+      return;
+    }
+
+    setBalanceRateLoading(true);
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    getCurrentRate(api, currencyCode, spaceCurrency, todayStr)
+      .then((data) => setBalanceRateToSpace(Number(data.rate)))
+      .catch(() => setBalanceRateToSpace(1))
+      .finally(() => setBalanceRateLoading(false));
+  }, [api, currencyCode, spaceCurrency, needsBalanceConversion]);
+
+  const balanceInSpaceCurrency = accountBalance * balanceRateToSpace;
 
   const renderFiltersTrigger = (wrapperClassName: string) => (
     <div className={cn("relative", wrapperClassName)}>
@@ -731,14 +758,24 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         <div className="text-sm font-normal text-muted-foreground">
           Total Balance
         </div>
-        <AnimatedCurrency
-          amount={balanceAmount}
-          currency={currencyCode}
-          className={cn(
-            "mt-1 block text-2xl font-semibold tracking-tight md:text-3xl",
-            getNumberColor(balanceAmount),
-          )}
-        />
+        {needsBalanceConversion && balanceRateLoading ? (
+          <span
+            className={cn(
+              "mt-1 block text-2xl font-semibold tracking-tight md:text-3xl text-muted-foreground",
+            )}
+          >
+            …
+          </span>
+        ) : (
+          <AnimatedCurrency
+            amount={balanceInSpaceCurrency}
+            currency={spaceCurrency}
+            className={cn(
+              "mt-1 block text-2xl font-semibold tracking-tight md:text-3xl",
+              getNumberColor(balanceInSpaceCurrency),
+            )}
+          />
+        )}
       </div>
 
       <div className="flex items-center justify-center gap-2">
@@ -769,6 +806,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         onOpenChange={setFiltersOpen}
         applyFilters={applyFilters}
         appliedFilters={appliedFilters}
+        defaultPresetId="all_time"
       />
 
       <div>
@@ -816,7 +854,8 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         <TransactionTotalsDisplay
           totals={mainQuery.data?.pages?.[0]?.totals ?? null}
           isLoading={queryEnabled && mainQuery.isFetching && !mainQuery.data}
-          totalsCurrency={spaceCurrency}
+          spaceCurrency={spaceCurrency}
+          variant="summary"
         />
 
         <ListView

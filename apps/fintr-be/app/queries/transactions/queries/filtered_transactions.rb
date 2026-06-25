@@ -106,6 +106,7 @@ module Transactions
       def select(relation)
         relation = relation.select(
           "id",
+          "transactions.space_id as space_id",
           "date",
           "amount_cents",
           "amount_currency",

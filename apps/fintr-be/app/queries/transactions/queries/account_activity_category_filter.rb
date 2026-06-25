@@ -44,6 +44,18 @@ module Transactions
         binds = []
 
         tokens.each do |token|
+          if token == CategoryFilterTokens::EXPENSE_KIND_TOKEN
+            clauses << "account_activities.activitable_type = ?"
+            binds << "Transactions::Expense"
+            next
+          end
+
+          if token == CategoryFilterTokens::INCOME_KIND_TOKEN
+            clauses << "account_activities.activitable_type = ?"
+            binds << "Transactions::Income"
+            next
+          end
+
           category_id, subcategory_id = token.split(":", 2)
 
           if subcategory_id.present?

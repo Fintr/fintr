@@ -39,7 +39,7 @@ module Transactions
               "acct_tr_filter.from_account_id = ?",
               "acct_tr_filter.to_account_id = ?",
               "acct_loan_filter.account_id = ?",
-              "acct_lp_filter.account_id = ?",
+              "acct_lp_filter.account_id = ?"
             ].map { |clause| [clause, account.id] }
           end
 

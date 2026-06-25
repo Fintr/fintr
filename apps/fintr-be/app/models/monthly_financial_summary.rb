@@ -25,6 +25,9 @@ class MonthlyFinancialSummary < ApplicationRecord
   validates :calculated_at,
             presence: true
 
+  validates :currency,
+            presence: true
+
   validates :space_id,
             uniqueness: { scope: [:year, :month] }
 
@@ -52,26 +55,105 @@ class MonthlyFinancialSummary < ApplicationRecord
         }
 
   def self.find_or_create_for_space_and_month(space:, year: Date.current.year, month: Date.current.month)
-    summary = find_or_initialize_by(
+    recalculate_for_space_and_month!(
       space:,
       year:,
       month:
-    ) do |summary|
-      summary.calculated_at = Time.current
-    end
-    persisted = summary.persisted?
-    summary.save!
-    summary.recalculate! if persisted
+    )
+  end
+
+  def self.find_or_create_record_for_space_and_month(space:, year:, month:)
+    find_by(space:, year:, month:) ||
+      create_record_for_space_and_month(
+        space:,
+        year:,
+        month:
+      )
+  end
+
+  def self.recalculate_for_space_and_month!(space:, year:, month:)
+    summary = find_or_create_record_for_space_and_month(
+      space:,
+      year:,
+      month:
+    )
+    summary.recalculate!
     summary
   end
 
-  def recalculate!
-    update!(
-      total_income: calculate_total_income,
-      total_expenses: calculate_total_expenses,
-      net_savings: calculate_net_savings,
-      calculated_at: Time.current
+  def self.apply_totals_for_space_and_month!(space:, year:, month:, totals:)
+    summary = find_by(space:, year:, month:)
+
+    if summary.nil?
+      return nil if totals_empty?(totals)
+
+      summary = create_record_for_space_and_month(
+        space:,
+        year:,
+        month:
+      )
+    end
+
+    summary.apply_totals!(totals:)
+    summary
+  end
+
+  def self.totals_empty?(totals)
+    totals[:total_income].to_d.zero? &&
+      totals[:total_expenses].to_d.zero?
+  end
+
+  def self.create_record_for_space_and_month(space:, year:, month:)
+    create!(
+      space:,
+      year:,
+      month:,
+      calculated_at: Time.current,
+      currency: space.currency.presence || "PHP",
+      total_income: 0,
+      total_expenses: 0,
+      net_savings: 0
     )
+  rescue ActiveRecord::RecordNotUnique
+    find_by!(space:, year:, month:)
+  end
+
+  def fresh?
+    fx_based? && currency == space_currency_code
+  end
+
+  def recalculate!
+    with_lock do
+      start_date = Date.new(year, month, 1)
+      end_date = start_date.end_of_month
+      totals = MonthlyFinancialSummaries::Queries::AggregateTotalsInSpaceForRange.call(
+        space:,
+        start_date:,
+        end_date:
+      )
+
+      update!(
+        total_income: totals[:total_income],
+        total_expenses: totals[:total_expenses],
+        net_savings: totals[:net_savings],
+        currency: space_currency_code,
+        fx_based: true,
+        calculated_at: Time.current
+      )
+    end
+  end
+
+  def apply_totals!(totals:)
+    with_lock do
+      update!(
+        total_income: totals[:total_income],
+        total_expenses: totals[:total_expenses],
+        net_savings: totals[:net_savings],
+        currency: space_currency_code,
+        fx_based: true,
+        calculated_at: Time.current
+      )
+    end
   end
 
   def savings_percentage
@@ -82,35 +164,7 @@ class MonthlyFinancialSummary < ApplicationRecord
 
   private
 
-  def calculate_total_income
-    Transactions::Queries::FilteredTransactions.call(params: {
-      space_code: space.code,
-      start_date: Date.new(year, month, 1),
-      end_date: Date.new(year, month, 1).end_of_month,
-      balance_state: "calculated",
-      transaction_type: "Transactions::Income",
-      paginate: false,
-      without_initial_balance: true
-    })
-    .value!
-    .sum(:amount_cents) / 100.0
-  end
-
-  def calculate_total_expenses
-    Transactions::Queries::FilteredTransactions.call(params: {
-      space_code: space.code,
-      start_date: Date.new(year, month, 1),
-      end_date: Date.new(year, month, 1).end_of_month,
-      balance_state: "calculated",
-      transaction_type: "Transactions::Expense",
-      paginate: false,
-      without_initial_balance: true
-    })
-    .value!
-    .sum(:amount_cents) / 100.0
-  end
-
-  def calculate_net_savings
-    calculate_total_income - calculate_total_expenses
+  def space_currency_code
+    space.currency.presence || "PHP"
   end
 end

@@ -20,7 +20,8 @@ export type DateFilterMainPresetId =
   | "last_month"
   | "last_2_months"
   | "this_year"
-  | "last_year";
+  | "last_year"
+  | "all_time";
 
 export type DateFilterRelativePresetId =
   | "a_week_ago"
@@ -43,6 +44,9 @@ export const DATE_FILTER_TYPE_OPTIONS = [
   { value: "custom", label: "Custom Range" },
 ] as const;
 
+/** Earliest date used when the "All Time" predefined period is selected. */
+export const DATE_FILTER_ALL_TIME_START_DATE = "2000-01-01";
+
 export const DATE_FILTER_PRESETS: DateFilterPreset[] = [
   { id: "this_week", label: "This Week" },
   { id: "last_week", label: "Last Week" },
@@ -51,6 +55,7 @@ export const DATE_FILTER_PRESETS: DateFilterPreset[] = [
   { id: "last_2_months", label: "Last 2 Months" },
   { id: "this_year", label: "This Year" },
   { id: "last_year", label: "Last Year" },
+  { id: "all_time", label: "All Time" },
 ];
 
 export const DATE_FILTER_RELATIVE_PRESETS: DateFilterPreset[] = [
@@ -131,6 +136,11 @@ export const getPresetDateRange = (
         endDate: formatYmd(endOfYear(previousYear)),
       };
     }
+    case "all_time":
+      return {
+        startDate: DATE_FILTER_ALL_TIME_START_DATE,
+        endDate: formatYmd(referenceDate),
+      };
     case "a_week_ago":
       return {
         startDate: formatYmd(subWeeks(referenceDate, 1)),

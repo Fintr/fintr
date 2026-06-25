@@ -186,7 +186,7 @@ RSpec.describe MonthlyFinancialSummary, type: :model do
 
       it 'sets the correct attributes' do
         summary = described_class.find_or_create_for_space_and_month(space: space, year: year, month: month)
-        expect(summary.space).to eq(space)
+        expect(summary.space_id).to eq(space.id)
         expect(summary.year).to eq(year)
         expect(summary.month).to eq(month)
         expect(summary.calculated_at).to be_present
@@ -214,10 +214,17 @@ RSpec.describe MonthlyFinancialSummary, type: :model do
         }.not_to change(described_class, :count)
       end
 
-      it 'does not call recalculate! on existing summary' do
-        allow(existing_summary).to receive(:recalculate!)
+      it 'recalculates the existing summary' do
+        allow(MonthlyFinancialSummaries::Queries::AggregateTotalsInSpaceForRange).to receive(:call)
+          .and_return(
+            {
+              total_income: 1000.to_d,
+              total_expenses: 500.to_d,
+              net_savings: 500.to_d
+            }
+          )
         described_class.find_or_create_for_space_and_month(space: space, year: year, month: month)
-        expect(existing_summary).not_to have_received(:recalculate!)
+        expect(MonthlyFinancialSummaries::Queries::AggregateTotalsInSpaceForRange).to have_received(:call)
       end
     end
 
@@ -228,22 +235,105 @@ RSpec.describe MonthlyFinancialSummary, type: :model do
         expect(summary.month).to eq(Date.current.month)
       end
     end
+
+    context 'when two processes create the same summary concurrently' do
+      it 'recovers from a uniqueness violation and returns one summary' do
+        allow(described_class).to receive(:find_by).and_return(nil)
+        allow(described_class).to receive(:create!).and_raise(ActiveRecord::RecordNotUnique)
+        existing_summary = create(:monthly_financial_summary, space: space, year: year, month: month)
+        allow(described_class).to receive(:find_by!).and_return(existing_summary)
+        allow(existing_summary).to receive(:recalculate!)
+
+        summary = described_class.find_or_create_record_for_space_and_month(
+          space: space,
+          year: year,
+          month: month
+        )
+
+        expect(summary).to eq(existing_summary)
+      end
+    end
+  end
+
+  describe '.recalculate_for_space_and_month!' do
+    it 'finds or creates the summary and recalculates under lock' do
+      create(:monthly_financial_summary, space: space, year: 2024, month: 6)
+      allow(MonthlyFinancialSummaries::Queries::AggregateTotalsInSpaceForRange).to receive(:call)
+        .and_return(
+          {
+            total_income: 1000.to_d,
+            total_expenses: 500.to_d,
+            net_savings: 500.to_d
+          }
+        )
+
+      expect_any_instance_of(described_class).to receive(:with_lock).and_call_original
+
+      described_class.recalculate_for_space_and_month!(
+        space: space,
+        year: 2024,
+        month: 6
+      )
+    end
+  end
+
+  describe '.apply_totals_for_space_and_month!' do
+    it 'persists totals under row lock' do
+      create(:monthly_financial_summary, space: space, year: 2024, month: 6)
+      totals = {
+        total_income: 1000.to_d,
+        total_expenses: 500.to_d,
+        net_savings: 500.to_d
+      }
+
+      expect_any_instance_of(described_class).to receive(:with_lock).and_call_original
+
+      described_class.apply_totals_for_space_and_month!(
+        space: space,
+        year: 2024,
+        month: 6,
+        totals:
+      )
+    end
+
+    it 'does not create a summary when totals are empty' do
+      totals = {
+        total_income: 0.to_d,
+        total_expenses: 0.to_d,
+        net_savings: 0.to_d
+      }
+
+      expect {
+        described_class.apply_totals_for_space_and_month!(
+          space: space,
+          year: 2000,
+          month: 1,
+          totals:
+        )
+      }.not_to change(described_class, :count)
+    end
   end
 
   describe '#recalculate!' do
     let(:summary) { create(:monthly_financial_summary, space: space) }
 
     before do
-      allow(summary).to receive(:calculate_total_income).and_return(1000.00)
-      allow(summary).to receive(:calculate_total_expenses).and_return(500.00)
-      allow(summary).to receive(:calculate_net_savings).and_return(500.00)
+      allow(MonthlyFinancialSummaries::Queries::AggregateTotalsInSpaceForRange).to receive(:call)
+        .and_return(
+          {
+            total_income: 1000.to_d,
+            total_expenses: 500.to_d,
+            net_savings: 500.to_d
+          }
+        )
     end
 
     it 'updates the financial totals' do
+      expect(summary).to receive(:with_lock).and_call_original
       summary.recalculate!
-      expect(summary.total_income).to eq(1000.00)
-      expect(summary.total_expenses).to eq(500.00)
-      expect(summary.net_savings).to eq(500.00)
+      expect(summary.total_income).to eq(1000.to_d)
+      expect(summary.total_expenses).to eq(500.to_d)
+      expect(summary.net_savings).to eq(500.to_d)
     end
 
     it 'updates the calculated_at timestamp' do
@@ -283,57 +373,28 @@ RSpec.describe MonthlyFinancialSummary, type: :model do
 
   describe 'private methods' do
     let(:summary) { create(:monthly_financial_summary, space: space, year: 2024, month: 6) }
-    let(:start_date) { Date.new(2024, 6, 1) }
-    let(:end_date) { Date.new(2024, 6, 30) }
 
     before do
-      allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_return(
-        instance_double(Dry::Monads::Result::Success, value!: instance_double(ActiveRecord::Relation, sum: 0))
-      )
-    end
-
-    describe '#calculate_total_income' do
-      it 'calls FilteredTransactions with correct parameters for income' do
-        summary.send(:calculate_total_income)
-        expect(Transactions::Queries::FilteredTransactions).to have_received(:call).with(
-          params: {
-            space_code: space.code,
-            start_date: start_date,
-            end_date: end_date,
-            balance_state: "calculated",
-            transaction_type: "Transactions::Income",
-            paginate: false,
-            without_initial_balance: true
+      allow(MonthlyFinancialSummaries::Queries::AggregateTotalsInSpaceForRange).to receive(:call)
+        .and_return(
+          {
+            total_income: 1000.to_d,
+            total_expenses: 300.to_d,
+            net_savings: 700.to_d
           }
         )
-      end
     end
 
-    describe '#calculate_total_expenses' do
-      it 'calls FilteredTransactions with correct parameters for expenses' do
-        summary.send(:calculate_total_expenses)
-        expect(Transactions::Queries::FilteredTransactions).to have_received(:call).with(
-          params: {
-            space_code: space.code,
-            start_date: start_date,
-            end_date: end_date,
-            balance_state: "calculated",
-            transaction_type: "Transactions::Expense",
-            paginate: false,
-            without_initial_balance: true
-          }
+    describe '#recalculate!' do
+      it 'uses FX-aware monthly aggregation' do
+        summary.recalculate!
+
+        expect(MonthlyFinancialSummaries::Queries::AggregateTotalsInSpaceForRange).to have_received(:call).with(
+          space: having_attributes(id: space.id),
+          start_date: Date.new(2024, 6, 1),
+          end_date: Date.new(2024, 6, 30)
         )
-      end
-    end
-
-    describe '#calculate_net_savings' do
-      before do
-        allow(summary).to receive(:calculate_total_income).and_return(1000.00)
-        allow(summary).to receive(:calculate_total_expenses).and_return(300.00)
-      end
-
-      it 'calculates net savings as income minus expenses' do
-        expect(summary.send(:calculate_net_savings)).to eq(700.00)
+        expect(summary.reload.fx_based).to be(true)
       end
     end
   end

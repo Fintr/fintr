@@ -29,7 +29,10 @@ module ExchangeRates
         result = Contract.new.call(**params)
         return Failure(result.errors.to_h) unless result.success?
 
-        Success(result.to_h)
+        merged = result.to_h
+        merged[:from_currency] = merged[:from_currency].to_s.upcase
+        merged[:to_currency] = merged[:to_currency].to_s.upcase
+        Success(merged)
       end
 
       def check_same_currency(params)
@@ -47,16 +50,28 @@ module ExchangeRates
       end
 
       def resolve_rate(params)
-        # 1. Try cache for this date
-        rate_data = step GetCachedApiRate.new.call(params)
-        return Success(rate_data) if rate_data.present?
-
-        # 2. No rate for this date in cache — fetch from external API
         from_c = params[:from_currency]
         to_c = params[:to_currency]
         date = params[:date] || Date.current
-        targets = [from_c, to_c].uniq - [BASE_CURRENCY]
-        if targets.blank?
+        lookup_params = {
+          from_currency: from_c,
+          to_currency: to_c,
+          date: date
+        }
+
+        compute_rate_data(
+          from_c:,
+          to_c:,
+          date:,
+          lookup_params:
+        )
+      end
+
+      def compute_rate_data(from_c:, to_c:, date:, lookup_params:)
+        rate_data = step GetCachedApiRate.new.call(lookup_params)
+        return Success(rate_data) if rate_data.present?
+
+        if usd_only_pair?(from_c:, to_c:)
           return Success(
             rate: 1.0,
             source: "api",
@@ -66,77 +81,96 @@ module ExchangeRates
           )
         end
 
-        # 2a. Try symbol-specific request first
-        api_result = FetchRatesFromApi.new.call(
-          base_currency: BASE_CURRENCY,
-          date: date,
-          target_currencies: targets
+        missing = ExchangeRates::ApiExchangeRate.missing_base_targets_for(
+          from: from_c,
+          to: to_c,
+          date: date
         )
-        if api_result.success?
-          rates = api_result.value!
-          step PersistApiRates.new.call(rates: rates, date: date)
-          cached = step GetCachedApiRate.new.call(params)
-          return Success(cached) if cached.present?
 
-          # 2b. Cache still blank (e.g. provider returned only some symbols). Try fetching all rates for date.
-          fallback = try_fetch_all_rates_then_latest(params:, date:, from_c:, to_c:)
-          return fallback if fallback
-        end
-
-        # 2c. Symbol-specific API failed. Try fetching all rates for this date (self-healing).
-        all_result = FetchRatesFromApi.new.call(
-          base_currency: BASE_CURRENCY,
-          date: date,
-          target_currencies: nil
-        )
-        if all_result.success?
-          step PersistApiRates.new.call(rates: all_result.value!, date: date)
-          cached = step GetCachedApiRate.new.call(params)
-          return Success(cached) if cached.present?
-        end
-
-        # 2d. Use latest cached rate if any (e.g. for weekends or provider gaps).
-        latest_rate = ExchangeRates::ApiExchangeRate.get_rate_latest(from: from_c, to: to_c)
-        if latest_rate.present?
-          return Success(
-            rate: latest_rate,
-            source: "recent_cached",
-            from_currency: from_c,
-            to_currency: to_c,
-            timestamp: Time.current
+        if missing.empty?
+          return resolve_from_existing_base_rates(
+            lookup_params:,
+            from_c:,
+            to_c:
           )
         end
 
-        # 2e. Still no rate (e.g. unsupported currency like AED). Return clear failure.
+        fetch_and_persist_missing(
+          missing: missing,
+          date: date
+        )
+
+        rate_data = step GetCachedApiRate.new.call(lookup_params)
+        return Success(rate_data) if rate_data.present?
+
+        latest = latest_cached_rate_response(from_c:, to_c:)
+        return Success(latest) if latest.present?
+
         Failure(
           message: unsupported_currency_message(from_currency: from_c, to_currency: to_c)
         )
       end
 
-      def try_fetch_all_rates_then_latest(params:, date:, from_c:, to_c:)
-        all_result = FetchRatesFromApi.new.call(
+      def usd_only_pair?(from_c:, to_c:)
+        ExchangeRates::ApiExchangeRate.base_targets_for(from: from_c, to: to_c).blank?
+      end
+
+      def resolve_from_existing_base_rates(lookup_params:, from_c:, to_c:)
+        rate_data = step GetCachedApiRate.new.call(lookup_params)
+        return Success(rate_data) if rate_data.present?
+
+        latest = latest_cached_rate_response(from_c:, to_c:)
+        return Success(latest) if latest.present?
+
+        Failure(
+          message: unsupported_currency_message(from_currency: from_c, to_currency: to_c)
+        )
+      end
+
+      def fetch_and_persist_missing(missing:, date:)
+        api_result = FetchRatesFromApi.new.call(
           base_currency: BASE_CURRENCY,
           date: date,
-          target_currencies: nil
+          target_currencies: missing
         )
-        return nil unless all_result.success?
+        return Success(false) unless api_result.success?
 
-        persist_result = PersistApiRates.new.call(rates: all_result.value!, date: date)
-        return nil unless persist_result.success?
+        rates = api_result.value!
+        return Success(false) if rates.blank?
 
-        cached_result = GetCachedApiRate.new.call(params)
-        return Success(cached_result.value!) if cached_result.success? && cached_result.value!.present?
+        needed_rates = missing.each_with_object({}) do |target, memo|
+          key = target.to_s.upcase
+          memo[key] = rates[key] if rates.key?(key)
+        end
+        if needed_rates.present?
+          persist_result = PersistApiRates.new.call(rates: needed_rates, date: date)
+          return Success(false) unless persist_result.success?
+        end
 
+        ExchangeRates::PersistDailyApiRatesJob.enqueue_for_date(
+          date:,
+          rates:
+        )
+
+        Success(true)
+      rescue StandardError => e
+        Rails.logger.warn(
+          "[ExchangeRates::Operations::FetchRate] API fetch failed for #{date}: #{e.message}"
+        )
+        Success(false)
+      end
+
+      def latest_cached_rate_response(from_c:, to_c:)
         latest_rate = ExchangeRates::ApiExchangeRate.get_rate_latest(from: from_c, to: to_c)
         return nil unless latest_rate.present?
 
-        Success(
+        {
           rate: latest_rate,
           source: "recent_cached",
           from_currency: from_c,
           to_currency: to_c,
           timestamp: Time.current
-        )
+        }
       end
 
       def unsupported_currency_message(from_currency:, to_currency:)

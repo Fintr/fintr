@@ -889,7 +889,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           <TransactionTotalsDisplay
             totals={data?.pages?.[0]?.totals ?? null}
             isLoading={isFetching && !data}
-            totalsCurrency={spaceCurrency}
+            spaceCurrency={spaceCurrency}
           />
 
           {viewMode === "list" ? (

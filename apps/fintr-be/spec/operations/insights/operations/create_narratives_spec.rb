@@ -38,7 +38,8 @@ RSpec.describe Insights::Operations::CreateNarratives, type: :operation do
       is_business: false,
       start_date:,
       end_date:,
-      period_days: 31
+      period_days: 31,
+      category_filtered: false
     }
   end
 
@@ -77,22 +78,14 @@ RSpec.describe Insights::Operations::CreateNarratives, type: :operation do
       )
       expect(lookback_start).to eq(end_date - 12.months + 1.day)
 
-      allow(operation).to receive(:find_emergency_fund_transactions).and_return(
-        Success(Transactions::Transaction.none)
+      allow(Insights::Queries::SumExpensesInSpaceForRange).to receive(:call).and_return(12_000.to_d)
+      create(
+        :account,
+        space:,
+        account_category: "cash",
+        balance_cents: 12_000_00,
+        balance_currency: space.currency
       )
-      allow(Insights::Operations::CreateSummaryStructure).to receive(:new).and_return(
-        instance_double(
-          Insights::Operations::CreateSummaryStructure,
-          call: Success(
-            total_income: Utils::Number.format_number(0),
-            total_expenses: Utils::Number.format_number(12_000),
-            net_savings: Utils::Number.format_number(-12_000)
-          )
-        )
-      )
-      kept_accounts = instance_double(ActiveRecord::Relation)
-      allow(space.accounts).to receive(:kept).and_return(kept_accounts)
-      allow(kept_accounts).to receive(:sum).and_return(12_000_00)
 
       trailing = operation.send(:resolve_emergency_fund_expenses, params:)
       expect(trailing).to be_success
@@ -113,6 +106,54 @@ RSpec.describe Insights::Operations::CreateNarratives, type: :operation do
       expect(emergency_metric[:calculation][:inputs]).to include(
         hash_including(label: "Expenses (last 12 months)")
       )
+    end
+
+    context "when liquid cash is held in a non-space currency" do
+      let(:space) { create(:personal_space, users: [user], currency: "SSP") }
+
+      before do
+        allow(Insights::Queries::SumExpensesInSpaceForRange).to receive(:call).and_return(12_000.to_d)
+        create(
+          :account,
+          space:,
+          account_category: "cash",
+          balance_cents: 202_756_210_00,
+          balance_currency: "SSP"
+        )
+        create(
+          :account,
+          space:,
+          account_category: "credit_card",
+          balance_cents: -50_000_00,
+          balance_currency: "SSP"
+        )
+      end
+
+      it "uses liquid cash totals in space currency, matching the accounts endpoint" do
+        accounts = space.accounts.kept.to_a
+        expected_cash = Transactions::Operations::Accounts::ComputeBalanceTotals.new.call(
+          accounts:,
+          space:
+        ).value![:cash_total]
+
+        emergency = operation.send(
+          :emergency_fund_months,
+          space:,
+          trailing_expenses: 12_000.to_d
+        )
+
+        expect(emergency.value![:liquid]).to eq(expected_cash.to_d)
+        expect(emergency.value![:liquid]).to eq(202_756_210.to_d)
+
+        emergency_metric = result.value![:metrics].find { |m| m[:key] == "emergency_fund" }
+        cash_input = emergency_metric[:calculation][:inputs].find do |input|
+          input[:label] == "Total cash (liquid accounts)"
+        end
+
+        expect(cash_input[:value]).to start_with("SSP ")
+        expect(cash_input[:value]).to include("202,756,210")
+        expect(cash_input[:value]).not_to include("£")
+      end
     end
 
     context "when transactions use FilteredTransactions custom select" do
@@ -178,6 +219,63 @@ RSpec.describe Insights::Operations::CreateNarratives, type: :operation do
 
     it "returns plain dashboard when category is blank" do
       expect(operation.send(:transactions_filter_href, category_name: nil)).to eq("/dashboard")
+    end
+  end
+
+  describe "#budget_insights" do
+    let(:space) { create(:personal_space, users: [user], currency: "GBP") }
+    let(:category) { create(:category, space:, category_type: "expense", name: "Food") }
+    let(:budget_records) do
+      [
+        create(
+          :budget,
+          space:,
+          category:,
+          date: Date.new(2024, 4, 10),
+          amount_cents: 10_000,
+          amount_currency: "PHP"
+        )
+      ]
+    end
+
+    before do
+      ExchangeRates::ApiExchangeRate.create!(
+        base_currency: "USD",
+        target_currency: "PHP",
+        rate: 58.0,
+        rate_date: Date.new(2024, 4, 10)
+      )
+      ExchangeRates::ApiExchangeRate.create!(
+        base_currency: "USD",
+        target_currency: "GBP",
+        rate: 0.79,
+        rate_date: Date.new(2024, 4, 10)
+      )
+
+      create(
+        :expense_transaction,
+        space:,
+        user:,
+        account: create(:account, space:, balance_currency: "PHP"),
+        category:,
+        date: Date.new(2024, 4, 10),
+        amount_cents: 500_000,
+        balance_state: :calculated
+      )
+    end
+
+    it "formats the over amount using the space currency" do
+      transactions = Transactions::Transaction.where(space:)
+      cards = operation.send(
+        :budget_insights,
+        budget_records:,
+        transactions:,
+        space:
+      )
+
+      expect(cards.length).to eq(1)
+      expect(cards.first[:body]).to include("GBP")
+      expect(cards.first[:body]).not_to include("₱")
     end
   end
 end

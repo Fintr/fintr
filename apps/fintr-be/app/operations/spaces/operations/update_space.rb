@@ -26,14 +26,18 @@ module Spaces
       def call(params)
         validated_params = step validate(params:)
 
-        transaction do
+        recalc_space_id = nil
+        space = transaction do
           user  = step find_user(validated_params)
           space = step find_space(validated_params)
           _     = step validate_user_access(user, space)
-          _     = step update_space(space, validated_params)
+          recalc_space_id = step update_space(space, validated_params)
 
           space.reload
         end
+
+        step enqueue_summary_recalculation(space_id: recalc_space_id)
+        space
       end
 
       private
@@ -63,13 +67,29 @@ module Spaces
       end
 
       def update_space(space, params)
+        previous_currency = space.currency.to_s.upcase
         attrs = { name: params[:name] }
         attrs[:currency] = params[:currency] if params.key?(:currency)
         attrs[:default_transaction_currency] = params[:default_transaction_currency] if params.key?(:default_transaction_currency)
         space.update!(attrs)
-        Success(space)
+
+        recalc_space_id = if params.key?(:currency) &&
+                               previous_currency != space.currency.to_s.upcase
+                            space.id.to_s
+        end
+
+        Success(recalc_space_id)
       rescue ActiveRecord::RecordInvalid => e
         Failure(errors: e.record.errors.full_messages, error: e, expected: true)
+      end
+
+      def enqueue_summary_recalculation(space_id:)
+        return Success(true) if space_id.blank?
+
+        MonthlyFinancialSummaries::RecalculateSpaceSummariesJob.perform_later(
+          space_id:
+        )
+        Success(true)
       end
     end
   end

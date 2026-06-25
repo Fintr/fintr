@@ -14,17 +14,19 @@ module Insights
           required(:prior_transactions)
           required(:budgets)
           required(:budget_records)
-          required(:summary_structure)
-          required(:health_scores)
+          optional(:summary_structure)
+          optional(:health_scores)
           required(:is_business).value(:bool)
           required(:start_date).value(:date)
           required(:end_date).value(:date)
           required(:period_days).value(:integer)
+          optional(:category_filtered).maybe(:bool)
         end
       end
 
       def call(params)
         params = step validate(params:)
+        params = step enrich_with_summary(params:)
         metrics = step build_metrics(params:)
         insights = step build_insights(params:, metrics:)
         headline = step build_headline(params:, metrics:)
@@ -46,12 +48,30 @@ module Insights
         Success(contract.to_h)
       end
 
+      def enrich_with_summary(params:)
+        return Success(params) if params[:summary_structure].present?
+
+        result = Insights::Operations::CreateSummaryStructure.new.call(
+          space: params[:space],
+          start_date: params[:start_date],
+          end_date: params[:end_date],
+          category_filtered: params[:category_filtered] == true,
+          transactions: params[:transactions]
+        )
+        return result unless result.success?
+
+        Success(params.merge(summary_structure: result.value!))
+      end
+
       def build_metrics(params:)
         space = params[:space]
         summary = params[:summary_structure]
         prior_summary = prior_period_summary(
-          transactions: params[:prior_transactions],
-          space:
+          space:,
+          start_date: params[:start_date],
+          end_date: params[:end_date],
+          category_filtered: params[:category_filtered] == true,
+          prior_transactions: params[:prior_transactions]
         )
 
         income = decimal_from(summary[:total_income])
@@ -172,7 +192,12 @@ module Insights
             space: params[:space]
           )
         )
-        cards << debt_insight(health_scores: params[:health_scores], is_business: params[:is_business])
+        cards << debt_insight(
+          space: params[:space],
+          summary_structure: params[:summary_structure],
+          period_days: params[:period_days],
+          is_business: params[:is_business]
+        )
         cards.concat(category_spike_insights(
           transactions: params[:transactions],
           prior_transactions: params[:prior_transactions],
@@ -236,31 +261,12 @@ module Insights
         space = params[:space]
         end_date = params[:end_date]
         start_date = emergency_fund_lookback_start_date(end_date:)
-        transactions = step find_emergency_fund_transactions(
+        expenses = Insights::Queries::SumExpensesInSpaceForRange.call(
           space:,
           start_date:,
           end_date:
         )
-        summary = Insights::Operations::CreateSummaryStructure.new.call(
-          transactions:,
-          space:
-        )
-        return summary unless summary.success?
-
-        Success(decimal_from(summary.value![:total_expenses]))
-      end
-
-      def find_emergency_fund_transactions(space:, start_date:, end_date:)
-        Transactions::Queries::FilteredTransactions.call(
-          params: {
-            space_code: space.code,
-            start_date:,
-            end_date:,
-            balance_state: "calculated",
-            paginate: false,
-            without_initial_balance: true
-          }
-        )
+        Success(expenses)
       end
 
       def emergency_fund_lookback_start_date(end_date:)
@@ -268,8 +274,14 @@ module Insights
       end
 
       def emergency_fund_months(space:, trailing_expenses:)
-        liquid_cents = space.accounts.kept.sum { |a| a.balance.cents }
-        liquid = liquid_cents / 100.0
+        accounts = space.accounts.kept.to_a
+        totals = ::Transactions::Operations::Accounts::ComputeBalanceTotals.new.call(
+          accounts:,
+          space:
+        )
+        return Failure(totals.failure) unless totals.success?
+
+        liquid = totals.value![:cash_total].to_d
         months_in_period = EMERGENCY_FUND_LOOKBACK_MONTHS.to_d
         period_expenses = trailing_expenses.to_d
         monthly_expenses = period_expenses / months_in_period
@@ -302,9 +314,18 @@ module Insights
         )
       end
 
-      def prior_period_summary(transactions:, space:)
-        income_op = Insights::Operations::CreateSummaryStructure.new
-        result = income_op.call(transactions:, space:)
+      def prior_period_summary(space:, start_date:, end_date:, category_filtered:, prior_transactions:)
+        period_days = (end_date - start_date).to_i + 1
+        prior_end = start_date - 1.day
+        prior_start = prior_end - (period_days - 1).days
+
+        result = Insights::Operations::CreateSummaryStructure.new.call(
+          space:,
+          start_date: prior_start,
+          end_date: prior_end,
+          category_filtered:,
+          transactions: prior_transactions
+        )
         return { total_income: 0, total_expenses: 0, net_savings: 0 } unless result.success?
 
         result.value!
@@ -315,12 +336,7 @@ module Insights
         expenses = transactions.to_a.select { |tx| tx.is_a?(Transactions::Expense) }
         expenses.each do |tx|
           name = category_label(tx)
-          amount = Insights::SpaceCurrencyAmount.to_space_decimal(
-            money: tx.expense,
-            date: tx.date.to_date,
-            space:,
-            strict: true
-          )
+          amount = tx.amount_numeric_for_space_total.to_d.abs
           cogs += amount if name.match?(BUSINESS_COGS_PATTERN)
         end
 
@@ -373,7 +389,7 @@ module Insights
         return [] if usage < 100
 
         over = usage_values[:over_amount]
-        currency = budget_records.first.amount.currency.iso_code
+        currency = space.currency.presence || "PHP"
         [
           insight_card(
             type: "budget",
@@ -386,10 +402,13 @@ module Insights
         ]
       end
 
-      def debt_insight(health_scores:, is_business:)
-        dti = health_scores[:debt_to_income_ratio]
-        percentage_str = dti[:percentage] || "0%"
-        ratio = percentage_str.to_s.delete("%").to_f
+      def debt_insight(space:, summary_structure:, period_days:, is_business:)
+        total_income = decimal_from(summary_structure[:total_income])
+        monthly_income = total_income / [period_days.to_d / 30, 1].max
+        return nil if monthly_income.zero?
+
+        monthly_debt = Insights::MonthlyDebtPayments.total_for_space(space:)
+        ratio = (monthly_debt / monthly_income) * 100
         return nil if ratio.zero?
 
         severity = ratio >= 40 ? "warning" : (ratio >= 30 ? "neutral" : "positive")
@@ -397,7 +416,7 @@ module Insights
           type: "debt",
           severity:,
           title: is_business ? "Debt service load" : "Debt-to-income",
-          body: "Estimated debt payments are #{percentage_str} of monthly income. Lenders often prefer below 36%.",
+          body: "Estimated debt payments are #{Utils::Number.format_percentage(ratio)} of monthly income. Lenders often prefer below 36%.",
           action_label: "View loans",
           action_href: "/dashboard/loans"
         )
@@ -443,19 +462,10 @@ module Insights
       end
 
       def expenses_by_category(transactions:, space:)
-        totals = Hash.new(0.to_d)
-        transactions.to_a.each do |tx|
-          next unless tx.is_a?(Transactions::Expense)
-
-          name = category_label(tx)
-          totals[name] += Insights::SpaceCurrencyAmount.to_space_decimal(
-            money: tx.expense,
-            date: tx.date.to_date,
-            space:,
-            strict: true
-          )
-        end
-        totals
+        Insights::Queries::ExpensesByCategoryForTransactions.call(
+          transactions:,
+          space:
+        )
       end
 
       def category_label(transaction)
@@ -537,7 +547,7 @@ module Insights
           return calculation_block(
             labeled_formula: "Total cash ÷ Average monthly expenses",
             inputs: [
-              calculation_input(label: "Total cash (all accounts)", value: format_money(liquid, currency)),
+              calculation_input(label: "Total cash (liquid accounts)", value: format_money(liquid, currency)),
               calculation_input(
                 label: "Expenses (last #{EMERGENCY_FUND_LOOKBACK_MONTHS} months)",
                 value: format_money(period_expenses, currency)
@@ -552,7 +562,7 @@ module Insights
           labeled_formula: "Total cash ÷ Average monthly expenses",
           formula: "#{format_money(liquid, currency)} ÷ #{format_money(monthly_expenses, currency)} = #{display}",
           inputs: [
-            calculation_input(label: "Total cash (all accounts)", value: format_money(liquid, currency)),
+            calculation_input(label: "Total cash (liquid accounts)", value: format_money(liquid, currency)),
             calculation_input(
               label: "Expenses (last #{EMERGENCY_FUND_LOOKBACK_MONTHS} months)",
               value: format_money(period_expenses, currency)
@@ -565,7 +575,7 @@ module Insights
           ],
           notes: [
             "Avg monthly expenses = expenses in the last #{EMERGENCY_FUND_LOOKBACK_MONTHS} months ÷ #{months_in_period.to_i} months (#{lookback_start_date}–#{lookback_end_date}).",
-            "Cash is the sum of balances on all active accounts in this space.",
+            "Cash is the sum of liquid account balances (cash, savings, debit, e-wallet) converted to your space currency.",
             "Independent of your selected insights date range."
           ]
         )
@@ -660,7 +670,10 @@ module Insights
       end
 
       def format_money(amount, currency)
-        Money.from_amount(amount.to_f, currency).format
+        code = currency.presence || "PHP"
+        formatted = Money.from_amount(amount.to_f, code).format(symbol: false)
+
+        "#{code} #{formatted}"
       end
 
       def transaction_scope_count(transactions)

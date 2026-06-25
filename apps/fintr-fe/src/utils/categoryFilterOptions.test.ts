@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  areAllExpenseCategoriesSelected,
   buildCategoryFilterOptions,
+  collectParentCategoryFilterValues,
   collectSelectedParentCategoryIds,
+  expandExpenseCategorySelection,
   EXPENSE_SECTION_VALUE,
   getCategoryFilterDisplayLabel,
   INCOME_SECTION_VALUE,
@@ -48,13 +51,13 @@ const incomeTrees: CategoryTreeOption[] = [
 ];
 
 describe("buildCategoryFilterOptions", () => {
-  it("groups expense and income with section headers and subcategories indented", () => {
+  it("groups expense and income with selectable section headers and subcategories indented", () => {
     const options = buildCategoryFilterOptions(expenseTrees, incomeTrees);
 
     expect(options[0]).toMatchObject({
       label: "Expense",
       value: EXPENSE_SECTION_VALUE,
-      disabled: true,
+      sectionHeader: true,
     });
     expect(options[1]).toMatchObject({
       label: "Food",
@@ -71,7 +74,7 @@ describe("buildCategoryFilterOptions", () => {
     expect(options[3]).toMatchObject({
       label: "Income",
       value: INCOME_SECTION_VALUE,
-      disabled: true,
+      sectionHeader: true,
     });
     expect(options[4]).toMatchObject({
       label: "Salary",
@@ -145,5 +148,26 @@ describe("parent category selection helpers", () => {
         EXPENSE_PARENT_ID,
       ),
     ).toEqual([INCOME_PARENT_ID]);
+  });
+});
+
+describe("expand category kind selection", () => {
+  it("collects parent category filter values for a group", () => {
+    expect(collectParentCategoryFilterValues(expenseTrees)).toEqual([
+      EXPENSE_PARENT_ID,
+    ]);
+  });
+
+  it("expands expense selection to all expense parent categories", () => {
+    expect(
+      expandExpenseCategorySelection([INCOME_PARENT_ID], expenseTrees),
+    ).toEqual([INCOME_PARENT_ID, EXPENSE_PARENT_ID]);
+  });
+
+  it("detects when all expense categories are selected", () => {
+    expect(
+      areAllExpenseCategoriesSelected([EXPENSE_PARENT_ID], expenseTrees),
+    ).toBe(true);
+    expect(areAllExpenseCategoriesSelected([], expenseTrees)).toBe(false);
   });
 });

@@ -7,6 +7,8 @@ module Transactions
 
       def validate_category_filter_tokens(params:, space:)
         CategoryFilterTokens.normalize(params).each do |token|
+          next if CategoryFilterTokens.kind_token?(token)
+
           category_id, subcategory_id = token.split(":", 2)
           assignment = Transactions::Operations::ResolveCategoryAssignment.new.call(
             space_id: space.id,

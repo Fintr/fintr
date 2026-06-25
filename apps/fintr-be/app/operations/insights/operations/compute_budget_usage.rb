@@ -14,26 +14,28 @@ module Insights
 
     def compute_total_budget(params:)
       budget_records = params[:budget_records]
+      space = params[:space]
       return Success(0.to_d) if budget_records.blank?
 
-      total = budget_records.sum { |budget| budget.amount_cents.to_d } / 100
+      total = budget_records.sum do |budget|
+        Insights::SpaceCurrencyAmount.to_space_decimal(
+          money: budget.amount,
+          date: budget.date.to_date,
+          space:,
+          strict: true
+        )
+      end
       Success(total)
     end
 
     def compute_total_expenses(params:)
       transactions = params[:transactions]
-      space = params[:space]
       return Success(0.to_d) if transactions.blank?
 
       total = transactions.inject(0.to_d) do |memo, transaction|
         next memo unless transaction.is_a?(Transactions::Expense)
 
-        memo + Insights::SpaceCurrencyAmount.to_space_decimal(
-          money: transaction.expense,
-          date: transaction.date.to_date,
-          space:,
-          strict: true
-        )
+        memo + transaction.amount_numeric_for_space_total.to_d.abs
       end
       Success(total)
     end

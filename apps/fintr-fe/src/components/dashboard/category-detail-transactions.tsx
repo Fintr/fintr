@@ -437,7 +437,8 @@ export function CategoryDetailTransactions({
       <TransactionTotalsDisplay
         totals={data?.pages?.[0]?.totals ?? null}
         isLoading={queryEnabled && isFetching && !data}
-        totalsCurrency={currency}
+        spaceCurrency={currency}
+        variant="summary"
       />
 
       <ListView

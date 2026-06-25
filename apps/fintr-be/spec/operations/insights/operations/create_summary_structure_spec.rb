@@ -58,7 +58,13 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'with valid transactions' do
-      subject(:call_operation) { operation.call(transactions: actual_transactions, space: space) }
+      subject(:call_operation) do
+        operation.call(
+          transactions: actual_transactions,
+          space: space,
+          category_filtered: true
+        )
+      end
 
       let(:income_transaction1) { create_transaction(type: :income, amount_value: 1000) }
       let(:income_transaction2) { create_transaction(type: :income, amount_value: 500) }
@@ -84,7 +90,13 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'with only income transactions' do
-      subject(:call_operation) { operation.call(transactions: actual_transactions, space: space) }
+      subject(:call_operation) do
+        operation.call(
+          transactions: actual_transactions,
+          space: space,
+          category_filtered: true
+        )
+      end
 
       let(:income_transaction1) { create_transaction(type: :income, amount_value: 700) }
       let(:actual_transactions) { [income_transaction1] }
@@ -100,7 +112,13 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
     end
 
     context 'with only expense transactions' do
-      subject(:call_operation) { operation.call(transactions: actual_transactions, space: space) }
+      subject(:call_operation) do
+        operation.call(
+          transactions: actual_transactions,
+          space: space,
+          category_filtered: true
+        )
+      end
 
       let(:expense_transaction1) { create_transaction(type: :expense, amount_value: 400) }
       let(:actual_transactions) { [expense_transaction1] }
@@ -141,35 +159,37 @@ RSpec.describe Insights::Operations::CreateSummaryStructure do
       end
     end
 
-    describe '#get_total_income' do
-      context 'when transactions is blank' do
-        it 'returns Success(0) for an empty array' do
-          expect(operation.send(:get_total_income, params: { transactions: [] })).to eq(Success(0))
-        end
-
-        it 'returns Success(0) for nil' do
-          expect(operation.send(:get_total_income, params: { transactions: nil })).to eq(Success(0))
-        end
-
-        it 'returns Success(0) for an empty ActiveRecord::Relation' do
-          expect(operation.send(:get_total_income, params: { transactions: Transactions::Transaction.none })).to eq(Success(0))
-        end
+    context 'when using monthly summaries for a date range' do
+      subject(:call_operation) do
+        operation.call(
+          space: space,
+          start_date: Date.new(2024, 1, 1),
+          end_date: Date.new(2024, 1, 31),
+          category_filtered: false,
+          transactions: Transactions::Transaction.none
+        )
       end
-    end
 
-    describe '#get_total_expenses' do
-      context 'when transactions is blank' do
-        it 'returns Success(0) for an empty array' do
-          expect(operation.send(:get_total_expenses, params: { transactions: [] })).to eq(Success(0))
-        end
+      before do
+        allow(MonthlyFinancialSummaries::Queries::TotalsInSpaceForRange).to receive(:call)
+          .and_return(
+            Success(
+              {
+                total_income: 1500.to_d,
+                total_expenses: 300.to_d,
+                net_savings: 1200.to_d
+              }
+            )
+          )
+      end
 
-        it 'returns Success(0) for nil' do
-          expect(operation.send(:get_total_expenses, params: { transactions: nil })).to eq(Success(0))
-        end
+      it { is_expected.to be_success }
 
-        it 'returns Success(0) for an empty ActiveRecord::Relation' do
-          expect(operation.send(:get_total_expenses, params: { transactions: Transactions::Transaction.none })).to eq(Success(0))
-        end
+      it 'returns totals from monthly summaries without scanning transactions' do
+        result = call_operation.value!
+        expect(result[:total_income]).to eq('formatted_1500.0')
+        expect(result[:total_expenses]).to eq('formatted_300.0')
+        expect(result[:net_savings]).to eq('formatted_1200.0')
       end
     end
 

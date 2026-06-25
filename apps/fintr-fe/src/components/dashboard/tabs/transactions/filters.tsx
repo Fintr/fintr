@@ -67,6 +67,8 @@ interface TransactionFiltersSheetProps {
   showAccountFilter?: boolean;
   categoryDefaultValues?: string[];
   useCategoryDefaultsWhenEmpty?: boolean;
+  /** When set, Reset restores this predefined period instead of the current month. */
+  defaultPresetId?: DateFilterPresetId;
 }
 
 export function TransactionFiltersSheet({
@@ -80,6 +82,7 @@ export function TransactionFiltersSheet({
   showAccountFilter = false,
   categoryDefaultValues = [],
   useCategoryDefaultsWhenEmpty = false,
+  defaultPresetId,
 }: TransactionFiltersSheetProps) {
   const expenseCategoryOptionsFromAtom = useAtomValue(expenseCategoryOptionsAtom);
   const incomeCategoryOptionsFromAtom = useAtomValue(incomeCategoryOptionsAtom);
@@ -315,6 +318,49 @@ export function TransactionFiltersSheet({
   };
 
   const handleReset = () => {
+    if (defaultPresetId) {
+      const { startDate: presetStart, endDate: presetEnd } =
+        getPresetDateRange(defaultPresetId);
+
+      setStartDate(presetStart);
+      setEndDate(presetEnd);
+      setFilterTypeSelector("predefined");
+      setSelectedPreset(defaultPresetId);
+      setDateRange({
+        from: new Date(presetStart),
+        to: new Date(presetEnd),
+      });
+      setSelectedCategories([]);
+      setSelectedAccounts([]);
+      setAppliedMinAmount("");
+      setAppliedMaxAmount("");
+
+      const resetCategories = normalizeFilterValues(
+        useCategoryDefaultsWhenEmpty ? categoryDefaultValues : [],
+      );
+
+      const resetFiltersData: FilterTypes = {
+        selectedMonth: currentMonth,
+        selectedYear: currentYear,
+        startMonth: currentMonth,
+        startYear: currentYear,
+        endMonth: currentMonth,
+        endYear: currentYear,
+        selectedCategories: resetCategories,
+        appliedCategories: resetCategories,
+        queryStartDate: presetStart,
+        queryEndDate: presetEnd,
+        appliedMinAmount: "",
+        appliedMaxAmount: "",
+        appliedAccounts: [],
+        searchQuery: appliedFilters.searchQuery,
+      };
+
+      applyFilters(resetFiltersData);
+      onOpenChange(false);
+      return;
+    }
+
     const { firstDay, lastDay } = getCurrentMonthDates();
 
     setStartDate(firstDay);

@@ -557,6 +557,30 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
           expect(result.map(&:transactable)).to contain_exactly(expense_with_subcategory)
         end
       end
+
+      it 'returns only expense transactions when expense kind token is selected' do
+        params = default_params.merge(
+          category_filters: [Transactions::Queries::CategoryFilterTokens::EXPENSE_KIND_TOKEN],
+          category_name: nil,
+          start_date: Date.new(2024, 1, 1),
+          end_date: Date.new(2024, 1, 31),
+        )
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(expense_s1_jan15)
+      end
+
+      it 'returns only income transactions when income kind token is selected' do
+        params = default_params.merge(
+          category_filters: [Transactions::Queries::CategoryFilterTokens::INCOME_KIND_TOKEN],
+          category_name: nil,
+          start_date: Date.new(2024, 1, 1),
+          end_date: Date.new(2024, 1, 31),
+        )
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(income_s1_jan5)
+      end
     end
   end
 end

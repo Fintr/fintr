@@ -26,13 +26,12 @@ module Insights
       end
 
       def call
-        params   = step validate(params: @params)
-        space    = step load_space(params:)
-        relation = step by_space(relation: @relation, params:)
-        relation = step by_calculated_state(relation:)
-        relation = step without_initial_balance(relation:)
-        relation = step by_date(relation:, params:)
-        step aggregate_by_month(relation:, space:)
+        params = step validate(params: @params)
+        space = step load_space(params:)
+        step aggregate_by_month(
+          space:,
+          params:
+        )
       end
 
       private
@@ -44,54 +43,42 @@ module Insights
         Success(space)
       end
 
-      def by_space(relation:, params:)
-        relation = relation.where(space_id: params[:space_id])
-        Success(relation)
-      end
+      def aggregate_by_month(space:, params:)
+        earliest_transaction_date = MonthlyFinancialSummaries::Queries::EarliestTransactionDateForSpace.call(
+          space:
+        )
+        return Success([]) if earliest_transaction_date.blank?
 
-      def by_date(relation:, params:)
-        relation = relation
-                    .where(date: params[:date_from].beginning_of_month..(Time.zone.now).end_of_month)
-        Success(relation)
-      end
+        start_date = [
+          params[:date_from].beginning_of_month.to_date,
+          earliest_transaction_date.beginning_of_month
+        ].max
+        end_date = Time.zone.today.end_of_month.to_date
+        return Success([]) if start_date > end_date
 
-      def by_calculated_state(relation:)
-        relation = relation.calculated
-        Success(relation)
-      end
+        rows = []
+        month_start = start_date
 
-      def without_initial_balance(relation:)
-        relation = relation
-                    .joins(:category)
-                    .where.not(transactions_categories: { name: "Initial Balance" })
-        Success(relation)
-      end
-
-      def aggregate_by_month(relation:, space:)
-        buckets = Hash.new { |h, k| h[k] = { income: 0.to_d, expense: 0.to_d } }
-
-        relation.includes(:space, :currency_conversion).find_each do |transaction|
-          month_start = transaction.date.to_date.beginning_of_month
-          amount = transaction.amount_numeric_for_space_total.to_d
-
-          case transaction.type
-          when "Transactions::Income"
-            buckets[month_start][:income] += amount
-          when "Transactions::Expense"
-            buckets[month_start][:expense] += amount
-          end
-        end
-
-        rows = buckets.sort_by { |(month, _)| month }.map do |month_start, totals|
-          income = totals[:income]
-          expense = totals[:expense]
-
-          Row.new(
-            month_year: month_start.in_time_zone,
-            total_income: income.round(2),
-            total_expense: expense.round(2),
-            net_amount: (income - expense).round(2)
+        while month_start <= end_date
+          totals = MonthlyFinancialSummaries::Queries::TotalsForMonth.call(
+            space:,
+            month_start:,
+            persist_stale: false
           )
+
+          unless MonthlyFinancialSummary.totals_empty?(totals)
+            income = totals[:total_income]
+            expense = totals[:total_expenses]
+
+            rows << Row.new(
+              month_year: month_start.in_time_zone,
+              total_income: income.round(2),
+              total_expense: expense.round(2),
+              net_amount: (income - expense).round(2)
+            )
+          end
+
+          month_start += 1.month
         end
 
         Success(rows)

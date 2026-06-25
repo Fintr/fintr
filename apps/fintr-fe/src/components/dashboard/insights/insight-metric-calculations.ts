@@ -33,7 +33,7 @@ export const getMetricCalculation = (
             title: "Cash runway",
             formula: "Total cash ÷ Average monthly expenses",
             details: [
-              "Cash is the sum of balances on all active accounts in this space.",
+              "Cash is the sum of liquid account balances (cash, savings, debit, e-wallet) converted to your space currency.",
               "Average monthly expenses are total expenses over the last 12 months, divided by 12.",
               "Shown in weeks (months × 4.33).",
             ],
@@ -42,7 +42,7 @@ export const getMetricCalculation = (
             title: "Emergency fund",
             formula: "Total cash ÷ Average monthly expenses",
             details: [
-              "Cash is the sum of balances on all active accounts in this space.",
+              "Cash is the sum of liquid account balances (cash, savings, debit, e-wallet) converted to your space currency.",
               "Average monthly expenses are total expenses over the last 12 months, divided by 12.",
               "Target range is 3–6 months of expenses covered.",
             ],

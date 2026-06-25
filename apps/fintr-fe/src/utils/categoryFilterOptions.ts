@@ -12,6 +12,7 @@ export const INCOME_SECTION_VALUE = "__section_income__";
 export interface CategoryFilterOption extends OptionType {
   disabled?: boolean;
   indentLevel?: number;
+  sectionHeader?: boolean;
 }
 
 const appendCategoryGroup = (
@@ -27,7 +28,7 @@ const appendCategoryGroup = (
   result.push({
     label: sectionLabel,
     value: sectionValue,
-    disabled: true,
+    sectionHeader: true,
   });
 
   for (const parent of trees) {
@@ -74,6 +75,9 @@ export const buildCategoryFilterOptions = (
   return result;
 };
 
+export const isCategoryFilterSectionValue = (value: string): boolean =>
+  value === EXPENSE_SECTION_VALUE || value === INCOME_SECTION_VALUE;
+
 export const getCategoryFilterDisplayLabel = (
   value: string,
   expenseOptions: CategoryTreeOption[],
@@ -89,8 +93,95 @@ export const getCategoryFilterDisplayLabel = (
   ]);
 };
 
-export const isCategoryFilterSectionValue = (value: string): boolean =>
-  value === EXPENSE_SECTION_VALUE || value === INCOME_SECTION_VALUE;
+export const collectParentCategoryFilterValues = (
+  options: CategoryTreeOption[],
+): string[] =>
+  options.map((parent) =>
+    formatCategoryPickerValue({
+      categoryId: parent.id,
+      subcategoryId: null,
+    }),
+  );
+
+export const isExpenseCategoryFilterValue = (
+  value: string,
+  expenseOptions: CategoryTreeOption[],
+): boolean => {
+  const assignment = parseCategoryPickerValue(value);
+
+  if (!assignment) {
+    return false;
+  }
+
+  return expenseOptions.some(
+    (parent) =>
+      parent.id === assignment.categoryId
+      || parent.children?.some((child) => child.id === assignment.subcategoryId),
+  );
+};
+
+export const isIncomeCategoryFilterValue = (
+  value: string,
+  incomeOptions: CategoryTreeOption[],
+): boolean => {
+  const assignment = parseCategoryPickerValue(value);
+
+  if (!assignment) {
+    return false;
+  }
+
+  return incomeOptions.some(
+    (parent) =>
+      parent.id === assignment.categoryId
+      || parent.children?.some((child) => child.id === assignment.subcategoryId),
+  );
+};
+
+export const areAllExpenseCategoriesSelected = (
+  values: string[],
+  expenseOptions: CategoryTreeOption[],
+): boolean => {
+  if (expenseOptions.length === 0) {
+    return false;
+  }
+
+  const selectedParents = collectSelectedParentCategoryIds(values);
+
+  return expenseOptions.every((parent) => selectedParents.has(parent.id));
+};
+
+export const areAllIncomeCategoriesSelected = (
+  values: string[],
+  incomeOptions: CategoryTreeOption[],
+): boolean => {
+  if (incomeOptions.length === 0) {
+    return false;
+  }
+
+  const selectedParents = collectSelectedParentCategoryIds(values);
+
+  return incomeOptions.every((parent) => selectedParents.has(parent.id));
+};
+
+export const expandExpenseCategorySelection = (
+  values: string[],
+  expenseOptions: CategoryTreeOption[],
+): string[] => [
+  ...values.filter(
+    (value) => !isExpenseCategoryFilterValue(value, expenseOptions),
+  ),
+  ...collectParentCategoryFilterValues(expenseOptions),
+];
+
+export const expandIncomeCategorySelection = (
+  values: string[],
+  incomeOptions: CategoryTreeOption[],
+): string[] => [
+  ...values.filter(
+    (value) => !isIncomeCategoryFilterValue(value, incomeOptions),
+  ),
+  ...collectParentCategoryFilterValues(incomeOptions),
+];
 
 export const collectSelectedParentCategoryIds = (
   values: string[],
