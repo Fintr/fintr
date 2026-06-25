@@ -19,8 +19,7 @@ module ExchangeRates
 
       def call(params)
         params = step validate(params:)
-        synced_count = transaction { step persist(params) }
-        synced_count
+        step persist(params)
       end
 
       private
@@ -39,19 +38,40 @@ module ExchangeRates
         date = params[:date]
         base = params[:base_currency]
         synced_count = 0
-        rates.each do |target_currency, rate|
-          next if target_currency == base
+        timestamp = Time.current
 
-          api_rate = ExchangeRates::ApiExchangeRate.find_or_initialize_by(
+        rates.each do |target_currency, rate|
+          target = target_currency.to_s.upcase
+          next if target == base
+
+          write_rate(
+            base: base,
+            target_currency: target,
+            rate: rate,
+            date: date,
+            timestamp: timestamp
+          )
+          synced_count += 1
+        end
+        Success(synced_count)
+      end
+
+      def write_rate(base:, target_currency:, rate:, date:, timestamp:)
+        record = ExchangeRates::ApiExchangeRate.find_or_initialize_by(
+          base_currency: base,
+          target_currency: target_currency,
+          rate_date: date
+        )
+        record.rate = rate
+        record.save!
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        ExchangeRates::ApiExchangeRate
+          .find_by!(
             base_currency: base,
             target_currency: target_currency,
             rate_date: date
           )
-          api_rate.rate = rate
-          api_rate.save!
-          synced_count += 1
-        end
-        Success(synced_count)
+          .update!(rate: rate, updated_at: timestamp)
       end
     end
   end

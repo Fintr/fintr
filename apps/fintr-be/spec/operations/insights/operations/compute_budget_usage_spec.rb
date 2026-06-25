@@ -90,5 +90,44 @@ RSpec.describe Insights::Operations::ComputeBudgetUsage, type: :operation do
         expect(value[:remaining]).to be_negative
       end
     end
+
+    context "when budgets are stored in a different currency than the space" do
+      let(:space) { create(:personal_space, users: [user], currency: "GBP") }
+      let(:rate_date) { Date.new(2024, 4, 10) }
+
+      let(:budget_records) do
+        [
+          create(
+            :budget,
+            space:,
+            category:,
+            date: Date.new(2024, 4, 10),
+            amount_cents: 100_000,
+            amount_currency: "PHP"
+          )
+        ]
+      end
+
+      before do
+        ExchangeRates::ApiExchangeRate.create!(
+          base_currency: "USD",
+          target_currency: "PHP",
+          rate: 58.0,
+          rate_date: rate_date
+        )
+        ExchangeRates::ApiExchangeRate.create!(
+          base_currency: "USD",
+          target_currency: "GBP",
+          rate: 0.79,
+          rate_date: rate_date
+        )
+      end
+
+      it "converts budget totals into the space currency before comparing expenses" do
+        value = result.value!
+        expect(value[:total_budget]).to be_within(0.02).of(13.62)
+        expect(value[:total_expenses]).to be_within(0.02).of(20.43)
+      end
+    end
   end
 end

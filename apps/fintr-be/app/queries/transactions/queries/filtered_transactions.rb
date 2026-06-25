@@ -9,8 +9,10 @@ module Transactions
           optional(:category_name).maybe(:string)
           optional(:category_id).maybe(:string)
           optional(:subcategory_id).maybe(:string)
+          optional(:category_filters).array(:string)
           optional(:account_name).maybe(:string)
           optional(:account_id).maybe(:string)
+          optional(:account_names).array(:string)
           required(:start_date).value(:date)
           required(:end_date).value(:date)
           optional(:page).value(:integer)
@@ -104,6 +106,7 @@ module Transactions
       def select(relation)
         relation = relation.select(
           "id",
+          "transactions.space_id as space_id",
           "date",
           "amount_cents",
           "amount_currency",

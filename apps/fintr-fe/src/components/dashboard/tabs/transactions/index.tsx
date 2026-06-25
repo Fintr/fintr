@@ -31,7 +31,6 @@ import { DownloadButton } from "./buttons/DownloadButton";
 import { DeleteButton } from "./buttons/DeleteButton";
 import { ViewModeButton } from "./buttons/ViewModeButton";
 import {
-  parseCategoryPickerValue,
   resolveCategoryFilterFromDisplayName,
 } from "@/types/categoryTreeTypes";
 import { IndexTransaction, TransactionIndexInputType, TransactionTotals } from "@/types/transactionTypes";
@@ -60,6 +59,13 @@ import {
   incomeCategoryOptionsAtom,
 } from "@/atoms/dashboardAtoms";
 import { useSearchParams } from "next/navigation";
+import {
+  areFilterValuesEqual,
+  hasAppliedAccountFilters,
+  hasAppliedCategoryFilters,
+  normalizeFilterValues,
+  serializeFilterValues,
+} from "@/utils/transactionFilterValues";
 
 interface TransactionsTabProps {
   // Define any props if needed, but not used in this component
@@ -111,13 +117,14 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     startYear: currentYear,
     endMonth: currentMonth,
     endYear: currentYear,
-    selectedCategory: "",
-    appliedCategory: "",
+    selectedCategories: [],
+    appliedCategories: [],
     queryStartDate: startDate,
     queryEndDate: endDate,
     appliedMinAmount: "",
     appliedMaxAmount: "",
     searchQuery: "",
+    appliedAccounts: [],
   }));
 
   useEffect(() => {
@@ -143,14 +150,19 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     }
 
     setAppliedFilters((previous) => {
-      if (previous.appliedCategory === resolvedCategory) {
+      if (
+        areFilterValuesEqual(
+          previous.appliedCategories,
+          [resolvedCategory],
+        )
+      ) {
         return previous;
       }
 
       return {
         ...previous,
-        selectedCategory: resolvedCategory,
-        appliedCategory: resolvedCategory,
+        selectedCategories: [resolvedCategory],
+        appliedCategories: [resolvedCategory],
       };
     });
   }, [
@@ -166,10 +178,11 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     
     return (
       !isDefaultDateRange ||
-      (appliedFilters.appliedCategory && appliedFilters.appliedCategory !== "" && appliedFilters.appliedCategory !== "all") ||
+      hasAppliedCategoryFilters(appliedFilters.appliedCategories) ||
       appliedFilters.appliedMinAmount !== "" ||
       appliedFilters.appliedMaxAmount !== "" ||
-      appliedFilters.searchQuery !== ""
+      appliedFilters.searchQuery !== "" ||
+      hasAppliedAccountFilters(appliedFilters.appliedAccounts)
     );
   };
   const [searchInput, setSearchInput] = useState("");
@@ -227,12 +240,13 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     isError,
     isSuccess,
   } = useInfiniteTransactions({
-    appliedCategory: appliedFilters.appliedCategory,
+    appliedCategories: appliedFilters.appliedCategories,
     queryStartDate: appliedFilters.queryStartDate,
     queryEndDate: appliedFilters.queryEndDate,
     appliedMinAmount: appliedFilters.appliedMinAmount,
     appliedMaxAmount: appliedFilters.appliedMaxAmount,
     searchQuery: appliedFilters.searchQuery,
+    appliedAccountNames: appliedFilters.appliedAccounts,
     manualOnly: false,
     loadMoreRef,
   });
@@ -308,12 +322,13 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         queryKey: [
           "transactions",
           spaceCode,
-          appliedFilters.appliedCategory,
+          serializeFilterValues(appliedFilters.appliedCategories),
           appliedFilters.queryStartDate,
           appliedFilters.queryEndDate,
           appliedFilters.appliedMinAmount,
           appliedFilters.appliedMaxAmount,
           appliedFilters.searchQuery,
+          serializeFilterValues(appliedFilters.appliedAccounts),
         ],
       });
       queryClient.invalidateQueries({
@@ -559,12 +574,13 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         queryKey: [
           "transactions",
           spaceCode,
-          appliedFilters.appliedCategory,
+          serializeFilterValues(appliedFilters.appliedCategories),
           appliedFilters.queryStartDate,
           appliedFilters.queryEndDate,
           appliedFilters.appliedMinAmount,
           appliedFilters.appliedMaxAmount,
           appliedFilters.searchQuery,
+          serializeFilterValues(appliedFilters.appliedAccounts),
         ],
         refetchType: 'active'
       });
@@ -686,12 +702,8 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
 
   const handleDownloadTransactions = async () => {
     try {
-      const categoryAssignment = parseCategoryPickerValue(
-        appliedFilters.appliedCategory &&
-          appliedFilters.appliedCategory !== "all"
-          ? appliedFilters.appliedCategory
-          : "",
-      );
+      const categoryFilters = normalizeFilterValues(appliedFilters.appliedCategories);
+      const accountNames = normalizeFilterValues(appliedFilters.appliedAccounts);
 
       const filterData: Omit<TransactionIndexInputType, "page"> = {
         spaceCode,
@@ -700,17 +712,8 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         minAmount: appliedFilters.appliedMinAmount,
         maxAmount: appliedFilters.appliedMaxAmount,
         searchQuery: appliedFilters.searchQuery,
-        ...(categoryAssignment?.categoryId
-          ? { categoryId: categoryAssignment.categoryId }
-          : {}),
-        ...(categoryAssignment?.subcategoryId
-          ? { subcategoryId: categoryAssignment.subcategoryId }
-          : {}),
-        ...(!categoryAssignment?.categoryId &&
-        appliedFilters.appliedCategory &&
-        appliedFilters.appliedCategory !== "all"
-          ? { categoryName: appliedFilters.appliedCategory }
-          : {}),
+        ...(categoryFilters.length > 0 ? { categoryFilters } : {}),
+        ...(accountNames.length > 0 ? { accountNames } : {}),
       };
       await generateTransactionsCsv(api, filterData);
     } catch (error) {
@@ -825,6 +828,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             onOpenChange={setFiltersOpen}
             applyFilters={applyFilters}
             appliedFilters={appliedFilters}
+            showAccountFilter={true}
           />
 
           <div className="flex flex-col md:flex-row gap-4 mb-6 md:items-center">
@@ -885,7 +889,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           <TransactionTotalsDisplay
             totals={data?.pages?.[0]?.totals ?? null}
             isLoading={isFetching && !data}
-            totalsCurrency={spaceCurrency}
+            spaceCurrency={spaceCurrency}
           />
 
           {viewMode === "list" ? (

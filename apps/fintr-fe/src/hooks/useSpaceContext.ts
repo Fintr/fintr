@@ -13,6 +13,7 @@ import {
 } from "@/atoms/spaceAtoms";
 import { Space, SpaceContext } from "@/types/spaceTypes";
 import { spacesApi } from "@/services/spaces/api";
+import { invalidateSpaceSwitchQueries } from "@/utils/invalidateSpaceQueries";
 
 export function useSpaceContext(api: AxiosInstance) {
   const queryClient = useQueryClient();
@@ -93,20 +94,7 @@ export function useSpaceContext(api: AxiosInstance) {
           }
         }
 
-        queryClient.invalidateQueries({ queryKey: ["spaces"] });
-        queryClient.invalidateQueries({ queryKey: ["space-context"] });
-        queryClient.invalidateQueries({ queryKey: ["transactions"] });
-        queryClient.invalidateQueries({ queryKey: ["budgets"] });
-        queryClient.invalidateQueries({ queryKey: ["insights"] });
-        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-        queryClient.invalidateQueries({ queryKey: ["transactionCategories"] });
-        queryClient.invalidateQueries({ queryKey: ["transactionDrafts"] });
-        queryClient.invalidateQueries({ queryKey: ["accounts"] });
-        queryClient.invalidateQueries({ queryKey: ["spaceUsers"] });
-        queryClient.invalidateQueries({ queryKey: ["conversations"] });
-        queryClient.invalidateQueries({ queryKey: ["tickets"] });
-        queryClient.invalidateQueries({ queryKey: ["messages"] });
-        queryClient.invalidateQueries({ queryKey: ["ai", "usage"] });
+        await invalidateSpaceSwitchQueries(queryClient);
 
         await new Promise(resolve => setTimeout(resolve, 2500));
 

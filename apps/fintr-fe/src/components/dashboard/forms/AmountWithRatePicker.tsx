@@ -112,6 +112,8 @@ interface AmountWithRatePickerProps {
   date?: string;
   /** When provided (e.g. edit mode), use this rate instead of fetching a default; prevents overwriting parent's conversion. */
   initialConversion?: ConversionSnapshot | null;
+  /** When true, auto-fetched rates update the preview only and do not notify the parent (edit display-only). */
+  previewOnly?: boolean;
 }
 
 export function AmountWithRatePicker({
@@ -132,6 +134,7 @@ export function AmountWithRatePicker({
   onConversionChange,
   date,
   initialConversion,
+  previewOnly = false,
 }: AmountWithRatePickerProps) {
   const ledgerTargetCurrency =
     toCurrency != null && String(toCurrency).trim() !== ""
@@ -178,6 +181,7 @@ export function AmountWithRatePicker({
     );
 
   const amountNumeric = numberFormatting.cleanForBackend(amountDisplayValue);
+  const rateLookupDate = date ?? new Date().toISOString().slice(0, 10);
   /** True when we have an explicit ledger pair (never infer space as the "to" leg). */
   const pairReady =
     ledgerTargetCurrency != null && fromCurrency !== ledgerTargetCurrency;
@@ -233,15 +237,14 @@ export function AmountWithRatePicker({
       if (!pairReady) return;
       const seq = ++popoverRateFetchSeqRef.current;
       setLoadingRate("current");
-      const todayStr = new Date().toISOString().slice(0, 10);
       Promise.all([
-        getCurrentRate(api, fromCurrency, ledgerTargetCurrency, todayStr),
+        getCurrentRate(api, fromCurrency, ledgerTargetCurrency, rateLookupDate),
         getRecentRates(api, fromCurrency, ledgerTargetCurrency),
       ])
         .then(([current, recent]) => {
           if (seq !== popoverRateFetchSeqRef.current) return;
           setCurrentRateDisplay(multiplierFromApi(Number(current.rate)));
-          setDisplayedRateDate(todayStr);
+          setDisplayedRateDate(rateLookupDate);
           setRecentRates(recent.rates ?? []);
         })
         .catch(() => {
@@ -255,11 +258,15 @@ export function AmountWithRatePicker({
           setLoadingRate(null);
         });
     },
-    [api, fromCurrency, ledgerTargetCurrency, pairReady]
+    [api, fromCurrency, ledgerTargetCurrency, pairReady, rateLookupDate]
   );
 
   const applyConversion = useCallback(
-    (rawRate: number, source: "auto" | "manual" | "recent"): number => {
+    (
+      rawRate: number,
+      source: "auto" | "manual" | "recent",
+      options?: { syncToParent?: boolean },
+    ): number => {
       const rate = multiplierFromApi(rawRate);
       const snapshot: ConversionSnapshot = {
         originalCurrency: fromCurrency,
@@ -267,22 +274,24 @@ export function AmountWithRatePicker({
         exchangeRateSource: source,
       };
       setConversion({ exchangeRate: rate, exchangeRateSource: source });
-      onConversionChange(snapshot);
+      const syncToParent = options?.syncToParent ?? !previewOnly;
+      if (syncToParent) {
+        onConversionChange(snapshot);
+      }
       return rate;
     },
-    [fromCurrency, onConversionChange]
+    [fromCurrency, onConversionChange, previewOnly]
   );
 
   const handleUseTodaysRate = useCallback(() => {
     if (ledgerTargetCurrency == null) return;
     setLoadingRate("current");
-    const rateDate = new Date().toISOString().slice(0, 10);
-    getCurrentRate(api, fromCurrency, ledgerTargetCurrency, rateDate)
+    getCurrentRate(api, fromCurrency, ledgerTargetCurrency, rateLookupDate)
       .then((r) => {
         const raw = Number(r.rate);
         const n = applyConversion(raw, "auto");
         setCurrentRateDisplay(n);
-        setDisplayedRateDate(rateDate);
+        setDisplayedRateDate(rateLookupDate);
         setPopoverOpen(false);
       })
       .catch(() => {
@@ -290,7 +299,7 @@ export function AmountWithRatePicker({
         setDisplayedRateDate(undefined);
       })
       .finally(() => setLoadingRate(null));
-  }, [api, fromCurrency, ledgerTargetCurrency, applyConversion]);
+  }, [api, fromCurrency, ledgerTargetCurrency, applyConversion, rateLookupDate]);
 
   const handleUseRecentRate = useCallback(
     (rate: number) => {
@@ -339,7 +348,9 @@ export function AmountWithRatePicker({
 
     if (!pairReady) {
       setConversion(null);
-      onConversionChange(null);
+      if (!previewOnly) {
+        onConversionChange(null);
+      }
       setCurrentRateDisplay(null);
       setDisplayedRateDate(undefined);
       setRecentRates([]);
@@ -349,12 +360,13 @@ export function AmountWithRatePicker({
     // Create mode: default to most recent rate used, else today's rate
     const seq = ++autoRateFetchSeqRef.current;
     setConversion(null);
-    onConversionChange(null);
+    if (!previewOnly) {
+      onConversionChange(null);
+    }
     setLoadingRate("currency");
-    const todayStr = new Date().toISOString().slice(0, 10);
     Promise.all([
       getRecentRates(api, fromCurrency, ledgerTargetCurrency),
-      getCurrentRate(api, fromCurrency, ledgerTargetCurrency, todayStr),
+      getCurrentRate(api, fromCurrency, ledgerTargetCurrency, rateLookupDate),
     ])
       .then(([recent, current]) => {
         if (seq !== autoRateFetchSeqRef.current) return;
@@ -362,17 +374,17 @@ export function AmountWithRatePicker({
         if (rates.length > 0) {
           const mostRecent = rates[0];
           const raw = Number(mostRecent.rate);
-          const n = applyConversion(raw, "recent");
+          const n = applyConversion(raw, "recent", { syncToParent: false });
           setCurrentRateDisplay(n);
           setDisplayedRateDate(
-            mostRecent.usedAt ?? (mostRecent as { timestamp?: string }).timestamp ?? todayStr
+            mostRecent.usedAt ?? (mostRecent as { timestamp?: string }).timestamp ?? rateLookupDate
           );
           setRecentRates(rates);
         } else {
           const raw = Number(current.rate);
-          const n = applyConversion(raw, "auto");
+          const n = applyConversion(raw, "auto", { syncToParent: false });
           setCurrentRateDisplay(n);
-          setDisplayedRateDate(todayStr);
+          setDisplayedRateDate(rateLookupDate);
         }
       })
       .catch(() => {
@@ -393,6 +405,8 @@ export function AmountWithRatePicker({
     applyConversion,
     initialConversion,
     onConversionChange,
+    previewOnly,
+    rateLookupDate,
   ]);
 
   return (

@@ -81,7 +81,7 @@ describe('Performance: Infinite Query Hooks', () => {
       const { rerender } = renderHook(
         () =>
           useInfiniteTransactions({
-            appliedCategory: '',
+            appliedCategories: [],
             queryStartDate: '2024-01-01',
             queryEndDate: '2024-12-31',
             appliedMinAmount: '',
@@ -109,7 +109,7 @@ describe('Performance: Infinite Query Hooks', () => {
       renderHook(
         () =>
           useInfiniteTransactions({
-            appliedCategory: '',
+            appliedCategories: [],
             queryStartDate: '2024-01-01',
             queryEndDate: '2024-12-31',
             appliedMinAmount: '',

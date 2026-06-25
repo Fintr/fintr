@@ -5,19 +5,19 @@ module Insights
     class CreateSummaryStructure < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
-          required(:transactions)
           required(:space).value(:any)
+          optional(:transactions)
+          optional(:start_date).maybe(:date)
+          optional(:end_date).maybe(:date)
+          optional(:category_filtered).maybe(:bool)
         end
 
         rule(:transactions) do
-          if values[:transactions].present?
+          next if values[:transactions].blank?
+
           is_relation = values[:transactions].is_a?(ActiveRecord::Relation)
           is_record_transaction = values[:transactions].first.is_a?(Transactions::Transaction)
           key.failure("should be a relation of transactions") unless is_relation || is_record_transaction
-          else
-            # Allow blank transactions, the operation logic handles the zero calculation
-            # This rule primarily validates the type when transactions IS present.
-          end
         end
       end
 
@@ -30,52 +30,71 @@ module Insights
 
       def call(params)
         params            = step validate(params:)
-        total_income      = step get_total_income(params:)
-        total_expenses    = step get_total_expenses(params:)
-        net_savings       = step get_net_savings(total_income:, total_expenses:)
-        summary_structure = step create_summary_structure(total_income:, total_expenses:, net_savings:)
+        totals            = step resolve_totals(params:)
+        summary_structure = step create_summary_structure(
+          total_income: totals[:total_income],
+          total_expenses: totals[:total_expenses],
+          net_savings: totals[:net_savings]
+        )
         summary_structure
       end
 
       private
 
-      def get_total_income(params:)
-        return Success(0) if params[:transactions].blank?
+      def resolve_totals(params:)
+        if use_monthly_summaries?(params:)
+          return totals_from_monthly_summaries(params:)
+        end
 
-        space = params[:space]
-        total = params[:transactions].inject(0.to_d) do |memo, tx|
+        totals_from_transactions(params:)
+      end
+
+      def use_monthly_summaries?(params:)
+        params[:category_filtered] != true &&
+          params[:start_date].present? &&
+          params[:end_date].present?
+      end
+
+      def totals_from_monthly_summaries(params:)
+        result = MonthlyFinancialSummaries::Queries::TotalsInSpaceForRange.call(
+          space: params[:space],
+          start_date: params[:start_date],
+          end_date: params[:end_date]
+        )
+        return result unless result.success?
+
+        Success(result.value!)
+      end
+
+      def totals_from_transactions(params:)
+        return Success(default_totals) if params[:transactions].blank?
+
+        total_income = params[:transactions].inject(0.to_d) do |memo, tx|
           next memo unless tx.is_a?(Transactions::Income)
 
-          memo + Insights::SpaceCurrencyAmount.to_space_decimal(
-            money: tx.income,
-            date: tx.date.to_date,
-            space: space,
-            strict: true
-          )
+          memo + tx.amount_numeric_for_space_total.to_d
         end
-        Success(total)
-      end
-
-      def get_total_expenses(params:)
-        return Success(0) if params[:transactions].blank?
-
-        space = params[:space]
-        total = params[:transactions].inject(0.to_d) do |memo, tx|
+        total_expenses = params[:transactions].inject(0.to_d) do |memo, tx|
           next memo unless tx.is_a?(Transactions::Expense)
 
-          memo + Insights::SpaceCurrencyAmount.to_space_decimal(
-            money: tx.expense,
-            date: tx.date.to_date,
-            space: space,
-            strict: true
-          )
+          memo + tx.amount_numeric_for_space_total.to_d.abs
         end
-        Success(total)
+
+        Success(
+          {
+            total_income:,
+            total_expenses:,
+            net_savings: total_income - total_expenses
+          }
+        )
       end
 
-      def get_net_savings(total_income:, total_expenses:)
-        result = total_income.to_d - total_expenses.to_d
-        Success(result)
+      def default_totals
+        {
+          total_income: 0.to_d,
+          total_expenses: 0.to_d,
+          net_savings: 0.to_d
+        }
       end
 
       def create_summary_structure(total_income:, total_expenses:, net_savings:)

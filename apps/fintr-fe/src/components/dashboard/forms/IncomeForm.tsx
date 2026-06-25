@@ -50,6 +50,13 @@ import {
   isLockedIncomeCategoryName,
   lockedCategoryRefForIncomeEdit,
 } from "@/utils/lockedSystemCategories";
+import {
+  resolveAmountPickerTargetCurrency,
+  shouldPreviewConversionOnlyInEdit,
+  shouldShowAmountFxInEdit,
+  shouldUseStoredConversionForPreview,
+  transactionHadStoredConversion,
+} from "@/utils/amountPickerTargetCurrency";
 
 // Income form schema using Zod
 const incomeFormSchema = z.object({
@@ -273,16 +280,68 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
   const amountPickerTargetCurrency = useMemo(
     () =>
-      accountLedgerCurrency ??
-      editBookedCurrency ??
-      (amountCurrency !== effectiveSpaceCurrency ? effectiveSpaceCurrency : null),
+      resolveAmountPickerTargetCurrency({
+        amountCurrency,
+        accountLedgerCurrency,
+        editBookedCurrency,
+        effectiveSpaceCurrency,
+        isEditMode,
+      }),
     [
+      amountCurrency,
       accountLedgerCurrency,
       editBookedCurrency,
-      amountCurrency,
       effectiveSpaceCurrency,
+      isEditMode,
     ],
   );
+
+  const hadStoredConversion = useMemo(
+    () =>
+      isEditMode &&
+      transactionHadStoredConversion(
+        initialData as unknown as Record<string, unknown> | undefined,
+      ),
+    [isEditMode, initialData],
+  );
+
+  const amountPickerInitialConversion = useMemo(() => {
+    if (
+      !shouldUseStoredConversionForPreview({
+        isEditMode,
+        hadStoredConversion,
+        conversionSnapshot,
+        targetCurrency: amountPickerTargetCurrency,
+        accountLedgerCurrency,
+        effectiveSpaceCurrency,
+      })
+    ) {
+      return undefined;
+    }
+
+    return conversionSnapshot ?? undefined;
+  }, [
+    isEditMode,
+    hadStoredConversion,
+    conversionSnapshot,
+    amountPickerTargetCurrency,
+    accountLedgerCurrency,
+    effectiveSpaceCurrency,
+  ]);
+
+  const showAmountFxInEdit = shouldShowAmountFxInEdit({
+    isEditMode,
+    conversionSnapshot,
+    amountCurrency,
+    targetCurrency: amountPickerTargetCurrency,
+  });
+
+  const previewConversionOnlyInEdit = shouldPreviewConversionOnlyInEdit({
+    isEditMode,
+    hadStoredConversion,
+    targetCurrency: amountPickerTargetCurrency,
+    effectiveSpaceCurrency,
+  });
 
   const defaultCurrencySetRef = useRef(false);
   useEffect(() => {
@@ -711,10 +770,11 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                 : ""
             }
             lockFromCurrency={isEditMode}
-            hideRatePicker={isEditMode}
+            hideRatePicker={isEditMode && !showAmountFxInEdit}
+            previewOnly={previewConversionOnlyInEdit}
             onConversionChange={setConversionSnapshot}
             date={date ? format(date, "yyyy-MM-dd") : undefined}
-            initialConversion={conversionSnapshot ?? undefined}
+            initialConversion={amountPickerInitialConversion}
           />
           </div>
 

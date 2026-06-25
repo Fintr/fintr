@@ -26,18 +26,20 @@ module ExchangeRates
       end
 
       def lookup(params)
+        from_currency = params[:from_currency].to_s.upcase
+        to_currency = params[:to_currency].to_s.upcase
         date = params[:date] || Date.current
         cached = ExchangeRates::ApiExchangeRate.get_rate(
-          from: params[:from_currency],
-          to: params[:to_currency],
+          from: from_currency,
+          to: to_currency,
           date: date
         )
         rate_data = if cached
           {
             rate: cached,
             source: "api",
-            from_currency: params[:from_currency],
-            to_currency: params[:to_currency],
+            from_currency: from_currency,
+            to_currency: to_currency,
             timestamp: Time.current
           }
         else

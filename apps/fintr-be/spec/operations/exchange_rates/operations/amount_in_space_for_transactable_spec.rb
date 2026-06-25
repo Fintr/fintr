@@ -41,6 +41,49 @@ RSpec.describe ExchangeRates::Operations::AmountInSpaceForTransactable do
         expect(payload[:amount]).to eq(500.0)
       end
     end
+
+    context "when the transaction date has no rate but a latest PHP to SSP rate exists" do
+      let(:space) { create(:personal_space, currency: "SSP") }
+      let!(:expense) do
+        create(
+          :expense_transaction,
+          :one_time,
+          space: space,
+          account: php_account,
+          category: category,
+          date: missing_date,
+          amount: Money.from_amount(1_500, "PHP"),
+          amount_currency: "PHP"
+        )
+      end
+      let!(:php_account) { create(:account, space: space, balance_currency: "PHP") }
+      let(:missing_date) { Date.new(2026, 4, 28) }
+
+      before do
+        ExchangeRates::ApiExchangeRate.create!(
+          base_currency: ExchangeRates::ApiExchangeRate::BASE_CURRENCY,
+          target_currency: "PHP",
+          rate: 58.0,
+          rate_date: Date.new(2026, 3, 18)
+        )
+        ExchangeRates::ApiExchangeRate.create!(
+          base_currency: ExchangeRates::ApiExchangeRate::BASE_CURRENCY,
+          target_currency: "SSP",
+          rate: 4_800.0,
+          rate_date: Date.new(2026, 3, 18)
+        )
+      end
+
+
+      it "returns the expense converted to space currency using the latest rate" do
+        payload = described_class.display_payload(transactable: expense)
+
+        expect(payload[:currency]).to eq("SSP")
+        expect(payload[:amount]).to eq(
+          (BigDecimal("1500") * (BigDecimal("4800") / BigDecimal("58"))).round(2).to_f
+        )
+      end
+    end
   end
 
   describe "currency_conversion with original in space currency" do

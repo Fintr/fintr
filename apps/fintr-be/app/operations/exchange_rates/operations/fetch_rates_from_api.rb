@@ -30,19 +30,31 @@ module ExchangeRates
       def fetch(params)
         base = params[:base_currency]
         date = params[:date]
-        targets = params[:target_currencies]
-        rates = if targets.blank?
-          Integrations::ExchangeRates::Client.fetch_rates_from_base(
+        targets = Array(params[:target_currencies])
+          .map { |currency| currency.to_s.upcase }
+          .uniq
+          .compact
+          .reject(&:blank?)
+
+        if targets.present?
+          missing = targets.reject do |target|
+            ExchangeRates::ApiExchangeRate.cached_for_date?(target:, date:)
+          end
+          return Success({}) if missing.blank?
+
+          all_rates = Integrations::ExchangeRates::Client.fetch_rates_from_base(
             base: base,
             date: date
           )
-        else
-          Integrations::ExchangeRates::Client.fetch_rates_for_targets(
-            to_currencies: targets,
-            base: base,
-            date: date
-          )
+          return Failure(message: "No rates fetched from API") if all_rates.blank?
+
+          return Success(all_rates)
         end
+
+        rates = Integrations::ExchangeRates::Client.fetch_rates_from_base(
+          base: base,
+          date: date
+        )
         return Failure(message: "No rates fetched from API") if rates.blank?
 
         Success(rates)

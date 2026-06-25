@@ -9,12 +9,11 @@ module Transactions
       private
 
       def filter_combined_relation_by_account(relation, params)
-        return Success(relation) if account_filter_blank?(params)
+        account_names = normalize_account_filter_names(params)
+        return Success(relation) if account_names.empty? && params[:account_id].blank?
 
-        account = resolve_filter_account(params)
-        name    = params[:account_name].to_s
-
-        if account
+        accounts = resolve_filter_accounts(params, account_names)
+        if accounts.any?
           relation = relation
             .joins(<<~SQL.squish)
               LEFT OUTER JOIN transactions acct_tx_filter
@@ -33,39 +32,62 @@ module Transactions
                 ON acct_lp_filter.id = combined_transactions.transactable_id
                AND combined_transactions.transactable_type = 'Transactions::LoanPayment'
             SQL
-            .where(
-              "acct_tx_filter.account_id = :account_id OR " \
-              "acct_tr_filter.from_account_id = :account_id OR " \
-              "acct_tr_filter.to_account_id = :account_id OR " \
-              "acct_loan_filter.account_id = :account_id OR " \
-              "acct_lp_filter.account_id = :account_id",
-              account_id: account.id
-            )
-          Success(relation)
-        else
-          Success(legacy_combined_name_filter(relation, name))
+
+          clauses = accounts.flat_map do |account|
+            [
+              "acct_tx_filter.account_id = ?",
+              "acct_tr_filter.from_account_id = ?",
+              "acct_tr_filter.to_account_id = ?",
+              "acct_loan_filter.account_id = ?",
+              "acct_lp_filter.account_id = ?"
+            ].map { |clause| [clause, account.id] }
+          end
+
+          sql = clauses.map(&:first).join(" OR ")
+          binds = clauses.flat_map { |(_clause, account_id)| account_id }
+
+          return Success(relation.where(sql, *binds))
         end
+
+        Success(legacy_combined_names_filter(relation, account_names))
       end
 
       def account_filter_blank?(params)
-        params[:account_id].blank? &&
-          ["all", "", nil].include?(params[:account_name])
+        normalize_account_filter_names(params).empty? &&
+          params[:account_id].blank?
       end
 
-      def resolve_filter_account(params)
+      def normalize_account_filter_names(params)
+        names = Array(params[:account_names]).map(&:to_s).reject(&:blank?)
+        return names if names.any?
+
+        name = params[:account_name].to_s
+        return [] if name.blank? || ["all", ""].include?(name)
+
+        [name]
+      end
+
+      def resolve_filter_accounts(params, account_names)
         if params[:account_id].present?
-          return Transactions::Account.kept.find_by(
+          account = Transactions::Account.kept.find_by(
             id: params[:account_id],
             space_id: @space.id
           )
+          return [account].compact
         end
 
-        return nil if params[:account_name].blank?
+        account_names.filter_map do |name|
+          Transactions::Account.kept.find_by(
+            name: name,
+            space_id: @space.id
+          )
+        end.uniq
+      end
 
-        Transactions::Account.kept.find_by(
-          name: params[:account_name],
-          space_id: @space.id
-        )
+      def legacy_combined_names_filter(relation, account_names)
+        account_names.reduce(relation.none) do |scoped, name|
+          scoped.or(legacy_combined_name_filter(relation, name))
+        end
       end
 
       def legacy_combined_name_filter(relation, name)

@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/popover";
 import { CURRENCY_CODES } from "@/data/currencies";
 import { cn } from "@/lib/utils";
+import { invalidateSpaceFinancialQueries } from "@/utils/invalidateSpaceQueries";
 
 type SpaceAccessCardProps = {
   className?: string;
@@ -132,6 +133,14 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
         queryKey: ["space-context", currentSpace?.code],
       });
       queryClient.invalidateQueries({ queryKey: ["space-context"] });
+
+      const currencySettingsChanged =
+        params.currency !== undefined ||
+        params.defaultTransactionCurrency !== undefined;
+
+      if (currencySettingsChanged) {
+        await invalidateSpaceFinancialQueries(queryClient);
+      }
 
       return updatedSpace;
     },

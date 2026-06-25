@@ -9,6 +9,8 @@ FactoryBot.define do
     total_expenses { 3000.00 }
     net_savings { 2000.00 }
     calculated_at { Time.current }
+    currency { space.currency.presence || "PHP" }
+    fx_based { true }
 
     trait :current_month do
       year { Date.current.year }

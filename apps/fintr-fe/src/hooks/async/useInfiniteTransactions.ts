@@ -3,24 +3,27 @@ import useAuthApi from "../useAuthApi";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useLocalStorage } from "../useLocalStorage";
+import { serializeFilterValues } from "@/utils/transactionFilterValues";
 
 export const useInfiniteTransactions = ({
-  appliedCategory,
+  appliedCategories,
   queryStartDate,
   queryEndDate,
   appliedMinAmount,
   appliedMaxAmount,
   searchQuery = "",
+  appliedAccountNames = [],
   enabled = null,
   manualOnly = false,
   loadMoreRef,
 }: {
-  appliedCategory: string;
+  appliedCategories: string[];
   queryStartDate: string;
   queryEndDate: string;
   appliedMinAmount: string;
   appliedMaxAmount: string;
   searchQuery?: string;
+  appliedAccountNames?: string[];
   enabled?: boolean | null;
   manualOnly?: boolean;
   loadMoreRef: React.RefObject<HTMLDivElement | null>;
@@ -46,12 +49,13 @@ export const useInfiniteTransactions = ({
     queryKey: [
       "transactions",
       spaceCode,
-      appliedCategory,
+      serializeFilterValues(appliedCategories),
       queryStartDate,
       queryEndDate,
       appliedMinAmount,
       appliedMaxAmount,
       searchQuery,
+      serializeFilterValues(appliedAccountNames),
     ],
     queryFn: ({ pageParam = 1, queryKey }) =>
       fetchTransactionsPage(api, { pageParam, queryKey }),

@@ -18,8 +18,7 @@ module Api
       def summary
         render_insight_section do |context|
           Insights::Operations::CreateSummaryStructure.new.call(
-            transactions: context[:transactions],
-            space: context[:space]
+            summary_structure_params(context)
           )
         end
       end
@@ -27,8 +26,7 @@ module Api
       def health_scores
         render_insight_section do |context|
           summary = Insights::Operations::CreateSummaryStructure.new.call(
-            transactions: context[:transactions],
-            space: context[:space]
+            summary_structure_params(context)
           )
           return summary unless summary.success?
 
@@ -79,38 +77,32 @@ module Api
 
       def narratives
         render_insight_section do |context|
-          summary = Insights::Operations::CreateSummaryStructure.new.call(
-            transactions: context[:transactions],
-            space: context[:space]
-          )
-          return summary unless summary.success?
-
-          health = Insights::Operations::CreateHealthScores.new.call(
-            summary_structure: summary.value!,
-            budget_records: context[:budget_records],
-            transactions: context[:transactions],
-            space: context[:space],
-            period_days: context[:period_days]
-          )
-          return health unless health.success?
-
           Insights::Operations::CreateNarratives.new.call(
             space: context[:space],
             transactions: context[:transactions],
             prior_transactions: context[:prior_transactions],
             budgets: context[:budgets],
             budget_records: context[:budget_records],
-            summary_structure: summary.value!,
-            health_scores: health.value!,
             is_business: context[:is_business],
             start_date: context[:start_date],
             end_date: context[:end_date],
-            period_days: context[:period_days]
+            period_days: context[:period_days],
+            category_filtered: context[:category_filtered]
           )
         end
       end
 
       private
+
+      def summary_structure_params(context)
+        {
+          space: context[:space],
+          start_date: context[:start_date],
+          end_date: context[:end_date],
+          category_filtered: context[:category_filtered],
+          transactions: context[:transactions]
+        }
+      end
 
       def render_insight_section
         context = resolve_insights_context

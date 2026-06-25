@@ -89,6 +89,8 @@ module Api
           :max_amount,
           :search_query,
           :page,
+          category_filters: [],
+          account_names: [],
         ).to_h
       end
 
@@ -155,26 +157,6 @@ module Api
           :category_name,
           :transaction_type
         ).to_h
-      end
-
-      def render_paginated_with_totals(collection, serializer:, key:, totals:)
-        data_key = key || :data
-
-        serialized_data = serializer.render_as_hash(collection)
-
-        pagination_meta = {
-          current_page: collection.current_page,
-          total_pages: collection.total_pages,
-          total_count: collection.total_count
-        }
-
-        response_data = {
-          data_key => serialized_data,
-          pagination: pagination_meta,
-          totals: totals
-        }
-
-        render_success(data: response_data)
       end
     end
   end

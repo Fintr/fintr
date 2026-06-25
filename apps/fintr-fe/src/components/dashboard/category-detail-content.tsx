@@ -241,6 +241,8 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
 
       <CategoryDetailTransactions
         categoryId={parent.id}
+        categoryName={parent.name}
+        categoryKind={kind}
         spaceCurrency={currencyCode}
         subcategories={subcategories.map((sub) => ({
           id: sub.id,

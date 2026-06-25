@@ -93,8 +93,14 @@ module Insights
           is_business: space.is_a?(Spaces::OrganizationSpace),
           start_date: params[:start_date],
           end_date: params[:end_date],
-          period_days:
+          period_days:,
+          category_filtered: category_filtered?(params:)
         )
+      end
+
+      def category_filtered?(params:)
+        params[:category_id].present? ||
+          (params[:category_name].present? && !["all", ""].include?(params[:category_name]))
       end
 
       def filtered_transactions(params:)
@@ -103,9 +109,12 @@ module Insights
           paginate: false,
           without_initial_balance: true
         )
-        Transactions::Queries::FilteredTransactions.call(
+        result = Transactions::Queries::FilteredTransactions.call(
           params: params_for_calculated_transactions
         )
+        return result unless result.success?
+
+        Success(result.value!)
       end
     end
   end

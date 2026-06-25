@@ -34,9 +34,58 @@ vi.mock("@/hooks/useDebouncedValue", () => ({
   SEARCH_DEBOUNCE_MS: 300,
 }));
 
+vi.mock("@/hooks/async/useDashboardData", () => ({
+  useDashboardData: vi.fn(),
+}));
+
+vi.mock("jotai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("jotai")>();
+  return {
+    ...actual,
+    useAtom: () => ["2026-06-01", "2026-06-30"],
+  };
+});
+
 vi.mock("@/hooks/async/useInfiniteTransactions", () => ({
   useInfiniteTransactions: (...args: unknown[]) =>
     mockUseInfiniteTransactions(...args),
+}));
+
+vi.mock("@/components/dashboard/tabs/transactions/filters", () => ({
+  TransactionFiltersSheet: ({
+    open,
+    showAccountFilter,
+    categoryDefaultValues,
+    expenseCategoryOptionsOverride,
+    incomeCategoryOptionsOverride,
+  }: {
+    open: boolean;
+    showAccountFilter?: boolean;
+    categoryDefaultValues?: string[];
+    expenseCategoryOptionsOverride?: { id: string; name: string }[];
+    incomeCategoryOptionsOverride?: { id: string; name: string }[];
+  }) =>
+    open ? (
+      <div data-testid="transaction-filters-sheet">
+        <h2>Transaction Filters</h2>
+        {showAccountFilter ? <span>Account</span> : null}
+        {categoryDefaultValues?.length ? (
+          <span data-testid="category-default">
+            {categoryDefaultValues.join(",")}
+          </span>
+        ) : null}
+        {expenseCategoryOptionsOverride?.length ? (
+          <span data-testid="scoped-expense-categories">
+            {expenseCategoryOptionsOverride[0]?.name}
+          </span>
+        ) : null}
+        {incomeCategoryOptionsOverride?.length ? (
+          <span data-testid="scoped-income-categories">
+            {incomeCategoryOptionsOverride[0]?.name}
+          </span>
+        ) : null}
+      </div>
+    ) : null,
 }));
 
 vi.mock("@/components/dashboard/tabs/transactions/list-view", () => ({
@@ -72,6 +121,8 @@ describe("CategoryDetailTransactions", () => {
     renderWithClient(
       <CategoryDetailTransactions
         categoryId="cat-1"
+        categoryName="Travel"
+        categoryKind="expense"
         spaceCurrency="PHP"
         subcategories={[{ id: "sub-1", name: "Japan 2026" }]}
       />,
@@ -86,23 +137,31 @@ describe("CategoryDetailTransactions", () => {
 
   it("queries transactions for the parent category by default", () => {
     renderWithClient(
-      <CategoryDetailTransactions categoryId="cat-1" spaceCurrency="PHP" />,
+      <CategoryDetailTransactions
+        categoryId="cat-1"
+        categoryName="Travel"
+        categoryKind="expense"
+        spaceCurrency="PHP"
+      />,
     );
 
     expect(mockUseInfiniteTransactions).toHaveBeenCalledWith(
       expect.objectContaining({
-        appliedCategory: "cat-1",
+        appliedCategories: ["cat-1"],
+        appliedAccountNames: [],
         searchQuery: "",
       }),
     );
   });
 
-  it("opens filters sheet with date range and subcategory fields", async () => {
+  it("opens the shared transaction filters sheet with scoped categories and account", async () => {
     const user = userEvent.setup();
 
     renderWithClient(
       <CategoryDetailTransactions
         categoryId="cat-1"
+        categoryName="Travel"
+        categoryKind="expense"
         spaceCurrency="PHP"
         subcategories={[
           { id: "sub-1", name: "Japan 2026" },
@@ -115,10 +174,14 @@ describe("CategoryDetailTransactions", () => {
       screen.getByRole("button", { name: /open transaction filters/i }),
     );
 
-    expect(screen.getByRole("heading", { name: "Filters" })).toBeInTheDocument();
-    expect(screen.getByText("Date range")).toBeInTheDocument();
-    expect(screen.getByText("Subcategory")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Apply" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reset filters" })).toBeInTheDocument();
+    expect(screen.getByTestId("transaction-filters-sheet")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Transaction Filters" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Account")).toBeInTheDocument();
+    expect(screen.getByTestId("category-default")).toHaveTextContent("cat-1");
+    expect(screen.getByTestId("scoped-expense-categories")).toHaveTextContent(
+      "Travel",
+    );
   });
 });

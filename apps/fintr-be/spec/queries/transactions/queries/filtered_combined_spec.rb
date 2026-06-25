@@ -168,6 +168,7 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
       # Add tests for account filtering
       it 'calls where with the correct account condition when account_name is specified' do
         params = default_params.merge(account_name: 'Test Account')
+        allow(mock_relation).to receive(:none).and_return(mock_relation)
         allow(mock_relation).to receive(:where).with(to_account_name: 'Test Account').and_return(mock_relation)
         allow(mock_relation).to receive(:or).with(mock_relation).and_return(mock_relation)
         allow(mock_relation).to receive(:where).with(from_account_name: 'Test Account').and_return(mock_relation)
@@ -480,6 +481,105 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
         params = default_params.merge(min_amount: 50, max_amount: 100, start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 1, 31))
         result = described_class.new(params: params).call.value!
         expect(result).to be_empty
+      end
+    end
+
+    context 'with category filtering (real data)' do
+      let!(:jan_transfer) do
+        create(
+          :transfer,
+          space: space1,
+          from_account: account1_s1,
+          to_account: account2_s1,
+          date: Date.new(2024, 1, 20),
+          amount_cents: 300
+        )
+      end
+
+      it 'returns only income and expense transactions for category_id filter' do
+        params = default_params.merge(
+          category_id: category1_s1.id,
+          category_name: nil,
+          start_date: Date.new(2024, 1, 1),
+          end_date: Date.new(2024, 1, 31)
+        )
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(income_s1_jan5)
+      end
+
+      it 'excludes transfers when filtering by category_name' do
+        params = default_params.merge(
+          category_name: 'Category 1',
+          start_date: Date.new(2024, 1, 1),
+          end_date: Date.new(2024, 1, 31)
+        )
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(income_s1_jan5)
+      end
+
+      context 'with subcategory filtering' do
+        let!(:expense_category) do
+          create(:category, name: 'Food', space: space1, category_type: 'expense')
+        end
+        let!(:coffee_subcategory) do
+          create(
+            :category,
+            :subcategory,
+            parent: expense_category,
+            name: 'Coffee',
+            space: space1
+          )
+        end
+        let!(:expense_with_subcategory) do
+          create(
+            :expense_transaction,
+            space: space1,
+            account: account1_s1,
+            category: expense_category,
+            subcategory: coffee_subcategory,
+            date: Date.new(2024, 1, 18),
+            amount_cents: 500
+          )
+        end
+
+        it 'returns only matching expense transactions for subcategory filter' do
+          params = default_params.merge(
+            category_id: expense_category.id,
+            subcategory_id: coffee_subcategory.id,
+            category_name: nil,
+            start_date: Date.new(2024, 1, 1),
+            end_date: Date.new(2024, 1, 31)
+          )
+          result = described_class.new(params: params).call.value!
+
+          expect(result.map(&:transactable)).to contain_exactly(expense_with_subcategory)
+        end
+      end
+
+      it 'returns only expense transactions when expense kind token is selected' do
+        params = default_params.merge(
+          category_filters: [Transactions::Queries::CategoryFilterTokens::EXPENSE_KIND_TOKEN],
+          category_name: nil,
+          start_date: Date.new(2024, 1, 1),
+          end_date: Date.new(2024, 1, 31),
+        )
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(expense_s1_jan15)
+      end
+
+      it 'returns only income transactions when income kind token is selected' do
+        params = default_params.merge(
+          category_filters: [Transactions::Queries::CategoryFilterTokens::INCOME_KIND_TOKEN],
+          category_name: nil,
+          start_date: Date.new(2024, 1, 1),
+          end_date: Date.new(2024, 1, 31),
+        )
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(income_s1_jan5)
       end
     end
   end

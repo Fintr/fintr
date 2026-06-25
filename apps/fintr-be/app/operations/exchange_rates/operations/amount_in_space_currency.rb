@@ -6,9 +6,8 @@ module ExchangeRates
     # Used so the frontend can read a single "display amount" (always in space currency).
     # For past data, uses rate at the given date (FetchRate will use cache or fetch from API and persist).
     #
-    # When +strict: true+, cross-currency rows require a successful rate; otherwise +Failure+ (for
-    # aggregations that must not mix foreign units into space-currency totals). When +strict+ is
-    # false (default), a missing rate falls back to the booked amount and native currency.
+    # When +strict: false+ (default), a missing rate for the requested date falls back to the
+    # most recent cached cross rate, then to the booked amount in native currency.
     class AmountInSpaceCurrency < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
@@ -70,6 +69,13 @@ module ExchangeRates
             message: rate_result.failure
           ) if strict
 
+          latest_converted = convert_with_latest_rate(
+            amount: params[:amount],
+            from_currency: context[:from_currency],
+            space_currency: context[:space_currency]
+          )
+          return latest_converted if latest_converted
+
           return Success(
             amount: params[:amount].to_d.round(2),
             currency: context[:from_currency]
@@ -79,6 +85,19 @@ module ExchangeRates
         rate = rate_result.value![:rate]
         converted = (params[:amount].to_d * rate).round(2)
         Success(amount: converted, currency: context[:space_currency])
+      end
+
+      def convert_with_latest_rate(amount:, from_currency:, space_currency:)
+        latest_rate = ExchangeRates::ApiExchangeRate.get_rate_latest(
+          from: from_currency,
+          to: space_currency
+        )
+        return nil unless latest_rate.present?
+
+        Success(
+          amount: (amount.to_d * latest_rate.to_d).round(2),
+          currency: space_currency
+        )
       end
     end
   end

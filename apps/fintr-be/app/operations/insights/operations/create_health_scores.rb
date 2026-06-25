@@ -371,7 +371,10 @@ module Insights
       end
 
       def format_money(amount, currency)
-        Money.from_amount(amount.to_f, currency).format
+        code = currency.presence || "PHP"
+        formatted = Money.from_amount(amount.to_f, code).format(symbol: false)
+
+        "#{code} #{formatted}"
       end
     end
   end

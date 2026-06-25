@@ -2,6 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 import { CategoryFilterComboBox } from "@/components/ui/category-filter-combobox";
+import { AccountFilterComboBox } from "@/components/ui/account-filter-combobox";
 import { DateFilterFields } from "@/components/ui/date-filter-fields";
 import { FilterSheet } from "@/components/ui/filter-sheet";
 import { Input } from "@/components/ui/input";
@@ -13,9 +14,11 @@ import {
 } from "@/utils/dateUtils";
 import { useAtomValue } from "jotai";
 import {
+  accountOptionsAtom,
   expenseCategoryOptionsAtom,
   incomeCategoryOptionsAtom,
 } from "@/atoms/dashboardAtoms";
+import { CategoryTreeOption } from "@/types/categoryTreeTypes";
 import {
   dateFilterStartDateAtom,
   dateFilterEndDateAtom,
@@ -30,6 +33,11 @@ import {
   matchPresetFromDateRange,
 } from "@/utils/dateFilterPresets";
 import { resolveQueryDateRange } from "@/utils/resolveQueryDateRange";
+import { normalizeFilterValues } from "@/utils/transactionFilterValues";
+import {
+  FILTER_CLEAR_ALL_MIN_COUNT,
+  FilterClearAllButton,
+} from "@/components/ui/filter-selection-pills";
 
 export interface FilterTypes {
   selectedMonth: string;
@@ -38,13 +46,14 @@ export interface FilterTypes {
   startYear: string;
   endMonth: string;
   endYear: string;
-  selectedCategory: string;
-  appliedCategory: string;
+  selectedCategories: string[];
+  appliedCategories: string[];
   queryStartDate: string;
   queryEndDate: string;
   appliedMinAmount: string;
   appliedMaxAmount: string;
   searchQuery: string;
+  appliedAccounts: string[];
 }
 
 interface TransactionFiltersSheetProps {
@@ -52,6 +61,14 @@ interface TransactionFiltersSheetProps {
   onOpenChange: (open: boolean) => void;
   applyFilters: (a: FilterTypes) => void;
   appliedFilters: FilterTypes;
+  title?: string;
+  expenseCategoryOptionsOverride?: CategoryTreeOption[];
+  incomeCategoryOptionsOverride?: CategoryTreeOption[];
+  showAccountFilter?: boolean;
+  categoryDefaultValues?: string[];
+  useCategoryDefaultsWhenEmpty?: boolean;
+  /** When set, Reset restores this predefined period instead of the current month. */
+  defaultPresetId?: DateFilterPresetId;
 }
 
 export function TransactionFiltersSheet({
@@ -59,9 +76,21 @@ export function TransactionFiltersSheet({
   onOpenChange,
   applyFilters,
   appliedFilters,
+  title = "Transaction Filters",
+  expenseCategoryOptionsOverride,
+  incomeCategoryOptionsOverride,
+  showAccountFilter = false,
+  categoryDefaultValues = [],
+  useCategoryDefaultsWhenEmpty = false,
+  defaultPresetId,
 }: TransactionFiltersSheetProps) {
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
+  const expenseCategoryOptionsFromAtom = useAtomValue(expenseCategoryOptionsAtom);
+  const incomeCategoryOptionsFromAtom = useAtomValue(incomeCategoryOptionsAtom);
+  const accountOptions = useAtomValue(accountOptionsAtom);
+  const expenseCategoryOptions =
+    expenseCategoryOptionsOverride ?? expenseCategoryOptionsFromAtom;
+  const incomeCategoryOptions =
+    incomeCategoryOptionsOverride ?? incomeCategoryOptionsFromAtom;
   const currentYear = new Date().getFullYear().toString();
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
@@ -113,7 +142,8 @@ export function TransactionFiltersSheet({
     }
   }, [filterType, startDate, endDate]);
 
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [appliedMinAmount, setAppliedMinAmount] = useState("");
   const [appliedMaxAmount, setAppliedMaxAmount] = useState("");
 
@@ -163,11 +193,8 @@ export function TransactionFiltersSheet({
         endMonth: appliedFilters.endMonth,
         endYear: appliedFilters.endYear,
       });
-      setSelectedCategory(
-        appliedFilters.selectedCategory === "all"
-          ? ""
-          : appliedFilters.selectedCategory,
-      );
+      setSelectedCategories(normalizeFilterValues(appliedFilters.selectedCategories));
+      setSelectedAccounts(normalizeFilterValues(appliedFilters.appliedAccounts));
       setAppliedMinAmount(appliedFilters.appliedMinAmount);
       setAppliedMaxAmount(appliedFilters.appliedMaxAmount);
 
@@ -262,14 +289,20 @@ export function TransactionFiltersSheet({
       dateRange,
     });
 
-    const categoryValue = selectedCategory || "all";
+    const resolvedCategoryValues =
+      useCategoryDefaultsWhenEmpty && selectedCategories.length === 0
+        ? categoryDefaultValues
+        : selectedCategories;
+
+    const categoryValues = normalizeFilterValues(resolvedCategoryValues);
 
     return {
       ...filters,
       queryStartDate,
       queryEndDate,
-      selectedCategory: categoryValue,
-      appliedCategory: categoryValue,
+      selectedCategories: categoryValues,
+      appliedCategories: categoryValues,
+      appliedAccounts: normalizeFilterValues(selectedAccounts),
       appliedMinAmount,
       appliedMaxAmount,
       searchQuery: appliedFilters.searchQuery,
@@ -285,6 +318,49 @@ export function TransactionFiltersSheet({
   };
 
   const handleReset = () => {
+    if (defaultPresetId) {
+      const { startDate: presetStart, endDate: presetEnd } =
+        getPresetDateRange(defaultPresetId);
+
+      setStartDate(presetStart);
+      setEndDate(presetEnd);
+      setFilterTypeSelector("predefined");
+      setSelectedPreset(defaultPresetId);
+      setDateRange({
+        from: new Date(presetStart),
+        to: new Date(presetEnd),
+      });
+      setSelectedCategories([]);
+      setSelectedAccounts([]);
+      setAppliedMinAmount("");
+      setAppliedMaxAmount("");
+
+      const resetCategories = normalizeFilterValues(
+        useCategoryDefaultsWhenEmpty ? categoryDefaultValues : [],
+      );
+
+      const resetFiltersData: FilterTypes = {
+        selectedMonth: currentMonth,
+        selectedYear: currentYear,
+        startMonth: currentMonth,
+        startYear: currentYear,
+        endMonth: currentMonth,
+        endYear: currentYear,
+        selectedCategories: resetCategories,
+        appliedCategories: resetCategories,
+        queryStartDate: presetStart,
+        queryEndDate: presetEnd,
+        appliedMinAmount: "",
+        appliedMaxAmount: "",
+        appliedAccounts: [],
+        searchQuery: appliedFilters.searchQuery,
+      };
+
+      applyFilters(resetFiltersData);
+      onOpenChange(false);
+      return;
+    }
+
     const { firstDay, lastDay } = getCurrentMonthDates();
 
     setStartDate(firstDay);
@@ -295,9 +371,14 @@ export function TransactionFiltersSheet({
       from: new Date(firstDay),
       to: new Date(lastDay),
     });
-    setSelectedCategory("");
+    setSelectedCategories([]);
+    setSelectedAccounts([]);
     setAppliedMinAmount("");
     setAppliedMaxAmount("");
+
+    const resetCategories = normalizeFilterValues(
+      useCategoryDefaultsWhenEmpty ? categoryDefaultValues : [],
+    );
 
     const resetFiltersData: FilterTypes = {
       selectedMonth: currentMonth,
@@ -306,12 +387,13 @@ export function TransactionFiltersSheet({
       startYear: currentYear,
       endMonth: currentMonth,
       endYear: currentYear,
-      selectedCategory: "all",
-      appliedCategory: "all",
+      selectedCategories: resetCategories,
+      appliedCategories: resetCategories,
       queryStartDate: firstDay,
       queryEndDate: lastDay,
       appliedMinAmount: "",
       appliedMaxAmount: "",
+      appliedAccounts: [],
       searchQuery: appliedFilters.searchQuery,
     };
 
@@ -323,7 +405,7 @@ export function TransactionFiltersSheet({
     <FilterSheet
       open={open}
       onOpenChange={onOpenChange}
-      title="Transaction Filters"
+      title={title}
       onReset={handleReset}
       onApply={handleApply}
     >
@@ -343,17 +425,42 @@ export function TransactionFiltersSheet({
       />
 
       <div className="space-y-2">
-        <Label>Categories</Label>
+        <div className="flex items-center justify-between gap-3">
+          <Label>Categories</Label>
+          {selectedCategories.length >= FILTER_CLEAR_ALL_MIN_COUNT ? (
+            <FilterClearAllButton onClick={() => setSelectedCategories([])} />
+          ) : null}
+        </div>
         <CategoryFilterComboBox
           expenseOptions={expenseCategoryOptions}
           incomeOptions={incomeCategoryOptions}
           placeholder="Select categories"
           className="w-full"
           showAllOnFocus={true}
-          value={selectedCategory}
-          onChange={setSelectedCategory}
+          multiple={true}
+          values={selectedCategories}
+          onValuesChange={setSelectedCategories}
         />
       </div>
+
+      {showAccountFilter ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label>Accounts</Label>
+            {selectedAccounts.length >= FILTER_CLEAR_ALL_MIN_COUNT ? (
+              <FilterClearAllButton onClick={() => setSelectedAccounts([])} />
+            ) : null}
+          </div>
+          <AccountFilterComboBox
+            options={accountOptions}
+            placeholder="Select accounts"
+            className="w-full"
+            showAllOnFocus={true}
+            values={selectedAccounts}
+            onValuesChange={setSelectedAccounts}
+          />
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <Label>Amount Range</Label>

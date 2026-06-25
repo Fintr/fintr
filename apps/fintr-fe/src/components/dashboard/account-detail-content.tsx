@@ -6,28 +6,14 @@ import { useRouter } from "next/navigation";
 import {
   SquarePen,
   Trash2,
-  CalendarIcon,
   Filter,
   ChevronLeft,
   Eye,
   EyeOff,
 } from "lucide-react";
-import { format } from "date-fns";
-import type { DateRange } from "@daypicker/react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SearchField } from "@/components/ui/search-field";
-import { Label } from "@/components/ui/label";
-import { CategoryFilterComboBox } from "@/components/ui/category-filter-combobox";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import {
   filterActiveBadgeClassName,
   filterTriggerIconButtonClassName,
@@ -57,16 +43,18 @@ import {
   ACCOUNT_DETAIL_ACTIVITIES_KEY,
 } from "@/hooks/async/useAccountDetailActivities";
 import { activityRecordId } from "@/utils/activityDisplay";
-import { getWideAccountHistoryDateRange } from "@/utils/dateUtils";
-import {
-  expenseCategoryOptionsAtom,
-  incomeCategoryOptionsAtom,
-} from "@/atoms/dashboardAtoms";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import AccountEditSheet from "@/components/dashboard/account-edit-sheet";
 import AccountDeleteDialog from "@/components/dashboard/account-delete-dialog";
-import { useAtomValue } from "jotai";
+import {
+  FilterTypes,
+  TransactionFiltersSheet,
+} from "@/components/dashboard/tabs/transactions/filters";
 import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
+import {
+  hasAppliedAccountFilters,
+  hasAppliedCategoryFilters,
+} from "@/utils/transactionFilterValues";
 import { ListView } from "@/components/dashboard/tabs/transactions/list-view";
 import { TransactionTotalsDisplay } from "@/components/dashboard/tabs/transactions/transaction-totals";
 import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
@@ -77,6 +65,8 @@ import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { getCurrentRate } from "@/services/exchangeRates/queries";
+import { getPresetDateRange } from "@/utils/dateFilterPresets";
 import { toast } from "sonner";
 
 type AccountDetailContentProps = {
@@ -84,6 +74,19 @@ type AccountDetailContentProps = {
 };
 
 const parseBalance = (balance: string): number => parseFloat(balance) || 0;
+
+const parseOptionalAmount = (raw: string): number | undefined => {
+  if (raw.trim() === "") {
+    return undefined;
+  }
+
+  const amount = Number(raw.trim());
+  if (Number.isNaN(amount)) {
+    return undefined;
+  }
+
+  return amount;
+};
 
 const flattenPages = (
   data: { pages: { transactions: IndexTransaction[] }[] } | undefined,
@@ -312,32 +315,33 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
     useState<IndexActivity | null>(null);
   const [showBookedCurrencies, setShowBookedCurrencies] = useState(false);
 
-  const [filterBaseline, setFilterBaseline] = useState(() =>
-    getWideAccountHistoryDateRange(),
-  );
-  const [appliedStart, setAppliedStart] = useState(
-    () => filterBaseline.startDate,
-  );
-  const [appliedEnd, setAppliedEnd] = useState(() => filterBaseline.endDate);
-  const [draftStart, setDraftStart] = useState(() => filterBaseline.startDate);
-  const [draftEnd, setDraftEnd] = useState(() => filterBaseline.endDate);
-  const [draftCategory, setDraftCategory] = useState("");
-  const [appliedCategory, setAppliedCategory] = useState("");
-  const [draftMin, setDraftMin] = useState("");
-  const [draftMax, setDraftMax] = useState("");
-  const [appliedMin, setAppliedMin] = useState(0);
-  const [appliedMax, setAppliedMax] = useState(999999);
-  const [appliedSearch, setAppliedSearch] = useState("");
+  const currentMonth = new Date()
+    .toLocaleString("default", { month: "long" })
+    .toLowerCase();
+  const currentYear = new Date().getFullYear().toString();
+
+  const [appliedFilters, setAppliedFilters] = useState<FilterTypes>(() => {
+    const { startDate, endDate } = getPresetDateRange("all_time");
+
+    return {
+      selectedMonth: currentMonth,
+      selectedYear: currentYear,
+      startMonth: currentMonth,
+      startYear: currentYear,
+      endMonth: currentMonth,
+      endYear: currentYear,
+      selectedCategories: [],
+      appliedCategories: [],
+      queryStartDate: startDate,
+      queryEndDate: endDate,
+      appliedMinAmount: "",
+      appliedMaxAmount: "",
+      searchQuery: "",
+      appliedAccounts: [],
+    };
+  });
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
-
-  const [rangeOpen, setRangeOpen] = useState(false);
-  const [rangeSelected, setRangeSelected] = useState<DateRange | undefined>(
-    () => ({
-      from: new Date(filterBaseline.startDate),
-      to: new Date(filterBaseline.endDate),
-    }),
-  );
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -345,8 +349,6 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
 
   const { accounts, isLoading: accountsLoading } = useAccounts();
   useDashboardData();
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
 
   const account = useMemo(
     () => accounts.find((a) => a.id === accountId) ?? null,
@@ -356,59 +358,60 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   const accountName = account?.name ?? "";
 
   useEffect(() => {
-    setAppliedSearch(debouncedSearch.trim());
+    setAppliedFilters((previous) => {
+      const nextSearchQuery = debouncedSearch.trim();
+      if (previous.searchQuery === nextSearchQuery) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        searchQuery: nextSearchQuery,
+      };
+    });
   }, [debouncedSearch]);
 
-  const openFiltersSheet = () => {
-    setDraftStart(appliedStart);
-    setDraftEnd(appliedEnd);
-    setDraftCategory(appliedCategory);
-    setDraftMin(appliedMin === 0 ? "" : String(appliedMin));
-    setDraftMax(appliedMax === 999999 ? "" : String(appliedMax));
-    setRangeSelected({
-      from: new Date(appliedStart),
-      to: new Date(appliedEnd),
-    });
-    setFiltersOpen(true);
+  const applyFilters = (filters: FilterTypes) => {
+    setAppliedFilters(filters);
+    setSearchInput(filters.searchQuery);
   };
 
   const hasActiveFilters = useMemo(() => {
+    const allTimeRange = getPresetDateRange("all_time");
+    const isDefaultDateRange =
+      appliedFilters.queryStartDate === allTimeRange.startDate
+      && appliedFilters.queryEndDate === allTimeRange.endDate;
+
     return (
-      appliedStart !== filterBaseline.startDate ||
-      appliedEnd !== filterBaseline.endDate ||
-      appliedCategory !== "" ||
-      appliedMin !== 0 ||
-      appliedMax !== 999999 ||
-      appliedSearch.trim() !== ""
+      !isDefaultDateRange
+      || hasAppliedCategoryFilters(appliedFilters.appliedCategories)
+      || appliedFilters.appliedMinAmount !== ""
+      || appliedFilters.appliedMaxAmount !== ""
+      || appliedFilters.searchQuery !== ""
+      || hasAppliedAccountFilters(appliedFilters.appliedAccounts)
     );
-  }, [
-    appliedCategory,
-    appliedEnd,
-    appliedMax,
-    appliedMin,
-    appliedSearch,
-    appliedStart,
-    filterBaseline.endDate,
-    filterBaseline.startDate,
-  ]);
+  }, [appliedFilters]);
+
+  const minAmount = parseOptionalAmount(appliedFilters.appliedMinAmount);
+  const maxAmount = parseOptionalAmount(appliedFilters.appliedMaxAmount);
 
   const queryEnabled = Boolean(account);
 
   const mainQuery = useAccountDetailActivities({
     accountId: account?.id ?? "",
-    startDate: appliedStart,
-    endDate: appliedEnd,
-    categoryFilter: appliedCategory,
-    searchQuery: appliedSearch,
-    ...(appliedMin !== 0 ? { minAmount: appliedMin } : {}),
-    ...(appliedMax !== 999999 ? { maxAmount: appliedMax } : {}),
+    startDate: appliedFilters.queryStartDate,
+    endDate: appliedFilters.queryEndDate,
+    categoryFilters: appliedFilters.appliedCategories,
+    searchQuery: appliedFilters.searchQuery,
+    ...(minAmount !== undefined ? { minAmount } : {}),
+    ...(maxAmount !== undefined ? { maxAmount } : {}),
     enabled: queryEnabled && !!account?.id,
   });
 
   const adjustmentQuery = useAccountAdjustmentHistory({
     accountName,
-    startDate: appliedStart,
-    endDate: appliedEnd,
+    startDate: appliedFilters.queryStartDate,
+    endDate: appliedFilters.queryEndDate,
     enabled: queryEnabled,
   });
 
@@ -666,65 +669,34 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
     adjustmentQuery.isFetchingNextPage,
   ]);
 
-  const handleApplyFilters = () => {
-    setAppliedStart(draftStart);
-    setAppliedEnd(draftEnd);
-    setAppliedCategory(draftCategory);
-    const minParsed = draftMin.trim() === "" ? 0 : Number(draftMin);
-    const maxParsed = draftMax.trim() === "" ? 999999 : Number(draftMax);
-    if (
-      !Number.isFinite(minParsed) ||
-      !Number.isFinite(maxParsed) ||
-      minParsed > maxParsed
-    ) {
-      setAppliedMin(0);
-      setAppliedMax(999999);
-    } else {
-      setAppliedMin(minParsed);
-      setAppliedMax(maxParsed);
-    }
-    setFiltersOpen(false);
-  };
-
-  const handleResetFilters = () => {
-    const next = getWideAccountHistoryDateRange();
-    setFilterBaseline(next);
-    setAppliedStart(next.startDate);
-    setAppliedEnd(next.endDate);
-    setDraftStart(next.startDate);
-    setDraftEnd(next.endDate);
-    setAppliedCategory("");
-    setDraftCategory("");
-    setAppliedMin(0);
-    setAppliedMax(999999);
-    setDraftMin("");
-    setDraftMax("");
-    setSearchInput("");
-    setAppliedSearch("");
-    setRangeSelected({
-      from: new Date(next.startDate),
-      to: new Date(next.endDate),
-    });
-    setFiltersOpen(false);
-  };
-
-  const handleRangeSelect = (range: DateRange | undefined) => {
-    setRangeSelected(range);
-    if (range?.from) {
-      setDraftStart(format(range.from, "yyyy-MM-dd"));
-    }
-    if (range?.to) {
-      setDraftEnd(format(range.to, "yyyy-MM-dd"));
-    } else if (range?.from && !range.to) {
-      setDraftEnd(format(range.from, "yyyy-MM-dd"));
-    }
-    if (range?.from && range?.to) {
-      setRangeOpen(false);
-    }
-  };
-
   const currencyCode = account?.balanceCurrency ?? "PHP";
-  const balanceAmount = parseBalance(account?.balance ?? "0");
+  const accountBalance = parseBalance(account?.balance ?? "0");
+  const [balanceRateToSpace, setBalanceRateToSpace] = useState(1);
+  const [balanceRateLoading, setBalanceRateLoading] = useState(false);
+
+  const needsBalanceConversion = useMemo(
+    () =>
+      currencyCode.trim().toUpperCase() !== spaceCurrency.trim().toUpperCase(),
+    [currencyCode, spaceCurrency],
+  );
+
+  useEffect(() => {
+    if (!api || !needsBalanceConversion) {
+      setBalanceRateToSpace(1);
+      setBalanceRateLoading(false);
+      return;
+    }
+
+    setBalanceRateLoading(true);
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    getCurrentRate(api, currencyCode, spaceCurrency, todayStr)
+      .then((data) => setBalanceRateToSpace(Number(data.rate)))
+      .catch(() => setBalanceRateToSpace(1))
+      .finally(() => setBalanceRateLoading(false));
+  }, [api, currencyCode, spaceCurrency, needsBalanceConversion]);
+
+  const balanceInSpaceCurrency = accountBalance * balanceRateToSpace;
 
   const renderFiltersTrigger = (wrapperClassName: string) => (
     <div className={cn("relative", wrapperClassName)}>
@@ -733,7 +705,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         variant="outline"
         size="icon"
         className={filterTriggerIconButtonClassName}
-        onClick={openFiltersSheet}
+        onClick={() => setFiltersOpen(true)}
         aria-label="Open transaction filters"
       >
         <Filter className="h-4 w-4" aria-hidden />
@@ -786,14 +758,24 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         <div className="text-sm font-normal text-muted-foreground">
           Total Balance
         </div>
-        <AnimatedCurrency
-          amount={balanceAmount}
-          currency={currencyCode}
-          className={cn(
-            "mt-1 block text-2xl font-semibold tracking-tight md:text-3xl",
-            getNumberColor(balanceAmount),
-          )}
-        />
+        {needsBalanceConversion && balanceRateLoading ? (
+          <span
+            className={cn(
+              "mt-1 block text-2xl font-semibold tracking-tight md:text-3xl text-muted-foreground",
+            )}
+          >
+            …
+          </span>
+        ) : (
+          <AnimatedCurrency
+            amount={balanceInSpaceCurrency}
+            currency={spaceCurrency}
+            className={cn(
+              "mt-1 block text-2xl font-semibold tracking-tight md:text-3xl",
+              getNumberColor(balanceInSpaceCurrency),
+            )}
+          />
+        )}
       </div>
 
       <div className="flex items-center justify-center gap-2">
@@ -819,98 +801,13 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         </Button>
       </div>
 
-      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <SheetContent
-          side="right"
-          className="w-full sm:max-w-lg flex flex-col overflow-hidden p-0 min-h-0 max-h-[100dvh]"
-          swipeToClose
-          onSwipeToClose={() => setFiltersOpen(false)}
-        >
-          <div className="p-6 pb-4 flex flex-col flex-1 min-h-0 min-w-0">
-            <SheetHeader className="text-left shrink-0">
-              <SheetTitle className="text-2xl font-bold text-primary">
-                Filters
-              </SheetTitle>
-            </SheetHeader>
-            <div className="mt-6 flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain px-2 py-2 -mx-2 space-y-4">
-              <div className="space-y-2">
-                <Label>Date range</Label>
-                <DateRangePicker
-                  open={rangeOpen}
-                  onOpenChange={setRangeOpen}
-                  selected={rangeSelected}
-                  onSelect={handleRangeSelect}
-                  trigger={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {draftStart && draftEnd
-                        ? `${format(new Date(draftStart), "MMM d, yyyy")} – ${format(new Date(draftEnd), "MMM d, yyyy")}`
-                        : "Pick a range"}
-                    </Button>
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="acct-filter-category">Categories</Label>
-                <CategoryFilterComboBox
-                  expenseOptions={expenseCategoryOptions}
-                  incomeOptions={incomeCategoryOptions}
-                  placeholder="Select categories"
-                  className="w-full"
-                  showAllOnFocus={true}
-                  value={draftCategory}
-                  onChange={setDraftCategory}
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="acct-filter-min">Min amount</Label>
-                  <Input
-                    id="acct-filter-min"
-                    type="number"
-                    step="0.01"
-                    placeholder="0"
-                    value={draftMin}
-                    onChange={(e) => setDraftMin(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="acct-filter-max">Max amount</Label>
-                  <Input
-                    id="acct-filter-max"
-                    type="number"
-                    step="0.01"
-                    placeholder="No max"
-                    value={draftMax}
-                    onChange={(e) => setDraftMax(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          <SheetFooter className="border-t bg-background p-4 sm:p-6 gap-2 mt-auto shrink-0 flex-col sm:flex-row sm:justify-between">
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full sm:w-auto order-2 sm:order-1"
-              onClick={handleResetFilters}
-            >
-              Reset filters
-            </Button>
-            <Button
-              type="button"
-              className="w-full sm:w-auto order-1 sm:order-2"
-              onClick={handleApplyFilters}
-            >
-              Apply
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <TransactionFiltersSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        applyFilters={applyFilters}
+        appliedFilters={appliedFilters}
+        defaultPresetId="all_time"
+      />
 
       <div>
         <h2 className="text-lg font-semibold mb-3">Activity</h2>
@@ -920,12 +817,6 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
               placeholder="Search activity"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  setAppliedSearch(searchInput.trim());
-                }
-              }}
-              onBlur={() => setAppliedSearch(searchInput.trim())}
             />
             {renderFiltersTrigger("shrink-0")}
           </div>
@@ -963,7 +854,8 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         <TransactionTotalsDisplay
           totals={mainQuery.data?.pages?.[0]?.totals ?? null}
           isLoading={queryEnabled && mainQuery.isFetching && !mainQuery.data}
-          totalsCurrency={spaceCurrency}
+          spaceCurrency={spaceCurrency}
+          variant="summary"
         />
 
         <ListView

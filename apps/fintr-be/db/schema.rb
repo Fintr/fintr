@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_18_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -508,6 +508,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_180000) do
   create_table "monthly_financial_summaries", force: :cascade do |t|
     t.datetime "calculated_at", null: false
     t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.boolean "fx_based", default: false, null: false
     t.integer "month", null: false
     t.decimal "net_savings", precision: 15, scale: 2, default: "0.0", null: false
     t.uuid "space_id", null: false
