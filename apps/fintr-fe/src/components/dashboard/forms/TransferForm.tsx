@@ -212,6 +212,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
       if (rawConv) {
         setConversionSnapshot({
           originalCurrency: rawConv.original_currency ?? rawConv.originalCurrency,
+          targetCurrency: toAccountCurrency,
           exchangeRate: Number(rawConv.exchange_rate ?? rawConv.exchangeRate),
           exchangeRateSource: (rawConv.source ?? "manual") as "auto" | "manual" | "recent",
         });

@@ -51,11 +51,14 @@ import {
   lockedCategoryRefForIncomeEdit,
 } from "@/utils/lockedSystemCategories";
 import {
+  conversionSnapshotMatchesTarget,
+  createTransactionNeedsConversion,
   resolveAmountPickerTargetCurrency,
   shouldPreviewConversionOnlyInEdit,
   shouldShowAmountFxInEdit,
   shouldUseStoredConversionForPreview,
   transactionHadStoredConversion,
+  transactionNeedsConversion,
 } from "@/utils/amountPickerTargetCurrency";
 
 // Income form schema using Zod
@@ -275,7 +278,17 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       const exchangeRate = Number((rawConv as any)?.exchange_rate ?? (rawConv as any)?.exchangeRate ?? 1);
       const source = (rawConv as any)?.source ?? "manual";
       const exchangeRateSource = (source === "auto" || source === "recent" ? source : "manual") as "auto" | "manual" | "recent";
-      return { originalCurrency, exchangeRate, exchangeRateSource };
+      const targetCurrency = String(
+        (rawConv as any)?.converted_currency ??
+          (rawConv as any)?.convertedCurrency ??
+          "",
+      ).trim();
+      return {
+        originalCurrency,
+        targetCurrency: targetCurrency || originalCurrency,
+        exchangeRate,
+        exchangeRateSource,
+      };
     });
 
   const amountPickerTargetCurrency = useMemo(
@@ -342,6 +355,16 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     targetCurrency: amountPickerTargetCurrency,
     effectiveSpaceCurrency,
   });
+
+  useEffect(() => {
+    if (
+      conversionSnapshot &&
+      amountPickerTargetCurrency &&
+      !conversionSnapshotMatchesTarget(conversionSnapshot, amountPickerTargetCurrency)
+    ) {
+      setConversionSnapshot(null);
+    }
+  }, [amountPickerTargetCurrency, conversionSnapshot]);
 
   const defaultCurrencySetRef = useRef(false);
   useEffect(() => {
@@ -460,9 +483,18 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       setScheduleType(getValidIncomeScheduleType(initialData.scheduleType));
 
       if (useConversion) {
+        const editAccount = accountOptions.find(
+          (a) => a.value === initialData.accountName,
+        );
         setAmountCurrency(displayCurrency);
         setConversionSnapshot({
           originalCurrency: displayCurrency,
+          targetCurrency: String(
+            (rawConv as any)?.converted_currency ??
+              (rawConv as any)?.convertedCurrency ??
+              editAccount?.currency ??
+              effectiveSpaceCurrency,
+          ),
           exchangeRate: Number((rawConv as any)?.exchange_rate ?? (rawConv as any)?.exchangeRate ?? 1),
           exchangeRateSource: ((rawConv as any)?.source ?? "manual") as "auto" | "manual" | "recent",
         });
@@ -589,6 +621,35 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     
     if (!date) {
       toast.error("Please select a date");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (
+      !isEditMode &&
+      createTransactionNeedsConversion({
+        amountCurrency,
+        targetCurrency: amountPickerTargetCurrency,
+        isEditMode,
+      }) &&
+      !conversionSnapshot
+    ) {
+      toast.error("Exchange rate is still loading. Please wait a moment and try again.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (
+      transactionNeedsConversion({
+        amountCurrency,
+        targetCurrency: amountPickerTargetCurrency,
+      }) &&
+      conversionSnapshot &&
+      !conversionSnapshotMatchesTarget(conversionSnapshot, amountPickerTargetCurrency)
+    ) {
+      toast.error(
+        "Exchange rate does not match the selected account. Wait for the rate to refresh or re-open the Rates picker.",
+      );
       setIsSubmitting(false);
       return;
     }

@@ -1,3 +1,4 @@
+import { formatCurrency } from "@/lib/utils";
 import type { IndexTransaction } from "@/types/transactionTypes";
 
 type IndexRowMoneyFields = Pick<
@@ -27,4 +28,24 @@ export function indexTransactionDisplayMoney(
     amount: transaction.amount,
     currency: transaction.amountCurrency ?? spaceCurrency,
   };
+}
+
+/**
+ * List / sheet row amount string. Booked (native) currency shows ledger magnitude only —
+ * expense vs income is conveyed by row styling, not a type-derived minus prefix.
+ */
+export function formatIndexTransactionListAmount(
+  amount: number,
+  currency: string,
+  showBookedCurrencies: boolean,
+): string {
+  if (showBookedCurrencies) {
+    return formatCurrency(Math.abs(amount), currency);
+  }
+
+  if (amount < 0) {
+    return `-${formatCurrency(Math.abs(amount), currency)}`;
+  }
+
+  return formatCurrency(amount, currency);
 }

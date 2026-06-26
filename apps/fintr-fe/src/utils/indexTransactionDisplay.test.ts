@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { indexTransactionDisplayMoney } from "./indexTransactionDisplay";
+import {
+  formatIndexTransactionListAmount,
+  indexTransactionDisplayMoney,
+} from "./indexTransactionDisplay";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
@@ -49,5 +52,32 @@ describe("indexTransactionDisplayMoney", () => {
     const result = indexTransactionDisplayMoney(rowMissingBooked, "PHP", true);
 
     expect(result).toEqual({ amount: 25_000, currency: "PHP" });
+  });
+});
+
+describe("formatIndexTransactionListAmount", () => {
+  it("shows booked currency magnitude without a minus for type-signed expenses", () => {
+    const formatted = formatIndexTransactionListAmount(-100, "GBP", true);
+
+    expect(formatted).toBe("£100.00");
+    expect(formatted.startsWith("-")).toBe(false);
+  });
+
+  it("shows booked currency magnitude for positive booked amounts", () => {
+    expect(formatIndexTransactionListAmount(100, "GBP", true)).toBe("£100.00");
+  });
+
+  it("keeps an explicit minus for negative space-normalized amounts", () => {
+    const formatted = formatIndexTransactionListAmount(-1000, "PHP", false);
+
+    expect(formatted.startsWith("-")).toBe(true);
+    expect(formatted).toContain("1,000.00");
+  });
+
+  it("does not prefix plus for positive space-normalized amounts", () => {
+    const formatted = formatIndexTransactionListAmount(500, "USD", false);
+
+    expect(formatted.startsWith("+")).toBe(false);
+    expect(formatted).toBe("$500.00");
   });
 });

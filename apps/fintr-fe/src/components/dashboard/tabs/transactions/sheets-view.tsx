@@ -18,7 +18,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
-import { indexTransactionDisplayMoney } from "@/utils/indexTransactionDisplay";
+import {
+  formatIndexTransactionListAmount,
+  indexTransactionDisplayMoney,
+} from "@/utils/indexTransactionDisplay";
 import { formatTransactionRowDate } from "@/utils/dateUtils";
 
 interface SheetsViewProps {
@@ -503,15 +506,11 @@ export function SheetsView({
                             >
                               <div className="flex items-center gap-2">
                                 <span>
-                                  {rowAmount < 0
-                                    ? `-${formatCurrency(
-                                        Math.abs(rowAmount),
-                                        rowCurrencyCode,
-                                      )}`
-                                    : formatCurrency(
-                                        rowAmount,
-                                        rowCurrencyCode,
-                                      )}
+                                  {formatIndexTransactionListAmount(
+                                    rowAmount,
+                                    rowCurrencyCode,
+                                    showBookedCurrencies,
+                                  )}
                                 </span>
                                 {/* Image icon - only show when hasImage is true */}
                                 {transaction.hasImage && (

@@ -24,7 +24,10 @@ import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import { toast } from "sonner";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { cn } from "@/lib/utils";
-import { indexTransactionDisplayMoney } from "@/utils/indexTransactionDisplay";
+import {
+  formatIndexTransactionListAmount,
+  indexTransactionDisplayMoney,
+} from "@/utils/indexTransactionDisplay";
 import {
   formatTransactionDayDividerDate,
   formatTransactionRowDate,
@@ -351,15 +354,11 @@ export function ListView({
                                 : "text-red-900 dark:text-red-700"
                             }`}
                           >
-                              {rowAmount < 0
-                                ? `-${formatCurrency(
-                                    Math.abs(rowAmount),
-                                    rowCurrencyCode,
-                                  )}`
-                                : formatCurrency(
-                                    rowAmount,
-                                    rowCurrencyCode,
-                                  )}
+                              {formatIndexTransactionListAmount(
+                                rowAmount,
+                                rowCurrencyCode,
+                                showBookedCurrencies,
+                              )}
                           </div>
                           <span
                                   className={`px-1 md:px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 gap-1 ${

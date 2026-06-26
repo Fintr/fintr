@@ -13,12 +13,16 @@ export function transactionHadStoredConversion(
   );
 }
 
+/**
+ * Ledger currency for FX fetch, preview, and API conversion metadata.
+ * Always targets the account when the amount currency differs from it — the backend
+ * books in account currency, not space currency.
+ */
 export function resolveAmountPickerTargetCurrency({
   amountCurrency,
   accountLedgerCurrency,
   editBookedCurrency,
   effectiveSpaceCurrency,
-  isEditMode = false,
 }: {
   amountCurrency: string;
   accountLedgerCurrency: string | null;
@@ -26,13 +30,13 @@ export function resolveAmountPickerTargetCurrency({
   effectiveSpaceCurrency: string;
   isEditMode?: boolean;
 }): string | null {
-  if (isEditMode && amountCurrency !== effectiveSpaceCurrency) {
-    return effectiveSpaceCurrency;
-  }
-
   const accountCurrency = accountLedgerCurrency ?? editBookedCurrency;
 
-  if (accountCurrency != null && amountCurrency !== accountCurrency) {
+  if (accountCurrency != null) {
+    if (amountCurrency === accountCurrency) {
+      return null;
+    }
+
     return accountCurrency;
   }
 
@@ -40,7 +44,18 @@ export function resolveAmountPickerTargetCurrency({
     return effectiveSpaceCurrency;
   }
 
-  return accountCurrency;
+  return null;
+}
+
+export function conversionSnapshotMatchesTarget(
+  snapshot: ConversionSnapshot | null,
+  targetCurrency: string | null,
+): boolean {
+  if (!snapshot) return true;
+  if (!targetCurrency) return true;
+  if (snapshot.targetCurrency == null) return false;
+
+  return snapshot.targetCurrency === targetCurrency;
 }
 
 export function shouldUseStoredConversionForPreview({
@@ -59,7 +74,14 @@ export function shouldUseStoredConversionForPreview({
   effectiveSpaceCurrency: string;
 }): boolean {
   if (!conversionSnapshot) return false;
-  if (!isEditMode || !hadStoredConversion) return true;
+
+  if (
+    targetCurrency != null &&
+    (conversionSnapshot.targetCurrency == null ||
+      conversionSnapshot.targetCurrency !== targetCurrency)
+  ) {
+    return false;
+  }
 
   if (
     targetCurrency === effectiveSpaceCurrency &&
@@ -68,6 +90,8 @@ export function shouldUseStoredConversionForPreview({
   ) {
     return false;
   }
+
+  if (!isEditMode || !hadStoredConversion) return true;
 
   return true;
 }
@@ -87,6 +111,34 @@ export function shouldPreviewConversionOnlyInEdit({
   if (!hadStoredConversion) return true;
 
   return targetCurrency === effectiveSpaceCurrency;
+}
+
+/** When amount currency differs from the ledger target — API needs conversion metadata. */
+export function transactionNeedsConversion({
+  amountCurrency,
+  targetCurrency,
+}: {
+  amountCurrency: string;
+  targetCurrency: string | null;
+}): boolean {
+  if (targetCurrency == null || String(targetCurrency).trim() === "") return false;
+
+  return amountCurrency !== targetCurrency;
+}
+
+/** Create flow only — blocks submit while the rate is still loading. */
+export function createTransactionNeedsConversion({
+  amountCurrency,
+  targetCurrency,
+  isEditMode,
+}: {
+  amountCurrency: string;
+  targetCurrency: string | null;
+  isEditMode: boolean;
+}): boolean {
+  if (isEditMode) return false;
+
+  return transactionNeedsConversion({ amountCurrency, targetCurrency });
 }
 
 export function shouldShowAmountFxInEdit({
