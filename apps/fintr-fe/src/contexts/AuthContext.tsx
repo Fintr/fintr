@@ -72,21 +72,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } as AuthUser;
   };
 
-  console.log('🔄 AuthProvider State:', {
-    hasUser: !!user,
-    userEmail: user?.email,
-    hasTokens: !!tokens,
-    isLoading,
-    error,
-  });
-
   // Check for existing authentication
   const checkAuth = async () => {
-    console.log('🔍 checkAuth: Starting authentication check...');
-    
     // Set a timeout to ensure loading state doesn't hang forever
     const timeoutId = setTimeout(() => {
-      console.warn('⏰ checkAuth: Taking longer than expected (10s timeout)');
       setIsLoading(false);
     }, 10000); // 10 second timeout
     
@@ -111,12 +100,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         setTokens(loginResponse);
         setUser(authData.user);
-        console.log('✅ checkAuth: Auth state refreshed from storage');
-        console.log('User:', authData.user?.email || authData.user?.sub);
       } else {
         setTokens(null);
         setUser(null);
-        console.log('⚠️ checkAuth: No valid auth data found in storage');
       }
     } catch (error) {
       console.error('❌ checkAuth error:', error);
@@ -127,19 +113,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       clearTimeout(timeoutId); // Clear the timeout if we finish normally
       setIsLoading(false);
-      console.log('✅ checkAuth: Complete');
     }
   };
 
   // Check for existing authentication on mount
   useEffect(() => {
-    console.log('🚀 AuthProvider: Initializing auth on mount...');
     // Wrap in try-catch to ensure errors don't break the app
     const initAuth = async () => {
       try {
-        console.log('🚀 AuthProvider: Calling checkAuth...');
         await checkAuth();
-        console.log('✅ AuthProvider: checkAuth complete');
       } catch (error) {
         console.error('❌ AuthProvider: Failed to initialize auth:', error);
         setIsLoading(false);
@@ -197,18 +179,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [tokens]);
 
   const login = async (credentials: LoginCredentials) => {
-    console.log('🔐 AuthContext.login: Starting login...', { username: credentials.username });
     try {
       setError(null);
-      console.log('🔐 AuthContext.login: Calling loginWithCredentials...');
 
       const response = await loginWithCredentials(credentials);
-      console.log('🔐 AuthContext.login: Login successful, received tokens');
-      
-      // Store tokens and user data in unified storage
-      console.log('🔐 AuthContext.login: Resolving user profile...');
+
       const userProfile = await resolveUserProfile(response);
-      console.log('🔐 AuthContext.login: User profile decoded:', { email: userProfile.email, sub: userProfile.sub });
 
       // Convert LoginResponse to AuthTokens format
       const authTokens: AuthTokens = {
@@ -227,12 +203,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         issued_at: Date.now(),
       };
 
-      console.log('🔐 AuthContext.login: Storing auth data in localStorage...');
       AuthStorage.setAuthData(authData);
-      console.log('🔐 AuthContext.login: Setting state (tokens & user)...');
       setTokens(response);
       setUser(userProfile);
-      console.log('✅ AuthContext.login: Login complete!');
     } catch (error: any) {
       console.error('❌ AuthContext.login: Login failed:', error.message);
       setError(error.message || 'Login failed');
@@ -241,15 +214,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signup = async (credentials: SignupCredentials) => {
-    console.log('📝 AuthContext.signup: Starting signup...', { email: credentials.email });
     try {
       setError(null);
-      console.log('📝 AuthContext.signup: Calling signupWithCredentials...');
 
       const response = await signupWithCredentials(credentials);
-      console.log('📝 AuthContext.signup: Signup successful, received tokens');
-      
-      // Store tokens and user data in unified storage
+
       const userProfile = await resolveUserProfile(response);
 
       // Convert SignupResponse to AuthTokens format
@@ -287,30 +256,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const getAccessToken = async (): Promise<string | null> => {
-    console.log('🔑 getAccessToken: Called');
     try {
       // First try to get token from state
       if (tokens?.access_token) {
-        console.log('🔑 getAccessToken: Found token in state', {
-          hasAccessToken: !!tokens.access_token,
-          hasIdToken: !!tokens.id_token,
-          accessTokenPrefix: tokens.access_token?.substring(0, 30) + '...',
-          idTokenPrefix: tokens.id_token?.substring(0, 30) + '...',
-        });
-        
         // Check if token is expired and refresh if needed
         const authData = AuthStorage.getAuthData();
         if (authData) {
           const now = Date.now();
           const isExpired = authData.expires_at <= now;
-          console.log('🔑 getAccessToken: Token expiry check', {
-            expiresAt: new Date(authData.expires_at).toISOString(),
-            now: new Date(now).toISOString(),
-            isExpired,
-          });
-          
+
           if (isExpired) {
-            console.log('⚠️ getAccessToken: Token expired, refreshing...');
             try {
               if (tokens.refresh_token) {
                 const newTokens = await refreshAccessToken(tokens.refresh_token);
@@ -351,10 +306,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         const apiToken = resolveApiBearerToken(tokens);
-        console.log('🔑 getAccessToken: Resolved API bearer token', {
-          accessTokenParts: tokens.access_token.split('.').length,
-          apiTokenParts: apiToken.split('.').length,
-        });
 
         if (!isJwtToken(apiToken)) {
           console.error('🔑 getAccessToken: No valid JWT for API requests');

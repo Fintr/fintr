@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { X, User, LogOut, Moon, Sun } from 'lucide-react';
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -13,6 +13,7 @@ const navDrawerItemClassName =
   "flex w-full items-center gap-2 rounded px-2 py-2 text-primary hover:bg-gray-100 dark:text-primary-dark-mode dark:hover:bg-accent/50";
 
 function NavDrawerThemeToggle() {
+  const switchId = useId();
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -22,45 +23,39 @@ function NavDrawerThemeToggle() {
 
   const isDark = mounted && resolvedTheme === "dark";
   const label = mounted ? (isDark ? "Dark Mode" : "Light Mode") : "Appearance";
+  const ariaLabel = mounted
+    ? isDark
+      ? "Switch to light mode"
+      : "Switch to dark mode"
+    : "Appearance";
 
   return (
-    <button
-      type="button"
-      className={navDrawerItemClassName}
-      onClick={() => {
-        if (!mounted) return;
-        applyThemeWithNativeSync(setTheme, isDark ? "light" : "dark");
-      }}
-      disabled={!mounted}
-      aria-label={
-        mounted
-          ? isDark
-            ? "Switch to light mode"
-            : "Switch to dark mode"
-          : "Appearance"
-      }
-    >
-      {isDark ? (
-        <Moon className="h-4 w-4 shrink-0 mr-2" aria-hidden />
-      ) : (
-        <Sun className="h-4 w-4 shrink-0 mr-2" aria-hidden />
-      )}
-      <span className="flex-1 text-left">{label}</span>
+    <div className={navDrawerItemClassName}>
+      <label
+        htmlFor={mounted ? switchId : undefined}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2"
+      >
+        {isDark ? (
+          <Moon className="h-4 w-4 shrink-0" aria-hidden />
+        ) : (
+          <Sun className="h-4 w-4 shrink-0" aria-hidden />
+        )}
+        <span className="flex-1 text-left">{label}</span>
+      </label>
       {mounted ? (
         <Switch
+          id={switchId}
           checked={isDark}
           onCheckedChange={(checked) => {
             applyThemeWithNativeSync(setTheme, checked ? "dark" : "light");
           }}
-          onClick={(event) => event.stopPropagation()}
-          aria-hidden
-          tabIndex={-1}
+          aria-label={ariaLabel}
           className="shrink-0"
         />
       ) : (
         <span className="h-[1.15rem] w-8 shrink-0" aria-hidden />
       )}
-    </button>
+    </div>
   );
 }
 

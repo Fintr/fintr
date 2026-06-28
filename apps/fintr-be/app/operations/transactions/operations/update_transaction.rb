@@ -135,7 +135,6 @@ module Transactions
         params.delete(:category_name)
         params.delete(:account_name)
         params.delete(:transaction_type)
-        params.delete(:subcategory_id) if params[:subcategory_id].blank?
         Success(params)
       end
 

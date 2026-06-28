@@ -46,6 +46,47 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         expect(updated_transaction.description).to eq('Updated description')
         expect(updated_transaction.category).to eq(new_category)
       end
+
+      context 'when changing from a subcategory to a parent category only' do
+        let!(:parent_category) { create(:category, :expense, space:, name: 'Travel') }
+        let!(:subcategory) do
+          create(:category, :expense, space:, name: 'Flights', parent: parent_category)
+        end
+        let!(:subcategorized_transaction) do
+          create(
+            :expense_transaction,
+            :one_time,
+            user:,
+            space:,
+            account:,
+            category: parent_category,
+            subcategory:,
+            amount: 100.00,
+            description: 'Flight booking'
+          )
+        end
+
+        it 'clears the subcategory' do
+          result = described_class.new.call(
+            id: subcategorized_transaction.id,
+            user_id: user.id,
+            space_id: space.id,
+            amount: 100.00,
+            date: subcategorized_transaction.date.to_date,
+            transaction_type: 'expense',
+            category_id: new_category.id,
+            account_name: account.name,
+            description: 'Flight booking',
+            schedule_type: 'one_time'
+          )
+
+          expect(result).to be_success
+
+          updated_transaction = result.value!
+          expect(updated_transaction.category).to eq(new_category)
+          expect(updated_transaction.subcategory_id).to be_nil
+        end
+      end
     end
 
     context "when original_currency matches account currency on update" do
