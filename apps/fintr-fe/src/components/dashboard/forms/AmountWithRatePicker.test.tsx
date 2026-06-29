@@ -185,4 +185,83 @@ describe("AmountWithRatePicker", () => {
       );
     });
   });
+
+  it("refetches and updates the human quote when amount currency changes from VND to USD", async () => {
+    const onConversionChange = vi.fn();
+
+    mockedGetRecentRates.mockResolvedValue({
+      rates: [{ rate: 0.00233, usedAt: "2026-06-27T00:00:00.000Z" }],
+      source: "recent",
+    });
+    mockedGetCurrentRate.mockResolvedValue({
+      rate: 0.00233,
+      from_currency: "VND",
+      to_currency: "PHP",
+      source: "api",
+    });
+
+    const { rerender } = render(
+      <AmountWithRatePicker
+        {...defaultProps}
+        fromCurrency="VND"
+        toCurrency="PHP"
+        onConversionChange={onConversionChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onConversionChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalCurrency: "VND",
+          targetCurrency: "PHP",
+          exchangeRate: 0.00233,
+        }),
+      );
+    });
+
+    expect(screen.getByText(/VND per 1 PHP/)).toBeInTheDocument();
+
+    onConversionChange.mockClear();
+    mockedGetRecentRates.mockResolvedValue({
+      rates: [{ rate: 58, usedAt: "2026-06-27T00:00:00.000Z" }],
+      source: "recent",
+    });
+    mockedGetCurrentRate.mockResolvedValue({
+      rate: 58,
+      from_currency: "USD",
+      to_currency: "PHP",
+      source: "api",
+    });
+
+    rerender(
+      <AmountWithRatePicker
+        {...defaultProps}
+        fromCurrency="USD"
+        toCurrency="PHP"
+        onConversionChange={onConversionChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockedGetCurrentRate).toHaveBeenCalledWith(
+        {},
+        "USD",
+        "PHP",
+        "2026-06-27",
+      );
+    });
+
+    await waitFor(() => {
+      expect(onConversionChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalCurrency: "USD",
+          targetCurrency: "PHP",
+          exchangeRate: 58,
+        }),
+      );
+    });
+
+    expect(screen.getByText(/PHP per 1 USD/)).toBeInTheDocument();
+    expect(screen.queryByText(/VND per 1 PHP/)).not.toBeInTheDocument();
+  });
 });

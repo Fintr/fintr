@@ -58,10 +58,20 @@ export function conversionSnapshotMatchesTarget(
   return snapshot.targetCurrency === targetCurrency;
 }
 
+export function conversionSnapshotMatchesAmountCurrency(
+  snapshot: ConversionSnapshot | null,
+  amountCurrency: string,
+): boolean {
+  if (!snapshot) return true;
+
+  return snapshot.originalCurrency === amountCurrency;
+}
+
 export function shouldUseStoredConversionForPreview({
   isEditMode,
   hadStoredConversion,
   conversionSnapshot,
+  amountCurrency,
   targetCurrency,
   accountLedgerCurrency,
   effectiveSpaceCurrency,
@@ -69,11 +79,16 @@ export function shouldUseStoredConversionForPreview({
   isEditMode: boolean;
   hadStoredConversion: boolean;
   conversionSnapshot: ConversionSnapshot | null;
+  amountCurrency: string;
   targetCurrency: string | null;
   accountLedgerCurrency: string | null;
   effectiveSpaceCurrency: string;
 }): boolean {
   if (!conversionSnapshot) return false;
+
+  if (!conversionSnapshotMatchesAmountCurrency(conversionSnapshot, amountCurrency)) {
+    return false;
+  }
 
   if (
     targetCurrency != null &&

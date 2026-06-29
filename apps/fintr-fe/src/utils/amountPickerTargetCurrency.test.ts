@@ -86,6 +86,7 @@ describe("shouldUseStoredConversionForPreview", () => {
           exchangeRate: 80,
           exchangeRateSource: "manual",
         },
+        amountCurrency: "GBP",
         targetCurrency: "USD",
         accountLedgerCurrency: "USD",
         effectiveSpaceCurrency: "PHP",
@@ -104,6 +105,7 @@ describe("shouldUseStoredConversionForPreview", () => {
           exchangeRate: 80.886,
           exchangeRateSource: "auto",
         },
+        amountCurrency: "GBP",
         targetCurrency: "USD",
         accountLedgerCurrency: "USD",
         effectiveSpaceCurrency: "PHP",
@@ -122,11 +124,31 @@ describe("shouldUseStoredConversionForPreview", () => {
           exchangeRate: 1.27,
           exchangeRateSource: "auto",
         },
+        amountCurrency: "GBP",
         targetCurrency: "USD",
         accountLedgerCurrency: "USD",
         effectiveSpaceCurrency: "PHP",
       }),
     ).toBe(true);
+  });
+
+  it("skips stored rate when amount currency changes but target leg stays the same", () => {
+    expect(
+      shouldUseStoredConversionForPreview({
+        isEditMode: false,
+        hadStoredConversion: false,
+        conversionSnapshot: {
+          originalCurrency: "VND",
+          targetCurrency: "PHP",
+          exchangeRate: 0.00233,
+          exchangeRateSource: "auto",
+        },
+        amountCurrency: "USD",
+        targetCurrency: "PHP",
+        accountLedgerCurrency: "PHP",
+        effectiveSpaceCurrency: "PHP",
+      }),
+    ).toBe(false);
   });
 });
 

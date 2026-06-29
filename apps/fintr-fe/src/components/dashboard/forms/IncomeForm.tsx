@@ -51,6 +51,7 @@ import {
   lockedCategoryRefForIncomeEdit,
 } from "@/utils/lockedSystemCategories";
 import {
+  conversionSnapshotMatchesAmountCurrency,
   conversionSnapshotMatchesTarget,
   createTransactionNeedsConversion,
   resolveAmountPickerTargetCurrency,
@@ -324,6 +325,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         isEditMode,
         hadStoredConversion,
         conversionSnapshot,
+        amountCurrency,
         targetCurrency: amountPickerTargetCurrency,
         accountLedgerCurrency,
         effectiveSpaceCurrency,
@@ -357,14 +359,23 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   });
 
   useEffect(() => {
-    if (
-      conversionSnapshot &&
-      amountPickerTargetCurrency &&
-      !conversionSnapshotMatchesTarget(conversionSnapshot, amountPickerTargetCurrency)
-    ) {
+    if (!conversionSnapshot) return;
+
+    const targetMismatch =
+      amountPickerTargetCurrency != null &&
+      !conversionSnapshotMatchesTarget(
+        conversionSnapshot,
+        amountPickerTargetCurrency,
+      );
+    const amountMismatch = !conversionSnapshotMatchesAmountCurrency(
+      conversionSnapshot,
+      amountCurrency,
+    );
+
+    if (targetMismatch || amountMismatch) {
       setConversionSnapshot(null);
     }
-  }, [amountPickerTargetCurrency, conversionSnapshot]);
+  }, [amountPickerTargetCurrency, amountCurrency, conversionSnapshot]);
 
   const defaultCurrencySetRef = useRef(false);
   useEffect(() => {

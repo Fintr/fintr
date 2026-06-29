@@ -322,10 +322,14 @@ export function AmountWithRatePicker({
       ? humanFxQuote(manualRateHint, fromCurrency, ledgerTargetCurrency)
       : null;
 
+  const initialConversionApplies =
+    initialConversion != null &&
+    initialConversion.originalCurrency === fromCurrency;
+
   // When parent provides initial conversion (e.g. edit mode), use it and do not overwrite.
   // Otherwise only auto-fetch when we have a real from→ledger pair (never substitute space).
   useEffect(() => {
-    if (initialConversion) {
+    if (initialConversionApplies && initialConversion) {
       const normalized = multiplierFromApi(initialConversion.exchangeRate);
       setConversion((prev) => {
         if (
@@ -429,6 +433,7 @@ export function AmountWithRatePicker({
     api,
     applyConversion,
     initialConversion,
+    initialConversionApplies,
     onConversionChange,
     previewOnly,
     rateLookupDate,

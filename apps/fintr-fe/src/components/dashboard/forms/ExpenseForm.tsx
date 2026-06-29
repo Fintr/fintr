@@ -56,6 +56,7 @@ import {
   lockedCategoryRefForExpenseEdit,
 } from "@/utils/lockedSystemCategories";
 import {
+  conversionSnapshotMatchesAmountCurrency,
   conversionSnapshotMatchesTarget,
   createTransactionNeedsConversion,
   resolveAmountPickerTargetCurrency,
@@ -353,6 +354,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         isEditMode,
         hadStoredConversion,
         conversionSnapshot,
+        amountCurrency,
         targetCurrency: amountPickerTargetCurrency,
         accountLedgerCurrency,
         effectiveSpaceCurrency,
@@ -386,14 +388,23 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   });
 
   useEffect(() => {
-    if (
-      conversionSnapshot &&
-      amountPickerTargetCurrency &&
-      !conversionSnapshotMatchesTarget(conversionSnapshot, amountPickerTargetCurrency)
-    ) {
+    if (!conversionSnapshot) return;
+
+    const targetMismatch =
+      amountPickerTargetCurrency != null &&
+      !conversionSnapshotMatchesTarget(
+        conversionSnapshot,
+        amountPickerTargetCurrency,
+      );
+    const amountMismatch = !conversionSnapshotMatchesAmountCurrency(
+      conversionSnapshot,
+      amountCurrency,
+    );
+
+    if (targetMismatch || amountMismatch) {
       setConversionSnapshot(null);
     }
-  }, [amountPickerTargetCurrency, conversionSnapshot]);
+  }, [amountPickerTargetCurrency, amountCurrency, conversionSnapshot]);
 
   const defaultCurrencySetRef = useRef(false);
   useEffect(() => {

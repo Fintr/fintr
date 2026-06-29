@@ -54,6 +54,7 @@ describe("currency conversion flow — GBP on USD account in PHP space", () => {
         isEditMode: false,
         hadStoredConversion: false,
         conversionSnapshot: staleSnapshot,
+        amountCurrency: "GBP",
         targetCurrency: "USD",
         accountLedgerCurrency: "USD",
         effectiveSpaceCurrency: spaceCurrency,
@@ -112,5 +113,26 @@ describe("currency conversion flow — VND expense in PHP space", () => {
 
     expect(operative).toBeCloseTo(1 / 405, 6);
     expect(20_000 * operative).toBeCloseTo(49.38, 1);
+  });
+
+  it("discards a VND→PHP snapshot when amount currency switches to USD", () => {
+    const staleSnapshot = {
+      originalCurrency: "VND",
+      targetCurrency: "PHP",
+      exchangeRate: 0.00233,
+      exchangeRateSource: "auto" as const,
+    };
+
+    expect(
+      shouldUseStoredConversionForPreview({
+        isEditMode: false,
+        hadStoredConversion: false,
+        conversionSnapshot: staleSnapshot,
+        amountCurrency: "USD",
+        targetCurrency: "PHP",
+        accountLedgerCurrency: "PHP",
+        effectiveSpaceCurrency: "PHP",
+      }),
+    ).toBe(false);
   });
 });
