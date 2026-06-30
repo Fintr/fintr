@@ -224,14 +224,11 @@ test.describe("Insights narrative category filter link", () => {
       }
 
       const requestUrl = route.request().url();
-      if (!requestUrl.includes("/categories")) {
-        const url = new URL(requestUrl);
-        if (
-          url.searchParams.get("categoryId") === PARENT_ID
-          || url.searchParams.get("categoryName") === "Subscriptions & Hobbies"
-        ) {
-          filteredTransactionsUrl = requestUrl;
-        }
+      if (
+        !requestUrl.includes("/categories")
+        && requestUrl.includes(PARENT_ID)
+      ) {
+        filteredTransactionsUrl = requestUrl;
       }
 
       await route.fulfill({
@@ -247,6 +244,15 @@ test.describe("Insights narrative category filter link", () => {
       });
     });
 
+    const filteredTransactionsResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET"
+        && response.url().includes("/api/v1/transactions")
+        && !response.url().includes("/categories")
+        && response.url().includes(PARENT_ID),
+      { timeout: 30_000 },
+    );
+
     await page.goto(
       "/dashboard?category=Subscriptions%20%26%20Hobbies",
       { waitUntil: "domcontentloaded" },
@@ -256,8 +262,10 @@ test.describe("Insights narrative category filter link", () => {
       timeout: 30_000,
     });
 
+    await filteredTransactionsResponse;
+
     await expect
-      .poll(() => filteredTransactionsUrl, { timeout: 15_000 })
-      .toContain("categoryId=");
+      .poll(() => filteredTransactionsUrl, { timeout: 5_000 })
+      .toContain(PARENT_ID);
   });
 });

@@ -5,6 +5,7 @@ import ClientLayout from "./client-layout";
 import {
   miniProfilerEarlyFetchQueueScript,
   miniProfilerInlineBootstrapScript,
+  shouldEnableRackMiniProfiler,
 } from "@/lib/rack-mini-profiler-inline-bootstrap";
 
 const leagueSpartan = League_Spartan({
@@ -119,7 +120,7 @@ export default function RootLayout({
       <body
         className={`${leagueSpartan.variable} antialiased ${leagueSpartan.className}`}
       >
-        {process.env.NODE_ENV === "development" &&
+        {shouldEnableRackMiniProfiler() &&
           process.env.NEXT_PUBLIC_BE_URL && (
           <>
             <script

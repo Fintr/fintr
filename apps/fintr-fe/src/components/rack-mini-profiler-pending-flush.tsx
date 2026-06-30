@@ -1,5 +1,6 @@
 "use client";
 
+import { shouldEnableRackMiniProfiler } from "@/lib/rack-mini-profiler-inline-bootstrap";
 import { useEffect, useRef } from "react";
 
 declare global {
@@ -15,13 +16,6 @@ declare global {
   }
 }
 
-function shouldRun(): boolean {
-  const explicit = process.env.NEXT_PUBLIC_RACK_MINI_PROFILER;
-  if (explicit === "false") return false;
-  if (explicit === "true") return true;
-  return process.env.NODE_ENV === "development";
-}
-
 /**
  * After `vendor.js`, Mini Profiler exposes `templates` and `fetchResultsExposed`. Drain IDs
  * queued by {@link miniProfilerEarlyFetchQueueScript} (responses that arrived before the gem
@@ -31,7 +25,7 @@ export default function RackMiniProfilerPendingFlush() {
   const flushedIds = useRef(new Set<string>());
 
   useEffect(() => {
-    if (!shouldRun()) return;
+    if (!shouldEnableRackMiniProfiler()) return;
 
     if (!process.env.NEXT_PUBLIC_BE_URL) return;
 

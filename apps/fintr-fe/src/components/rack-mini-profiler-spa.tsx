@@ -1,5 +1,6 @@
 "use client";
 
+import { shouldEnableRackMiniProfiler } from "@/lib/rack-mini-profiler-inline-bootstrap";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
@@ -9,13 +10,6 @@ declare global {
       pageTransition?: () => void;
     };
   }
-}
-
-function shouldEnableRackMiniProfiler(): boolean {
-  const explicit = process.env.NEXT_PUBLIC_RACK_MINI_PROFILER;
-  if (explicit === "false") return false;
-  if (explicit === "true") return true;
-  return process.env.NODE_ENV === "development";
 }
 
 /**

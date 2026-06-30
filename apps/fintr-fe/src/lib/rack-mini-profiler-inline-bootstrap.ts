@@ -1,5 +1,12 @@
 import { RACK_MINI_PROFILER_ASSET_VERSION } from "./rack-mini-profiler-constants";
 
+export function shouldEnableRackMiniProfiler(): boolean {
+  const explicit = process.env.NEXT_PUBLIC_RACK_MINI_PROFILER;
+  if (explicit === "false") return false;
+  if (explicit === "true") return true;
+  return process.env.NODE_ENV === "development";
+}
+
 /**
  * Runs **before** the rack-mini-profiler script tag. The gem only patches `fetch` after
  * `vendor.js` loads (see HAR: API traffic fires hundreds of ms earlier). Queue profiler IDs

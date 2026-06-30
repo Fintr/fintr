@@ -114,5 +114,9 @@ export default defineConfig({
     url: webServerHealthUrl,
     reuseExistingServer: !process.env.CI,
     timeout: 180000,
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_RACK_MINI_PROFILER: "false",
+    },
   },
 })
