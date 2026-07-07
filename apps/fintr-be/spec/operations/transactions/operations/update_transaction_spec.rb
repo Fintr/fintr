@@ -553,11 +553,12 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         expect(transaction.date).to eq(Date.current + 1.day)
       end
 
-      it 'excludes id, update_scope, and file from attributes' do
+      it 'excludes id, update_scope, file, and remove_file from attributes' do
         params = {
           id: 'should-be-ignored',
           update_scope: 'should-be-ignored',
           file: 'should-be-ignored',
+          remove_file: true,
           amount: 200.00,
           description: 'Updated description'
         }
@@ -850,6 +851,23 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
       context 'when file is blank' do
         it 'returns success without attaching file' do
           params = { file: nil, space_id: space.id }
+
+          result = described_class.new.send(:attach_file, transaction: transaction, params: params)
+          expect(result).to be_success
+
+          expect(transaction.files.attached?).to be false
+        end
+      end
+
+      context 'when remove_file is true' do
+        it 'destroys existing attachments' do
+          transaction.files.attach(
+            io: StringIO.new("initial content"),
+            filename: "initial.txt",
+            content_type: "text/plain"
+          )
+
+          params = { remove_file: true, space_id: space.id }
 
           result = described_class.new.send(:attach_file, transaction: transaction, params: params)
           expect(result).to be_success

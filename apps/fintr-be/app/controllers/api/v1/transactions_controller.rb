@@ -136,6 +136,7 @@ module Api
           :installment_period,
           :installment_count,
           :file,
+          :remove_file,
           :update_scope,
           :original_currency,
           :exchange_rate,

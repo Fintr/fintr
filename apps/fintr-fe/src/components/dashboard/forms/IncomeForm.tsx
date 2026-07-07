@@ -44,7 +44,7 @@ import {
   AmountWithRatePicker,
   type ConversionSnapshot,
 } from "./AmountWithRatePicker";
-import { resolvePrefillAmountCurrency } from "@/utils/formUtils";
+import { resolvePrefillAmountCurrency, buildTransactionFileUpdateFields } from "@/utils/formUtils";
 import {
   ensureLockedCategoryInTreeOptions,
   isLockedIncomeCategoryName,
@@ -177,7 +177,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
   // Local state for UI elements and form handling
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [fileState, setFileState] = useState<File | null>(null);
   const [scheduleType, setScheduleType] = useState<ScheduleTypeEnum>(
     ScheduleTypeEnum.ONE_TIME
   );
@@ -436,6 +435,13 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   
   // Initialize formState from initialData
   const prevInitialDataRef = React.useRef<UpdateTransactionType | undefined>(undefined);
+  const hadAttachmentOnLoadRef = useRef(false);
+
+  useEffect(() => {
+    if (initialData?.file) {
+      hadAttachmentOnLoadRef.current = true;
+    }
+  }, [initialData?.file]);
 
   useEffect(() => {
     // Helper to get a valid income schedule type (only ONE_TIME or REPEAT)
@@ -679,6 +685,12 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         categoryOptions,
       );
 
+      const fileFields = buildTransactionFileUpdateFields({
+        isEditMode,
+        hadAttachmentOnLoad: hadAttachmentOnLoadRef.current,
+        file: formState.file,
+      });
+
       const transactionData = {
         amount: Number(amountToUse),
         description: formState.description || "",
@@ -690,7 +702,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && {
           repeatInterval: formState.repeatInterval
         }),
-        ...(fileState && { file: fileState }),
+        ...fileFields,
         ...(draftId && { draftId }),
         ...(conversionSnapshot && {
           original_currency: conversionSnapshot.originalCurrency,
@@ -733,7 +745,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         amountInput.reset();
         setConversionSnapshot(null);
         setDate(undefined);
-        setFileState(null);
         setShowCustomAccountInput(false);
         setScheduleType(ScheduleTypeEnum.ONE_TIME);
         setFormSubmitted(false); // Reset the form submission flag

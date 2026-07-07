@@ -72,6 +72,7 @@ module Api
             :repeat_interval,
             :repeat_count,
             :file,
+            :remove_file,
             :exchange_rate,
             :exchange_rate_source
           )

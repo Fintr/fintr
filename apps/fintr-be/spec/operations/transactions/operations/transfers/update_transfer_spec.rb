@@ -709,8 +709,13 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
         expect(transfer.repeat_interval).to eq("every_week")
       end
 
-      it 'excludes id, update_scope, and file from attributes' do
-        params_with_excluded = params.merge(id: "new-id", update_scope: "this_and_future", file: "some_file")
+      it 'excludes id, update_scope, file, and remove_file from attributes' do
+        params_with_excluded = params.merge(
+          id: "new-id",
+          update_scope: "this_and_future",
+          file: "some_file",
+          remove_file: true
+        )
         result = operation.send(:initialize_update_transfer, transfer: transfer, params: params_with_excluded)
         expect(result).to be_success
 
@@ -950,6 +955,22 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
         expect(result).to be_success
 
         expect(transfer.files).to have_received(:destroy_all)
+      end
+
+      it 'destroys existing files when remove_file is true' do
+        transfer.files.attach(
+          io: StringIO.new("initial content"),
+          filename: "initial.txt",
+          content_type: "text/plain"
+        )
+
+        result = operation.send(
+          :attach_file,
+          transfer: transfer,
+          params: { remove_file: true, space_id: space.id.to_s }
+        )
+        expect(result).to be_success
+        expect(transfer.files.attached?).to be false
       end
     end
 

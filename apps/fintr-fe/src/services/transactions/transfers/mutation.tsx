@@ -22,6 +22,7 @@ export interface CreateTransferType {
 export interface UpdateTransferType extends CreateTransferType {
   id: string;
   updateScope?: UpdateScopeEnum;
+  removeFile?: boolean;
 }
 
 // Type for deleting a transfer

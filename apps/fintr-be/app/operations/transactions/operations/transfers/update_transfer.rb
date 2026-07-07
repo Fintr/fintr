@@ -25,6 +25,7 @@ module Transactions
             optional(:repeat_count).value(:integer)
             optional(:update_scope).value(:string)
             optional(:file)
+            optional(:remove_file).maybe(:bool)
             optional(:exchange_rate).value(:decimal, gt?: 0)
             optional(:exchange_rate_source).value(:string, included_in?: %w[auto manual recent])
           end
@@ -157,7 +158,7 @@ module Transactions
         end
 
         def initialize_update_transfer(transfer:, params:)
-          assignable = params.except(:id, :update_scope, :file, *CONVERSION_PARAMS)
+          assignable = params.except(:id, :update_scope, :file, :remove_file, *CONVERSION_PARAMS)
           transfer.assign_attributes(**assignable)
           Success(transfer)
         end
@@ -247,6 +248,11 @@ module Transactions
         end
 
         def attach_file(transfer:, params:)
+          if params[:remove_file]
+            transfer.files.destroy_all if transfer.files.attached?
+            return Success(transfer)
+          end
+
           return Success(transfer) if params[:file].blank?
 
           transfer.files.destroy_all

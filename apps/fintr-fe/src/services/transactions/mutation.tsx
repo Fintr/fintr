@@ -32,6 +32,7 @@ export interface CreateTransactionType {
 export interface UpdateTransactionType extends CreateTransactionType {
   id: string;
   updateScope?: UpdateScopeEnum;
+  removeFile?: boolean;
 }
 
 // Type for deleting a transaction

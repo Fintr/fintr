@@ -27,6 +27,24 @@ export const isUploadableFile = (value: unknown): value is File | Blob => {
   return value instanceof File || value instanceof Blob;
 };
 
+export function buildTransactionFileUpdateFields(options: {
+  isEditMode: boolean;
+  hadAttachmentOnLoad: boolean;
+  file: File | null;
+}): { file?: File; removeFile?: boolean } {
+  const { isEditMode, hadAttachmentOnLoad, file } = options;
+
+  if (isUploadableFile(file)) {
+    return { file };
+  }
+
+  if (isEditMode && hadAttachmentOnLoad && !file) {
+    return { removeFile: true };
+  }
+
+  return {};
+}
+
 /**
  * Picks the amount field currency when prefilling the expense form (e.g. Add Receipt)
  * without currency conversion metadata. Prefer space default_transaction_currency when

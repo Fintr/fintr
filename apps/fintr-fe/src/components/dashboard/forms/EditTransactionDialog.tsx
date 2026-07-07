@@ -414,15 +414,9 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     try {
       let response;
       
-      // Ensure the file is included in the data object if it exists or is explicitly null (for removal)
+      // File updates are explicit: uploadable `file` replaces, `removeFile` clears,
+      // and omitting both leaves the existing attachment unchanged.
       const dataWithFile = { ...data };
-      
-      // If the incoming data has a file (either new or existing), use it.
-      // If it's null, it means the user removed the file.
-      // If it's undefined, it means no change to the file was made in the form
-      if (data.hasOwnProperty('file')) {
-        dataWithFile.file = data.file;
-      }
 
       if (transaction?.type === CombinedTransactionTypeEnum.TRANSFER) {
         response = await updateTransfer(api, dataWithFile);

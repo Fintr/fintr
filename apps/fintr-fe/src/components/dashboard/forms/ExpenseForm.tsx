@@ -45,7 +45,7 @@ import {
   AmountWithRatePicker,
   type ConversionSnapshot,
 } from "./AmountWithRatePicker";
-import { resolvePrefillAmountCurrency, isUploadableFile } from "@/utils/formUtils";
+import { resolvePrefillAmountCurrency, isUploadableFile, buildTransactionFileUpdateFields } from "@/utils/formUtils";
 import {
   editLockedAccountLedgerCurrency,
   isAccountSelectOptionDisabledForEdit,
@@ -467,6 +467,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   
   // Initialize formState from initialData (ref must start undefined so first run syncs original amount/currency for edit)
   const prevInitialDataRef = React.useRef<UpdateTransactionType | undefined>(undefined);
+  const hadAttachmentOnLoadRef = useRef(false);
+
+  useEffect(() => {
+    if (initialData?.file) {
+      hadAttachmentOnLoadRef.current = true;
+    }
+  }, [initialData?.file]);
 
   useEffect(() => {
     const data = initialData as Record<string, unknown> | undefined;
@@ -706,13 +713,16 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     let transactionCreated = false;
 
     try {
-      const shouldUploadFile = isUploadableFile(formState.file);
-
-      // Create: amount in space currency. Edit with conversion: amount in original_currency + metadata so backend converts to account.
       const categoryFields = buildTransactionCategoryFields(
         formState.categoryName,
         categoryOptionsRaw,
       );
+
+      const fileFields = buildTransactionFileUpdateFields({
+        isEditMode,
+        hadAttachmentOnLoad: hadAttachmentOnLoadRef.current,
+        file: formState.file,
+      });
 
       const transactionData = {
         amount: numberFormatting.cleanForBackend(formState.amount),
@@ -731,7 +741,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             : undefined
         }),
         ...(fileId && { fileId }),
-        ...(shouldUploadFile && { file: formState.file }),
+        ...fileFields,
         ...(draftId && { draftId }),
         ...(conversionSnapshot && {
           original_currency: conversionSnapshot.originalCurrency,

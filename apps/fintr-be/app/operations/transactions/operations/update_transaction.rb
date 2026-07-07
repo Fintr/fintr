@@ -9,6 +9,7 @@ module Transactions
           required(:id).value(:string)
           optional(:update_scope).value(:string)
           optional(:file)
+          optional(:remove_file).maybe(:bool)
         end
 
         rule(:update_scope) do
@@ -169,7 +170,7 @@ module Transactions
       end
 
       def initialize_update_transaction(transaction:, params:)
-        assignable = params.except(:id, :update_scope, :file, *CONVERSION_PARAMS)
+        assignable = params.except(:id, :update_scope, :file, :remove_file, *CONVERSION_PARAMS)
         transaction.assign_attributes(**assignable)
         Success(transaction)
       end
@@ -279,6 +280,11 @@ module Transactions
       end
 
       def attach_file(transaction:, params:)
+        if params[:remove_file]
+          transaction.files.destroy_all if transaction.files.attached?
+          return Success(transaction)
+        end
+
         return Success(transaction) if params[:file].blank?
 
         transaction.files.destroy_all

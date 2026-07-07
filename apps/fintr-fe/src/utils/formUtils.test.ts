@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolvePrefillAmountCurrency, isUploadableFile } from "./formUtils";
+import { resolvePrefillAmountCurrency, isUploadableFile, buildTransactionFileUpdateFields } from "./formUtils";
 
 describe("resolvePrefillAmountCurrency", () => {
   const accounts = [
@@ -83,5 +83,72 @@ describe("isUploadableFile", () => {
       type: "image/jpeg",
     };
     expect(isUploadableFile(placeholder)).toBe(false);
+  });
+});
+
+describe("buildTransactionFileUpdateFields", () => {
+  const file = new File(["content"], "receipt.jpg", { type: "image/jpeg" });
+
+  it("includes a new upload on create", () => {
+    expect(
+      buildTransactionFileUpdateFields({
+        isEditMode: false,
+        hadAttachmentOnLoad: false,
+        file,
+      }),
+    ).toEqual({ file });
+  });
+
+  it("returns nothing on create when no file is selected", () => {
+    expect(
+      buildTransactionFileUpdateFields({
+        isEditMode: false,
+        hadAttachmentOnLoad: false,
+        file: null,
+      }),
+    ).toEqual({});
+  });
+
+  it("requests file removal on edit when the initial attachment was cleared", () => {
+    expect(
+      buildTransactionFileUpdateFields({
+        isEditMode: true,
+        hadAttachmentOnLoad: true,
+        file: null,
+      }),
+    ).toEqual({ removeFile: true });
+  });
+
+  it("replaces an existing attachment when a new file is uploaded", () => {
+    expect(
+      buildTransactionFileUpdateFields({
+        isEditMode: true,
+        hadAttachmentOnLoad: true,
+        file,
+      }),
+    ).toEqual({ file });
+  });
+
+  it("leaves the attachment unchanged on edit when nothing was touched", () => {
+    expect(
+      buildTransactionFileUpdateFields({
+        isEditMode: true,
+        hadAttachmentOnLoad: true,
+        file: {
+          isRemoteFile: true,
+          name: "receipt.jpg",
+        } as File,
+      }),
+    ).toEqual({});
+  });
+
+  it("does not request removal when the attachment was cleared but none existed on load", () => {
+    expect(
+      buildTransactionFileUpdateFields({
+        isEditMode: true,
+        hadAttachmentOnLoad: false,
+        file: null,
+      }),
+    ).toEqual({});
   });
 });

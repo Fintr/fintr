@@ -37,6 +37,7 @@ import {
   editLockedAccountLedgerCurrency,
   isAccountSelectOptionDisabledForEdit,
 } from "@/utils/accountSelectEditLocks";
+import { buildTransactionFileUpdateFields } from "@/utils/formUtils";
 
 // Transfer form schema using Zod
 const transferFormSchema = z.object({
@@ -183,6 +184,13 @@ const TransferForm: React.FC<TransferFormProps> = ({
   
   // Initialize formState from initialData
   const prevInitialDataRef = React.useRef<UpdateTransferType | undefined>(initialData);
+  const hadAttachmentOnLoadRef = React.useRef(false);
+
+  useEffect(() => {
+    if (initialData?.file) {
+      hadAttachmentOnLoadRef.current = true;
+    }
+  }, [initialData?.file]);
 
   useEffect(() => {
     // Only proceed if initialData is provided and is a different object reference
@@ -324,6 +332,12 @@ const TransferForm: React.FC<TransferFormProps> = ({
             ? String(numberFormatting.cleanForBackend(formState.amount) * conversionSnapshot.exchangeRate)
             : formState.amount
           : formState.amount;
+      const fileFields = buildTransactionFileUpdateFields({
+        isEditMode,
+        hadAttachmentOnLoad: hadAttachmentOnLoadRef.current,
+        file: formState.file,
+      });
+
       const transferData = {
         amount: numberFormatting.cleanForBackend(amountToSend),
         transactionCost:
@@ -338,7 +352,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
         ...(formState.scheduleType === ScheduleTypeEnum.REPEAT && {
           repeatInterval: formState.repeatInterval
         }),
-        file: formState.file ?? undefined,
+        ...fileFields,
         ...(draftId && { draftId }),
         ...(conversionSnapshot && {
           exchange_rate: conversionSnapshot.exchangeRate,
