@@ -100,7 +100,7 @@ interface IncomeFormProps {
   defaultTransactionCurrency?: string | null;
   onAddCustomCategory?: (categoryName: string) => void;
   onAddCustomAccount?: (accountName: string) => void;
-  onSubmitSuccess?: (data: any) => void;
+  onSubmitSuccess?: (data: any) => void | Promise<void>;
   onCancel?: () => void;
   formRef?: React.RefObject<HTMLFormElement>;
   // Edit mode props

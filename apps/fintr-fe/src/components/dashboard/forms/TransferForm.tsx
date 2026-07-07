@@ -72,7 +72,7 @@ interface TransferFormProps {
   setDate?: React.Dispatch<React.SetStateAction<Date | undefined>>;
   /** Space default currency; used as fallback and to detect when account currency differs */
   spaceCurrency?: string;
-  onSubmitSuccess?: (data: any) => void;
+  onSubmitSuccess?: (data: any) => void | Promise<void>;
   onCancel?: () => void;
   // Edit mode props
   initialData?: UpdateTransferType & { draftId?: string };

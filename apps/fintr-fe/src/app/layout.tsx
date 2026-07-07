@@ -116,6 +116,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <EarlyErrorDetection />
+        <script
+          src="http://localhost:3003/connect.js"
+          data-site-id="2"
+          data-api-key="963a0bf2396683f7fd66898b80f4767da8f51084c822b0eb"
+          data-api-url="http://localhost:3003"
+          async
+        />
       </head>
       <body
         className={`${leagueSpartan.variable} antialiased ${leagueSpartan.className}`}

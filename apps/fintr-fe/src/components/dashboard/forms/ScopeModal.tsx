@@ -35,6 +35,7 @@ interface ScopeModalProps {
   operationType: OperationType;
   inSeries?: boolean; // New prop to determine if transaction is part of a series
   transactionType?: CombinedTransactionTypeEnum | ActivitiesTypeEnum;
+  isLoading?: boolean;
 }
 
 const ScopeModal: React.FC<ScopeModalProps> = ({
@@ -48,6 +49,7 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
   operationType,
   inSeries = true, // Default to true for backward compatibility
   transactionType,
+  isLoading = false,
 }) => {
   // Determine if only "this_and_future" is allowed (for repeat to one_time)
   const isOnlyThisAndFutureAllowed = 
@@ -211,18 +213,23 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
           <Button 
             onClick={handleConfirm}
             variant={isDelete ? "destructive" : "default"}
+            disabled={isLoading}
           >
-            {isOnlyThisAndFutureAllowed && !isDelete 
-              ? "Update & Delete Future" 
-              : showOnlyThisOnly 
-                ? `${actionWord} ${entityType}`
-                : `${actionWord} ${entityType}s`
+            {isLoading
+              ? isDelete
+                ? "Deleting..."
+                : "Updating..."
+              : isOnlyThisAndFutureAllowed && !isDelete 
+                ? "Update & Delete Future" 
+                : showOnlyThisOnly 
+                  ? `${actionWord} ${entityType}`
+                  : `${actionWord} ${entityType}s`
             }
           </Button>
         </DialogFooter>

@@ -126,7 +126,7 @@ interface ExpenseFormProps {
   defaultTransactionCurrency?: string | null;
   onAddCustomCategory?: (categoryName: string) => void;
   onAddCustomAccount?: (accountName: string) => void;
-  onSubmitSuccess?: (data: any) => void; // Renamed for clarity
+  onSubmitSuccess?: (data: any) => void | Promise<void>; // Renamed for clarity
   onCancel?: () => void;
   formRef?: React.RefObject<HTMLFormElement | null>; // Keep if needed for external interaction
   // Edit mode props

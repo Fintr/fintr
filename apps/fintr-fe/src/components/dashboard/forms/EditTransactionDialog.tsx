@@ -125,6 +125,9 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   // Delete scope modal state
   const [showDeleteScopeModal, setShowDeleteScopeModal] = useState(false);
   const [deleteScope, setDeleteScope] = useState<DeleteScope>(DeleteScopeEnum.THIS_ONLY);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const scopeModalResolverRef = useRef<(() => void) | null>(null);
 
   // View conversion popover: close when clicking outside or elsewhere
   const [conversionPopoverOpen, setConversionPopoverOpen] = useState(false);
@@ -221,6 +224,9 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       setDataKey(0); // Reset dataKey when closing
       setShowDeleteScopeModal(false);
       setDeleteScope(DeleteScopeEnum.THIS_ONLY);
+      setIsUpdating(false);
+      setIsDeleting(false);
+      resolveScopeModal();
     }
   }, [transaction?.id, isOpen, api]); // Simplified dependencies for better control
 
@@ -253,7 +259,25 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     return scheduleFieldsChanged;
   };
 
-  const handleFormSubmit = (formData: any) => {
+  const resolveScopeModal = () => {
+    scopeModalResolverRef.current?.();
+    scopeModalResolverRef.current = null;
+  };
+
+  const waitForScopeModal = (): Promise<void> => {
+    return new Promise<void>((resolve) => {
+      scopeModalResolverRef.current = resolve;
+    });
+  };
+
+  const openUpdateScopeModal = (formData: any, scheduleChange: { from: string; to: string }) => {
+    setScheduleTypeChange(scheduleChange);
+    setUpdateScope(UpdateScopeEnum.THIS_ONLY);
+    setPendingFormData(formData);
+    setShowUpdateScopeModal(true);
+  };
+
+  const handleFormSubmit = async (formData: any): Promise<void> => {
     if (!fullTransactionData) return;
 
     const originalScheduleType = fullTransactionData.scheduleType;
@@ -273,7 +297,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       // Rule 1: one_time to repeat - automatically set this_and_future
       if (originalScheduleType === ScheduleTypeEnum.ONE_TIME && newScheduleType === ScheduleTypeEnum.REPEAT) {
         const finalFormData = { ...formData, updateScope: UpdateScopeEnum.THIS_AND_FUTURE };
-        handleSuccess(finalFormData);
+        await handleSuccess(finalFormData);
         return;
       }
 
@@ -283,41 +307,46 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         setUpdateScope(UpdateScopeEnum.THIS_AND_FUTURE); // Force this option
         setPendingFormData(formData);
         setShowUpdateScopeModal(true);
+        await waitForScopeModal();
         return;
       }
     }
 
     // Check if this is a recurring transaction (repeat) - show modal for any changes
     if (originalScheduleType === ScheduleTypeEnum.REPEAT) {
-      setScheduleTypeChange({ from: "repeat", to: "repeat" });
-      setUpdateScope(UpdateScopeEnum.THIS_ONLY); // Default selection
-      setPendingFormData(formData);
-      setShowUpdateScopeModal(true);
+      openUpdateScopeModal(formData, { from: "repeat", to: "repeat" });
+      await waitForScopeModal();
       return;
     }
 
     // Check if this is an installment transaction - show modal for any changes
     if (originalScheduleType === ScheduleTypeEnum.INSTALLMENT) {
-      setScheduleTypeChange({ from: "installment", to: "installment" });
-      setUpdateScope(UpdateScopeEnum.THIS_ONLY); // Default selection
-      setPendingFormData(formData);
-      setShowUpdateScopeModal(true);
+      openUpdateScopeModal(formData, { from: "installment", to: "installment" });
+      await waitForScopeModal();
       return;
     }
 
     // If no schedule type change or one_time transaction, proceed directly
-    handleSuccess(formData);
+    await handleSuccess(formData);
   };
 
-  const handleUpdateScopeConfirm = (scope: Scope) => {
-    if (pendingFormData) {
-      const finalFormData = { ...pendingFormData, updateScope: scope as UpdateScope };
-      handleSuccess(finalFormData);
+  const handleUpdateScopeConfirm = async (scope: Scope) => {
+    if (!pendingFormData) {
+      handleUpdateScopeCancel();
+      return;
     }
-    setShowUpdateScopeModal(false);
-    setPendingFormData(null);
-    setScheduleTypeChange(null);
-    setHasScheduleChanges(false);
+
+    const finalFormData = { ...pendingFormData, updateScope: scope as UpdateScope };
+
+    try {
+      await handleSuccess(finalFormData);
+    } finally {
+      setShowUpdateScopeModal(false);
+      setPendingFormData(null);
+      setScheduleTypeChange(null);
+      setHasScheduleChanges(false);
+      resolveScopeModal();
+    }
   };
 
   const handleUpdateScopeChange = (scope: Scope) => {
@@ -329,6 +358,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     setPendingFormData(null);
     setScheduleTypeChange(null);
     setHasScheduleChanges(false);
+    resolveScopeModal();
   };
 
   // Handle delete action
@@ -340,7 +370,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
 
   const handleDeleteConfirm = async (scope: Scope) => {
     if (!transaction) return;
-    
+
+    setIsDeleting(true);
     try {
       if (transaction.type === CombinedTransactionTypeEnum.TRANSFER) {
         await deleteTransfer(api, { id: transaction.id, deleteScope: scope as DeleteScope });
@@ -349,13 +380,14 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         await deleteTransaction(api, { id: transaction.id, deleteScope: scope as DeleteScope });
         toast.success("Transaction deleted successfully");
       }
-      
+
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error deleting transaction:", error);
       toast.error("Failed to delete transaction. Please try again.");
     } finally {
+      setIsDeleting(false);
       setShowDeleteScopeModal(false);
     }
   };
@@ -378,6 +410,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   };
 
   const handleSuccess = async (data: any) => {
+    setIsUpdating(true);
     try {
       let response;
       
@@ -404,6 +437,9 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     } catch (error) {
       console.error("Error updating transaction:", error);
       toast.error("Failed to update transaction. Please try again.");
+      throw error;
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -586,6 +622,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         hasScheduleChanges={hasScheduleChanges}
         transactionType={transaction?.type}
         inSeries={fullTransactionData?.scheduleType === ScheduleTypeEnum.REPEAT || fullTransactionData?.scheduleType === ScheduleTypeEnum.INSTALLMENT}
+        isLoading={isUpdating}
       />
       
       {/* Delete Scope Modal */}
@@ -598,6 +635,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         onScopeChange={handleDeleteScopeChange}
         transactionType={transaction?.type}
         inSeries={fullTransactionData?.scheduleType === ScheduleTypeEnum.REPEAT || fullTransactionData?.scheduleType === ScheduleTypeEnum.INSTALLMENT}
+        isLoading={isDeleting}
       />
     </>
   );
