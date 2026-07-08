@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { Provider as JotaiProvider } from "jotai";
 import { ToasterWithSettings } from "@/components/ui/toaster-with-settings";
+import { E2eTestHooks } from "@/components/e2e-test-hooks";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TutorialProvider } from "@/contexts/TutorialContext";
 import { ToastSettingsProvider } from "@/contexts/ToastSettingsContext";
@@ -40,6 +41,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 <ToastSettingsProvider>
                   <DeepLinkHandler />
                   <SessionExpirationModal />
+                  <E2eTestHooks />
                   <ToasterWithSettings />
                   <AuthWrapper>
                     {children}

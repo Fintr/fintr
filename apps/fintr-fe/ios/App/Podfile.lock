@@ -1,7 +1,7 @@
 PODS:
   - Capacitor (7.4.4):
     - CapacitorCordova
-  - CapacitorApp (7.1.0):
+  - CapacitorApp (7.1.2):
     - Capacitor
   - CapacitorBrowser (7.0.2):
     - Capacitor
@@ -20,7 +20,7 @@ PODS:
 
 DEPENDENCIES:
   - "Capacitor (from `../../node_modules/.pnpm/@capacitor+ios@7.4.4_@capacitor+core@7.6.5/node_modules/@capacitor/ios`)"
-  - "CapacitorApp (from `../../node_modules/.pnpm/@capacitor+app@7.1.0_@capacitor+core@7.6.5/node_modules/@capacitor/app`)"
+  - "CapacitorApp (from `../../node_modules/.pnpm/@capacitor+app@7.1.2_@capacitor+core@7.6.5/node_modules/@capacitor/app`)"
   - "CapacitorBrowser (from `../../node_modules/.pnpm/@capacitor+browser@7.0.2_@capacitor+core@7.6.5/node_modules/@capacitor/browser`)"
   - "CapacitorCordova (from `../../node_modules/.pnpm/@capacitor+ios@7.4.4_@capacitor+core@7.6.5/node_modules/@capacitor/ios`)"
   - "CapacitorFilesystem (from `../../node_modules/.pnpm/@capacitor+filesystem@7.1.8_@capacitor+core@7.6.5/node_modules/@capacitor/filesystem`)"
@@ -37,7 +37,7 @@ EXTERNAL SOURCES:
   Capacitor:
     :path: "../../node_modules/.pnpm/@capacitor+ios@7.4.4_@capacitor+core@7.6.5/node_modules/@capacitor/ios"
   CapacitorApp:
-    :path: "../../node_modules/.pnpm/@capacitor+app@7.1.0_@capacitor+core@7.6.5/node_modules/@capacitor/app"
+    :path: "../../node_modules/.pnpm/@capacitor+app@7.1.2_@capacitor+core@7.6.5/node_modules/@capacitor/app"
   CapacitorBrowser:
     :path: "../../node_modules/.pnpm/@capacitor+browser@7.0.2_@capacitor+core@7.6.5/node_modules/@capacitor/browser"
   CapacitorCordova:
@@ -51,7 +51,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Capacitor: 358dd1c3fdd71d969547b17e159fd8a7736cb45f
-  CapacitorApp: 26587c2ce485d88ddb39adb21cac64f8e481afe3
+  CapacitorApp: f01a913211780e0718dae9750442c3e23f96e106
   CapacitorBrowser: 22541e48442de44dc629c214388290d6eecc6ae9
   CapacitorCordova: bf648a636f3c153f652d312ae145fb508b6ffced
   CapacitorFilesystem: c63fc54df41e5a6761785a7f3c49dc696c22e296
@@ -60,6 +60,6 @@ SPEC CHECKSUMS:
   IONFilesystemLib: 21a63377696b2d8fab5632ecfb7d2ac67bddb68a
   Sentry: d587a8fe91ca13503ecd69a1905f3e8a0fcf61be
 
-PODFILE CHECKSUM: f49ffc2559d3d0f21f4b243c21009f347c40eb30
+PODFILE CHECKSUM: 85fb47b22eea08b8d6ce1190398021a6223e6048
 
 COCOAPODS: 1.16.2

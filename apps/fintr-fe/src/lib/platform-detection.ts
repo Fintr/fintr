@@ -389,6 +389,72 @@ export const calculateNavBottomOffset = (
   return 0
 }
 
+const MOBILE_BOTTOM_NAV_HEIGHT_PX = 64
+const TOAST_ABOVE_NAV_GAP_PX = 12
+const DEFAULT_TOAST_OFFSET_PX = 16
+const TOAST_TOP_GAP_PX = 8
+const MOBILE_BROWSER_MIN_TOP_INSET_PX = 12
+const MOBILE_BROWSER_TOAST_ABOVE_NAV_PX = 88
+
+/**
+ * Pixel offset for the Sonner toaster from the top of the viewport.
+ * On mobile native, sits below the status bar / notch safe area.
+ */
+export const calculateToastTopOffset = (
+  isAndroidNative: boolean,
+  isIOSNative: boolean,
+  safeAreaInsetTop: number,
+  isMobile: boolean,
+): number => {
+  if (!isMobile) {
+    return DEFAULT_TOAST_OFFSET_PX
+  }
+
+  if (isAndroidNative) {
+    return resolveAndroidNativeTopInsetPx(safeAreaInsetTop) + TOAST_TOP_GAP_PX
+  }
+
+  if (isIOSNative) {
+    const topInset = Math.max(safeAreaInsetTop, 16)
+
+    return topInset + TOAST_TOP_GAP_PX
+  }
+
+  const topInset = Math.max(safeAreaInsetTop, MOBILE_BROWSER_MIN_TOP_INSET_PX)
+
+  return topInset + TOAST_TOP_GAP_PX
+}
+
+/**
+ * Pixel offset for the Sonner toaster from the bottom of the viewport.
+ * On mobile with bottom navigation, sits above the nav bar and safe-area inset.
+ */
+export const calculateToastBottomOffset = (
+  isAndroidNative: boolean,
+  isIOSNative: boolean,
+  safeAreaInsetBottom: number,
+  has3ButtonNav: boolean,
+  options?: { aboveBottomNav?: boolean },
+): number => {
+  if (!options?.aboveBottomNav) {
+    return DEFAULT_TOAST_OFFSET_PX
+  }
+
+  if (isAndroidNative) {
+    const navInset = has3ButtonNav ? 48 : Math.max(safeAreaInsetBottom, 16)
+
+    return MOBILE_BOTTOM_NAV_HEIGHT_PX + navInset + TOAST_ABOVE_NAV_GAP_PX
+  }
+
+  if (isIOSNative) {
+    const navInset = Math.max(safeAreaInsetBottom, 16)
+
+    return MOBILE_BOTTOM_NAV_HEIGHT_PX + navInset + TOAST_ABOVE_NAV_GAP_PX
+  }
+
+  return MOBILE_BROWSER_TOAST_ABOVE_NAV_PX
+}
+
 /**
  * Android WebView often reports no CSS env(safe-area-inset-top). MainActivity injects
  * `--safe-area-inset-top`; this floor avoids clipped headers if injection is late or zero.

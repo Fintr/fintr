@@ -7,7 +7,6 @@ import MobileStickyHeader from "@/components/dashboard/mobile-sticky-header";
 import { useAtomValue } from 'jotai';
 import { isAdminAtom } from '@/atoms/dashboardAtoms';
 import { workspaceTransitionAtom } from '@/atoms/spaceAtoms';
-import { useToastSettings } from '@/contexts/ToastSettingsContext';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
@@ -90,7 +89,6 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     !isStandalonePage &&
     !transitionState.isTransitioning &&
     !pathname.startsWith("/admin");
-  const { setSettings: setToastSettings } = useToastSettings();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const {
@@ -100,7 +98,6 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     safeAreaInsetTop,
     hasAndroid3ButtonNav,
   } = usePlatformDetection();
-
 
   const bottomPadding = calculateBottomPadding(
     isAndroidNative,
@@ -114,17 +111,6 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     isIOSNative,
     safeAreaInsetTop
   );
-
-  // Control toast position: bottom-most on onboarding (mobile); above nav elsewhere on mobile
-  useEffect(() => {
-    const offsetBottom =
-      isOnOnboardingPage && isMobile
-        ? 24
-        : isMobile
-          ? 88
-          : 24;
-    setToastSettings({ offsetBottom });
-  }, [isOnOnboardingPage, isMobile, setToastSettings]);
 
   // Route incomplete workspaces into onboarding (avoids dashboard + Joyride flash)
   useEffect(() => {

@@ -7,6 +7,8 @@ import {
   clampAndroidNavigationInsetPx,
   calculateAndroidBottomInsetPx,
   calculateNavBottomOffset,
+  calculateToastTopOffset,
+  calculateToastBottomOffset,
   calculateHeaderSpacerHeight,
   calculateOnboardingScreenInsets,
   ONBOARDING_SCREEN_CONTENT_INSET_PX,
@@ -409,6 +411,70 @@ describe("calculateNavBottomOffset", () => {
       // Minimum 16px for gesture nav
       expect(offset).toBe("16px")
     })
+  })
+})
+
+describe("calculateToastTopOffset", () => {
+  it("returns default offset on desktop", () => {
+    expect(calculateToastTopOffset(false, false, 0, false)).toBe(16)
+  })
+
+  it("positions below Android status bar", () => {
+    expect(calculateToastTopOffset(true, false, 30, true)).toBe(38)
+  })
+
+  it("uses Android minimum status bar inset when reported inset is low", () => {
+    expect(calculateToastTopOffset(true, false, 5, true)).toBe(32)
+  })
+
+  it("positions below iOS notch safe area", () => {
+    expect(calculateToastTopOffset(false, true, 47, true)).toBe(55)
+  })
+
+  it("uses mobile browser top inset floor", () => {
+    expect(calculateToastTopOffset(false, false, 0, true)).toBe(20)
+  })
+})
+
+describe("calculateToastBottomOffset", () => {
+  it("returns default offset when not above bottom nav", () => {
+    expect(
+      calculateToastBottomOffset(true, false, 48, true, {
+        aboveBottomNav: false,
+      }),
+    ).toBe(16)
+  })
+
+  it("positions above Android 3-button navigation", () => {
+    expect(
+      calculateToastBottomOffset(true, false, 48, true, {
+        aboveBottomNav: true,
+      }),
+    ).toBe(124)
+  })
+
+  it("positions above Android gesture navigation", () => {
+    expect(
+      calculateToastBottomOffset(true, false, 20, false, {
+        aboveBottomNav: true,
+      }),
+    ).toBe(96)
+  })
+
+  it("positions above iOS home indicator", () => {
+    expect(
+      calculateToastBottomOffset(false, true, 34, false, {
+        aboveBottomNav: true,
+      }),
+    ).toBe(110)
+  })
+
+  it("uses mobile browser fallback above bottom nav", () => {
+    expect(
+      calculateToastBottomOffset(false, false, 0, false, {
+        aboveBottomNav: true,
+      }),
+    ).toBe(88)
   })
 })
 

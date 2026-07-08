@@ -1,42 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useToastSettings } from "@/contexts/ToastSettingsContext";
 import { Toaster } from "@/components/ui/sonner";
 import { type ToasterProps } from "sonner";
-
-function useIsSmallScreen(breakpoint = 640) {
-  const [isSmall, setIsSmall] = useState(false);
-
-  useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
-    setIsSmall(mql.matches);
-
-    const handler = (e: MediaQueryListEvent) => setIsSmall(e.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, [breakpoint]);
-
-  return isSmall;
-}
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import { calculateToastTopOffset } from "@/lib/platform-detection";
 
 /**
- * Renders the Sonner Toaster with position controlled by ToastSettingsContext.
- * On small screens the toast appears at the top-center; on larger screens it
- * appears at the top-right.
+ * Renders the Sonner Toaster with position controlled by viewport and platform.
+ * On mobile the toast appears at top-center below the status bar; on larger
+ * screens it appears at the top-right.
  */
 export function ToasterWithSettings() {
-  const { settings } = useToastSettings();
-  const isSmall = useIsSmallScreen();
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
-  const position: ToasterProps["position"] = isSmall ? "top-center" : "top-right";
+  const {
+    isAndroidNative,
+    isIOSNative,
+    safeAreaInsetTop,
+  } = usePlatformDetection();
+
+  const offsetTop = calculateToastTopOffset(
+    isAndroidNative,
+    isIOSNative,
+    safeAreaInsetTop,
+    isMobile,
+  );
+
+  const position: ToasterProps["position"] = isMobile
+    ? "top-center"
+    : "top-right";
 
   return (
     <Toaster
       position={position}
+      offset={{ top: offsetTop }}
+      mobileOffset={{ top: offsetTop }}
       style={{
-        bottom: `${settings.offsetBottom}px`,
         pointerEvents: "none",
+        ...(isMobile
+          ? { top: `${offsetTop}px` }
+          : { top: "16px", right: "16px" }),
       }}
     />
   );

@@ -379,3 +379,11 @@ body > .profiler-results {
     }
   }
 }
+
+[data-sonner-toast] {
+  transition-duration: 180ms !important;
+}
+
+[data-sonner-toast] > * {
+  transition-duration: 180ms !important;
+}

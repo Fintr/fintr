@@ -2,6 +2,22 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["10.0.2.2"],
+  async rewrites() {
+    if (process.env.NODE_ENV !== "development") {
+      return [];
+    }
+
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BE_URL?.replace(/\/$/, "") ??
+      "http://localhost:3001";
+
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${backendUrl}/api/v1/:path*`,
+      },
+    ];
+  },
   output: "export",
   typescript: { ignoreBuildErrors: true },
   experimental: {

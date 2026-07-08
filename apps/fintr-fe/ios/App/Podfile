@@ -11,7 +11,7 @@ install! 'cocoapods', :disable_input_output_paths => true
 def capacitor_pods
   pod 'Capacitor', :path => '../../node_modules/.pnpm/@capacitor+ios@7.4.4_@capacitor+core@7.6.5/node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../../node_modules/.pnpm/@capacitor+ios@7.4.4_@capacitor+core@7.6.5/node_modules/@capacitor/ios'
-  pod 'CapacitorApp', :path => '../../node_modules/.pnpm/@capacitor+app@7.1.0_@capacitor+core@7.6.5/node_modules/@capacitor/app'
+  pod 'CapacitorApp', :path => '../../node_modules/.pnpm/@capacitor+app@7.1.2_@capacitor+core@7.6.5/node_modules/@capacitor/app'
   pod 'CapacitorBrowser', :path => '../../node_modules/.pnpm/@capacitor+browser@7.0.2_@capacitor+core@7.6.5/node_modules/@capacitor/browser'
   pod 'CapacitorFilesystem', :path => '../../node_modules/.pnpm/@capacitor+filesystem@7.1.8_@capacitor+core@7.6.5/node_modules/@capacitor/filesystem'
   pod 'CapacitorKeyboard', :path => '../../node_modules/.pnpm/@capacitor+keyboard@7.0.6_@capacitor+core@7.6.5/node_modules/@capacitor/keyboard'
