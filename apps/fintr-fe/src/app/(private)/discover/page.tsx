@@ -7,9 +7,7 @@ const DiscoverPage = () => {
   return (
     <div className="flex flex-col">
       <Navbar />
-      <div className="mt-20">
-        <HowToUse />
-      </div>
+      <HowToUse />
       <Footer />
     </div>
   );

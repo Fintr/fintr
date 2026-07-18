@@ -272,7 +272,7 @@ export function AmountWithRatePicker({
     getCurrentRate(api, fromCurrency, ledgerTargetCurrency, rateLookupDate)
       .then((r) => {
         const raw = Number(r.rate);
-        const n = applyConversion(raw, "auto");
+        const n = applyConversion(raw, "auto", { syncToParent: true });
         setCurrentRateDisplay(n);
         setDisplayedRateDate(rateLookupDate);
         setPopoverOpen(false);
@@ -286,7 +286,7 @@ export function AmountWithRatePicker({
 
   const handleUseRecentRate = useCallback(
     (rate: number) => {
-      applyConversion(Number(rate), "recent");
+      applyConversion(Number(rate), "recent", { syncToParent: true });
     },
     [applyConversion],
   );
@@ -302,7 +302,8 @@ export function AmountWithRatePicker({
       null;
     const operativeRate = operativeMultiplierFromManualQuote(parsed, hintRate);
 
-    applyConversion(operativeRate, "manual");
+    applyConversion(operativeRate, "manual", { syncToParent: true });
+    setPopoverOpen(false);
   }, [
     manualRate,
     applyConversion,

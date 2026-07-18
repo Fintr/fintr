@@ -17,8 +17,6 @@ function AuthWrapper({ children }: AuthWrapperProps) {
   const router = useRouter();
   const pathname = usePathname();
   
-  const publicAuthRoutes = ['/auth', '/login', '/signup'];
-  const isPublicAuthRoute = publicAuthRoutes.includes(pathname);
   const isPublicRoute = isPublicPath(pathname);
 
   useEffect(() => {
@@ -34,7 +32,7 @@ function AuthWrapper({ children }: AuthWrapperProps) {
     }
   }, [isLoading, isAuthenticated, isPublicRoute, router, pathname]);
   
-  if (isLoading && !isPublicAuthRoute) {
+  if (isLoading && !isPublicRoute) {
     return (
       <>
         <LoadingScreen />

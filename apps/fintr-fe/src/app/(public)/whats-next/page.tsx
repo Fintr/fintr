@@ -9,11 +9,7 @@ const WhatsNextPage = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <div className="mt-20">
-        {" "}
-        {/* Add margin to account for fixed navbar */}
-        <WhatsNext />
-      </div>
+      <WhatsNext />
       <Footer />
     </div>
   );
