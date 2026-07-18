@@ -24,8 +24,6 @@ export default function Navbar() {
         <div className="flex items-center justify-end gap-1.5 sm:gap-2 flex-wrap">
           <Link
             href="https://blog.fintr.ai"
-            target="_blank"
-            rel="noopener noreferrer"
             className="hidden sm:block text-[14px] font-medium text-[#57534E] px-4 py-2 rounded-lg transition-all hover:text-[#1C1917] hover:bg-[#F0EFEC] no-underline"
           >
             Blog
