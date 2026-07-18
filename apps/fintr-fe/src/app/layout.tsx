@@ -117,10 +117,10 @@ export default function RootLayout({
       <head>
         <EarlyErrorDetection />
         <script
-          src="http://localhost:3003/connect.js"
-          data-site-id="2"
-          data-api-key="963a0bf2396683f7fd66898b80f4767da8f51084c822b0eb"
-          data-api-url="http://localhost:3003"
+          src="https://blogger.kiron.app/connect.js"
+          data-site-id="3"
+          data-api-key="71b97f9302789af0b7819662214c939c491b43e72b9af960"
+          data-api-url="https://blogger.kiron.app"
           async
         />
       </head>
