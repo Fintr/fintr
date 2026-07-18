@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
@@ -23,7 +23,41 @@ const isIOSDevice = (): boolean => {
   return isIOS;
 };
 
-export default function AuthCallback() {
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<AuthCallbackFallback />}>
+      <AuthCallbackInner />
+    </Suspense>
+  );
+}
+
+function AuthCallbackFallback() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-6">
+          <FintrLogo className="mx-auto mb-2 h-12 w-auto dark:h-24" />
+          <p className="text-muted-foreground mt-2">Your Personal Finance Assistant</p>
+        </div>
+        <div className="bg-card rounded-lg shadow-sm p-8">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+            <div>
+              <h2 className="text-xl font-semibold text-foreground mb-2">
+                Completing Sign-In
+              </h2>
+              <p className="text-muted-foreground">
+                Please wait while we complete your authentication...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AuthCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, checkAuth } = useAuth();
