@@ -82,7 +82,7 @@ describe("CustomModal mobile positioning", () => {
     expect(content?.className).toContain("pt-safe-top");
     expect(content?.style.paddingBottom).toBe("");
     const scrollRegion = content?.querySelector(".flex-1.overflow-y-auto");
-    expect(scrollRegion?.className).toBe("flex-1 overflow-y-auto");
+    expect(scrollRegion?.className).toBe("flex-1 min-h-0 overflow-y-auto");
     const wrapper = content?.parentElement as HTMLElement | null;
     expect(wrapper?.className).toContain("items-start");
     expect(wrapper?.className).toContain("justify-start");

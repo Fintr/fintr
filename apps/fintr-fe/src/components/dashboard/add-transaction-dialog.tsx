@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { CustomModal } from "@/components/ui/custom-modal";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ExpenseForm from "@/components/dashboard/forms/ExpenseForm";
 import IncomeForm from "@/components/dashboard/forms/IncomeForm";
 import TransferForm from "@/components/dashboard/forms/TransferForm";
@@ -389,34 +389,36 @@ const AddTransactionDialog = ({
       maxWidth="2xl"
       className="p-0"
       closeButtonDataTarget="transaction-close"
+      pinBodyLayout
     >
-      <div className="px-6 pb-6">
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => setActiveTab(value as typeof activeTab)}
-            className="w-full"
-          >
-            <TabsList className="mb-4 grid w-full grid-cols-4 bg-white dark:bg-card dark:shadow-sm">
-              <TabsTrigger value="expense" data-tutorial-target="expense-tab">Expense</TabsTrigger>
-              <TabsTrigger value="income" data-tutorial-target="income-tab">Income</TabsTrigger>
-              <TabsTrigger value="transfer" data-tutorial-target="transfer-tab">Transfer</TabsTrigger>
-              <TabsTrigger value="loan" data-tutorial-target="loan-tab">Loan</TabsTrigger>
-            </TabsList>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as typeof activeTab)}
+        className="flex h-full min-h-0 w-full flex-col gap-0"
+      >
+        <div className="shrink-0 px-6">
+          <TabsList className="mb-4 grid w-full grid-cols-4 bg-white dark:bg-card dark:shadow-sm">
+            <TabsTrigger value="expense" data-tutorial-target="expense-tab">Expense</TabsTrigger>
+            <TabsTrigger value="income" data-tutorial-target="income-tab">Income</TabsTrigger>
+            <TabsTrigger value="transfer" data-tutorial-target="transfer-tab">Transfer</TabsTrigger>
+            <TabsTrigger value="loan" data-tutorial-target="loan-tab">Loan</TabsTrigger>
+          </TabsList>
 
-            {showV2Features && (
-              <>
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="investment">Investment</TabsTrigger>
-                </TabsList>
+          {showV2Features && (
+            <>
+              <TabsList className="mb-4 grid w-full grid-cols-2">
+                <TabsTrigger value="investment">Investment</TabsTrigger>
+              </TabsList>
 
-                <TabsList className="grid w-full grid-cols-1 mb-4">
-                  <TabsTrigger value="goal">Goal</TabsTrigger>
-                </TabsList>
-              </>
-            )}
+              <TabsList className="mb-4 grid w-full grid-cols-1">
+                <TabsTrigger value="goal">Goal</TabsTrigger>
+              </TabsList>
+            </>
+          )}
+        </div>
 
-            {/* Expense Form */}
-          <TabsContent value="expense" className="flex-1 flex flex-col pt-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {activeTab === "expense" && (
             <ExpenseForm
               date={date}
               setDate={setDate}
@@ -436,10 +438,9 @@ const AddTransactionDialog = ({
               initialData={expenseInitialData}
               key={JSON.stringify(expenseInitialData?.file?.name || 'no-file')}
             />
-          </TabsContent>
+          )}
 
-          {/* Income Form */}
-          <TabsContent value="income" className="space-y-4">
+          {activeTab === "income" && (
             <IncomeForm
               date={date}
               setDate={setDate}
@@ -458,10 +459,9 @@ const AddTransactionDialog = ({
               initialData={incomeInitialData}
               key={JSON.stringify(incomeInitialData?.file?.name || 'no-file')}
             />
-          </TabsContent>
+          )}
 
-          {/* Transfer Form */}
-          <TabsContent value="transfer" className="space-y-4">
+          {activeTab === "transfer" && (
             <TransferForm
               date={date}
               setDate={setDate}
@@ -471,43 +471,40 @@ const AddTransactionDialog = ({
               initialData={transferInitialData}
               key={JSON.stringify(transferInitialData?.file?.name || 'no-file')}
             />
-          </TabsContent>
+          )}
 
-          {/* Loan Form */}
-          <TabsContent value="loan" className="space-y-4">
+          {activeTab === "loan" && (
             <LoanForm
               date={date}
               setDate={setDate}
               onSubmitSuccess={onTransactionSuccess}
               onCancel={() => setDialogOpen(false)}
             />
-          </TabsContent>
+          )}
 
-          {/* Investment Form */}
-          {showV2Features && (
-            <TabsContent value="investment" className="space-y-4">
+          {showV2Features && activeTab === "investment" && (
+            <div className="min-h-0 flex-1 overflow-y-auto px-6">
               <InvestmentForm
                 date={date}
                 setDate={setDate}
                 onSubmitSuccess={onTransactionSuccess}
                 onCancel={() => setDialogOpen(false)}
               />
-            </TabsContent>
+            </div>
           )}
 
-          {/* Goal Form */}
-          {showV2Features && (
-            <TabsContent value="goal" className="space-y-4">
+          {showV2Features && activeTab === "goal" && (
+            <div className="min-h-0 flex-1 overflow-y-auto px-6">
               <GoalForm
                 date={date}
                 setDate={setDate}
                 onSubmitSuccess={onTransactionSuccess}
                 onCancel={() => setDialogOpen(false)}
               />
-            </TabsContent>
+            </div>
           )}
-          </Tabs>
-      </div>
+        </div>
+      </Tabs>
     </CustomModal>
   );
 };

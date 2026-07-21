@@ -29,6 +29,7 @@ import { updateTransfer, UpdateTransferType } from "@/services/transactions/tran
 import ExpandableTextarea from "@/components/ui/expandable-textarea";
 import FileUploadField from "./FileUploadField";
 import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
+import { StickyFormActions, pinnedFormScrollAreaClassName } from "./StickyFormActions";
 import {
   AmountWithRatePicker,
   type ConversionSnapshot,
@@ -435,7 +436,8 @@ const TransferForm: React.FC<TransferFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className={pinnedFormScrollAreaClassName}>
       {/* Row 1: Date. Mobile full width, desktop 50%. */}
       <div className="flex flex-wrap">
         <div className="space-y-2 w-full md:w-1/2">
@@ -661,9 +663,9 @@ const TransferForm: React.FC<TransferFormProps> = ({
         onFileChange={handleFileChange}
         onRemoveFile={handleRemoveFile}
       />
+      </div>
 
-      {/* Action buttons */}
-      <div className="flex justify-between gap-2">
+      <StickyFormActions>
         <div>
           {isEditMode && onDelete && (
             <DeleteButton
@@ -698,7 +700,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
             )}
           </Button>
         </div>
-      </div>
+      </StickyFormActions>
     </form>
   );
 };
