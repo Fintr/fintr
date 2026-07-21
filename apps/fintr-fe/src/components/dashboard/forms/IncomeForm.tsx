@@ -40,6 +40,7 @@ import { UpdateTransactionType } from "@/types/transactionTypes";
 import NotesAutocomplete from "@/components/ui/notes-autocomplete";
 import FileUploadField from "./FileUploadField";
 import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
+import { StickyFormActions, pinnedFormScrollAreaClassName } from "./StickyFormActions";
 import {
   AmountWithRatePicker,
   type ConversionSnapshot,
@@ -801,8 +802,12 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const currentYear = new Date().getFullYear();
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit}>
-      <div className="space-y-4">
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      <div className={pinnedFormScrollAreaClassName}>
         {/* Income Form Essential Fields - Date on first row, Amount on second row. */}
         <div data-tutorial-target="income-form" className="grid grid-cols-1 gap-4">
           <div className="space-y-2 min-w-0">
@@ -1028,8 +1033,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
       </div>
       
-      {/* Submit/Cancel Buttons */}
-      <div className="flex justify-between gap-2 mt-4">
+      <StickyFormActions>
         <div>
           {isEditMode && onDelete && (
             <DeleteButton
@@ -1054,7 +1058,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             {isSubmitting ? (isEditMode ? "Updating Income..." : "Adding Income...") : (isEditMode ? "Update Income" : "Add Income")}
           </Button>
         </div>
-      </div>
+      </StickyFormActions>
     </form>
   );
 };

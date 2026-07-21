@@ -37,6 +37,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import DeleteLoanPaymentModal from "@/components/dashboard/forms/DeleteLoanPaymentModal";
 import {
+  StickyFormActions,
+  pinnedFormScrollAreaClassName,
+} from "@/components/dashboard/forms/StickyFormActions";
+import {
   Table,
   TableHeader,
   TableBody,
@@ -513,147 +517,150 @@ export function LoanDetailPanel({
           title="Record Loan Payment"
           maxWidth="2xl"
           className="p-0"
+          pinBodyLayout
         >
-          <div className="px-6 pb-6">
-            <div className="space-y-4">
-                  <p className="text-left text-sm text-muted-foreground">
-                    {adjustsAccountBalance
-                      ? "Record a payment for this loan. The amount is split into principal and interest using daily simple interest, and your selected account balance is updated to match the cash movement."
-                      : "Record a past payment that is already reflected in your account balances. The loan schedule and outstanding principal still update from the amount you enter, but no money is moved in or out of the selected account."}
-                  </p>
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-date" className="text-sm">Payment Date</Label>
-                    <CalendarPopover
-                      modal
-                      open={recordPaymentDatePickerOpen}
-                      onOpenChange={setRecordPaymentDatePickerOpen}
-                      trigger={
-                        <Button 
-                          variant="outline" 
-                          className={`w-full justify-start text-left font-normal text-sm ${formSubmitted && validationErrors.date ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {paymentDate ? format(paymentDate, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
-                        </Button>
+          <div className="flex h-full min-h-0 flex-col overflow-hidden">
+            <div className={pinnedFormScrollAreaClassName}>
+              <p className="text-left text-sm text-muted-foreground">
+                {adjustsAccountBalance
+                  ? "Record a payment for this loan. The amount is split into principal and interest using daily simple interest, and your selected account balance is updated to match the cash movement."
+                  : "Record a past payment that is already reflected in your account balances. The loan schedule and outstanding principal still update from the amount you enter, but no money is moved in or out of the selected account."}
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="payment-date" className="text-sm">Payment Date</Label>
+                <CalendarPopover
+                  modal
+                  open={recordPaymentDatePickerOpen}
+                  onOpenChange={setRecordPaymentDatePickerOpen}
+                  trigger={
+                    <Button 
+                      variant="outline" 
+                      className={`w-full justify-start text-left font-normal text-sm ${formSubmitted && validationErrors.date ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {paymentDate ? format(paymentDate, "MMM d, yyyy") : <span className="text-sm">Pick a date</span>}
+                    </Button>
+                  }
+                >
+                  <Calendar 
+                    mode="single" 
+                    selected={paymentDate} 
+                    onSelect={(date) => {
+                      setPaymentDate(date);
+                      if (date) setRecordPaymentDatePickerOpen(false);
+                      if (formSubmitted && validationErrors.date) {
+                        setValidationErrors({ ...validationErrors, date: "" });
                       }
-                    >
-                      <Calendar 
-                        mode="single" 
-                        selected={paymentDate} 
-                        onSelect={(date) => {
-                          setPaymentDate(date);
-                          if (date) setRecordPaymentDatePickerOpen(false);
-                          if (formSubmitted && validationErrors.date) {
-                            setValidationErrors({ ...validationErrors, date: "" });
-                          }
-                        }} 
-                        autoFocus 
-                        defaultMonth={paymentDate || new Date()}
-                        toDate={new Date()}
-                      />
-                    </CalendarPopover>
-                    {formSubmitted && validationErrors.date && (
-                      <FormError message={validationErrors.date} />
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-account" className="text-sm">Account</Label>
-                    <Select
-                      value={accountName}
-                      onValueChange={(value) => {
-                        setAccountName(value);
-                        if (formSubmitted && validationErrors.accountName) {
-                          setValidationErrors({ ...validationErrors, accountName: "" });
-                        }
-                      }}
-                    >
-                      <SelectTrigger 
-                        id="payment-account"
-                        className={`text-sm ${formSubmitted && validationErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                      >
-                        <SelectValue placeholder="Select Account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accountOptions.map((account) => (
-                          <SelectItem key={account.value} value={account.value} className="text-sm">
-                            {account.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {formSubmitted && validationErrors.accountName && (
-                      <FormError message={validationErrors.accountName} />
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-amount" className="text-sm">Total Payment Amount</Label>
-                    <CalculatorInput
-                      id="payment-amount"
-                      value={totalPaymentInput.displayValue}
-                      onChange={(value) => {
-                        totalPaymentInput.handleInputChange(value);
-                        if (formSubmitted && validationErrors.totalPayment) {
-                          setValidationErrors({ ...validationErrors, totalPayment: "" });
-                        }
-                      }}
-                      placeholder="0.00"
-                      className={`text-sm ${formSubmitted && validationErrors.totalPayment ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                    />
-                    {formSubmitted && validationErrors.totalPayment && (
-                      <FormError message={validationErrors.totalPayment} />
-                    )}
-                  </div>
-
-                  <AdjustAccountBalanceSwitchRow
-                    id="adjusts-account-balance"
-                    checked={adjustsAccountBalance}
-                    onCheckedChange={setAdjustsAccountBalance}
-                    label="Update account balance"
-                    infoAriaLabel="Help: update account balance for this payment"
-                    switchAriaLabel="Update account balance for this payment"
-                    popoverTitle="Account balance and this payment"
-                  >
-                    <p>
-                      When <span className="font-medium">on</span>, Fintr changes the selected account balance to match this payment (the usual repayment flow).
-                    </p>
-                    <p>
-                      When <span className="font-medium">off</span>, use this for money you have already booked in your accounts (for example catching up an ongoing loan). The loan still splits principal and interest from your amount, but the account balance is not moved again.
-                    </p>
-                  </AdjustAccountBalanceSwitchRow>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-notes" className="text-sm">Notes (Optional)</Label>
-                    <Textarea
-                      id="payment-notes"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      onKeyDown={handleMultilineNotesKeyDown}
-                      placeholder="Add any additional notes..."
-                      className="text-sm min-h-[80px]"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
-                    <Button
-                      variant="outline"
-                      type="button"
-                      onClick={closeRecordPaymentModal}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleAddPayment}
-                      disabled={isCreating}
-                    >
-                      {isCreating ? "Recording..." : "Record Payment"}
-                    </Button>
-                  </div>
-                </div>
+                    }} 
+                    autoFocus 
+                    defaultMonth={paymentDate || new Date()}
+                    toDate={new Date()}
+                  />
+                </CalendarPopover>
+                {formSubmitted && validationErrors.date && (
+                  <FormError message={validationErrors.date} />
+                )}
               </div>
-            </CustomModal>
+              
+              <div className="space-y-2">
+                <Label htmlFor="payment-account" className="text-sm">Account</Label>
+                <Select
+                  value={accountName}
+                  onValueChange={(value) => {
+                    setAccountName(value);
+                    if (formSubmitted && validationErrors.accountName) {
+                      setValidationErrors({ ...validationErrors, accountName: "" });
+                    }
+                  }}
+                >
+                  <SelectTrigger 
+                    id="payment-account"
+                    className={`text-sm ${formSubmitted && validationErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                  >
+                    <SelectValue placeholder="Select Account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accountOptions.map((account) => (
+                      <SelectItem key={account.value} value={account.value} className="text-sm">
+                        {account.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formSubmitted && validationErrors.accountName && (
+                  <FormError message={validationErrors.accountName} />
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="payment-amount" className="text-sm">Total Payment Amount</Label>
+                <CalculatorInput
+                  id="payment-amount"
+                  value={totalPaymentInput.displayValue}
+                  onChange={(value) => {
+                    totalPaymentInput.handleInputChange(value);
+                    if (formSubmitted && validationErrors.totalPayment) {
+                      setValidationErrors({ ...validationErrors, totalPayment: "" });
+                    }
+                  }}
+                  placeholder="0.00"
+                  className={`text-sm ${formSubmitted && validationErrors.totalPayment ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                />
+                {formSubmitted && validationErrors.totalPayment && (
+                  <FormError message={validationErrors.totalPayment} />
+                )}
+              </div>
+
+              <AdjustAccountBalanceSwitchRow
+                id="adjusts-account-balance"
+                checked={adjustsAccountBalance}
+                onCheckedChange={setAdjustsAccountBalance}
+                label="Update account balance"
+                infoAriaLabel="Help: update account balance for this payment"
+                switchAriaLabel="Update account balance for this payment"
+                popoverTitle="Account balance and this payment"
+              >
+                <p>
+                  When <span className="font-medium">on</span>, Fintr changes the selected account balance to match this payment (the usual repayment flow).
+                </p>
+                <p>
+                  When <span className="font-medium">off</span>, use this for money you have already booked in your accounts (for example catching up an ongoing loan). The loan still splits principal and interest from your amount, but the account balance is not moved again.
+                </p>
+              </AdjustAccountBalanceSwitchRow>
+
+              <div className="space-y-2">
+                <Label htmlFor="payment-notes" className="text-sm">Notes (Optional)</Label>
+                <Textarea
+                  id="payment-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  onKeyDown={handleMultilineNotesKeyDown}
+                  placeholder="Add any additional notes..."
+                  className="text-sm min-h-[80px]"
+                />
+              </div>
+            </div>
+
+            <StickyFormActions className="justify-end">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={closeRecordPaymentModal}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleAddPayment}
+                  disabled={isCreating}
+                >
+                  {isCreating ? "Recording..." : "Record Payment"}
+                </Button>
+              </div>
+            </StickyFormActions>
+          </div>
+        </CustomModal>
 
         <CustomModal
           isOpen={isEditPaymentDialogOpen}
@@ -661,9 +668,10 @@ export function LoanDetailPanel({
           title="Edit Loan Payment"
           maxWidth="2xl"
           className="p-0"
+          pinBodyLayout
         >
-          <div className="px-6 pb-6">
-            <div className="space-y-4">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden">
+            <div className={pinnedFormScrollAreaClassName}>
               <p className="text-left text-sm text-muted-foreground">
                 {adjustsAccountBalance
                   ? "Update payment details. Principal and interest are recalculated from the amount, and the account balance change is kept in sync."
@@ -783,8 +791,10 @@ export function LoanDetailPanel({
                   className="text-sm min-h-[80px]"
                 />
               </div>
+            </div>
 
-              <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
+            <StickyFormActions className="justify-end">
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   type="button"
@@ -800,7 +810,7 @@ export function LoanDetailPanel({
                   {isUpdating ? "Updating..." : "Update Payment"}
                 </Button>
               </div>
-            </div>
+            </StickyFormActions>
           </div>
         </CustomModal>
         

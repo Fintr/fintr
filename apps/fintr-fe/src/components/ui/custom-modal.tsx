@@ -22,6 +22,11 @@ interface CustomModalProps {
    * @default "60vh" - ensures content remains usable
    */
   minContentHeightOnKeyboard?: string;
+  /**
+   * When true, the body does not scroll. Children should use a flex column with
+   * an internal scroll region and a pinned footer (e.g. form action buttons).
+   */
+  pinBodyLayout?: boolean;
 }
 
 const maxWidthClasses = {
@@ -51,6 +56,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   maxWidth = "2xl",
   closeButtonDataTarget = "close-modal-button",
   minContentHeightOnKeyboard = "60vh",
+  pinBodyLayout = false,
 }) => {
   const [mounted, setMounted] = React.useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -117,7 +123,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       : 0;
 
   const mobileModalPanelBottomPaddingPx =
-    isMobile && isAndroidNative
+    isMobile && isAndroidNative && !pinBodyLayout
       ? Math.max(safeAreaInsetBottom, hasAndroid3ButtonNav ? 48 : 16)
       : 0;
 
@@ -370,6 +376,34 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       return Object.keys(insetStyle).length > 0 ? insetStyle : undefined;
     }
 
+    const pinnedPanelHeightPx = (() => {
+      if (!pinBodyLayout) {
+        return null;
+      }
+
+      if (isAndroidNative) {
+        if (useKeyboardSizedMobileFrame) {
+          return mobileViewportHeight;
+        }
+
+        if (extendAndroidShellToLayoutBottom) {
+          return anchoredOverlayHeight;
+        }
+
+        return mobileViewportHeight;
+      }
+
+      return mobileViewportHeight;
+    })();
+
+    if (pinnedPanelHeightPx != null) {
+      return {
+        ...insetStyle,
+        height: `${pinnedPanelHeightPx}px`,
+        maxHeight: `${pinnedPanelHeightPx}px`,
+      };
+    }
+
     if (isAndroidNative) {
       return {
         ...insetStyle,
@@ -481,7 +515,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           "relative z-[101] bg-background ",
           "w-full",
           isMobile 
-            ? "min-h-0 flex-1 rounded-none" 
+            ? cn(
+                "min-h-0 rounded-none",
+                pinBodyLayout ? "h-full flex-1" : "flex-1",
+              )
             : cn("rounded-lg", maxWidthClasses[maxWidth], "max-h-[90vh]"),
           isMobile && !isAndroidNative && "pt-safe-top",
           "overflow-hidden flex flex-col",
@@ -500,10 +537,15 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         )}
         <div
           ref={modalBodyScrollRef}
-          className="flex-1 overflow-y-auto"
+          className={cn(
+            "flex-1 min-h-0",
+            pinBodyLayout
+              ? "flex h-full flex-col overflow-hidden"
+              : "overflow-y-auto",
+          )}
           style={{
-            WebkitOverflowScrolling: "touch",
-            touchAction: "pan-y",
+            WebkitOverflowScrolling: pinBodyLayout ? undefined : "touch",
+            touchAction: pinBodyLayout ? undefined : "pan-y",
             minHeight: useKeyboardSizedMobileFrame
               ? `max(200px, calc(100% - ${title ? '80px' : '0px'}))`
               : undefined,

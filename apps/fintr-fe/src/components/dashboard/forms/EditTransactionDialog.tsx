@@ -561,9 +561,10 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         title={getDialogTitle()}
         maxWidth="2xl"
         className="p-0"
+        pinBodyLayout
       >
         <div
-          className="px-6 pb-6 pt-4"
+          className="flex h-full min-h-0 flex-col"
           onPointerDown={(e) => {
             if (!conversionPopoverOpen) return;
             const target = e.target as Node;
@@ -572,35 +573,39 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             setConversionPopoverOpen(false);
           }}
         >
-          <p className="text-sm text-muted-foreground mb-4">
-            {getDialogDescription()}
-          </p>
-          {hasConversion(fullTransactionData) && getConversion(fullTransactionData) && (
-            <div ref={conversionPopoverTriggerRef} className="mb-4">
-              <Popover
-                open={conversionPopoverOpen}
-                onOpenChange={setConversionPopoverOpen}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                  >
-                    <ArrowLeftRight className="h-4 w-4" />
-                    View conversion
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-80">
-                  <div ref={conversionPopoverContentRef}>
-                    <ConversionInfoPopover conv={getConversion(fullTransactionData)!} />
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-          )}
-          {renderForm()}
+          <div className="shrink-0 space-y-4 px-6 pt-4">
+            <p className="text-sm text-muted-foreground">
+              {getDialogDescription()}
+            </p>
+            {hasConversion(fullTransactionData) && getConversion(fullTransactionData) && (
+              <div ref={conversionPopoverTriggerRef}>
+                <Popover
+                  open={conversionPopoverOpen}
+                  onOpenChange={setConversionPopoverOpen}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <ArrowLeftRight className="h-4 w-4" />
+                      View conversion
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-80">
+                    <div ref={conversionPopoverContentRef}>
+                      <ConversionInfoPopover conv={getConversion(fullTransactionData)!} />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col">
+            {renderForm()}
+          </div>
         </div>
       </CustomModal>
 

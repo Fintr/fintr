@@ -31,6 +31,7 @@ import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
 import GridPicker from "./GridPicker";
 import FileUploadField from "./FileUploadField";
 import { AdjustAccountBalanceSwitchRow } from "@/components/dashboard/forms/adjust-account-balance-switch-row";
+import { StickyFormActions, pinnedFormScrollAreaClassName } from "./StickyFormActions";
 import {
   convertLoanTermDisplay,
   formatLoanTermUnitLabel,
@@ -295,7 +296,8 @@ const LoanForm: React.FC<LoanFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className={pinnedFormScrollAreaClassName}>
       {/* First row: Date and Amount */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -594,24 +596,26 @@ const LoanForm: React.FC<LoanFormProps> = ({
         }
         label="Attach Doc (Optional)"
       />
-
-      {/* Submit and Cancel Buttons */}
-      <div className="flex justify-end gap-2 pt-4 border-t">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isSubmitting}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Creating..." : "Create Loan"}
-        </Button>
       </div>
+
+      <StickyFormActions className="justify-end">
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Creating..." : "Create Loan"}
+          </Button>
+        </div>
+      </StickyFormActions>
     </form>
   );
 };

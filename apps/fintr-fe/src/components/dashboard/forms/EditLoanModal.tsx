@@ -16,6 +16,7 @@ import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import { handleMultilineNotesKeyDown } from "@/lib/multiline-notes-keydown";
 import { LOAN_DETAIL_KEY } from "@/hooks/async/useLoan";
+import { StickyFormActions, pinnedFormScrollAreaClassName } from "./StickyFormActions";
 
 interface EditLoanModalProps {
   loan: Loan;
@@ -197,9 +198,10 @@ const EditLoanModal: React.FC<EditLoanModalProps> = ({
         title="Edit Loan"
         maxWidth="lg"
         className="p-0"
+        pinBodyLayout
       >
-        <div className="px-6 pb-6">
-          <div className="space-y-4">
+        <div className="flex h-full min-h-0 flex-col">
+          <div className={pinnedFormScrollAreaClassName}>
             <p className="text-left text-sm text-muted-foreground">
               You can update the {entityLabel.toLowerCase()} and notes for this loan.
               Principal, interest rate, term, and other loan terms cannot be changed here.
@@ -297,8 +299,10 @@ const EditLoanModal: React.FC<EditLoanModalProps> = ({
                 className="text-sm min-h-[80px]"
               />
             </div>
+          </div>
 
-            <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
+          <StickyFormActions className="justify-end">
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 type="button"
@@ -315,7 +319,7 @@ const EditLoanModal: React.FC<EditLoanModalProps> = ({
                 {isSubmitting ? "Saving..." : "Save Changes"}
               </Button>
             </div>
-          </div>
+          </StickyFormActions>
         </div>
       </CustomModal>
     </>

@@ -41,6 +41,7 @@ import { useTransactionDrafts } from "@/hooks/async/useTransactionDrafts";
 import DraftItems from "./DraftItems";
 import { useQueryClient } from "@tanstack/react-query";
 import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
+import { StickyFormActions, pinnedFormScrollAreaClassName } from "./StickyFormActions";
 import {
   AmountWithRatePicker,
   type ConversionSnapshot,
@@ -1001,8 +1002,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const currentYear = new Date().getFullYear();
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit}>
-      <div className="space-y-4">
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      <div className={pinnedFormScrollAreaClassName}>
         {!isEditMode && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -1267,8 +1272,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         />
 
       </div>
-      {/* Submit/Cancel Buttons */}
-      <div className="flex justify-between gap-2 mt-4">
+      <StickyFormActions>
         <div>
           {isEditMode && onDelete && (
             <DeleteButton
@@ -1294,7 +1298,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             {isSubmitting ? (isEditMode ? "Updating Expense..." : "Adding Expense...") : (isEditMode ? "Update Expense" : "Add Expense")}
           </Button>
         </div>
-      </div>
+      </StickyFormActions>
     </form>
   );
 };
