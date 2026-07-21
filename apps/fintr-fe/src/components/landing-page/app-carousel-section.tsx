@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import Image from "next/image";
+import { AppStoreBadge } from "@/components/landing-page/app-store-badge";
 
 const appScreenshots = [
   {
@@ -137,19 +138,7 @@ export default function AppCarouselSection() {
 
         {/* CTA */}
         <div className="text-center mt-12">
-          <a
-            href="https://apps.apple.com/ph/app/fintr-finance-tracking/id6757146677"
-            target="_blank"
-            className="inline-block transition-opacity hover:opacity-80"
-          >
-            <Image
-              src="/images/app-store-badge.png"
-              alt="Download on the App Store"
-              width={200}
-              height={67}
-              className="h-[64px] w-auto"
-            />
-          </a>
+          <AppStoreBadge size="lg" />
         </div>
       </div>
     </section>

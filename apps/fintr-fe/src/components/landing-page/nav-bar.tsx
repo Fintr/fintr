@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { AppStoreBadge } from "@/components/landing-page/app-store-badge";
 
 export default function Navbar() {
   const { isAuthenticated } = useAuth();
@@ -91,20 +91,10 @@ export default function Navbar() {
               </Link>
             ) : (
               <div className="flex items-center gap-2 pr-6 md:pr-0">
-                <Link
-                  href="https://apps.apple.com/ph/app/fintr-finance-tracking/id6757146677"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block transition-opacity hover:opacity-80 hidden lg:block"
-                >
-                  <Image
-                    src="/images/app-store-badge.png"
-                    alt="Download on the App Store"
-                    width={140}
-                    height={47}
-                    className="h-[46px] w-auto"
-                  />
-                </Link>
+                <AppStoreBadge
+                  size="sm"
+                  className="hidden lg:block"
+                />
                 <Link
                   href="/auth"
                   className="border border-[#D6D3D1] bg-white/80 text-[#0A2540] px-3.5 sm:px-5 py-2 rounded-lg font-semibold text-[13px] sm:text-[14px] transition-colors hover:bg-white hover:border-[#A8A29E] no-underline whitespace-nowrap"

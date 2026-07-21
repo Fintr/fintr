@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { AppStoreBadge } from "@/components/landing-page/app-store-badge";
 
 export default function HeroSection() {
   return (
@@ -19,19 +19,10 @@ export default function HeroSection() {
               Fintr is an AI-powered personal finance assistant that helps you track your money, understand your spending, and make smarter financial decisions. No bank account linking needed.
             </p>
             <div className="flex gap-3 items-center flex-wrap">
-              <Link
-                href="https://apps.apple.com/ph/app/fintr-finance-tracking/id6757146677"
-                target="_blank"
-                className="inline-block transition-opacity hover:opacity-80 mt-1"
-              >
-                <Image
-                  src="/images/app-store-badge.png"
-                  alt="Download on the App Store"
-                  width={200}
-                  height={67}
-                  className="h-[64px] w-auto"
-                />
-              </Link>
+              <AppStoreBadge
+                size="lg"
+                className="mt-1"
+              />
               <Link
                 href="#features"
                 className="inline-flex items-center gap-2 bg-transparent text-[#0A2540] px-7 py-3.5 rounded-[10px] font-semibold text-[15px] border border-[#E8E6E3] transition-all hover:border-[#A8A29E] hover:bg-[#F7F7F5]"
