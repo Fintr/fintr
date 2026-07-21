@@ -278,7 +278,6 @@ const LoanForm: React.FC<LoanFormProps> = ({
                 receipt: null,
               });
               setLoanTermUnit("years");
-              setShowCustomAccountInput(false);
               principalAmountInput.reset();
               setAdjustsAccountBalance(true);
               setFormSubmitted(false);
