@@ -3,15 +3,22 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { cn, formatCurrency as formatCurrencyWithCurrency } from "@/lib/utils";
+import {
+  cn,
+  formatCurrency as formatCurrencyWithCurrency,
+  getCurrencySymbol,
+  numberFormatting,
+} from "@/lib/utils";
 import { CurrencyPicker } from "@/components/ui/currency-picker";
 import { useAccounts } from "@/hooks/async/useAccounts";
+import { useNumberInput } from "@/hooks/useNumberInput";
 import { Account } from "@/types/accountTypes";
 import {
   Sheet,
@@ -36,7 +43,7 @@ const AccountEditSheet: React.FC<AccountEditSheetProps> = ({
   const { updateAccount, adjustAccountBalance } = useAccounts();
   const [editedAccountName, setEditedAccountName] = useState("");
   const [editedBalanceCurrency, setEditedBalanceCurrency] = useState("PHP");
-  const [newBalance, setNewBalance] = useState("");
+  const newBalanceInput = useNumberInput();
   const [adjustmentDate, setAdjustmentDate] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -46,7 +53,9 @@ const AccountEditSheet: React.FC<AccountEditSheetProps> = ({
     if (!account || !open) return;
     setEditedAccountName(account.name);
     setEditedBalanceCurrency(account.balanceCurrency ?? "PHP");
-    setNewBalance(account.balance);
+    newBalanceInput.setDisplayValue(
+      numberFormatting.formatForInput(account.balance),
+    );
     setAdjustmentDate(new Date().toISOString().split("T")[0]);
     setErrorMessage(null);
   }, [account, open]);
@@ -63,11 +72,14 @@ const AccountEditSheet: React.FC<AccountEditSheetProps> = ({
       return;
     }
 
-    const newBalanceNum = parseFloat(newBalance);
-    if (isNaN(newBalanceNum)) {
+    if (!newBalanceInput.displayValue) {
       toast.error("Please enter a valid balance");
       return;
     }
+
+    const newBalanceNum = numberFormatting.cleanForBackend(
+      newBalanceInput.displayValue,
+    );
 
     if (!adjustmentDate) {
       toast.error("Please select an adjustment date");
@@ -149,6 +161,14 @@ const AccountEditSheet: React.FC<AccountEditSheetProps> = ({
     }
   };
 
+  const newBalanceNum = numberFormatting.cleanForBackend(
+    newBalanceInput.displayValue,
+  );
+  const currentBalanceNum = account ? parseBalance(account.balance) : 0;
+  const balanceChangedPreview =
+    Boolean(account && newBalanceInput.displayValue) &&
+    newBalanceNum !== currentBalanceNum;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -204,15 +224,24 @@ const AccountEditSheet: React.FC<AccountEditSheetProps> = ({
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-new-balance">New Balance</Label>
-            <Input
-              id="edit-new-balance"
-              type="number"
-              step="0.01"
-              value={newBalance}
-              onChange={(e) => setNewBalance(e.target.value)}
-              placeholder="Enter new balance"
-              disabled={isUpdating}
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm leading-none z-10">
+                {getCurrencySymbol(editedBalanceCurrency)}
+                {"\u00A0"}
+              </span>
+              <CalculatorInput
+                id="edit-new-balance"
+                className={
+                  getCurrencySymbol(editedBalanceCurrency).length > 1
+                    ? "pl-16"
+                    : "pl-8"
+                }
+                value={newBalanceInput.displayValue}
+                onChange={(value) => newBalanceInput.handleInputChange(value)}
+                placeholder="0.00"
+                disabled={isUpdating}
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-adjustment-date">Adjustment Date</Label>
@@ -255,13 +284,11 @@ const AccountEditSheet: React.FC<AccountEditSheetProps> = ({
               />
             </CalendarPopover>
           </div>
-          {account &&
-            newBalance &&
-            parseFloat(newBalance) !== parseBalance(account.balance) && (
+          {account && balanceChangedPreview && (
               <div className="text-sm p-3 rounded-md bg-blue-50 border border-blue-200">
                 <strong>Note:</strong> This will create a{" "}
                 <span className="font-semibold">
-                  {parseFloat(newBalance) > parseBalance(account.balance)
+                  {newBalanceNum > currentBalanceNum
                     ? "Income"
                     : "Expense"}{" "}
                   Adjustment
@@ -269,7 +296,7 @@ const AccountEditSheet: React.FC<AccountEditSheetProps> = ({
                 transaction for{" "}
                 <span className="font-semibold">
                   {formatCurrencyWithCurrency(
-                    Math.abs(parseFloat(newBalance) - parseBalance(account.balance)),
+                    Math.abs(newBalanceNum - currentBalanceNum),
                     editedBalanceCurrency ?? "PHP",
                   )}
                 </span>
@@ -295,7 +322,7 @@ const AccountEditSheet: React.FC<AccountEditSheetProps> = ({
               disabled={
                 isUpdating ||
                 !editedAccountName.trim() ||
-                !newBalance ||
+                !newBalanceInput.displayValue ||
                 !adjustmentDate
               }
             >
