@@ -1,12 +1,15 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useKeyboardDetector } from "@/hooks/useKeyboardDetector";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 
 type StickyFormActionsProps = {
   children: React.ReactNode;
   className?: string;
 };
+
+const ANDROID_ACTIONS_BASE_PADDING_PX = 12;
 
 /** Scroll region above pinned form actions — includes bottom padding before the footer. */
 export const pinnedFormScrollAreaClassName =
@@ -16,6 +19,8 @@ export const pinnedFormScrollAreaClassName =
  * Pinned form action bar for create/update modals that use CustomModal
  * `pinBodyLayout`. Stays visible while fields scroll above it.
  * Pads above Android 3-button / gesture nav and iOS home-indicator.
+ * When the soft keyboard is open, Android nav inset is omitted — the keyboard
+ * already sits above system nav, so stacking that padding leaves a gap.
  */
 export const StickyFormActions = ({
   children,
@@ -26,10 +31,12 @@ export const StickyFormActions = ({
     safeAreaInsetBottom,
     hasAndroid3ButtonNav,
   } = usePlatformDetection();
+  const { isOpen: isKeyboardOpen } = useKeyboardDetector();
 
-  const androidBottomInset = isAndroidNative
-    ? Math.max(safeAreaInsetBottom, hasAndroid3ButtonNav ? 48 : 16)
-    : 0;
+  const androidBottomInset =
+    isAndroidNative && !isKeyboardOpen
+      ? Math.max(safeAreaInsetBottom, hasAndroid3ButtonNav ? 48 : 16)
+      : 0;
 
   return (
     <div
@@ -41,7 +48,10 @@ export const StickyFormActions = ({
       )}
       style={
         isAndroidNative
-          ? { paddingBottom: androidBottomInset + 12 }
+          ? {
+              paddingBottom:
+                androidBottomInset + ANDROID_ACTIONS_BASE_PADDING_PX,
+            }
           : undefined
       }
     >
