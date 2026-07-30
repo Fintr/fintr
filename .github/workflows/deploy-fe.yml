@@ -60,7 +60,7 @@ jobs:
           fi
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v4
+        uses: docker/login-action@v4.5.2
         with:
           username: ${{ vars.KAMAL_REGISTRY_USERNAME }}
           password: ${{ vars.KAMAL_REGISTRY_PASSWORD }}
