@@ -43,17 +43,35 @@ After cloning, install them once per machine:
 
 ```bash
 brew install prek   # if needed
+uv tool install graphifyy   # knowledge graph CLI (pre-commit rebuilds graphify-out)
 bin/setup-git-hooks
 ```
 
 | Hook | When | What runs |
 |------|------|-----------|
-| `pre-commit` | `git commit` | Backend scoped RSpec for changed `apps/fintr-be` files |
+| `pre-commit` | `git commit` | Rebuild + stage `graphify-out/` when source files change; backend scoped RSpec for changed `apps/fintr-be` files |
 | `pre-push` | `git push` | Frontend Vitest / Playwright for changed `apps/fintr-fe` files |
 
-Skip once: `git commit --no-verify` or `git push --no-verify`.
+`graphify-out/` is tracked so the knowledge graph travels with the code. The pre-commit hook rebuilds it (AST only, no API) and stages updates into the same commit — do **not** use stock `graphify hook install` (that post-commit hook leaves `graphify-out` dangling).
+
+Skip once: `git commit --no-verify` or `git push --no-verify`. Skip only the graph rebuild: `GRAPHIFY_SKIP_HOOK=1 git commit ...`.
 
 You do **not** need Husky or `prek install` (which writes to `.husky/_/`). Use `bin/setup-git-hooks` instead.
+
+## Knowledge graph (graphify)
+
+```bash
+graphify query "how does auth work?"
+graphify path "CreateTransaction" "Space"
+graphify explain "Dry::Operation"
+```
+
+Initial / full rebuild (code only, local AST, no API key):
+
+```bash
+graphify extract . --code-only
+graphify cluster-only .
+```
 
 ## Testing
 

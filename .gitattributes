@@ -1,0 +1,3 @@
+# Union-merge graphify graph.json when two branches update it in parallel.
+# Driver is registered locally by bin/setup-git-hooks (merge.graphify.driver).
+graphify-out/graph.json merge=graphify
