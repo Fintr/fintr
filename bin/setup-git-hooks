@@ -17,13 +17,64 @@ if ! command -v prek >/dev/null 2>&1; then
   fi
 fi
 
-chmod +x .githooks/pre-commit .githooks/pre-push
+chmod +x \
+  .githooks/pre-commit \
+  .githooks/pre-push \
+  scripts/git-hooks/pre-commit-graphify.sh \
+  scripts/git-hooks/pre-commit-backend-rspec.sh \
+  scripts/git-hooks/pre-push-frontend.sh
 
 git config core.hooksPath .githooks
 
+# Register graphify's graph.json union merge driver (local config; not committed).
+# Prefer the interpreter that actually has the graphify package.
+register_graphify_merge_driver() {
+  local probe pinned from_file graphify_bin shebang driver
+  probe="import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('graphify') else 1)"
+  pinned=""
+
+  if [[ -f graphify-out/.graphify_python ]]; then
+    from_file="$(tr -d '[:space:]' < graphify-out/.graphify_python || true)"
+    if [[ -n "${from_file}" && -x "${from_file}" ]] && "${from_file}" -c "${probe}" 2>/dev/null; then
+      pinned="${from_file}"
+    fi
+  fi
+
+  if [[ -z "${pinned}" ]] && command -v graphify >/dev/null 2>&1; then
+    graphify_bin="$(command -v graphify)"
+    shebang="$(head -n 1 "${graphify_bin}" 2>/dev/null | sed 's/^#![[:space:]]*//' || true)"
+    case "${shebang}" in
+      */env\ *) pinned="${shebang#*/env }" ;;
+      /*) pinned="${shebang%% *}" ;;
+    esac
+    if [[ -n "${pinned}" ]] && ! "${pinned}" -c "${probe}" 2>/dev/null; then
+      pinned=""
+    fi
+  fi
+
+  if [[ -n "${pinned}" ]]; then
+    driver="\"${pinned}\" -m graphify merge-driver %O %A %B"
+  elif command -v graphify >/dev/null 2>&1; then
+    driver="graphify merge-driver %O %A %B"
+  else
+    echo "Graphify merge driver: skipped (install graphifyy to enable graph.json union merges)"
+    return 0
+  fi
+
+  git config merge.graphify.name "graphify graph.json union merge"
+  git config merge.graphify.driver "${driver}"
+  echo "Graphify merge driver registered (merge.graphify.driver)"
+}
+
+register_graphify_merge_driver
+
 echo "Git hooks configured (core.hooksPath=.githooks)"
-echo "  pre-commit → prek → scripts/git-hooks/pre-commit-backend-rspec.sh"
+echo "  pre-commit → prek → scripts/git-hooks/pre-commit-graphify.sh"
+echo "             → prek → scripts/git-hooks/pre-commit-backend-rspec.sh"
 echo "  pre-push   → prek → scripts/git-hooks/pre-push-frontend.sh"
 echo ""
 echo "Hook scripts are tracked in git; each developer runs this once per clone:"
 echo "  bin/setup-git-hooks"
+echo ""
+echo "Graphify CLI (for local rebuilds / queries):"
+echo "  uv tool install graphifyy"
