@@ -1,430 +1,438 @@
-# Graph Report - setup-graphify  (2026-08-07)
+# Graph Report - fintr  (2026-08-10)
 
 ## Corpus Check
-- 2124 files · ~1,217,506 words
+- 1810 files · ~981,343 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 9722 nodes · 19533 edges · 1033 communities (852 shown, 181 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 843 edges (avg confidence: 0.68)
+- 10046 nodes · 22157 edges · 695 communities (501 shown, 194 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 934 edges (avg confidence: 0.69)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c6c289df`
+- Built from commit: `18af7698`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- button.tsx
-- ExpenseForm.tsx
+- useAuthApi
 - cn
-- insights-tab.tsx
-- ai-interactions/page.tsx
-- Transactions::Operations::Transfers::CalculateBalances
-- chart-tooltip-content.tsx
-- planningDir
-- output
-- Api::V1::Finance::SubscriptionsController
-- useAiChat.ts
-- AmountWithRatePicker.tsx
-- transactions/index.tsx
-- gsd-tools.cjs
-- fetchers.ts
-- extractFrontmatter
-- add-transaction-dialog.tsx
-- CategoryTypeEnum
+- button.tsx
+- useAuth
+- MainActivity
+- ExpenseForm.tsx
+- transfers/create-local-first.ts
+- .render_success
 - useSubscriptions.ts
-- dependencies
-- .render_unprocessable_content
-- (public)/page.tsx
-- edit-budget-form.tsx
+- profile-output.cjs
+- state.cjs
+- categoryTreeTypes.ts
+- gsd-tools.cjs
+- bootstrap-local-data.ts
+- insights-tab.tsx
+- useAiChat.ts
 - Imports::Import
-- Api::V1::Transactions::LoansController
+- extractFrontmatter
+- planningDir
+- transactions/index.tsx
+- dependencies
+- dashboard/layout.tsx
+- category-detail-content.tsx
+- .render_unprocessable_content
+- local-db/index.ts
+- (public)/page.tsx
 - ApiResponses
-- platform-detection.ts
-- useAccounts.ts
-- core.cjs
-- error
-- ApplicationRecord
+- Publishing Fintr to the App Store
+- Testing Guide for Fintr Mobile Layouts
+- new-budget-dialog.tsx
+- Api::V1::Transactions::LoansController
 - Transactions::Operations::Categories::ShowAllCategories
-- Ai::Operations::Embeddings::GenerateEmbedding
-- Ai::Rag::Agent::ResponseFallbackBuilder
-- ApplicationJob
-- Insights::Operations::CreateNarratives
-- BaseQuery
-- planning-workspace.cjs
-- TutorialContext.tsx
+- auth-callback/page.tsx
+- Ai::Operations::Receipts::ExtractReceiptDataVision
+- AuthContext.tsx
+- core.cjs
+- platform-detection.ts
+- phase.cjs
 - devDependencies
+- planning-workspace.cjs
+- detail-local.ts
+- downloadBlobAsFile
+- Spaces::Space
+- Transactions::Operations::Transfers::CalculateBalances
+- Admin::Operations::CreateUserActivityAnalytics
+- Transactions::Transaction
+- Insights::Operations::CreateNarratives
 - client-layout.tsx
+- initCapacitorBridgeIfNeeded
+- transactions/local-cache.ts
 - Ai::Operations::Conversations::CreateConversation
-- async/useOnboarding.ts
-- loan-detail-content.tsx
+- Transactions::Operations::CreateTransaction
+- Ai::Operations::Usages::ShowUsage
+- useTickets.ts
 - calculator-input.tsx
 - config.cjs
+- ApplicationRecord
 - Auth::Operations::RegisterUser
 - Finance::Operations::Customers::CreateCustomer
-- categoryTreeTypes.ts
-- profile-output.cjs
-- MainActivity
-- MotionAnimationGenerator
-- providers.tsx
-- verify.cjs
-- run_loop.py
-- ApplicationController
-- Transactions::Expense
-- google-signin.ts
-- Transactions::Operations::Accounts::SaveAccount
-- .show
-- Transactions::Operations::CreateTransaction
+- Transactions::Operations::Transfers::UpdateThisAndFutureTransfers
+- ApplicationJob
 - Transactions::Queries::FilteredAccountActivities
-- useTickets.ts
-- CategoryTreeOption
-- Ai::Operations::Receipts::CreateDraftFromReceiptResult
-- Transactions::Account
-- buildDashboardApiJson
-- auth-callback/page.tsx
-- compilerOptions
-- .render_not_found
+- useAccounts.ts
+- monthly-financial-summaries/local-cache.ts
+- MotionAnimationGenerator
+- insights/types.ts
+- run_loop.py
 - CurrentSpace
-- Entities::Operations::CreateEntity
+- Spaces::Operations::JoinSpace
+- Transactions::Operations::Transfers::CreateBulkTransferFeeTransactions
+- Transactions::Operations::Accounts::SaveAccount
+- Transactions::Operations::UpdateThisAndFutureTransactions
+- Transactions::Operations::Transfers::CreateTransfer
+- BaseQuery
+- exchangeRates/queries.ts
+- fetchers.ts
+- Auth::Operations::SyncUserFromAuthToken
+- Imports::Operations::PrepareCategories
+- Ai::Operations::Receipts::CalculateConfidenceAi
+- .render_not_found
+- Finance::Operations::Subscriptions::UpdateSubscription
+- Transactions::Operations::UpdateTransaction
+- ApplicationController
+- Api::V1::Crm::TicketsController
+- Transactions::Draft
+- getPublicBackendUrl
+- capacitor-keyboard-inset.ts
+- offline-calculations.ts
+- offline-narratives.ts
+- compilerOptions
+- Onboardings::Operations::CurrencyStep
 - Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSessionSucceeded
-- MonthlyFinancialSummary
-- Ai::Operations::Receipts::ExtractReceiptDataVision
-- new-budget-dialog.tsx
+- Imports::Operations::BulkImportTransactions
+- Onboardings::Operations::ShowAccountsData
+- Transactions::Transfers::DuplicateTransferJob
+- setAuthStorageForE2e
+- error
+- Mobile Build Scripts
 - server.cjs
 - VariantBuilder
-- app/layout.tsx
-- Repeatable
-- Ai::Operations::Receipts::CalculateConfidenceAi
+- Spaces::Operations::GrantAccess
+- Transactions::Operations::CreateRepeatTransactions
+- FailureHandler
 - scripts
+- AmountWithRatePicker.tsx
+- transactions/create-local-first.ts
 - Spaces::SpaceUser
-- Finance::Operations::Subscriptions::UpdateSubscription
+- Transactions::Transfer
+- Auth::User
 - Transactions::Operations::Accounts::RemoveCalculation
-- Transactions::Queries::FilteredCombined
 - Integrations::Marketing::Brevo::Client
-- useAuthApi
-- spaceAtoms.ts
-- TransferForm.tsx
+- google-signin.ts
 - intel.cjs
-- Auth::Operations::CreateUserAndSpace
+- Crm::Ticket
 - Insights::Operations::CreateHealthScores
-- Transactions::Operations::Loans::DeleteLoanPayment
-- category-filter-combobox.tsx
+- Onboardings::Operations::AccountsStep
+- Transactions::Operations::Accounts::CalculateBalance
+- Transactions::Operations::Transfers::UpdateRepeatTransfers
+- .call
+- useSpaceContext.ts
 - learnings.cjs
 - generate_review.py
-- Imports::Operations::Categories::FindOrCreateCategory
+- Api::V1::OnboardingsController
+- Ai::Rag::Agent::ResponseFallbackBuilder
+- Onboardings::Operations::IncomeStep
+- Transactions::Operations::Transfers::UpdateTransfer
 - Integrations::Payments::Xendit::Client
-- AuthContext.tsx
+- buildDashboardApiJson
+- Api::V1::Ai::ConversationsController
 - gsd2-import.cjs
 - Spaces::Operations::RemoveUser
-- Transactions::Operations::Loans::CreateLoan
-- ExchangeRates::Operations::AmountInSpaceForTransactable
-- FailureHandler
-- Insights::Operations::CreateWeeklySpending
-- Transactions::Operations::Transfers::UpdateTransfer
+- Ai::Operations::Receipts::ResolveSuggestedTransactionPayload
+- Budgets::Operations::CreateBudget
 - FintrConnectionGate
-- FintrConnectionGate
+- from-monthly-buckets.ts
 - graphify.cjs
-- Api::V1::Imports::ImportsController
-- Finance::Operations::Subscriptions::ApplySponsorCode
+- Ai::Operations::Receipts::FormatResult
 - Auth::Operations::UpdateUserAuth0
 - Entities::Queries::AllEntities
-- Transactions::Operations::Transfers::CreateTransfer
-- Transactions::Queries::AccountActivityTotalsByType
-- Transactions::Operations::Transfers::CreateBulkTransferFeeTransactions
-- FintrBridgeWebViewClient
-- (private)/layout.tsx
-- weekly-feedback.ts
+- Insights::Operations::CreateExpenseBreakdown
+- Transactions::Queries::FilteredCombined
+- async/useOnboarding.ts
 - profile-pipeline.cjs
-- .render_success
-- Spaces::Space
+- Spaces::Operations::CreateOrganizationSpace
+- Transactions::Loan
 - Transactions::Operations::BulkRecordTransactionVersions
-- MonthlyFinancialSummaries::Queries::TotalsInSpaceForRange
-- ApplicationCable::Connection
+- (private)/layout.tsx
+- lib/api.ts
 - Admin::Queries::UsersQuery
 - Api::V1::InsightsController
-- Transactions::Transfer
-- Ai::Queries::Usages::UsageInPeriod
 - Finance::Operations::Subscriptions::CreateSubscription
 - Finance::Operations::Subscriptions::Webhooks::HandleCycleSucceeded
 - Transactions::Operations::Accounts::ShowAccounts
-- Transactions::Operations::Loans::UpdateLoanPayment
-- Transactions::Operations::Transfers::UpdateThisAndFutureTransfers
-- Plugin
-- setAuthStorageForE2e
-- capacitor.ts
-- lib/api.ts
-- animated-sheet-shell.tsx
-- Ai::Rag::Agent::Tools::Auditable
+- Transactions::Operations::Categories::ConvertCategoryHierarchy
+- weekly-feedback.ts
+- Ai::Rag::DataRetriever
 - Finance::SpaceSubscription
+- Auth::Operations::CreateUserAndSpace
 - Finance::Operations::Subscriptions::Webhooks::HandleCycleFailed
-- getPublicBackendUrl
-- Transactions::Operations::DeleteThisTransaction
-- Admin::Queries::UserActivityDrilldownQuery
-- Auth::Client
+- Transactions::Operations::Transfers::UpdateAllInSeriesTransfers
 - AppDelegate
+- app/layout.tsx
 - category-budget-section.tsx
-- conversation-list.tsx
 - starter_motion/package.json
+- TransactionEditingChannel
 - .render_internal_server_error
 - .build_tools
+- Ai::Rag::Agent::Tools::Auditable
+- Fintr AI Backend README
 - Finance::UpdateSubscriptionCycleCountJob
-- Finance::BillingCycle
-- Spaces::Operations::GrantAccess
-- Ai::Operations::Receipts::FormatResult
+- Imports::Operations::CreateImport
+- useTransactionCategories.ts
+- Finance::Operations::Subscriptions::ApplySponsorCode
 - ExchangeRates::Operations::FetchRate
 - Finance::Operations::Subscriptions::CalculateProration
 - Finance::Operations::Subscriptions::Webhooks::HandleCycleRetrying
+- Imports::Operations::ProcessImport
 - Insights::Operations::CreateInsightsData
-- Transactions::Operations::Loans::CreateLoanPayment
+- Transactions::Queries::AccountActivityTotalsByType
 - components.json
 - drift.cjs
 - Ai::Interaction
-- .render_paginated
 - Ai::Providers::ResilientProvider
+- Ai::Rag::Agent::RetrievalCollector
 - Ai::Rag::QueryBuilder
-- UserActivity
+- Admin::Queries::MonthlyActiveUserOcrStatsQuery
 - ExchangeRates::ApiExchangeRate
-- Transactions::Operations::Accounts::ComputeBalanceTotals
+- Transactions::Account
 - Budgets::Operations::BuildMonthlyBudgetRows
 - Imports::Operations::ImportSingleRecord
+- Insights::Operations::CreateWeeklySpending
 - Insights::Operations::ResolveContext
 - Transactions::Operations::Accounts::UpdateCalculateBalance
 - Transactions::Operations::Loans::CalculateLoanPaymentInterest
-- Transactions::Operations::Transfers::CreateRepeatTransfers
+- filter-selection-pills.tsx
+- Transactions::Operations::Loans::UpdateLoanPayment
 - Transactions::Operations::Transfers::UpdateCalculateBalances
-- Transactions::Operations::UpdateAllInSeriesTransactions
 - Transactions::Queries::Accounts::DashboardAccounts
-- gap-checker.cjs
-- Api::V1::OnboardingsController
+- Transactions::Queries::TotalsByType
+- TutorialContext.tsx
+- Insights Customer Profiles Design
+- realtime-actor-toast.tsx
+- useOfflineReadMode.ts
+- Transactions::Operations::Transfers::DeleteThisTransfer
 - .perform
 - Ai::Providers::OpenaiFallbackProvider
 - Ai::Providers::OpenrouterProvider
-- Ai::Rag::Agent::RetrievalCollector
+- Ai::Rag::SemanticTransactionResolver
 - MonthlyFinancialSummaries::Operations::RecalculateSpaceSummaries
-- Transactions::LoanPayment
-- Ai::Operations::Usages::ShowUsage
 - Finance::Operations::Subscriptions::CreateFreeSubscription
 - Finance::Operations::Subscriptions::ForceAttemptCycle
 - Finance::Operations::Subscriptions::SimulateCyclePayment
 - Finance::Operations::Subscriptions::Webhooks::HandleCycleCreated
 - Finance::Operations::Webhooks::HandleWebhook
 - Imports::Operations::GenerateSampleTemplate
-- Insights::Operations::CreateExpenseBreakdown
 - Spaces::Operations::TransferOwnership
 - Transactions::Operations::Accounts::AdjustAccountBalance
-- Transactions::Operations::Categories::ConvertCategoryHierarchy
-- Insights::Queries::MonthlySpending
-- .call
+- MonthlyFinancialSummaries::Queries::TotalsInSpaceForRange
 - bundle
+- Auth::Client
 - FileSharePlugin
-- build-production.sh
 - seo-config.ts
-- mobile-sticky-header.tsx
+- Ai::Operations::Receipts::CreateDraftFromReceiptResult
+- Onboardings::Operations::BudgetsStep
+- budgetAtoms.ts
+- .build
 - Ai::Rag::Agent::Tools::QueryFinancialData
-- Onboardings::Operations::ShowAccountsData
+- Transactions::Operations::DeleteThisTransaction
 - Ai::Operations::Usages::CreateUsage
-- Transactions::Operations::Accounts::ResolveSignedBalanceEffect
-- date-range-picker.tsx
+- lockedSystemCategories.ts
 - Crm::Operations::CreateTicketResponse
 - Finance::Operations::Subscriptions::CancelSubscription
 - Finance::Operations::Subscriptions::FindOrCreatePayment
 - Finance::Operations::Subscriptions::Webhooks::HandlePlanActivated
-- Imports::Operations::ProcessImport
 - Imports::Operations::RevertImport
 - Insights::Operations::CreateSummaryStructure
+- useAnchorTransactionsListToToday.ts
 - Onboardings::Operations::SkipOnboarding
-- Transactions::Operations::Loans::DeleteLoan
-- Transactions::Operations::Transfers::DeleteThisTransfer
-- Transactions::Operations::Transfers::UpdateAllInSeriesTransfers
+- Transactions::Operations::Loans::CreateLoanPayment
+- Transactions::Operations::Loans::CreateLoan
+- Finance::Operations::Subscriptions::FindOrCreateCustomerForSpace
 - MonthlyFinancialSummaries::Queries::DateRangeSummary
-- add-transaction-calendar.spec.ts
 - Capacitor
-- Api::V1::EntitiesController
+- Entities::Operations::CreateEntity
+- ProductPulse::Operations::CreateFeedback
 - .create
-- .create
-- Transactions::Operations::Transfers::FindOrCreateTransferFeeCategory
+- topic_breakdown_builder.rb
+- Finance::BillingCycle
+- Onboardings::Operations::ShowBudgetsData
 - Goals::Operations::UpdateGoalDescription
-- Transactions::Loan
+- Ai::Operations::Embeddings::GenerateEmbedding
 - Ai::Operations::Receipts::ProcessReceipt
 - Budgets::Operations::UpdateBudget
 - Finance::Operations::Subscriptions::FindOrCreateBillingCycle
 - Finance::Operations::Subscriptions::Webhooks::HandlePlanInactivated
-- Onboardings::Operations::AccountsStep
-- Onboarding
+- MonthlyFinancialSummaries::Operations::ListForSpace
 - Spaces::Operations::LeaveSpace
 - Spaces::Operations::ResetData
 - Spaces::Operations::UpdateSpace
 - Transactions::Operations::Accounts::CreateAccount
-- budgetAtoms.ts
-- Transactions::Transaction
-- Transactions::Operations::Transfers::CreateTransferFeeTransaction
-- Admin::Queries::MonthlyActiveUserOcrStatsQuery
-- .paginate
-- useConversations.ts
+- Transactions
+- Transactions::Operations::UpdateAllInSeriesTransactions
+- fintr-fe/scripts/mobile/build-production.sh
+- fintr-logo.tsx
 - usePaymentMethods.ts
-- lockedSystemCategories.ts
 - install-profiles.cjs
 - aggregate_benchmark.py
+- ExchangeRates::Operations::SyncApiRates
 - Budget
+- MonthlyFinancialSummary
 - Ai::Operations::Conversations::DeleteConversation
-- Budgets::Operations::CreateBudget
 - Budgets::Operations::PrepareMonthlyReport
 - Budgets::Operations::ValidateCategoryBudgetAllocation
-- Crm::Ticket
 - Finance::Operations::Subscriptions::CreateBillingCycle
 - Finance::Operations::Subscriptions::RemoveFreeSubscription
-- Imports::Operations::CreateImport
+- Transactions::Category
 - Imports::Operations::UpdateImportRecord
-- Utils::Dates
-- Onboardings::Operations::IncomeStep
-- ProductPulse::Operations::CreateFeedback
+- Transactions::Operations::Transfers::DeleteThisAndFutureTransfers
 - Spaces::Operations::DeleteSpace
-- Auth::User
 - Transactions::Operations::Accounts::VerifyBalanceIntegrity
 - Transactions::Operations::Categories::DeleteCategory
-- Transactions::Transfers::DuplicateTransferJob
 - Transactions::Operations::Reports::DownloadCsv
 - Transactions::Operations::Transfers::DeleteAllInSeriesTransfers
-- MonthlyFinancialSummaries::Operations::UpdateSummary
-- Transactions::Operations::Transfers::UpdateRepeatTransfers
 - Admin::Queries::SpacesForFreeSubscriptionQuery
 - Budgets::Queries::MonthlyBudgets
+- Crm::Queries::FilteredTickets
 - Transactions::Queries::NoteSuggestions
-- capacitor-keyboard-inset.ts
-- devDependencies
+- Onboardings::Operations::ShowIncomeData
+- Transactions::Operations::Categories::CreateCategory
+- .render_paginated
+- .index
 - Ai::Rag::InteractionMetadataBuilder
 - Ai::Rag::Agent::Tools::SearchTransactions
 - Ai::Rag::VectorSearcher
 - Ai::Operations::Embeddings::GenerateQueryEmbedding
 - Admin::Operations::BuildUserActivityDrilldown
+- Transactions::Operations::ResolveCategoryAssignment
 - Auth::Operations::ResetPassword
 - Budgets::Operations::CreateMonthlyBudget
 - Dashboards::Operations::ShowDashboardData
 - ExchangeRates::Operations::AmountInSpaceCurrency
 - ExchangeRates::Operations::SpaceAmountToAccountCurrency
 - Finance::Operations::Subscriptions::GetCurrentSubscriptions
-- Imports::Operations::Accounts::FindOrCreateImportAccount
-- Transactions::Category
+- Imports::Operations::ValidateAndPrepareRows
 - Onboardings::Operations::ShowCurrencyData
 - Transactions::Operations::Accounts::DeleteAccount
-- Fintr AI - Backend
-- Transactions::Operations::Accounts::UpdateAccount
+- Transactions::Operations::Accounts::ResolveSignedTransferBalanceEffect
+- ai-interactions.ts
 - Transactions::Operations::Categories::UpdateCategory
 - Transactions::Operations::DeleteAllInSeriesTransactions
-- Transactions::Operations::Schedules::FetchDates
 - Transactions::Operations::TransferAttributes
-- Loans::Operations::UpdateLoan
 - Transactions::Operations::UpdateRepeatTransactions
 - CapacitorViewController
-- budget-usage-bar.tsx
-- chartParser.ts
 - App.jsx
 - Ai::Conversations::MessageRepository
 - Ai::Providers::BaseProvider
-- .build
-- Auth::Operations::SyncUserFromAuthToken
 - Auth::Operations::UpdateTutorialCompletion
 - ExchangeRates::Operations::PersistApiRates
 - Finance::Operations::Subscriptions::FindSpaceSubscriptionByXenditId
-- Imports::Operations::BulkImportTransactions
-- Transactions::Operations::Accounts::CalculateBalance
-- Fintr
-- TutorialOverlay.tsx
-- CreateAccountVersions
+- Transactions::Operations::DeleteThisAndFutureTransactions
 - Transactions::Operations::PersistCurrencyConversion
-- Transactions::Operations::ResolveCategoryAssignment
-- Transactions::Operations::Schedules::CreateSchedule
-- Finance::Operations::Customers::FindOrCreateCustomerForSpace
+- Transactions::Operations::ResolveCategoryByName
 - Admin::Queries::DailyActiveUsersQuery
-- vision_client.rb
+- Insights::Queries::MonthlySpending
 - set-auth-storage.ts
-- edit-transaction-exchange-rate.spec.ts
+- mobile-sticky-header.tsx
+- Transactions::Queries::LastRecord
 - verify-reapply-patches.cjs
 - package_skill
 - Ai::InteractionTracker::TrackedInteraction
+- Backend TDD E2E Tests
+- Ai::Rag::Agent::Tools::ListAccounts
+- TutorialOverlay.tsx
 - ExchangeRates::Operations::ConvertSignedAmount
 - ExchangeRates::Operations::FetchRatesFromApi
 - ExchangeRates::Operations::GetCachedApiRate
 - ExchangeRates::Operations::UpsertCurrencyConversion
-- Imports::ImportRecord
 - Insights::Operations::CreateAccountBreakdown
-- Finance::Queries::SubscriptionsNeedingCycleCountUpdate
 - MonthlyFinancialSummaries::Queries::CurrentMonthSummary
 - Spaces::Queries::DashboardData
-- Transactions::Queries::CombinedAccountJoinFilter
+- budget-usage-bar.tsx
 - Transactions::Queries::Drafts
-- Transactions::Queries::LastRecord
 - .call
 - Integrations::ExchangeRates::Client
-- NavigationInfoPlugin
+- edit-transaction-exchange-rate.spec.ts
 - toast-behavior.spec.ts
 - OfflineAppearanceBridge
-- ai-interactions.ts
+- loan-detail-panel.tsx
+- offline-sync-screen.tsx
 - render-graphs.js
+- health-score-factor-row.tsx
 - Ai::Conversations::ConversationService
 - model_selector.rb
 - category_filter.rb
-- Ai::Rag::SemanticTransactionResolver
 - topic_filter.rb
+- CreateAccountVersions
 - ExchangeRates::Operations::GetRecentRates
-- ExchangeRates::Operations::SyncApiRates
 - Insights::Operations::ComputeBudgetUsage
 - booked_transfer_leg_magnitude.rb
-- WeeklyFeedbackDialog
-- openrouter.rb
-- useLoanPayments.ts
+- add-transaction-calendar.spec.ts
 - useVisualViewportRect.test.ts
 - supabase.ts
 - pre-push-frontend.sh
 - runtime-homes.cjs
-- enhanced-ai-chat-modal.tsx
+- Secured
 - Api::V1::Auth::SignupController
 - Api::V1::Auth::TutorialController
+- iOS App Icon Setup
 - .update
 - model_registry.rb
-- Ai::Rag::AnalysisResult
 - search_scope_filters.rb
 - ExchangeRates::PersistDailyApiRatesJob
 - Ai::Conversation
 - ExchangeRates::CurrencyConversion
 - Auth::Operations::HandleGoogleTokens
-- UnifiedAuthPage
 - Transactions::Operations::Transfers::PersistCurrencyConversion
-- Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment
+- Imports::Queries::ListImports
 - Imports::Queries::ShowImportReport
+- usePlatformDetection
 - Integrations::Payments::Xendit::Error
-- tutorialSteps.ts
-- category_consensus_filter.rb
-- Finance::RevertExpiredPromoPricingJob
+- org.junit.Test
+- product-pulse-feedbacks.ts
+- toaster-with-settings.tsx
+- .show
+- Transactions::Operations::Schedules::CreateSchedule
+- Transactions::Operations::Transfers::FindOrCreateTransferFeeCategory
+- Transactions::Combined
 - Finance::Queries::ListSubscriptionPlans
+- category_consensus_filter.rb
 - dates.rb
 - CreateTransferLoanAndLoanPaymentVersions
 - .check
 - Sentry
-- product-pulse-feedbacks.ts
 - schema-detect.cjs
 - .show
 - Ai
+- Finance::RevertExpiredPromoPricingJob
 - Crm
 - Spaces::Serializers::DashboardSerializer
-- Transactions::Queries::Transfers::BaseQuery
 - MakeXenditCycleIdNullable
 - RemoveLoanInterestShadowTransactions
 - RestoreUuidPrimaryKeysOnCoreTables
+- Imports::ImportRecord
 - plugins/navigation-info.ts
+- MJ Rathbun AI Bot
+- pre-commit-graphify.sh
 - check-latest-version.cjs
 - ChatChannel
 - SubscriptionsChannel
+- Api::V1::Finance::SubscriptionsController
 - Api
-- Ai
-- Ai::Rag::Agent::Tools::FetchTransaction
-- Ai
-- Ai
-- active_storage.rb
-- Ai::ConversationMessage
+- vision_client.rb
 - .total_for_space
-- pre-commit-graphify.sh
+- Transactions::Queries::Transfers::BaseQuery
+- providers.tsx
+- ApplicationCable::Connection
+- Api
+- Imports::ProcessImportJob
 - Admin
 - Admin
 - Ai
@@ -433,35 +441,32 @@
 - Crm
 - Transactions
 - Transactions
-- Transactions
 - AddSubscriptionTypeToFinanceSpaceSubscriptions
-- Api
 - download-dump.sh
-- create_free_subscription_spec.rb
-- ExampleInstrumentedTest.java
 - FintrServerReachability
 - playwright
+- iOS Ad Hoc Distribution Guide
+- Offline IndexedDB Decision
+- expense-breakdown-center-label.tsx
 - eslint.config.mjs
 - build-development.sh
 - regenerate_android_icons_centered.sh
 - register
-- UserActivityTrackingJob
-- expense-breakdown-center-label.tsx
+- markdown-content.tsx
 - pre-commit-backend-rspec.sh
 - artifacts.cjs
-- FintrBe
 - ApplicationCable
-- template.cjs
-- Transactions::Transfers::CalculatePendingBalancesJob
-- .show
-- calculator-keyboard.spec.ts
+- Api
+- Api
+- Ai
+- Utils::Dates
 - SnakeCaseParameters
-- Api
-- ExchangeRates::BackfillRatesForTransactionsJob
-- Api
-- Api
-- core-features.tsx
-- Transactions
+- fintr-fe/package.json
+- Onboarding
+- Imports
+- Auth::Operations::EnsureAuthenticatedUser
+- @capacitor/browser
+- @capacitor/cli
 - Finance
 - rspec-changed
 - CreateActiveStorageTables
@@ -479,22 +484,23 @@
 - AddFxFieldsToMonthlyFinancialSummaries
 - RenameDisplayCurrencyToCurrencyOnMonthlyFinancialSummaries
 - migrate-staging-to-timescaledb.sh
-- Finance
-- ExampleUnitTest.java
+- Apple Sign In Setup Guide
 - sentry-example-page/page.tsx
 - features-section.tsx
+- @capacitor/core
 - setup.ts
 - context-utilization.cjs
+- @capacitor/ios
 - Ai
+- @capacitor/share
 - ApplicationMailer
-- ExchangeRates
+- class-variance-authority
 - Insights
+- clsx
 - MonthlyFinancialSummaries
 - CurrencyConversionSerializer
 - kamal
 - sentry-mcp-wrapper.sh
-- LlmConfig
-- SentryDataFilter
 - CreateSolidCableMessages
 - CreateSolidCacheEntries
 - EnablePgcryptoExtension
@@ -546,10 +552,12 @@
 - CreateProductPulseFeedbacks
 - AddAdjustsAccountBalanceToLoans
 - AddSubcategoriesToCategoriesTransactionsBudgets
+- CreateSyncClientMutations
 - CreateSolidQueueTables
 - auth/error.rb
 - Fintr
 - capacitor.config.ts
+- Android Icon Update Summary
 - fintr-fe/instrumentation.ts
 - generate-ios-splash.sh
 - reset-ios-packages.sh
@@ -557,83 +565,104 @@
 - pricing-section.tsx
 - team-section.tsx
 - score-tag.tsx
+- setup-git-hooks
+- Matplotlib AI Agent Incident by Miko
 - sentry-fintr
 - workspace-setup.sh
 - start-server.sh
 - stop-server.sh
 - find-polluter.sh
+- date-fns
 - deploy-be
 - deploy-fe
 - docker-entrypoint
 - setup-sentry-mcp.sh
-- init-pgvector-local.sh
-- init-pgvectorscale.sh
-- init-pgvectorscale-staging.sh
-- init-pgvectorscale-staging-simple.sh
 - export-staging-data.sh
 - setup-local-rag.sh
-- revert_expired_promo_pricing_job_spec.rb
-- sponsor_code_spec.rb
-- balance_integrity_regression_spec.rb
 - create-keystore.sh
+- Click Through Tutorial
 - next.config.ts
-- @ariakit/react
+- dexie
 - auth0
 - @auth0/auth0-react
+- import-in-the-middle
 - @capacitor/android
 - @capacitor/app
-- @capacitor/ios
-- @capacitor/keyboard
-- cmdk
-- date-fns
-- @daypicker/react
 - jotai
-- jotai-tanstack-query
+- match-sorter
+- embla-carousel-autoplay
+- embla-carousel-react
+- next-themes
+- @radix-ui/react-dropdown-menu
+- @radix-ui/react-accordion
 - @radix-ui/react-checkbox
 - @radix-ui/react-dialog
-- @radix-ui/react-dropdown-menu
+- @radix-ui/react-label
+- @radix-ui/react-popover
+- @radix-ui/react-progress
 - @radix-ui/react-radio-group
-- @radix-ui/react-select
 - @radix-ui/react-separator
-- @radix-ui/react-tabs
-- @rails/actioncable
+- react-dom
 - react
-- react-day-picker
 - react-hook-form
-- react-joyride
-- remark-gfm
-- sonner
+- tailwind-merge
+- @tanstack/react-query
+- recharts
+- @sentry/nextjs
 - @supabase/supabase-js
 - @tanstack/react-table
-- use-debounce
 - zod
 - playwright.config.ts
 - postcss.config.mjs
 - build-android-aab.sh
 - build-android-apk.sh
 - build-ios-archive.sh
+- build-production-bundled.sh
 - check-ios-signing.sh
 - create-csr.sh
 - verify-build-env.sh
 - bottom-navigation.test.tsx
 - instrumentation-client.ts
-- setup-git-hooks
+- Activity Model Migration Plan
+- Currency-Related Updates
+- Release Notes Fintr v1.8
 - pre-commit
 - pre-push
+- Android App Signing Configuration
+- Fintr
+- Fintr App Ideas & Feature Suggestions
+- .query
+- UserActivity
+- Finance::Queries::SubscriptionsNeedingCycleCountUpdate
+- Imports::Queries::ListImportRecords
+- lib/navigation-info.ts
+- TransactionsChannel
+- tutorialSteps.ts
+- Spaces::Queries::BaseQuery
+- calculator-keyboard.spec.ts
+- MonthlyFinancialSummaries::RecalculateSpaceSummariesJob
+- Transactions
+- Transactions
+- budget-allocation-summary.tsx
+- appearance.ts
+- mutations.ts
+- ExchangeRates
 
 ## God Nodes (most connected - your core abstractions)
-1. `error()` - 211 edges
-2. `cn()` - 202 edges
-3. `useAuthApi()` - 180 edges
+1. `error()` - 280 edges
+2. `cn()` - 204 edges
+3. `useAuthApi()` - 188 edges
 4. `output()` - 142 edges
-5. `Button()` - 130 edges
+5. `Button()` - 131 edges
 6. `FailureHandler` - 79 edges
 7. `runCommand()` - 72 edges
 8. `formatCurrency()` - 63 edges
-9. `Spaces::Space` - 58 edges
-10. `planningDir()` - 57 edges
+9. `Spaces::Space` - 61 edges
+10. `useLocalStorage()` - 59 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `cmdHistoryDigest()` --indirect_call--> `summary()`  [INFERRED]
+  .ai/get-shit-done/bin/lib/commands.cjs → apps/fintr-fe/src/services/monthly-financial-summaries/combine.test.ts
 - `fetchUserAnalytics()` --indirect_call--> `error()`  [INFERRED]
   apps/fintr-fe/src/services/admin/analytics/queries.tsx → .ai/get-shit-done/bin/lib/core.cjs
 - `getChatStatus()` --indirect_call--> `error()`  [INFERRED]
@@ -642,1479 +671,1488 @@
   apps/fintr-fe/src/services/auth/in-app-apple-signin.ts → .ai/get-shit-done/bin/lib/core.cjs
 - `closeInAppBrowser()` --indirect_call--> `error()`  [INFERRED]
   apps/fintr-fe/src/services/auth/in-app-google-signin.ts → .ai/get-shit-done/bin/lib/core.cjs
-- `AiInteractionsPage()` --indirect_call--> `error()`  [INFERRED]
-  apps/fintr-fe/src/app/(private)/admin/ai-interactions/page.tsx → .ai/get-shit-done/bin/lib/core.cjs
 
 ## Import Cycles
 - None detected.
 
-## Communities (1033 total, 181 thin omitted)
+## Hyperedges (group relationships)
+- **Fintr Mobile Tutorials** — apps_fintr_fe_docs_mobile_click_through_tutorial, apps_fintr_fe_docs_mobile_click_through_tutorial2 [INFERRED 0.90]
+- **Activity Model Migration Phases** — docs_activity_model_migration_plan, docs_import_feature_planning [INFERRED 0.80]
+- **Matplotlib AI Agent Incident Analysis** — docs_articles_matplotlib_ai_agent_incident_by_miko, docs_articles_matplotlib_ai_agent_incident_explained, docs_articles_matplotlib_ai_agent_incident_february_2026 [INFERRED 0.85]
+- **Matplotlib AI Bot Incident Participants** — docs_articles_matplotlib_ai_agent_incident_miko_style_mj_rathbun, docs_articles_matplotlib_ai_agent_incident_miko_style_scott_shambaugh, docs_articles_matplotlib_ai_agent_incident_miko_style_matplotlib [EXTRACTED 1.00]
+- **Wrathbun Cascade Distortion Chain** — docs_articles_matplotlib_ai_agent_incident_miko_style_mj_rathbun, docs_articles_matplotlib_ai_agent_incident_miko_style_ars_technica, docs_articles_matplotlib_ai_agent_incident_miko_style_wrathbun_cascade [EXTRACTED 1.00]
 
-### Community 0 - "button.tsx"
-Cohesion: 0.04
-Nodes (95): UserAnalyticsPage(), SettingsCard, settingsMenuCardClassName, SettingsSection, WizardStep, OnboardingStep1(), onboardingDataAtom, AnalyticsSummaryCards() (+87 more)
+## Communities (695 total, 194 thin omitted)
 
-### Community 1 - "ExpenseForm.tsx"
-Cohesion: 0.10
-Nodes (46): OnboardingStep2(), ConversionSnapshot, categorySchema, ExpenseForm(), ExpenseFormProps, expenseFormSchema, ExpenseFormValues, IncomeForm() (+38 more)
-
-### Community 2 - "cn"
+### Community 0 - "useAuthApi"
 Cohesion: 0.03
-Nodes (99): AdminLayout(), AdminLayoutProps, AddAccountSheet(), AddAccountSheetProps, BottomNavigation(), AdjustAccountBalanceSwitchRowProps, FACTOR_STYLES, HealthScoreFactorRow() (+91 more)
+Nodes (130): SettingsCard, settingsMenuCardClassName, SettingsSection, SettingsPage(), CreateSubscriptionPage(), WizardStep, SubscriptionsPage(), OnboardingIndex() (+122 more)
 
-### Community 3 - "insights-tab.tsx"
-Cohesion: 0.07
-Nodes (61): accountOptionsAtom, categoryOptionsAtom, dashboardDataAtom, dashboardShellReadyAtom, expenseCategoryOptionsAtom, incomeCategoryOptionsAtom, isAdminAtom, dateFilterEndDateAtom (+53 more)
+### Community 1 - "cn"
+Cohesion: 0.03
+Nodes (104): AdminLayout(), AdminLayoutProps, AccountSetupFlow(), AccountEditSheet(), AccountEditSheetProps, AddAccountForm(), AddAccountSheet(), AddAccountSheetProps (+96 more)
 
-### Community 4 - "ai-interactions/page.tsx"
-Cohesion: 0.07
-Nodes (57): AiInteractionsPage(), UsersPage(), AdminWeeklyCheckInPage(), formatAreaInline(), AccountDeleteDialogProps, AccountListProps, CategoryItem, DeleteAccountDialogProps (+49 more)
+### Community 2 - "button.tsx"
+Cohesion: 0.04
+Nodes (103): AdminWeeklyCheckInPage(), AreaList(), formatAreaInline(), CreateTicketForm, CreateTicketFormProps, createTicketSchema, CRMRequestsPage(), STEPS (+95 more)
 
-### Community 5 - "Transactions::Operations::Transfers::CalculateBalances"
-Cohesion: 0.10
-Nodes (15): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::ResolveSignedTransferBalanceEffect, Transactions::Operations::Accounts::ResolveSignedTransferBalanceEffect::Contract, Transactions::Operations::Transfers::BookedTransferLegMagnitude (+7 more)
-
-### Community 6 - "chart-tooltip-content.tsx"
-Cohesion: 0.50
-Nodes (3): ChartTooltipContent(), ChartTooltipContentProps, ChartTooltipPayload
-
-### Community 7 - "planningDir"
-Cohesion: 0.09
-Nodes (73): cmdListTodos(), cmdScaffold(), cmdTodoMatchPhase(), comparePhaseNum(), extractCurrentMilestone(), findPhaseInternal(), generateSlugInternal(), getMilestonePhaseFilter() (+65 more)
-
-### Community 8 - "output"
+### Community 3 - "useAuth"
 Cohesion: 0.08
-Nodes (71): atomicWriteFileSync(), escapeRegex(), normalizeMd(), output(), replaceInCurrentMilestone(), stripShippedMilestones(), cmdInitListWorkspaces(), cmdMilestoneComplete() (+63 more)
+Nodes (31): AppSettingsPage(), EnhancedAiChatModal(), FintrLogo(), AddReceiptDialog(), AddReceiptDialogProps, DashboardNavigation(), DashboardNavigationProps, NavItem (+23 more)
 
-### Community 9 - "Api::V1::Finance::SubscriptionsController"
+### Community 4 - "MainActivity"
 Cohesion: 0.05
-Nodes (19): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::Finance, Api::V1::Admin::Finance::FreeSubscriptionsController, ApiController, Api, Api::V1 (+11 more)
+Nodes (31): android.annotation.SuppressLint, android.content.res.Configuration, android.net.Uri, android.os.Bundle, android.os.Handler, android.view.View, android.webkit.JavascriptInterface, android.webkit.WebResourceError (+23 more)
 
-### Community 10 - "useAiChat.ts"
+### Community 5 - "ExpenseForm.tsx"
+Cohesion: 0.04
+Nodes (107): validateBalance(), AccountCreationForm(), ConversionSnapshot, CategoryCreationForm(), DraftItem, DraftItems(), DraftItemsProps, EditLoanModal() (+99 more)
+
+### Community 6 - "transfers/create-local-first.ts"
+Cohesion: 0.06
+Nodes (78): TransactionTotalsDisplayProps, applyCreatedEvent(), applyDeletedEvent(), asNumber(), asString(), asType(), normalizeRealtimeActor(), normalizeRealtimeIndexTransaction() (+70 more)
+
+### Community 7 - ".render_success"
+Cohesion: 0.04
+Nodes (28): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::CachesController, ApiController, Api, Api::V1, Api::V1::Admin (+20 more)
+
+### Community 8 - "useSubscriptions.ts"
+Cohesion: 0.06
+Nodes (59): FreeSubscriptionsPage(), SponsorCodesPage(), attachSubscriptionErrorMessage(), createTestQueryClient(), wrapper(), useCreateFreeSubscription(), useCreateSponsorCode(), useCreateSponsorSubscription() (+51 more)
+
+### Community 9 - "profile-output.cjs"
+Cohesion: 0.12
+Nodes (26): safeReadFile(), CLAUDE_INSTRUCTIONS, CLAUDE_MD_FALLBACKS, CLAUDE_MD_PROFILE_PLACEHOLDER, CLAUDE_MD_WORKFLOW_ENFORCEMENT, cmdGenerateClaudeMd(), detectManualEdit(), DIMENSION_KEYS (+18 more)
+
+### Community 10 - "state.cjs"
+Cohesion: 0.09
+Nodes (53): normalizeMd(), reconstructFrontmatter(), cmdMilestoneComplete(), { escapeRegex, getMilestonePhaseFilter, extractOneLinerFromBody, normalizeMd, output, error, atomicWriteFileSync }, { extractFrontmatter }, fs, path, { planningPaths } (+45 more)
+
+### Community 11 - "categoryTreeTypes.ts"
 Cohesion: 0.16
-Nodes (15): useAiChat(), ActionCableClient, createActionCableConsumer(), getConsumer(), ChatSession, ChatStatus, getChatStatus(), startChatQuery() (+7 more)
+Nodes (32): CategoryFilterComboBox(), CategoryFilterComboBoxProps, CategoryAssignment, categoryPickerValueFromName(), categoryPickerValueFromReceiptOrTransaction(), categoryPickerValueFromTransaction(), CategoryTriggerDisplay, formatCategoryPickerValue() (+24 more)
 
-### Community 11 - "AmountWithRatePicker.tsx"
-Cohesion: 0.11
-Nodes (28): AmountWithRatePicker(), formatRateForLabel(), multiplierFromApi(), defaultProps, mockedGetCurrentRate, mockedGetRecentRates, ConversionInfoPopover(), CurrencyPicker() (+20 more)
+### Community 12 - "gsd-tools.cjs"
+Cohesion: 0.03
+Nodes (70): commands, config, core, docs, frontmatter, fs, gapChecker, { getActiveWorkstream } (+62 more)
 
-### Community 12 - "transactions/index.tsx"
-Cohesion: 0.04
-Nodes (126): AccountTransactions(), AccountDetailContent(), AccountDetailContentProps, flattenPages(), parseBalance(), parseOptionalAmount(), TransactionSection(), CategoryDetailTransactions() (+118 more)
-
-### Community 13 - "gsd-tools.cjs"
-Cohesion: 0.04
-Nodes (57): commands, config, core, docs, frontmatter, fs, gapChecker, { getActiveWorkstream } (+49 more)
-
-### Community 14 - "fetchers.ts"
+### Community 13 - "bootstrap-local-data.ts"
 Cohesion: 0.07
-Nodes (53): AccountBreakdownProps, CalculationBreakdownContent(), CalculationBreakdownContentProps, DashboardSummarySectionProps, HealthScoreFactorRowProps, InsightMetricCardsProps, InsightNarrativeCards(), InsightNarrativeCardsProps (+45 more)
+Nodes (65): initialProgress(), isBrowserOnline(), OfflineSyncStatus, useOfflineSync(), UseOfflineSyncResult, getLocalResponseSnapshot(), putLocalResponseSnapshot(), toStorableValue() (+57 more)
 
-### Community 15 - "extractFrontmatter"
+### Community 14 - "insights-tab.tsx"
 Cohesion: 0.06
-Nodes (52): auditOpenArtifacts(), { extractFrontmatter }, fs, path, { planningDir }, { requireSafePath, sanitizeForDisplay }, scanContextQuestions(), scanDebugSessions() (+44 more)
+Nodes (71): accountOptionsAtom, categoryOptionsAtom, dashboardDataAtom, expenseCategoryOptionsAtom, incomeCategoryOptionsAtom, isAdminAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom (+63 more)
 
-### Community 16 - "add-transaction-dialog.tsx"
-Cohesion: 0.10
-Nodes (22): page(), DynamicTransactionsTab, AuthToggleProps, AddTransactionDialogProps, CategoryToggleProps, CategoryToggleType, GoalForm(), InvestmentForm() (+14 more)
+### Community 15 - "useAiChat.ts"
+Cohesion: 0.09
+Nodes (36): ConversationListProps, ConversationRenameDialogProps, useAiChat(), useConversations(), useInfiniteMessages(), buildCableUrl(), createActionCableConsumer(), ChatSession (+28 more)
 
-### Community 17 - "CategoryTypeEnum"
-Cohesion: 0.14
-Nodes (22): CategoryData, categoryValidationErrorsAtom, createCategoryAtom, createCategoryMutationAtom, CreateCategoryParams, fetchTransactionCategoriesAtom, newCategoryNameAtom, CategoryFormDialogProps (+14 more)
-
-### Community 18 - "useSubscriptions.ts"
-Cohesion: 0.06
-Nodes (58): FreeSubscriptionsPage(), SponsorCodesPage(), attachSubscriptionErrorMessage(), createTestQueryClient(), wrapper(), useCreateFreeSubscription(), useCreateSponsorCode(), useCreateSponsorSubscription() (+50 more)
-
-### Community 19 - "dependencies"
+### Community 16 - "Imports::Import"
 Cohesion: 0.04
-Nodes (56): dependencies, axios, @capacitor/browser, @capacitor/cli, @capacitor/core, @capacitor/filesystem, @capacitor/share, class-variance-authority (+48 more)
+Nodes (29): Api, Api::V1, Api::V1::Imports, Api::V1::Imports::ImportRecordsController, ApiController, Api, Api::V1, Api::V1::Imports (+21 more)
 
-### Community 20 - ".render_unprocessable_content"
-Cohesion: 0.05
-Nodes (17): Api::V1::Admin::UserActivityController, ApiController, Api, Api::V1, Api::V1::BudgetsController, ApiController, Api::V1::Crm::Admin::TicketsController, ApiController (+9 more)
+### Community 17 - "extractFrontmatter"
+Cohesion: 0.08
+Nodes (42): auditOpenArtifacts(), { extractFrontmatter }, fs, path, { planningDir }, { requireSafePath, sanitizeForDisplay }, scanContextQuestions(), scanDebugSessions() (+34 more)
 
-### Community 21 - "(public)/page.tsx"
+### Community 18 - "planningDir"
+Cohesion: 0.10
+Nodes (58): findPhaseInternal(), generateSlugInternal(), getMilestoneInfo(), getMilestonePhaseFilter(), getRoadmapPhaseInternal(), loadConfig(), pathExistsInternal(), resolveModelInternal() (+50 more)
+
+### Community 19 - "transactions/index.tsx"
+Cohesion: 0.04
+Nodes (122): dateRangeToMonthYear(), pendingOpenTransactionAtom, AccountTransactions(), AccountDetailContent(), AccountDetailContentProps, flattenPages(), parseBalance(), parseOptionalAmount() (+114 more)
+
+### Community 20 - "dependencies"
+Cohesion: 0.04
+Nodes (47): dependencies, @ariakit/react, axios, @capacitor/filesystem, @capacitor/keyboard, cmdk, @daypicker/react, framer-motion (+39 more)
+
+### Community 21 - "dashboard/layout.tsx"
+Cohesion: 0.07
+Nodes (33): page(), BottomNavigation, Layout(), MobileStickyHeader, DynamicTransactionsTab, AuthToggle(), AuthToggleProps, AddTransactionDialogProps (+25 more)
+
+### Community 22 - "category-detail-content.tsx"
+Cohesion: 0.12
+Nodes (26): CategoryData, categoryValidationErrorsAtom, createCategoryAtom, createCategoryMutationAtom, CreateCategoryParams, fetchTransactionCategoriesAtom, newCategoryNameAtom, CategoryDetailContent() (+18 more)
+
+### Community 23 - ".render_unprocessable_content"
+Cohesion: 0.06
+Nodes (15): Api, Api::V1, Api::V1::BudgetsController, ApiController, Api::V1::Crm::Admin::TicketsController, ApiController, Api, Api::V1 (+7 more)
+
+### Community 24 - "local-db/index.ts"
+Cohesion: 0.07
+Nodes (73): accountCacheKey(), clearSpaceAccounts(), getAccountsSyncedAt(), listSpaceAccounts(), replaceSpaceAccounts(), toAccount(), toLocalRecord(), closeLocalDbInstanceForTests() (+65 more)
+
+### Community 25 - "(public)/page.tsx"
 Cohesion: 0.06
 Nodes (25): AppCarouselSection, FeaturesSection, HeroSection, MarketSection, PricingSection, ProblemSection, TeamSection, WhatWeDoSection (+17 more)
 
-### Community 22 - "edit-budget-form.tsx"
-Cohesion: 0.15
-Nodes (23): BudgetAllocationSummary(), BudgetAllocationSummaryProps, EditBudgetDialog(), categoryPickerValueForBudget(), EditBudgetForm(), EditBudgetFormProps, formSchema, mockCreateBudgetMutation (+15 more)
-
-### Community 23 - "Imports::Import"
-Cohesion: 0.05
-Nodes (23): Api, Api::V1, Api::V1::Imports, Api::V1::Imports::ImportRecordsController, ApiController, Api, Api::V1, Api::V1::Transactions (+15 more)
-
-### Community 24 - "Api::V1::Transactions::LoansController"
-Cohesion: 0.12
-Nodes (9): Api, Api::V1, Api::V1::Transactions, Api::V1::Transactions::LoansController, ApiController, Loans, Loans::Serializers, Loans::Serializers::LoanSerializer (+1 more)
-
-### Community 25 - "ApiResponses"
+### Community 26 - "ApiResponses"
 Cohesion: 0.04
 Nodes (29): Api, Api::V1, Api::V1::AttachmentsController, ApiController, Api, Api::V1, Api::V1::Auth, Api::V1::Auth::GoogleController (+21 more)
 
-### Community 26 - "platform-detection.ts"
-Cohesion: 0.11
-Nodes (33): OnboardingScreenLayout(), OnboardingScreenLayoutProps, WorkspaceSetupGate(), WorkspaceSetupGateProps, getAndroidNavDebugInfo(), usePlatformDetection(), useSafeAreaInsets(), calculateHeaderSpacerHeight() (+25 more)
-
-### Community 27 - "useAccounts.ts"
-Cohesion: 0.15
-Nodes (19): accountValidationErrorsAtom, createAccountAtom, createAccountMutationAtom, CreateAccountParams, newAccountBalanceAtom, newAccountNameAtom, validateBalance(), AccountDeleteDialog() (+11 more)
-
-### Community 28 - "core.cjs"
+### Community 27 - "Publishing Fintr to the App Store"
 Cohesion: 0.06
-Nodes (40): extractField(), main(), _deepMergeConfig(), detectSubRepos(), { execSync, execFileSync, spawnSync }, extractCanonicalPlanId(), extractPhaseToken(), findProjectRoot() (+32 more)
+Nodes (32): A. App Information, 📦 Accessing Your Archive, App Icon:, App Preview Videos (Optional):, B. Pricing and Availability, C. App Privacy, 🔍 Common Issues & Solutions, Issue: "App Review Rejection" (+24 more)
 
-### Community 29 - "error"
-Cohesion: 0.11
-Nodes (36): runCommand(), cmdCheckCommit(), cmdCommit(), cmdCommitToSubrepo(), cmdCurrentTimestamp(), cmdGenerateSlug(), cmdHistoryDigest(), cmdProgressRender() (+28 more)
+### Community 28 - "Testing Guide for Fintr Mobile Layouts"
+Cohesion: 0.07
+Nodes (26): Adding New Tests, All Tests, Android Native, Architecture, CI/CD Integration, Debugging Tips, Dynamic Behavior Tests (`e2e/dynamic-behavior.spec.ts`), E2E Test Example (+18 more)
 
-### Community 30 - "ApplicationRecord"
-Cohesion: 0.06
-Nodes (16): ApplicationRecord, Base, Auth, Auth::Role, Crm, Crm::TicketResponse, Transactions, Transactions::AccountActivity (+8 more)
+### Community 29 - "new-budget-dialog.tsx"
+Cohesion: 0.10
+Nodes (38): EditBudgetDialog(), categoryPickerValueForBudget(), EditBudgetForm(), EditBudgetFormProps, formSchema, mockCreateBudgetMutation, mockUpdateBudgetMutation, AddBudgetStep (+30 more)
+
+### Community 30 - "Api::V1::Transactions::LoansController"
+Cohesion: 0.12
+Nodes (9): Api, Api::V1, Api::V1::Transactions, Api::V1::Transactions::LoansController, ApiController, Loans, Loans::Serializers, Loans::Serializers::LoanSerializer (+1 more)
 
 ### Community 31 - "Transactions::Operations::Categories::ShowAllCategories"
 Cohesion: 0.06
 Nodes (26): Operation, Transactions, Transactions::Operations, Transactions::Operations::Categories, Transactions::Operations::Categories::BuildCategoryTree, Contract, Operation, Transactions (+18 more)
 
-### Community 32 - "Ai::Operations::Embeddings::GenerateEmbedding"
-Cohesion: 0.07
-Nodes (16): Ai, Ai::RagEmbedding, Ai, Ai::Operations, Ai::Operations::Embeddings, Ai::Operations::Embeddings::GenerateEmbedding, Ai::Operations::Embeddings::GenerateEmbedding::Contract, Contract (+8 more)
+### Community 32 - "auth-callback/page.tsx"
+Cohesion: 0.13
+Nodes (18): AuthCallbackInner(), isIOSDevice(), DeepLinkHandler(), processedAuthCallbackUrls, ALLOWED_S3_PREFIXES, ImageLightbox(), mockDownloadBlobAsFile, AuthProvider() (+10 more)
 
-### Community 33 - "Ai::Rag::Agent::ResponseFallbackBuilder"
+### Community 33 - "Ai::Operations::Receipts::ExtractReceiptDataVision"
+Cohesion: 0.10
+Nodes (7): Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::ExtractReceiptDataVision, Ai::Operations::Receipts::ExtractReceiptDataVision::Contract, Contract, Operation
+
+### Community 34 - "AuthContext.tsx"
+Cohesion: 0.17
+Nodes (21): AuthContext, AuthContextType, AuthProviderProps, AuthUser, getUserProfile(), LoginCredentials, LoginError, LoginResponse (+13 more)
+
+### Community 35 - "core.cjs"
 Cohesion: 0.06
-Nodes (23): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::ResponseFallbackBuilder, Ai, Ai::Rag, Ai::Rag::DataRetriever, Ai (+15 more)
+Nodes (41): extractField(), main(), _deepMergeConfig(), detectSubRepos(), { execSync, execFileSync, spawnSync }, extractCanonicalPlanId(), extractPhaseToken(), findProjectRoot() (+33 more)
 
-### Community 34 - "ApplicationJob"
+### Community 36 - "platform-detection.ts"
+Cohesion: 0.15
+Nodes (19): calculateHeaderSpacerHeight(), calculateOnboardingScreenInsets(), calculateToastBottomOffset(), clampAndroidNavigationInsetPx(), getAndroidNavHeightPx(), MAX_ANDROID_STATUS_BAR_INSET_PX, MIN_ANDROID_STATUS_BAR_INSET_PX, MOBILE_STICKY_HEADER_BODY_HEIGHT_PX (+11 more)
+
+### Community 37 - "phase.cjs"
+Cohesion: 0.11
+Nodes (47): setConfigValue(), atomicWriteFileSync(), comparePhaseNum(), escapeRegex(), extractCurrentMilestone(), getArchivedPhaseDirs(), normalizePhaseName(), phaseTokenMatches() (+39 more)
+
+### Community 38 - "devDependencies"
+Cohesion: 0.04
+Nodes (47): devDependencies, dotenv-cli, eruda, eslint, eslint-config-next, @eslint/eslintrc, fake-indexeddb, jsdom (+39 more)
+
+### Community 39 - "planning-workspace.cjs"
+Cohesion: 0.11
+Nodes (35): filterPlanFiles(), filterSummaryFiles(), createPlanningWorkspace(), createSessionScopedPointerAdapter(), createSharedPointerAdapter(), crypto, { execFileSync }, fs (+27 more)
+
+### Community 40 - "detail-local.ts"
+Cohesion: 0.13
+Nodes (26): cacheTransactionDetail(), CategoryNode, enrichTransactionEditDetail(), flattenCategoryNodes(), loadCachedTransactionDetail(), mapIndexTransactionToEditData(), mapIndexTransactionToEditDataSync(), normalizeDetailPayload() (+18 more)
+
+### Community 41 - "downloadBlobAsFile"
+Cohesion: 0.17
+Nodes (12): blobToBase64(), downloadBlobAsFile(), mimeTypeForFilename(), sanitizeFilename(), waitForNativeExportSupport(), FileShare, FileSharePlugin, FetchImportParams (+4 more)
+
+### Community 42 - "Spaces::Space"
+Cohesion: 0.13
+Nodes (9): Spaces, Spaces::Space, Ai, Ai::Queries, Ai::Queries::Usages, Ai::Queries::Usages::UsageInPeriod, Ai::Queries::Usages::UsageInPeriod::Contract, Contract (+1 more)
+
+### Community 43 - "Transactions::Operations::Transfers::CalculateBalances"
 Cohesion: 0.12
-Nodes (9): ApplicationJob, Base, Budgets, Budgets::CreateMonthlyBudgetsJob, Budgets, Budgets::CreateSpaceMonthlyBudgetsJob, ExchangeRates, ExchangeRates::SyncDailyRatesJob (+1 more)
+Nodes (11): Transactions, Transactions::Transfers, Transactions::Transfers::CalculatePendingBalancesJob, Transactions::Operations::Transfers::BookedTransferLegMagnitude, Contract, Operation, Transactions, Transactions::Operations (+3 more)
 
-### Community 35 - "Insights::Operations::CreateNarratives"
+### Community 44 - "Admin::Operations::CreateUserActivityAnalytics"
+Cohesion: 0.17
+Nodes (8): Ai, Ai::Usage, Admin, Admin::Operations, Admin::Operations::CreateUserActivityAnalytics, Admin::Operations::CreateUserActivityAnalytics::Contract, Contract, Operation
+
+### Community 45 - "Transactions::Transaction"
+Cohesion: 0.08
+Nodes (13): Transactions, Transactions::Transaction, Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::DeleteTransaction, Transactions::Operations::DeleteTransaction::Contract (+5 more)
+
+### Community 46 - "Insights::Operations::CreateNarratives"
 Cohesion: 0.13
 Nodes (4): Insights::Operations::CreateNarratives, Insights::Operations::CreateNarratives::Contract, Contract, Operation
 
-### Community 36 - "BaseQuery"
-Cohesion: 0.05
-Nodes (22): Ai, Ai::Queries, Ai::Queries::BaseQuery, Ai, Ai::Queries, Ai::Queries::PaginatedMessages, Ai::Queries::PaginatedMessages::Contract, Contract (+14 more)
-
-### Community 37 - "planning-workspace.cjs"
-Cohesion: 0.11
-Nodes (36): filterPlanFiles(), filterSummaryFiles(), readSubdirectories(), createPlanningWorkspace(), createSessionScopedPointerAdapter(), createSharedPointerAdapter(), crypto, { execFileSync } (+28 more)
-
-### Community 38 - "TutorialContext.tsx"
-Cohesion: 0.19
-Nodes (14): OnboardingIndex(), onboardingStepAtom, desktopTutorialCompletedAtom, mobileTutorialCompletedAtom, tutorialDataLoadedAtom, TutorialContext, TutorialContextType, TutorialPlatform (+6 more)
-
-### Community 39 - "devDependencies"
-Cohesion: 0.05
-Nodes (39): devDependencies, dotenv-cli, eruda, eslint, eslint-config-next, @eslint/eslintrc, jsdom, @playwright/test (+31 more)
-
-### Community 40 - "client-layout.tsx"
+### Community 47 - "client-layout.tsx"
 Cohesion: 0.10
-Nodes (19): ClientLayoutProps, GlobalErrorBoundary, GlobalErrorBoundaryProps, GlobalErrorBoundaryState, Error(), ChunkLoadRecovery(), handleChunkScriptError(), ErrorBoundary (+11 more)
+Nodes (20): ClientLayoutProps, GlobalErrorBoundary, GlobalErrorBoundaryProps, GlobalErrorBoundaryState, Error(), ChunkLoadRecovery(), handleChunkScriptError(), ErrorBoundary (+12 more)
 
-### Community 41 - "Ai::Operations::Conversations::CreateConversation"
-Cohesion: 0.06
-Nodes (21): Api, Api::V1, Api::V1::Ai, Api::V1::Ai::ConversationsController, ApiController, Api, Api::V1, Api::V1::Ai (+13 more)
-
-### Community 42 - "async/useOnboarding.ts"
-Cohesion: 0.16
-Nodes (19): OnboardingChoice(), OnboardingStep3(), OnboardingStep4(), useOnboarding(), AccountDataInput, BudgetCategory, BudgetCategoryInput, SaveCurrencyStepArgs (+11 more)
-
-### Community 43 - "loan-detail-content.tsx"
+### Community 48 - "initCapacitorBridgeIfNeeded"
 Cohesion: 0.08
-Nodes (29): DeleteLoanModal(), DeleteLoanModalProps, EditLoanModalProps, DetailItemProps, DetailStatBox(), LoanDetailContent(), LoanDetailContentProps, LoanDetailPanel() (+21 more)
+Nodes (39): CapacitorLoader(), NavDrawerThemeToggle(), NativeThemeSync(), cardClassName, ThemeToggleCard(), ThemeProvider(), APPEARANCE_PLUGIN_HEADER, CACHE_CONTROL_PLUGIN_HEADER (+31 more)
 
-### Community 44 - "calculator-input.tsx"
+### Community 49 - "transactions/local-cache.ts"
+Cohesion: 0.12
+Nodes (42): useInfiniteTransactions(), earliestTransactionDate(), isOfflineBootstrapDateRange(), MonthDateRange, monthRangesForOfflineHydration(), monthRangesInclusive(), OFFLINE_BOOTSTRAP_END_DATE, OFFLINE_BOOTSTRAP_START_DATE (+34 more)
+
+### Community 50 - "Ai::Operations::Conversations::CreateConversation"
+Cohesion: 0.21
+Nodes (7): Ai, Ai::Operations, Ai::Operations::Conversations, Ai::Operations::Conversations::CreateConversation, Ai::Operations::Conversations::CreateConversation::Contract, Contract, Operation
+
+### Community 51 - "Transactions::Operations::CreateTransaction"
+Cohesion: 0.11
+Nodes (8): Sync, Sync::ClientMutation, Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::CreateTransaction, Transactions::Operations::CreateTransaction::Contract
+
+### Community 52 - "Ai::Operations::Usages::ShowUsage"
+Cohesion: 0.13
+Nodes (12): Ai, Ai::Operations, Ai::Operations::Usages, Ai::Operations::Usages::ShowUsage, Ai::Operations::Usages::ShowUsage::Contract, Contract, Operation, schedule() (+4 more)
+
+### Community 53 - "useTickets.ts"
+Cohesion: 0.14
+Nodes (24): CrmSupportTicketPage(), mockSearchParamGet, mockSearchParamGet, TicketDetailPage(), useCreateTicket(), useCreateTicketResponse(), useTicket(), useTickets() (+16 more)
+
+### Community 54 - "calculator-input.tsx"
 Cohesion: 0.12
 Nodes (33): acquireCalculatorHistoryEntry(), CALCULATOR_BUTTONS, calculatorHistoryRegistry, CalculatorInput(), CalculatorInputProps, calculatorPopStateSubscribers, cancelPendingCalculatorHistoryBack(), ensureCalculatorPopStateListener() (+25 more)
 
-### Community 45 - "config.cjs"
-Cohesion: 0.10
-Nodes (32): buildNewProjectConfig(), cmdConfigEnsureSection(), cmdConfigGet(), cmdConfigNewProject(), cmdConfigPath(), cmdConfigSet(), cmdConfigSetModelProfile(), CONFIG_KEY_SUGGESTIONS (+24 more)
+### Community 55 - "config.cjs"
+Cohesion: 0.11
+Nodes (28): buildNewProjectConfig(), cmdConfigGet(), cmdConfigSet(), cmdConfigSetModelProfile(), CONFIG_KEY_SUGGESTIONS, ensureConfigFile(), fs, getCmdConfigSetModelProfileResultMessage() (+20 more)
 
-### Community 46 - "Auth::Operations::RegisterUser"
+### Community 56 - "ApplicationRecord"
+Cohesion: 0.06
+Nodes (16): Ai, Ai::ConversationMessage, ApplicationRecord, Base, Auth, Auth::Role, Crm, Crm::TicketResponse (+8 more)
+
+### Community 57 - "Auth::Operations::RegisterUser"
 Cohesion: 0.07
 Nodes (16): Auth, Auth::Operations, Auth::Operations::AuthenticateUser, Operation, Auth, Auth::Operations, Auth::Operations::RefreshToken, Operation (+8 more)
 
-### Community 47 - "Finance::Operations::Customers::CreateCustomer"
+### Community 58 - "Finance::Operations::Customers::CreateCustomer"
 Cohesion: 0.11
 Nodes (14): Finance, Finance::Operations, Finance::Operations::Customers, Finance::Operations::Customers::CreateCustomer, Finance::Operations::Customers::CreateCustomer::Contract, Contract, Operation, Finance (+6 more)
 
-### Community 48 - "categoryTreeTypes.ts"
-Cohesion: 0.35
-Nodes (10): buildTransactionCategoryFields(), CategoryAssignment, categoryPickerValueFromName(), categoryPickerValueFromReceiptOrTransaction(), categoryPickerValueFromTransaction(), CategoryTriggerDisplay, formatCategoryPickerValue(), getCategoryNameForApi() (+2 more)
+### Community 59 - "Transactions::Operations::Transfers::UpdateThisAndFutureTransfers"
+Cohesion: 0.16
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::UpdateThisAndFutureTransfers, Transactions::Operations::Transfers::UpdateThisAndFutureTransfers::Contract
 
-### Community 49 - "profile-output.cjs"
-Cohesion: 0.09
-Nodes (32): safeReadFile(), cmdFrontmatterValidate(), CLAUDE_INSTRUCTIONS, CLAUDE_MD_FALLBACKS, CLAUDE_MD_PROFILE_PLACEHOLDER, CLAUDE_MD_WORKFLOW_ENFORCEMENT, cmdGenerateClaudeMd(), cmdGenerateClaudeProfile() (+24 more)
-
-### Community 50 - "MainActivity"
-Cohesion: 0.11
-Nodes (10): FintrAppearanceBridge, Override, MainActivity, BridgeActivity, Bundle, Configuration, JavascriptInterface, SuppressLint (+2 more)
-
-### Community 51 - "MotionAnimationGenerator"
-Cohesion: 0.10
-Nodes (17): main(), MotionAnimationGenerator, Generate TypeScript props interface., Generate hover animation component., Generate tap animation component., Generate drag animation component., Generate exit animation with AnimatePresence., Generate layout animation component. (+9 more)
-
-### Community 52 - "providers.tsx"
-Cohesion: 0.09
-Nodes (33): NavDrawerThemeToggle(), E2eTestHooks(), Window, NativeThemeSync(), ThemeProvider(), defaultSettings, ToastSettings, ToastSettingsContext (+25 more)
-
-### Community 53 - "verify.cjs"
-Cohesion: 0.09
-Nodes (30): checkAgentsInstalled(), getAgentsDir(), cmdDocsInit(), detectDocTooling(), detectMonorepoWorkspaces(), detectProjectType(), fs, hasGsdMarker() (+22 more)
-
-### Community 54 - "run_loop.py"
+### Community 60 - "ApplicationJob"
 Cohesion: 0.12
-Nodes (27): generate_html(), main(), Generate HTML report from loop output data. If auto_refresh is True, adds a…, _call_claude(), improve_description(), main(), Path, Run `claude -p` with the prompt on stdin and return the text response. Prompt… (+19 more)
-
-### Community 55 - "ApplicationController"
-Cohesion: 0.07
-Nodes (15): API, Api, Api::V1, Api::V1::ApiController, Api, Api::V1, Api::V1::CacheVersionController, Api (+7 more)
-
-### Community 56 - "Transactions::Expense"
-Cohesion: 0.13
-Nodes (9): Transactions, Transactions::Expense, Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::SetupTransferFeeTransaction (+1 more)
-
-### Community 57 - "google-signin.ts"
-Cohesion: 0.14
-Nodes (25): generateRandomState(), GoogleSignInOptions, initiateGoogleSignIn(), verifyState(), closeInAppBrowser(), InAppGoogleSignInOptions, initiateInAppGoogleSignIn(), isCapacitorEnvironment() (+17 more)
-
-### Community 58 - "Transactions::Operations::Accounts::SaveAccount"
-Cohesion: 0.10
-Nodes (14): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::SaveAccount, Transactions::Operations::Accounts::SaveAccount::Contract, Contract (+6 more)
-
-### Community 59 - ".show"
-Cohesion: 0.29
-Nodes (5): Crm, Crm::Serializers, Crm::Serializers::Admin, Crm::Serializers::Admin::AdminTicketDetailSerializer, Base
-
-### Community 60 - "Transactions::Operations::CreateTransaction"
-Cohesion: 0.12
-Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::CreateTransaction, Transactions::Operations::CreateTransaction::Contract
+Nodes (9): ApplicationJob, Base, Budgets, Budgets::CreateMonthlyBudgetsJob, Budgets, Budgets::CreateSpaceMonthlyBudgetsJob, ExchangeRates, ExchangeRates::SyncDailyRatesJob (+1 more)
 
 ### Community 61 - "Transactions::Queries::FilteredAccountActivities"
 Cohesion: 0.09
 Nodes (14): Transactions, Transactions::Queries, Transactions::Queries::AccountActivityCategoryFilter, Transactions, Transactions::Queries, Transactions::Queries::CategoryFilterTokens, Transactions, Transactions::Queries (+6 more)
 
-### Community 62 - "useTickets.ts"
-Cohesion: 0.14
-Nodes (24): CrmSupportTicketPage(), mockSearchParamGet, mockSearchParamGet, TicketDetailPage(), useCreateTicket(), useCreateTicketResponse(), useTicket(), useTickets() (+16 more)
-
-### Community 63 - "CategoryTreeOption"
-Cohesion: 0.11
-Nodes (22): AmountWithRatePickerProps, AccountFilterComboBox(), AccountFilterComboBoxProps, CategoryFilterComboBoxProps, comboboxInputClassName, FILTER_CLEAR_ALL_MIN_COUNT, FilterClearAllButton(), filterClearAllButtonClassName (+14 more)
-
-### Community 64 - "Ai::Operations::Receipts::CreateDraftFromReceiptResult"
-Cohesion: 0.08
-Nodes (12): Transactions, Transactions::Draft, Transactions, Transactions::Income, Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::CreateDraftFromReceiptResult (+4 more)
-
-### Community 65 - "Transactions::Account"
-Cohesion: 0.10
-Nodes (8): Transactions, Transactions::Account, Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::UpdateTransaction, Transactions::Operations::UpdateTransaction::Contract
-
-### Community 66 - "buildDashboardApiJson"
-Cohesion: 0.10
-Nodes (21): mockApiCalls(), MOCK_USER, mockApiCalls(), setupAuth(), MOCK_USER, mockExpenseBreakdown, mockInsightsWithExpenseBreakdown(), setupAuth() (+13 more)
-
-### Community 67 - "auth-callback/page.tsx"
-Cohesion: 0.15
-Nodes (17): AuthCallbackInner(), isIOSDevice(), DeepLinkHandler(), processedAuthCallbackUrls, resetGlobalAuthLock(), SessionExpirationModal(), AuthProvider(), AUTH0_KEYS (+9 more)
-
-### Community 68 - "compilerOptions"
+### Community 62 - "useAccounts.ts"
 Cohesion: 0.07
-Nodes (28): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+20 more)
+Nodes (38): accountValidationErrorsAtom, createAccountAtom, createAccountMutationAtom, CreateAccountParams, newAccountBalanceAtom, newAccountNameAtom, AccountBreakdownComponent(), AccountBreakdownProps (+30 more)
 
-### Community 69 - ".render_not_found"
+### Community 63 - "monthly-financial-summaries/local-cache.ts"
+Cohesion: 0.14
+Nodes (21): combineMonthlyFinancialSummaries(), parseYearMonth(), summary(), toNumber(), yearMonthKey(), buildDashboardDataFromBuckets(), cacheDashboardShell(), cacheMonthlyFinancialSummaries() (+13 more)
+
+### Community 64 - "MotionAnimationGenerator"
 Cohesion: 0.10
-Nodes (8): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::Finance, Api::V1::Admin::Finance::SponsorCodesController, ApiController, Finance, Finance::SponsorCode
+Nodes (17): main(), MotionAnimationGenerator, Generate TypeScript props interface., Generate hover animation component., Generate tap animation component., Generate drag animation component., Generate exit animation with AnimatePresence., Generate layout animation component. (+9 more)
 
-### Community 70 - "CurrentSpace"
+### Community 65 - "insights/types.ts"
+Cohesion: 0.15
+Nodes (21): DashboardSummarySectionProps, InsightMetricCardsProps, InsightNarrativeCards(), InsightNarrativeCardsProps, severityStyles, categorySpikeInsight, InsightsData, AccountBreakdown (+13 more)
+
+### Community 66 - "run_loop.py"
+Cohesion: 0.12
+Nodes (27): generate_html(), main(), Generate HTML report from loop output data. If auto_refresh is True, adds a…, _call_claude(), improve_description(), main(), Path, Run `claude -p` with the prompt on stdin and return the text response. Prompt… (+19 more)
+
+### Community 67 - "CurrentSpace"
 Cohesion: 0.08
 Nodes (10): Api, Api::V1, Api::V1::Spaces, Api::V1::Spaces::UsersController, ApiController, CurrentSpace, Base, Spaces (+2 more)
 
-### Community 71 - "Entities::Operations::CreateEntity"
-Cohesion: 0.16
-Nodes (8): Entities, Entities::Entity, Entities, Entities::Operations, Entities::Operations::CreateEntity, Entities::Operations::CreateEntity::Contract, Contract, Operation
-
-### Community 72 - "Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSessionSucceeded"
-Cohesion: 0.11
-Nodes (10): Finance, Finance::Payment, Finance, Finance::Operations, Finance::Operations::PaymentSessions, Finance::Operations::PaymentSessions::Webhooks, Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSessionSucceeded, Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSessionSucceeded::Contract (+2 more)
-
-### Community 73 - "MonthlyFinancialSummary"
-Cohesion: 0.11
-Nodes (7): MonthlyFinancialSummary, MonthlyFinancialSummaries, MonthlyFinancialSummaries::Queries, MonthlyFinancialSummaries::Queries::AggregateTotalsInSpaceForRange, MonthlyFinancialSummaries, MonthlyFinancialSummaries::Queries, MonthlyFinancialSummaries::Queries::TotalsForMonth
-
-### Community 74 - "Ai::Operations::Receipts::ExtractReceiptDataVision"
-Cohesion: 0.10
-Nodes (7): Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::ExtractReceiptDataVision, Ai::Operations::Receipts::ExtractReceiptDataVision::Contract, Contract, Operation
-
-### Community 75 - "new-budget-dialog.tsx"
-Cohesion: 0.12
-Nodes (24): defaultDataTestId(), defaultModalTitle(), defaultPlaceholder(), defaultTriggerId(), GridPicker(), GridPickerProps, AddBudgetStep, FieldErrors (+16 more)
-
-### Community 76 - "server.cjs"
-Cohesion: 0.11
-Nodes (26): broadcast(), clients, computeAcceptKey(), CONTENT_DIR, crypto, debounceTimers, decodeFrame(), encodeFrame() (+18 more)
-
-### Community 77 - "VariantBuilder"
-Cohesion: 0.12
-Nodes (14): main(), Any, Generate variant code., Generate JavaScript variant code., Generate TypeScript variant code., Format properties as JavaScript object., Interactive CLI for building variants., Add state interactively. (+6 more)
-
-### Community 78 - "app/layout.tsx"
-Cohesion: 0.17
-Nodes (13): ClientLayout(), leagueSpartan, metadata, RootLayout(), viewport, RackMiniProfilerPendingFlush(), Window, RackMiniProfilerSpa() (+5 more)
-
-### Community 80 - "Ai::Operations::Receipts::CalculateConfidenceAi"
-Cohesion: 0.12
-Nodes (7): Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::CalculateConfidenceAi, Ai::Operations::Receipts::CalculateConfidenceAi::Contract, Contract, Operation
-
-### Community 81 - "scripts"
-Cohesion: 0.07
-Nodes (26): name, private, scripts, android, android:open, build, build:android, build:android:staging (+18 more)
-
-### Community 82 - "Spaces::SpaceUser"
-Cohesion: 0.11
-Nodes (8): Spaces, Spaces::SpaceUser, Auth, Auth::Operations, Auth::Operations::DeleteAccount, Auth::Operations::DeleteAccount::Contract, Contract, Operation
-
-### Community 83 - "Finance::Operations::Subscriptions::UpdateSubscription"
-Cohesion: 0.13
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::UpdateSubscription, Finance::Operations::Subscriptions::UpdateSubscription::Contract, Contract, Operation
-
-### Community 84 - "Transactions::Operations::Accounts::RemoveCalculation"
-Cohesion: 0.13
-Nodes (9): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::RemoveCalculation, Transactions::Operations::Accounts::RemoveCalculation::Contract, Utils (+1 more)
-
-### Community 85 - "Transactions::Queries::FilteredCombined"
-Cohesion: 0.07
-Nodes (15): Transactions, Transactions::Queries, Transactions::Queries::BaseQuery, Transactions, Transactions::Queries, Transactions::Queries::CombinedCategoryFilter, Transactions, Transactions::Queries (+7 more)
-
-### Community 86 - "Integrations::Marketing::Brevo::Client"
-Cohesion: 0.13
-Nodes (8): Integrations, Integrations::Marketing, Integrations::Marketing::Brevo, Integrations::Marketing::Brevo::Client, Integrations, Integrations::Marketing, Integrations::Marketing::Brevo, Integrations::Marketing::Brevo::ContactNameExtractor
-
-### Community 87 - "useAuthApi"
-Cohesion: 0.03
-Nodes (118): AppSettingsPage(), BottomNavigation, Layout(), MobileStickyHeader, SettingsPage(), SubscriptionsPage(), AccountSetupFlow(), SpaceTestPage() (+110 more)
-
-### Community 88 - "spaceAtoms.ts"
-Cohesion: 0.11
-Nodes (22): Spaces, Spaces::PersonalSpace, advancedReportingEnabledAtom, canManageBudgetsAtom, canManageSettingsAtom, canManageUsersAtom, canViewAnalyticsAtom, isOrganizationSpaceAtom (+14 more)
-
-### Community 89 - "TransferForm.tsx"
-Cohesion: 0.05
-Nodes (86): CreateTicketForm, CreateTicketFormProps, createTicketSchema, CRMRequestsPage(), STEPS, AuthPageProps, UnifiedAuthPageProps, ImageData (+78 more)
-
-### Community 90 - "intel.cjs"
-Cohesion: 0.16
-Nodes (21): crypto, disabledResponse(), ensureIntelDir(), fs, hashFile(), INTEL_FILES, intelDiff(), intelFilePath() (+13 more)
-
-### Community 91 - "Auth::Operations::CreateUserAndSpace"
-Cohesion: 0.17
-Nodes (6): Auth, Auth::Operations, Auth::Operations::CreateUserAndSpace, Operation, Utils, Utils::Name
-
-### Community 92 - "Insights::Operations::CreateHealthScores"
-Cohesion: 0.17
-Nodes (6): Insights, Insights::Operations, Insights::Operations::CreateHealthScores, Insights::Operations::CreateHealthScores::Contract, Contract, Operation
-
-### Community 93 - "Transactions::Operations::Loans::DeleteLoanPayment"
-Cohesion: 0.20
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Loans, Transactions::Operations::Loans::DeleteLoanPayment, Transactions::Operations::Loans::DeleteLoanPayment::Contract
-
-### Community 94 - "category-filter-combobox.tsx"
-Cohesion: 0.27
-Nodes (21): CategoryFilterComboBox(), parseCategoryPickerValue(), appendCategoryGroup(), areAllExpenseCategoriesSelected(), areAllIncomeCategoriesSelected(), buildCategoryFilterOptions(), CategoryFilterOption, collectParentCategoryFilterValues() (+13 more)
-
-### Community 95 - "learnings.cjs"
-Cohesion: 0.15
-Nodes (23): cmdLearningsCopy(), cmdLearningsDelete(), cmdLearningsList(), cmdLearningsPrune(), cmdLearningsQuery(), contentHash(), crypto, DEFAULT_STORE_DIR (+15 more)
-
-### Community 96 - "generate_review.py"
-Cohesion: 0.15
-Nodes (19): build_run(), embed_file(), find_runs(), _find_runs_recursive(), generate_html(), get_mime_type(), _kill_port(), load_previous_iteration() (+11 more)
-
-### Community 97 - "Imports::Operations::Categories::FindOrCreateCategory"
-Cohesion: 0.21
-Nodes (7): Imports, Imports::Operations, Imports::Operations::Categories, Imports::Operations::Categories::FindOrCreateCategory, Imports::Operations::Categories::FindOrCreateCategory::Contract, Contract, Operation
-
-### Community 98 - "Integrations::Payments::Xendit::Client"
-Cohesion: 0.17
-Nodes (4): Integrations, Integrations::Payments, Integrations::Payments::Xendit, Integrations::Payments::Xendit::Client
-
-### Community 99 - "AuthContext.tsx"
-Cohesion: 0.17
-Nodes (21): AuthContext, AuthContextType, AuthProviderProps, AuthUser, getUserProfile(), LoginCredentials, LoginError, LoginResponse (+13 more)
-
-### Community 100 - "gsd2-import.cjs"
-Cohesion: 0.18
-Nodes (22): buildContextMd(), buildPlanMd(), buildPlanningArtifacts(), buildPreview(), buildRoadmapMd(), buildStateMd(), buildSummaryMd(), cmdFromGsd2() (+14 more)
-
-### Community 101 - "Spaces::Operations::RemoveUser"
-Cohesion: 0.11
-Nodes (11): Api, Api::V1, Api::V1::Auth, Api::V1::Auth::PrivateController, ApiController, Contract, Operation, Spaces (+3 more)
-
-### Community 102 - "Transactions::Operations::Loans::CreateLoan"
-Cohesion: 0.17
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Loans, Transactions::Operations::Loans::CreateLoan, Transactions::Operations::Loans::CreateLoan::Contract
-
-### Community 103 - "ExchangeRates::Operations::AmountInSpaceForTransactable"
-Cohesion: 0.11
-Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::AmountInSpaceForTransactable, ExchangeRates::Operations::AmountInSpaceForTransactable::Contract, Contract, Operation
-
-### Community 104 - "FailureHandler"
-Cohesion: 0.13
-Nodes (10): Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::ResolveSuggestedTransactionPayload, Ai::Operations::Receipts::ResolveSuggestedTransactionPayload::Contract, Contract, Operation, FailureHandler (+2 more)
-
-### Community 105 - "Insights::Operations::CreateWeeklySpending"
-Cohesion: 0.11
-Nodes (11): Insights, Insights::Operations, Insights::Operations::CreateWeeklySpending, Insights::Operations::CreateWeeklySpending::Contract, Contract, Operation, Insights, Insights::SpaceCurrencyAmount (+3 more)
-
-### Community 106 - "Transactions::Operations::Transfers::UpdateTransfer"
-Cohesion: 0.14
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::UpdateTransfer, Transactions::Operations::Transfers::UpdateTransfer::Contract
-
-### Community 107 - "FintrConnectionGate"
-Cohesion: 0.28
-Nodes (4): FintrConnectionGate, Bridge, WebView, Handler
-
-### Community 108 - "FintrConnectionGate"
-Cohesion: 0.26
-Nodes (8): FintrConnectionGate, Bool, CAPBridgeProtocol, String, URL, WKWebView, NSKeyValueObservation, Timer
-
-### Community 109 - "graphify.cjs"
-Cohesion: 0.18
-Nodes (20): applyBudget(), { atomicWriteFileSync, execGit }, buildAdjacencyMap(), checkGraphifyInstalled(), checkGraphifyVersion(), childProcess, countCommitsBetween(), disabledResponse() (+12 more)
-
-### Community 110 - "Api::V1::Imports::ImportsController"
-Cohesion: 0.13
-Nodes (9): Api, Api::V1, Api::V1::Imports, Api::V1::Imports::ImportsController, ApiController, Imports, Imports::Serializers, Imports::Serializers::ImportSerializer (+1 more)
-
-### Community 111 - "Finance::Operations::Subscriptions::ApplySponsorCode"
-Cohesion: 0.11
-Nodes (11): Finance, Finance::SubscriptionPlan, Finance, Finance::UserSponsorCode, Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::ApplySponsorCode (+3 more)
-
-### Community 112 - "Auth::Operations::UpdateUserAuth0"
-Cohesion: 0.12
-Nodes (10): Auth, Auth::Operations, Auth::Operations::UpdateUserAuth0, Auth::Operations::UpdateUserAuth0::Contract, Contract, Operation, Auth, Auth::M2mClient (+2 more)
-
-### Community 113 - "Entities::Queries::AllEntities"
-Cohesion: 0.12
-Nodes (11): Entities, Entities::Operations, Entities::Operations::ShowEntities, Entities::Operations::ShowEntities::Contract, Contract, Operation, Entities, Entities::Queries (+3 more)
-
-### Community 114 - "Transactions::Operations::Transfers::CreateTransfer"
-Cohesion: 0.13
-Nodes (8): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::CreateTransfer, Transactions::Operations::Transfers::CreateTransfer::Contract, Utils::ActiveStorage
-
-### Community 115 - "Transactions::Queries::AccountActivityTotalsByType"
-Cohesion: 0.16
-Nodes (6): Transactions, Transactions::Queries, Transactions::Queries::AccountActivityTotalsByType, Transactions, Transactions::Queries, Transactions::Queries::PreloadsAccountActivityAssociations
-
-### Community 116 - "Transactions::Operations::Transfers::CreateBulkTransferFeeTransactions"
-Cohesion: 0.19
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::CreateBulkTransferFeeTransactions, Transactions::Operations::Transfers::CreateBulkTransferFeeTransactions::Contract
-
-### Community 117 - "FintrBridgeWebViewClient"
-Cohesion: 0.23
-Nodes (9): FintrBridgeWebViewClient, Bridge, Override, WebView, BridgeWebViewClient, SuppressWarnings, WebResourceError, WebResourceRequest (+1 more)
-
-### Community 118 - "(private)/layout.tsx"
-Cohesion: 0.13
-Nodes (18): PrivateLayout(), FINTR_LOGO_DARK_SRC, FINTR_LOGO_LIGHT_SRC, FINTR_LOGO_NAVY_SRC, FINTR_LOGO_SPLASH_SRC, FintrLogoProps, LoadingFintrLogo(), LoadingFintrLogoProps (+10 more)
-
-### Community 119 - "weekly-feedback.ts"
+### Community 68 - "Spaces::Operations::JoinSpace"
 Cohesion: 0.22
-Nodes (16): AreaList(), WeeklyFeedbackPrompt(), WeeklyFeedbackPromptProps, FEEDBACK_AREA_IDS, FEEDBACK_AREA_OPTIONS, FeedbackAreaId, feedbackAreaLabel(), getCurrentIsoWeekKey() (+8 more)
+Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::JoinSpace, Spaces::Operations::JoinSpace::Contract
 
-### Community 120 - "profile-pipeline.cjs"
-Cohesion: 0.21
-Nodes (20): ensureGsdTempDir(), reapStaleTempFiles(), cmdExtractMessages(), cmdProfileSample(), cmdScanSessions(), formatBytes(), formatProjectTable(), formatSessionTable() (+12 more)
-
-### Community 121 - ".render_success"
-Cohesion: 0.04
-Nodes (31): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::CachesController, ApiController, Api, Api::V1, Api::V1::Auth (+23 more)
-
-### Community 122 - "Spaces::Space"
-Cohesion: 0.10
-Nodes (10): Spaces, Spaces::OrganizationSpace, Spaces, Spaces::Space, Contract, Operation, Spaces, Spaces::Operations (+2 more)
-
-### Community 123 - "Transactions::Operations::BulkRecordTransactionVersions"
-Cohesion: 0.13
-Nodes (7): Transactions, Transactions::TransactionVersion, Operation, Transactions, Transactions::Operations, Transactions::Operations::BulkRecordTransactionVersions, CreateTransactionVersions
-
-### Community 124 - "MonthlyFinancialSummaries::Queries::TotalsInSpaceForRange"
-Cohesion: 0.11
-Nodes (10): Insights, Insights::Queries, Insights::Queries::SumExpensesInSpaceForRange, MonthlyFinancialSummaries, MonthlyFinancialSummaries::Queries, MonthlyFinancialSummaries::Queries::TotalsInSpaceForRange, Operation, MonthlyFinancialSummaries (+2 more)
-
-### Community 125 - "ApplicationCable::Connection"
-Cohesion: 0.12
-Nodes (9): ApplicationCable, ApplicationCable::Connection, Base, Auth, Auth::Operations, Auth::Operations::EnsureAuthenticatedUser, Auth::Operations::EnsureAuthenticatedUser::Contract, Contract (+1 more)
-
-### Community 126 - "Admin::Queries::UsersQuery"
-Cohesion: 0.12
-Nodes (10): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::UsersController, ApiController, Admin, Admin::Queries, Admin::Queries::UsersQuery (+2 more)
-
-### Community 127 - "Api::V1::InsightsController"
-Cohesion: 0.24
-Nodes (4): Api, Api::V1, Api::V1::InsightsController, ApiController
-
-### Community 128 - "Transactions::Transfer"
-Cohesion: 0.14
-Nodes (3): HasCurrencyConversion, Transactions, Transactions::Transfer
-
-### Community 129 - "Ai::Queries::Usages::UsageInPeriod"
-Cohesion: 0.21
-Nodes (7): Ai, Ai::Queries, Ai::Queries::Usages, Ai::Queries::Usages::UsageInPeriod, Ai::Queries::Usages::UsageInPeriod::Contract, Contract, Operation
-
-### Community 130 - "Finance::Operations::Subscriptions::CreateSubscription"
-Cohesion: 0.16
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::CreateSubscription, Finance::Operations::Subscriptions::CreateSubscription::Contract, Contract, Operation
-
-### Community 131 - "Finance::Operations::Subscriptions::Webhooks::HandleCycleSucceeded"
-Cohesion: 0.15
-Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandleCycleSucceeded, Finance::Operations::Subscriptions::Webhooks::HandleCycleSucceeded::Contract, Contract, Operation
-
-### Community 132 - "Transactions::Operations::Accounts::ShowAccounts"
-Cohesion: 0.13
-Nodes (12): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::ShowAccounts, Transactions::Operations::Accounts::ShowAccounts::Contract, Base (+4 more)
-
-### Community 133 - "Transactions::Operations::Loans::UpdateLoanPayment"
-Cohesion: 0.16
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Loans, Transactions::Operations::Loans::UpdateLoanPayment, Transactions::Operations::Loans::UpdateLoanPayment::Contract
-
-### Community 134 - "Transactions::Operations::Transfers::UpdateThisAndFutureTransfers"
-Cohesion: 0.16
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::UpdateThisAndFutureTransfers, Transactions::Operations::Transfers::UpdateThisAndFutureTransfers::Contract
-
-### Community 135 - "Plugin"
-Cohesion: 0.16
-Nodes (14): AppearancePlugin, CapacitorPlugin, PluginCall, PluginMethod, CacheControlPlugin, CapacitorPlugin, PluginCall, PluginMethod (+6 more)
-
-### Community 136 - "setAuthStorageForE2e"
-Cohesion: 0.23
-Nodes (8): openExpenseForm(), emptyListResponse, mockCommonDashboardApi(), primeWeeklyFeedbackDismissed(), setAuthStorageForE2e(), MOCK_USER, mockLoanCreateFlow(), setupAuth()
-
-### Community 137 - "capacitor.ts"
-Cohesion: 0.07
-Nodes (45): CreateSubscriptionPage(), CapacitorRedirectToAuth(), initialStatus(), Status, CreateSubscriptionWizard(), APPEARANCE_PLUGIN_HEADER, CACHE_CONTROL_PLUGIN_HEADER, CapacitorBridgeCap (+37 more)
-
-### Community 138 - "lib/api.ts"
-Cohesion: 0.13
-Nodes (17): AuthWrapper(), AuthWrapperProps, CapacitorLoadingTimeout(), CapacitorLoadingTimeoutProps, LoadingScreen(), LoadingScreenProps, apiClient, AUTH_BOOTSTRAP_PATHS (+9 more)
-
-### Community 139 - "animated-sheet-shell.tsx"
-Cohesion: 0.29
-Nodes (7): GridPickerModalShell(), GridPickerModalShellProps, AnimatedSheetShell(), AnimatedSheetShellProps, SHEET_PANEL_EASE, useBodyScrollLock(), useCloseOnPopStateWhenOpen()
-
-### Community 140 - "Ai::Rag::Agent::Tools::Auditable"
-Cohesion: 0.21
-Nodes (5): Ai::Rag::Agent::Tools::Auditable, Ai::Rag::Agent::Tools::ListAccounts, Tool, Ai::Rag::Agent::Tools::Note, Tool
-
-### Community 142 - "Finance::Operations::Subscriptions::Webhooks::HandleCycleFailed"
-Cohesion: 0.16
-Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandleCycleFailed, Finance::Operations::Subscriptions::Webhooks::HandleCycleFailed::Contract, Contract, Operation
-
-### Community 143 - "getPublicBackendUrl"
-Cohesion: 0.18
-Nodes (16): AdminCachePage(), CacheVersionChecker(), waitForCapacitor(), formatBackendUrl(), getPublicBackendUrl(), isAndroidNativeFintrApp(), LOCAL_HOSTNAMES, remapLocalhostHostname() (+8 more)
-
-### Community 144 - "Transactions::Operations::DeleteThisTransaction"
-Cohesion: 0.10
-Nodes (12): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::DeleteThisTransaction, Transactions::Operations::DeleteThisTransaction::Contract, Contract, Operation (+4 more)
-
-### Community 145 - "Admin::Queries::UserActivityDrilldownQuery"
-Cohesion: 0.17
-Nodes (5): Admin, Admin::Queries, Admin::Queries::UserActivityDrilldownQuery, Admin::Queries::UserActivityDrilldownQuery::Contract, Contract
-
-### Community 146 - "Auth::Client"
-Cohesion: 0.12
-Nodes (7): Auth, Auth::Client, Auth, Auth::Response, Auth, Auth::Token, RequestAuthHelper
-
-### Community 147 - "AppDelegate"
-Cohesion: 0.15
-Nodes (11): AppDelegate, Any, Bool, URL, Void, NSUserActivity, UIApplication, UIApplicationDelegate (+3 more)
-
-### Community 148 - "category-budget-section.tsx"
-Cohesion: 0.18
-Nodes (19): buildBudgetCategoryFromParent(), CategoryBudgetSection(), CategoryBudgetSectionProps, hasBudgetForMonth(), useBudgetsData(), createBudget(), deleteBudget(), updateBudget() (+11 more)
-
-### Community 149 - "conversation-list.tsx"
-Cohesion: 0.12
-Nodes (16): ConversationList(), ConversationListProps, CategoryActionsMenu(), CategoryActionsMenuProps, CategoryMenuItem, DropdownMenu(), DropdownMenuCheckboxItem(), DropdownMenuContent() (+8 more)
-
-### Community 150 - "starter_motion/package.json"
-Cohesion: 0.11
-Nodes (17): dependencies, framer-motion, react, react-dom, react, name, private, scripts (+9 more)
-
-### Community 151 - ".render_internal_server_error"
-Cohesion: 0.05
-Nodes (19): Api, Api::V1, Api::V1::Ai, Api::V1::Ai::UsagesController, ApiController, Api, Api::V1, Api::V1::TransactionsController (+11 more)
-
-### Community 152 - ".build_tools"
-Cohesion: 0.14
-Nodes (8): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Agent, Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::ChatBuilder
-
-### Community 153 - "Finance::UpdateSubscriptionCycleCountJob"
-Cohesion: 0.25
-Nodes (4): Finance, Finance::ReconcileSubscriptionCycleCountsJob, Finance, Finance::UpdateSubscriptionCycleCountJob
-
-### Community 154 - "Finance::BillingCycle"
-Cohesion: 0.13
-Nodes (7): Finance, Finance::RenewFreeSubscriptionCyclesJob, Finance, Finance::BillingCycle, create_free_subscription_with_cycle(), create_paid_subscription_with_cycle(), Finance
-
-### Community 155 - "Spaces::Operations::GrantAccess"
-Cohesion: 0.21
-Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::GrantAccess, Spaces::Operations::GrantAccess::Contract
-
-### Community 156 - "Ai::Operations::Receipts::FormatResult"
-Cohesion: 0.14
-Nodes (7): Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::FormatResult, Ai::Operations::Receipts::FormatResult::Contract, Contract, Operation
-
-### Community 157 - "ExchangeRates::Operations::FetchRate"
-Cohesion: 0.22
-Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::FetchRate, ExchangeRates::Operations::FetchRate::Contract, Contract, Operation
-
-### Community 158 - "Finance::Operations::Subscriptions::CalculateProration"
-Cohesion: 0.17
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::CalculateProration, Finance::Operations::Subscriptions::CalculateProration::Contract, Contract, Operation
-
-### Community 159 - "Finance::Operations::Subscriptions::Webhooks::HandleCycleRetrying"
-Cohesion: 0.16
-Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandleCycleRetrying, Finance::Operations::Subscriptions::Webhooks::HandleCycleRetrying::Contract, Contract, Operation
-
-### Community 160 - "Insights::Operations::CreateInsightsData"
-Cohesion: 0.18
-Nodes (6): Insights, Insights::Operations, Insights::Operations::CreateInsightsData, Insights::Operations::CreateInsightsData::Contract, Contract, Operation
-
-### Community 161 - "Transactions::Operations::Loans::CreateLoanPayment"
-Cohesion: 0.17
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Loans, Transactions::Operations::Loans::CreateLoanPayment, Transactions::Operations::Loans::CreateLoanPayment::Contract
-
-### Community 162 - "components.json"
-Cohesion: 0.11
-Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
-
-### Community 163 - "drift.cjs"
-Cohesion: 0.19
-Nodes (15): buildMessage(), CATEGORY_PRIORITY, chooseAffectedPaths(), classifyFile(), detectDrift(), DRIFT_CATEGORIES, fs, isPathMapped() (+7 more)
-
-### Community 164 - "Ai::Interaction"
-Cohesion: 0.13
-Nodes (8): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::Ai, Api::V1::Admin::Ai::AiInteractionsController, ApiController, Ai, Ai::Interaction
-
-### Community 165 - ".render_paginated"
-Cohesion: 0.07
-Nodes (14): Api, Api::V1, Api::V1::Crm, Api::V1::Crm::TicketsController, ApiController, PaginatedResponses, Ai, Ai::Serializers (+6 more)
-
-### Community 166 - "Ai::Providers::ResilientProvider"
-Cohesion: 0.15
-Nodes (7): Ai, Ai::Providers, Ai::Providers::ProviderFactory, Ai::Providers::ResilientProvider, create(), create_with_fallback(), BaseProvider
-
-### Community 168 - "UserActivity"
-Cohesion: 0.12
-Nodes (9): Ai, Ai::Usage, UserActivity, Admin, Admin::Operations, Admin::Operations::CreateUserActivityAnalytics, Admin::Operations::CreateUserActivityAnalytics::Contract, Contract (+1 more)
-
-### Community 169 - "ExchangeRates::ApiExchangeRate"
-Cohesion: 0.15
-Nodes (5): ExchangeRates, ExchangeRates::ApiExchangeRate, ExchangeRates, ExchangeRates::RateLookupCache, CurrentAttributes
-
-### Community 170 - "Transactions::Operations::Accounts::ComputeBalanceTotals"
-Cohesion: 0.23
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::ComputeBalanceTotals, Transactions::Operations::Accounts::ComputeBalanceTotals::Contract
-
-### Community 171 - "Budgets::Operations::BuildMonthlyBudgetRows"
-Cohesion: 0.22
-Nodes (4): Budgets, Budgets::Operations, Budgets::Operations::BuildMonthlyBudgetRows, Operation
-
-### Community 172 - "Imports::Operations::ImportSingleRecord"
-Cohesion: 0.19
-Nodes (7): Imports, Imports::Operations, Imports::Operations::ImportSingleRecord, Imports::Operations::ImportSingleRecord::Contract, Imports::Operations::ImportSingleRecord::RowDataContract, Contract, Operation
-
-### Community 173 - "Insights::Operations::ResolveContext"
-Cohesion: 0.19
-Nodes (6): Insights, Insights::Operations, Insights::Operations::ResolveContext, Insights::Operations::ResolveContext::Contract, Contract, Operation
-
-### Community 174 - "Transactions::Operations::Accounts::UpdateCalculateBalance"
-Cohesion: 0.18
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::UpdateCalculateBalance, Transactions::Operations::Accounts::UpdateCalculateBalance::Contract
-
-### Community 175 - "Transactions::Operations::Loans::CalculateLoanPaymentInterest"
-Cohesion: 0.18
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Loans, Transactions::Operations::Loans::CalculateLoanPaymentInterest, Transactions::Operations::Loans::CalculateLoanPaymentInterest::Contract
-
-### Community 176 - "Transactions::Operations::Transfers::CreateRepeatTransfers"
-Cohesion: 0.18
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::CreateRepeatTransfers, Transactions::Operations::Transfers::CreateRepeatTransfers::Contract
-
-### Community 177 - "Transactions::Operations::Transfers::UpdateCalculateBalances"
-Cohesion: 0.18
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::UpdateCalculateBalances, Transactions::Operations::Transfers::UpdateCalculateBalances::Contract
-
-### Community 178 - "Transactions::Operations::UpdateAllInSeriesTransactions"
-Cohesion: 0.18
-Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::UpdateAllInSeriesTransactions, Transactions::Operations::UpdateAllInSeriesTransactions::Contract
-
-### Community 179 - "Transactions::Queries::Accounts::DashboardAccounts"
-Cohesion: 0.13
-Nodes (10): Transactions, Transactions::Queries, Transactions::Queries::Accounts, Transactions::Queries::Accounts::BaseQuery, Contract, Transactions, Transactions::Queries, Transactions::Queries::Accounts (+2 more)
-
-### Community 180 - "gap-checker.cjs"
-Cohesion: 0.20
-Nodes (14): parseDecisions(), cmdGapAnalysis(), detectCoverage(), { escapeRegex, output, error }, formatGapTable(), fs, naturalKey(), { parseDecisions } (+6 more)
-
-### Community 181 - "Api::V1::OnboardingsController"
-Cohesion: 0.09
-Nodes (8): Api, Api::V1, Api::V1::OnboardingsController, ApiController, Onboardings, Onboardings::Operations, Onboardings::Operations::DelegateStep, Operation
-
-### Community 182 - ".perform"
-Cohesion: 0.21
-Nodes (4): Ai, Ai::ChatBroadcaster, Ai, Ai::AiChatJob
-
-### Community 183 - "Ai::Providers::OpenaiFallbackProvider"
-Cohesion: 0.18
-Nodes (4): Ai, Ai::Providers, Ai::Providers::OpenaiFallbackProvider, BaseProvider
-
-### Community 184 - "Ai::Providers::OpenrouterProvider"
-Cohesion: 0.18
-Nodes (4): Ai, Ai::Providers, Ai::Providers::OpenrouterProvider, BaseProvider
-
-### Community 185 - "Ai::Rag::Agent::RetrievalCollector"
-Cohesion: 0.17
-Nodes (4): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::RetrievalCollector
-
-### Community 186 - "MonthlyFinancialSummaries::Operations::RecalculateSpaceSummaries"
-Cohesion: 0.16
-Nodes (8): MonthlyFinancialSummaries, MonthlyFinancialSummaries::RecalculateSpaceSummariesJob, MonthlyFinancialSummaries, MonthlyFinancialSummaries::Operations, MonthlyFinancialSummaries::Operations::RecalculateSpaceSummaries, MonthlyFinancialSummaries::Operations::RecalculateSpaceSummaries::Contract, Contract, Operation
-
-### Community 187 - "Transactions::LoanPayment"
-Cohesion: 0.13
-Nodes (3): Versionable, Transactions, Transactions::LoanPayment
-
-### Community 188 - "Ai::Operations::Usages::ShowUsage"
-Cohesion: 0.18
-Nodes (7): Ai, Ai::Operations, Ai::Operations::Usages, Ai::Operations::Usages::ShowUsage, Ai::Operations::Usages::ShowUsage::Contract, Contract, Operation
-
-### Community 189 - "Finance::Operations::Subscriptions::CreateFreeSubscription"
-Cohesion: 0.18
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::CreateFreeSubscription, Finance::Operations::Subscriptions::CreateFreeSubscription::Contract, Contract, Operation
-
-### Community 190 - "Finance::Operations::Subscriptions::ForceAttemptCycle"
-Cohesion: 0.18
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::ForceAttemptCycle, Finance::Operations::Subscriptions::ForceAttemptCycle::Contract, Contract, Operation
-
-### Community 191 - "Finance::Operations::Subscriptions::SimulateCyclePayment"
-Cohesion: 0.18
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::SimulateCyclePayment, Finance::Operations::Subscriptions::SimulateCyclePayment::Contract, Contract, Operation
-
-### Community 192 - "Finance::Operations::Subscriptions::Webhooks::HandleCycleCreated"
-Cohesion: 0.17
-Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandleCycleCreated, Finance::Operations::Subscriptions::Webhooks::HandleCycleCreated::Contract, Contract, Operation
-
-### Community 193 - "Finance::Operations::Webhooks::HandleWebhook"
-Cohesion: 0.17
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Webhooks, Finance::Operations::Webhooks::HandleWebhook, Finance::Operations::Webhooks::HandleWebhook::Contract, Contract, Operation
-
-### Community 194 - "Imports::Operations::GenerateSampleTemplate"
-Cohesion: 0.18
-Nodes (6): Imports, Imports::Operations, Imports::Operations::GenerateSampleTemplate, Imports::Operations::GenerateSampleTemplate::Contract, Contract, Operation
-
-### Community 195 - "Insights::Operations::CreateExpenseBreakdown"
-Cohesion: 0.19
-Nodes (6): Insights, Insights::Operations, Insights::Operations::CreateExpenseBreakdown, Insights::Operations::CreateExpenseBreakdown::Contract, Contract, Operation
-
-### Community 196 - "Spaces::Operations::TransferOwnership"
-Cohesion: 0.19
-Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::TransferOwnership, Spaces::Operations::TransferOwnership::Contract
-
-### Community 197 - "Transactions::Operations::Accounts::AdjustAccountBalance"
-Cohesion: 0.18
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::AdjustAccountBalance, Transactions::Operations::Accounts::AdjustAccountBalance::Contract
-
-### Community 198 - "Transactions::Operations::Categories::ConvertCategoryHierarchy"
+### Community 69 - "Transactions::Operations::Transfers::CreateBulkTransferFeeTransactions"
 Cohesion: 0.08
-Nodes (18): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Categories, Transactions::Operations::Categories::ConvertCategoryHierarchy, Transactions::Operations::Categories::ConvertCategoryHierarchy::Contract, Contract (+10 more)
+Nodes (16): Transactions, Transactions::Expense, Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::CreateBulkTransferFeeTransactions (+8 more)
 
-### Community 199 - "Insights::Queries::MonthlySpending"
-Cohesion: 0.16
-Nodes (9): Insights, Insights::Queries, Insights::Queries::MonthlySpending, Insights::Queries::MonthlySpending::Contract, Insights::Queries::MonthlySpending::Row, Contract, MonthlyFinancialSummaries, MonthlyFinancialSummaries::Queries (+1 more)
-
-### Community 200 - ".call"
-Cohesion: 0.20
-Nodes (5): Contract, Transactions, Transactions::Queries, Transactions::Queries::FilteredTransactions, Transactions::Queries::FilteredTransactions::Contract
-
-### Community 201 - "bundle"
-Cohesion: 0.17
-Nodes (9): activate_bundler(), activation_error_handling(), bundler_requirement(), bundler_requirement_for(), cli_arg_version(), invoked_as_script?(), gradlew script, die() (+1 more)
-
-### Community 202 - "FileSharePlugin"
-Cohesion: 0.14
-Nodes (12): AppearancePlugin, CAPPluginCall, CAPPluginMethod, CacheControlPlugin, CAPPluginCall, FileSharePlugin, CAPPluginCall, CAPPluginMethod (+4 more)
-
-### Community 203 - "build-production.sh"
-Cohesion: 0.12
-Nodes (12): build-all.sh script, CAPACITOR_SERVER_URL, NEXT_OUTPUT_MODE, NEXT_PUBLIC_APP_BASE_URL, NODE_ENV, build-production-android.sh script, CAPACITOR_SERVER_URL, NEXT_OUTPUT_MODE (+4 more)
-
-### Community 204 - "seo-config.ts"
-Cohesion: 0.23
-Nodes (12): dynamic, robots(), dynamic, sitemap(), BLOG_ARTICLES, BlogArticle, buildBlogArticleUrl(), ROBOTS_DISALLOW_PATHS (+4 more)
-
-### Community 205 - "mobile-sticky-header.tsx"
-Cohesion: 0.14
-Nodes (17): getPageTitle(), MobileStickyHeader(), MobileStickyHeaderContent(), MobileStickyHeaderProps, shouldShowImmediateBackButton(), mockUsePathname, mockUsePlatformDetection, mockUseSearchParams (+9 more)
-
-### Community 206 - "Ai::Rag::Agent::Tools::QueryFinancialData"
-Cohesion: 0.18
-Nodes (6): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Tools, Ai::Rag::Agent::Tools::QueryFinancialData, Tool
-
-### Community 207 - "Onboardings::Operations::ShowAccountsData"
+### Community 70 - "Transactions::Operations::Accounts::SaveAccount"
 Cohesion: 0.10
-Nodes (12): Onboardings, Onboardings::Operations, Onboardings::Operations::BudgetsStep, Onboardings::Operations::BudgetsStep::Contract, Contract, Operation, Onboardings, Onboardings::Operations (+4 more)
+Nodes (14): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::SaveAccount, Transactions::Operations::Accounts::SaveAccount::Contract, Contract (+6 more)
 
-### Community 208 - "Ai::Operations::Usages::CreateUsage"
-Cohesion: 0.21
-Nodes (6): Ai, Ai::Operations, Ai::Operations::Usages, Ai::Operations::Usages::CreateUsage, Ai::Operations::Usages::CreateUsage::Contract, Contract
+### Community 71 - "Transactions::Operations::UpdateThisAndFutureTransactions"
+Cohesion: 0.17
+Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::UpdateThisAndFutureTransactions, Transactions::Operations::UpdateThisAndFutureTransactions::Contract
 
-### Community 209 - "Transactions::Operations::Accounts::ResolveSignedBalanceEffect"
-Cohesion: 0.21
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::ResolveSignedBalanceEffect, Transactions::Operations::Accounts::ResolveSignedBalanceEffect::Contract
+### Community 72 - "Transactions::Operations::Transfers::CreateTransfer"
+Cohesion: 0.06
+Nodes (20): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::CreateRepeatTransfers, Transactions::Operations::Transfers::CreateRepeatTransfers::Contract, Contract (+12 more)
 
-### Community 210 - "date-range-picker.tsx"
-Cohesion: 0.26
-Nodes (8): DateRangeFullscreenSheet(), DateRangePicker(), DateRangePickerProps, Toaster(), ToasterWithSettings(), useMediaQuery(), calculateToastTopOffset(), resolveAndroidNativeTopInsetPx()
+### Community 73 - "BaseQuery"
+Cohesion: 0.06
+Nodes (19): Ai, Ai::Queries, Ai::Queries::BaseQuery, Ai, Ai::Queries, Ai::Queries::PaginatedMessages, Ai::Queries::PaginatedMessages::Contract, Contract (+11 more)
 
-### Community 211 - "Crm::Operations::CreateTicketResponse"
-Cohesion: 0.20
-Nodes (6): Crm, Crm::Operations, Crm::Operations::CreateTicketResponse, Crm::Operations::CreateTicketResponse::Contract, Contract, Operation
-
-### Community 212 - "Finance::Operations::Subscriptions::CancelSubscription"
-Cohesion: 0.19
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::CancelSubscription, Finance::Operations::Subscriptions::CancelSubscription::Contract, Contract, Operation
-
-### Community 213 - "Finance::Operations::Subscriptions::FindOrCreatePayment"
-Cohesion: 0.19
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::FindOrCreatePayment, Finance::Operations::Subscriptions::FindOrCreatePayment::Contract, Contract, Operation
-
-### Community 214 - "Finance::Operations::Subscriptions::Webhooks::HandlePlanActivated"
-Cohesion: 0.18
-Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandlePlanActivated, Finance::Operations::Subscriptions::Webhooks::HandlePlanActivated::Contract, Contract, Operation
-
-### Community 215 - "Imports::Operations::ProcessImport"
+### Community 74 - "exchangeRates/queries.ts"
 Cohesion: 0.14
-Nodes (9): Ai, Ai::Embeddings, Ai::Embeddings::GenerateEmbeddingJob, Imports, Imports::Operations, Imports::Operations::ProcessImport, Imports::Operations::ProcessImport::Contract, Contract (+1 more)
+Nodes (28): defaultProps, mockedGetCurrentRate, mockedResolveAutoExchangeRates, rateForPair(), resolved(), buildCurrencyPairs(), cacheCurrentExchangeRate(), cacheRecentExchangeRates() (+20 more)
 
-### Community 216 - "Imports::Operations::RevertImport"
-Cohesion: 0.20
-Nodes (6): Imports, Imports::Operations, Imports::Operations::RevertImport, Imports::Operations::RevertImport::Contract, Contract, Operation
-
-### Community 217 - "Insights::Operations::CreateSummaryStructure"
-Cohesion: 0.19
-Nodes (6): Insights, Insights::Operations, Insights::Operations::CreateSummaryStructure, Insights::Operations::CreateSummaryStructure::Contract, Contract, Operation
-
-### Community 218 - "Onboardings::Operations::SkipOnboarding"
-Cohesion: 0.20
-Nodes (6): Onboardings, Onboardings::Operations, Onboardings::Operations::SkipOnboarding, Onboardings::Operations::SkipOnboarding::Contract, Contract, Operation
-
-### Community 219 - "Transactions::Operations::Loans::DeleteLoan"
-Cohesion: 0.19
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Loans, Transactions::Operations::Loans::DeleteLoan, Transactions::Operations::Loans::DeleteLoan::Contract
-
-### Community 220 - "Transactions::Operations::Transfers::DeleteThisTransfer"
-Cohesion: 0.20
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::DeleteThisTransfer, Transactions::Operations::Transfers::DeleteThisTransfer::Contract
-
-### Community 221 - "Transactions::Operations::Transfers::UpdateAllInSeriesTransfers"
+### Community 75 - "fetchers.ts"
 Cohesion: 0.17
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::UpdateAllInSeriesTransfers, Transactions::Operations::Transfers::UpdateAllInSeriesTransfers::Contract
+Nodes (27): useInsightsQueries(), UseInsightsQueriesParams, getColorByIndex(), fetchInsightsAccountBreakdown(), fetchInsightsExpenseBreakdown(), fetchInsightsHealthScores(), fetchInsightsMonthlySpending(), fetchInsightsNarratives() (+19 more)
 
-### Community 222 - "MonthlyFinancialSummaries::Queries::DateRangeSummary"
-Cohesion: 0.23
-Nodes (3): MonthlyFinancialSummaries::Queries::DateRangeSummary, MonthlyFinancialSummaries::Queries::DateRangeSummary::Contract, Contract
-
-### Community 223 - "add-transaction-calendar.spec.ts"
-Cohesion: 0.52
-Nodes (4): setupAuth(), auth0LocalStorageKeySuffix(), readAuth0DomainFromEnvFiles(), setupFrontendAuth()
-
-### Community 224 - "Capacitor"
-Cohesion: 0.22
-Nodes (7): FintrLaunchColors, Capacitor, FBSDKCoreKit, Foundation, Sentry, UIKit, WebKit
-
-### Community 225 - "Api::V1::EntitiesController"
-Cohesion: 0.15
-Nodes (8): Api, Api::V1, Api::V1::EntitiesController, ApiController, Entities, Entities::Serializers, Entities::Serializers::EntitySerializer, Base
-
-### Community 226 - ".create"
-Cohesion: 0.15
-Nodes (8): Api, Api::V1, Api::V1::ProductPulseFeedbacksController, ApiController, ProductPulse, ProductPulse::Serializers, ProductPulse::Serializers::FeedbackSerializer, Base
-
-### Community 227 - ".create"
-Cohesion: 0.22
-Nodes (4): Api, Api::V1, Api::V1::ReceiptsController, ApiController
-
-### Community 228 - "Transactions::Operations::Transfers::FindOrCreateTransferFeeCategory"
-Cohesion: 0.22
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::FindOrCreateTransferFeeCategory, Transactions::Operations::Transfers::FindOrCreateTransferFeeCategory::Contract
-
-### Community 229 - "Goals::Operations::UpdateGoalDescription"
-Cohesion: 0.19
-Nodes (7): GoalDescription, Goals, Goals::Operations, Goals::Operations::UpdateGoalDescription, Goals::Operations::UpdateGoalDescription::Contract, Contract, Operation
-
-### Community 231 - "Ai::Operations::Receipts::ProcessReceipt"
-Cohesion: 0.20
-Nodes (7): Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::ProcessReceipt, Ai::Operations::Receipts::ProcessReceipt::Contract, Contract, Operation
-
-### Community 232 - "Budgets::Operations::UpdateBudget"
-Cohesion: 0.21
-Nodes (6): Budgets, Budgets::Operations, Budgets::Operations::UpdateBudget, Budgets::Operations::UpdateBudget::Contract, Contract, Operation
-
-### Community 233 - "Finance::Operations::Subscriptions::FindOrCreateBillingCycle"
-Cohesion: 0.20
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::FindOrCreateBillingCycle, Finance::Operations::Subscriptions::FindOrCreateBillingCycle::Contract, Contract, Operation
-
-### Community 234 - "Finance::Operations::Subscriptions::Webhooks::HandlePlanInactivated"
-Cohesion: 0.19
-Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandlePlanInactivated, Finance::Operations::Subscriptions::Webhooks::HandlePlanInactivated::Contract, Contract, Operation
-
-### Community 235 - "Onboardings::Operations::AccountsStep"
-Cohesion: 0.11
-Nodes (13): Onboardings, Onboardings::Operations, Onboardings::Operations::AccountsStep, Onboardings::Operations::AccountsStep::Contract, Contract, Operation, Contract, Operation (+5 more)
-
-### Community 236 - "Onboarding"
-Cohesion: 0.10
-Nodes (13): Onboarding, Onboardings, Onboardings::Operations, Onboardings::Operations::CurrencyStep, Onboardings::Operations::CurrencyStep::Contract, Contract, Operation, Onboardings (+5 more)
-
-### Community 237 - "Spaces::Operations::LeaveSpace"
-Cohesion: 0.21
-Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::LeaveSpace, Spaces::Operations::LeaveSpace::Contract
-
-### Community 238 - "Spaces::Operations::ResetData"
-Cohesion: 0.21
-Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::ResetData, Spaces::Operations::ResetData::Contract
-
-### Community 239 - "Spaces::Operations::UpdateSpace"
-Cohesion: 0.21
-Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::UpdateSpace, Spaces::Operations::UpdateSpace::Contract
-
-### Community 240 - "Transactions::Operations::Accounts::CreateAccount"
-Cohesion: 0.20
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::CreateAccount, Transactions::Operations::Accounts::CreateAccount::Contract
-
-### Community 241 - "budgetAtoms.ts"
-Cohesion: 0.13
-Nodes (14): AccountCategory, AccountData, appliedBudgetFiltersAtom, budgetCategoriesAtom, budgetDateAtom, budgetStatsAtom, IncomeRequirements, incomeRequirementsAtom (+6 more)
-
-### Community 242 - "Transactions::Transaction"
-Cohesion: 0.09
-Nodes (14): Transactions, Transactions::Transaction, Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::CreateRepeatTransactions, Transactions::Operations::CreateRepeatTransactions::Contract (+6 more)
-
-### Community 243 - "Transactions::Operations::Transfers::CreateTransferFeeTransaction"
-Cohesion: 0.20
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::CreateTransferFeeTransaction, Transactions::Operations::Transfers::CreateTransferFeeTransaction::Contract
-
-### Community 244 - "Admin::Queries::MonthlyActiveUserOcrStatsQuery"
-Cohesion: 0.21
-Nodes (5): Admin, Admin::Queries, Admin::Queries::MonthlyActiveUserOcrStatsQuery, Admin::Queries::MonthlyActiveUserOcrStatsQuery::Contract, Contract
-
-### Community 245 - ".paginate"
-Cohesion: 0.13
-Nodes (8): Crm, Crm::Queries, Crm::Queries::FilteredTickets, Crm::Queries::FilteredTickets::Contract, Contract, Imports, Imports::Queries, Imports::Queries::ListImports
-
-### Community 246 - "useConversations.ts"
-Cohesion: 0.29
-Nodes (13): ConversationRenameDialogProps, useConversations(), createConversation(), deleteConversation(), getConversation(), getConversations(), MessagesPage, updateConversation() (+5 more)
-
-### Community 247 - "usePaymentMethods.ts"
-Cohesion: 0.30
-Nodes (11): usePaymentMethods(), createPaymentMethod(), CreatePaymentMethodRequest, CreatePaymentMethodResponse, deletePaymentMethod(), initializeAccountLinking(), InitializeLinkingRequest, InitializeLinkingResponse (+3 more)
-
-### Community 248 - "lockedSystemCategories.ts"
-Cohesion: 0.27
-Nodes (12): normalizeCategoryMatchKey(), EXPENSE_ADJUSTMENT_CATEGORY_NAME, INCOME_ADJUSTMENT_CATEGORY_NAME, isLockedExpenseCategoryName(), isLockedIncomeCategoryName(), LOCKED_EXPENSE_CATEGORY_NAMES, LOCKED_INCOME_CATEGORY_NAMES, LockedCategoryRef (+4 more)
-
-### Community 249 - "install-profiles.cjs"
-Cohesion: 0.26
-Nodes (12): CLEANUP_SIGNALS, cleanupStagedSkills(), ensureExitCleanup(), fs, isMinimalMode(), MINIMAL_ALLOWLIST_SET, MINIMAL_SKILL_ALLOWLIST, os (+4 more)
-
-### Community 250 - "aggregate_benchmark.py"
-Cohesion: 0.23
-Nodes (12): aggregate_results(), calculate_stats(), generate_benchmark(), generate_markdown(), load_run_results(), main(), Path, Aggregate run results into summary statistics. Returns run_summary with stats… (+4 more)
-
-### Community 251 - "Budget"
-Cohesion: 0.17
-Nodes (3): Budget, CategoryAssignable, DefaultToPhp
-
-### Community 252 - "Ai::Operations::Conversations::DeleteConversation"
-Cohesion: 0.19
-Nodes (7): Ai, Ai::Operations, Ai::Operations::Conversations, Ai::Operations::Conversations::DeleteConversation, Ai::Operations::Conversations::DeleteConversation::Contract, Contract, Operation
-
-### Community 253 - "Budgets::Operations::CreateBudget"
-Cohesion: 0.11
-Nodes (12): Budgets, Budgets::Operations, Budgets::Operations::CreateBudget, Budgets::Operations::CreateBudget::Contract, Contract, Operation, Contract, Operation (+4 more)
-
-### Community 254 - "Budgets::Operations::PrepareMonthlyReport"
-Cohesion: 0.22
-Nodes (6): Budgets, Budgets::Operations, Budgets::Operations::PrepareMonthlyReport, Budgets::Operations::PrepareMonthlyReport::Contract, Contract, Operation
-
-### Community 255 - "Budgets::Operations::ValidateCategoryBudgetAllocation"
-Cohesion: 0.23
-Nodes (6): Budgets, Budgets::Operations, Budgets::Operations::ValidateCategoryBudgetAllocation, Budgets::Operations::ValidateCategoryBudgetAllocation::Contract, Contract, Operation
-
-### Community 256 - "Crm::Ticket"
-Cohesion: 0.05
-Nodes (22): Crm, Crm::Ticket, Crm, Crm::Operations, Crm::Operations::Admin, Crm::Operations::Admin::CreateAdminResponse, Crm::Operations::Admin::CreateAdminResponse::Contract, Contract (+14 more)
-
-### Community 257 - "Finance::Operations::Subscriptions::CreateBillingCycle"
-Cohesion: 0.21
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::CreateBillingCycle, Finance::Operations::Subscriptions::CreateBillingCycle::Contract, Contract, Operation
-
-### Community 258 - "Finance::Operations::Subscriptions::RemoveFreeSubscription"
-Cohesion: 0.21
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::RemoveFreeSubscription, Finance::Operations::Subscriptions::RemoveFreeSubscription::Contract, Contract, Operation
-
-### Community 259 - "Imports::Operations::CreateImport"
-Cohesion: 0.15
-Nodes (8): Imports, Imports::ProcessImportJob, Imports, Imports::Operations, Imports::Operations::CreateImport, Imports::Operations::CreateImport::Contract, Contract, Operation
-
-### Community 260 - "Imports::Operations::UpdateImportRecord"
-Cohesion: 0.22
-Nodes (6): Imports, Imports::Operations, Imports::Operations::UpdateImportRecord, Imports::Operations::UpdateImportRecord::Contract, Contract, Operation
-
-### Community 261 - "Utils::Dates"
-Cohesion: 0.22
-Nodes (6): Transactions, Transactions::CheckDuplicateTodayJob, Transactions, Transactions::DuplicateJob, Utils, Utils::Dates
-
-### Community 262 - "Onboardings::Operations::IncomeStep"
-Cohesion: 0.11
-Nodes (12): Onboardings, Onboardings::Operations, Onboardings::Operations::IncomeStep, Onboardings::Operations::IncomeStep::Contract, Contract, Operation, Onboardings, Onboardings::Operations (+4 more)
-
-### Community 263 - "ProductPulse::Operations::CreateFeedback"
-Cohesion: 0.10
-Nodes (12): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::ProductPulseFeedbacksController, ApiController, ProductPulseFeedback, ProductPulse, ProductPulse::Operations (+4 more)
-
-### Community 264 - "Spaces::Operations::DeleteSpace"
-Cohesion: 0.22
-Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::DeleteSpace, Spaces::Operations::DeleteSpace::Contract
-
-### Community 265 - "Auth::User"
-Cohesion: 0.15
-Nodes (8): Auth, Auth::User, Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::JoinSpace, Spaces::Operations::JoinSpace::Contract
-
-### Community 266 - "Transactions::Operations::Accounts::VerifyBalanceIntegrity"
-Cohesion: 0.21
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::VerifyBalanceIntegrity, Transactions::Operations::Accounts::VerifyBalanceIntegrity::Contract
-
-### Community 267 - "Transactions::Operations::Categories::DeleteCategory"
-Cohesion: 0.21
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Categories, Transactions::Operations::Categories::DeleteCategory, Transactions::Operations::Categories::DeleteCategory::Contract
-
-### Community 268 - "Transactions::Transfers::DuplicateTransferJob"
-Cohesion: 0.20
-Nodes (6): Transactions, Transactions::Transfers, Transactions::Transfers::CheckDuplicateTodayJob, Transactions, Transactions::Transfers, Transactions::Transfers::DuplicateTransferJob
-
-### Community 269 - "Transactions::Operations::Reports::DownloadCsv"
-Cohesion: 0.19
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Reports, Transactions::Operations::Reports::DownloadCsv, Transactions::Operations::Reports::DownloadCsv::Contract
-
-### Community 270 - "Transactions::Operations::Transfers::DeleteAllInSeriesTransfers"
-Cohesion: 0.21
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::DeleteAllInSeriesTransfers, Transactions::Operations::Transfers::DeleteAllInSeriesTransfers::Contract
-
-### Community 271 - "MonthlyFinancialSummaries::Operations::UpdateSummary"
-Cohesion: 0.11
-Nodes (13): MonthlyFinancialSummaries, MonthlyFinancialSummaries::Operations, MonthlyFinancialSummaries::Operations::UpdateSummary, MonthlyFinancialSummaries::Operations::UpdateSummary::Contract, Contract, Operation, Contract, Operation (+5 more)
-
-### Community 272 - "Transactions::Operations::Transfers::UpdateRepeatTransfers"
-Cohesion: 0.11
-Nodes (14): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::DeleteThisAndFutureTransfers, Transactions::Operations::Transfers::DeleteThisAndFutureTransfers::Contract, Contract (+6 more)
-
-### Community 273 - "Admin::Queries::SpacesForFreeSubscriptionQuery"
-Cohesion: 0.21
-Nodes (5): Admin, Admin::Queries, Admin::Queries::SpacesForFreeSubscriptionQuery, Admin::Queries::SpacesForFreeSubscriptionQuery::Contract, Contract
-
-### Community 274 - "Budgets::Queries::MonthlyBudgets"
-Cohesion: 0.26
-Nodes (5): Budgets, Budgets::Queries, Budgets::Queries::MonthlyBudgets, Budgets::Queries::MonthlyBudgets::Contract, Contract
-
-### Community 275 - "Transactions::Queries::NoteSuggestions"
-Cohesion: 0.22
-Nodes (5): Contract, Transactions, Transactions::Queries, Transactions::Queries::NoteSuggestions, Transactions::Queries::NoteSuggestions::Contract
-
-### Community 276 - "capacitor-keyboard-inset.ts"
-Cohesion: 0.13
-Nodes (19): CapacitorLoader(), KeyboardState, useKeyboardDetector(), useMobileModalViewportHeight(), getCapacitorKeyboardInsetPx(), initCapacitorKeyboardInsetBridge(), insetListeners, notifyInsetListeners() (+11 more)
-
-### Community 277 - "devDependencies"
-Cohesion: 0.17
-Nodes (12): devDependencies, @types/react, @types/react-dom, vite, @vitejs/plugin-react, @types/react, @types/react-dom, @vitejs/plugin-react (+4 more)
-
-### Community 278 - "Ai::Rag::InteractionMetadataBuilder"
-Cohesion: 0.17
-Nodes (7): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::AuditFormatter, Ai, Ai::Rag, Ai::Rag::InteractionMetadataBuilder
-
-### Community 279 - "Ai::Rag::Agent::Tools::SearchTransactions"
-Cohesion: 0.18
-Nodes (6): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Tools, Ai::Rag::Agent::Tools::SearchTransactions, Tool
-
-### Community 280 - "Ai::Rag::VectorSearcher"
-Cohesion: 0.24
-Nodes (5): Ai, Ai::Rag, Ai::Rag::EmbeddingError, Ai::Rag::VectorSearcher, StandardError
-
-### Community 281 - "Ai::Operations::Embeddings::GenerateQueryEmbedding"
-Cohesion: 0.20
-Nodes (7): Ai, Ai::Operations, Ai::Operations::Embeddings, Ai::Operations::Embeddings::GenerateQueryEmbedding, Ai::Operations::Embeddings::GenerateQueryEmbedding::Contract, Contract, Operation
-
-### Community 282 - "Admin::Operations::BuildUserActivityDrilldown"
-Cohesion: 0.23
-Nodes (6): Admin, Admin::Operations, Admin::Operations::BuildUserActivityDrilldown, Admin::Operations::BuildUserActivityDrilldown::Contract, Contract, Operation
-
-### Community 283 - "Auth::Operations::ResetPassword"
-Cohesion: 0.21
-Nodes (6): Auth, Auth::Operations, Auth::Operations::ResetPassword, Auth::Operations::ResetPassword::Contract, Contract, Operation
-
-### Community 284 - "Budgets::Operations::CreateMonthlyBudget"
-Cohesion: 0.23
-Nodes (6): Budgets, Budgets::Operations, Budgets::Operations::CreateMonthlyBudget, Budgets::Operations::CreateMonthlyBudget::Contract, Contract, Operation
-
-### Community 285 - "Dashboards::Operations::ShowDashboardData"
-Cohesion: 0.23
-Nodes (6): Dashboards, Dashboards::Operations, Dashboards::Operations::ShowDashboardData, Dashboards::Operations::ShowDashboardData::Contract, Contract, Operation
-
-### Community 286 - "ExchangeRates::Operations::AmountInSpaceCurrency"
-Cohesion: 0.23
-Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::AmountInSpaceCurrency, ExchangeRates::Operations::AmountInSpaceCurrency::Contract, Contract, Operation
-
-### Community 287 - "ExchangeRates::Operations::SpaceAmountToAccountCurrency"
-Cohesion: 0.24
-Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::SpaceAmountToAccountCurrency, ExchangeRates::Operations::SpaceAmountToAccountCurrency::Contract, Contract, Operation
-
-### Community 288 - "Finance::Operations::Subscriptions::GetCurrentSubscriptions"
-Cohesion: 0.21
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::GetCurrentSubscriptions, Finance::Operations::Subscriptions::GetCurrentSubscriptions::Contract, Contract, Operation
-
-### Community 289 - "Imports::Operations::Accounts::FindOrCreateImportAccount"
-Cohesion: 0.21
-Nodes (7): Imports, Imports::Operations, Imports::Operations::Accounts, Imports::Operations::Accounts::FindOrCreateImportAccount, Imports::Operations::Accounts::FindOrCreateImportAccount::Contract, Contract, Operation
-
-### Community 290 - "Transactions::Category"
-Cohesion: 0.11
-Nodes (9): Transactions, Transactions::Category, Imports, Imports::Operations, Imports::Operations::PrepareCategories, Operation, create_transaction(), create_transaction() (+1 more)
-
-### Community 291 - "Onboardings::Operations::ShowCurrencyData"
-Cohesion: 0.23
-Nodes (6): Onboardings, Onboardings::Operations, Onboardings::Operations::ShowCurrencyData, Onboardings::Operations::ShowCurrencyData::Contract, Contract, Operation
-
-### Community 292 - "Transactions::Operations::Accounts::DeleteAccount"
-Cohesion: 0.21
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::DeleteAccount, Transactions::Operations::Accounts::DeleteAccount::Contract
-
-### Community 293 - "Fintr AI - Backend"
-Cohesion: 0.13
-Nodes (14): By yourself (You still need to ask how to get the data in staging), Download dump - EC2 # Deprecated, Fintr AI - Backend, Handling .env files, How to get included in the seed, Infrastructure, Installation, Manual Setup (+6 more)
-
-### Community 294 - "Transactions::Operations::Accounts::UpdateAccount"
-Cohesion: 0.21
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::UpdateAccount, Transactions::Operations::Accounts::UpdateAccount::Contract
-
-### Community 295 - "Transactions::Operations::Categories::UpdateCategory"
-Cohesion: 0.21
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Categories, Transactions::Operations::Categories::UpdateCategory, Transactions::Operations::Categories::UpdateCategory::Contract
-
-### Community 296 - "Transactions::Operations::DeleteAllInSeriesTransactions"
-Cohesion: 0.23
-Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::DeleteAllInSeriesTransactions, Transactions::Operations::DeleteAllInSeriesTransactions::Contract
-
-### Community 297 - "Transactions::Operations::Schedules::FetchDates"
-Cohesion: 0.21
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Schedules, Transactions::Operations::Schedules::FetchDates, Transactions::Operations::Schedules::FetchDates::Contract
-
-### Community 298 - "Transactions::Operations::TransferAttributes"
-Cohesion: 0.23
-Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::TransferAttributes, Transactions::Operations::TransferAttributes::Contract
-
-### Community 299 - "Loans::Operations::UpdateLoan"
-Cohesion: 0.21
-Nodes (6): Loans, Loans::Operations, Loans::Operations::UpdateLoan, Loans::Operations::UpdateLoan::Contract, Contract, Operation
-
-### Community 300 - "Transactions::Operations::UpdateRepeatTransactions"
-Cohesion: 0.12
-Nodes (12): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::DeleteThisAndFutureTransactions, Transactions::Operations::DeleteThisAndFutureTransactions::Contract, Contract, Operation (+4 more)
-
-### Community 301 - "CapacitorViewController"
-Cohesion: 0.23
-Nodes (5): CapacitorViewController, Bool, CAPBridgeViewController, CGFloat, NSObjectProtocol
-
-### Community 302 - "budget-usage-bar.tsx"
-Cohesion: 0.26
-Nodes (8): BudgetProgress(), BudgetProgressProps, BudgetUsageBar(), BudgetUsageBarProps, budgetUsageProgressValue(), getBudgetOverflowPercentage(), getOverBudgetOverflowProgressColor(), getProgressColor()
-
-### Community 303 - "chartParser.ts"
-Cohesion: 0.31
-Nodes (8): useInfiniteMessages(), fetchMessagesPage(), ChartData, parseChartData(), parseContentWithCharts(), parseContentWithInlineCharts(), ParsedChart, removeChartBlocks()
-
-### Community 304 - "App.jsx"
-Cohesion: 0.25
-Nodes (6): App(), DraggableBox(), HoverCard(), container, item, StaggerList()
-
-### Community 305 - "Ai::Conversations::MessageRepository"
-Cohesion: 0.24
-Nodes (3): Ai, Ai::Conversations, Ai::Conversations::MessageRepository
-
-### Community 306 - "Ai::Providers::BaseProvider"
-Cohesion: 0.20
-Nodes (6): Ai, Ai::Providers, Ai::Providers::BaseProvider, Ai::Providers::ProviderError, Ai::Providers::UnknownProviderError, StandardError
-
-### Community 307 - ".build"
-Cohesion: 0.27
-Nodes (4): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::AnalysisBuilder
-
-### Community 308 - "Auth::Operations::SyncUserFromAuthToken"
+### Community 76 - "Auth::Operations::SyncUserFromAuthToken"
 Cohesion: 0.24
 Nodes (6): Auth, Auth::Operations, Auth::Operations::SyncUserFromAuthToken, Auth::Operations::SyncUserFromAuthToken::Contract, Contract, Operation
 
-### Community 309 - "Auth::Operations::UpdateTutorialCompletion"
-Cohesion: 0.24
-Nodes (6): Auth, Auth::Operations, Auth::Operations::UpdateTutorialCompletion, Auth::Operations::UpdateTutorialCompletion::Contract, Contract, Operation
+### Community 77 - "Imports::Operations::PrepareCategories"
+Cohesion: 0.26
+Nodes (4): Imports, Imports::Operations, Imports::Operations::PrepareCategories, Operation
 
-### Community 310 - "ExchangeRates::Operations::PersistApiRates"
-Cohesion: 0.24
-Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::PersistApiRates, ExchangeRates::Operations::PersistApiRates::Contract, Contract, Operation
+### Community 78 - "Ai::Operations::Receipts::CalculateConfidenceAi"
+Cohesion: 0.12
+Nodes (7): Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::CalculateConfidenceAi, Ai::Operations::Receipts::CalculateConfidenceAi::Contract, Contract, Operation
 
-### Community 311 - "Finance::Operations::Subscriptions::FindSpaceSubscriptionByXenditId"
-Cohesion: 0.22
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::FindSpaceSubscriptionByXenditId, Finance::Operations::Subscriptions::FindSpaceSubscriptionByXenditId::Contract, Contract, Operation
+### Community 79 - ".render_not_found"
+Cohesion: 0.05
+Nodes (16): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::Finance, Api::V1::Admin::Finance::SponsorCodesController, ApiController, Api, Api::V1 (+8 more)
 
-### Community 312 - "Imports::Operations::BulkImportTransactions"
+### Community 80 - "Finance::Operations::Subscriptions::UpdateSubscription"
+Cohesion: 0.13
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::UpdateSubscription, Finance::Operations::Subscriptions::UpdateSubscription::Contract, Contract, Operation
+
+### Community 81 - "Transactions::Operations::UpdateTransaction"
+Cohesion: 0.12
+Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::UpdateTransaction, Transactions::Operations::UpdateTransaction::Contract
+
+### Community 82 - "ApplicationController"
+Cohesion: 0.08
+Nodes (14): API, Api, Api::V1, Api::V1::ApiController, Api, Api::V1, Api::V1::CacheVersionController, Api (+6 more)
+
+### Community 83 - "Api::V1::Crm::TicketsController"
+Cohesion: 0.12
+Nodes (9): Api, Api::V1, Api::V1::Crm, Api::V1::Crm::TicketsController, ApiController, Crm, Crm::Serializers, Crm::Serializers::TicketDetailSerializer (+1 more)
+
+### Community 84 - "Transactions::Draft"
+Cohesion: 0.12
+Nodes (5): Transactions, Transactions::Draft, Transactions, Transactions::Income, Transaction
+
+### Community 85 - "getPublicBackendUrl"
+Cohesion: 0.17
+Nodes (18): AdminCachePage(), CacheVersionChecker(), hasFintrNativeAppUserAgent(), waitForCapacitor(), formatBackendUrl(), getActionCableBackendUrl(), getPublicBackendUrl(), isAndroidNativeFintrApp() (+10 more)
+
+### Community 86 - "capacitor-keyboard-inset.ts"
+Cohesion: 0.31
+Nodes (8): useMobileModalViewportHeight(), getCapacitorKeyboardInsetPx(), initCapacitorKeyboardInsetBridge(), insetListeners, notifyInsetListeners(), setKeyboardInsetPx(), subscribeCapacitorKeyboardInset(), getMobileModalViewportHeight()
+
+### Community 87 - "offline-calculations.ts"
+Cohesion: 0.25
+Nodes (16): budgetUsageScore(), buildOfflineInsightsBundle(), dayKey(), debtToIncomeScore(), estimateMonthlyLoanPayment(), expenseBreakdownFromTransactions(), filterByCategory(), formatPercentage() (+8 more)
+
+### Community 88 - "offline-narratives.ts"
+Cohesion: 0.21
+Nodes (18): loadLocalBudgetsForRange(), buildOfflineNarratives(), calculationBlock(), emergencyFundLookbackStart(), expenseChangeLabel(), expensesByCategory(), extractCashTotal(), flowIconForChange() (+10 more)
+
+### Community 89 - "compilerOptions"
+Cohesion: 0.07
+Nodes (28): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+20 more)
+
+### Community 90 - "Onboardings::Operations::CurrencyStep"
+Cohesion: 0.21
+Nodes (6): Onboardings, Onboardings::Operations, Onboardings::Operations::CurrencyStep, Onboardings::Operations::CurrencyStep::Contract, Contract, Operation
+
+### Community 91 - "Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSessionSucceeded"
+Cohesion: 0.11
+Nodes (10): Finance, Finance::Payment, Finance, Finance::Operations, Finance::Operations::PaymentSessions, Finance::Operations::PaymentSessions::Webhooks, Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSessionSucceeded, Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSessionSucceeded::Contract (+2 more)
+
+### Community 92 - "Imports::Operations::BulkImportTransactions"
 Cohesion: 0.25
 Nodes (6): Imports, Imports::Operations, Imports::Operations::BulkImportTransactions, Imports::Operations::BulkImportTransactions::Contract, Contract, Operation
 
-### Community 313 - "Transactions::Operations::Accounts::CalculateBalance"
-Cohesion: 0.14
-Nodes (10): Transactions, Transactions::Accounts, Transactions::Accounts::CalculatePendingBalancesJob, Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts (+2 more)
+### Community 93 - "Onboardings::Operations::ShowAccountsData"
+Cohesion: 0.17
+Nodes (6): Onboardings, Onboardings::Operations, Onboardings::Operations::ShowAccountsData, Onboardings::Operations::ShowAccountsData::Contract, Contract, Operation
 
-### Community 314 - "Fintr"
+### Community 94 - "Transactions::Transfers::DuplicateTransferJob"
 Cohesion: 0.20
-Nodes (9): Backend, Fintr, Frontend, Getting Started, Git hooks (shared), Knowledge graph (graphify), Product scope, Structure (+1 more)
+Nodes (6): Transactions, Transactions::Transfers, Transactions::Transfers::CheckDuplicateTodayJob, Transactions, Transactions::Transfers, Transactions::Transfers::DuplicateTransferJob
 
-### Community 315 - "TutorialOverlay.tsx"
-Cohesion: 0.22
-Nodes (8): isOnboardingCompletedAtom, OnboardingData, OnboardingStep, isTutorialActiveAtom, CustomTooltipProps, isTourTargetVisible(), TutorialOverlay(), useTutorial()
+### Community 95 - "setAuthStorageForE2e"
+Cohesion: 0.18
+Nodes (13): setupAuth(), setupAuth(), setupAuth(), openExpenseForm(), emptyListResponse, mockCommonDashboardApi(), primeWeeklyFeedbackDismissed(), setAuthStorageForE2e() (+5 more)
 
-### Community 316 - "CreateAccountVersions"
-Cohesion: 0.25
-Nodes (3): Transactions, Transactions::AccountVersion, CreateAccountVersions
+### Community 96 - "error"
+Cohesion: 0.06
+Nodes (80): runCommand(), cmdCheckCommit(), cmdCommit(), cmdCommitToSubrepo(), cmdCurrentTimestamp(), cmdGenerateSlug(), cmdHistoryDigest(), cmdListTodos() (+72 more)
 
-### Community 317 - "Transactions::Operations::PersistCurrencyConversion"
-Cohesion: 0.24
-Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::PersistCurrencyConversion, Transactions::Operations::PersistCurrencyConversion::Contract
+### Community 97 - "Mobile Build Scripts"
+Cohesion: 0.09
+Nodes (22): 📚 Additional Resources, Android AAB (Play Store), Android APK (Testing), App Store / TestFlight / Ad Hoc, App Tries to Connect to Localhost, Build Fails, Bundled App vs Live Reload, Config Has Server URL (+14 more)
 
-### Community 318 - "Transactions::Operations::ResolveCategoryAssignment"
-Cohesion: 0.24
-Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::ResolveCategoryAssignment, Transactions::Operations::ResolveCategoryAssignment::Contract
+### Community 98 - "server.cjs"
+Cohesion: 0.11
+Nodes (26): broadcast(), clients, computeAcceptKey(), CONTENT_DIR, crypto, debounceTimers, decodeFrame(), encodeFrame() (+18 more)
 
-### Community 319 - "Transactions::Operations::Schedules::CreateSchedule"
-Cohesion: 0.15
-Nodes (12): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Schedules, Transactions::Operations::Schedules::CreateSchedule, Transactions::Operations::Schedules::CreateSchedule::Contract, schedule() (+4 more)
+### Community 99 - "VariantBuilder"
+Cohesion: 0.12
+Nodes (14): main(), Any, Generate variant code., Generate JavaScript variant code., Generate TypeScript variant code., Format properties as JavaScript object., Interactive CLI for building variants., Add state interactively. (+6 more)
 
-### Community 320 - "Finance::Operations::Customers::FindOrCreateCustomerForSpace"
+### Community 100 - "Spaces::Operations::GrantAccess"
 Cohesion: 0.21
-Nodes (7): Finance, Finance::Operations, Finance::Operations::Customers, Finance::Operations::Customers::FindOrCreateCustomerForSpace, Finance::Operations::Customers::FindOrCreateCustomerForSpace::Contract, Contract, Operation
+Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::GrantAccess, Spaces::Operations::GrantAccess::Contract
 
-### Community 321 - "Admin::Queries::DailyActiveUsersQuery"
-Cohesion: 0.24
-Nodes (5): Admin, Admin::Queries, Admin::Queries::DailyActiveUsersQuery, Admin::Queries::DailyActiveUsersQuery::Contract, Contract
+### Community 101 - "Transactions::Operations::CreateRepeatTransactions"
+Cohesion: 0.10
+Nodes (13): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::CreateRepeatTransactions, Transactions::Operations::CreateRepeatTransactions::Contract, Contract, Operation (+5 more)
 
-### Community 322 - "vision_client.rb"
-Cohesion: 0.25
-Nodes (8): Ai, Ai::Llm, Ai::Llm::VisionClient, client(), default_model(), openrouter?(), openrouter_chat_extras(), provider()
+### Community 102 - "FailureHandler"
+Cohesion: 0.08
+Nodes (17): FailureHandler, OperationFailure, StandardError, Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts (+9 more)
 
-### Community 323 - "set-auth-storage.ts"
-Cohesion: 0.31
-Nodes (5): buildTestIdToken(), buildTestJwt(), buildTestIdToken(), gotoOptions, primeReturningUserAuth()
+### Community 103 - "scripts"
+Cohesion: 0.09
+Nodes (23): scripts, android, android:open, build, build:android, build:android:staging, build:ios, dev (+15 more)
 
-### Community 324 - "edit-transaction-exchange-rate.spec.ts"
-Cohesion: 0.22
-Nodes (6): buildIndexRow(), buildTransactionDetail(), MOCK_USER, mockExchangeRateEditFlow(), setupAuth(), StoredTransaction
+### Community 104 - "AmountWithRatePicker.tsx"
+Cohesion: 0.14
+Nodes (22): OnboardingStep1(), AmountWithRatePicker(), formatRateForLabel(), multiplierFromApi(), ConversionInfoPopover(), CreateSpaceDialog(), getDefaultCurrency(), CurrencyPicker() (+14 more)
 
-### Community 326 - "verify-reapply-patches.cjs"
-Cohesion: 0.31
-Nodes (9): computeUserAddedLines(), fs, isSignificantLine(), main(), parseArgs(), path, REASON, verifyFile() (+1 more)
+### Community 105 - "transactions/create-local-first.ts"
+Cohesion: 0.16
+Nodes (22): applySummariesForRows(), buildOptimisticIndexTransaction(), buildOptimisticSeriesTransactions(), clientValidationFailure(), createTransactionLocalFirst(), CreateTransactionLocalFirstOptions, CreateTransactionLocalFirstResult, extractCreatedId() (+14 more)
 
-### Community 327 - "package_skill"
-Cohesion: 0.31
-Nodes (8): main(), package_skill(), Path, Check if a path should be excluded from packaging., Package a skill folder into a .skill file. Args: skill_path: Path to the skill…, should_exclude(), Basic validation of a skill, validate_skill()
+### Community 106 - "Spaces::SpaceUser"
+Cohesion: 0.11
+Nodes (8): Spaces, Spaces::SpaceUser, Auth, Auth::Operations, Auth::Operations::DeleteAccount, Auth::Operations::DeleteAccount::Contract, Contract, Operation
 
-### Community 328 - "Ai::InteractionTracker::TrackedInteraction"
-Cohesion: 0.24
-Nodes (3): Ai, Ai::InteractionTracker, Ai::InteractionTracker::TrackedInteraction
+### Community 107 - "Transactions::Transfer"
+Cohesion: 0.05
+Nodes (13): ExchangeRates, ExchangeRates::BackfillRatesForTransactionsJob, HasCurrencyConversion, Repeatable, Transactions, Transactions::Transfer, Contract, Operation (+5 more)
 
-### Community 329 - "ExchangeRates::Operations::ConvertSignedAmount"
-Cohesion: 0.24
-Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::ConvertSignedAmount, ExchangeRates::Operations::ConvertSignedAmount::Contract, Contract, Operation
+### Community 108 - "Auth::User"
+Cohesion: 0.05
+Nodes (25): Auth, Auth::User, Transactions, Transactions::Broadcasts, Transactions::Broadcasts::TransactionChange, Contract, Operation, Transactions (+17 more)
 
-### Community 330 - "ExchangeRates::Operations::FetchRatesFromApi"
-Cohesion: 0.24
-Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::FetchRatesFromApi, ExchangeRates::Operations::FetchRatesFromApi::Contract, Contract, Operation
+### Community 109 - "Transactions::Operations::Accounts::RemoveCalculation"
+Cohesion: 0.13
+Nodes (9): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::RemoveCalculation, Transactions::Operations::Accounts::RemoveCalculation::Contract, Utils (+1 more)
 
-### Community 331 - "ExchangeRates::Operations::GetCachedApiRate"
-Cohesion: 0.24
-Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::GetCachedApiRate, ExchangeRates::Operations::GetCachedApiRate::Contract, Contract, Operation
+### Community 110 - "Integrations::Marketing::Brevo::Client"
+Cohesion: 0.13
+Nodes (8): Integrations, Integrations::Marketing, Integrations::Marketing::Brevo, Integrations::Marketing::Brevo::Client, Integrations, Integrations::Marketing, Integrations::Marketing::Brevo, Integrations::Marketing::Brevo::ContactNameExtractor
 
-### Community 332 - "ExchangeRates::Operations::UpsertCurrencyConversion"
-Cohesion: 0.24
-Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::UpsertCurrencyConversion, ExchangeRates::Operations::UpsertCurrencyConversion::Contract, Contract, Operation
+### Community 111 - "google-signin.ts"
+Cohesion: 0.08
+Nodes (36): UnifiedAuthPage(), isNativeCapacitor(), isNativeCapacitorAsync(), AppleSignInOptions, generateRandomState(), initiateAppleSignIn(), verifyState(), generateRandomState() (+28 more)
 
-### Community 333 - "Imports::ImportRecord"
+### Community 112 - "intel.cjs"
+Cohesion: 0.16
+Nodes (21): crypto, disabledResponse(), ensureIntelDir(), fs, hashFile(), INTEL_FILES, intelDiff(), intelFilePath() (+13 more)
+
+### Community 113 - "Crm::Ticket"
+Cohesion: 0.05
+Nodes (22): Crm, Crm::Ticket, Crm, Crm::Operations, Crm::Operations::Admin, Crm::Operations::Admin::CreateAdminResponse, Crm::Operations::Admin::CreateAdminResponse::Contract, Contract (+14 more)
+
+### Community 114 - "Insights::Operations::CreateHealthScores"
+Cohesion: 0.16
+Nodes (6): Insights, Insights::Operations, Insights::Operations::CreateHealthScores, Insights::Operations::CreateHealthScores::Contract, Contract, Operation
+
+### Community 115 - "Onboardings::Operations::AccountsStep"
+Cohesion: 0.21
+Nodes (6): Onboardings, Onboardings::Operations, Onboardings::Operations::AccountsStep, Onboardings::Operations::AccountsStep::Contract, Contract, Operation
+
+### Community 116 - "Transactions::Operations::Accounts::CalculateBalance"
+Cohesion: 0.08
+Nodes (17): Transactions, Transactions::Accounts, Transactions::Accounts::CalculatePendingBalancesJob, Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts (+9 more)
+
+### Community 117 - "Transactions::Operations::Transfers::UpdateRepeatTransfers"
+Cohesion: 0.23
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::UpdateRepeatTransfers, Transactions::Operations::Transfers::UpdateRepeatTransfers::Contract
+
+### Community 118 - ".call"
+Cohesion: 0.12
+Nodes (8): Transactions, Transactions::Queries, Transactions::Queries::BaseQuery, Contract, Transactions, Transactions::Queries, Transactions::Queries::FilteredTransactions, Transactions::Queries::FilteredTransactions::Contract
+
+### Community 119 - "useSpaceContext.ts"
+Cohesion: 0.12
+Nodes (24): advancedReportingEnabledAtom, availableSpacesAtom, canManageBudgetsAtom, canManageSettingsAtom, canManageUsersAtom, canViewAnalyticsAtom, currentSpaceAtom, isOrganizationSpaceAtom (+16 more)
+
+### Community 120 - "learnings.cjs"
+Cohesion: 0.16
+Nodes (22): cmdLearningsDelete(), cmdLearningsList(), cmdLearningsPrune(), cmdLearningsQuery(), contentHash(), crypto, DEFAULT_STORE_DIR, ensureStoreDir() (+14 more)
+
+### Community 121 - "generate_review.py"
 Cohesion: 0.15
-Nodes (6): Imports, Imports::ImportRecord, Imports, Imports::Operations, Imports::Operations::ValidateAndPrepareRows, Operation
+Nodes (19): build_run(), embed_file(), find_runs(), _find_runs_recursive(), generate_html(), get_mime_type(), _kill_port(), load_previous_iteration() (+11 more)
 
-### Community 334 - "Insights::Operations::CreateAccountBreakdown"
-Cohesion: 0.24
-Nodes (6): Insights, Insights::Operations, Insights::Operations::CreateAccountBreakdown, Insights::Operations::CreateAccountBreakdown::Contract, Contract, Operation
+### Community 122 - "Api::V1::OnboardingsController"
+Cohesion: 0.09
+Nodes (8): Api, Api::V1, Api::V1::OnboardingsController, ApiController, Onboardings, Onboardings::Operations, Onboardings::Operations::DelegateStep, Operation
 
-### Community 335 - "Finance::Queries::SubscriptionsNeedingCycleCountUpdate"
-Cohesion: 0.31
-Nodes (3): Finance, Finance::Queries, Finance::Queries::SubscriptionsNeedingCycleCountUpdate
+### Community 124 - "Onboardings::Operations::IncomeStep"
+Cohesion: 0.22
+Nodes (6): Onboardings, Onboardings::Operations, Onboardings::Operations::IncomeStep, Onboardings::Operations::IncomeStep::Contract, Contract, Operation
 
-### Community 336 - "MonthlyFinancialSummaries::Queries::CurrentMonthSummary"
-Cohesion: 0.24
-Nodes (5): MonthlyFinancialSummaries, MonthlyFinancialSummaries::Queries, MonthlyFinancialSummaries::Queries::CurrentMonthSummary, MonthlyFinancialSummaries::Queries::CurrentMonthSummary::Contract, Contract
+### Community 125 - "Transactions::Operations::Transfers::UpdateTransfer"
+Cohesion: 0.09
+Nodes (13): MonthlyFinancialSummaries, MonthlyFinancialSummaries::Operations, MonthlyFinancialSummaries::Operations::UpdateSummary, MonthlyFinancialSummaries::Operations::UpdateSummary::Contract, Contract, Operation, Contract, Operation (+5 more)
 
-### Community 337 - "Spaces::Queries::DashboardData"
+### Community 126 - "Integrations::Payments::Xendit::Client"
+Cohesion: 0.17
+Nodes (4): Integrations, Integrations::Payments, Integrations::Payments::Xendit, Integrations::Payments::Xendit::Client
+
+### Community 127 - "buildDashboardApiJson"
+Cohesion: 0.12
+Nodes (16): MOCK_USER, mockApiCalls(), MOCK_USER, mockExpenseBreakdown, mockInsightsWithExpenseBreakdown(), buildDashboardApiJson(), DashboardMockOverrides, routeDashboardApi() (+8 more)
+
+### Community 128 - "Api::V1::Ai::ConversationsController"
+Cohesion: 0.13
+Nodes (9): Api, Api::V1, Api::V1::Ai, Api::V1::Ai::ConversationsController, ApiController, Ai, Ai::Serializers, Ai::Serializers::ConversationSerializer (+1 more)
+
+### Community 129 - "gsd2-import.cjs"
+Cohesion: 0.18
+Nodes (22): buildContextMd(), buildPlanMd(), buildPlanningArtifacts(), buildPreview(), buildRoadmapMd(), buildStateMd(), buildSummaryMd(), cmdFromGsd2() (+14 more)
+
+### Community 130 - "Spaces::Operations::RemoveUser"
+Cohesion: 0.11
+Nodes (11): Api, Api::V1, Api::V1::Auth, Api::V1::Auth::PrivateController, ApiController, Contract, Operation, Spaces (+3 more)
+
+### Community 131 - "Ai::Operations::Receipts::ResolveSuggestedTransactionPayload"
+Cohesion: 0.19
+Nodes (7): Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::ResolveSuggestedTransactionPayload, Ai::Operations::Receipts::ResolveSuggestedTransactionPayload::Contract, Contract, Operation
+
+### Community 132 - "Budgets::Operations::CreateBudget"
+Cohesion: 0.22
+Nodes (6): Budgets, Budgets::Operations, Budgets::Operations::CreateBudget, Budgets::Operations::CreateBudget::Contract, Contract, Operation
+
+### Community 133 - "FintrConnectionGate"
+Cohesion: 0.26
+Nodes (8): FintrConnectionGate, Bool, CAPBridgeProtocol, String, URL, WKWebView, NSKeyValueObservation, Timer
+
+### Community 134 - "from-monthly-buckets.ts"
+Cohesion: 0.36
+Nodes (7): financialTrendsDateRange(), insightsSummaryFromMonthlyBuckets(), MONTH_LABELS, monthlySpendingFromBuckets(), parseYearMonth(), toNumber(), yearMonthKey()
+
+### Community 135 - "graphify.cjs"
+Cohesion: 0.18
+Nodes (20): applyBudget(), { atomicWriteFileSync, execGit }, buildAdjacencyMap(), checkGraphifyInstalled(), checkGraphifyVersion(), childProcess, countCommitsBetween(), disabledResponse() (+12 more)
+
+### Community 136 - "Ai::Operations::Receipts::FormatResult"
+Cohesion: 0.14
+Nodes (7): Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::FormatResult, Ai::Operations::Receipts::FormatResult::Contract, Contract, Operation
+
+### Community 137 - "Auth::Operations::UpdateUserAuth0"
+Cohesion: 0.12
+Nodes (10): Auth, Auth::Operations, Auth::Operations::UpdateUserAuth0, Auth::Operations::UpdateUserAuth0::Contract, Contract, Operation, Auth, Auth::M2mClient (+2 more)
+
+### Community 138 - "Entities::Queries::AllEntities"
+Cohesion: 0.12
+Nodes (11): Entities, Entities::Operations, Entities::Operations::ShowEntities, Entities::Operations::ShowEntities::Contract, Contract, Operation, Entities, Entities::Queries (+3 more)
+
+### Community 139 - "Insights::Operations::CreateExpenseBreakdown"
+Cohesion: 0.19
+Nodes (6): Insights, Insights::Operations, Insights::Operations::CreateExpenseBreakdown, Insights::Operations::CreateExpenseBreakdown::Contract, Contract, Operation
+
+### Community 140 - "Transactions::Queries::FilteredCombined"
+Cohesion: 0.14
+Nodes (6): Transactions, Transactions::Queries, Transactions::Queries::CombinedAccountJoinFilter, Transactions, Transactions::Queries, Transactions::Queries::FilteredCombined
+
+### Community 141 - "async/useOnboarding.ts"
+Cohesion: 0.15
+Nodes (20): OnboardingChoice(), OnboardingStep2(), OnboardingStep3(), OnboardingStep4(), useOnboarding(), AccountDataInput, BudgetCategory, BudgetCategoryInput (+12 more)
+
+### Community 142 - "profile-pipeline.cjs"
+Cohesion: 0.21
+Nodes (20): ensureGsdTempDir(), reapStaleTempFiles(), cmdExtractMessages(), cmdProfileSample(), cmdScanSessions(), formatBytes(), formatProjectTable(), formatSessionTable() (+12 more)
+
+### Community 143 - "Spaces::Operations::CreateOrganizationSpace"
+Cohesion: 0.14
+Nodes (8): Spaces, Spaces::OrganizationSpace, Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::CreateOrganizationSpace, Spaces::Operations::CreateOrganizationSpace::Contract
+
+### Community 144 - "Transactions::Loan"
+Cohesion: 0.05
+Nodes (11): Versionable, Transactions, Transactions::LoanPayment, Transactions, Transactions::Loan, ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::AmountInSpaceForTransactable (+3 more)
+
+### Community 145 - "Transactions::Operations::BulkRecordTransactionVersions"
+Cohesion: 0.13
+Nodes (7): Transactions, Transactions::TransactionVersion, Operation, Transactions, Transactions::Operations, Transactions::Operations::BulkRecordTransactionVersions, CreateTransactionVersions
+
+### Community 146 - "(private)/layout.tsx"
+Cohesion: 0.22
+Nodes (11): PrivateLayout(), MaintenanceScreen(), useBootstrapLoadingTimeout(), useHydrateOfflineSyncReady(), useOutboxDrain(), BOOTSTRAP_LOADING_MAX_MS, isDashboardShellRoute(), getMaintenanceMessage() (+3 more)
+
+### Community 147 - "lib/api.ts"
+Cohesion: 0.16
+Nodes (14): AuthWrapper(), AuthWrapperProps, LoadingScreen(), LoadingScreenProps, apiClient, AUTH_BOOTSTRAP_PATHS, createAuthenticatedClient(), handleResponseError() (+6 more)
+
+### Community 148 - "Admin::Queries::UsersQuery"
+Cohesion: 0.12
+Nodes (10): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::UsersController, ApiController, Admin, Admin::Queries, Admin::Queries::UsersQuery (+2 more)
+
+### Community 149 - "Api::V1::InsightsController"
+Cohesion: 0.16
+Nodes (5): Api, Api::V1, Api::V1::InsightsController, ApiController, InsightsEndpoint
+
+### Community 150 - "Finance::Operations::Subscriptions::CreateSubscription"
+Cohesion: 0.16
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::CreateSubscription, Finance::Operations::Subscriptions::CreateSubscription::Contract, Contract, Operation
+
+### Community 151 - "Finance::Operations::Subscriptions::Webhooks::HandleCycleSucceeded"
+Cohesion: 0.15
+Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandleCycleSucceeded, Finance::Operations::Subscriptions::Webhooks::HandleCycleSucceeded::Contract, Contract, Operation
+
+### Community 152 - "Transactions::Operations::Accounts::ShowAccounts"
+Cohesion: 0.13
+Nodes (12): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::ShowAccounts, Transactions::Operations::Accounts::ShowAccounts::Contract, Base (+4 more)
+
+### Community 153 - "Transactions::Operations::Categories::ConvertCategoryHierarchy"
+Cohesion: 0.11
+Nodes (12): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Categories, Transactions::Operations::Categories::ConvertCategoryHierarchy, Transactions::Operations::Categories::ConvertCategoryHierarchy::Contract, Contract (+4 more)
+
+### Community 154 - "weekly-feedback.ts"
+Cohesion: 0.19
+Nodes (16): toggleInSet(), WeeklyFeedbackDialog(), WeeklyFeedbackPrompt(), WeeklyFeedbackPromptProps, createTestQueryClient(), renderWithQuery(), FEEDBACK_AREA_IDS, FeedbackAreaId (+8 more)
+
+### Community 155 - "Ai::Rag::DataRetriever"
+Cohesion: 0.17
+Nodes (3): Ai, Ai::Rag, Ai::Rag::DataRetriever
+
+### Community 157 - "Auth::Operations::CreateUserAndSpace"
+Cohesion: 0.14
+Nodes (8): Spaces, Spaces::PersonalSpace, Auth, Auth::Operations, Auth::Operations::CreateUserAndSpace, Operation, Utils, Utils::Name
+
+### Community 158 - "Finance::Operations::Subscriptions::Webhooks::HandleCycleFailed"
+Cohesion: 0.16
+Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandleCycleFailed, Finance::Operations::Subscriptions::Webhooks::HandleCycleFailed::Contract, Contract, Operation
+
+### Community 159 - "Transactions::Operations::Transfers::UpdateAllInSeriesTransfers"
+Cohesion: 0.17
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::UpdateAllInSeriesTransfers, Transactions::Operations::Transfers::UpdateAllInSeriesTransfers::Contract
+
+### Community 160 - "AppDelegate"
+Cohesion: 0.15
+Nodes (11): AppDelegate, Any, Bool, URL, Void, NSUserActivity, UIApplication, UIApplicationDelegate (+3 more)
+
+### Community 161 - "app/layout.tsx"
+Cohesion: 0.17
+Nodes (13): ClientLayout(), leagueSpartan, metadata, RootLayout(), viewport, RackMiniProfilerPendingFlush(), Window, RackMiniProfilerSpa() (+5 more)
+
+### Community 162 - "category-budget-section.tsx"
+Cohesion: 0.18
+Nodes (19): buildBudgetCategoryFromParent(), CategoryBudgetSection(), CategoryBudgetSectionProps, hasBudgetForMonth(), useBudgetsData(), createBudget(), deleteBudget(), updateBudget() (+11 more)
+
+### Community 163 - "starter_motion/package.json"
+Cohesion: 0.08
+Nodes (24): dependencies, framer-motion, react, react-dom, devDependencies, @types/react, @types/react-dom, vite (+16 more)
+
+### Community 164 - "TransactionEditingChannel"
+Cohesion: 0.19
+Nodes (8): Channel, TransactionEditingChannel, editors(), start_editing(), stop_editing(), stream_key(), TransactionEditing, TransactionEditing::PresenceRegistry
+
+### Community 165 - ".render_internal_server_error"
+Cohesion: 0.05
+Nodes (23): Api, Api::V1, Api::V1::Ai, Api::V1::Ai::UsagesController, ApiController, Api, Api::V1, Api::V1::Imports (+15 more)
+
+### Community 166 - ".build_tools"
+Cohesion: 0.15
+Nodes (8): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Agent, Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::ChatBuilder
+
+### Community 167 - "Ai::Rag::Agent::Tools::Auditable"
+Cohesion: 0.08
+Nodes (17): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Tools, Ai::Rag::Agent::Tools::Auditable, Ai, Ai::Rag, Ai::Rag::Agent (+9 more)
+
+### Community 168 - "Fintr AI Backend README"
+Cohesion: 0.14
+Nodes (18): AI Chat + RAG System SOLID Architecture README, API Request Parameters Document, Backend Currency System Document, Current Product Scope Document, Error Handling Strategy Document, Receipt Processing API Document, Subscription Plan Update Implementation Plan, Transactions Realtime Document (+10 more)
+
+### Community 169 - "Finance::UpdateSubscriptionCycleCountJob"
+Cohesion: 0.25
+Nodes (4): Finance, Finance::ReconcileSubscriptionCycleCountsJob, Finance, Finance::UpdateSubscriptionCycleCountJob
+
+### Community 170 - "Imports::Operations::CreateImport"
+Cohesion: 0.22
+Nodes (6): Imports, Imports::Operations, Imports::Operations::CreateImport, Imports::Operations::CreateImport::Contract, Contract, Operation
+
+### Community 171 - "useTransactionCategories.ts"
+Cohesion: 0.16
+Nodes (15): ConvertCategoryDialog(), useTransactionCategories(), convertCategoryHierarchy(), createTransactionCategory(), deleteTransactionCategory(), fetchTransactionCategories(), previewCategoryConversion(), updateTransactionCategory() (+7 more)
+
+### Community 172 - "Finance::Operations::Subscriptions::ApplySponsorCode"
+Cohesion: 0.14
+Nodes (9): Finance, Finance::UserSponsorCode, Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::ApplySponsorCode, Finance::Operations::Subscriptions::ApplySponsorCode::Contract, Contract (+1 more)
+
+### Community 173 - "ExchangeRates::Operations::FetchRate"
+Cohesion: 0.22
+Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::FetchRate, ExchangeRates::Operations::FetchRate::Contract, Contract, Operation
+
+### Community 174 - "Finance::Operations::Subscriptions::CalculateProration"
+Cohesion: 0.17
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::CalculateProration, Finance::Operations::Subscriptions::CalculateProration::Contract, Contract, Operation
+
+### Community 175 - "Finance::Operations::Subscriptions::Webhooks::HandleCycleRetrying"
+Cohesion: 0.16
+Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandleCycleRetrying, Finance::Operations::Subscriptions::Webhooks::HandleCycleRetrying::Contract, Contract, Operation
+
+### Community 176 - "Imports::Operations::ProcessImport"
 Cohesion: 0.27
-Nodes (5): Contract, Spaces, Spaces::Queries, Spaces::Queries::DashboardData, Spaces::Queries::DashboardData::Contract
+Nodes (4): Imports::Operations::ProcessImport, Imports::Operations::ProcessImport::Contract, Contract, Operation
 
-### Community 338 - "Transactions::Queries::CombinedAccountJoinFilter"
-Cohesion: 0.31
-Nodes (3): Transactions, Transactions::Queries, Transactions::Queries::CombinedAccountJoinFilter
+### Community 177 - "Insights::Operations::CreateInsightsData"
+Cohesion: 0.18
+Nodes (6): Insights, Insights::Operations, Insights::Operations::CreateInsightsData, Insights::Operations::CreateInsightsData::Contract, Contract, Operation
 
-### Community 339 - "Transactions::Queries::Drafts"
-Cohesion: 0.24
-Nodes (5): Contract, Transactions, Transactions::Queries, Transactions::Queries::Drafts, Transactions::Queries::Drafts::Contract
+### Community 178 - "Transactions::Queries::AccountActivityTotalsByType"
+Cohesion: 0.16
+Nodes (6): Transactions, Transactions::Queries, Transactions::Queries::AccountActivityTotalsByType, Transactions, Transactions::Queries, Transactions::Queries::PreloadsAccountActivityAssociations
 
-### Community 340 - "Transactions::Queries::LastRecord"
-Cohesion: 0.27
-Nodes (5): Contract, Transactions, Transactions::Queries, Transactions::Queries::LastRecord, Transactions::Queries::LastRecord::Contract
+### Community 179 - "components.json"
+Cohesion: 0.11
+Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
 
-### Community 341 - ".call"
-Cohesion: 0.29
-Nodes (4): Transactions, Transactions::Queries, Transactions::Queries::Transfers, Transactions::Queries::Transfers::FilteredTransfers
+### Community 180 - "drift.cjs"
+Cohesion: 0.19
+Nodes (15): buildMessage(), CATEGORY_PRIORITY, chooseAffectedPaths(), classifyFile(), detectDrift(), DRIFT_CATEGORIES, fs, isPathMapped() (+7 more)
 
-### Community 342 - "Integrations::ExchangeRates::Client"
-Cohesion: 0.31
-Nodes (3): Integrations, Integrations::ExchangeRates, Integrations::ExchangeRates::Client
+### Community 181 - "Ai::Interaction"
+Cohesion: 0.13
+Nodes (8): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::Ai, Api::V1::Admin::Ai::AiInteractionsController, ApiController, Ai, Ai::Interaction
 
-### Community 343 - "NavigationInfoPlugin"
-Cohesion: 0.47
-Nodes (4): CapacitorPlugin, PluginCall, PluginMethod, NavigationInfoPlugin
+### Community 182 - "Ai::Providers::ResilientProvider"
+Cohesion: 0.15
+Nodes (7): Ai, Ai::Providers, Ai::Providers::ProviderFactory, Ai::Providers::ResilientProvider, create(), create_with_fallback(), BaseProvider
 
-### Community 344 - "toast-behavior.spec.ts"
-Cohesion: 0.24
-Nodes (4): triggerE2eToast(), NativeClassOptions, openDashboardForToast(), primeNativePlatformClasses()
+### Community 183 - "Ai::Rag::Agent::RetrievalCollector"
+Cohesion: 0.15
+Nodes (4): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::RetrievalCollector
 
-### Community 345 - "OfflineAppearanceBridge"
-Cohesion: 0.24
-Nodes (7): OfflineAppearanceBridge, CAPBridgeProtocol, WKWebView, NSObject, WKScriptMessage, WKScriptMessageHandler, WKUserContentController
+### Community 185 - "Admin::Queries::MonthlyActiveUserOcrStatsQuery"
+Cohesion: 0.21
+Nodes (5): Admin, Admin::Queries, Admin::Queries::MonthlyActiveUserOcrStatsQuery, Admin::Queries::MonthlyActiveUserOcrStatsQuery::Contract, Contract
 
-### Community 346 - "ai-interactions.ts"
-Cohesion: 0.27
-Nodes (8): AiInteractionAuditDetails(), renderJsonBlock(), ToolCallEntry, ToolCallsSection(), AiInteraction, AiInteractionsResponse, AiInteractionStats, AiInteractionStatsResponse
+### Community 186 - "ExchangeRates::ApiExchangeRate"
+Cohesion: 0.15
+Nodes (5): ExchangeRates, ExchangeRates::ApiExchangeRate, ExchangeRates, ExchangeRates::RateLookupCache, CurrentAttributes
 
-### Community 347 - "render-graphs.js"
+### Community 187 - "Transactions::Account"
+Cohesion: 0.09
+Nodes (16): Transactions, Transactions::Account, Imports, Imports::Operations, Imports::Operations::Accounts, Imports::Operations::Accounts::FindOrCreateImportAccount, Imports::Operations::Accounts::FindOrCreateImportAccount::Contract, Contract (+8 more)
+
+### Community 188 - "Budgets::Operations::BuildMonthlyBudgetRows"
+Cohesion: 0.22
+Nodes (4): Budgets, Budgets::Operations, Budgets::Operations::BuildMonthlyBudgetRows, Operation
+
+### Community 189 - "Imports::Operations::ImportSingleRecord"
+Cohesion: 0.19
+Nodes (7): Imports, Imports::Operations, Imports::Operations::ImportSingleRecord, Imports::Operations::ImportSingleRecord::Contract, Imports::Operations::ImportSingleRecord::RowDataContract, Contract, Operation
+
+### Community 190 - "Insights::Operations::CreateWeeklySpending"
+Cohesion: 0.11
+Nodes (11): Insights, Insights::Operations, Insights::Operations::CreateWeeklySpending, Insights::Operations::CreateWeeklySpending::Contract, Contract, Operation, Insights, Insights::SpaceCurrencyAmount (+3 more)
+
+### Community 191 - "Insights::Operations::ResolveContext"
+Cohesion: 0.19
+Nodes (6): Insights, Insights::Operations, Insights::Operations::ResolveContext, Insights::Operations::ResolveContext::Contract, Contract, Operation
+
+### Community 192 - "Transactions::Operations::Accounts::UpdateCalculateBalance"
+Cohesion: 0.10
+Nodes (14): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::ResolveSignedBalanceEffect, Transactions::Operations::Accounts::ResolveSignedBalanceEffect::Contract, Contract (+6 more)
+
+### Community 193 - "Transactions::Operations::Loans::CalculateLoanPaymentInterest"
+Cohesion: 0.18
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Loans, Transactions::Operations::Loans::CalculateLoanPaymentInterest, Transactions::Operations::Loans::CalculateLoanPaymentInterest::Contract
+
+### Community 194 - "filter-selection-pills.tsx"
+Cohesion: 0.14
+Nodes (15): AmountWithRatePickerProps, AccountFilterComboBox(), AccountFilterComboBoxProps, comboboxInputClassName, FILTER_CLEAR_ALL_MIN_COUNT, FilterClearAllButton(), filterClearAllButtonClassName, FilterClearAllButtonProps (+7 more)
+
+### Community 195 - "Transactions::Operations::Loans::UpdateLoanPayment"
+Cohesion: 0.15
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Loans, Transactions::Operations::Loans::UpdateLoanPayment, Transactions::Operations::Loans::UpdateLoanPayment::Contract
+
+### Community 196 - "Transactions::Operations::Transfers::UpdateCalculateBalances"
+Cohesion: 0.18
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::UpdateCalculateBalances, Transactions::Operations::Transfers::UpdateCalculateBalances::Contract
+
+### Community 197 - "Transactions::Queries::Accounts::DashboardAccounts"
+Cohesion: 0.13
+Nodes (10): Transactions, Transactions::Queries, Transactions::Queries::Accounts, Transactions::Queries::Accounts::BaseQuery, Contract, Transactions, Transactions::Queries, Transactions::Queries::Accounts (+2 more)
+
+### Community 198 - "Transactions::Queries::TotalsByType"
+Cohesion: 0.11
+Nodes (9): Transactions, Transactions::Queries, Transactions::Queries::CombinedCategoryFilter, Transactions, Transactions::Queries, Transactions::Queries::PreloadsCombinedTransactableAssociations, Transactions, Transactions::Queries (+1 more)
+
+### Community 199 - "TutorialContext.tsx"
+Cohesion: 0.16
+Nodes (15): desktopTutorialCompletedAtom, isTutorialActiveAtom, mobileTutorialCompletedAtom, tutorialDataLoadedAtom, AddReceiptDialog(), AddReceiptDialogProps, TutorialContext, TutorialContextType (+7 more)
+
+### Community 200 - "Insights Customer Profiles Design"
+Cohesion: 0.12
+Nodes (16): API / type shape, Architecture, Assets, Copy tone, Deduping, Goals, Insights Customer Profiles Design, Non-goals (+8 more)
+
+### Community 201 - "realtime-actor-toast.tsx"
 Cohesion: 0.33
-Nodes (8): combineGraphs(), { execSync }, extractDotBlocks(), extractGraphBody(), fs, main(), path, renderToSvg()
+Nodes (9): requestOpenTransaction(), formatToastTransactionNote(), initialsFromName(), RealtimeActorToastContent(), RealtimeTransactionActor, RealtimeTransactionToastAction, realtimeTransactionToastMessage(), shouldShowRealtimeActorToast() (+1 more)
 
-### Community 348 - "Ai::Conversations::ConversationService"
-Cohesion: 0.31
-Nodes (3): Ai, Ai::Conversations, Ai::Conversations::ConversationService
+### Community 202 - "useOfflineReadMode.ts"
+Cohesion: 0.36
+Nodes (6): offlineSyncReadyAtom, LocalCacheQueryState, readBrowserOnline(), shouldSkipCachedNetworkFetch(), useBrowserOnline(), useOfflineReadMode()
 
-### Community 349 - "model_selector.rb"
-Cohesion: 0.31
-Nodes (7): Ai, Ai::Providers, Ai::Providers::ModelSelector, for_analysis(), for_embeddings(), for_generation(), select()
+### Community 203 - "Transactions::Operations::Transfers::DeleteThisTransfer"
+Cohesion: 0.20
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::DeleteThisTransfer, Transactions::Operations::Transfers::DeleteThisTransfer::Contract
 
-### Community 350 - "category_filter.rb"
-Cohesion: 0.33
-Nodes (8): Ai, Ai::Rag, Ai::Rag::CategoryFilter, apply_category_names(), apply_to_embeddings(), apply_to_transactions(), join_category_tables(), sanitize_like()
+### Community 204 - ".perform"
+Cohesion: 0.21
+Nodes (4): Ai, Ai::ChatBroadcaster, Ai, Ai::AiChatJob
 
-### Community 351 - "Ai::Rag::SemanticTransactionResolver"
+### Community 205 - "Ai::Providers::OpenaiFallbackProvider"
+Cohesion: 0.18
+Nodes (4): Ai, Ai::Providers, Ai::Providers::OpenaiFallbackProvider, BaseProvider
+
+### Community 206 - "Ai::Providers::OpenrouterProvider"
+Cohesion: 0.18
+Nodes (4): Ai, Ai::Providers, Ai::Providers::OpenrouterProvider, BaseProvider
+
+### Community 207 - "Ai::Rag::SemanticTransactionResolver"
 Cohesion: 0.31
 Nodes (3): Ai, Ai::Rag, Ai::Rag::SemanticTransactionResolver
 
-### Community 352 - "topic_filter.rb"
-Cohesion: 0.36
-Nodes (7): Ai, Ai::Rag, apply(), apply_to_embeddings(), normalize_terms(), sanitize_like(), terms_from_agent_filters()
+### Community 208 - "MonthlyFinancialSummaries::Operations::RecalculateSpaceSummaries"
+Cohesion: 0.23
+Nodes (6): MonthlyFinancialSummaries, MonthlyFinancialSummaries::Operations, MonthlyFinancialSummaries::Operations::RecalculateSpaceSummaries, MonthlyFinancialSummaries::Operations::RecalculateSpaceSummaries::Contract, Contract, Operation
 
-### Community 353 - "ExchangeRates::Operations::GetRecentRates"
-Cohesion: 0.33
-Nodes (4): ExchangeRates::Operations::GetRecentRates, ExchangeRates::Operations::GetRecentRates::Contract, Contract, Operation
+### Community 209 - "Finance::Operations::Subscriptions::CreateFreeSubscription"
+Cohesion: 0.14
+Nodes (9): Finance, Finance::SubscriptionPlan, Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::CreateFreeSubscription, Finance::Operations::Subscriptions::CreateFreeSubscription::Contract, Contract (+1 more)
 
-### Community 354 - "ExchangeRates::Operations::SyncApiRates"
+### Community 210 - "Finance::Operations::Subscriptions::ForceAttemptCycle"
+Cohesion: 0.18
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::ForceAttemptCycle, Finance::Operations::Subscriptions::ForceAttemptCycle::Contract, Contract, Operation
+
+### Community 211 - "Finance::Operations::Subscriptions::SimulateCyclePayment"
+Cohesion: 0.18
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::SimulateCyclePayment, Finance::Operations::Subscriptions::SimulateCyclePayment::Contract, Contract, Operation
+
+### Community 212 - "Finance::Operations::Subscriptions::Webhooks::HandleCycleCreated"
+Cohesion: 0.17
+Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandleCycleCreated, Finance::Operations::Subscriptions::Webhooks::HandleCycleCreated::Contract, Contract, Operation
+
+### Community 213 - "Finance::Operations::Webhooks::HandleWebhook"
+Cohesion: 0.17
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Webhooks, Finance::Operations::Webhooks::HandleWebhook, Finance::Operations::Webhooks::HandleWebhook::Contract, Contract, Operation
+
+### Community 214 - "Imports::Operations::GenerateSampleTemplate"
+Cohesion: 0.18
+Nodes (6): Imports, Imports::Operations, Imports::Operations::GenerateSampleTemplate, Imports::Operations::GenerateSampleTemplate::Contract, Contract, Operation
+
+### Community 215 - "Spaces::Operations::TransferOwnership"
+Cohesion: 0.19
+Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::TransferOwnership, Spaces::Operations::TransferOwnership::Contract
+
+### Community 216 - "Transactions::Operations::Accounts::AdjustAccountBalance"
+Cohesion: 0.18
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::AdjustAccountBalance, Transactions::Operations::Accounts::AdjustAccountBalance::Contract
+
+### Community 217 - "MonthlyFinancialSummaries::Queries::TotalsInSpaceForRange"
+Cohesion: 0.11
+Nodes (10): Insights, Insights::Queries, Insights::Queries::SumExpensesInSpaceForRange, MonthlyFinancialSummaries, MonthlyFinancialSummaries::Queries, MonthlyFinancialSummaries::Queries::TotalsInSpaceForRange, Operation, MonthlyFinancialSummaries (+2 more)
+
+### Community 218 - "bundle"
+Cohesion: 0.17
+Nodes (9): activate_bundler(), activation_error_handling(), bundler_requirement(), bundler_requirement_for(), cli_arg_version(), invoked_as_script?(), gradlew script, die() (+1 more)
+
+### Community 219 - "Auth::Client"
+Cohesion: 0.14
+Nodes (6): Auth, Auth::Client, Auth, Auth::Response, Auth, Auth::Token
+
+### Community 220 - "FileSharePlugin"
+Cohesion: 0.14
+Nodes (12): AppearancePlugin, CAPPluginCall, CAPPluginMethod, CacheControlPlugin, CAPPluginCall, FileSharePlugin, CAPPluginCall, CAPPluginMethod (+4 more)
+
+### Community 221 - "seo-config.ts"
+Cohesion: 0.23
+Nodes (12): dynamic, robots(), dynamic, sitemap(), BLOG_ARTICLES, BlogArticle, buildBlogArticleUrl(), ROBOTS_DISALLOW_PATHS (+4 more)
+
+### Community 222 - "Ai::Operations::Receipts::CreateDraftFromReceiptResult"
+Cohesion: 0.21
+Nodes (7): Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::CreateDraftFromReceiptResult, Ai::Operations::Receipts::CreateDraftFromReceiptResult::Contract, Contract, Operation
+
+### Community 223 - "Onboardings::Operations::BudgetsStep"
+Cohesion: 0.22
+Nodes (6): Onboardings, Onboardings::Operations, Onboardings::Operations::BudgetsStep, Onboardings::Operations::BudgetsStep::Contract, Contract, Operation
+
+### Community 224 - "budgetAtoms.ts"
+Cohesion: 0.13
+Nodes (14): AccountCategory, AccountData, appliedBudgetFiltersAtom, budgetCategoriesAtom, budgetDateAtom, budgetStatsAtom, IncomeRequirements, incomeRequirementsAtom (+6 more)
+
+### Community 225 - ".build"
+Cohesion: 0.18
+Nodes (7): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::AnalysisBuilder, Ai, Ai::Rag, Ai::Rag::AnalysisResult
+
+### Community 226 - "Ai::Rag::Agent::Tools::QueryFinancialData"
+Cohesion: 0.18
+Nodes (6): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Tools, Ai::Rag::Agent::Tools::QueryFinancialData, Tool
+
+### Community 227 - "Transactions::Operations::DeleteThisTransaction"
+Cohesion: 0.22
+Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::DeleteThisTransaction, Transactions::Operations::DeleteThisTransaction::Contract
+
+### Community 228 - "Ai::Operations::Usages::CreateUsage"
+Cohesion: 0.21
+Nodes (6): Ai, Ai::Operations, Ai::Operations::Usages, Ai::Operations::Usages::CreateUsage, Ai::Operations::Usages::CreateUsage::Contract, Contract
+
+### Community 229 - "lockedSystemCategories.ts"
+Cohesion: 0.27
+Nodes (12): normalizeCategoryMatchKey(), EXPENSE_ADJUSTMENT_CATEGORY_NAME, INCOME_ADJUSTMENT_CATEGORY_NAME, isLockedExpenseCategoryName(), isLockedIncomeCategoryName(), LOCKED_EXPENSE_CATEGORY_NAMES, LOCKED_INCOME_CATEGORY_NAMES, LockedCategoryRef (+4 more)
+
+### Community 230 - "Crm::Operations::CreateTicketResponse"
+Cohesion: 0.20
+Nodes (6): Crm, Crm::Operations, Crm::Operations::CreateTicketResponse, Crm::Operations::CreateTicketResponse::Contract, Contract, Operation
+
+### Community 231 - "Finance::Operations::Subscriptions::CancelSubscription"
+Cohesion: 0.19
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::CancelSubscription, Finance::Operations::Subscriptions::CancelSubscription::Contract, Contract, Operation
+
+### Community 232 - "Finance::Operations::Subscriptions::FindOrCreatePayment"
+Cohesion: 0.19
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::FindOrCreatePayment, Finance::Operations::Subscriptions::FindOrCreatePayment::Contract, Contract, Operation
+
+### Community 233 - "Finance::Operations::Subscriptions::Webhooks::HandlePlanActivated"
+Cohesion: 0.18
+Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandlePlanActivated, Finance::Operations::Subscriptions::Webhooks::HandlePlanActivated::Contract, Contract, Operation
+
+### Community 234 - "Imports::Operations::RevertImport"
+Cohesion: 0.20
+Nodes (6): Imports, Imports::Operations, Imports::Operations::RevertImport, Imports::Operations::RevertImport::Contract, Contract, Operation
+
+### Community 235 - "Insights::Operations::CreateSummaryStructure"
+Cohesion: 0.19
+Nodes (6): Insights, Insights::Operations, Insights::Operations::CreateSummaryStructure, Insights::Operations::CreateSummaryStructure::Contract, Contract, Operation
+
+### Community 236 - "useAnchorTransactionsListToToday.ts"
+Cohesion: 0.31
+Nodes (9): scrollToAnchorDay(), TRANSACTION_DAY_DATA_ATTR, transactionDaySelector(), useAnchorTransactionsListToToday(), UseAnchorTransactionsListToTodayParams, findTransactionsListAnchorDayKey(), isAnchorDayFullyLoaded(), isoDayKeyInInclusiveRange() (+1 more)
+
+### Community 237 - "Onboardings::Operations::SkipOnboarding"
+Cohesion: 0.20
+Nodes (6): Onboardings, Onboardings::Operations, Onboardings::Operations::SkipOnboarding, Onboardings::Operations::SkipOnboarding::Contract, Contract, Operation
+
+### Community 238 - "Transactions::Operations::Loans::CreateLoanPayment"
+Cohesion: 0.16
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Loans, Transactions::Operations::Loans::CreateLoanPayment, Transactions::Operations::Loans::CreateLoanPayment::Contract
+
+### Community 239 - "Transactions::Operations::Loans::CreateLoan"
+Cohesion: 0.07
+Nodes (18): Ai, Ai::Embeddings, Ai::Embeddings::GenerateEmbeddingJob, Entities, Entities::Entity, Loans, Loans::Operations, Loans::Operations::UpdateLoan (+10 more)
+
+### Community 240 - "Finance::Operations::Subscriptions::FindOrCreateCustomerForSpace"
+Cohesion: 0.21
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::FindOrCreateCustomerForSpace, Finance::Operations::Subscriptions::FindOrCreateCustomerForSpace::Contract, Contract, Operation
+
+### Community 241 - "MonthlyFinancialSummaries::Queries::DateRangeSummary"
+Cohesion: 0.23
+Nodes (3): MonthlyFinancialSummaries::Queries::DateRangeSummary, MonthlyFinancialSummaries::Queries::DateRangeSummary::Contract, Contract
+
+### Community 242 - "Capacitor"
+Cohesion: 0.22
+Nodes (7): FintrLaunchColors, Capacitor, FBSDKCoreKit, Foundation, Sentry, UIKit, WebKit
+
+### Community 243 - "Entities::Operations::CreateEntity"
+Cohesion: 0.09
+Nodes (14): Api, Api::V1, Api::V1::EntitiesController, ApiController, Entities, Entities::Operations, Entities::Operations::CreateEntity, Entities::Operations::CreateEntity::Contract (+6 more)
+
+### Community 244 - "ProductPulse::Operations::CreateFeedback"
+Cohesion: 0.09
+Nodes (14): Api, Api::V1, Api::V1::ProductPulseFeedbacksController, ApiController, ProductPulse, ProductPulse::Operations, ProductPulse::Operations::CreateFeedback, ProductPulse::Operations::CreateFeedback::Contract (+6 more)
+
+### Community 245 - ".create"
+Cohesion: 0.22
+Nodes (4): Api, Api::V1, Api::V1::ReceiptsController, ApiController
+
+### Community 246 - "topic_breakdown_builder.rb"
+Cohesion: 0.24
+Nodes (16): Ai, Ai::Rag, Ai::Rag::TopicBreakdownBuilder, amount_cents_for(), build(), canonical_label(), collapse_to_others(), description_for() (+8 more)
+
+### Community 247 - "Finance::BillingCycle"
+Cohesion: 0.16
+Nodes (4): Finance, Finance::RenewFreeSubscriptionCyclesJob, Finance, Finance::BillingCycle
+
+### Community 248 - "Onboardings::Operations::ShowBudgetsData"
+Cohesion: 0.24
+Nodes (6): Onboardings, Onboardings::Operations, Onboardings::Operations::ShowBudgetsData, Onboardings::Operations::ShowBudgetsData::Contract, Contract, Operation
+
+### Community 249 - "Goals::Operations::UpdateGoalDescription"
+Cohesion: 0.19
+Nodes (7): GoalDescription, Goals, Goals::Operations, Goals::Operations::UpdateGoalDescription, Goals::Operations::UpdateGoalDescription::Contract, Contract, Operation
+
+### Community 250 - "Ai::Operations::Embeddings::GenerateEmbedding"
+Cohesion: 0.07
+Nodes (16): Ai, Ai::RagEmbedding, Ai, Ai::Operations, Ai::Operations::Embeddings, Ai::Operations::Embeddings::GenerateEmbedding, Ai::Operations::Embeddings::GenerateEmbedding::Contract, Contract (+8 more)
+
+### Community 251 - "Ai::Operations::Receipts::ProcessReceipt"
+Cohesion: 0.20
+Nodes (7): Ai, Ai::Operations, Ai::Operations::Receipts, Ai::Operations::Receipts::ProcessReceipt, Ai::Operations::Receipts::ProcessReceipt::Contract, Contract, Operation
+
+### Community 252 - "Budgets::Operations::UpdateBudget"
+Cohesion: 0.21
+Nodes (6): Budgets, Budgets::Operations, Budgets::Operations::UpdateBudget, Budgets::Operations::UpdateBudget::Contract, Contract, Operation
+
+### Community 253 - "Finance::Operations::Subscriptions::FindOrCreateBillingCycle"
+Cohesion: 0.20
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::FindOrCreateBillingCycle, Finance::Operations::Subscriptions::FindOrCreateBillingCycle::Contract, Contract, Operation
+
+### Community 254 - "Finance::Operations::Subscriptions::Webhooks::HandlePlanInactivated"
+Cohesion: 0.19
+Nodes (8): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::Webhooks, Finance::Operations::Subscriptions::Webhooks::HandlePlanInactivated, Finance::Operations::Subscriptions::Webhooks::HandlePlanInactivated::Contract, Contract, Operation
+
+### Community 255 - "MonthlyFinancialSummaries::Operations::ListForSpace"
+Cohesion: 0.21
+Nodes (6): MonthlyFinancialSummaries, MonthlyFinancialSummaries::Operations, MonthlyFinancialSummaries::Operations::ListForSpace, MonthlyFinancialSummaries::Operations::ListForSpace::Contract, Contract, Operation
+
+### Community 256 - "Spaces::Operations::LeaveSpace"
+Cohesion: 0.21
+Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::LeaveSpace, Spaces::Operations::LeaveSpace::Contract
+
+### Community 257 - "Spaces::Operations::ResetData"
+Cohesion: 0.21
+Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::ResetData, Spaces::Operations::ResetData::Contract
+
+### Community 258 - "Spaces::Operations::UpdateSpace"
+Cohesion: 0.21
+Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::UpdateSpace, Spaces::Operations::UpdateSpace::Contract
+
+### Community 259 - "Transactions::Operations::Accounts::CreateAccount"
+Cohesion: 0.20
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::CreateAccount, Transactions::Operations::Accounts::CreateAccount::Contract
+
+### Community 260 - "Transactions"
+Cohesion: 0.50
+Nodes (3): Transactions, Transactions::Operations, Transactions::Operations::Categories
+
+### Community 261 - "Transactions::Operations::UpdateAllInSeriesTransactions"
+Cohesion: 0.18
+Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::UpdateAllInSeriesTransactions, Transactions::Operations::UpdateAllInSeriesTransactions::Contract
+
+### Community 262 - "fintr-fe/scripts/mobile/build-production.sh"
+Cohesion: 0.14
+Nodes (10): build-all.sh script, NEXT_OUTPUT_MODE, NEXT_PUBLIC_APP_BASE_URL, NODE_ENV, build-production-android.sh script, NEXT_OUTPUT_MODE, NEXT_PUBLIC_APP_BASE_URL, NODE_ENV (+2 more)
+
+### Community 263 - "fintr-logo.tsx"
+Cohesion: 0.13
+Nodes (15): FINTR_LOGO_DARK_SRC, FINTR_LOGO_LIGHT_SRC, FINTR_LOGO_NAVY_SRC, FINTR_LOGO_SPLASH_SRC, FintrLogoProps, LoadingFintrLogo(), LoadingFintrLogoProps, CapacitorRedirectToAuth() (+7 more)
+
+### Community 264 - "usePaymentMethods.ts"
+Cohesion: 0.30
+Nodes (11): usePaymentMethods(), createPaymentMethod(), CreatePaymentMethodRequest, CreatePaymentMethodResponse, deletePaymentMethod(), initializeAccountLinking(), InitializeLinkingRequest, InitializeLinkingResponse (+3 more)
+
+### Community 265 - "install-profiles.cjs"
+Cohesion: 0.26
+Nodes (12): CLEANUP_SIGNALS, cleanupStagedSkills(), ensureExitCleanup(), fs, isMinimalMode(), MINIMAL_ALLOWLIST_SET, MINIMAL_SKILL_ALLOWLIST, os (+4 more)
+
+### Community 266 - "aggregate_benchmark.py"
+Cohesion: 0.23
+Nodes (12): aggregate_results(), calculate_stats(), generate_benchmark(), generate_markdown(), load_run_results(), main(), Path, Aggregate run results into summary statistics. Returns run_summary with stats… (+4 more)
+
+### Community 267 - "ExchangeRates::Operations::SyncApiRates"
 Cohesion: 0.25
 Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::SyncApiRates, ExchangeRates::Operations::SyncApiRates::Contract, Contract, Operation
 
-### Community 355 - "Insights::Operations::ComputeBudgetUsage"
+### Community 268 - "Budget"
+Cohesion: 0.17
+Nodes (3): Budget, CategoryAssignable, DefaultToPhp
+
+### Community 269 - "MonthlyFinancialSummary"
+Cohesion: 0.11
+Nodes (7): MonthlyFinancialSummary, MonthlyFinancialSummaries, MonthlyFinancialSummaries::Queries, MonthlyFinancialSummaries::Queries::AggregateTotalsInSpaceForRange, MonthlyFinancialSummaries, MonthlyFinancialSummaries::Queries, MonthlyFinancialSummaries::Queries::TotalsForMonth
+
+### Community 270 - "Ai::Operations::Conversations::DeleteConversation"
+Cohesion: 0.19
+Nodes (7): Ai, Ai::Operations, Ai::Operations::Conversations, Ai::Operations::Conversations::DeleteConversation, Ai::Operations::Conversations::DeleteConversation::Contract, Contract, Operation
+
+### Community 271 - "Budgets::Operations::PrepareMonthlyReport"
+Cohesion: 0.22
+Nodes (6): Budgets, Budgets::Operations, Budgets::Operations::PrepareMonthlyReport, Budgets::Operations::PrepareMonthlyReport::Contract, Contract, Operation
+
+### Community 272 - "Budgets::Operations::ValidateCategoryBudgetAllocation"
+Cohesion: 0.23
+Nodes (6): Budgets, Budgets::Operations, Budgets::Operations::ValidateCategoryBudgetAllocation, Budgets::Operations::ValidateCategoryBudgetAllocation::Contract, Contract, Operation
+
+### Community 273 - "Finance::Operations::Subscriptions::CreateBillingCycle"
+Cohesion: 0.21
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::CreateBillingCycle, Finance::Operations::Subscriptions::CreateBillingCycle::Contract, Contract, Operation
+
+### Community 274 - "Finance::Operations::Subscriptions::RemoveFreeSubscription"
+Cohesion: 0.21
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::RemoveFreeSubscription, Finance::Operations::Subscriptions::RemoveFreeSubscription::Contract, Contract, Operation
+
+### Community 275 - "Transactions::Category"
+Cohesion: 0.12
+Nodes (9): Transactions, Transactions::Category, Imports, Imports::Operations, Imports::Operations::Categories, Imports::Operations::Categories::FindOrCreateCategory, Imports::Operations::Categories::FindOrCreateCategory::Contract, Contract (+1 more)
+
+### Community 276 - "Imports::Operations::UpdateImportRecord"
+Cohesion: 0.22
+Nodes (6): Imports, Imports::Operations, Imports::Operations::UpdateImportRecord, Imports::Operations::UpdateImportRecord::Contract, Contract, Operation
+
+### Community 277 - "Transactions::Operations::Transfers::DeleteThisAndFutureTransfers"
+Cohesion: 0.21
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::DeleteThisAndFutureTransfers, Transactions::Operations::Transfers::DeleteThisAndFutureTransfers::Contract
+
+### Community 278 - "Spaces::Operations::DeleteSpace"
+Cohesion: 0.22
+Nodes (6): Contract, Operation, Spaces, Spaces::Operations, Spaces::Operations::DeleteSpace, Spaces::Operations::DeleteSpace::Contract
+
+### Community 279 - "Transactions::Operations::Accounts::VerifyBalanceIntegrity"
+Cohesion: 0.21
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::VerifyBalanceIntegrity, Transactions::Operations::Accounts::VerifyBalanceIntegrity::Contract
+
+### Community 280 - "Transactions::Operations::Categories::DeleteCategory"
+Cohesion: 0.21
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Categories, Transactions::Operations::Categories::DeleteCategory, Transactions::Operations::Categories::DeleteCategory::Contract
+
+### Community 281 - "Transactions::Operations::Reports::DownloadCsv"
+Cohesion: 0.19
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Reports, Transactions::Operations::Reports::DownloadCsv, Transactions::Operations::Reports::DownloadCsv::Contract
+
+### Community 282 - "Transactions::Operations::Transfers::DeleteAllInSeriesTransfers"
+Cohesion: 0.21
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::DeleteAllInSeriesTransfers, Transactions::Operations::Transfers::DeleteAllInSeriesTransfers::Contract
+
+### Community 283 - "Admin::Queries::SpacesForFreeSubscriptionQuery"
+Cohesion: 0.21
+Nodes (5): Admin, Admin::Queries, Admin::Queries::SpacesForFreeSubscriptionQuery, Admin::Queries::SpacesForFreeSubscriptionQuery::Contract, Contract
+
+### Community 284 - "Budgets::Queries::MonthlyBudgets"
+Cohesion: 0.26
+Nodes (5): Budgets, Budgets::Queries, Budgets::Queries::MonthlyBudgets, Budgets::Queries::MonthlyBudgets::Contract, Contract
+
+### Community 285 - "Crm::Queries::FilteredTickets"
+Cohesion: 0.23
+Nodes (5): Crm, Crm::Queries, Crm::Queries::FilteredTickets, Crm::Queries::FilteredTickets::Contract, Contract
+
+### Community 286 - "Transactions::Queries::NoteSuggestions"
+Cohesion: 0.22
+Nodes (5): Contract, Transactions, Transactions::Queries, Transactions::Queries::NoteSuggestions, Transactions::Queries::NoteSuggestions::Contract
+
+### Community 287 - "Onboardings::Operations::ShowIncomeData"
+Cohesion: 0.24
+Nodes (6): Onboardings, Onboardings::Operations, Onboardings::Operations::ShowIncomeData, Onboardings::Operations::ShowIncomeData::Contract, Contract, Operation
+
+### Community 288 - "Transactions::Operations::Categories::CreateCategory"
+Cohesion: 0.22
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Categories, Transactions::Operations::Categories::CreateCategory, Transactions::Operations::Categories::CreateCategory::Contract
+
+### Community 289 - ".render_paginated"
+Cohesion: 0.09
+Nodes (11): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::ProductPulseFeedbacksController, ApiController, PaginatedResponses, ProductPulseFeedback, Ai (+3 more)
+
+### Community 290 - ".index"
+Cohesion: 0.17
+Nodes (8): Api, Api::V1, Api::V1::MonthlyFinancialSummariesController, ApiController, MonthlyFinancialSummaries, MonthlyFinancialSummaries::Serializers, MonthlyFinancialSummaries::Serializers::MonthlyFinancialSummarySerializer, Base
+
+### Community 291 - "Ai::Rag::InteractionMetadataBuilder"
+Cohesion: 0.17
+Nodes (7): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::AuditFormatter, Ai, Ai::Rag, Ai::Rag::InteractionMetadataBuilder
+
+### Community 292 - "Ai::Rag::Agent::Tools::SearchTransactions"
+Cohesion: 0.18
+Nodes (6): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Tools, Ai::Rag::Agent::Tools::SearchTransactions, Tool
+
+### Community 293 - "Ai::Rag::VectorSearcher"
+Cohesion: 0.24
+Nodes (5): Ai, Ai::Rag, Ai::Rag::EmbeddingError, Ai::Rag::VectorSearcher, StandardError
+
+### Community 294 - "Ai::Operations::Embeddings::GenerateQueryEmbedding"
+Cohesion: 0.20
+Nodes (7): Ai, Ai::Operations, Ai::Operations::Embeddings, Ai::Operations::Embeddings::GenerateQueryEmbedding, Ai::Operations::Embeddings::GenerateQueryEmbedding::Contract, Contract, Operation
+
+### Community 295 - "Admin::Operations::BuildUserActivityDrilldown"
+Cohesion: 0.23
+Nodes (6): Admin, Admin::Operations, Admin::Operations::BuildUserActivityDrilldown, Admin::Operations::BuildUserActivityDrilldown::Contract, Contract, Operation
+
+### Community 296 - "Transactions::Operations::ResolveCategoryAssignment"
+Cohesion: 0.24
+Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::ResolveCategoryAssignment, Transactions::Operations::ResolveCategoryAssignment::Contract
+
+### Community 297 - "Auth::Operations::ResetPassword"
+Cohesion: 0.21
+Nodes (6): Auth, Auth::Operations, Auth::Operations::ResetPassword, Auth::Operations::ResetPassword::Contract, Contract, Operation
+
+### Community 298 - "Budgets::Operations::CreateMonthlyBudget"
+Cohesion: 0.23
+Nodes (6): Budgets, Budgets::Operations, Budgets::Operations::CreateMonthlyBudget, Budgets::Operations::CreateMonthlyBudget::Contract, Contract, Operation
+
+### Community 299 - "Dashboards::Operations::ShowDashboardData"
+Cohesion: 0.23
+Nodes (6): Dashboards, Dashboards::Operations, Dashboards::Operations::ShowDashboardData, Dashboards::Operations::ShowDashboardData::Contract, Contract, Operation
+
+### Community 300 - "ExchangeRates::Operations::AmountInSpaceCurrency"
+Cohesion: 0.23
+Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::AmountInSpaceCurrency, ExchangeRates::Operations::AmountInSpaceCurrency::Contract, Contract, Operation
+
+### Community 301 - "ExchangeRates::Operations::SpaceAmountToAccountCurrency"
+Cohesion: 0.24
+Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::SpaceAmountToAccountCurrency, ExchangeRates::Operations::SpaceAmountToAccountCurrency::Contract, Contract, Operation
+
+### Community 302 - "Finance::Operations::Subscriptions::GetCurrentSubscriptions"
+Cohesion: 0.21
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::GetCurrentSubscriptions, Finance::Operations::Subscriptions::GetCurrentSubscriptions::Contract, Contract, Operation
+
+### Community 303 - "Imports::Operations::ValidateAndPrepareRows"
+Cohesion: 0.29
+Nodes (4): Imports, Imports::Operations, Imports::Operations::ValidateAndPrepareRows, Operation
+
+### Community 304 - "Onboardings::Operations::ShowCurrencyData"
+Cohesion: 0.23
+Nodes (6): Onboardings, Onboardings::Operations, Onboardings::Operations::ShowCurrencyData, Onboardings::Operations::ShowCurrencyData::Contract, Contract, Operation
+
+### Community 305 - "Transactions::Operations::Accounts::DeleteAccount"
+Cohesion: 0.21
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::DeleteAccount, Transactions::Operations::Accounts::DeleteAccount::Contract
+
+### Community 306 - "Transactions::Operations::Accounts::ResolveSignedTransferBalanceEffect"
+Cohesion: 0.21
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Accounts, Transactions::Operations::Accounts::ResolveSignedTransferBalanceEffect, Transactions::Operations::Accounts::ResolveSignedTransferBalanceEffect::Contract
+
+### Community 307 - "ai-interactions.ts"
+Cohesion: 0.21
+Nodes (10): AiInteractionsPage(), AiInteractionAuditDetails(), renderJsonBlock(), ToolCallEntry, ToolCallsSection(), AiInteraction, AiInteractionsResponse, AiInteractionStats (+2 more)
+
+### Community 308 - "Transactions::Operations::Categories::UpdateCategory"
+Cohesion: 0.21
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Categories, Transactions::Operations::Categories::UpdateCategory, Transactions::Operations::Categories::UpdateCategory::Contract
+
+### Community 309 - "Transactions::Operations::DeleteAllInSeriesTransactions"
+Cohesion: 0.23
+Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::DeleteAllInSeriesTransactions, Transactions::Operations::DeleteAllInSeriesTransactions::Contract
+
+### Community 310 - "Transactions::Operations::TransferAttributes"
+Cohesion: 0.23
+Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::TransferAttributes, Transactions::Operations::TransferAttributes::Contract
+
+### Community 311 - "Transactions::Operations::UpdateRepeatTransactions"
+Cohesion: 0.26
+Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::UpdateRepeatTransactions, Transactions::Operations::UpdateRepeatTransactions::Contract
+
+### Community 312 - "CapacitorViewController"
+Cohesion: 0.23
+Nodes (5): CapacitorViewController, Bool, CAPBridgeViewController, CGFloat, NSObjectProtocol
+
+### Community 313 - "App.jsx"
+Cohesion: 0.25
+Nodes (6): App(), DraggableBox(), HoverCard(), container, item, StaggerList()
+
+### Community 314 - "Ai::Conversations::MessageRepository"
+Cohesion: 0.24
+Nodes (3): Ai, Ai::Conversations, Ai::Conversations::MessageRepository
+
+### Community 315 - "Ai::Providers::BaseProvider"
+Cohesion: 0.20
+Nodes (6): Ai, Ai::Providers, Ai::Providers::BaseProvider, Ai::Providers::ProviderError, Ai::Providers::UnknownProviderError, StandardError
+
+### Community 316 - "Auth::Operations::UpdateTutorialCompletion"
+Cohesion: 0.24
+Nodes (6): Auth, Auth::Operations, Auth::Operations::UpdateTutorialCompletion, Auth::Operations::UpdateTutorialCompletion::Contract, Contract, Operation
+
+### Community 317 - "ExchangeRates::Operations::PersistApiRates"
+Cohesion: 0.24
+Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::PersistApiRates, ExchangeRates::Operations::PersistApiRates::Contract, Contract, Operation
+
+### Community 318 - "Finance::Operations::Subscriptions::FindSpaceSubscriptionByXenditId"
+Cohesion: 0.22
+Nodes (7): Finance, Finance::Operations, Finance::Operations::Subscriptions, Finance::Operations::Subscriptions::FindSpaceSubscriptionByXenditId, Finance::Operations::Subscriptions::FindSpaceSubscriptionByXenditId::Contract, Contract, Operation
+
+### Community 319 - "Transactions::Operations::DeleteThisAndFutureTransactions"
+Cohesion: 0.24
+Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::DeleteThisAndFutureTransactions, Transactions::Operations::DeleteThisAndFutureTransactions::Contract
+
+### Community 320 - "Transactions::Operations::PersistCurrencyConversion"
+Cohesion: 0.24
+Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::PersistCurrencyConversion, Transactions::Operations::PersistCurrencyConversion::Contract
+
+### Community 321 - "Transactions::Operations::ResolveCategoryByName"
+Cohesion: 0.24
+Nodes (6): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::ResolveCategoryByName, Transactions::Operations::ResolveCategoryByName::Contract
+
+### Community 322 - "Admin::Queries::DailyActiveUsersQuery"
+Cohesion: 0.24
+Nodes (5): Admin, Admin::Queries, Admin::Queries::DailyActiveUsersQuery, Admin::Queries::DailyActiveUsersQuery::Contract, Contract
+
+### Community 323 - "Insights::Queries::MonthlySpending"
+Cohesion: 0.16
+Nodes (9): Insights, Insights::Queries, Insights::Queries::MonthlySpending, Insights::Queries::MonthlySpending::Contract, Insights::Queries::MonthlySpending::Row, Contract, MonthlyFinancialSummaries, MonthlyFinancialSummaries::Queries (+1 more)
+
+### Community 324 - "set-auth-storage.ts"
+Cohesion: 0.31
+Nodes (5): buildTestIdToken(), buildTestJwt(), buildTestIdToken(), gotoOptions, primeReturningUserAuth()
+
+### Community 325 - "mobile-sticky-header.tsx"
+Cohesion: 0.24
+Nodes (9): getPageTitle(), MobileStickyHeader(), MobileStickyHeaderContent(), MobileStickyHeaderProps, shouldShowImmediateBackButton(), mockUsePathname, mockUsePlatformDetection, mockUseSearchParams (+1 more)
+
+### Community 326 - "Transactions::Queries::LastRecord"
+Cohesion: 0.27
+Nodes (5): Contract, Transactions, Transactions::Queries, Transactions::Queries::LastRecord, Transactions::Queries::LastRecord::Contract
+
+### Community 328 - "verify-reapply-patches.cjs"
+Cohesion: 0.31
+Nodes (9): computeUserAddedLines(), fs, isSignificantLine(), main(), parseArgs(), path, REASON, verifyFile() (+1 more)
+
+### Community 329 - "package_skill"
+Cohesion: 0.31
+Nodes (8): main(), package_skill(), Path, Check if a path should be excluded from packaging., Package a skill folder into a .skill file. Args: skill_path: Path to the skill…, should_exclude(), Basic validation of a skill, validate_skill()
+
+### Community 330 - "Ai::InteractionTracker::TrackedInteraction"
+Cohesion: 0.24
+Nodes (3): Ai, Ai::InteractionTracker, Ai::InteractionTracker::TrackedInteraction
+
+### Community 331 - "Backend TDD E2E Tests"
+Cohesion: 0.20
+Nodes (9): 1. Start the backend, 2. Run the e2e tests, 3. Environment variables, Adding New Tests, Architecture, Backend TDD E2E Tests, How It Works, Running the Tests (+1 more)
+
+### Community 332 - "Ai::Rag::Agent::Tools::ListAccounts"
+Cohesion: 0.22
+Nodes (6): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Tools, Ai::Rag::Agent::Tools::ListAccounts, Tool
+
+### Community 333 - "TutorialOverlay.tsx"
+Cohesion: 0.21
+Nodes (9): dashboardShellReadyAtom, isOnboardingCompletedAtom, OnboardingData, OnboardingStep, onboardingStepAtom, CustomTooltipProps, isTourTargetVisible(), TutorialOverlay() (+1 more)
+
+### Community 334 - "ExchangeRates::Operations::ConvertSignedAmount"
+Cohesion: 0.24
+Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::ConvertSignedAmount, ExchangeRates::Operations::ConvertSignedAmount::Contract, Contract, Operation
+
+### Community 335 - "ExchangeRates::Operations::FetchRatesFromApi"
+Cohesion: 0.24
+Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::FetchRatesFromApi, ExchangeRates::Operations::FetchRatesFromApi::Contract, Contract, Operation
+
+### Community 336 - "ExchangeRates::Operations::GetCachedApiRate"
+Cohesion: 0.24
+Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::GetCachedApiRate, ExchangeRates::Operations::GetCachedApiRate::Contract, Contract, Operation
+
+### Community 337 - "ExchangeRates::Operations::UpsertCurrencyConversion"
+Cohesion: 0.24
+Nodes (6): ExchangeRates, ExchangeRates::Operations, ExchangeRates::Operations::UpsertCurrencyConversion, ExchangeRates::Operations::UpsertCurrencyConversion::Contract, Contract, Operation
+
+### Community 338 - "Insights::Operations::CreateAccountBreakdown"
+Cohesion: 0.24
+Nodes (6): Insights, Insights::Operations, Insights::Operations::CreateAccountBreakdown, Insights::Operations::CreateAccountBreakdown::Contract, Contract, Operation
+
+### Community 339 - "MonthlyFinancialSummaries::Queries::CurrentMonthSummary"
+Cohesion: 0.24
+Nodes (5): MonthlyFinancialSummaries, MonthlyFinancialSummaries::Queries, MonthlyFinancialSummaries::Queries::CurrentMonthSummary, MonthlyFinancialSummaries::Queries::CurrentMonthSummary::Contract, Contract
+
+### Community 340 - "Spaces::Queries::DashboardData"
+Cohesion: 0.27
+Nodes (5): Contract, Spaces, Spaces::Queries, Spaces::Queries::DashboardData, Spaces::Queries::DashboardData::Contract
+
+### Community 341 - "budget-usage-bar.tsx"
+Cohesion: 0.26
+Nodes (8): BudgetProgress(), BudgetProgressProps, BudgetUsageBar(), BudgetUsageBarProps, budgetUsageProgressValue(), getBudgetOverflowPercentage(), getOverBudgetOverflowProgressColor(), getProgressColor()
+
+### Community 342 - "Transactions::Queries::Drafts"
+Cohesion: 0.24
+Nodes (5): Contract, Transactions, Transactions::Queries, Transactions::Queries::Drafts, Transactions::Queries::Drafts::Contract
+
+### Community 343 - ".call"
+Cohesion: 0.29
+Nodes (4): Transactions, Transactions::Queries, Transactions::Queries::Transfers, Transactions::Queries::Transfers::FilteredTransfers
+
+### Community 344 - "Integrations::ExchangeRates::Client"
+Cohesion: 0.31
+Nodes (3): Integrations, Integrations::ExchangeRates, Integrations::ExchangeRates::Client
+
+### Community 345 - "edit-transaction-exchange-rate.spec.ts"
+Cohesion: 0.24
+Nodes (5): buildIndexRow(), buildTransactionDetail(), MOCK_USER, mockExchangeRateEditFlow(), StoredTransaction
+
+### Community 346 - "toast-behavior.spec.ts"
+Cohesion: 0.24
+Nodes (4): triggerE2eToast(), NativeClassOptions, openDashboardForToast(), primeNativePlatformClasses()
+
+### Community 347 - "OfflineAppearanceBridge"
+Cohesion: 0.24
+Nodes (7): OfflineAppearanceBridge, CAPBridgeProtocol, WKWebView, NSObject, WKScriptMessage, WKScriptMessageHandler, WKUserContentController
+
+### Community 348 - "loan-detail-panel.tsx"
+Cohesion: 0.05
+Nodes (62): UserAnalyticsPage(), UsersPage(), AnalyticsSummaryCards(), DailyActiveUsersChart(), MonthlyActiveUserOcrSection(), MonthlyActiveUserOcrSectionProps, compareRows(), formatMetric() (+54 more)
+
+### Community 349 - "offline-sync-screen.tsx"
+Cohesion: 0.39
+Nodes (6): OfflineSyncScreen(), OfflineSyncScreenProps, OFFLINE_SYNC_HEADLINE, OFFLINE_SYNC_ROTATING_MESSAGES, OFFLINE_SYNC_SUBHEADLINE, pickOfflineSyncMessage()
+
+### Community 350 - "render-graphs.js"
+Cohesion: 0.33
+Nodes (8): combineGraphs(), { execSync }, extractDotBlocks(), extractGraphBody(), fs, main(), path, renderToSvg()
+
+### Community 351 - "health-score-factor-row.tsx"
+Cohesion: 0.26
+Nodes (8): CalculationBreakdownContent(), CalculationBreakdownContentProps, FACTOR_STYLES, HealthScoreFactorRow(), HealthScoreFactorRowProps, HealthScoreFactorVariant, scoreBarValue(), MetricCalculation
+
+### Community 352 - "Ai::Conversations::ConversationService"
+Cohesion: 0.31
+Nodes (3): Ai, Ai::Conversations, Ai::Conversations::ConversationService
+
+### Community 353 - "model_selector.rb"
+Cohesion: 0.31
+Nodes (7): Ai, Ai::Providers, Ai::Providers::ModelSelector, for_analysis(), for_embeddings(), for_generation(), select()
+
+### Community 354 - "category_filter.rb"
+Cohesion: 0.33
+Nodes (8): Ai, Ai::Rag, Ai::Rag::CategoryFilter, apply_category_names(), apply_to_embeddings(), apply_to_transactions(), join_category_tables(), sanitize_like()
+
+### Community 355 - "topic_filter.rb"
+Cohesion: 0.36
+Nodes (7): Ai, Ai::Rag, apply(), apply_to_embeddings(), normalize_terms(), sanitize_like(), terms_from_agent_filters()
+
+### Community 356 - "CreateAccountVersions"
+Cohesion: 0.25
+Nodes (3): Transactions, Transactions::AccountVersion, CreateAccountVersions
+
+### Community 357 - "ExchangeRates::Operations::GetRecentRates"
+Cohesion: 0.33
+Nodes (4): ExchangeRates::Operations::GetRecentRates, ExchangeRates::Operations::GetRecentRates::Contract, Contract, Operation
+
+### Community 358 - "Insights::Operations::ComputeBudgetUsage"
 Cohesion: 0.31
 Nodes (4): Insights, Insights::Operations, Insights::Operations::ComputeBudgetUsage, Operation
 
-### Community 356 - "booked_transfer_leg_magnitude.rb"
+### Community 359 - "booked_transfer_leg_magnitude.rb"
 Cohesion: 0.36
 Nodes (8): convert_amount(), credit_magnitude(), debit_magnitude(), effective_stored_amount_currency(), legacy_mislabeled_shared_currency?(), Transactions, Transactions::Operations, Transactions::Operations::Transfers
 
-### Community 357 - "WeeklyFeedbackDialog"
-Cohesion: 0.28
-Nodes (6): toggleInSet(), WeeklyFeedbackDialog(), createTestQueryClient(), renderWithQuery(), createProductPulseFeedback(), CreateProductPulseFeedbackPayload
+### Community 360 - "add-transaction-calendar.spec.ts"
+Cohesion: 0.39
+Nodes (6): mockApiCalls(), setupAuth(), auth0LocalStorageKeySuffix(), readAuth0DomainFromEnvFiles(), setupFrontendAuth(), getCurrentIsoWeekKey()
 
-### Community 358 - "openrouter.rb"
-Cohesion: 0.25
-Nodes (3): configuration(), OpenRouter, OpenRouter::Configuration
-
-### Community 359 - "useLoanPayments.ts"
-Cohesion: 0.50
-Nodes (7): useLoanPayments(), createLoanPayment(), CreateLoanPaymentType, deleteLoanPayment(), fetchLoanPayments(), LoanPayment, updateLoanPayment()
-
-### Community 360 - "useVisualViewportRect.test.ts"
+### Community 361 - "useVisualViewportRect.test.ts"
 Cohesion: 0.28
 Nodes (3): readVisualViewportRect(), useVisualViewportRect(), VisualViewportRect
 
-### Community 361 - "supabase.ts"
+### Community 362 - "supabase.ts"
 Cohesion: 0.22
 Nodes (8): CompositeTypes, Database, Enums, Json, PublicSchema, Tables, TablesInsert, TablesUpdate
 
-### Community 362 - "pre-push-frontend.sh"
+### Community 363 - "pre-push-frontend.sh"
 Cohesion: 0.36
 Nodes (6): main(), run_playwright_full(), run_playwright_specs(), run_vitest_for_changes(), run_vitest_full(), pre-push-frontend.sh script
 
-### Community 363 - "runtime-homes.cjs"
+### Community 364 - "runtime-homes.cjs"
 Cohesion: 0.39
 Nodes (7): expandTilde(), getGlobalConfigDir(), getGlobalSkillDir(), getGlobalSkillDisplayPath(), getGlobalSkillsBase(), os, path
 
-### Community 364 - "enhanced-ai-chat-modal.tsx"
-Cohesion: 0.16
-Nodes (13): ChartComponent(), ChartPlaceholder(), getChartIcon(), getChartTitle(), ConversationRenameDialog(), EnhancedAiChatModal(), EnhancedAiChatModalProps, markdownComponents (+5 more)
-
-### Community 365 - "Api::V1::Auth::SignupController"
+### Community 366 - "Api::V1::Auth::SignupController"
 Cohesion: 0.25
 Nodes (5): Api, Api::V1, Api::V1::Auth, Api::V1::Auth::SignupController, ApiController
 
-### Community 366 - "Api::V1::Auth::TutorialController"
+### Community 367 - "Api::V1::Auth::TutorialController"
 Cohesion: 0.25
 Nodes (5): Api, Api::V1, Api::V1::Auth, Api::V1::Auth::TutorialController, ApiController
 
-### Community 367 - ".update"
+### Community 368 - "iOS App Icon Setup"
+Cohesion: 0.22
+Nodes (8): Icon Sizes, iOS App Icon Setup, iPad Icons, iPhone Icons, Marketing, Regenerating Icons, Source Icon, Validation
+
+### Community 369 - ".update"
 Cohesion: 0.25
 Nodes (5): Api, Api::V1, Api::V1::Goals, Api::V1::Goals::DescriptionsController, ApiController
 
-### Community 368 - "model_registry.rb"
+### Community 370 - "model_registry.rb"
 Cohesion: 0.29
 Nodes (4): Ai, Ai::ModelRegistry, get(), recommend()
 
-### Community 369 - "Ai::Rag::AnalysisResult"
-Cohesion: 0.29
-Nodes (6): Ai, Ai::Rag, Ai::Rag::AnalysisResult, build_analysis(), stub_vector_search_to_return(), vector_result_for()
-
-### Community 370 - "search_scope_filters.rb"
+### Community 371 - "search_scope_filters.rb"
 Cohesion: 0.36
 Nodes (7): Ai, Ai::Rag, Ai::Rag::SearchScopeFilters, date_range_for(), parse_date(), range_for(), vector_filters_for()
 
-### Community 374 - "Auth::Operations::HandleGoogleTokens"
+### Community 375 - "Auth::Operations::HandleGoogleTokens"
 Cohesion: 0.32
 Nodes (4): Auth, Auth::Operations, Auth::Operations::HandleGoogleTokens, Operation
 
@@ -2122,249 +2160,301 @@ Nodes (4): Auth, Auth::Operations, Auth::Operations::HandleGoogleTokens, Operati
 Cohesion: 0.36
 Nodes (4): Contract, Operation, Transactions::Operations::Transfers::PersistCurrencyConversion, Transactions::Operations::Transfers::PersistCurrencyConversion::Contract
 
-### Community 377 - "Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment"
-Cohesion: 0.22
-Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Loans, Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment, Transactions::Operations::Loans::ReverseAccountBalanceForLoanPayment::Contract
+### Community 377 - "Imports::Queries::ListImports"
+Cohesion: 0.32
+Nodes (3): Imports, Imports::Queries, Imports::Queries::ListImports
 
 ### Community 378 - "Imports::Queries::ShowImportReport"
 Cohesion: 0.29
 Nodes (3): Imports, Imports::Queries, Imports::Queries::ShowImportReport
 
-### Community 379 - "Integrations::Payments::Xendit::Error"
+### Community 379 - "usePlatformDetection"
+Cohesion: 0.18
+Nodes (16): OnboardingScreenLayout(), OnboardingScreenLayoutProps, AnimatedSheetShell(), AnimatedSheetShellProps, SHEET_PANEL_EASE, useBodyScrollLock(), getAndroidNavDebugInfo(), usePlatformDetection() (+8 more)
+
+### Community 380 - "Integrations::Payments::Xendit::Error"
 Cohesion: 0.25
 Nodes (5): Integrations, Integrations::Payments, Integrations::Payments::Xendit, Integrations::Payments::Xendit::Error, StandardError
 
-### Community 380 - "tutorialSteps.ts"
-Cohesion: 0.33
-Nodes (6): desktopTutorialSteps, getTutorialConfig(), mobileTutorialSteps, PHP_ONLY_STEP_IDS, TutorialConfig, TutorialStep
+### Community 381 - "org.junit.Test"
+Cohesion: 0.36
+Nodes (4): ExampleInstrumentedTest, ExampleUnitTest, org.junit.runner.RunWith, org.junit.Test
 
-### Community 381 - "category_consensus_filter.rb"
-Cohesion: 0.43
-Nodes (6): Ai, Ai::Rag, Ai::Rag::CategoryConsensusFilter, allowed_categories_from(), category_name(), filter_results()
+### Community 382 - "product-pulse-feedbacks.ts"
+Cohesion: 0.23
+Nodes (9): getMetricCalculation(), MetricCalculationCopy, CalculationPopover(), coerceFeedbackAreaIds(), fetchAdminProductPulseFeedbacks(), normalizeProductPulseFeedbackRow(), ProductPulseFeedbackRow, ProductPulseFeedbacksListResponse (+1 more)
 
-### Community 383 - "Finance::Queries::ListSubscriptionPlans"
+### Community 383 - "toaster-with-settings.tsx"
+Cohesion: 0.31
+Nodes (6): Toaster(), toasterCssVars, ToasterWithSettings(), calculateToastTopOffset(), toastSurfaceClassName, toastSurfaceClassNameImportant
+
+### Community 384 - ".show"
+Cohesion: 0.29
+Nodes (5): Crm, Crm::Serializers, Crm::Serializers::Admin, Crm::Serializers::Admin::AdminTicketDetailSerializer, Base
+
+### Community 385 - "Transactions::Operations::Schedules::CreateSchedule"
+Cohesion: 0.22
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Schedules, Transactions::Operations::Schedules::CreateSchedule, Transactions::Operations::Schedules::CreateSchedule::Contract
+
+### Community 386 - "Transactions::Operations::Transfers::FindOrCreateTransferFeeCategory"
+Cohesion: 0.22
+Nodes (7): Contract, Operation, Transactions, Transactions::Operations, Transactions::Operations::Transfers, Transactions::Operations::Transfers::FindOrCreateTransferFeeCategory, Transactions::Operations::Transfers::FindOrCreateTransferFeeCategory::Contract
+
+### Community 388 - "Finance::Queries::ListSubscriptionPlans"
 Cohesion: 0.33
 Nodes (3): Finance, Finance::Queries, Finance::Queries::ListSubscriptionPlans
 
-### Community 386 - ".check"
+### Community 389 - "category_consensus_filter.rb"
+Cohesion: 0.43
+Nodes (6): Ai, Ai::Rag, Ai::Rag::CategoryConsensusFilter, allowed_categories_from(), category_name(), filter_results()
+
+### Community 392 - ".check"
 Cohesion: 0.33
 Nodes (5): FintrServerReachability, Bool, URL, Void, TimeInterval
 
-### Community 387 - "Sentry"
+### Community 393 - "Sentry"
 Cohesion: 0.29
 Nodes (6): mcp, Sentry, $schema, oauth, type, url
 
-### Community 388 - "product-pulse-feedbacks.ts"
-Cohesion: 0.43
-Nodes (6): coerceFeedbackAreaIds(), fetchAdminProductPulseFeedbacks(), normalizeProductPulseFeedbackRow(), ProductPulseFeedbackRow, ProductPulseFeedbacksListResponse, readField()
-
-### Community 389 - "schema-detect.cjs"
+### Community 394 - "schema-detect.cjs"
 Cohesion: 0.40
 Nodes (4): checkSchemaDrift(), detectSchemaFiles(), ORM_INFO, SCHEMA_PATTERNS
 
-### Community 390 - ".show"
+### Community 395 - ".show"
 Cohesion: 0.33
 Nodes (4): Base, Transactions, Transactions::Serializers, Transactions::Serializers::TransferSerializer
 
-### Community 391 - "Ai"
+### Community 396 - "Ai"
 Cohesion: 0.33
 Nodes (4): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::AgentPromptBuilder
 
-### Community 392 - "Crm"
+### Community 398 - "Crm"
 Cohesion: 0.33
 Nodes (5): Crm, Crm::Serializers, Crm::Serializers::Admin, Crm::Serializers::Admin::AdminTicketListSerializer, Base
 
-### Community 393 - "Spaces::Serializers::DashboardSerializer"
+### Community 399 - "Spaces::Serializers::DashboardSerializer"
 Cohesion: 0.33
 Nodes (4): Base, Spaces, Spaces::Serializers, Spaces::Serializers::DashboardSerializer
 
-### Community 394 - "Transactions::Queries::Transfers::BaseQuery"
-Cohesion: 0.33
-Nodes (4): Transactions, Transactions::Queries, Transactions::Queries::Transfers, Transactions::Queries::Transfers::BaseQuery
-
-### Community 398 - "plugins/navigation-info.ts"
+### Community 404 - "plugins/navigation-info.ts"
 Cohesion: 0.33
 Nodes (3): NavigationInfo, NavigationInfoPlugin, webFallback
 
-### Community 399 - "check-latest-version.cjs"
-Cohesion: 0.50
-Nodes (4): CHECK_REASON, checkLatestVersion(), cp, main()
-
-### Community 402 - "Api"
-Cohesion: 0.40
-Nodes (4): Api, Api::V1, Api::V1::UsersController, ApiController
-
-### Community 403 - "Ai"
-Cohesion: 0.40
-Nodes (4): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Tools
-
-### Community 404 - "Ai::Rag::Agent::Tools::FetchTransaction"
-Cohesion: 0.22
-Nodes (6): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Tools, Ai::Rag::Agent::Tools::FetchTransaction, Tool
-
-### Community 405 - "Ai"
-Cohesion: 0.40
-Nodes (4): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Tools
-
-### Community 406 - "Ai"
-Cohesion: 0.40
-Nodes (4): Ai, Ai::Rag, Ai::Rag::Agent, Ai::Rag::Agent::Tools
-
-### Community 407 - "active_storage.rb"
+### Community 405 - "MJ Rathbun AI Bot"
 Cohesion: 0.47
-Nodes (5): attach_existing_file(), attach_file(), attach_same_blobs_from(), sync_template_files_to_children(), Utils
+Nodes (6): Ars Technica Article, Matplotlib, MJ Rathbun AI Bot, OpenClaw Platform, Scott Shambaugh, Wrathbun Cascade Analysis
 
-### Community 410 - "pre-commit-graphify.sh"
+### Community 406 - "pre-commit-graphify.sh"
 Cohesion: 0.33
 Nodes (4): GRAPHIFY_CHANGED, GRAPHIFY_NO_BACKUP, PYTHONHASHSEED, pre-commit-graphify.sh script
 
-### Community 411 - "Admin"
-Cohesion: 0.40
-Nodes (4): Admin, Admin::Serializers, Admin::Serializers::SpaceForFreeSubscriptionSerializer, Base
+### Community 407 - "check-latest-version.cjs"
+Cohesion: 0.50
+Nodes (4): CHECK_REASON, checkLatestVersion(), cp, main()
 
-### Community 412 - "Admin"
-Cohesion: 0.40
-Nodes (4): Admin, Admin::Serializers, Admin::Serializers::UserSerializer, Base
+### Community 410 - "Api::V1::Finance::SubscriptionsController"
+Cohesion: 0.05
+Nodes (17): Api, Api::V1, Api::V1::Admin, Api::V1::Admin::Finance, Api::V1::Admin::Finance::FreeSubscriptionsController, ApiController, Api, Api::V1 (+9 more)
 
-### Community 413 - "Ai"
+### Community 411 - "Api"
 Cohesion: 0.40
-Nodes (4): Ai, Ai::Serializers, Ai::Serializers::ConversationMessageSerializer, Base
+Nodes (4): Api, Api::V1, Api::V1::UsersController, ApiController
 
-### Community 414 - "Budgets"
-Cohesion: 0.40
-Nodes (4): Budgets, Budgets::Serializers, Budgets::Serializers::MonthlyBudgetsSerializer, Base
+### Community 412 - "vision_client.rb"
+Cohesion: 0.25
+Nodes (8): Ai, Ai::Llm, Ai::Llm::VisionClient, client(), default_model(), openrouter?(), openrouter_chat_extras(), provider()
 
-### Community 415 - "Crm"
-Cohesion: 0.40
-Nodes (4): Crm, Crm::Serializers, Crm::Serializers::TicketListSerializer, Base
+### Community 414 - "Transactions::Queries::Transfers::BaseQuery"
+Cohesion: 0.33
+Nodes (4): Transactions, Transactions::Queries, Transactions::Queries::Transfers, Transactions::Queries::Transfers::BaseQuery
 
-### Community 416 - "Crm"
-Cohesion: 0.40
-Nodes (4): Crm, Crm::Serializers, Crm::Serializers::TicketResponseSerializer, Base
+### Community 415 - "providers.tsx"
+Cohesion: 0.22
+Nodes (7): E2eTestHooks(), Window, defaultSettings, ToastSettings, ToastSettingsContext, ToastSettingsProvider(), Providers()
 
-### Community 417 - "Transactions"
-Cohesion: 0.40
-Nodes (4): Base, Transactions, Transactions::Serializers, Transactions::Serializers::FilteredAccountActivitySerializer
+### Community 416 - "ApplicationCable::Connection"
+Cohesion: 0.24
+Nodes (3): ApplicationCable, ApplicationCable::Connection, Base
 
-### Community 418 - "Transactions"
-Cohesion: 0.40
-Nodes (4): Base, Transactions, Transactions::Serializers, Transactions::Serializers::FilteredCombinedSerializer
-
-### Community 419 - "Transactions"
-Cohesion: 0.40
-Nodes (4): Base, Transactions, Transactions::Serializers, Transactions::Serializers::FilteredTransactionsSerializer
-
-### Community 421 - "Api"
+### Community 417 - "Api"
 Cohesion: 0.40
 Nodes (4): Api, Api::V1, Api::V1::Crm, Api::V1::Crm::Admin
 
-### Community 422 - "download-dump.sh"
+### Community 419 - "Admin"
+Cohesion: 0.40
+Nodes (4): Admin, Admin::Serializers, Admin::Serializers::SpaceForFreeSubscriptionSerializer, Base
+
+### Community 420 - "Admin"
+Cohesion: 0.40
+Nodes (4): Admin, Admin::Serializers, Admin::Serializers::UserSerializer, Base
+
+### Community 421 - "Ai"
+Cohesion: 0.40
+Nodes (4): Ai, Ai::Serializers, Ai::Serializers::ConversationMessageSerializer, Base
+
+### Community 422 - "Budgets"
+Cohesion: 0.40
+Nodes (4): Budgets, Budgets::Serializers, Budgets::Serializers::MonthlyBudgetsSerializer, Base
+
+### Community 423 - "Crm"
+Cohesion: 0.40
+Nodes (4): Crm, Crm::Serializers, Crm::Serializers::TicketListSerializer, Base
+
+### Community 424 - "Crm"
+Cohesion: 0.40
+Nodes (4): Crm, Crm::Serializers, Crm::Serializers::TicketResponseSerializer, Base
+
+### Community 425 - "Transactions"
+Cohesion: 0.40
+Nodes (4): Base, Transactions, Transactions::Serializers, Transactions::Serializers::FilteredAccountActivitySerializer
+
+### Community 426 - "Transactions"
+Cohesion: 0.40
+Nodes (4): Base, Transactions, Transactions::Serializers, Transactions::Serializers::FilteredTransactionsSerializer
+
+### Community 428 - "download-dump.sh"
 Cohesion: 0.60
 Nodes (3): load_env_file(), resolve_ssh_connection(), download-dump.sh script
 
-### Community 424 - "create_free_subscription_spec.rb"
-Cohesion: 0.40
-Nodes (3): Finance, Finance::Operations, Finance::Operations::Subscriptions
-
-### Community 425 - "ExampleInstrumentedTest.java"
-Cohesion: 0.60
-Nodes (3): ExampleInstrumentedTest, Test, RunWith
-
-### Community 427 - "playwright"
+### Community 430 - "playwright"
 Cohesion: 0.40
 Nodes (4): playwright, Sentry, npx, @playwright/mcp
 
-### Community 428 - "eslint.config.mjs"
+### Community 431 - "iOS Ad Hoc Distribution Guide"
 Cohesion: 0.40
-Nodes (4): compat, __dirname, eslintConfig, __filename
+Nodes (5): Create Ad Hoc Provisioning Profile, Creating a Certificate Signing Request (CSR) for Apple Developer, Fix: Provisioning Profile Missing Certificate, iOS Ad Hoc Distribution Guide, Troubleshooting: IPA Won't Install on iPhone
 
-### Community 429 - "build-development.sh"
+### Community 432 - "Offline IndexedDB Decision"
 Cohesion: 0.40
-Nodes (4): CAPACITOR_SERVER_URL, NEXT_PUBLIC_APP_BASE_URL, NEXT_PUBLIC_BE_URL, build-development.sh script
-
-### Community 430 - "regenerate_android_icons_centered.sh"
-Cohesion: 0.70
-Nodes (4): gen_foreground(), gen_icon(), gen_round_icon(), regenerate_android_icons_centered.sh script
+Nodes (5): Offline IndexedDB Decision, Accounts SWR Helpers, Dashboard SWR Helpers, Transactions Index Cache and Helpers, Dexie DB (fintr-local)
 
 ### Community 433 - "expense-breakdown-center-label.tsx"
 Cohesion: 0.50
 Nodes (3): CenterLabelViewBox, ExpenseBreakdownCenterLabel(), ExpenseBreakdownCenterLabelProps
 
-### Community 434 - "pre-commit-backend-rspec.sh"
+### Community 434 - "eslint.config.mjs"
+Cohesion: 0.40
+Nodes (4): compat, __dirname, eslintConfig, __filename
+
+### Community 435 - "build-development.sh"
+Cohesion: 0.40
+Nodes (4): CAPACITOR_SERVER_URL, NEXT_PUBLIC_APP_BASE_URL, NEXT_PUBLIC_BE_URL, build-development.sh script
+
+### Community 436 - "regenerate_android_icons_centered.sh"
+Cohesion: 0.70
+Nodes (4): gen_foreground(), gen_icon(), gen_round_icon(), regenerate_android_icons_centered.sh script
+
+### Community 438 - "markdown-content.tsx"
+Cohesion: 0.50
+Nodes (3): markdownComponents, MarkdownContent(), MarkdownContentProps
+
+### Community 439 - "pre-commit-backend-rspec.sh"
 Cohesion: 0.60
 Nodes (3): be_changes_present(), main(), pre-commit-backend-rspec.sh script
 
-### Community 435 - "artifacts.cjs"
+### Community 440 - "artifacts.cjs"
 Cohesion: 0.67
 Nodes (3): CANONICAL_EXACT, CANONICAL_PATTERNS, isCanonicalPlanningFile()
 
-### Community 437 - "FintrBe"
-Cohesion: 0.50
-Nodes (3): Application, FintrBe, FintrBe::Application
-
-### Community 438 - "ApplicationCable"
+### Community 442 - "ApplicationCable"
 Cohesion: 0.50
 Nodes (3): ApplicationCable, ApplicationCable::Channel, Base
 
-### Community 439 - "template.cjs"
-Cohesion: 0.29
-Nodes (6): cmdTemplateSelect(), fs, { normalizePhaseName, findPhaseInternal, generateSlugInternal, normalizeMd, toPosixPath, output, error }, path, { planningDir }, { reconstructFrontmatter }
-
-### Community 440 - "Transactions::Transfers::CalculatePendingBalancesJob"
-Cohesion: 0.40
-Nodes (3): Transactions, Transactions::Transfers, Transactions::Transfers::CalculatePendingBalancesJob
-
-### Community 441 - ".show"
-Cohesion: 0.29
-Nodes (5): Api, Api::V1, Api::V1::Imports, Api::V1::Imports::SampleTemplatesController, ApiController
-
-### Community 444 - "Api"
-Cohesion: 0.50
-Nodes (3): Api, Api::V1, Api::V1::Admin
-
-### Community 446 - "Api"
-Cohesion: 0.50
-Nodes (3): Api, Api::V1, Api::V1::Crm
-
-### Community 447 - "Api"
+### Community 443 - "Api"
 Cohesion: 0.50
 Nodes (3): Api, Api::V1, Api::V1::Transactions
 
-### Community 450 - "Transactions"
+### Community 444 - "Api"
 Cohesion: 0.50
-Nodes (3): Transactions, Transactions::Operations, Transactions::Operations::Transfers
+Nodes (3): Api, Api::V1, Api::V1::Transactions
 
-### Community 453 - "Finance"
+### Community 445 - "Ai"
+Cohesion: 0.50
+Nodes (3): Ai, Ai::Rag, Ai::Rag::Agent
+
+### Community 446 - "Utils::Dates"
+Cohesion: 0.22
+Nodes (6): Transactions, Transactions::CheckDuplicateTodayJob, Transactions, Transactions::DuplicateJob, Utils, Utils::Dates
+
+### Community 448 - "fintr-fe/package.json"
+Cohesion: 0.50
+Nodes (3): name, private, version
+
+### Community 451 - "Auth::Operations::EnsureAuthenticatedUser"
+Cohesion: 0.24
+Nodes (6): Auth, Auth::Operations, Auth::Operations::EnsureAuthenticatedUser, Auth::Operations::EnsureAuthenticatedUser::Contract, Contract, Operation
+
+### Community 454 - "Finance"
 Cohesion: 0.50
 Nodes (3): Finance, Finance::BillingCycleSerializer, Base
 
-### Community 469 - "migrate-staging-to-timescaledb.sh"
+### Community 470 - "migrate-staging-to-timescaledb.sh"
 Cohesion: 0.83
 Nodes (3): migrate_table(), migrate_with_sql(), migrate-staging-to-timescaledb.sh script
 
-### Community 470 - "Finance"
+### Community 471 - "Apple Sign In Setup Guide"
 Cohesion: 0.50
-Nodes (3): Finance, Finance::Operations, Finance::Operations::Subscriptions
+Nodes (4): How to Get the Apple Key File for Auth0, Apple Sign In Implementation Summary, Apple Sign In Setup Guide, Apple Sign In Troubleshooting: invalid_client Error
+
+### Community 546 - "Android Icon Update Summary"
+Cohesion: 0.67
+Nodes (3): Creating 512x512px Icon from SVG Logo, Google Play Console App Icon Guide, Android Icon Update Summary
+
+### Community 555 - "Matplotlib AI Agent Incident by Miko"
+Cohesion: 1.00
+Nodes (3): Matplotlib AI Agent Incident by Miko, Matplotlib AI Agent Incident Explained, Matplotlib AI Agent Incident February 2026
+
+### Community 679 - ".query"
+Cohesion: 0.22
+Nodes (5): Api, Api::V1, Api::V1::Ai, Api::V1::Ai::RagController, ApiController
+
+### Community 681 - "Finance::Queries::SubscriptionsNeedingCycleCountUpdate"
+Cohesion: 0.31
+Nodes (3): Finance, Finance::Queries, Finance::Queries::SubscriptionsNeedingCycleCountUpdate
+
+### Community 682 - "Imports::Queries::ListImportRecords"
+Cohesion: 0.31
+Nodes (3): Imports, Imports::Queries, Imports::Queries::ListImportRecords
+
+### Community 683 - "lib/navigation-info.ts"
+Cohesion: 0.32
+Nodes (7): applySafeAreaClasses(), getNavigationInfo(), initializeSafeAreas(), NavigationInfo, NavigationInfoResult, SafeAreaClassesResult, SafeAreaResult
+
+### Community 685 - "tutorialSteps.ts"
+Cohesion: 0.33
+Nodes (6): desktopTutorialSteps, getTutorialConfig(), mobileTutorialSteps, PHP_ONLY_STEP_IDS, TutorialConfig, TutorialStep
+
+### Community 686 - "Spaces::Queries::BaseQuery"
+Cohesion: 0.40
+Nodes (3): Spaces, Spaces::Queries, Spaces::Queries::BaseQuery
+
+### Community 689 - "Transactions"
+Cohesion: 0.50
+Nodes (3): Transactions, Transactions::Operations, Transactions::Operations::Transfers
+
+### Community 690 - "Transactions"
+Cohesion: 0.50
+Nodes (3): Transactions, Transactions::Queries, Transactions::Queries::Categories
 
 ## Knowledge Gaps
-- **958 isolated node(s):** `Product scope`, `Structure`, `Backend`, `Frontend`, `Git hooks (shared)` (+953 more)
+- **1100 isolated node(s):** `Problem`, `Goals`, `Non-goals`, `Pipeline (backend + offline FE mirror)`, `Ranking (when more than 3 qualify)` (+1095 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **181 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **194 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Space` connect `spaceAtoms.ts` to `Spaces::Space`, `useAuthApi`?**
-  _High betweenness centrality (0.298) - this node is a cross-community bridge._
-- **Why does `Spaces::OrganizationSpace` connect `Spaces::Space` to `spaceAtoms.ts`?**
-  _High betweenness centrality (0.289) - this node is a cross-community bridge._
-- **Why does `Spaces::Space` connect `Spaces::Space` to `Ai::Queries::Usages::UsageInPeriod`, `Finance::Operations::Subscriptions::CreateSubscription`, `Finance::Operations::Subscriptions::RemoveFreeSubscription`, `Transactions::Operations::Accounts::ShowAccounts`, `Spaces::Operations::DeleteSpace`, `Ai::Rag::Agent::Tools::Auditable`, `MonthlyFinancialSummaries::Operations::UpdateSummary`, `Budgets::Queries::MonthlyBudgets`, `Ai::Rag::Agent::Tools::FetchTransaction`, `Finance::BillingCycle`, `Spaces::Operations::GrantAccess`, `Budgets::Operations::CreateMonthlyBudget`, `ApplicationRecord`, `Finance::Operations::Subscriptions::GetCurrentSubscriptions`, `Imports::Operations::Accounts::FindOrCreateImportAccount`, `Insights::Operations::CreateInsightsData`, `Onboardings::Operations::ShowCurrencyData`, `Ai::Rag::QueryBuilder`, `Insights::Operations::ResolveContext`, `Finance::Operations::Customers::CreateCustomer`, `MonthlyFinancialSummaries::Operations::RecalculateSpaceSummaries`, `Ai::Operations::Usages::ShowUsage`, `Finance::Operations::Subscriptions::CreateFreeSubscription`, `Finance::Operations::Subscriptions::ForceAttemptCycle`, `Finance::Operations::Subscriptions::SimulateCyclePayment`, `Finance::Operations::Customers::FindOrCreateCustomerForSpace`, `Transactions::Account`, `Imports::Operations::GenerateSampleTemplate`, `Spaces::Operations::TransferOwnership`, `CurrentSpace`, `Insights::Queries::MonthlySpending`, `.call`, `Ai::Operations::Receipts::ExtractReceiptDataVision`, `Ai::Operations::Usages::CreateUsage`, `MonthlyFinancialSummaries::Queries::CurrentMonthSummary`, `Spaces::SpaceUser`, `Finance::Operations::Subscriptions::UpdateSubscription`, `Finance::Operations::Subscriptions::CancelSubscription`, `Transactions::Queries::FilteredCombined`, `.call`, `MonthlyFinancialSummaries::Queries::DateRangeSummary`, `Goals::Operations::UpdateGoalDescription`, `Spaces::Operations::RemoveUser`, `Onboarding`, `Spaces::Operations::LeaveSpace`, `Spaces::Operations::ResetData`, `Spaces::Operations::UpdateSpace`, `Transactions::Operations::Accounts::CreateAccount`, `Budgets::Operations::CreateBudget`, `Budgets::Operations::PrepareMonthlyReport`?**
-  _High betweenness centrality (0.203) - this node is a cross-community bridge._
-- **Are the 124 inferred relationships involving `error()` (e.g. with `runCommand()` and `core.cjs`) actually correct?**
-  _`error()` has 124 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `Product scope`, `Structure`, `Backend` to the rest of the system?**
-  _958 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `button.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.03584988962472406 - nodes in this community are weakly interconnected._
-- **Should `ExpenseForm.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.1005260081823495 - nodes in this community are weakly interconnected._
+- **Why does `Space` connect `useSpaceContext.ts` to `bootstrap-local-data.ts`, `Auth::Operations::CreateUserAndSpace`, `Spaces::Operations::CreateOrganizationSpace`?**
+  _High betweenness centrality (0.328) - this node is a cross-community bridge._
+- **Why does `Spaces::OrganizationSpace` connect `Spaces::Operations::CreateOrganizationSpace` to `useSpaceContext.ts`?**
+  _High betweenness centrality (0.319) - this node is a cross-community bridge._
+- **Why does `Spaces::Space` connect `Spaces::Space` to `Spaces::Operations::LeaveSpace`, `Spaces::Operations::ResetData`, `Spaces::Operations::RemoveUser`, `Spaces::Operations::UpdateSpace`, `Budgets::Operations::CreateBudget`, `Transactions::Operations::Accounts::CreateAccount`, `Transactions::Queries::FilteredCombined`, `Budgets::Operations::PrepareMonthlyReport`, `Spaces::Operations::CreateOrganizationSpace`, `Finance::Operations::Subscriptions::RemoveFreeSubscription`, `Finance::Operations::Subscriptions::CreateSubscription`, `Spaces::Operations::DeleteSpace`, `Transactions::Operations::Accounts::ShowAccounts`, `Budgets::Queries::MonthlyBudgets`, `Ai::Operations::Receipts::ExtractReceiptDataVision`, `TransactionEditingChannel`, `Ai::Rag::Agent::Tools::Auditable`, `Budgets::Operations::CreateMonthlyBudget`, `TransactionsChannel`, `Finance::Operations::Subscriptions::GetCurrentSubscriptions`, `Onboardings::Operations::ShowCurrencyData`, `Insights::Operations::CreateInsightsData`, `Ai::Operations::Usages::ShowUsage`, `Ai::Rag::QueryBuilder`, `ApplicationRecord`, `Finance::Operations::Customers::CreateCustomer`, `Transactions::Account`, `Insights::Operations::ResolveContext`, `CurrentSpace`, `Insights::Queries::MonthlySpending`, `Transactions::Queries::TotalsByType`, `Ai::Rag::Agent::Tools::ListAccounts`, `Finance::Operations::Subscriptions::UpdateSubscription`, `Finance::Operations::Subscriptions::CreateFreeSubscription`, `Finance::Operations::Subscriptions::ForceAttemptCycle`, `Finance::Operations::Subscriptions::SimulateCyclePayment`, `MonthlyFinancialSummaries::Operations::RecalculateSpaceSummaries`, `Transactions::Operations::UpdateTransaction`, `Imports::Operations::GenerateSampleTemplate`, `Spaces::Operations::TransferOwnership`, `MonthlyFinancialSummaries::Queries::CurrentMonthSummary`, `.call`, `Onboardings::Operations::CurrencyStep`, `Ai::Operations::Usages::CreateUsage`, `Spaces::Operations::GrantAccess`, `Finance::Operations::Subscriptions::CancelSubscription`, `Spaces::SpaceUser`, `Finance::Operations::Subscriptions::FindOrCreateCustomerForSpace`, `MonthlyFinancialSummaries::Queries::DateRangeSummary`, `.call`, `Finance::BillingCycle`, `Goals::Operations::UpdateGoalDescription`, `Transactions::Operations::Transfers::UpdateTransfer`, `MonthlyFinancialSummaries::Operations::ListForSpace`?**
+  _High betweenness centrality (0.227) - this node is a cross-community bridge._
+- **Are the 193 inferred relationships involving `error()` (e.g. with `runCommand()` and `core.cjs`) actually correct?**
+  _`error()` has 193 INFERRED edges - model-reasoned connections that need verification._
+- **What connects `Problem`, `Goals`, `Non-goals` to the rest of the system?**
+  _1100 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `useAuthApi` be split into smaller, more focused modules?**
+  _Cohesion score 0.028682818156502365 - nodes in this community are weakly interconnected._
+- **Should `cn` be split into smaller, more focused modules?**
+  _Cohesion score 0.02717011287583658 - nodes in this community are weakly interconnected._

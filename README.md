@@ -43,7 +43,7 @@ After cloning, install them once per machine:
 
 ```bash
 brew install prek   # if needed
-uv tool install graphifyy   # knowledge graph CLI (pre-commit rebuilds graphify-out)
+uv tool install "graphifyy[openai]" --python 3.13   # knowledge graph CLI (+ docs semantic extract)
 bin/setup-git-hooks
 ```
 
@@ -66,12 +66,23 @@ graphify path "CreateTransaction" "Space"
 graphify explain "Dry::Operation"
 ```
 
-Initial / full rebuild (code only, local AST, no API key):
+Initial / full rebuild (**code + docs**). Code is local AST; docs/images need an LLM backend:
+
+```bash
+# from repo root; uses OPENAI_API_KEY (or GEMINI/ANTHROPIC/…)
+set -a && source apps/fintr-be/.env && set +a
+graphify extract . --backend openai
+graphify cluster-only .
+```
+
+Code-only rebuild (no API key, skips docs):
 
 ```bash
 graphify extract . --code-only
 graphify cluster-only .
 ```
+
+`.graphifyignore` excludes agent-skill corpora, fixtures, and config YAML so the semantic pass focuses on product docs under `docs/`, `apps/*/docs/`, and READMEs. The pre-commit hook keeps the **code** graph fresh (AST only); after meaningful doc edits, re-run `graphify extract . --backend openai` (or `graphify update .` with a backend configured) and commit the updated `graphify-out/`.
 
 ## Testing
 
