@@ -15,6 +15,8 @@ module Ai
               required(:account_name).value(:string)
               required(:description).value(:string)
               optional(:schedule_type).value(:string)
+              optional(:receipt_merchant_detected).maybe(:string)
+              optional(:entity_name).maybe(:string)
             end
           end
         end
@@ -31,7 +33,8 @@ module Ai
         def call(params)
           params  = step validate(params:)
           payload = step resolve_category_name(params:)
-          step resolve_account_name(params:, payload:)
+          payload = step resolve_account_name(params:, payload:)
+          step resolve_merchant_entity(params:, payload:)
         end
 
         private
@@ -56,6 +59,29 @@ module Ai
 
           payload[:account_name] = resolved_name
           Success(payload)
+        end
+
+        def resolve_merchant_entity(params:, payload:)
+          scanned_name = payload[:receipt_merchant_detected]
+          return Success(payload) if scanned_name.blank?
+          return Success(payload) if payload[:entity_name].present?
+
+          entity_name = step lookup_merchant_alias(
+            space_id: params[:space_id],
+            scanned_name:,
+          )
+          payload[:entity_name] = entity_name if entity_name.present?
+          Success(payload)
+        end
+
+        def lookup_merchant_alias(space_id:, scanned_name:)
+          resolution = Entities::Operations::ResolveMerchantAlias.new.call(
+            space_id:,
+            scanned_name:,
+          )
+          return Success(nil) unless resolution.success?
+
+          Success(resolution.value!)
         end
 
         def lookup_category_name(space_id:, category_name:, transaction_type:)

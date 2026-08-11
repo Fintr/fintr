@@ -88,9 +88,11 @@ module Api
           :min_amount,
           :max_amount,
           :search_query,
+          :entry_type,
           :page,
           category_filters: [],
           account_names: [],
+          tag_ids: [],
         ).to_h
       end
 
@@ -115,7 +117,10 @@ module Api
           :original_currency,
           :exchange_rate,
           :exchange_rate_source,
-          :amount_in_currency
+          :amount_in_currency,
+          :client_mutation_id,
+          :entity_name,
+          tag_ids: [],
         )
       end
 
@@ -141,7 +146,9 @@ module Api
           :original_currency,
           :exchange_rate,
           :exchange_rate_source,
-          :amount_in_currency
+          :amount_in_currency,
+          :entity_name,
+          tag_ids: [],
         )
       end
 

@@ -1,2 +1,7 @@
 #!/usr/bin/env ruby
+# Run Solid Queue inside Puma so `bin/dev` processes jobs without a separate
+# `bin/jobs` process. Production/staging still use a dedicated jobs process
+# (see config/deploy.yml); opt out locally with SOLID_QUEUE_IN_PUMA=0.
+ENV["SOLID_QUEUE_IN_PUMA"] = "1" unless ENV.key?("SOLID_QUEUE_IN_PUMA")
+
 exec "./bin/rails", "server", *ARGV

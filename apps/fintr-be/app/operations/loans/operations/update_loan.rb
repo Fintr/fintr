@@ -30,10 +30,21 @@ module Loans
         entity = step maybe_resolve_entity(params:)
         loan = step persist_loan(loan:, params:, entity:)
         _ = step generate_embedding_async(loan:, params:)
-        loan.reload
+        loan = loan.reload
+        step broadcast_updated(loan:, params:)
       end
 
       private
+
+      def broadcast_updated(loan:, params:)
+        actor = Auth::User.find_by(id: params[:user_id]) || loan.user
+        Transactions::Broadcasts::TransactionChange.updated(
+          transaction: loan,
+          actor:,
+        )
+        Loans::Broadcasts::LoanChange.loan_updated(loan:, actor:)
+        Success(loan)
+      end
 
       def validate(params:)
         contract = Contract.new.call(**params)

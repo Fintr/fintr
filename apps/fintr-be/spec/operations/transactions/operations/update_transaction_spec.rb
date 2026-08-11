@@ -47,6 +47,35 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         expect(updated_transaction.category).to eq(new_category)
       end
 
+      it "broadcasts transaction_updated on the space transactions channel" do
+        expect do
+          described_class.new.call(
+            id: transaction.id,
+            user_id: user.id,
+            space_id: space.id,
+            amount: 150.00,
+            date: transaction.date.to_date,
+            transaction_type: "expense",
+            category_name: new_category.name,
+            account_name: account.name,
+            description: "Updated description",
+            schedule_type: "one_time",
+          )
+        end.to have_broadcasted_to(
+          "transactions:#{space.id}",
+        ).with(
+          hash_including(
+            type: "transaction_updated",
+            spaceId: space.id.to_s,
+            transaction: hash_including(
+              id: transaction.id,
+              description: "Updated description",
+              type: "expense",
+            ),
+          ),
+        )
+      end
+
       context 'when changing from a subcategory to a parent category only' do
         let!(:parent_category) { create(:category, :expense, space:, name: 'Travel') }
         let!(:subcategory) do
@@ -185,7 +214,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         expect(result.value!.account_id).to eq(other_php_account.id)
       end
 
-      it "rejects switching to an account with a different currency" do
+      it "allows switching to an account with a different currency when conversion is provided" do
         result = described_class.new.call(
           id: transaction.id,
           user_id: user.id,
@@ -196,11 +225,89 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           category_name: category.name,
           account_name: eur_account.name,
           description: "Test",
-          schedule_type: "one_time"
+          schedule_type: "one_time",
+          original_currency: "PHP",
+          exchange_rate: 0.016,
+          exchange_rate_source: "manual"
         )
 
-        expect(result).to be_failure
-        expect(result.failure).to include(account_name: "currency cannot be changed")
+        expect(result).to be_success
+        expect(result.value!.account_id).to eq(eur_account.id)
+        expect(result.value!.amount_currency).to eq("EUR")
+        expect(result.value!.amount.amount).to eq(1.6)
+        expect(result.value!.currency_conversion).to be_present
+        expect(result.value!.currency_conversion.original_currency).to eq("PHP")
+        expect(result.value!.currency_conversion.converted_currency).to eq("EUR")
+      end
+
+      it "overwrites an existing currency_conversion on update" do
+        ExchangeRates::CurrencyConversion.create!(
+          convertible: transaction,
+          space:,
+          original_amount_cents: 5000,
+          original_currency: "USD",
+          converted_amount_cents: 10000,
+          converted_currency: "PHP",
+          exchange_rate: 2.0,
+          source: "manual",
+          rate_timestamp: Time.current
+        )
+
+        result = described_class.new.call(
+          id: transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 10.0,
+          date: transaction.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: account.name,
+          description: "Test",
+          schedule_type: "one_time",
+          original_currency: "USD",
+          exchange_rate: 55.0,
+          exchange_rate_source: "manual"
+        )
+
+        expect(result).to be_success
+        conversion = result.value!.currency_conversion
+        expect(conversion.original_currency).to eq("USD")
+        expect(conversion.converted_currency).to eq("PHP")
+        expect(conversion.original_amount.amount).to eq(10.0)
+        expect(conversion.converted_amount.amount).to eq(550.0)
+      end
+
+      it "clears currency_conversion when update books in account currency without FX" do
+        ExchangeRates::CurrencyConversion.create!(
+          convertible: transaction,
+          space:,
+          original_amount_cents: 5000,
+          original_currency: "USD",
+          converted_amount_cents: 10000,
+          converted_currency: "PHP",
+          exchange_rate: 2.0,
+          source: "manual",
+          rate_timestamp: Time.current
+        )
+
+        result = described_class.new.call(
+          id: transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 100.00,
+          date: transaction.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: account.name,
+          description: "Test",
+          schedule_type: "one_time",
+          original_currency: "PHP",
+          exchange_rate: 1.0,
+          exchange_rate_source: "manual"
+        )
+
+        expect(result).to be_success
+        expect(result.value!.currency_conversion).to be_nil
       end
     end
 

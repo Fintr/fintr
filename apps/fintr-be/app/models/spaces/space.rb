@@ -71,5 +71,18 @@ module Spaces
 
       owner_id == user.id
     end
+
+    def member_count
+      space_users.where.not(user_id: nil).count
+    end
+
+    def composition_key
+      case member_count
+      when 0, 1 then "solo"
+      when 2 then "couple"
+      else "household"
+      end
+    end
   end
 end
+

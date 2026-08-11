@@ -25,6 +25,12 @@ module Auth
     has_many :user_activities, dependent: :destroy
     has_many :conversations, class_name: "Ai::Conversation", dependent: :destroy
     has_many :owned_spaces, class_name: "Spaces::Space", foreign_key: :owner_id, dependent: :nullify, inverse_of: :owner
+    has_many :user_achievements,
+             class_name: "Achievements::UserAchievement",
+             dependent: :destroy
+    has_one :gamification_stat,
+            class_name: "Achievements::UserGamificationStat",
+            dependent: :destroy
 
     validates :email,
               presence: true,
@@ -52,6 +58,19 @@ module Auth
 
     def self.normalize_email_for_lookup(email)
       email.to_s.downcase.strip
+    end
+
+    # Maps Auth0/JWT claims into EnsureAuthenticatedUser / SyncUserFromAuthToken params.
+    # Auth0 exposes the avatar as +picture+; we persist it as +photo_url+.
+    def self.attributes_from_token_claims(token_data)
+      claims = token_data.to_h.stringify_keys
+
+      {
+        auth_id: claims["sub"],
+        email: claims["email"],
+        full_name: claims["full_name"].presence || claims["name"].presence,
+        photo_url: claims["picture"].presence || claims["photo_url"].presence,
+      }
     end
 
     before_validation :downcase_email

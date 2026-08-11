@@ -46,6 +46,22 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         expect(transfer.balance_state).to eq("calculated")
       end
 
+      it "broadcasts transaction_created for the transfer on the space channel" do
+        expect do
+          operation.call(valid_params)
+        end.to have_broadcasted_to(
+          "transactions:#{space.id}",
+        ).with(
+          hash_including(
+            type: "transaction_created",
+            spaceId: space.id.to_s,
+            actor: hash_including(
+              userId: user.id.to_s,
+            ),
+          ),
+        )
+      end
+
       it 'updates account balances correctly' do
         result = operation.call(valid_params)
         expect(result).to be_success

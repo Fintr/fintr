@@ -296,12 +296,14 @@ RSpec.describe Transactions::Operations::Loans::DeleteLoan do
         expected_params1 = {
           user_id: user.id.to_s,
           space_id: space.id.to_s,
-          loan_payment_id: loan_payment1.id.to_s
+          loan_payment_id: loan_payment1.id.to_s,
+          skip_broadcast: true,
         }
         expected_params2 = {
           user_id: user.id.to_s,
           space_id: space.id.to_s,
-          loan_payment_id: loan_payment2.id.to_s
+          loan_payment_id: loan_payment2.id.to_s,
+          skip_broadcast: true,
         }
         call_operation
         expect(delete_loan_payment_operation).to have_received(:call).with(expected_params1)

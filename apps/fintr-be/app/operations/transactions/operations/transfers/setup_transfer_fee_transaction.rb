@@ -41,7 +41,7 @@ module Transactions
             amount: transfer.transaction_cost,
             amount_currency: transfer.transaction_cost_currency,
             date: transfer.date,
-            description: "Transfer ID: #{transfer.id}, Transfer fee for: #{transfer.description.presence}",
+            description: transfer.fee_transaction_description,
             balance_state: params[:balance_state],
             schedule_type: transfer.schedule_type, # Required for Expense
             balance_cents: 0, # Will be calculated later

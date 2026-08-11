@@ -11,7 +11,8 @@ module Transactions
              :description,
              :to_account_name,
              :from_account_name,
-             :category_name
+             :category_name,
+             :created_at
 
       # Single display amount: always in space currency (backend decides; frontend reads one field).
       field :amount do |record|
@@ -97,7 +98,13 @@ module Transactions
       end
 
       field :calculated do |record|
-        record.transactable.respond_to?(:balance_state) && record.transactable.balance_state == "calculated"
+        transactable = record.transactable
+
+        if %w[Transactions::Loan Transactions::LoanPayment].include?(record.transactable_type)
+          true
+        else
+          transactable.respond_to?(:balance_state) && transactable.balance_state == "calculated"
+        end
       end
 
       field :subcategory_name do |record|
@@ -106,6 +113,25 @@ module Transactions
         next nil if transactable.subcategory_id.blank?
 
         transactable.subcategory&.name
+      end
+
+      field :category_id do |record|
+        record.category_id
+      end
+
+      field :subcategory_id do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:subcategory_id)
+        next nil if transactable.subcategory_id.blank?
+
+        transactable.subcategory_id
+      end
+
+      field :tags do |record|
+        transactable = record.transactable
+        next [] unless transactable.respond_to?(:tags)
+
+        Transactions::Serializers::TagSerializer.render_as_hash(transactable.tags)
       end
     end
   end

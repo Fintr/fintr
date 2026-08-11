@@ -214,13 +214,18 @@ RSpec.describe Entities::Operations::CreateEntity do
       it 'returns entity_type validation error' do
         result = operation.send(:validate, params: params_with_invalid_entity_type)
         expect(result.failure).to have_key(:entity_type)
-        expect(result.failure[:entity_type]).to include("must be one of: loan")
+        expect(result.failure[:entity_type]).to include("must be one of: loan, transaction")
       end
     end
 
     context 'when entity_type is valid' do
       it 'accepts loan as a valid entity type' do
         result = operation.send(:validate, params: valid_params)
+        expect(result).to be_success
+      end
+
+      it 'accepts transaction as a valid entity type' do
+        result = operation.send(:validate, params: valid_params.merge(entity_type: "transaction"))
         expect(result).to be_success
       end
     end

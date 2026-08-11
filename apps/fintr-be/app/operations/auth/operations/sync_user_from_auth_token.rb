@@ -44,6 +44,7 @@ module Auth
         attrs = params.slice(*token_keys)
         attrs.delete(:full_name) if attrs[:full_name].blank?
         attrs.delete(:email) if attrs[:email].blank?
+        attrs.delete(:photo_url) if attrs[:photo_url].blank?
         attrs
       end
     end

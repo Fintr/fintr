@@ -9,6 +9,8 @@ module Transactions
             required(:id).value(:string)
             required(:space_id).value(:string)
             required(:name).value(:string)
+            optional(:icon).maybe(:string)
+            optional(:color).maybe(:string)
           end
         end
 
@@ -39,7 +41,18 @@ module Transactions
         end
 
         def update_category(params:, category:)
-          category.update(name: params[:name])
+          appearance = Transactions::CategoryAppearance.resolve(
+            name: params[:name],
+            category_type: category.category_type,
+            icon: params[:icon] || category.icon,
+            color: params[:color] || category.color,
+          )
+
+          category.update(
+            name: params[:name],
+            icon: appearance[:icon],
+            color: appearance[:color],
+          )
 
           Success(category)
         rescue ActiveRecord::ActiveRecordError => e

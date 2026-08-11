@@ -5,7 +5,7 @@ module Transactions
     class CategorySerializer < Blueprinter::Base
       identifier :id
 
-      fields :name, :category_type
+      fields :name, :category_type, :icon, :color
 
       field :parent_id do |category|
         category.parent_id

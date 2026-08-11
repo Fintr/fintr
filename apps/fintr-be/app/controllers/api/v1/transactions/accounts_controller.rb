@@ -62,6 +62,16 @@ module Api
           )
         end
 
+        def balance_timeline
+          query = ::Transactions::Queries::AccountBalanceTimeline.call(
+            params: balance_timeline_params,
+          )
+
+          return render_unprocessable_content(details: query.failure) unless query.success?
+
+          render_success(data: query.value!)
+        end
+
         private
 
         def create_params
@@ -95,6 +105,16 @@ module Api
               :page,
               :per_page,
               category_filters: [],
+            ).to_h.merge(account_id: params[:id])
+          )
+        end
+
+        def balance_timeline_params
+          with_current_params(
+            params.permit(
+              :start_date,
+              :end_date,
+              :max_points,
             ).to_h.merge(account_id: params[:id])
           )
         end

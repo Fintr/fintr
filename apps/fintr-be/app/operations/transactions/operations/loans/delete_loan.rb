@@ -25,18 +25,29 @@ module Transactions
         include Dry::Operation::Extensions::ActiveRecord
 
         def call(params)
-          result = transaction do
+          broadcast_rows = nil
+          space_id = nil
+
+          loan = transaction do
             params = step validate(params:)
             loan    = step find_loan(params:)
+            space_id = loan.space_id
+            broadcast_rows = step snapshot_for_broadcast(loan:)
 
             _       = step reverse_initial_account_balance(loan:)
-            _       = step delete_all_loan_payments(loan:)
+            _       = step delete_all_loan_payments(loan:, params:)
             _       = step delete_loan_transaction(loan:)
             _       = step delete_loan(loan:)
 
             loan
           end
-          result
+
+          step broadcast_deleted(
+            space_id:,
+            transactions: broadcast_rows,
+            result: loan,
+            params:,
+          )
         end
 
         private
@@ -49,6 +60,14 @@ module Transactions
           return Failure(loan_id: "not found") unless loan
 
           Success(loan)
+        end
+
+        def snapshot_for_broadcast(loan:)
+          records = [loan] + loan.loan_payments.to_a
+          payloads = Transactions::Broadcasts::TransactionChange.serialize_index_rows(
+            transactions: records,
+          )
+          Success(payloads)
         end
 
         def reverse_initial_account_balance(loan:)
@@ -88,16 +107,17 @@ module Transactions
           Failure(account_name: "failed to update", error: e)
         end
 
-        def delete_all_loan_payments(loan:)
+        def delete_all_loan_payments(loan:, params:)
           # Delete all loan payments using the DeleteLoanPayment operation
           # This ensures proper cleanup (reverse account balances, delete transactions, etc.)
           loan_payments = loan.loan_payments.order(:date).to_a
 
           loan_payments.each do |loan_payment|
             delete_params = {
-              user_id: loan.user_id,
+              user_id: params[:user_id] || loan.user_id,
               space_id: loan.space_id,
-              loan_payment_id: loan_payment.id
+              loan_payment_id: loan_payment.id,
+              skip_broadcast: true,
             }
 
             operation = ::Transactions::Operations::Loans::DeleteLoanPayment.new.call(delete_params)
@@ -122,6 +142,21 @@ module Transactions
           Failure(errors: loan.errors.to_hash, error: e, expected: true)
         rescue StandardError => e
           Failure(error: e.message)
+        end
+
+        def broadcast_deleted(space_id:, transactions:, result:, params:)
+          actor = Auth::User.find_by(id: params[:user_id]) || result&.user
+          Transactions::Broadcasts::TransactionChange.deleted(
+            space_id:,
+            transactions:,
+            actor:,
+          )
+          Loans::Broadcasts::LoanChange.loan_deleted(
+            loan_id: params[:loan_id],
+            space_id:,
+            actor:,
+          )
+          Success(result)
         end
       end
     end

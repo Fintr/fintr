@@ -58,16 +58,7 @@ module Secured
     return nil unless @validation_response&.decoded_token
 
     token_data = @validation_response.decoded_token.token.first
-    auth_id = token_data["sub"]
-    email = token_data["email"]
-    # Auth0 may send "name" or "full_name"; prefer full_name, fall back to name
-    full_name = token_data["full_name"].presence || token_data["name"].presence
-
-    data = {
-      auth_id:,
-      email:,
-      full_name:
-    }
+    data = Auth::User.attributes_from_token_claims(token_data)
 
     result = Auth::Operations::EnsureAuthenticatedUser.new.call(data)
     return render_not_found(details: result.failure) unless result.success?

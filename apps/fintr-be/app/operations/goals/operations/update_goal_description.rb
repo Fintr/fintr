@@ -5,6 +5,7 @@ module Goals
     class UpdateGoalDescription < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
+          optional(:user_id).maybe(:string)
           required(:space_id).filled(:string)
           required(:description).filled(:string)
         end
@@ -22,7 +23,6 @@ module Goals
         space         = step find_space(params:)
         goal_desc     = step find_or_create_goal_description(space:)
         updated_goal  = step update_goal_description(params:, goal_desc:)
-
         updated_goal
       end
 

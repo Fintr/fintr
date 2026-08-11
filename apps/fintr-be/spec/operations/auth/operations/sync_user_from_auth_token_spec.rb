@@ -46,6 +46,33 @@ RSpec.describe Auth::Operations::SyncUserFromAuthToken do
       end
     end
 
+    context "when photo_url is blank in the token" do
+      let(:user) do
+        create(
+          :user,
+          auth_id: "auth0|1",
+          email: "keep@example.com",
+          full_name: "Old Name",
+          photo_url: "https://example.com/existing.jpg",
+        )
+      end
+      let(:params) do
+        {
+          user:,
+          auth_id: user.auth_id,
+          email: user.email,
+          full_name: user.full_name,
+          photo_url: nil,
+        }
+      end
+
+      it "does not clear the existing photo_url" do
+        call_operation
+
+        expect(user.reload.photo_url).to eq("https://example.com/existing.jpg")
+      end
+    end
+
     context "when validation fails" do
       let(:params) do
         {

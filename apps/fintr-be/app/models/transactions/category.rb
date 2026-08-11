@@ -33,6 +33,20 @@ module Transactions
     enum :category_type, { income: "income", expense: "expense" }
 
     validates :name, presence: true
+    validates :icon,
+              format: {
+                with: CategoryAppearance::ICON_FORMAT,
+                message: "must be a valid icon name",
+              },
+              allow_nil: true
+    validates :color,
+              format: {
+                with: CategoryAppearance::COLOR_FORMAT,
+                message: "must be a valid hex color",
+              },
+              allow_nil: true
+
+    before_validation :assign_default_appearance, on: :create
     validates :name,
               uniqueness: {
                 scope: %i[space_id category_type],
@@ -69,16 +83,37 @@ module Transactions
     def self.create_default_categories(space)
       transaction do
         (DEFAULT_INCOME_CATEGORIES + ["Initial Balance", "Income Adjustment"]).each do |name|
-          find_or_create_by(name:, category_type: "income", space:, parent_id: nil)
+          create_default_category(name:, category_type: "income", space:)
         end
 
         (DEFAULT_EXPENSE_CATEGORIES + ["Transfer Fee", "Expense Adjustment"]).each do |name|
-          find_or_create_by(name:, category_type: "expense", space:, parent_id: nil)
+          create_default_category(name:, category_type: "expense", space:)
         end
       end
     end
 
+    def self.create_default_category(name:, category_type:, space:)
+      appearance = CategoryAppearance.resolve(name:, category_type:)
+
+      find_or_create_by(name:, category_type:, space:, parent_id: nil) do |category|
+        category.icon = appearance[:icon]
+        category.color = appearance[:color]
+      end
+    end
+
     private
+
+    def assign_default_appearance
+      appearance = CategoryAppearance.resolve(
+        name:,
+        category_type:,
+        icon:,
+        color:,
+      )
+
+      self.icon = appearance[:icon] if icon.blank?
+      self.color = appearance[:color] if color.blank?
+    end
 
     def parent_must_be_root
       return if parent_id.blank?

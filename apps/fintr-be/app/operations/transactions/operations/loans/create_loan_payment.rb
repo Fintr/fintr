@@ -44,10 +44,31 @@ module Transactions
             _ = step update_account_balance(loan_payment:, loan:, account:)
             loan_payment.reload
           end
-          loan_payment
+          step broadcast_created(loan_payment:, params:)
+          step try_unlock_achievements(loan_payment:, params:)
         end
 
         private
+
+        def try_unlock_achievements(loan_payment:, params:)
+          Achievements::EventHook.evaluate(
+            user_id: params[:user_id],
+            space_id: params[:space_id],
+            event: "loan_payment_created",
+          )
+          Success(loan_payment)
+        end
+
+        def broadcast_created(loan_payment:, params:)
+          actor = Auth::User.find_by(id: params[:user_id]) || loan_payment.loan&.user
+          Transactions::Broadcasts::TransactionChange.created(
+            transaction: loan_payment,
+            actor:,
+          )
+          Loans::Broadcasts::LoanChange.loan_payment_created(loan_payment:, actor:)
+          Loans::Broadcasts::LoanChange.loan_updated(loan: loan_payment.loan.reload, actor:)
+          Success(loan_payment)
+        end
 
         def find_loan(params:)
           loan = Transactions::Loan.find_by(id: params[:loan_id], space_id: params[:space_id])

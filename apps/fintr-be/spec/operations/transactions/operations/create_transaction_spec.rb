@@ -51,6 +51,50 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         expect(result.schedule_type).to eq('one_time')
         expect(result.balance_state).to eq('calculated')
       end
+
+      context 'when entity_name is provided' do
+        let(:income_params) do
+          super().merge(entity_name: 'Acme Corp')
+        end
+
+        it 'associates a transaction entity' do
+          result = call_operation.value!
+          expect(result.entity_name).to eq('Acme Corp')
+        end
+
+        it 'creates a transaction-type entity' do
+          expect { call_operation }.to change {
+            Entities::Entity.where(entity_type: 'transaction', full_name: 'Acme Corp').count
+          }.by(1)
+        end
+
+        it 'includes entity_name in the broadcast payload' do
+          expect { call_operation }.to have_broadcasted_to(
+            "transactions:#{space.id}",
+          ).with(
+            hash_including(
+              transaction: hash_including(
+                entityName: 'Acme Corp',
+              ),
+            ),
+          )
+        end
+      end
+
+      it "broadcasts transaction_created on the space transactions channel" do
+        expect { call_operation }.to have_broadcasted_to(
+          "transactions:#{space.id}",
+        ).with(
+          hash_including(
+            type: "transaction_created",
+            spaceId: space.id.to_s,
+            transaction: hash_including(
+              description: "Salary payment",
+              type: "income",
+            ),
+          ),
+        )
+      end
     end
 
     context "when original_currency matches account currency (manual rate still sent)" do
@@ -844,6 +888,44 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           result = call_operation
           expect(result.failure).to include(:installment_period)
         end
+      end
+    end
+
+    context "with client_mutation_id idempotency" do
+      let(:mutation_id) { SecureRandom.uuid }
+      let(:create_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 40.0,
+          date: Date.current,
+          description: "Idempotent expense",
+          transaction_type: "expense",
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: "one_time",
+          client_mutation_id: mutation_id,
+        }
+      end
+
+      it "creates once and returns the same transaction on replay" do
+        first = operation.call(create_params)
+        expect(first).to be_success
+
+        expect do
+          second = operation.call(create_params)
+          expect(second).to be_success
+          expect(second.value!.id).to eq(first.value!.id)
+        end.not_to change(Transactions::Expense, :count)
+      end
+
+      it "creates distinct rows for distinct client_mutation_id values" do
+        first = operation.call(create_params)
+        second = operation.call(create_params.merge(client_mutation_id: SecureRandom.uuid))
+
+        expect(first).to be_success
+        expect(second).to be_success
+        expect(second.value!.id).not_to eq(first.value!.id)
       end
     end
   end

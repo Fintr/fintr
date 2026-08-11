@@ -60,10 +60,13 @@ module Api
 
       def monthly_spending
         render_insight_section do |context|
+          period_end = (context[:end_date] || Time.zone.today).to_date
           Insights::Queries::MonthlySpending.call(
             params: {
               space_id: context[:space].id,
-              date_from: 6.months.ago.beginning_of_month.to_date
+              # Six months ending on the filtered month (inclusive).
+              date_from: (period_end.beginning_of_month - 5.months),
+              date_to: period_end.end_of_month
             }
           )
         end

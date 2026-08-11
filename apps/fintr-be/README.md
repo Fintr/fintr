@@ -16,6 +16,8 @@ Fintr is a personal finance application with heavy integration with AI. Fintr wi
 - Deployment: Kamal
 - Github Actions for CI/CD
 
+**Realtime transactions:** ActionCable `TransactionsChannel` + `Transactions::Broadcasts::TransactionChange` (including transfer fees). See **[docs/transactions_realtime.md](docs/transactions_realtime.md)**. Frontend offline/local-first pairing: `apps/fintr-fe/docs/mobile/OFFLINE_INDEXEDDB_SPIKE.md`.
+
 ## Installation
 1. See `.ruby-version` for ruby versioning
 2. Install the ruby version. We prefer using [asdf](https://asdf-vm.com/) and [asdf-ruby](https://github.com/asdf-vm/asdf-ruby)
@@ -29,11 +31,11 @@ Fintr is a personal finance application with heavy integration with AI. Fintr wi
 10. Run `psql -U fintr_admin -d postgres`
 11. Run `ALTER USER fintr_rails WITH SUPERUSER;`
 12. Run `rails db:create db:migrate db:seed` in project root
-13. Run these commands normally
+13. Run the server (Solid Queue runs inside Puma via `bin/dev`):
 ```
-rails s
-in another terminal: bin/jobs start
+bin/dev
 ```
+To run jobs in a separate process instead: `SOLID_QUEUE_IN_PUMA=0 bin/dev` in one terminal and `bin/jobs start` in another.
 
 ## How to get included in the seed
 

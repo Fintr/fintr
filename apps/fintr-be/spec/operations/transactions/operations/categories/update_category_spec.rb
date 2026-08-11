@@ -22,13 +22,15 @@ RSpec.describe Transactions::Operations::Categories::UpdateCategory do
 
       before do
         allow(Transactions::Category).to receive(:find_by).with(id: category.id, space_id: space.id).and_return(category)
-        allow(category).to receive(:update).with(name: "New Category Name").and_return(true)
+        allow(category).to receive(:update).and_return(true)
       end
 
       it { is_expected.to be_success }
 
-      it 'calls update on the category with the new name' do
-        expect(category).to receive(:update).with(name: "New Category Name")
+      it 'calls update on the category with the new attributes' do
+        expect(category).to receive(:update).with(
+          hash_including(name: "New Category Name"),
+        )
         call_operation
       end
 

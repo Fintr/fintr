@@ -10,6 +10,7 @@ module Transactions
           optional(:date_start).value(:date)
           optional(:date_end).value(:date)
           optional(:balance_state).value(:string)
+          optional(:suppress_actor_toast).value(:bool)
         end
 
         rule(:transaction_id) do
@@ -36,23 +37,29 @@ module Transactions
         params            = step validate(params:)
         params            = step add_default_params(params:)
         transaction       = step find_transaction(params:)
-        return Success(nil) if transaction.one_time?
+        return Success([]) if transaction.one_time?
 
         dates             = step fetch_dates(params:, transaction:)
         last_transaction  = step fetch_last_transaction(params:, transaction:)
-        transactions      = step bulk_duplicate_transactions(
+        created           = step bulk_duplicate_transactions(
                                   params:,
                                   parent_transaction: transaction,
                                   last_transaction:,
                                   dates:
                                  )
-        transactions
+        step broadcast_created_children(
+               created_transactions: created,
+               parent_transaction: transaction,
+               params:,
+             )
+        created
       end
 
       def add_default_params(params:)
         params[:date_start] ||= Time.zone.tomorrow
         params[:date_end] ||= (Time.zone.today + 1.month)
         params[:balance_state] ||= "pending"
+        params[:suppress_actor_toast] = false if params[:suppress_actor_toast].nil?
         Success(params)
       end
 
@@ -137,6 +144,8 @@ module Transactions
           validate_uniqueness: true
         )
 
+        # Prefer the imported records (IDs filled by activerecord-import).
+        # Re-querying by date is unreliable across Asia/Manila vs UTC storage.
         if records.any? && template_transaction.files.attached?
           records.each do |record|
             Utils::ActiveStorage.attach_same_blobs_from(
@@ -146,9 +155,19 @@ module Transactions
           end
         end
 
-        Success()
+        Success(records)
       rescue StandardError => e
         account.invalid? ? Failure(account: account.errors.to_hash, error: e) : Failure(error: e)
+      end
+
+      def broadcast_created_children(created_transactions:, parent_transaction:, params:)
+        Transactions::Broadcasts::TransactionChange.created_many(
+          transactions: Array(created_transactions),
+          actor: parent_transaction.user,
+          suppress_actor_toast: params[:suppress_actor_toast],
+        )
+
+        Success(created_transactions)
       end
     end
   end

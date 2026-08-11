@@ -5,6 +5,8 @@ module Transactions
     class TotalsByType < Transactions::Queries::BaseQuery
       include CombinedAccountJoinFilter
       include CombinedCategoryFilter
+      include CombinedEntryTypeFilter
+      include CombinedTagFilter
 
       def initialize(relation: Transactions::Combined.non_draft, params: {})
         super(relation:, params:)
@@ -28,8 +30,10 @@ module Transactions
         relation      = step by_balance_state(relation, params)
         relation      = step by_amount(relation, params)
         relation      = step by_category(relation, params)
+        relation      = step by_tag(relation, params)
         relation      = step by_search_query(relation, params)
         relation      = step by_account(relation, params)
+        relation      = step by_entry_type(relation, params)
         totals        = step calculate_totals(relation)
         totals
       end
@@ -49,12 +53,20 @@ module Transactions
         apply_combined_category_filters(relation, params)
       end
 
+      def by_tag(relation, params)
+        apply_combined_tag_filters(relation, params)
+      end
+
       def category_filter_blank?(params)
         combined_category_filter_blank?(params)
       end
 
       def by_account(relation, params)
         filter_combined_relation_by_account(relation, params)
+      end
+
+      def by_entry_type(relation, params)
+        apply_combined_entry_type_filter(relation, params)
       end
 
       def by_search_query(relation, params)

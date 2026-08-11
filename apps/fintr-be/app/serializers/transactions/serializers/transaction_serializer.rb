@@ -61,6 +61,10 @@ module Transactions
         record.account.name
       end
 
+      field :entity_name do |record|
+        record.entity_name
+      end
+
       field :type do |record|
         type_mapping = {
           "Transactions::Income" => "income",
@@ -100,6 +104,10 @@ module Transactions
             created_at: file.created_at
           }
         end
+      end
+
+      field :tags do |record|
+        Transactions::Serializers::TagSerializer.render_as_hash(record.tags)
       end
     end
   end
