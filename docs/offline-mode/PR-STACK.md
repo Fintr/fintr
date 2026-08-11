@@ -2,6 +2,8 @@
 
 **Integration branch:** `offline-mode` (merge target for every PR below — **not** `main`)
 
+> **Branch naming:** Use `offline-mode-<slice>` (hyphen), not `offline-mode/<slice>` — Git cannot create `offline-mode/foo` while branch `offline-mode` exists.
+
 **Workflow:** Each PR targets `offline-mode`. After merge, pull `offline-mode` locally and branch the next PR from it. `main` stays untouched until the full stack is tested on `offline-mode`.
 
 ```mermaid
@@ -184,6 +186,18 @@ Do **not** include in offline PRs (separate or discard):
 - `DESIGN.md`, `PRODUCT.md` (unless product explicitly wants them)
 - `.ruby-lsp/**`, `.claude/settings.local.json`
 - `packages/fintr-domain/node_modules/`
+
+---
+
+## Current status (local)
+
+| Branch | State |
+|--------|--------|
+| `offline-mode` | Integration target; PR stack doc committed; ~500 files still in working tree |
+| `offline-mode-fintr-domain` | **PR 1 ready** — FIN-197 `@fintr/domain` |
+| `refs/backup/pre-split-offline-mode` | Full dirty-tree snapshot before split |
+
+**Next:** Push `offline-mode`, open PR 1 (`offline-mode-fintr-domain` → `offline-mode`), merge, then slice PR 2+ from updated `offline-mode`.
 
 ---
 
