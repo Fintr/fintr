@@ -32,7 +32,8 @@ RSpec.describe Entities::Serializers::EntitySerializer do
     expected_keys = [
       :id,
       :full_name,
-      :entity_type
+      :entity_type,
+      :photo_url
     ]
     expect(serialized_hash.keys).to match_array(expected_keys)
   end
@@ -70,6 +71,7 @@ RSpec.describe Entities::Serializers::EntitySerializer do
       expect(serialized_hash).to have_key(:id)
       expect(serialized_hash).to have_key(:full_name)
       expect(serialized_hash).to have_key(:entity_type)
+      expect(serialized_hash).to have_key(:photo_url)
     end
   end
 end

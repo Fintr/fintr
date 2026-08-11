@@ -135,8 +135,7 @@ RSpec.describe Transactions::Operations::Transfers::SetupTransferFeeTransaction 
         expect(result).to be_success
 
         fee_transaction = result.value!
-        expected_description = "Transfer ID: #{transfer.id}, Transfer fee for: #{transfer.description}"
-        expect(fee_transaction.description).to eq(expected_description)
+        expect(fee_transaction.description).to eq(transfer.fee_transaction_description)
       end
 
       it 'sets correct balance_state on fee transaction' do
@@ -247,8 +246,12 @@ RSpec.describe Transactions::Operations::Transfers::SetupTransferFeeTransaction 
         expect(result).to be_success
 
         fee_transaction = result.value!
-        expected_description = "Transfer ID: #{transfer_no_description.id}, Transfer fee for: "
-        expect(fee_transaction.description).to eq(expected_description)
+        expect(fee_transaction.description).to eq(
+          transfer_no_description.fee_transaction_description
+        )
+        expect(fee_transaction.description).to eq(
+          "Transfer fee, amount: #{transfer_no_description.amount.amount.to_i}"
+        )
       end
     end
 

@@ -14,12 +14,21 @@ module Transactions
     belongs_to :parent, class_name: "Transactions::Transaction", optional: true
     belongs_to :effective_parent, class_name: "Transactions::Transaction", optional: true
     belongs_to :transfer, class_name: "Transactions::Transfer", optional: true
+    belongs_to :entity, class_name: "Entities::Entity", optional: true
     has_one :loan_payment, class_name: "Transactions::LoanPayment", foreign_key: :transaction_id, dependent: :nullify
     has_many :children, class_name: "Transactions::Transaction", foreign_key: :parent_id, dependent: :nullify
     has_many :effective_children, class_name: "Transactions::Transaction", foreign_key: :effective_parent_id, dependent: :nullify
 
     has_many_attached :files
     has_one :rag_embedding, class_name: "Ai::RagEmbedding", as: :embeddable, dependent: :destroy
+    has_many :transaction_taggings,
+             class_name: "Transactions::TransactionTagging",
+             dependent: :destroy,
+             inverse_of: :tagged_transaction
+    has_many :tags,
+             through: :transaction_taggings,
+             class_name: "Transactions::Tag",
+             source: :tag
 
     monetize :amount_cents, allow_nil: false
     monetize :balance_cents, allow_nil: true
@@ -42,6 +51,10 @@ module Transactions
 
     def value
       amount
+    end
+
+    def entity_name
+      entity&.full_name
     end
 
     # Amount and currency to show in UI: always in space currency. Memoized so serializer can use once.

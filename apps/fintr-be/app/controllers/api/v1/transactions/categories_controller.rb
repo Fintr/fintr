@@ -25,7 +25,15 @@ module Api
 
           return render_unprocessable_content(details: operation.failure) unless operation.success?
 
-          render_success(data: { id: operation.value!.id, name: operation.value!.name }, message: "Category updated successfully")
+          render_success(
+            data: {
+              id: operation.value!.id,
+              name: operation.value!.name,
+              icon: operation.value!.icon,
+              color: operation.value!.color,
+            },
+            message: "Category updated successfully"
+          )
         end
 
         def destroy
@@ -68,11 +76,11 @@ module Api
         private
 
         def create_params
-          params.permit(:name, :category_type, :parent_id)
+          params.permit(:name, :category_type, :parent_id, :icon, :color)
         end
 
         def update_params
-          params.permit(:id, :name)
+          params.permit(:id, :name, :icon, :color)
         end
 
         def destroy_params

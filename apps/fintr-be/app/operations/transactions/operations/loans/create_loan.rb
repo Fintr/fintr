@@ -57,10 +57,31 @@ module Transactions
           end
           _ = step attach_file(loan:, params:)
           _ = step generate_embedding_async(loan:)
-          loan.reload
+          loan = loan.reload
+          step broadcast_created(loan:, params:)
+          step try_unlock_achievements(loan:, params:)
         end
 
         private
+
+        def try_unlock_achievements(loan:, params:)
+          Achievements::EventHook.evaluate(
+            user_id: params[:user_id],
+            space_id: loan.space_id,
+            event: "loan_created",
+          )
+          Success(loan)
+        end
+
+        def broadcast_created(loan:, params:)
+          actor = Auth::User.find_by(id: params[:user_id]) || loan.user
+          Transactions::Broadcasts::TransactionChange.created(
+            transaction: loan,
+            actor:,
+          )
+          Loans::Broadcasts::LoanChange.loan_created(loan:, actor:)
+          Success(loan)
+        end
 
         def find_or_create_entity(params:)
           entity = Entities::Entity.find_or_create_by!(

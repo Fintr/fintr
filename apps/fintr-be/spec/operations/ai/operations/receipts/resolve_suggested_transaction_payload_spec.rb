@@ -137,5 +137,37 @@ RSpec.describe Ai::Operations::Receipts::ResolveSuggestedTransactionPayload, typ
         expect(result.failure).to include(account_name: "not found", expected: true)
       end
     end
+
+    context "when a saved merchant alias exists for the scanned receipt merchant" do
+      let!(:merchant_entity) do
+        create(:entity, space:, entity_type: "transaction", full_name: "Dairy Queen")
+      end
+
+      before do
+        create(
+          :merchant_alias,
+          space:,
+          entity: merchant_entity,
+          scanned_name: "corporation a",
+        )
+      end
+
+      let(:valid_params) do
+        {
+          space_id: space.id,
+          suggested_transaction_payload: base_payload.merge(
+            description: "CORPORATION A",
+            receipt_merchant_detected: "CORPORATION A",
+          ),
+        }
+      end
+
+      it "resolves entity_name from the saved alias" do
+        result = operation.call(valid_params)
+
+        expect(result).to be_success
+        expect(result.value![:entity_name]).to eq("Dairy Queen")
+      end
+    end
   end
 end

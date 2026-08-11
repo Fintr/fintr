@@ -65,15 +65,20 @@ module ApplicationCable
 
     def find_or_create_user(auth_id, token_data)
       key = Digest::MD5.hexdigest(auth_id)
-      Rails.cache.fetch("current_user_#{key}", expires_in: 1.hour) do
-        data = {
-          auth_id: auth_id,
-          email: token_data["email"],
-          full_name: token_data["full_name"].presence || token_data["name"].presence
-        }
+      data = Auth::User.attributes_from_token_claims(token_data)
+
+      user = Rails.cache.fetch("current_user_#{key}", expires_in: 1.hour) do
         result = Auth::Operations::EnsureAuthenticatedUser.new.call(data)
         result.success? ? result.value! : nil
       end
+      return nil if user.blank?
+
+      # Cache can return a stale user without picture; sync claims so photo_url
+      # is available for presence avatars.
+      sync_result = Auth::Operations::SyncUserFromAuthToken.new.call(
+        data.merge(user:),
+      )
+      sync_result.success? ? sync_result.value! : user
     end
 
     def reject_unauthorized_connection

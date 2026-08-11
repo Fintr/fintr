@@ -244,4 +244,39 @@ RSpec.describe 'Api::V1::Entities', type: :request do
       end
     end
   end
+
+  describe 'GET /api/v1/entities/:id' do
+    let!(:entity) { create(:entity, space:, full_name: 'Jollibee', entity_type: 'transaction') }
+
+    context 'when the request is successful' do
+      before do
+        get api_v1_entity_path(entity), params: { space_code: space.code }, headers: headers
+      end
+
+      it 'returns an HTTP status_ok' do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'returns entity detail payload' do
+        json_response = JSON.parse(response.body)
+        expect(json_response['success']).to be(true)
+        expect(json_response['data']['entity']['fullName']).to eq('Jollibee')
+        expect(json_response['data']['transactions']).to eq([])
+        expect(json_response['data']['loans']).to eq([])
+        expect(json_response['data']['loanPayments']).to eq([])
+      end
+    end
+
+    context 'when entity is not found' do
+      before do
+        get api_v1_entity_path(SecureRandom.uuid),
+            params: { space_code: space.code },
+            headers: headers
+      end
+
+      it 'returns not found' do
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+  end
 end

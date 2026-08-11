@@ -105,7 +105,8 @@ module Transactions
           transaction:,
           balance_state: "calculated",
           date_start: (transaction.date + 1.day).beginning_of_day.to_datetime,
-          date_end: Time.zone.today
+          date_end: Time.zone.today,
+          suppress_actor_toast: true,
         )
       end
 
@@ -115,7 +116,8 @@ module Transactions
           transaction:,
           balance_state: "pending",
           date_start: Time.zone.tomorrow,
-          date_end: Time.zone.today + 1.month
+          date_end: Time.zone.today + 1.month,
+          suppress_actor_toast: true,
         )
       end
     end

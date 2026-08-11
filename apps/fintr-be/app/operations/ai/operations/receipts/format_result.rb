@@ -125,7 +125,8 @@ module Ai
             category_name: extract_category_value(extracted_data),
             account_name: extract_account_value(extracted_data),
             description: build_description(extracted_data),
-            schedule_type: "one_time"
+            schedule_type: "one_time",
+            receipt_merchant_detected: extract_merchant_value(extracted_data),
           }
 
           Success(payload)
@@ -177,13 +178,19 @@ module Ai
         def build_description(extracted_data)
           return "" if extracted_data.nil?
 
-          merchant = extracted_data.dig(:merchant, :value)
+          merchant = extract_merchant_value(extracted_data)
 
           if merchant.present?
             "#{merchant}"
           else
             ""
           end
+        end
+
+        def extract_merchant_value(extracted_data)
+          return nil if extracted_data.nil?
+
+          extracted_data.dig(:merchant, :value).presence
         end
 
         def prepare_formatted_result(extracted_data:, confidence_summary:, validation_flags:, raw_data:, suggested_payload:)

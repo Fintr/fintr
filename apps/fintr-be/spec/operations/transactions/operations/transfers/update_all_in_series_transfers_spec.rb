@@ -482,7 +482,10 @@ RSpec.describe Transactions::Operations::Transfers::UpdateAllInSeriesTransfers d
             fee_transaction.reload
             expect(fee_transaction.amount).to eq(Money.from_amount(20, "PHP"))
             expect(fee_transaction.date).to eq(Time.zone.today + 1.day)
-            expect(fee_transaction.description).to eq("Transfer fee for: Updated transfer")
+            expect(fee_transaction.description).to eq(
+              fee_transaction.transfer.fee_transaction_description
+            )
+            expect(fee_transaction.description).to include("Transfer fee for: Updated transfer")
 
             expect(update_balance_operation).to have_received(:call).with(transaction: kind_of(Transactions::Transaction))
           end

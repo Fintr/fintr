@@ -25,6 +25,8 @@ module Transactions
           optional(:account_id).maybe(:string)
           optional(:account_name).maybe(:string)
           optional(:description).value(:string)
+          optional(:entity_name).maybe(:string)
+          optional(:receipt_merchant_detected).maybe(:string)
 
           # Schedule type and related fields
           required(:schedule_type).value(:string)
@@ -51,6 +53,10 @@ module Transactions
 
           # When true (e.g. new account opening), marks the initial-balance transaction; amount is in account currency.
           optional(:initial_balance).value(:bool)
+
+          # Client-generated UUID for idempotent offline / retry creates (FIN-195).
+          optional(:client_mutation_id).value(:string)
+          optional(:tag_ids).array(:string)
         end
 
         rule(:original_currency, :exchange_rate) do
@@ -124,41 +130,82 @@ module Transactions
       end
 
       include FailureHandler
+      include Concerns::ResolvesTransactionEntity
+      include Concerns::SyncsTransactionTags
       include Dry::Operation::Extensions::ActiveRecord
 
       def call(params)
-        params             = step validate(params: params)
+        params = step validate(params:)
+        transaction = step perform_create(params:)
+        step broadcast_created(transaction:, params:)
+        step try_unlock_achievements(transaction:)
+      end
 
-        skip_embedding     = params[:skip_embedding]
-        transaction = transaction do
-          assignment         = step resolve_category_assignment(params:)
-          account            = step find_account(params: params)
-          conversion_data    = step prepare_conversion(params:, account:)
-          skip_calculation   = step find_skip_calculation(params: params)
-          params             = step transform_params(
-                                    params:,
-                                    assignment:,
-                                    account:,
-                                    conversion_data:,
-                                    )
-          params             = step adjust_amount(params: params)
-          tx                 = step create_transaction_record(params:)
-          _                  = step create_conversion_record(
-                                    transaction: tx,
-                                    conversion_data:,
-                                    )
-          _                  = step calculate_balance(
-                                    transaction: tx,
-                                    skip_calculation:,
-                                    params:,
-                                    )
-          tx                 = step create_schedule(
-                                    transaction: tx,
-                                    params:,
-                                    ) if params[:schedule_type] != "one_time"
-          _                  = step create_past_transactions(transaction: tx) if params[:schedule_type] != "one_time"
-          _                  = step create_future_transactions(transaction: tx) if params[:schedule_type] != "one_time"
-          tx
+      private
+
+      def try_unlock_achievements(transaction:)
+        Achievements::EventHook.evaluate(
+          user_id: transaction.user_id,
+          space_id: transaction.space_id,
+          event: "transaction_created",
+        )
+        Success(transaction)
+      end
+
+      def broadcast_created(transaction:, params:)
+        Transactions::Broadcasts::TransactionChange.created(
+          transaction:,
+          actor: transaction.user,
+          origin_client_mutation_id: params[:client_mutation_id].presence,
+        )
+        Success(transaction)
+      end
+
+      def perform_create(params:)
+        existing = find_idempotent_transaction(params:)
+        return Success(existing) if existing
+
+        skip_embedding = params[:skip_embedding]
+
+        begin
+          transaction = transaction do
+            params             = step resolve_transaction_entity(params:)
+            assignment         = step resolve_category_assignment(params:)
+            account            = step find_account(params: params)
+            conversion_data    = step prepare_conversion_data(params:, account:)
+            skip_calculation   = step find_skip_calculation(params: params)
+            params             = step transform_params(
+                                      params:,
+                                      assignment:,
+                                      account:,
+                                      conversion_data:,
+                                      )
+            params             = step adjust_amount(params: params)
+            tx                 = step create_transaction_record(params:)
+            _                  = step create_conversion_record(
+                                      transaction: tx,
+                                      conversion_data:,
+                                      )
+            _                  = step calculate_balance(
+                                      transaction: tx,
+                                      skip_calculation:,
+                                      params:,
+                                      )
+            tx                 = step create_schedule(
+                                      transaction: tx,
+                                      params:,
+                                      ) if params[:schedule_type] != "one_time"
+            _                  = step create_past_transactions(transaction: tx) if params[:schedule_type] != "one_time"
+            _                  = step create_future_transactions(transaction: tx) if params[:schedule_type] != "one_time"
+            _                  = step persist_client_mutation(params:, transaction: tx)
+            _                  = step sync_transaction_tags(transaction: tx, params:, apply_default: true)
+            tx
+          end
+        rescue ActiveRecord::RecordNotUnique
+          replayed = find_idempotent_transaction(params:)
+          return Success(replayed) if replayed
+
+          raise
         end
 
         transaction          = step attach_file(
@@ -172,10 +219,40 @@ module Transactions
                                     transaction:,
                                     skip_embedding:,
                                     )
-        transaction.reload
+        _                    = step remember_merchant_alias(
+                                    params:,
+                                    transaction:,
+                                    )
+        Success(transaction.reload)
       end
 
-      private
+      def find_idempotent_transaction(params:)
+        client_mutation_id = params[:client_mutation_id].to_s
+        return nil if client_mutation_id.blank?
+
+        mutation = Sync::ClientMutation.find_by(
+          space_id: params[:space_id],
+          client_mutation_id:,
+        )
+        return nil unless mutation
+
+        Transactions::Transaction.find_by(id: mutation.resource_id)
+      end
+
+      def persist_client_mutation(params:, transaction:)
+        client_mutation_id = params[:client_mutation_id].to_s
+        return Success(transaction) if client_mutation_id.blank?
+
+        Sync::ClientMutation.create!(
+          space_id: params[:space_id],
+          client_mutation_id:,
+          resource_type: transaction.class.name,
+          resource_id: transaction.id,
+          response_snapshot: { "id" => transaction.id },
+        )
+        Success(transaction)
+      end
+
 
       def resolve_category_assignment(params:)
         if params[:category_id].present?
@@ -229,87 +306,10 @@ module Transactions
         Success(params[:skip_calculation] ? true : false)
       end
 
-      # When frontend sends original_currency + exchange_rate, amount is in original currency; convert to account.
-      # When initial_balance is true (e.g. new account), amount is already in account currency; no conversion.
-      # When amount_in_currency matches the account currency, amount is already in account currency; no conversion.
-      # When amount_in_currency matches the space currency (or is omitted), amount is treated as space currency
-      # and converted to the account when account currency differs from the space.
-      def prepare_conversion(params:, account:)
-        space = account.space
-        space_currency = space.currency.presence || "PHP"
-        account_currency = account.balance_currency.presence || "PHP"
-        amount_param = params[:amount]
-
-        if params[:initial_balance]
-          return book_amount_without_fx(amount_param:, account_currency:)
-        end
-
-        if params[:original_currency].present? && params[:exchange_rate].present?
-          if params[:original_currency].to_s == account_currency.to_s
-            return book_amount_without_fx(amount_param:, account_currency:)
-          end
-
-          original_amount = BigDecimal(amount_param.to_s)
-          exchange_rate = BigDecimal(params[:exchange_rate].to_s)
-          converted_amount = (original_amount * exchange_rate).round(2)
-          source = params[:exchange_rate_source].presence || "manual"
-
-          return Success(
-            needs_conversion: true,
-            original_amount: original_amount.to_f,
-            original_currency: params[:original_currency],
-            converted_amount: converted_amount.to_f,
-            converted_currency: account_currency,
-            exchange_rate: exchange_rate.to_f,
-            source: source,
-            rate_timestamp: Time.current
-          )
-        end
-
-        if params[:amount_in_currency].present?
-          incoming = normalize_currency_code(params[:amount_in_currency])
-          allowed_account = normalize_currency_code(account_currency)
-          allowed_space = normalize_currency_code(space_currency)
-
-          unless incoming == allowed_account || incoming == allowed_space
-            return Failure(
-              amount_in_currency: [
-                "must match the account currency (#{account_currency}) or the space currency (#{space_currency})"
-              ]
-            )
-          end
-
-          if incoming == allowed_account
-            return book_amount_without_fx(amount_param:, account_currency:)
-          end
-        end
-
-        if account_currency == space_currency
-          return book_amount_without_fx(amount_param:, account_currency:)
-        end
-
-        # Rate: 1 account unit = rate space units. So amount_in_space = amount_account * rate => amount_account = amount_in_space / rate.
-        rate_result = step ::ExchangeRates::Operations::FetchRate.new.call(
-          from_currency: account_currency,
-          to_currency: space_currency,
-          space_id: params[:space_id],
-          date: params[:date]
-        )
-        rate_account_to_space = rate_result[:rate]
-        raw_source = rate_result[:source]
-        source = raw_source.presence_in(%w[auto manual recent]) || "manual"
-        amount_account = (BigDecimal(amount_param.to_s) / rate_account_to_space).round(2)
-        rate_space_to_account = (BigDecimal("1") / rate_account_to_space).round(10)
-
-        Success(
-          needs_conversion: true,
-          original_amount: amount_param.to_f,
-          original_currency: space_currency,
-          converted_amount: amount_account.to_f,
-          converted_currency: account_currency,
-          exchange_rate: rate_space_to_account.to_f,
-          source: source,
-          rate_timestamp: Time.current
+      def prepare_conversion_data(params:, account:)
+        ::Transactions::Operations::PrepareCurrencyConversion.new.call(
+          params:,
+          account:
         )
       end
 
@@ -342,18 +342,6 @@ module Transactions
         Success(params)
       end
 
-      def book_amount_without_fx(amount_param:, account_currency:)
-        Success(
-          needs_conversion: false,
-          amount: amount_param,
-          amount_currency: account_currency
-        )
-      end
-
-      def normalize_currency_code(code)
-        code.to_s.strip.upcase
-      end
-
       def create_conversion_record(transaction:, conversion_data:)
         step ::Transactions::Operations::PersistCurrencyConversion.new.call(
           transaction:,
@@ -375,7 +363,15 @@ module Transactions
         type_klass = category.income? ? Transactions::Income : Transactions::Expense
         type_klass = Transactions::Draft if params[:draft]
 
-        transaction_params = params.except(:file, :draft, :draft_id, :file_id, :account)
+        transaction_params = params.except(
+          :file,
+          :draft,
+          :draft_id,
+          :file_id,
+          :account,
+          :client_mutation_id,
+          :tag_ids,
+        )
         transaction = type_klass.new(**transaction_params)
 
         transaction.save!
@@ -408,7 +404,8 @@ module Transactions
           transaction_id: transaction.id,
           balance_state: "calculated",
           date_start: (transaction.date + 1.day).to_datetime, # NOTE: somehow need .to_datetime to avoid errors
-          date_end: Time.zone.today
+          date_end: Time.zone.today,
+          suppress_actor_toast: true,
         )
       end
 
@@ -420,7 +417,8 @@ module Transactions
           transaction_id: transaction.id,
           balance_state: "pending",
           date_start: Time.zone.tomorrow,
-          date_end: Time.zone.today + 1.month
+          date_end: Time.zone.today + 1.month,
+          suppress_actor_toast: true,
         )
       end
 
@@ -461,6 +459,20 @@ module Transactions
           embeddable_type: transaction.class.name,
           space_id: transaction.space_id
         )
+        Success(transaction)
+      end
+
+      def remember_merchant_alias(params:, transaction:)
+        return Success(transaction) if params[:draft]
+        return Success(transaction) if params[:receipt_merchant_detected].blank?
+        return Success(transaction) if transaction.entity_id.blank?
+
+        Entities::Operations::UpsertMerchantAlias.new.call(
+          space_id: params[:space_id],
+          scanned_name: params[:receipt_merchant_detected],
+          entity_id: transaction.entity_id,
+        )
+
         Success(transaction)
       end
     end

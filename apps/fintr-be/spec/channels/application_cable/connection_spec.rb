@@ -10,7 +10,8 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
     {
       "sub" => auth_id,
       "email" => user.email,
-      "full_name" => user.full_name
+      "full_name" => user.full_name,
+      "picture" => "https://example.com/avatar.jpg",
     }
   end
   let(:decoded_token) { Auth::Token.new([token_data]) }
@@ -175,7 +176,8 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
           hash_including(
             auth_id: auth_id,
             email: token_data["email"],
-            full_name: token_data["full_name"]
+            full_name: token_data["full_name"],
+            photo_url: token_data["picture"],
           )
         ).and_return(success_result)
       end
@@ -185,7 +187,8 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
           hash_including(
             auth_id: auth_id,
             email: token_data["email"],
-            full_name: token_data["full_name"]
+            full_name: token_data["full_name"],
+            photo_url: token_data["picture"],
           )
         )
         connection.find_or_create_user(auth_id, token_data)

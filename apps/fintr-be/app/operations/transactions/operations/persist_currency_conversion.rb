@@ -4,6 +4,7 @@ module Transactions
   module Operations
     # Persists currency conversion metadata for a transaction (create or update).
     # Delegates to ExchangeRates::Operations::UpsertCurrencyConversion.
+    # When FX is not needed, destroys any existing currency_conversion row.
     class PersistCurrencyConversion < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
@@ -30,8 +31,7 @@ module Transactions
         end
       end
 
-      # Create flow: pass transaction and conversion_data from prepare_conversion.
-      # Update flow: pass transaction, params, and account (conversion fields derived from params).
+      # Create / update with prepared conversion_data, or legacy update via params + account.
       def call(**params)
         validated = step validate(**params)
         transaction = validated[:transaction]
@@ -58,7 +58,9 @@ module Transactions
       end
 
       def persist_from_conversion_data(transaction:, conversion_data:)
-        return Success(transaction) unless conversion_data[:needs_conversion]
+        unless conversion_data[:needs_conversion]
+          return clear_currency_conversion(transaction:)
+        end
 
         result = ::ExchangeRates::Operations::UpsertCurrencyConversion.new.call(
           **conversion_data.slice(
@@ -72,7 +74,7 @@ module Transactions
           ).merge(convertible: transaction, space_id: transaction.space_id)
         )
         if result.failure? && result.failure[:original_currency] == ["cannot be the same as converted_currency"]
-          Success(transaction)
+          clear_currency_conversion(transaction:)
         elsif result.failure?
           result
         else
@@ -83,8 +85,9 @@ module Transactions
       def persist_from_params(transaction:, params:, account:)
         original_currency = params[:original_currency]
         rate = params[:exchange_rate]
-        return Success(transaction) if original_currency.blank? || rate.blank?
-        return Success(transaction) if original_currency == account.balance_currency
+        if original_currency.blank? || rate.blank? || original_currency == account.balance_currency
+          return clear_currency_conversion(transaction:)
+        end
 
         converted_amount = params[:amount]
         converted_currency = account.balance_currency
@@ -103,6 +106,12 @@ module Transactions
             source:
           }
         )
+        Success(transaction)
+      end
+
+      def clear_currency_conversion(transaction:)
+        transaction.currency_conversion&.destroy!
+        transaction.association(:currency_conversion).reset
         Success(transaction)
       end
     end

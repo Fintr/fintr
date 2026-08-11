@@ -15,6 +15,7 @@ module Insights
         params do
           required(:space_id).value(:string)
           required(:date_from).value(:date)
+          optional(:date_to).maybe(:date)
         end
       end
 
@@ -49,11 +50,12 @@ module Insights
         )
         return Success([]) if earliest_transaction_date.blank?
 
+        # Trends end at the selected period's month (not always "today").
+        end_date = (params[:date_to] || Time.zone.today).to_date.end_of_month
         start_date = [
           params[:date_from].beginning_of_month.to_date,
           earliest_transaction_date.beginning_of_month
         ].max
-        end_date = Time.zone.today.end_of_month.to_date
         return Success([]) if start_date > end_date
 
         rows = []

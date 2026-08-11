@@ -9,7 +9,8 @@ module Ai
 
     enum :ai_type, {
       pure_ai_ocr: "pure_ai_ocr",
-      ai_chat: "ai_chat"
+      ai_chat: "ai_chat",
+      tag_style_image: "tag_style_image",
     }
     enum :status, {
       pending: "pending",

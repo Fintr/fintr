@@ -220,7 +220,7 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
         expect(result.value!.to_account_id).to eq(other_to.id)
       end
 
-      it "rejects a from account whose currency differs from the original from leg" do
+      it "allows a from account whose currency differs when an exchange rate is provided" do
         usd_from = create(
           :account,
           space:,
@@ -229,14 +229,23 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
           balance: Money.from_amount(100, "USD")
         )
 
-        params = valid_params.merge(from_account_name: usd_from.name)
+        params = valid_params.merge(
+          from_account_name: usd_from.name,
+          amount: 10.0,
+          exchange_rate: 55.0,
+          exchange_rate_source: "manual"
+        )
 
         result = operation.call(params)
-        expect(result).to be_failure
-        expect(result.failure).to include(from_account_name: "currency cannot be changed")
+        expect(result).to be_success
+        expect(result.value!.from_account_id).to eq(usd_from.id)
+        expect(result.value!.amount.amount).to eq(550.0)
+        expect(result.value!.currency_conversion).to be_present
+        expect(result.value!.currency_conversion.original_currency).to eq("USD")
+        expect(result.value!.currency_conversion.converted_currency).to eq("PHP")
       end
 
-      it "rejects a to account whose currency differs from the original to leg" do
+      it "allows a to account whose currency differs when an exchange rate is provided" do
         eur_to = create(
           :account,
           space:,
@@ -245,11 +254,38 @@ RSpec.describe Transactions::Operations::Transfers::UpdateTransfer do
           balance: Money.from_amount(50, "EUR")
         )
 
-        params = valid_params.merge(to_account_name: eur_to.name)
+        params = valid_params.merge(
+          to_account_name: eur_to.name,
+          amount: 100.0,
+          exchange_rate: 0.016,
+          exchange_rate_source: "manual"
+        )
 
         result = operation.call(params)
-        expect(result).to be_failure
-        expect(result.failure).to include(to_account_name: "currency cannot be changed")
+        expect(result).to be_success
+        expect(result.value!.to_account_id).to eq(eur_to.id)
+        expect(result.value!.amount.amount).to eq(1.6)
+        expect(result.value!.currency_conversion).to be_present
+        expect(result.value!.currency_conversion.original_currency).to eq("PHP")
+        expect(result.value!.currency_conversion.converted_currency).to eq("EUR")
+      end
+
+      it "clears currency_conversion when from and to accounts share a currency" do
+        ExchangeRates::CurrencyConversion.create!(
+          convertible: transfer,
+          space:,
+          original_amount_cents: 10000,
+          original_currency: "USD",
+          converted_amount_cents: 550000,
+          converted_currency: "PHP",
+          exchange_rate: 55.0,
+          source: "manual",
+          rate_timestamp: Time.current
+        )
+
+        result = operation.call(valid_params)
+        expect(result).to be_success
+        expect(result.value!.currency_conversion).to be_nil
       end
 
       it 'updates account balances when transfer is calculated' do

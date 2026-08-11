@@ -41,4 +41,27 @@ namespace :categories do
     puts "Spaces with errors: #{error_count}"
     puts "="*50
   end
+
+  desc "Backfill icon and color for existing categories"
+  task backfill_appearance: :environment do
+    puts "Backfilling category icon and color..."
+
+    updated_count = 0
+
+    Transactions::Category.find_each do |category|
+      appearance = Transactions::CategoryAppearance.resolve(
+        name: category.name,
+        category_type: category.category_type,
+        icon: category.icon,
+        color: category.color,
+      )
+
+      next if category.icon == appearance[:icon] && category.color == appearance[:color]
+
+      category.update!(icon: appearance[:icon], color: appearance[:color])
+      updated_count += 1
+    end
+
+    puts "Updated #{updated_count} categories."
+  end
 end

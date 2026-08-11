@@ -27,6 +27,10 @@ development:
     class: Finance::RevertExpiredPromoPricingJob
     queue: default
     schedule: every day
+  trim_space_change_log:
+    class: Sync::TrimChangeLogJob
+    queue: default
+    schedule: every day
 
 staging:
   check_duplicate_today:
@@ -61,6 +65,10 @@ staging:
     class: Finance::RevertExpiredPromoPricingJob
     queue: default
     schedule: "30 1 * * * Asia/Manila"
+  trim_space_change_log:
+    class: Sync::TrimChangeLogJob
+    queue: default
+    schedule: "0 2 * * * Asia/Manila"
 
 production:
   check_duplicate_today:
@@ -95,3 +103,7 @@ production:
     class: Finance::RevertExpiredPromoPricingJob
     queue: default
     schedule: "30 1 * * * Asia/Manila"
+  trim_space_change_log:
+    class: Sync::TrimChangeLogJob
+    queue: default
+    schedule: "0 2 * * * Asia/Manila"

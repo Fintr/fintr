@@ -31,6 +31,12 @@ RSpec.describe Spaces::Operations::UpdateSpace, type: :operation do
           expect(result).to be_success
         end.not_to have_enqueued_job(MonthlyFinancialSummaries::RecalculateSpaceSummariesJob)
       end
+
+      it "does not broadcast a currency change event" do
+        expect do
+          expect(result).to be_success
+        end.not_to have_broadcasted_to("spaces:#{space.id}")
+      end
     end
 
     context "when the space currency changes" do
@@ -42,6 +48,22 @@ RSpec.describe Spaces::Operations::UpdateSpace, type: :operation do
           expect(result.value!.currency).to eq("SSP")
         end.to have_enqueued_job(MonthlyFinancialSummaries::RecalculateSpaceSummariesJob)
           .with(space_id: space.id.to_s)
+      end
+
+      it "broadcasts a space_currency_changed event to space members" do
+        expect do
+          expect(result).to be_success
+        end.to have_broadcasted_to("spaces:#{space.id}").with(
+          hash_including(
+            type: "space_currency_changed",
+            spaceId: space.id.to_s,
+            currency: "SSP",
+            actor: hash_including(
+              userId: user.id.to_s,
+              authId: user.auth_id.to_s,
+            ),
+          ),
+        )
       end
     end
 

@@ -69,11 +69,13 @@ module Transactions
           transfer = transaction do
             from_account    = step find_account(params:, account_name: params[:from_account_name])
             to_account      = step find_account(params:, account_name: params[:to_account_name])
-            params, conversion_data = step handle_currency_conversion(
+            prepared        = step prepare_conversion_data(
               params:,
               from_account:,
               to_account:
             )
+            params = prepared[:params]
+            conversion_data = prepared[:conversion_data]
             params          = step transform_params(params:, from_account:, to_account:)
             transfer        = step create_transfer(params:, conversion_data:)
             _               = step create_conversion_record(transfer:, conversion_data:)
@@ -88,10 +90,38 @@ module Transactions
           _ = step sync_series_children_files(transfer:)
           _ = step update_monthly_summary(transfer:)
           _ = step generate_embedding_async(transfer:)
-          transfer.reload
+          transfer = transfer.reload
+          step broadcast_created(transfer:, params:)
+          step try_unlock_achievements(transfer:, params:)
         end
 
         private
+
+        def try_unlock_achievements(transfer:, params:)
+          Achievements::EventHook.evaluate(
+            user_id: params[:user_id],
+            space_id: transfer.space_id,
+            event: "transfer_created",
+          )
+          Success(transfer)
+        end
+
+        def broadcast_created(transfer:, params:)
+          actor = Auth::User.find_by(id: params[:user_id]) || transfer.user
+          records = [transfer] + transfer.fee_transactions.to_a
+          if records.size > 1
+            Transactions::Broadcasts::TransactionChange.created_many(
+              transactions: records,
+              actor:,
+            )
+          else
+            Transactions::Broadcasts::TransactionChange.created(
+              transaction: transfer,
+              actor:,
+            )
+          end
+          Success(transfer)
+        end
 
         def find_account(params:, account_name:)
           account = Transactions::Account.kept.find_by!(name: account_name, space_id: params[:space_id])
@@ -100,52 +130,12 @@ module Transactions
           Failure(account_name: "'#{account_name}' not found", error: e, expected: true)
         end
 
-        def handle_currency_conversion(params:, from_account:, to_account:)
-          from_currency = from_account.balance_currency
-          to_currency = to_account.balance_currency
-          original_amount = params[:amount]
-
-          if from_currency == to_currency
-            # No conversion: pass minimal data so we never build or persist a currency_conversion.
-            conversion_data = {
-              needs_conversion: false,
-              original_amount:,
-              original_currency: from_currency,
-              converted_amount: original_amount,
-              converted_currency: from_currency,
-              exchange_rate: 1.0,
-              rate_timestamp: Time.current
-            }
-            return Success([params.merge(amount_currency: from_currency), conversion_data])
-          end
-
-          rate = params[:exchange_rate]
-          unless rate
-            rate_result = step ::ExchangeRates::Operations::FetchRate.new.call(
-              from_currency:,
-              to_currency:,
-              space_id: params[:space_id],
-              date: params[:date]
-            )
-            rate = rate_result[:rate]
-            params = params.merge(exchange_rate_source: rate_result[:source])
-          end
-
-          converted_amount = (BigDecimal(original_amount.to_s) * rate).round(2)
-          conversion_data = {
-            needs_conversion: true,
-            original_amount:,
-            original_currency: from_currency,
-            converted_amount:,
-            converted_currency: to_currency,
-            exchange_rate: rate,
-            source: params[:exchange_rate_source] || "manual",
-            rate_timestamp: Time.current
-          }
-          Success([
-            params.merge(amount_currency: to_currency, amount: converted_amount),
-            conversion_data
-          ])
+        def prepare_conversion_data(params:, from_account:, to_account:)
+          ::Transactions::Operations::Transfers::PrepareCurrencyConversion.new.call(
+            params:,
+            from_account:,
+            to_account:
+          )
         end
 
         def create_conversion_record(transfer:, conversion_data:)
@@ -267,7 +257,8 @@ module Transactions
             transfer_id: transfer.id,
             balance_state: "calculated",
             date_start: (transfer.date + 1.day).to_datetime, # NOTE: somehow need .to_datetime to avoid errors
-            date_end: Time.zone.today
+            date_end: Time.zone.today,
+            suppress_actor_toast: true,
           })
         end
 
@@ -279,7 +270,8 @@ module Transactions
             transfer_id: transfer.id,
             balance_state: "pending",
             date_start: Time.zone.tomorrow,
-            date_end: Time.zone.today + 1.month
+            date_end: Time.zone.today + 1.month,
+            suppress_actor_toast: true,
           })
         end
 

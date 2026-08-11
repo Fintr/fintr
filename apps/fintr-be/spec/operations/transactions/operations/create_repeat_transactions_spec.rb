@@ -74,6 +74,18 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
         expect { call_operation }.to change(Transactions::Transaction, :count).by(4)
       end
 
+      it 'broadcasts all created children in one realtime message' do
+        expect do
+          call_operation
+        end.to have_broadcasted_to("transactions:#{space.id}").exactly(1).times.with(
+          hash_including(
+            type: "transaction_created",
+            spaceId: space.id.to_s,
+            transactions: satisfy { |rows| rows.is_a?(Array) && rows.size == 4 },
+          ),
+        )
+      end
+
       it 'correctly sets attributes on the new transactions' do
         call_operation
         new_transactions = Transactions::Transaction.where(parent_id: transaction.id)

@@ -50,6 +50,25 @@ RSpec.describe Transactions::Operations::PersistCurrencyConversion do
           expect(unwrap_result(result)).to eq(transaction)
           expect(upsert_op).not_to have_received(:call)
         end
+
+        it "destroys an existing currency_conversion when needs_conversion is false" do
+          ExchangeRates::CurrencyConversion.create!(
+            convertible: transaction,
+            space:,
+            original_amount_cents: 10000,
+            original_currency: "USD",
+            converted_amount_cents: 550000,
+            converted_currency: "PHP",
+            exchange_rate: 55.0,
+            source: "manual",
+            rate_timestamp: Time.current
+          )
+
+          result = operation.call(transaction:, conversion_data:)
+
+          expect(result).to be_success
+          expect(transaction.reload.currency_conversion).to be_nil
+        end
       end
 
       context "when needs_conversion is true" do
@@ -128,6 +147,33 @@ RSpec.describe Transactions::Operations::PersistCurrencyConversion do
           expect(result).to be_success
           expect(unwrap_result(result)).to eq(transaction)
           expect(upsert_op).not_to have_received(:call)
+        end
+
+        it "destroys an existing currency_conversion" do
+          ExchangeRates::CurrencyConversion.create!(
+            convertible: transaction,
+            space:,
+            original_amount_cents: 10000,
+            original_currency: "USD",
+            converted_amount_cents: 550000,
+            converted_currency: "PHP",
+            exchange_rate: 55.0,
+            source: "manual",
+            rate_timestamp: Time.current
+          )
+
+          result = operation.call(
+            transaction:,
+            params: {
+              original_currency: "PHP",
+              exchange_rate: 1.0,
+              amount: 100
+            },
+            account:
+          )
+
+          expect(result).to be_success
+          expect(transaction.reload.currency_conversion).to be_nil
         end
       end
 

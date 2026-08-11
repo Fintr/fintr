@@ -97,7 +97,12 @@ module Transactions
       end
 
       field :calculated do |record|
-        record.activitable.respond_to?(:balance_state) && record.activitable.balance_state == "calculated"
+        if %w[loan_disbursement loan_payment].include?(record.activity_kind)
+          true
+        else
+          record.activitable.respond_to?(:balance_state) &&
+            record.activitable.balance_state == "calculated"
+        end
       end
 
       field :subcategory_name do |record|

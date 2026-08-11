@@ -64,6 +64,38 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
     expect(serialized_hash[:category_name]).to eq(record_category_name)
   end
 
+  it 'includes category_id from the combined_transactions row' do
+    category_id = SecureRandom.uuid
+    record_with_category = OpenStruct.new(
+      record.to_h.merge(category_id: category_id),
+    )
+
+    expect(
+      described_class.render_as_hash(record_with_category)[:category_id],
+    ).to eq(category_id)
+  end
+
+  it 'includes subcategory_id when present on the transactable' do
+    subcategory_id = SecureRandom.uuid
+    transactable_with_sub = OpenStruct.new(
+      files: files,
+      loan_payment: loan_payment,
+      subcategory_id: subcategory_id,
+      subcategory: OpenStruct.new(name: 'Groceries'),
+    )
+    record_with_sub = OpenStruct.new(
+      record.to_h.merge(
+        transactable: transactable_with_sub,
+        transactable_type: 'Transactions::Expense',
+      ),
+    )
+
+    serialized = described_class.render_as_hash(record_with_sub)
+
+    expect(serialized[:subcategory_id]).to eq(subcategory_id)
+    expect(serialized[:subcategory_name]).to eq('Groceries')
+  end
+
   it 'includes the amount from value' do
     expect(serialized_hash[:amount]).to eq(record_amount)
   end
@@ -431,6 +463,52 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
     it 'uses original amount and currency for booked_* (list toggle), signed like the expense' do
       expect(serialized_hash[:booked_amount]).to eq(-1000)
       expect(serialized_hash[:booked_amount_currency]).to eq('PHP')
+    end
+  end
+
+  describe ':calculated field' do
+    context 'when transactable_type is Transactions::Loan' do
+      let(:record) do
+        OpenStruct.new(
+          transactable_id: record_id,
+          date: record_date,
+          description: record_description,
+          to_account_name: record_to_account_name,
+          from_account_name: record_from_account_name,
+          category_name: record_category_name,
+          value: new_mock_money.call(record_amount),
+          balance: new_mock_money.call(record_balance),
+          transactable_type: "Transactions::Loan",
+          in_series?: false,
+          transactable: transactable
+        )
+      end
+
+      it 'returns true' do
+        expect(serialized_hash[:calculated]).to be(true)
+      end
+    end
+
+    context 'when transactable_type is Transactions::LoanPayment' do
+      let(:record) do
+        OpenStruct.new(
+          transactable_id: record_id,
+          date: record_date,
+          description: record_description,
+          to_account_name: record_to_account_name,
+          from_account_name: record_from_account_name,
+          category_name: record_category_name,
+          value: new_mock_money.call(record_amount),
+          balance: new_mock_money.call(record_balance),
+          transactable_type: "Transactions::LoanPayment",
+          in_series?: false,
+          transactable: transactable
+        )
+      end
+
+      it 'returns true' do
+        expect(serialized_hash[:calculated]).to be(true)
+      end
     end
   end
 end

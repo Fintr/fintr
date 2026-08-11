@@ -9,6 +9,10 @@ module Transactions
     belongs_to :entity, class_name: "Entities::Entity"
     belongs_to :account, class_name: "Transactions::Account"
 
+    def entity_name
+      entity&.full_name
+    end
+
     has_many :loan_payments, dependent: :destroy
     has_many_attached :files
     has_one :rag_embedding, class_name: "Ai::RagEmbedding", as: :embeddable, dependent: :destroy

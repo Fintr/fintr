@@ -56,10 +56,21 @@ module Transactions
 
             loan_payment.reload
           end
-          loan_payment
+          step broadcast_updated(loan_payment:, params:)
         end
 
         private
+
+        def broadcast_updated(loan_payment:, params:)
+          actor = Auth::User.find_by(id: params[:user_id]) || loan_payment.loan&.user
+          Transactions::Broadcasts::TransactionChange.updated(
+            transaction: loan_payment,
+            actor:,
+          )
+          Loans::Broadcasts::LoanChange.loan_payment_updated(loan_payment:, actor:)
+          Loans::Broadcasts::LoanChange.loan_updated(loan: loan_payment.loan.reload, actor:)
+          Success(loan_payment)
+        end
 
         def find_loan_payment(params:)
           loan_payment = Transactions::LoanPayment.joins(:loan)

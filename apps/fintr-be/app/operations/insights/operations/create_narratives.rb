@@ -28,9 +28,9 @@ module Insights
         params = step validate(params:)
         params = step enrich_with_summary(params:)
         metrics = step build_metrics(params:)
-        insights = step build_insights(params:, metrics:)
-        headline = step build_headline(params:, metrics:)
         data_quality = step build_data_quality(params:)
+        insights = step build_insights(params:, metrics:, data_quality:)
+        headline = step build_headline(params:, metrics:, insights:)
         {
           headline:,
           metrics:,
@@ -170,20 +170,39 @@ module Insights
         Success(metrics)
       end
 
-      def build_insights(params:, metrics:)
-        cards = []
+      def build_insights(params:, metrics:, data_quality:)
         space = params[:space]
         summary = params[:summary_structure]
         income = decimal_from(summary[:total_income])
-        expenses = decimal_from(summary[:total_expenses])
         net = decimal_from(summary[:net_savings])
+        savings_rate = income.zero? ? 0.to_d : (net / income * 100)
 
-        cards << savings_insight(
+        profile_result = Insights::Operations::BuildCustomerProfiles.new.call(
+          space:,
+          transactions: params[:transactions],
+          prior_transactions: params[:prior_transactions],
+          budget_records: params[:budget_records],
+          summary_structure: summary,
           is_business: params[:is_business],
-          income:,
-          net:,
-          savings_rate: income.zero? ? 0 : (net / income * 100)
+          period_days: params[:period_days],
+          start_date: params[:start_date],
+          end_date: params[:end_date],
+          completeness_tier: data_quality[:completeness_tier]
         )
+        return profile_result unless profile_result.success?
+
+        profile_cards = Array(profile_result.value!)
+        profile_keys = profile_cards.map { |card| card[:profile_key] }
+
+        cards = []
+        unless profile_keys.include?("strong_saver")
+          cards << savings_insight(
+            is_business: params[:is_business],
+            income:,
+            net:,
+            savings_rate:
+          )
+        end
 
         cards.concat(
           budget_insights(
@@ -192,12 +211,16 @@ module Insights
             space: params[:space]
           )
         )
-        cards << debt_insight(
-          space: params[:space],
-          summary_structure: params[:summary_structure],
-          period_days: params[:period_days],
-          is_business: params[:is_business]
-        )
+
+        unless profile_keys.include?("debt_crusher")
+          cards << debt_insight(
+            space: params[:space],
+            summary_structure: params[:summary_structure],
+            period_days: params[:period_days],
+            is_business: params[:is_business]
+          )
+        end
+
         cards.concat(category_spike_insights(
           transactions: params[:transactions],
           prior_transactions: params[:prior_transactions],
@@ -210,17 +233,30 @@ module Insights
         end
 
         cards.compact!
-        cards.sort_by! { |c| severity_rank(c[:severity]) }
-        Success(cards.first(MAX_INSIGHTS))
+
+        remaining_slots = MAX_INSIGHTS - [profile_cards.length, MAX_INSIGHTS].min
+        non_profile = cards.sort_by { |c| severity_rank(c[:severity]) }.first([remaining_slots, 0].max)
+        merged = profile_cards.first(MAX_INSIGHTS) + non_profile
+        Success(merged.first(MAX_INSIGHTS))
       end
 
-      def build_headline(params:, metrics:)
+      def build_headline(params:, metrics:, insights:)
         summary = params[:summary_structure]
         net = decimal_from(summary[:net_savings])
+        income = decimal_from(summary[:total_income])
         currency = params[:space].currency.presence || "PHP"
         formatted_net = format_money(net, currency)
+        strongest_profile = insights.find { |card| card[:type] == "profile" }
 
-        text = if params[:is_business]
+        text = if strongest_profile
+                 profile_headline(
+                   title: strongest_profile[:title],
+                   net:,
+                   income:,
+                   currency:,
+                   is_business: params[:is_business]
+                 )
+        elsif params[:is_business]
                  if net >= 0
                    "Profitable period — net #{formatted_net} after expenses."
                  else
@@ -232,8 +268,27 @@ module Insights
                  "You spent #{format_money(net.abs, currency)} more than you earned."
         end
 
-        sentiment = net >= 0 ? "positive" : "negative"
+        sentiment = if strongest_profile
+                      "positive"
+        else
+                      net >= 0 ? "positive" : "negative"
+        end
         Success(text:, sentiment:)
+      end
+
+      def profile_headline(title:, net:, income:, currency:, is_business:)
+        highlight = if net >= 0
+                      "kept #{format_money(net, currency)}"
+        elsif income.positive?
+                      "earned #{format_money(income, currency)}"
+        else
+                      "kept moving"
+        end
+        if is_business
+          "Your space looks like a #{title} — #{highlight} this period."
+        else
+          "You’re a #{title} — #{highlight} this period."
+        end
       end
 
       def build_data_quality(params:)
