@@ -1,0 +1,12 @@
+{
+  "id": "6a539e98",
+  "operation": "accept",
+  "variantId": "3",
+  "result": {
+    "handled": true,
+    "file": "src/components/dashboard/insights/insight-narrative-cards.tsx",
+    "carbonize": true,
+    "todo": "REQUIRED before next poll: carbonize cleanup in src/components/dashboard/insights/insight-narrative-cards.tsx. See reference/live.md \"Required after accept\"."
+  },
+  "completedAt": "2026-08-08T09:30:47.631Z"
+}

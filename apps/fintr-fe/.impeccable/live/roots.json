@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "appRoot": "/Users/mikodagatan/Programming/fintr/apps/fintr-fe",
+  "repoRoot": "/Users/mikodagatan/Programming/fintr",
+  "contextRoot": "/Users/mikodagatan/Programming/fintr",
+  "sessionRoot": "/Users/mikodagatan/Programming/fintr/apps/fintr-fe/.impeccable/live",
+  "productPath": "/Users/mikodagatan/Programming/fintr/PRODUCT.md",
+  "designPath": "/Users/mikodagatan/Programming/fintr/DESIGN.md",
+  "resolvedFrom": "target:apps/fintr-fe"
+}

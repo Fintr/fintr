@@ -1,0 +1,348 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-08T09:20:00.000Z",
+  "title": "Design System: Fintr",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Deep Navy Brand",
+        "canonical": "oklch(34.88% 0.082 246.06)",
+        "tonalRamp": [
+          "oklch(15% 0.06 246)",
+          "oklch(22% 0.07 246)",
+          "oklch(28% 0.08 246)",
+          "oklch(34.88% 0.082 246.06)",
+          "oklch(42% 0.07 246)",
+          "oklch(55% 0.06 246)",
+          "oklch(68% 0.05 246)",
+          "oklch(82% 0.03 246)",
+          "oklch(93% 0.02 246)",
+          "oklch(97% 0.01 246)"
+        ]
+      },
+      "primary-dark-mode": {
+        "role": "primary",
+        "displayName": "Readable Blue",
+        "canonical": "oklch(0.93 0.03 246.06)",
+        "tonalRamp": [
+          "oklch(30% 0.08 246)",
+          "oklch(40% 0.09 246)",
+          "oklch(50% 0.08 246)",
+          "oklch(60% 0.07 246)",
+          "oklch(70% 0.06 246)",
+          "oklch(78% 0.05 246)",
+          "oklch(85% 0.04 246)",
+          "oklch(0.93 0.03 246.06)",
+          "oklch(96% 0.02 246)",
+          "oklch(98% 0.01 246)"
+        ]
+      },
+      "marketing-teal": {
+        "role": "secondary",
+        "displayName": "Signal Teal",
+        "canonical": "#0D9488",
+        "tonalRamp": [
+          "#042f2e",
+          "#064e3b",
+          "#0f5c55",
+          "#0D9488",
+          "#14b8a6",
+          "#2dd4bf",
+          "#5eead4",
+          "#99f6e4",
+          "#ccfbf1",
+          "#f0fdfa"
+        ]
+      },
+      "marketing-navy": {
+        "role": "primary",
+        "displayName": "Editorial Navy",
+        "canonical": "#0A2540",
+        "tonalRamp": [
+          "#020c14",
+          "#041525",
+          "#061e33",
+          "#0A2540",
+          "#0f3460",
+          "#1a4a7a",
+          "#2d6a9f",
+          "#5a8fbf",
+          "#a3c4e0",
+          "#e8f0f8"
+        ]
+      },
+      "background-dark": {
+        "role": "neutral",
+        "displayName": "Midnight Shell",
+        "canonical": "oklch(0.129 0.042 264.695)",
+        "tonalRamp": [
+          "oklch(8% 0.03 265)",
+          "oklch(10% 0.035 265)",
+          "oklch(12% 0.04 265)",
+          "oklch(0.129 0.042 264.695)",
+          "oklch(16% 0.042 265)",
+          "oklch(0.208 0.042 265.755)",
+          "oklch(0.279 0.041 260.031)",
+          "oklch(35% 0.035 260)",
+          "oklch(50% 0.02 260)",
+          "oklch(70% 0.01 260)"
+        ]
+      },
+      "card-dark": {
+        "role": "neutral",
+        "displayName": "Elevated Card",
+        "canonical": "oklch(0.208 0.042 265.755)",
+        "tonalRamp": [
+          "oklch(10% 0.035 265)",
+          "oklch(13% 0.04 265)",
+          "oklch(0.129 0.042 264.695)",
+          "oklch(0.208 0.042 265.755)",
+          "oklch(0.279 0.041 260.031)",
+          "oklch(32% 0.038 260)",
+          "oklch(40% 0.03 260)",
+          "oklch(55% 0.02 260)",
+          "oklch(75% 0.01 260)",
+          "oklch(92% 0.005 260)"
+        ]
+      },
+      "marketing-cream": {
+        "role": "neutral",
+        "displayName": "Warm Cream",
+        "canonical": "#FAF9F7",
+        "tonalRamp": [
+          "#3d3a36",
+          "#57534e",
+          "#78716c",
+          "#a8a29e",
+          "#d6d3d1",
+          "#e8e6e3",
+          "#f0eeeb",
+          "#f7f7f5",
+          "#FAF9F7",
+          "#ffffff"
+        ]
+      },
+      "income": {
+        "role": "tertiary",
+        "displayName": "Income Teal",
+        "canonical": "#0D9488",
+        "tonalRamp": [
+          "#042f2e",
+          "#064e3b",
+          "#0f5c55",
+          "#0D9488",
+          "#14b8a6",
+          "#2dd4bf",
+          "#5eead4",
+          "#99f6e4",
+          "#ccfbf1",
+          "#f0fdfa"
+        ]
+      },
+      "expense": {
+        "role": "tertiary",
+        "displayName": "Expense Red",
+        "canonical": "#991B1B",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991B1B",
+          "#b91c1c",
+          "#dc2626",
+          "#ef4444",
+          "#f87171",
+          "#fca5a5",
+          "#fecaca",
+          "#fef2f2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Marketing hero headlines only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Marketing section titles and major page headers."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card titles, modal headers, prominent section labels."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default UI copy, form labels, transaction descriptions."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Marketing eyebrows, filter chips, uppercase category tags."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-rest",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Light-mode card elevation at rest."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 3px oklch(0.551 0.027 264.364 / 0.5)",
+        "purpose": "Focus-visible ring on interactive controls."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default transition for buttons, hovers, and state changes."
+      },
+      {
+        "name": "toast-duration",
+        "value": "180ms",
+        "purpose": "Sonner toast enter/exit duration."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main CTA — navy fill, white text, used for save, confirm, and marketing sign-up.",
+      "html": "<button class=\"ds-btn-primary\">Save transaction</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; height: 2.5rem; min-height: 2.5rem; padding: 0.5rem 1rem; font-family: 'League Spartan', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: oklch(0.984 0.003 247.858); background: oklch(34.88% 0.082 246.06); border: none; border-radius: 0.625rem; cursor: pointer; transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); } .ds-btn-primary:hover { background: oklch(31% 0.082 246.06); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.551 0.027 264.364 / 0.5); }"
+    },
+    {
+      "name": "Outline Button (Dark)",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action on dark surfaces — borderless translucent fill.",
+      "html": "<button class=\"ds-btn-outline\">Cancel</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; height: 2.5rem; min-height: 2.5rem; padding: 0.5rem 1rem; font-family: 'League Spartan', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: oklch(0.984 0.003 247.858); background: oklch(1 0 0 / 15%); border: none; border-radius: 0.625rem; cursor: pointer; transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-outline:hover { background: oklch(1 0 0 / 25%); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.551 0.027 264.364 / 0.5); }"
+    },
+    {
+      "name": "Marketing CTA",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Landing page sign-up button — editorial navy on cream background.",
+      "html": "<button class=\"ds-btn-marketing\">Get started</button>",
+      "css": ".ds-btn-marketing { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1.25rem; font-family: 'League Spartan', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; color: #ffffff; background: #0A2540; border: none; border-radius: 0.5rem; cursor: pointer; transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-marketing:hover { opacity: 0.9; } .ds-btn-marketing:focus-visible { outline: none; box-shadow: 0 0 0 3px #0A254040; }"
+    },
+    {
+      "name": "Text Input (Dark)",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Borderless input on dark dashboard — translucent fill, 40px height.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Enter amount\" />",
+      "css": ".ds-input { display: flex; width: 100%; max-width: 28rem; height: 2.5rem; min-height: 2.5rem; padding: 0.5rem 0.75rem; font-family: 'League Spartan', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: oklch(0.984 0.003 247.858); background: oklch(1 0 0 / 15%); border: none; border-radius: 0.625rem; outline: none; transition: box-shadow 0.2s; } .ds-input::placeholder { color: oklch(0.704 0.04 256.788); } .ds-input:focus-visible { box-shadow: 0 0 0 3px oklch(0.551 0.027 264.364 / 0.5); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Standard dashboard card — elevated surface on midnight background.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Monthly summary</div><div class=\"ds-card-body\">Your spending this month is on track.</div></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 1.5rem; padding: 1.5rem; background: oklch(0.208 0.042 265.755); color: oklch(0.984 0.003 247.858); border-radius: 0.75rem; border: 1px solid oklch(1 0 0 / 10%); } .ds-card-title { font-family: 'League Spartan', ui-sans-serif, system-ui, sans-serif; font-size: 1.125rem; font-weight: 600; color: oklch(0.93 0.03 246.06); line-height: 1.25; } .ds-card-body { font-family: 'League Spartan', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: oklch(0.704 0.04 256.788); line-height: 1.5; }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "button-primary",
+      "description": "Compact status chip — pill shape, primary or semantic fill.",
+      "html": "<span class=\"ds-badge\">Income</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; padding: 0.125rem 0.625rem; font-family: 'League Spartan', ui-sans-serif, system-ui, sans-serif; font-size: 0.75rem; font-weight: 600; color: #0D9488; background: oklch(0.25 0.06 175 / 0.4); border: none; border-radius: 9999px; }"
+    },
+    {
+      "name": "Grid Picker Tile",
+      "kind": "custom",
+      "refersTo": "card-default",
+      "description": "Category/account selection tile — signature Fintr picker pattern.",
+      "html": "<button class=\"ds-grid-tile\"><span class=\"ds-grid-tile-label\">Groceries</span></button>",
+      "css": ".ds-grid-tile { display: flex; align-items: center; justify-content: center; padding: 1rem; font-family: 'League Spartan', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: oklch(0.93 0.03 246.06); background: oklch(0.279 0.041 260.031); border: none; border-radius: 0.625rem; cursor: pointer; transition: background 0.2s; } .ds-grid-tile:hover { background: oklch(0.32 0.04 260); } .ds-grid-tile.ds-selected { background: oklch(34.88% 0.082 246.06); color: oklch(0.984 0.003 247.858); } .ds-grid-tile:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.551 0.027 264.364 / 0.5); }"
+    },
+    {
+      "name": "Marketing Nav Link",
+      "kind": "nav",
+      "refersTo": "button-outline",
+      "description": "Landing page navigation text link on cream background.",
+      "html": "<a class=\"ds-nav-link\" href=\"#features\">Features</a>",
+      "css": ".ds-nav-link { font-family: 'League Spartan', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: #57534e; text-decoration: none; transition: color 0.2s; } .ds-nav-link:hover { color: #0A2540; } .ds-nav-link:focus-visible { outline: none; box-shadow: 0 0 0 2px #0A254040; border-radius: 4px; }"
+    },
+    {
+      "name": "Transaction Amount (Income)",
+      "kind": "custom",
+      "refersTo": "income",
+      "description": "Positive money value in transaction lists.",
+      "html": "<span class=\"ds-amount-income\">+₱1,250.00</span>",
+      "css": ".ds-amount-income { font-family: 'League Spartan', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; color: #14b8a6; font-variant-numeric: tabular-nums; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Trusted Coach",
+    "overview": "Fintr should feel like a capable money coach — confident and modern without the cold sterility of a bank. The interface earns trust through clarity: readable numbers, calm surfaces, and semantic color that tells you what matters at a glance. AI-forward energy shows up in precise accents and purposeful emphasis, not flashy decoration.\n\nThe product operates in two documented visual worlds. The marketing world is warm, light, and editorial — cream backgrounds, deep navy headlines, teal proof points. The dashboard world defaults to dark mode with tonal layering: background → card → muted → input fill. Both worlds share League Spartan typography and the navy primary brand, but they must not bleed patterns into each other.",
+    "keyCharacteristics": [
+      "Tonal flat depth — hierarchy through surface color, not shadows",
+      "Semantic money colors (teal income, red expense, blue transfer)",
+      "Borderless dark form controls with translucent input fills",
+      "Primary blue for prominent headers and CTAs",
+      "Mobile-first with native safe-area handling (Capacitor)",
+      "Radix + Shadcn component primitives with Fintr-specific surface constants"
+    ],
+    "rules": [
+      {
+        "name": "The Surface Step Rule",
+        "body": "A child surface must be exactly one step lighter or darker than its parent in the hierarchy (background → card → muted → input/30). Never place the same surface token on parent and child unless the layout is intentionally flat.",
+        "section": "colors"
+      },
+      {
+        "name": "The Dual World Rule",
+        "body": "Marketing cream/teal patterns stay in landing-page/* and public routes. Dashboard forms never inherit hardcoded #FAF9F7, bg-white, or text-gray-* without dark semantic equivalents.",
+        "section": "colors"
+      },
+      {
+        "name": "The Readable Blue Rule",
+        "body": "On any dark surface, interactive text and icons use text-primary-dark-mode (or rely on the .dark .text-primary remap). Never place deep navy primary text on dark backgrounds.",
+        "section": "colors"
+      },
+      {
+        "name": "The Primary Header Rule",
+        "body": "Prominent headers that introduce a page section, modal, sheet, or card region use text-primary (not black, text-gray-900, or bare default heading color). Destructive/warning titles excepted.",
+        "section": "typography"
+      },
+      {
+        "name": "The Landing Title Rule",
+        "body": "Marketing display type uses .font-landing-title with negative letter-spacing. Dashboard UI uses default League Spartan without the landing tracking values.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Dark form controls are borderless with translucent fills. Shadows do not communicate depth on dashboard surfaces — surface tokens do.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use semantic tokens (bg-card, text-muted-foreground, bg-input/30) instead of raw grays or bg-white.",
+      "Do step surface hierarchy one level at a time on dark (background → card → muted → input).",
+      "Do use text-primary for prominent section headers and text-primary-dark-mode for emphasis on dark surfaces.",
+      "Do apply semantic money colors: teal for income, red for expense, blue for transfer.",
+      "Do export repeated class strings as named constants (see form-control-surface.ts, summary-stat-tile.tsx, GridPicker.tsx).",
+      "Do keep theme-colors.ts in sync when changing background, primary, or card tokens (native Capacitor chrome).",
+      "Do use font-size: 16px minimum on mobile inputs to prevent iOS zoom."
+    ],
+    "donts": [
+      "Don't use bg-white, bg-gray-50, or text-gray-700 in dashboard UI without dark semantic equivalents.",
+      "Don't copy marketing cream/stone patterns into authenticated dashboard forms.",
+      "Don't place deep navy text-primary on dark backgrounds without the dark-mode remap.",
+      "Don't duplicate combobox or input surface classes — import shared constants.",
+      "Don't add shadows to dark form controls (dark:shadow-none is the default pattern).",
+      "Don't use black or near-black (text-gray-900) for hero-style dashboard headers."
+    ]
+  }
+}
