@@ -34,10 +34,10 @@ git push -u origin offline-mode
 ## Open a PR (template)
 
 ```bash
-git push -u origin offline-mode/<slice-name>
+git push -u origin offline-mode-<slice-name>
 gh pr create \
   --base offline-mode \
-  --head offline-mode/<slice-name> \
+  --head offline-mode-<slice-name> \
   --title "<title>" \
   --body "$(cat <<'EOF'
 ## Summary
@@ -57,7 +57,7 @@ EOF
 
 ## PR 1 — `@fintr/domain` shared validation (FIN-197)
 
-**Branch:** `offline-mode/fintr-domain`  
+**Branch:** `offline-mode-fintr-domain`  
 **Depends on:** `offline-mode` @ docs commit only  
 **Safe to merge alone:** Yes (additive package + local-first gates)
 
@@ -76,7 +76,7 @@ EOF
 
 ## PR 2 — Backend sync foundation (FIN-195 / FIN-196)
 
-**Branch:** `offline-mode/be-sync`  
+**Branch:** `offline-mode-be-sync`  
 **Depends on:** PR 1 merged (optional but recommended before client mutation work)
 
 | Area | Paths |
@@ -94,7 +94,7 @@ EOF
 
 ## PR 3 — Backend realtime broadcasts
 
-**Branch:** `offline-mode/be-broadcasts`  
+**Branch:** `offline-mode-be-broadcasts`  
 **Depends on:** PR 2
 
 | Area | Paths |
@@ -108,7 +108,7 @@ EOF
 
 ## PR 4 — Frontend local DB + sync shell
 
-**Branch:** `offline-mode/fe-local-db`  
+**Branch:** `offline-mode-fe-local-db`  
 **Depends on:** PR 3 (cable shape should match)
 
 | Area | Paths |
@@ -123,7 +123,7 @@ EOF
 
 ## PR 5 — Frontend local-first writes
 
-**Branch:** `offline-mode/fe-local-first`  
+**Branch:** `offline-mode-fe-local-first`  
 **Depends on:** PR 1 + PR 4
 
 | Area | Paths |
@@ -138,7 +138,7 @@ EOF
 
 ## PR 6 — Insights customer profiles
 
-**Branch:** `offline-mode/insights-profiles`  
+**Branch:** `offline-mode-insights-profiles`  
 **Depends on:** PR 5 (offline calculations need local cache)
 
 | Area | Paths |
@@ -151,7 +151,7 @@ EOF
 
 ## PR 7 — Backend feature additions (tags, entities, summaries, achievements)
 
-**Branch:** `offline-mode/be-features`  
+**Branch:** `offline-mode-be-features`  
 **Depends on:** PR 2–3
 
 Tags, merchant aliases, monthly financial summaries API, achievements — largely parallel to offline writes but serializers/controllers touch transaction payloads.
@@ -160,7 +160,7 @@ Tags, merchant aliases, monthly financial summaries API, achievements — largel
 
 ## PR 8 — Frontend UI integration (forms, modals, tabs)
 
-**Branch:** `offline-mode/fe-ui`  
+**Branch:** `offline-mode-fe-ui`  
 **Depends on:** PR 5–7
 
 Large surface: `ExpenseForm`, `TransferForm`, `EditTransactionDialog`, `insights-tab`, `transactions/index`, modals, GridPicker, etc. **Merge last** so the web app reflects the full offline stack.
@@ -192,7 +192,7 @@ Do **not** include in offline PRs (separate or discard):
 Full un-split snapshot (if created):
 
 ```bash
-git checkout offline-mode/wip-full   # all offline work, one commit
+git checkout offline-mode-wip-full   # all offline work, one commit
 ```
 
 Pre-split backup ref:
