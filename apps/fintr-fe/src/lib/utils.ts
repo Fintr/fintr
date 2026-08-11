@@ -134,6 +134,28 @@ export function formatCurrency(amount: number, currency: string = "PHP"): string
   }).format(amount);
 }
 
+/** Drop cents in summary headers when the whole-number part exceeds 6 digits (≥ 1M). */
+export function summaryAmountFractionDigits(amount: number): number {
+  return Math.abs(amount) >= 1_000_000 ? 0 : 2;
+}
+
+export function formatSummaryHeaderAmount(
+  amount: number,
+  currency: string,
+): string {
+  const fractionDigits = summaryAmountFractionDigits(amount);
+  const formatted = amount.toLocaleString(undefined, {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+
+  if (currency === "PHP") {
+    return `₱${formatted}`;
+  }
+
+  return formatted;
+}
+
 /** Returns the currency symbol for a given ISO 4217 code (e.g. "USD" → "$", "PHP" → "₱"). */
 export function getCurrencySymbol(currencyCode: string): string {
   if (!currencyCode || currencyCode.length !== 3) return currencyCode || "";

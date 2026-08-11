@@ -46,7 +46,7 @@ export function shouldPreferCurrentRateOverRecent({
 }
 
 export function selectAutoFxRate({
-  pairChanged,
+  pairChanged: _pairChanged,
   recentRates,
   currentRate,
 }: {
@@ -56,14 +56,14 @@ export function selectAutoFxRate({
 }): { rate: number; source: "auto" | "recent" } {
   const mostRecent = recentRates[0] ?? null;
   const preferCurrent = shouldPreferCurrentRateOverRecent({
-    pairChanged,
+    pairChanged: false,
     recentRate: mostRecent,
     currentRate,
   });
 
-  if (preferCurrent || mostRecent == null) {
-    return { rate: currentRate, source: "auto" };
+  if (!preferCurrent && mostRecent != null) {
+    return { rate: mostRecent, source: "recent" };
   }
 
-  return { rate: mostRecent, source: "recent" };
+  return { rate: currentRate, source: "auto" };
 }

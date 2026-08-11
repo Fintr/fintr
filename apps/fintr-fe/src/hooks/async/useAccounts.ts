@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useAuthApi from '../useAuthApi';
 import { fetchAccounts } from '@/services/transactions/accounts/queries';
+import {
+  cacheAccountsResponse,
+  extractAccountsFromResponse,
+  loadCachedAccountsResponse,
+} from '@/services/transactions/accounts/local-cache';
 import { createAccount, updateAccount, deleteAccount, adjustAccountBalance, CreateAccountType, UpdateAccountType, AdjustAccountBalanceType } from '@/services/transactions/accounts/mutation';
 import { Account, AccountBalanceTotals } from '@/types/accountTypes';
 import { toast } from 'sonner';
@@ -9,12 +14,15 @@ import {
   ACCOUNT_DETAIL_TRANSACTIONS_KEY,
 } from "@/hooks/async/useAccountDetailTransactions";
 import { ACCOUNT_DETAIL_ACTIVITIES_KEY } from "@/hooks/async/useAccountDetailActivities";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 
 export const useAccounts = () => {
-  const { api } = useAuthApi({
+  const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
   const queryClient = useQueryClient();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
 
   const invalidateAccountQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -25,6 +33,16 @@ export const useAccounts = () => {
     await queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
   };
 
+  const localCacheQuery = useQuery({
+    queryKey: ['accounts', 'local', spaceCode],
+    queryFn: async () =>
+      (await loadCachedAccountsResponse(spaceCode)) ?? null,
+    enabled: Boolean(spaceCode),
+    staleTime: Infinity,
+  });
+
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery);
+
   const {
     data: accounts,
     isLoading,
@@ -32,9 +50,33 @@ export const useAccounts = () => {
     error,
     refetch
   } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: () => fetchAccounts(api),
-    enabled: !!api,
+    queryKey: ['accounts', spaceCode || 'default'],
+    queryFn: async () => {
+      try {
+        const response = await fetchAccounts(api);
+        if (spaceCode) {
+          void cacheAccountsResponse(spaceCode, response).then(() => {
+            queryClient.setQueryData(
+              ['accounts', 'local', spaceCode],
+              response
+            );
+          });
+        }
+        return response;
+      } catch (error) {
+        if (spaceCode) {
+          const cached = await loadCachedAccountsResponse(spaceCode);
+          if (cached != null) {
+            return cached;
+          }
+        }
+        throw error;
+      }
+    },
+    enabled: !!api && !!spaceCode && isAuthenticated && !skipNetworkFetch,
+    placeholderData: localCacheQuery.data ?? undefined,
+    staleTime: skipNetworkFetch ? Infinity : 5 * 60 * 1000,
+    refetchOnMount: !skipNetworkFetch,
   });
 
   const createAccountMutation = useMutation({
@@ -99,24 +141,7 @@ export const useAccounts = () => {
 
   const getAccountsData = (): Account[] => {
     if (!accounts) return [];
-    
-    console.log('Raw accounts data from API:', accounts);
-    
-    let accountsArray: Account[] = [];
-    
-    if (accounts.data?.accounts) {
-      accountsArray = accounts.data.accounts;
-    } else if (accounts.accounts) {
-      accountsArray = accounts.accounts;
-    } else if (Array.isArray(accounts.data)) {
-      accountsArray = accounts.data;
-    } else if (Array.isArray(accounts)) {
-      accountsArray = accounts;
-    }
-    
-    console.log('Parsed accounts array:', accountsArray);
-    
-    return accountsArray;
+    return extractAccountsFromResponse(accounts);
   };
 
   const getBalanceTotals = (): AccountBalanceTotals | null => {
@@ -151,11 +176,16 @@ export const useAccounts = () => {
     return [];
   };
 
+  const showLocalPlaceholder =
+    Boolean(localCacheQuery.data) &&
+    (isLoading || accounts === undefined);
+
   return {
     accounts: getAccountsData(),
     balanceTotals: getBalanceTotals(),
     accountCategoryOptions: getAccountCategoryOptions(),
-    isLoading,
+    isLoading: isLoading && !localCacheQuery.data,
+    isShowingLocalCache: showLocalPlaceholder,
     isError,
     error,
     refetch,
@@ -168,4 +198,4 @@ export const useAccounts = () => {
     adjustAccountBalance: adjustAccountBalanceMutation.mutateAsync,
     isAdjusting: adjustAccountBalanceMutation.isPending,
   };
-}; 
+};

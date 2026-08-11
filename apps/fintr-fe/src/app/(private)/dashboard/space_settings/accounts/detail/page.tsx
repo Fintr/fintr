@@ -23,7 +23,7 @@ const AccountDetailInner = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background px-2 pt-4 pb-24 md:pb-4">
+    <div className="min-h-screen bg-background p-0 pb-24 md:pb-4">
       <AccountDetailContent accountId={accountId} />
     </div>
   );

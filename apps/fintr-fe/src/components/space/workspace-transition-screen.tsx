@@ -22,7 +22,7 @@ export function WorkspaceTransitionScreen({
     } else {
       console.log('🎬 Workspace transition ending');
       // Delay hiding to allow slide-out animation
-      const timer = setTimeout(() => setShow(false), 500);
+      const timer = setTimeout(() => setShow(false), 250);
       return () => clearTimeout(timer);
     }
   }, [isVisible, workspaceName]);
@@ -38,7 +38,7 @@ export function WorkspaceTransitionScreen({
       className={`
         fixed inset-0 z-[9999] flex items-center justify-center
         bg-background
-        transition-transform duration-500 ease-out
+        transition-transform duration-300 ease-out
         ${isVisible ? 'translate-x-0' : 'translate-x-full'}
       `}
       style={{
@@ -49,7 +49,7 @@ export function WorkspaceTransitionScreen({
       <div
         className={`
           relative z-10 text-center px-6
-          transition-all duration-700 ease-out
+          transition-all duration-300 ease-out
           ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'}
         `}
       >
@@ -71,10 +71,10 @@ export function WorkspaceTransitionScreen({
         <div className="space-y-4">
           <div
             className={`
-              transition-all duration-700 ease-out
+              transition-all duration-300 ease-out
               ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'}
             `}
-            style={{ transitionDelay: '100ms' }}
+            style={{ transitionDelay: '50ms' }}
           >
             <h2 className="text-xl md:text-2xl text-primary">
               Switching to
@@ -83,10 +83,10 @@ export function WorkspaceTransitionScreen({
           
           <div
             className={`
-              transition-all duration-700 ease-out
+              transition-all duration-300 ease-out
               ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'}
             `}
-            style={{ transitionDelay: '200ms' }}
+            style={{ transitionDelay: '100ms' }}
           >
             <div className="backdrop-blur-sm rounded-2xl px-8 pb-5 inline-block">
               <p className="text-2xl md:text-3xl font-bold text-primary">

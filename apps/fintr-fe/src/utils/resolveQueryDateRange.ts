@@ -3,6 +3,7 @@ import {
   DateFilterPresetId,
   DateFilterTypeSelector,
   getPresetDateRange,
+  type PresetDateRangeOptions,
 } from "@/utils/dateFilterPresets";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import { format } from "date-fns";
@@ -13,12 +14,14 @@ export const resolveQueryDateRange = ({
   selectedYear,
   selectedPreset,
   dateRange,
+  presetOptions = {},
 }: {
   filterTypeSelector: DateFilterTypeSelector;
   selectedMonth: string;
   selectedYear: string;
   selectedPreset: DateFilterPresetId;
   dateRange?: { from?: Date; to?: Date };
+  presetOptions?: PresetDateRangeOptions;
 }): { queryStartDate: string; queryEndDate: string } => {
   if (filterTypeSelector === "single") {
     const { startDate, endDate } = monthYearToDateRange(
@@ -35,7 +38,11 @@ export const resolveQueryDateRange = ({
   }
 
   if (filterTypeSelector === "predefined") {
-    const { startDate, endDate } = getPresetDateRange(selectedPreset);
+    const { startDate, endDate } = getPresetDateRange(
+      selectedPreset,
+      new Date(),
+      presetOptions,
+    );
 
     return {
       queryStartDate: startDate,

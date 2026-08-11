@@ -13,7 +13,19 @@ import {
 } from "@/atoms/spaceAtoms";
 import { Space, SpaceContext } from "@/types/spaceTypes";
 import { spacesApi } from "@/services/spaces/api";
-import { invalidateSpaceSwitchQueries } from "@/utils/invalidateSpaceQueries";
+import {
+  cacheSpacesList,
+  loadCachedSpaceContext,
+  loadCachedSpacesList,
+} from "@/services/spaces/spaces-list-cache";
+import {
+  invalidateSpaceSwitchQueries,
+  waitForSpaceSwitchReady,
+} from "@/utils/invalidateSpaceQueries";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { getUnsyncedSpaceCodes } from "@/lib/local-db/sync-state";
+import { offlineBootstrapDateRange } from "@/lib/local-sync/offline-bootstrap-dates";
+import { syncAllWorkspacesLocalData } from "@/services/local-sync/bootstrap-local-data";
 
 export function useSpaceContext(api: AxiosInstance) {
   const queryClient = useQueryClient();
@@ -28,17 +40,43 @@ export function useSpaceContext(api: AxiosInstance) {
   const transitionState = useAtomValue(workspaceTransitionAtom);
   const setTransitionState = useSetAtom(workspaceTransitionAtom);
 
+  const localSpacesQuery = useQuery({
+    queryKey: ["spaces", "local"],
+    queryFn: async () => (await loadCachedSpacesList()) ?? null,
+    staleTime: Infinity,
+  });
+
+  // Membership + domain reads refresh while online; IndexedDB-only when offline.
+  const skipSpacesNetwork = useSkipCachedNetworkFetch(localSpacesQuery);
+
   // Fetch available spaces
   const { data: spaces, isLoading: spacesLoading } = useQuery({
     queryKey: ["spaces"],
     queryFn: async () => {
       const response = await spacesApi.getSpaces(api);
       const spacesData = response.data.data.spaces;
+      await cacheSpacesList(spacesData);
       setAvailableSpaces(spacesData);
       return spacesData;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !skipSpacesNetwork,
+    placeholderData: localSpacesQuery.data ?? undefined,
+    staleTime: skipSpacesNetwork ? Infinity : 5 * 60 * 1000,
+    refetchOnMount: !skipSpacesNetwork,
+    refetchOnWindowFocus: !skipSpacesNetwork,
   });
+
+  const localSpaceContextQuery = useQuery({
+    queryKey: ["space-context", "local", currentSpace?.code],
+    queryFn: async () =>
+      currentSpace?.code
+        ? ((await loadCachedSpaceContext(currentSpace.code)) ?? null)
+        : null,
+    enabled: Boolean(currentSpace?.code),
+    staleTime: Infinity,
+  });
+
+  const skipSpaceContextNetwork = useSkipCachedNetworkFetch(localSpaceContextQuery);
 
   // Fetch current space details
   const { data: spaceContext, isLoading: contextLoading } = useQuery({
@@ -47,8 +85,10 @@ export function useSpaceContext(api: AxiosInstance) {
       const response = await spacesApi.getSpace(api, currentSpace?.code || '');
       return response.data.data.space;
     },
-    enabled: !!currentSpace?.code,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: !!currentSpace?.code && !skipSpaceContextNetwork,
+    placeholderData: localSpaceContextQuery.data ?? undefined,
+    staleTime: skipSpaceContextNetwork ? Infinity : 2 * 60 * 1000,
+    refetchOnMount: !skipSpaceContextNetwork,
   });
 
   // Update space context when data changes
@@ -68,16 +108,10 @@ export function useSpaceContext(api: AxiosInstance) {
           throw new Error('Space not found');
         }
 
-        console.log('🔄 Starting space switch to:', space.name);
-
         setTransitionState({
           isTransitioning: true,
           destinationSpace: space,
         });
-
-        console.log('🎬 Transition state set, overlay should appear now');
-
-        await new Promise(resolve => setTimeout(resolve, 100));
 
         setCurrentSpace(space);
 
@@ -85,6 +119,8 @@ export function useSpaceContext(api: AxiosInstance) {
           localStorage.setItem("spaceCode", spaceCode);
           window.dispatchEvent(new CustomEvent('spaceCodeChanged', { detail: { spaceCode } }));
         }
+
+        router.push('/dashboard');
 
         if (space.hasNewInvitation) {
           try {
@@ -94,13 +130,24 @@ export function useSpaceContext(api: AxiosInstance) {
           }
         }
 
+        // Ensure a newly granted workspace is fully offline-synced before use.
+        const unsynced = await getUnsyncedSpaceCodes([spaceCode]);
+        if (unsynced.length > 0 && typeof navigator !== "undefined" && navigator.onLine !== false) {
+          await syncAllWorkspacesLocalData(
+            api,
+            queryClient,
+            offlineBootstrapDateRange(),
+            {
+              activeSpaceCode: spaceCode,
+              onlySpaceCodes: unsynced,
+            },
+          );
+        }
+
         await invalidateSpaceSwitchQueries(queryClient);
+        await waitForSpaceSwitchReady(queryClient);
 
-        await new Promise(resolve => setTimeout(resolve, 2500));
-
-        router.push('/dashboard');
-
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await new Promise(resolve => setTimeout(resolve, 150));
 
         setTransitionState({
           isTransitioning: false,

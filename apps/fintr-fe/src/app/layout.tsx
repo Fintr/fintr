@@ -112,10 +112,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const serviceWorkerUrl =
+    process.env.NODE_ENV === "development" ? "/sw-dev.js" : "/sw.js";
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <EarlyErrorDetection />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.register("${serviceWorkerUrl}", { scope: "/" });
+              }
+            `,
+          }}
+        />
         <script
           src="https://blogger.kiron.app/connect.js"
           data-site-id="3"

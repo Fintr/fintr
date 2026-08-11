@@ -1,4 +1,8 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import {
+  CLIENT_TAB_ID_HEADER,
+  getClientTabId,
+} from '@/lib/client-tab-id';
 import { getPublicBackendUrl } from '@/lib/public-backend-url';
 import { triggerSessionExpiration } from './session-expiration-handler';
 import { AuthStorage } from '@/lib/auth-storage';
@@ -132,6 +136,12 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (resolved) {
     config.baseURL = resolved;
   }
+
+  const clientTabId = getClientTabId();
+  if (clientTabId) {
+    config.headers.set(CLIENT_TAB_ID_HEADER, clientTabId);
+  }
+
   return config;
 });
 
@@ -188,12 +198,20 @@ export const createAuthenticatedClient = (getToken: () => Promise<string>): Axio
           console.warn('⚠️ No auth token available');
         }
         
-        const spaceCode = localStorage.getItem('spaceCode');
-        if (spaceCode) {
-          console.log('🏢 Adding space code to request:', spaceCode);
-          config.headers.set('X-Space-Code', spaceCode);
+        const existingSpaceCode = config.headers.get("X-Space-Code");
+        if (!existingSpaceCode) {
+          const spaceCode = localStorage.getItem("spaceCode");
+          if (spaceCode) {
+            console.log("🏢 Adding space code to request:", spaceCode);
+            config.headers.set("X-Space-Code", spaceCode);
+          }
         }
-        
+
+        const clientTabId = getClientTabId();
+        if (clientTabId) {
+          config.headers.set(CLIENT_TAB_ID_HEADER, clientTabId);
+        }
+
         return config;
       } catch (error) {
         console.error('❌ Error getting auth token:', error);

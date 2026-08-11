@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import useAuthApi from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
+import { loadCachedTransactionCategoriesResponse } from "@/services/transactions/categories/local-cache";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import { normalizeCategoryTreeNodes } from "@/utils/categoryTreeOptions";
 
 export const useTransactionCategories = () => {
@@ -12,13 +14,25 @@ export const useTransactionCategories = () => {
   });
   
   const [spaceCode] = useLocalStorage("spaceCode", "");
+
+  const localCategoriesQuery = useQuery({
+    queryKey: ["transactionCategories", "local", spaceCode],
+    queryFn: async () =>
+      (await loadCachedTransactionCategoriesResponse(spaceCode)) ?? null,
+    enabled: Boolean(spaceCode),
+    staleTime: Infinity,
+  });
+
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCategoriesQuery);
   
   const { data, error, isLoading, isError, isSuccess, refetch } = useQuery({
     queryKey: ["transactionCategories", spaceCode],
     queryFn: () => fetchTransactionCategories(api),
-    enabled: !!spaceCode,
-    retry: 2, // Retry failed requests twice
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    enabled: !!spaceCode && !skipNetworkFetch,
+    placeholderData: localCategoriesQuery.data ?? undefined,
+    retry: 2,
+    refetchOnMount: !skipNetworkFetch,
+    staleTime: skipNetworkFetch ? Infinity : 30000,
   });
 
   // Mutation for creating categories
@@ -27,13 +41,23 @@ export const useTransactionCategories = () => {
       name,
       categoryType,
       parentId,
+      icon,
+      color,
     }: {
       name: string;
       categoryType: CategoryTypeEnum;
       parentId?: string | null;
+      icon?: string;
+      color?: string;
     }) => {
       try {
-        const result = await createTransactionCategory(api, { name, categoryType, parentId });
+        const result = await createTransactionCategory(api, {
+          name,
+          categoryType,
+          parentId,
+          icon,
+          color,
+        });
         await queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
         if (categoryType === CategoryTypeEnum.EXPENSE) {
           await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -48,7 +72,17 @@ export const useTransactionCategories = () => {
 
   // Mutation for updating categories
   const updateCategoryMutation = useMutation({
-    mutationFn: async ({ categoryId, updateData }: { categoryId: string; updateData: { name: string } }) => {
+    mutationFn: async ({
+      categoryId,
+      updateData,
+    }: {
+      categoryId: string;
+      updateData: {
+        name: string;
+        icon?: string;
+        color?: string;
+      };
+    }) => {
       await queryClient.cancelQueries({ queryKey: ["transactionCategories", spaceCode] });
 
       const previousData = queryClient.getQueryData(["transactionCategories", spaceCode]);
@@ -61,10 +95,14 @@ export const useTransactionCategories = () => {
           data: {
             ...old.data,
             expenseCategories: old.data.expenseCategories?.map((category: any) =>
-              category.id === categoryId ? { ...category, name: updateData.name } : category
+              category.id === categoryId
+                ? { ...category, ...updateData }
+                : category
             ) || [],
             incomeCategories: old.data.incomeCategories?.map((category: any) =>
-              category.id === categoryId ? { ...category, name: updateData.name } : category
+              category.id === categoryId
+                ? { ...category, ...updateData }
+                : category
             ) || [],
           },
         };

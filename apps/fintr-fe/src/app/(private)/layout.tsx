@@ -28,6 +28,10 @@ import { isDashboardShellRoute } from "@/lib/dashboard-shell-route";
 import { WeeklyFeedbackPrompt } from "@/components/feedback/weekly-feedback-prompt";
 import { MaintenanceScreen } from "@/components/maintenance/maintenance-screen";
 import { isMaintenanceModeEnabled } from "@/lib/maintenance-mode";
+import { OfflineSyncScreen } from "@/components/offline/offline-sync-screen";
+import { useHydrateOfflineSyncReady } from "@/hooks/useHydrateOfflineSyncReady";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { useOutboxDrain } from "@/hooks/useOutboxDrain";
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const {
@@ -90,6 +94,29 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     !transitionState.isTransitioning &&
     !pathname.startsWith("/admin");
   const isMobile = useMediaQuery("(max-width: 768px)");
+
+  useHydrateOfflineSyncReady();
+
+  const {
+    status: offlineSyncStatus,
+    progress: offlineSyncProgress,
+    error: offlineSyncError,
+    retry: retryOfflineSync,
+    isBlocking: isOfflineSyncBlocking,
+  } = useOfflineSync(
+    isAuthenticated &&
+    !isAuthLoading &&
+    !isOnOnboardingPage &&
+    !isOnAdminPage,
+  );
+
+  useOutboxDrain(
+    isAuthenticated &&
+    !isAuthLoading &&
+    !isOnOnboardingPage &&
+    !isOnAdminPage &&
+    !isOfflineSyncBlocking,
+  );
 
   const {
     isAndroidNative,
@@ -161,6 +188,18 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="min-h-screen bg-background text-primary">
         <WorkspaceSetupGate />
+      </div>
+    );
+  }
+
+  if (isOfflineSyncBlocking) {
+    return (
+      <div className="min-h-screen bg-background text-primary">
+        <OfflineSyncScreen
+          progress={offlineSyncProgress}
+          error={offlineSyncStatus === "error" ? offlineSyncError : null}
+          onRetry={retryOfflineSync}
+        />
       </div>
     );
   }

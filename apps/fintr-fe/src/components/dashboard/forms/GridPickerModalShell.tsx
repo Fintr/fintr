@@ -14,6 +14,8 @@ export type GridPickerModalShellProps = {
   onRequestClose: () => void;
   children: React.ReactNode;
   panelClassName?: string;
+  /** Fixed panel height (e.g. account picker). Replaces default max-height-only sizing. */
+  panelHeightClassName?: string;
 };
 
 export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
@@ -21,6 +23,7 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
   onRequestClose,
   children,
   panelClassName,
+  panelHeightClassName,
 }) => {
   const [mounted, setMounted] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -100,7 +103,8 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
         >
           <motion.div
             className={cn(
-              "relative z-[2] mx-auto flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl shadow-lg",
+              "relative z-[2] mx-auto flex w-full max-w-md flex-col overflow-hidden rounded-t-2xl shadow-lg",
+              panelHeightClassName ?? "max-h-[85vh]",
               isAndroidNative ? "bg-background" : "bg-white dark:bg-card",
               !isAndroidNative && "pb-safe-bottom",
               panelClassName,

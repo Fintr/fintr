@@ -1,7 +1,11 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useAuthApi } from "../useAuthApi";
+import { useLocalStorage } from "../useLocalStorage";
 import { fetchLoansPage } from "@/services/loans/queries";
+import { loadCachedLoansInfiniteData } from "@/services/loans/local-cache";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { shouldFetchNextInfinitePage } from "./shouldFetchNextInfinitePage";
 
 export const useInfiniteLoans = ({
   loadMoreRef,
@@ -11,6 +15,18 @@ export const useInfiniteLoans = ({
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
+  const [spaceCode] = useLocalStorage("spaceCode", "");
+
+  const localLoansQuery = useQuery({
+    queryKey: ["loans", "local", spaceCode],
+    queryFn: async () => (await loadCachedLoansInfiniteData(spaceCode)) ?? null,
+    enabled: Boolean(spaceCode),
+    staleTime: Infinity,
+  });
+
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localLoansQuery);
+
+  const cachedInfiniteData = localLoansQuery.data ?? undefined;
 
   const {
     data,
@@ -19,6 +35,7 @@ export const useInfiniteLoans = ({
     hasNextPage,
     isFetching,
     isFetchingNextPage,
+    isFetchNextPageError,
     status,
     isError,
     isSuccess,
@@ -26,19 +43,30 @@ export const useInfiniteLoans = ({
   } = useInfiniteQuery({
     queryKey: ["loans"],
     queryFn: ({ pageParam = 1 }) => fetchLoansPage(api, { pageParam }),
-    getNextPageParam: (lastPage) => lastPage.nextPage,
+    getNextPageParam: (lastPage) => lastPage?.nextPage ?? undefined,
     initialPageParam: 1,
-    enabled: !!api,
+    enabled: !!api && !skipNetworkFetch,
     retry: false,
     refetchOnWindowFocus: false,
-    staleTime: 30000,
+    refetchOnMount: !skipNetworkFetch,
+    staleTime: skipNetworkFetch ? Infinity : 30000,
     gcTime: 300000,
+    placeholderData: cachedInfiniteData?.pages?.length
+      ? cachedInfiniteData
+      : undefined,
   });
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        if (
+          shouldFetchNextInfinitePage({
+            isIntersecting: entries[0].isIntersecting,
+            hasNextPage: Boolean(hasNextPage),
+            isFetchingNextPage,
+            isFetchNextPageError,
+          })
+        ) {
           fetchNextPage();
         }
       },
@@ -58,9 +86,15 @@ export const useInfiniteLoans = ({
       }
       observer.disconnect();
     };
-  }, [hasNextPage, fetchNextPage, isFetchingNextPage, loadMoreRef]);
+  }, [
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    loadMoreRef,
+  ]);
 
-  const loans = data?.pages.flatMap((page) => page.loans) || [];
+  const loans = data?.pages.flatMap((page) => page?.loans ?? []) || [];
 
   return {
     loans,
@@ -75,8 +109,3 @@ export const useInfiniteLoans = ({
     refetch,
   };
 };
-
-
-
-
-

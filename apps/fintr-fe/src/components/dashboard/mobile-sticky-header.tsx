@@ -16,6 +16,9 @@ interface MobileStickyHeaderProps {
 }
 
 const getPageTitle = (pathname: string): string => {
+  if (pathname.startsWith("/dashboard/home")) {
+    return "Home";
+  }
   if (pathname === "/dashboard" || pathname === "/dashboard/") {
     return "Transactions";
   }
@@ -40,8 +43,17 @@ const getPageTitle = (pathname: string): string => {
   if (pathname.startsWith("/dashboard/space_settings/categories")) {
     return "Category Management";
   }
+  if (pathname.startsWith("/dashboard/space_settings/tags")) {
+    return "Tags";
+  }
   if (pathname.startsWith("/dashboard/space_settings/accounts")) {
     return "Account Management";
+  }
+  if (pathname.includes("/space_settings/entities/detail")) {
+    return "Entity";
+  }
+  if (pathname.startsWith("/dashboard/space_settings/entities")) {
+    return "Entities";
   }
   if (pathname.startsWith("/dashboard/space_settings/import")) {
     return "Import & Export";
@@ -72,7 +84,10 @@ export const shouldShowImmediateBackButton = (pathname: string): boolean => {
   const immediateBackPrefixes = [
     "/dashboard/space_settings/accounts/detail",
     "/dashboard/space_settings/categories",
+    "/dashboard/space_settings/tags",
     "/dashboard/space_settings/accounts",
+    "/dashboard/space_settings/entities/detail",
+    "/dashboard/space_settings/entities",
     "/dashboard/space_settings/import",
     "/dashboard/space_settings/subscriptions",
     "/dashboard/loans",

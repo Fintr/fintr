@@ -1,17 +1,20 @@
 "use client";
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { TrendingUp, Loader2, Check } from "lucide-react";
+import { CurrencySelectorSheet } from "@/components/ui/currency-selector-sheet";
+import {
+  ExchangeRateSelectorSheet,
+  type ManualExchangeEntryMode,
+} from "@/components/ui/exchange-rate-selector-sheet";
+import { TrendingUp, Loader2 } from "lucide-react";
 import { FormError } from "@/components/ui/form-error";
 import { RollingNumber } from "@/components/ui/rolling-number";
 import {
   cn,
-  formatAmountWithCode,
   formatWithDelimiters,
   numberFormatting,
 } from "@/lib/utils";
@@ -20,47 +23,30 @@ import {
   getRecentRates,
   type RecentRateItem,
 } from "@/services/exchangeRates/queries";
+import { resolveAutoExchangeRates } from "@/services/exchangeRates/resolve-auto-rates";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import type { AccountOptionWithCurrency } from "@/types/generalTypes";
 import {
   formControlHeightClassName,
   formControlInteractiveSurfaceClassName,
 } from "@/components/ui/form-control-surface";
 import {
-  CURRENCIES,
-  getCountryCodeForCurrency,
-  getFlagEmoji,
-} from "@/data/currencies";
-import {
   formatFxQuoteLabel,
   humanFxQuote,
+  operativeMultiplierFromFinalAmount,
   operativeMultiplierFromManualQuote,
 } from "@/utils/fxQuoteDisplay";
 import {
   fxPairChanged,
-  selectAutoFxRate,
   type FxRatePair,
 } from "@/utils/autoFxRateSelection";
 
 const RATE_DISPLAY_DECIMALS = 3;
-const FLAG_NAME_GAP = "\u2002\u2002";
-
 /** Backend returns +from → to+ multiplier (FetchRate, serializers, recent rates). Use as-is. */
 function multiplierFromApi(raw: number): number {
   const n = Number(raw);
   return Number.isFinite(n) ? n : raw;
-}
-
-function formatRateForLabel(dateStr: string | undefined): string {
-  if (!dateStr) return "Today's rate (API)";
-  const d = new Date(dateStr);
-  const today = new Date();
-  const isToday =
-    d.getFullYear() === today.getFullYear() &&
-    d.getMonth() === today.getMonth() &&
-    d.getDate() === today.getDate();
-  if (isToday) return "Today's rate (API)";
-  return `Rate for ${d.toLocaleDateString()} (API)`;
 }
 
 export interface ConversionSnapshot {
@@ -123,15 +109,20 @@ export function AmountWithRatePicker({
       : null;
 
   const { api } = useAuthApi();
-  const [currencyPopoverOpen, setCurrencyPopoverOpen] = useState(false);
-  const [currencySearchQuery, setCurrencySearchQuery] = useState("");
-  const [popoverOpen, setPopoverOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
+  const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [rateSheetOpen, setRateSheetOpen] = useState(false);
   const [manualRate, setManualRate] = useState("");
+  const [manualFinalAmount, setManualFinalAmount] = useState("");
+  const [manualEntryMode, setManualEntryMode] =
+    useState<ManualExchangeEntryMode>("rate");
+  const [appliedManualEntryMode, setAppliedManualEntryMode] =
+    useState<ManualExchangeEntryMode | null>(null);
   const [loadingRate, setLoadingRate] = useState<"currency" | "current" | null>(null);
   const [currentRateDisplay, setCurrentRateDisplay] = useState<number | null>(null);
   const [displayedRateDate, setDisplayedRateDate] = useState<string | undefined>(undefined);
   const [recentRates, setRecentRates] = useState<RecentRateItem[]>([]);
-  const ratePopoverContentRef = useRef<HTMLDivElement>(null);
   /** Ignores stale Promise results when from/to changes (e.g. space PHP → account USD). */
   const autoRateFetchSeqRef = useRef(0);
   const popoverRateFetchSeqRef = useRef(0);
@@ -149,18 +140,6 @@ export function AmountWithRatePicker({
   );
 
   const RATE_TOLERANCE = 1e-6;
-  const ratesMatch = (a: number, b: number) => Math.abs(a - b) < RATE_TOLERANCE;
-  const isTodayRateApplied =
-    conversion?.exchangeRateSource === "auto" &&
-    currentRateDisplay != null &&
-    ratesMatch(conversion.exchangeRate, currentRateDisplay);
-  const isManualRateApplied = conversion?.exchangeRateSource === "manual";
-  const isRecentRateApplied = (rate: number) =>
-    conversion?.exchangeRateSource === "recent" &&
-    ratesMatch(
-      conversion.exchangeRate,
-      multiplierFromApi(rate),
-    );
 
   const amountNumeric = numberFormatting.cleanForBackend(amountDisplayValue);
   const rateLookupDate = date ?? new Date().toISOString().slice(0, 10);
@@ -176,27 +155,9 @@ export function AmountWithRatePicker({
       ? amountNumeric * conversion.exchangeRate
       : 0;
 
-  const filteredCurrencies = React.useMemo(() => {
-    const q = currencySearchQuery.trim().toLowerCase();
-    if (!q) return CURRENCIES;
-    return CURRENCIES.filter(
-      (c) =>
-        c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
-    );
-  }, [currencySearchQuery]);
-
-  const handleCurrencyPopoverOpenChange = useCallback(
-    (open: boolean) => {
-      setCurrencyPopoverOpen(open);
-      if (!open) setCurrencySearchQuery("");
-    },
-    []
-  );
-
   const handleSelectAmountCurrency = useCallback(
     (code: string) => {
       onFromCurrencyChange(code);
-      setCurrencyPopoverOpen(false);
       if (code === ledgerTargetCurrency) {
         setConversion(null);
         onConversionChange(null);
@@ -209,19 +170,21 @@ export function AmountWithRatePicker({
     [onFromCurrencyChange, ledgerTargetCurrency, onConversionChange]
   );
 
-  const handleOpenPopover = useCallback(
+  const handleOpenRateSheet = useCallback(
     (open: boolean) => {
       if (!open) {
-        setPopoverOpen(false);
+        setRateSheetOpen(false);
         return;
       }
-      setPopoverOpen(true);
-      if (!pairReady) return;
+      setRateSheetOpen(true);
+      if (!pairReady || ledgerTargetCurrency == null) return;
       const seq = ++popoverRateFetchSeqRef.current;
       setLoadingRate("current");
       Promise.all([
         getCurrentRate(api, fromCurrency, ledgerTargetCurrency, rateLookupDate),
-        getRecentRates(api, fromCurrency, ledgerTargetCurrency),
+        getRecentRates(api, fromCurrency, ledgerTargetCurrency, {
+          spaceId: spaceCode || undefined,
+        }),
       ])
         .then(([current, recent]) => {
           if (seq !== popoverRateFetchSeqRef.current) return;
@@ -240,14 +203,21 @@ export function AmountWithRatePicker({
           setLoadingRate(null);
         });
     },
-    [api, fromCurrency, ledgerTargetCurrency, pairReady, rateLookupDate]
+    [
+      api,
+      fromCurrency,
+      ledgerTargetCurrency,
+      pairReady,
+      rateLookupDate,
+      spaceCode,
+    ],
   );
 
   const applyConversion = useCallback(
     (
       rawRate: number,
       source: "auto" | "manual" | "recent",
-      options?: { syncToParent?: boolean },
+      options?: { syncToParent?: boolean; manualEntryMode?: ManualExchangeEntryMode | null },
     ): number => {
       const rate = multiplierFromApi(rawRate);
       const snapshot: ConversionSnapshot = {
@@ -257,6 +227,11 @@ export function AmountWithRatePicker({
         exchangeRateSource: source,
       };
       setConversion({ exchangeRate: rate, exchangeRateSource: source });
+      if (source === "manual") {
+        setAppliedManualEntryMode(options?.manualEntryMode ?? "rate");
+      } else {
+        setAppliedManualEntryMode(null);
+      }
       const syncToParent = options?.syncToParent ?? !previewOnly;
       if (syncToParent) {
         onConversionChange(snapshot);
@@ -275,7 +250,6 @@ export function AmountWithRatePicker({
         const n = applyConversion(raw, "auto", { syncToParent: true });
         setCurrentRateDisplay(n);
         setDisplayedRateDate(rateLookupDate);
-        setPopoverOpen(false);
       })
       .catch(() => {
         setCurrentRateDisplay(null);
@@ -302,8 +276,10 @@ export function AmountWithRatePicker({
       null;
     const operativeRate = operativeMultiplierFromManualQuote(parsed, hintRate);
 
-    applyConversion(operativeRate, "manual", { syncToParent: true });
-    setPopoverOpen(false);
+    applyConversion(operativeRate, "manual", {
+      syncToParent: true,
+      manualEntryMode: "rate",
+    });
   }, [
     manualRate,
     applyConversion,
@@ -311,6 +287,20 @@ export function AmountWithRatePicker({
     currentRateDisplay,
     initialConversion?.exchangeRate,
   ]);
+
+  const handleUseManualFinalAmount = useCallback(() => {
+    const finalAmount = numberFormatting.cleanForBackend(manualFinalAmount);
+    const operativeRate = operativeMultiplierFromFinalAmount(
+      amountNumeric,
+      finalAmount,
+    );
+    if (operativeRate == null) return;
+
+    applyConversion(operativeRate, "manual", {
+      syncToParent: true,
+      manualEntryMode: "final_amount",
+    });
+  }, [amountNumeric, applyConversion, manualFinalAmount]);
 
   const manualRateHint =
     conversion?.exchangeRate ??
@@ -363,7 +353,7 @@ export function AmountWithRatePicker({
       return;
     }
 
-    if (!pairReady) {
+    if (!pairReady || !ledgerTargetCurrency) {
       lastAutoFetchedPairRef.current = null;
       setConversion(null);
       if (!previewOnly) {
@@ -372,61 +362,69 @@ export function AmountWithRatePicker({
       setCurrentRateDisplay(null);
       setDisplayedRateDate(undefined);
       setRecentRates([]);
+      setLoadingRate(null);
       return;
     }
 
-    // Create mode: default to most recent rate used, else today's rate
+    // Create mode: service resolves local DB first, then backend.
     const seq = ++autoRateFetchSeqRef.current;
     const nextPair: FxRatePair = {
       fromCurrency,
       toCurrency: ledgerTargetCurrency,
     };
     const pairChanged = fxPairChanged(lastAutoFetchedPairRef.current, nextPair);
-    setConversion(null);
-    if (!previewOnly) {
-      onConversionChange(null);
-    }
-    setLoadingRate("currency");
-    Promise.all([
-      getRecentRates(api, fromCurrency, ledgerTargetCurrency),
-      getCurrentRate(api, fromCurrency, ledgerTargetCurrency, rateLookupDate),
-    ])
-      .then(([recent, current]) => {
-        if (seq !== autoRateFetchSeqRef.current) return;
-        const rates = recent.rates ?? [];
-        const currentRaw = Number(current.rate);
-        const recentNumericRates = rates.map((r) => Number(r.rate));
-        const { rate: appliedRate, source } = selectAutoFxRate({
-          pairChanged,
-          recentRates: recentNumericRates,
-          currentRate: currentRaw,
-        });
-        const n = applyConversion(appliedRate, source);
+    let cancelled = false;
 
-        if (source === "recent" && rates.length > 0) {
-          setDisplayedRateDate(
-            rates[0].usedAt ??
-              (rates[0] as { timestamp?: string }).timestamp ??
-              rateLookupDate
-          );
-        } else {
-          setDisplayedRateDate(rateLookupDate);
+    void (async () => {
+      // Defer the loading skeleton so local-DB hits don't flash a placeholder.
+      const loadingTimer = window.setTimeout(() => {
+        if (!cancelled && seq === autoRateFetchSeqRef.current && pairChanged) {
+          setLoadingRate("currency");
         }
+      }, 80);
 
+      try {
+        const resolved = await resolveAutoExchangeRates({
+          api,
+          fromCurrency,
+          toCurrency: ledgerTargetCurrency,
+          date: rateLookupDate,
+          spaceId: spaceCode || undefined,
+          pairChanged,
+          previousPair: lastAutoFetchedPairRef.current,
+        });
+
+        if (cancelled || seq !== autoRateFetchSeqRef.current) return;
+        window.clearTimeout(loadingTimer);
+
+        const n = applyConversion(
+          resolved.appliedRate,
+          resolved.appliedSource,
+        );
+        setDisplayedRateDate(resolved.displayedRateDate);
         setCurrentRateDisplay(n);
-        setRecentRates(rates);
+        setRecentRates(resolved.recent.rates ?? []);
         lastAutoFetchedPairRef.current = nextPair;
-      })
-      .catch(() => {
-        if (seq !== autoRateFetchSeqRef.current) return;
+        setLoadingRate(null);
+      } catch {
+        if (cancelled || seq !== autoRateFetchSeqRef.current) return;
+        window.clearTimeout(loadingTimer);
+        if (pairChanged) {
+          setConversion(null);
+          if (!previewOnly) {
+            onConversionChange(null);
+          }
+        }
         setCurrentRateDisplay(null);
         setDisplayedRateDate(undefined);
         setRecentRates([]);
-      })
-      .finally(() => {
-        if (seq !== autoRateFetchSeqRef.current) return;
         setLoadingRate(null);
-      });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     fromCurrency,
     ledgerTargetCurrency,
@@ -438,6 +436,7 @@ export function AmountWithRatePicker({
     onConversionChange,
     previewOnly,
     rateLookupDate,
+    spaceCode,
   ]);
 
   return (
@@ -445,316 +444,237 @@ export function AmountWithRatePicker({
       <Label htmlFor={id} className="self-end text-sm leading-none">
         {label}
       </Label>
-      <div className="space-y-2 w-full min-w-0">
-        <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+      <div className="w-full min-w-0">
+        <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:gap-2">
           {/* Currency on the left: locked label or search + list */}
           <div className="flex shrink-0 flex-nowrap items-center">
-          {lockFromCurrency ? (
-            <span
-              className={cn(
-                "inline-flex items-center px-2 text-xs font-medium text-muted-foreground",
-                formControlHeightClassName,
-              )}
-              aria-label="Amount currency (from account)"
-            >
-              {fromCurrency}
-            </span>
-          ) : (
-            <Popover
-              open={currencyPopoverOpen}
-              onOpenChange={handleCurrencyPopoverOpenChange}
-            >
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={cn(
-                    "shrink-0 px-2 text-xs font-medium",
-                    formControlInteractiveSurfaceClassName,
-                  )}
-                  aria-label="Amount currency"
-                >
-                  {fromCurrency}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-0" align="start">
-                <Input
-                  type="text"
-                  placeholder="Search by name or code..."
-                  value={currencySearchQuery}
-                  onChange={(e) => setCurrencySearchQuery(e.target.value)}
-                  className="rounded-b-none border-x-0 border-t-0 border-b border-border bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                  autoComplete="off"
-                />
-                <div className="max-h-64 overflow-y-auto p-1">
-                  {filteredCurrencies.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-muted-foreground">
-                      No currencies match
-                    </p>
-                  ) : (
-                    filteredCurrencies.map(({ code, name }) => {
-                      const flag = getFlagEmoji(getCountryCodeForCurrency(code));
-                      const label = flag
-                        ? `${flag}${FLAG_NAME_GAP}${name} (${code})`
-                        : `${name} (${code})`;
-                      return (
-                        <Button
-                          key={code}
-                          type="button"
-                          variant={fromCurrency === code ? "secondary" : "ghost"}
-                          size="sm"
-                          className="w-full justify-start text-left font-normal"
-                          onClick={() => handleSelectAmountCurrency(code)}
-                        >
-                          {label}
-                        </Button>
-                      );
-                    })
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-        </div>
-        <div className="min-w-0 flex flex-1 items-center basis-[10rem]">
-          <CalculatorInput
-            id={id}
-            name={id}
-            value={amountDisplayValue}
-            onChange={onAmountChange}
-            placeholder={placeholder}
-            className={`w-full min-w-0 ${inputClassName}`}
-          />
-        </div>
-        <div className="flex shrink-0 flex-nowrap items-center">
-          {!hideRatePicker && pairReady && (
-            <Popover open={popoverOpen} onOpenChange={handleOpenPopover}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={cn(
-                    "shrink-0 gap-1 px-2 font-medium border-dashed sm:gap-1.5 sm:px-3",
-                    formControlInteractiveSurfaceClassName,
-                    "hover:border-primary/50 hover:bg-primary/5",
-                  )}
-                  aria-label="Exchange rate options"
-                >
-                  <TrendingUp className="h-4 w-4 shrink-0" />
-                  <span className="text-xs sm:text-sm whitespace-nowrap">Rates</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-72"
-                align="end"
-                onPointerDownOutside={(e) => {
-                  if (
-                    ratePopoverContentRef.current?.contains(
-                      e.target as Node
-                    )
-                  ) {
-                    e.preventDefault();
-                  }
-                }}
+            {lockFromCurrency ? (
+              <span
+                className={cn(
+                  "inline-flex items-center px-2 text-xs font-medium text-muted-foreground",
+                  formControlHeightClassName,
+                )}
+                aria-label="Amount currency (from account)"
               >
-                <div ref={ratePopoverContentRef} className="space-y-3">
-                  <p className="text-sm font-medium">
-                    {fromCurrency} → {ledgerTargetCurrency}
-                  </p>
-                  {currentRateDisplay != null && (() => {
-                    const q = humanFxQuote(
-                      currentRateDisplay,
-                      fromCurrency,
-                      ledgerTargetCurrency,
-                    );
-                    return (
-                      <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
-                        <p className="text-muted-foreground">
-                          {formatRateForLabel(displayedRateDate)}:
-                        </p>
-                        <p className="font-medium">
-                          {formatWithDelimiters(q.displayValue, {
-                            minFractionDigits: RATE_DISPLAY_DECIMALS,
-                            maxFractionDigits: RATE_DISPLAY_DECIMALS,
-                          })}{" "}
-                          {q.unitCurrency} per 1 {q.baseCurrency}
-                        </p>
-                      </div>
-                    );
-                  })()}
-                  <div className="flex flex-col gap-1.5">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={handleUseTodaysRate}
-                      disabled={loadingRate === "current"}
-                    >
-                      {loadingRate === "current" ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
-                      ) : isTodayRateApplied ? (
-                        <Check className="h-4 w-4 text-primary mr-2 shrink-0" aria-hidden />
-                      ) : null}
-                      Use today's rate
-                    </Button>
-                  </div>
-                  {recentRates.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Recent rates</p>
-                      {recentRates.slice(0, 3).map((r, i) => (
-                        <Button
-                          key={i}
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-between text-sm"
-                          onClick={() => {
-                            handleUseRecentRate(Number(r.rate));
-                            setPopoverOpen(false);
-                          }}
-                        >
-                          <span className="flex items-center gap-2">
-                            {isRecentRateApplied(Number(r.rate)) ? (
-                              <Check className="h-4 w-4 text-primary shrink-0" aria-hidden />
-                            ) : null}
-                            {(() => {
-                              const raw = Number(r.rate);
-                              const m = multiplierFromApi(raw);
-                              const q = humanFxQuote(
-                                m,
-                                fromCurrency,
-                                ledgerTargetCurrency,
-                              );
-                              return (
-                                <>
-                                  {formatWithDelimiters(q.displayValue, {
-                                    minFractionDigits: RATE_DISPLAY_DECIMALS,
-                                    maxFractionDigits: RATE_DISPLAY_DECIMALS,
-                                  })}{" "}
-                                  {q.unitCurrency} per 1 {q.baseCurrency}
-                                </>
-                              );
-                            })()}
-                          </span>
-                          {(r.usedAt ?? (r as { timestamp?: string }).timestamp) ? (
-                            <span className="text-muted-foreground text-xs">
-                              {new Date(
-                                (r.usedAt ?? (r as { timestamp?: string }).timestamp)!
-                              ).toLocaleDateString()}
-                            </span>
-                          ) : null}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-1.5">
-                    {manualRateQuote != null ? (
-                      <p className="text-xs text-muted-foreground">
-                        Manual rate as{" "}
-                        {formatFxQuoteLabel(manualRateQuote)}
-                      </p>
-                    ) : null}
-                    <div className="flex gap-2 items-center">
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      placeholder={
-                        manualRateQuote != null
-                          ? formatFxQuoteLabel(manualRateQuote)
-                          : "Manual rate"
-                      }
-                      value={manualRate}
-                      onChange={(e) =>
-                        setManualRate(
-                          numberFormatting.handleInputChange(e.target.value)
-                        )
-                      }
-                      className="flex-1 h-8 text-sm"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleUseManualRate}
-                      disabled={(() => {
-                        const rateNum = numberFormatting.cleanForBackend(
-                          manualRate
-                        );
-                        return (
-                          !manualRate ||
-                          !Number.isFinite(rateNum) ||
-                          rateNum <= 0
-                        );
-                      })()}
-                    >
-                      {isManualRateApplied ? (
-                        <Check className="h-4 w-4 text-primary-foreground mr-1.5 shrink-0" aria-hidden />
-                      ) : null}
-                      {isManualRateApplied ? "Applied" : "Apply"}
-                    </Button>
-                    </div>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-        </div>
-        </div>
-        {fxPreviewActive && (
-          <div className="min-w-0 border-l-2 border-primary/20 py-0.5 pl-3">
-            {conversion && amountNumeric > 0 ? (
-              <>
-                <p className="text-sm font-semibold text-primary tracking-tight">
-                  → {ledgerTargetCurrency ?? "Account"}{" "}
-                  <RollingNumber
-                    value={formatWithDelimiters(convertedAmount, {
-                      minFractionDigits: 3,
-                      maxFractionDigits: 3,
-                    })}
-                    className="text-primary"
-                  />
-                </p>
-                {ledgerTargetCurrency != null ? (
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    (
-                    {(() => {
-                      const q = humanFxQuote(
-                        conversion.exchangeRate,
-                        fromCurrency,
-                        ledgerTargetCurrency,
-                      );
-                      return (
-                        <>
-                          <RollingNumber
-                            value={formatWithDelimiters(q.displayValue, {
-                              minFractionDigits: RATE_DISPLAY_DECIMALS,
-                              maxFractionDigits: RATE_DISPLAY_DECIMALS,
-                            })}
-                            className="text-muted-foreground"
-                          />{" "}
-                          {q.unitCurrency} per 1 {q.baseCurrency}
-                        </>
-                      );
-                    })()}
-                    {conversion.exchangeRateSource !== "auto" && " · manual/recent"})
-                  </p>
-                ) : null}
-              </>
-            ) : ledgerTargetCurrency != null ? (
-              <p className="text-xs text-muted-foreground">
-                → {ledgerTargetCurrency} — enter amount and choose a rate
-              </p>
-            ) : initialConversion == null ? (
-              <p className="text-xs text-muted-foreground">
-                Select an account to preview the amount in the account currency.
-              </p>
+                {fromCurrency}
+              </span>
             ) : (
-              <p className="text-xs text-muted-foreground">
-                Enter amount to see the converted value.
-              </p>
+              <CurrencySelectorSheet
+                open={currencySheetOpen}
+                onOpenChange={setCurrencySheetOpen}
+                value={fromCurrency}
+                onSelect={handleSelectAmountCurrency}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "shrink-0 px-2 text-xs font-medium",
+                      formControlInteractiveSurfaceClassName,
+                    )}
+                    aria-label="Amount currency"
+                  >
+                    {fromCurrency}
+                  </Button>
+                }
+              />
             )}
           </div>
-        )}
+          <div className="min-w-0 flex flex-1 items-center">
+            <CalculatorInput
+              id={id}
+              name={id}
+              value={amountDisplayValue}
+              onChange={onAmountChange}
+              placeholder={placeholder}
+              className={`w-full min-w-0 ${inputClassName}`}
+            />
+          </div>
+          {!hideRatePicker && pairReady && ledgerTargetCurrency != null && (
+            <div className="flex shrink-0 flex-nowrap items-center">
+              <ExchangeRateSelectorSheet
+                open={rateSheetOpen}
+                onOpenChange={handleOpenRateSheet}
+                fromCurrency={fromCurrency}
+                toCurrency={ledgerTargetCurrency}
+                currentRateDisplay={currentRateDisplay}
+                displayedRateDate={displayedRateDate}
+                recentRates={recentRates}
+                appliedRate={conversion?.exchangeRate ?? null}
+                appliedSource={conversion?.exchangeRateSource ?? null}
+                appliedManualEntryMode={appliedManualEntryMode}
+                loadingRate={loadingRate}
+                sourceAmount={amountNumeric}
+                manualEntryMode={manualEntryMode}
+                onManualEntryModeChange={setManualEntryMode}
+                manualRate={manualRate}
+                manualFinalAmount={manualFinalAmount}
+                manualRatePlaceholder={
+                  manualRateQuote != null
+                    ? formatFxQuoteLabel(manualRateQuote)
+                    : "Enter rate"
+                }
+                manualRateApplyDisabled={(() => {
+                  const rateNum = numberFormatting.cleanForBackend(manualRate);
+                  return (
+                    !manualRate ||
+                    !Number.isFinite(rateNum) ||
+                    rateNum <= 0
+                  );
+                })()}
+                manualFinalAmountApplyDisabled={(() => {
+                  const finalAmount = numberFormatting.cleanForBackend(
+                    manualFinalAmount,
+                  );
+                  return (
+                    amountNumeric <= 0 ||
+                    !manualFinalAmount ||
+                    !Number.isFinite(finalAmount) ||
+                    finalAmount <= 0
+                  );
+                })()}
+                onManualRateChange={(value) =>
+                  setManualRate(numberFormatting.handleInputChange(value))
+                }
+                onManualFinalAmountChange={(value) =>
+                  setManualFinalAmount(numberFormatting.handleInputChange(value))
+                }
+                onSelectTodaysRate={handleUseTodaysRate}
+                onSelectRecentRate={handleUseRecentRate}
+                onApplyManualRate={handleUseManualRate}
+                onApplyManualFinalAmount={handleUseManualFinalAmount}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "shrink-0 gap-1 px-2 font-medium border-dashed sm:gap-1.5 sm:px-3",
+                      formControlInteractiveSurfaceClassName,
+                      "hover:border-primary/50 hover:bg-primary/5",
+                    )}
+                    aria-label="Exchange rate options"
+                    disabled={loadingRate === "currency"}
+                  >
+                    {loadingRate === "currency" ? (
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                    ) : (
+                      <TrendingUp className="h-4 w-4 shrink-0" />
+                    )}
+                    <span className="text-xs sm:text-sm whitespace-nowrap">
+                      Rates
+                    </span>
+                  </Button>
+                }
+              />
+            </div>
+          )}
+        </div>
+        <AnimatePresence initial={false}>
+          {fxPreviewActive && (
+            <motion.div
+              key="fx-preview"
+              initial={
+                reduceMotion
+                  ? false
+                  : { height: 0, opacity: 0, marginTop: 0 }
+              }
+              animate={{
+                height: "auto",
+                opacity: 1,
+                marginTop: 8,
+              }}
+              exit={
+                reduceMotion
+                  ? undefined
+                  : { height: 0, opacity: 0, marginTop: 0 }
+              }
+              transition={{
+                height: {
+                  duration: 0.28,
+                  ease: [0.22, 1, 0.36, 1],
+                },
+                opacity: {
+                  duration: 0.22,
+                  ease: "easeOut",
+                },
+                marginTop: {
+                  duration: 0.28,
+                  ease: [0.22, 1, 0.36, 1],
+                },
+              }}
+              className="overflow-hidden"
+            >
+              <div className="min-w-0 min-h-[2.75rem] border-l-2 border-primary/20 py-0.5 pl-3">
+                {loadingRate === "currency" && !conversion ? (
+                  <div
+                    className="flex h-[2.75rem] flex-col justify-center gap-1.5"
+                    aria-busy="true"
+                    aria-live="polite"
+                  >
+                    <div className="h-4 w-44 max-w-full animate-pulse rounded bg-muted" />
+                    <div className="h-3 w-32 max-w-full animate-pulse rounded bg-muted" />
+                  </div>
+                ) : conversion && amountNumeric > 0 ? (
+                  <div className="flex min-h-[2.75rem] flex-col justify-center">
+                    <p className="text-sm font-semibold text-primary tracking-tight leading-5">
+                      → {ledgerTargetCurrency ?? "Account"}{" "}
+                      <RollingNumber
+                        value={formatWithDelimiters(convertedAmount, {
+                          minFractionDigits: 3,
+                          maxFractionDigits: 3,
+                        })}
+                        className="text-primary"
+                      />
+                    </p>
+                    {ledgerTargetCurrency != null ? (
+                      <p className="text-xs text-muted-foreground tabular-nums leading-4">
+                        (
+                        {(() => {
+                          const q = humanFxQuote(
+                            conversion.exchangeRate,
+                            fromCurrency,
+                            ledgerTargetCurrency,
+                          );
+                          return (
+                            <>
+                              <RollingNumber
+                                value={formatWithDelimiters(q.displayValue, {
+                                  minFractionDigits: RATE_DISPLAY_DECIMALS,
+                                  maxFractionDigits: RATE_DISPLAY_DECIMALS,
+                                })}
+                                className="text-muted-foreground"
+                              />{" "}
+                              {q.unitCurrency} per 1 {q.baseCurrency}
+                            </>
+                          );
+                        })()}
+                        {conversion.exchangeRateSource === "manual" &&
+                          appliedManualEntryMode === "final_amount" &&
+                          " · from final amount"}
+                        {conversion.exchangeRateSource === "manual" &&
+                          appliedManualEntryMode !== "final_amount" &&
+                          " · manual rate"}
+                        {conversion.exchangeRateSource === "recent" &&
+                          " · recent rate"}
+                        )
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="flex h-[2.75rem] items-center">
+                    <p className="text-xs text-muted-foreground">
+                      {ledgerTargetCurrency != null
+                        ? `→ ${ledgerTargetCurrency} — enter amount and choose a rate`
+                        : initialConversion == null
+                          ? "Select an account to preview the amount in the account currency."
+                          : "Enter amount to see the converted value."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       {errors.length > 0 &&
         errors.map((error) => <FormError key={error}>{error}</FormError>)}

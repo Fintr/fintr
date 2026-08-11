@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   loginWithCredentials,
@@ -247,15 +247,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     setTokens(null);
     setError(null);
     AuthStorage.clearAuthData();
     router.push('/login');
-  };
+  }, [router]);
 
-  const getAccessToken = async (): Promise<string | null> => {
+  const getAccessToken = useCallback(async (): Promise<string | null> => {
     try {
       // First try to get token from state
       if (tokens?.access_token) {
@@ -345,7 +345,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       return null;
     }
-  };
+  }, [tokens, logout]);
 
   // Calculate isAuthenticated more efficiently
   const isAuthenticated = useMemo(() => {

@@ -111,6 +111,12 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
       accountName: suggestedTransactionPayload?.accountName || suggestedTransactionPayload?.account_name,
       date: suggestedTransactionPayload?.date,
       scheduleType: suggestedTransactionPayload?.scheduleType || suggestedTransactionPayload?.schedule_type,
+      entityName:
+        suggestedTransactionPayload?.entityName ||
+        suggestedTransactionPayload?.entity_name,
+      receiptMerchantDetected:
+        suggestedTransactionPayload?.receiptMerchantDetected ||
+        suggestedTransactionPayload?.receipt_merchant_detected,
       receiptImage: receiptImage,
       draftId: draftId,
     };
@@ -150,7 +156,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
 
   return (
     <>
-      <header className={`fixed w-full bg-background z-20 transition-all duration-300 ease-in-out ${
+      <header className={`hidden md:block fixed w-full bg-background z-20 transition-all duration-300 ease-in-out ${
         isScrolled
           ? "border-b border-gray-200 shadow-sm dark:border-border"
           : "border-b border-transparent"

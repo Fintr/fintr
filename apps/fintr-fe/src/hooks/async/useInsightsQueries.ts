@@ -1,121 +1,138 @@
-import { useQueries } from "@tanstack/react-query";
-import useAuthApi from "../useAuthApi";
-import { useLocalStorage } from "../useLocalStorage";
+import { useMemo } from "react";
+import { useAtomValue } from "jotai";
+import { useQuery } from "@tanstack/react-query";
+import { currentSpaceAtom } from "@/atoms/spaceAtoms";
 import {
-  fetchInsightsAccountBreakdown,
-  fetchInsightsExpenseBreakdown,
-  fetchInsightsHealthScores,
-  fetchInsightsMonthlySpending,
-  fetchInsightsNarratives,
-  fetchInsightsSummary,
-  fetchInsightsWeeklySpending,
-  InsightsQueryParams,
-} from "@/services/insights/fetchers";
+  expenseCategoryOptionsAtom,
+  incomeCategoryOptionsAtom,
+} from "@/atoms/dashboardAtoms";
+import { useLocalStorage } from "../useLocalStorage";
+import { InsightsQueryParams } from "@/services/insights/fetchers";
+import { buildInsightsApiParams } from "@/services/insights/params";
+import { buildOfflineInsightsBundle } from "@/services/insights/offline-calculations";
+import { buildOfflineNarratives } from "@/services/insights/offline-narratives";
 
 interface UseInsightsQueriesParams extends InsightsQueryParams {}
 
 export const useInsightsQueries = (params: UseInsightsQueriesParams = {}) => {
-  const { api, isAuthenticated } = useAuthApi({
-    scope: "openid profile email read:current_user read:transactions",
-  });
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const enabled = !!spaceCode && isAuthenticated;
-  const baseKey = ["insights", spaceCode, params] as const;
+  const currentSpace = useAtomValue(currentSpaceAtom);
+  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
+  const apiParams = useMemo(() => buildInsightsApiParams(params), [params]);
+  const isBusiness = currentSpace?.isOrganization ?? false;
+  const currency = currentSpace?.currency ?? "PHP";
+  const categoryOptions = useMemo(
+    () => ({
+      expense: expenseCategoryOptions,
+      income: incomeCategoryOptions,
+    }),
+    [expenseCategoryOptions, incomeCategoryOptions],
+  );
+  const categoryOptionsKey = useMemo(
+    () =>
+      [
+        ...expenseCategoryOptions.map((option) => option.id),
+        ...incomeCategoryOptions.map((option) => option.id),
+      ].join(","),
+    [expenseCategoryOptions, incomeCategoryOptions],
+  );
 
-  const results = useQueries({
-    queries: [
-      {
-        queryKey: [...baseKey, "summary"],
-        queryFn: () => fetchInsightsSummary(api, params),
-        enabled,
-        staleTime: 30_000,
-      },
-      {
-        queryKey: [...baseKey, "narratives"],
-        queryFn: () => fetchInsightsNarratives(api, params),
-        enabled,
-        staleTime: 30_000,
-      },
-      {
-        queryKey: [...baseKey, "health_scores"],
-        queryFn: () => fetchInsightsHealthScores(api, params),
-        enabled,
-        staleTime: 30_000,
-      },
-      {
-        queryKey: [...baseKey, "expense_breakdown"],
-        queryFn: () => fetchInsightsExpenseBreakdown(api, params),
-        enabled,
-        staleTime: 30_000,
-      },
-      {
-        queryKey: [...baseKey, "monthly_spending"],
-        queryFn: () => fetchInsightsMonthlySpending(api, params),
-        enabled,
-        staleTime: 30_000,
-      },
-      {
-        queryKey: [...baseKey, "weekly_spending"],
-        queryFn: () => fetchInsightsWeeklySpending(api, params),
-        enabled,
-        staleTime: 30_000,
-      },
-      {
-        queryKey: [...baseKey, "account_breakdown"],
-        queryFn: () => fetchInsightsAccountBreakdown(api, params),
-        enabled,
-        staleTime: 30_000,
-      },
+  const categoryFilterActive = Boolean(
+    apiParams.categoryId
+    || apiParams.subcategoryId
+    || apiParams.categoryName?.trim(),
+  );
+  const categoryTreeReady =
+    expenseCategoryOptions.length > 0 || incomeCategoryOptions.length > 0;
+  const insightsQueryEnabled =
+    Boolean(spaceCode)
+    && (!categoryFilterActive || categoryTreeReady);
+
+  const localInsightsQuery = useQuery({
+    queryKey: [
+      "insights",
+      "local",
+      spaceCode,
+      apiParams.startDate,
+      apiParams.endDate,
+      apiParams.categoryName ?? "",
+      apiParams.categoryId ?? "",
+      apiParams.subcategoryId ?? "",
+      JSON.stringify(apiParams.tagIds ?? []),
+      categoryOptionsKey,
+      isBusiness,
+      currency,
     ],
+    queryFn: async () => {
+      try {
+        const bundle = await buildOfflineInsightsBundle({
+          spaceCode,
+          startDate: apiParams.startDate,
+          endDate: apiParams.endDate,
+          categoryName: apiParams.categoryName,
+          categoryId: apiParams.categoryId,
+          subcategoryId: apiParams.subcategoryId,
+          tagIds: apiParams.tagIds,
+          categoryOptions,
+        });
+        const narratives = await buildOfflineNarratives({
+          spaceCode,
+          startDate: apiParams.startDate,
+          endDate: apiParams.endDate,
+          summary: bundle.summary,
+          currency,
+          isBusiness,
+          categoryName: apiParams.categoryName,
+          categoryId: apiParams.categoryId,
+          subcategoryId: apiParams.subcategoryId,
+          tagIds: apiParams.tagIds,
+          categoryOptions,
+        });
+
+        return {
+          ...bundle,
+          narratives,
+        };
+      } catch (error) {
+        console.error("[insights] Failed to build offline insights", {
+          spaceCode,
+          startDate: apiParams.startDate,
+          endDate: apiParams.endDate,
+          categoryName: apiParams.categoryName,
+          categoryId: apiParams.categoryId,
+          error,
+        });
+        throw error;
+      }
+    },
+    enabled: insightsQueryEnabled,
+    staleTime: 30_000,
   });
 
-  const [
-    summaryQuery,
-    narrativesQuery,
-    healthQuery,
-    expenseQuery,
-    monthlyQuery,
-    weeklyQuery,
-    accountQuery,
-  ] = results;
-
-  const refetch = () =>
-    Promise.all(results.map((result) => result.refetch()));
-
-  const isLoading =
-    summaryQuery.isLoading ||
-    narrativesQuery.isLoading ||
-    healthQuery.isLoading;
-
-  const isError =
-    summaryQuery.isError ||
-    narrativesQuery.isError ||
-    healthQuery.isError;
+  const local = localInsightsQuery.data;
 
   return {
-    summary: summaryQuery.data,
-    narratives: narrativesQuery.data,
-    healthScores: healthQuery.data,
-    expenseBreakdown: expenseQuery.data ?? [],
-    monthlySpending: monthlyQuery.data ?? [],
-    weeklySpending: weeklyQuery.data ?? [],
-    accountBreakdown: accountQuery.data,
-    isLoading,
-    isError,
-    isAccountLoading: accountQuery.isLoading,
+    summary: local?.summary,
+    narratives: local?.narratives,
+    healthScores: local?.healthScores,
+    expenseBreakdown: local?.expenseBreakdown ?? [],
+    merchantBreakdown: local?.merchantBreakdown ?? [],
+    subcategoryBreakdown: local?.subcategoryBreakdown ?? [],
+    monthlySpending: local?.monthlySpending ?? [],
+    weeklySpending: local?.weeklySpending ?? [],
+    accountBreakdown: undefined,
+    isLoading:
+      (insightsQueryEnabled
+        && (localInsightsQuery.isLoading || localInsightsQuery.isPending))
+      || (categoryFilterActive && !categoryTreeReady),
+    isError: insightsQueryEnabled && localInsightsQuery.isError,
+    isAccountLoading: false,
     isChartsLoading:
-      expenseQuery.isLoading ||
-      monthlyQuery.isLoading ||
-      weeklyQuery.isLoading,
-    refetch,
+      localInsightsQuery.isLoading || localInsightsQuery.isPending,
+    refetch: () => localInsightsQuery.refetch(),
     queries: {
-      summary: summaryQuery,
-      narratives: narrativesQuery,
-      health: healthQuery,
-      expense: expenseQuery,
-      monthly: monthlyQuery,
-      weekly: weeklyQuery,
-      account: accountQuery,
+      local: localInsightsQuery,
     },
   };
 };

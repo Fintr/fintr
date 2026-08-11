@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 export type CategoryMenuItem = {
   id: string;
   name: string;
+  icon?: string;
+  color?: string;
 };
 
 type CategoryActionsMenuProps = {

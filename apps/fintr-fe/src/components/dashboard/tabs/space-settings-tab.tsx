@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Folder, Users, Settings, Upload, Download, Pencil, Plus, CreditCard, X, Loader2, AlertCircle, Copy, Check, Zap, Play, RefreshCw } from "lucide-react";
+import { Folder, Users, Settings, Upload, Download, Pencil, Plus, CreditCard, X, Loader2, AlertCircle, Copy, Check, Zap, Play, RefreshCw, Contact, Tags } from "lucide-react";
 import CategoryToggle, { CategoryToggleType } from "../category-toggle";
 import CategoryListCard from "../category-list-card";
 import CategoryList from "../category-list";
@@ -58,19 +58,22 @@ import {
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import EditButton from "@/components/ui/edit-button";
+import { EntitiesPageContent } from "@/components/dashboard/entities/entities-page-content";
+import { TagsPageContent } from "@/components/dashboard/tags-page-content";
 
 // Define CategoryItem interface to match CategoryListCard expectations
 interface CategoryItem {
   id: string;
   name: string;
+  icon?: string;
   color?: string;
   amount?: number;
   budget?: number;
-  [key: string]: any; // For any additional properties
+  [key: string]: any;
 }
 
 interface SpaceSettingsTabProps {
-  initialTab?: "categories" | "accounts" | "import" | "subscriptions";
+  initialTab?: "categories" | "accounts" | "entities" | "tags" | "import" | "subscriptions";
   hideTabs?: boolean;
 }
 
@@ -455,12 +458,18 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
     name: string,
     categoryType: CategoryTypeEnum,
     parentId?: string | null,
+    appearance?: {
+      icon: string;
+      color: string;
+    },
   ) => {
     try {
       await createCategoryMutation.mutateAsync({
         name,
         categoryType,
         parentId: parentId ?? null,
+        icon: appearance?.icon,
+        color: appearance?.color,
       });
     } catch (error) {
       console.error("Failed to create category:", error);
@@ -478,15 +487,22 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
     // Implement add investment category functionality
   };
 
-  const handleUpdateCategory = async (categoryId: string, newName: string) => {
+  const handleUpdateCategory = async (
+    categoryId: string,
+    updateData: {
+      name: string;
+      icon: string;
+      color: string;
+    },
+  ) => {
     try {
       await updateCategoryMutation.mutateAsync({
         categoryId,
-        updateData: { name: newName }
+        updateData,
       });
     } catch (error) {
       console.error("Failed to update category:", error);
-      throw error; // Re-throw so the dialog can handle the error
+      throw error;
     }
   };
 
@@ -587,6 +603,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
         return "Categories";
       case "accounts":
         return "Accounts";
+      case "entities":
+        return "Entities";
+      case "tags":
+        return "Tags";
       case "import":
         return "Import";
       case "subscriptions":
@@ -602,6 +622,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
         return "Manage your categories for expenses, income, goals, investments, and accounts";
       case "accounts":
         return "Manage your financial accounts, track balances, and organize your money";
+      case "entities":
+        return "Manage merchants and loan contacts for faster transaction and loan entry";
+      case "tags":
+        return "Create colored tags for trips, projects, and other cross-category labels";
       case "import":
         return "Import your transaction data from Excel files or view your import history";
       case "subscriptions":
@@ -620,14 +644,14 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
           {getHeaderDescription()}
         </CardDescription>
       </CardHeader>
-      <CardContent className="px-2 sm:px-8">
+      <CardContent className={hideTabs ? "px-0" : "px-2 sm:px-8"}>
         {/* Main Navigation Buttons */}
         {!hideTabs && (
           <Tabs
             value={activeMainTab}
             onValueChange={(value) =>
               setActiveMainTab(
-                value as "categories" | "accounts" | "import" | "subscriptions",
+                value as "categories" | "accounts" | "entities" | "tags" | "import" | "subscriptions",
               )
             }
             className="mb-6"
@@ -640,6 +664,14 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
               <TabsTrigger value="accounts" className="gap-2">
                 <Users className="h-4 w-4" />
                 Accounts
+              </TabsTrigger>
+              <TabsTrigger value="entities" className="gap-2">
+                <Contact className="h-4 w-4" />
+                Entities
+              </TabsTrigger>
+              <TabsTrigger value="tags" className="gap-2">
+                <Tags className="h-4 w-4" />
+                Tags
               </TabsTrigger>
               <TabsTrigger value="import" className="gap-2">
                 <Download className="h-4 w-4" />
@@ -780,6 +812,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
             </div>
           </div>
         )}
+
+        {activeMainTab === "entities" && <EntitiesPageContent />}
+
+        {activeMainTab === "tags" && <TagsPageContent />}
 
         {/* Import & Export Tab Content */}
         {activeMainTab === "import" && (

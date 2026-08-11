@@ -1,7 +1,8 @@
 require_relative '../../node_modules/.pnpm/@capacitor+ios@7.4.4_@capacitor+core@7.6.5/node_modules/@capacitor/ios/scripts/pods_helpers'
 
 platform :ios, '14.0'
-use_frameworks!
+# MediaPipe (Capgo LLM) ships static xcframeworks — dynamic use_frameworks! breaks pod install.
+use_frameworks! :linkage => :static
 
 # workaround to avoid Xcode caching of Pods that requires
 # Product -> Clean Build Folder after new Cordova plugins installed
@@ -16,6 +17,7 @@ def capacitor_pods
   pod 'CapacitorFilesystem', :path => '../../node_modules/.pnpm/@capacitor+filesystem@7.1.8_@capacitor+core@7.6.5/node_modules/@capacitor/filesystem'
   pod 'CapacitorKeyboard', :path => '../../node_modules/.pnpm/@capacitor+keyboard@7.0.6_@capacitor+core@7.6.5/node_modules/@capacitor/keyboard'
   pod 'CapacitorShare', :path => '../../node_modules/.pnpm/@capacitor+share@7.0.4_@capacitor+core@7.6.5/node_modules/@capacitor/share'
+  pod 'CapgoCapacitorLlm', :path => '../../node_modules/.pnpm/@capgo+capacitor-llm@7.2.15_@capacitor+core@7.6.5_@mediapipe+tasks-genai@0.10.29/node_modules/@capgo/capacitor-llm'
 end
 
 target 'App' do

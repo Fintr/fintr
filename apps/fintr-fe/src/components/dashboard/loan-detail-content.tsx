@@ -19,7 +19,8 @@ import { LoanSummaryStats } from "@/components/dashboard/loan-summary-stats";
 import EditLoanModal from "@/components/dashboard/forms/EditLoanModal";
 import DeleteLoanModal from "@/components/dashboard/forms/DeleteLoanModal";
 import { useAuthApi } from "@/hooks/useAuthApi";
-import { deleteLoan } from "@/services/loans/mutation";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { deleteLoanLocalFirst } from "@/services/loans/delete-local-first";
 import { useQueryClient } from "@tanstack/react-query";
 import { ACCOUNT_DETAIL_ACTIVITIES_KEY } from "@/hooks/async/useAccountDetailActivities";
 import { formatLoanTerm } from "@/utils/formatLoanTerm";
@@ -55,6 +56,7 @@ function DetailStatBox({ icon, label, value }: DetailItemProps) {
 export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
   const { data: loan, isLoading, isError, error, refetch } = useLoan(loanId);
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions write:transactions",
@@ -65,17 +67,35 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
       throw new Error("API not available");
     }
 
-    const response = await deleteLoan(api, id);
-    queryClient.invalidateQueries({ queryKey: ["loans"] });
-    queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, id] });
-    queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    queryClient.invalidateQueries({
-      queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
-      exact: false,
-    });
+    if (!loan || !spaceCode) {
+      throw new Error("Loan not found");
+    }
+
+    const result = await deleteLoanLocalFirst(
+      api,
+      { spaceId: spaceCode, loan },
+      { queryClient, waitForSync: false },
+    );
+
     router.push("/dashboard/loans");
-    return response;
+
+    void Promise.resolve(result.syncPromise)
+      .then(async (synced) => {
+        if (synced.pendingSync) {
+          return;
+        }
+        await queryClient.invalidateQueries({ queryKey: ["loans"] });
+        await queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, id] });
+        await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+        await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        await queryClient.invalidateQueries({
+          queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
+          exact: false,
+        });
+      })
+      .catch(() => undefined);
+
+    return { success: true, pendingSync: result.pendingSync };
   };
 
   if (isLoading) {

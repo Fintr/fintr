@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useId } from "react";
+import { AnimatedSheetShell } from "@/components/ui/animated-sheet-shell";
 import { CustomModal } from "@/components/ui/custom-modal";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,6 +12,7 @@ import InvestmentForm from "@/components/dashboard/forms/InvestmentForm";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { X } from "lucide-react";
 import {
   UpdateTransactionType,
   CombinedTransactionTypeEnum,
@@ -20,6 +22,7 @@ import { shouldShowV2Features } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ACCOUNT_DETAIL_ACTIVITIES_KEY } from "@/hooks/async/useAccountDetailActivities";
 import { ACCOUNT_DETAIL_TRANSACTIONS_KEY } from "@/hooks/async/useAccountDetailTransactions";
 
@@ -39,6 +42,8 @@ interface AddTransactionDialogProps {
     scheduleType?: string;
     receiptImage?: File;
     draftId?: string;
+    entityName?: string;
+    receiptMerchantDetected?: string;
   };
 }
 
@@ -52,6 +57,7 @@ const AddTransactionDialog = ({
   const [internalOpen, setInternalOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState(initialTransactionType || "expense");
+  const [sharedAmount, setSharedAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const tabsListRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -83,6 +89,8 @@ const AddTransactionDialog = ({
         installmentPeriod: 0,
         file: prefilledData.receiptImage || null,
         draftId: prefilledData.draftId,
+        entityName: prefilledData.entityName || '',
+        receiptMerchantDetected: prefilledData.receiptMerchantDetected,
       };
     }
     return undefined;
@@ -151,7 +159,17 @@ const AddTransactionDialog = ({
   useEffect(() => {
     if (isDialogOpen) {
       setDate(new Date());
+      if (prefilledData?.amount) {
+        setSharedAmount(String(prefilledData.amount));
+      }
+      if (initialTransactionType) {
+        setActiveTab(initialTransactionType);
+      }
+      return;
     }
+
+    setSharedAmount("");
+    setActiveTab("expense");
   }, [isDialogOpen]);
 
   // Ensure TabsList scrolls to left-most on dialog open
@@ -257,53 +275,69 @@ const AddTransactionDialog = ({
   };
 
   const onTransactionSuccess = (response: any) => {
-    // toast.success("Transaction added successfully!");
-    
-    // Use specific invalidation targeting the exact query being used
-    // This prevents duplicate data issues by being more precise
-    queryClient.invalidateQueries({ 
-      queryKey: ["transactions"],
-      refetchType: 'active', // Only refetch currently active/mounted queries
-      exact: false // Allow partial matches for any transactions query
-    });
-    
-    // Also invalidate loans query if we're on the loan tab
-    if (activeTab === "loan") {
-      queryClient.invalidateQueries({ 
-        queryKey: ["loans"],
-        refetchType: 'active',
-      });
-    }
-    // Invalidate accounts when any transaction/transfer/loan is created or updated
-    queryClient.invalidateQueries({ 
-      queryKey: ["accounts"],
-      refetchType: 'active',
-    });
-    queryClient.invalidateQueries({
-      queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
-      refetchType: "active",
-      exact: false,
-    });
-    queryClient.invalidateQueries({
-      queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
-      refetchType: "active",
-      exact: false,
-    });
+    const isOptimisticCreate = Boolean(
+      response?.localTransaction && response?.syncPromise,
+    );
 
-    // Invalidate dashboard query to refresh financial summary
-    queryClient.invalidateQueries({
-      queryKey: ["dashboard"],
-    });
-    // Invalidate insights query so Insights tab reflects latest stats
-    queryClient.invalidateQueries({
-      queryKey: ["insights"],
-      refetchType: 'active',
-      exact: false,
-    });
-    
+    const refreshSecondaryCaches = () => {
+      // Also invalidate loans query if we're on the loan tab
+      if (activeTab === "loan") {
+        queryClient.invalidateQueries({
+          queryKey: ["loans"],
+          refetchType: "active",
+        });
+      }
+      // Invalidate accounts when any transaction/transfer/loan is created or updated
+      queryClient.invalidateQueries({
+        queryKey: ["accounts"],
+        refetchType: "active",
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
+        refetchType: "active",
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ACCOUNT_DETAIL_TRANSACTIONS_KEY],
+        refetchType: "active",
+        exact: false,
+      });
+
+      // Invalidate dashboard query to refresh financial summary
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard"],
+      });
+      // Invalidate insights query so Insights tab reflects latest stats
+      queryClient.invalidateQueries({
+        queryKey: ["insights"],
+        refetchType: "active",
+        exact: false,
+      });
+    };
+
+    if (isOptimisticCreate) {
+      // List + monthly totals already patched; avoid refetch racing the local: id.
+      void Promise.resolve(response.syncPromise)
+        .then(() => {
+          refreshSecondaryCaches();
+        })
+        .catch(() => {
+          // Form already toasts validation rollback; secondary caches unchanged.
+        });
+    } else {
+      // Use specific invalidation targeting the exact query being used
+      // This prevents duplicate data issues by being more precise
+      queryClient.invalidateQueries({
+        queryKey: ["transactions"],
+        refetchType: "active", // Only refetch currently active/mounted queries
+        exact: false, // Allow partial matches for any transactions query
+      });
+      refreshSecondaryCaches();
+    }
+
     // Call the callback if provided
     onAddTransaction(response);
-    
+
     // Redirect to loans page if a loan was created
     if (activeTab === "loan") {
       setDialogOpen(false);
@@ -380,131 +414,184 @@ const AddTransactionDialog = ({
     } focus:outline-none`;
 
   const showV2Features = shouldShowV2Features();
+  const titleId = useId();
+  const isMobile = useMediaQuery("(max-width: 767px)");
+
+  const handleClose = () => {
+    setDialogOpen(false);
+  };
+
+  const formContent = (
+    <Tabs
+      value={activeTab}
+      onValueChange={(value) => setActiveTab(value as typeof activeTab)}
+      className="flex min-h-0 w-full flex-1 flex-col gap-0"
+    >
+      <div className="shrink-0 px-6">
+        <TabsList className="mb-4 grid w-full grid-cols-4 bg-white dark:bg-card dark:shadow-sm">
+          <TabsTrigger value="expense" data-tutorial-target="expense-tab">Expense</TabsTrigger>
+          <TabsTrigger value="income" data-tutorial-target="income-tab">Income</TabsTrigger>
+          <TabsTrigger value="transfer" data-tutorial-target="transfer-tab">Transfer</TabsTrigger>
+          <TabsTrigger value="loan" data-tutorial-target="loan-tab">Loan</TabsTrigger>
+        </TabsList>
+
+        {showV2Features && (
+          <>
+            <TabsList className="mb-4 grid w-full grid-cols-2">
+              <TabsTrigger value="investment">Investment</TabsTrigger>
+            </TabsList>
+
+            <TabsList className="mb-4 grid w-full grid-cols-1">
+              <TabsTrigger value="goal">Goal</TabsTrigger>
+            </TabsList>
+          </>
+        )}
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {activeTab === "expense" && (
+          <ExpenseForm
+            date={date}
+            setDate={setDate}
+            suggestedDate={suggestedDate}
+            spaceCurrency={spaceCurrency}
+            defaultTransactionCurrency={defaultTransactionCurrency}
+            prefillAmount={sharedAmount}
+            onPrefillAmountChange={setSharedAmount}
+            onAddCustomCategory={(category) => {
+              setCustomExpenseCategories([
+                ...customExpenseCategories,
+                category,
+              ]);
+              return category;
+            }}
+            onAddCustomAccount={handleAddCustomAccount}
+            onSubmitSuccess={(data) => onTransactionSuccess(data)}
+            onCancel={handleClose}
+            initialData={expenseInitialData}
+            key={JSON.stringify(expenseInitialData?.file?.name || 'no-file')}
+          />
+        )}
+
+        {activeTab === "income" && (
+          <IncomeForm
+            date={date}
+            setDate={setDate}
+            spaceCurrency={spaceCurrency}
+            defaultTransactionCurrency={defaultTransactionCurrency}
+            prefillAmount={sharedAmount}
+            onPrefillAmountChange={setSharedAmount}
+            onAddCustomCategory={(category) => {
+              setCustomIncomeCategories([
+                ...customIncomeCategories,
+                category,
+              ]);
+              return category;
+            }}
+            onAddCustomAccount={handleAddCustomAccount}
+            onSubmitSuccess={onTransactionSuccess}
+            onCancel={handleClose}
+            initialData={incomeInitialData}
+            key={JSON.stringify(incomeInitialData?.file?.name || 'no-file')}
+          />
+        )}
+
+        {activeTab === "transfer" && (
+          <TransferForm
+            date={date}
+            setDate={setDate}
+            spaceCurrency={spaceCurrency}
+            prefillAmount={sharedAmount}
+            onPrefillAmountChange={setSharedAmount}
+            onSubmitSuccess={onTransactionSuccess}
+            onCancel={handleClose}
+            initialData={transferInitialData}
+            key={JSON.stringify(transferInitialData?.file?.name || 'no-file')}
+          />
+        )}
+
+        {activeTab === "loan" && (
+          <LoanForm
+            date={date}
+            setDate={setDate}
+            prefillAmount={sharedAmount}
+            onPrefillAmountChange={setSharedAmount}
+            onSubmitSuccess={onTransactionSuccess}
+            onCancel={handleClose}
+          />
+        )}
+
+        {showV2Features && activeTab === "investment" && (
+          <div className="min-h-0 flex-1 overflow-y-auto px-6">
+            <InvestmentForm
+              date={date}
+              setDate={setDate}
+              onSubmitSuccess={onTransactionSuccess}
+              onCancel={handleClose}
+            />
+          </div>
+        )}
+
+        {showV2Features && activeTab === "goal" && (
+          <div className="min-h-0 flex-1 overflow-y-auto px-6">
+            <GoalForm
+              date={date}
+              setDate={setDate}
+              onSubmitSuccess={onTransactionSuccess}
+              onCancel={handleClose}
+            />
+          </div>
+        )}
+      </div>
+    </Tabs>
+  );
+
+  if (isMobile) {
+    return (
+      <AnimatedSheetShell
+        open={isDialogOpen}
+        onRequestClose={handleClose}
+        titleId={titleId}
+        side="right"
+        swipeToClose
+        historyKey="__fintrAddTransactionSheet"
+        panelClassName="w-full flex flex-col h-full min-h-0 overflow-hidden p-0"
+      >
+        <div className="flex shrink-0 items-center justify-between px-6 pb-2 pt-4">
+          <h2
+            id={titleId}
+            className="text-lg font-semibold text-primary"
+          >
+            Add Transaction
+          </h2>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={handleClose}
+            aria-label="Close"
+            data-tutorial-target="transaction-close"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        {formContent}
+      </AnimatedSheetShell>
+    );
+  }
 
   return (
     <CustomModal
       isOpen={isDialogOpen}
-      onClose={() => setDialogOpen(false)}
+      onClose={handleClose}
       title="Add Transaction"
       maxWidth="2xl"
       className="p-0"
       closeButtonDataTarget="transaction-close"
       pinBodyLayout
     >
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as typeof activeTab)}
-        className="flex h-full min-h-0 w-full flex-col gap-0"
-      >
-        <div className="shrink-0 px-6">
-          <TabsList className="mb-4 grid w-full grid-cols-4 bg-white dark:bg-card dark:shadow-sm">
-            <TabsTrigger value="expense" data-tutorial-target="expense-tab">Expense</TabsTrigger>
-            <TabsTrigger value="income" data-tutorial-target="income-tab">Income</TabsTrigger>
-            <TabsTrigger value="transfer" data-tutorial-target="transfer-tab">Transfer</TabsTrigger>
-            <TabsTrigger value="loan" data-tutorial-target="loan-tab">Loan</TabsTrigger>
-          </TabsList>
-
-          {showV2Features && (
-            <>
-              <TabsList className="mb-4 grid w-full grid-cols-2">
-                <TabsTrigger value="investment">Investment</TabsTrigger>
-              </TabsList>
-
-              <TabsList className="mb-4 grid w-full grid-cols-1">
-                <TabsTrigger value="goal">Goal</TabsTrigger>
-              </TabsList>
-            </>
-          )}
-        </div>
-
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          {activeTab === "expense" && (
-            <ExpenseForm
-              date={date}
-              setDate={setDate}
-              suggestedDate={suggestedDate}
-              spaceCurrency={spaceCurrency}
-              defaultTransactionCurrency={defaultTransactionCurrency}
-              onAddCustomCategory={(category) => {
-                setCustomExpenseCategories([
-                  ...customExpenseCategories,
-                  category,
-                ]);
-                return category;
-              }}
-              onAddCustomAccount={handleAddCustomAccount}
-              onSubmitSuccess={(data) => onTransactionSuccess(data)}
-              onCancel={() => setDialogOpen(false)}
-              initialData={expenseInitialData}
-              key={JSON.stringify(expenseInitialData?.file?.name || 'no-file')}
-            />
-          )}
-
-          {activeTab === "income" && (
-            <IncomeForm
-              date={date}
-              setDate={setDate}
-              spaceCurrency={spaceCurrency}
-              defaultTransactionCurrency={defaultTransactionCurrency}
-              onAddCustomCategory={(category) => {
-                setCustomIncomeCategories([
-                  ...customIncomeCategories,
-                  category,
-                ]);
-                return category;
-              }}
-              onAddCustomAccount={handleAddCustomAccount}
-              onSubmitSuccess={onTransactionSuccess}
-              onCancel={() => setDialogOpen(false)}
-              initialData={incomeInitialData}
-              key={JSON.stringify(incomeInitialData?.file?.name || 'no-file')}
-            />
-          )}
-
-          {activeTab === "transfer" && (
-            <TransferForm
-              date={date}
-              setDate={setDate}
-              spaceCurrency={spaceCurrency}
-              onSubmitSuccess={onTransactionSuccess}
-              onCancel={() => setDialogOpen(false)}
-              initialData={transferInitialData}
-              key={JSON.stringify(transferInitialData?.file?.name || 'no-file')}
-            />
-          )}
-
-          {activeTab === "loan" && (
-            <LoanForm
-              date={date}
-              setDate={setDate}
-              onSubmitSuccess={onTransactionSuccess}
-              onCancel={() => setDialogOpen(false)}
-            />
-          )}
-
-          {showV2Features && activeTab === "investment" && (
-            <div className="min-h-0 flex-1 overflow-y-auto px-6">
-              <InvestmentForm
-                date={date}
-                setDate={setDate}
-                onSubmitSuccess={onTransactionSuccess}
-                onCancel={() => setDialogOpen(false)}
-              />
-            </div>
-          )}
-
-          {showV2Features && activeTab === "goal" && (
-            <div className="min-h-0 flex-1 overflow-y-auto px-6">
-              <GoalForm
-                date={date}
-                setDate={setDate}
-                onSubmitSuccess={onTransactionSuccess}
-                onCancel={() => setDialogOpen(false)}
-              />
-            </div>
-          )}
-        </div>
-      </Tabs>
+      {formContent}
     </CustomModal>
   );
 };

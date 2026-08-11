@@ -4,28 +4,46 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
-  Calendar as CalendarLucide,
-  Percent,
-  FileText,
 } from "lucide-react";
 import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
 import { useInfiniteLoans } from "@/hooks/async/useInfiniteLoans";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useQueryClient } from "@tanstack/react-query";
 import EditLoanModal from "@/components/dashboard/forms/EditLoanModal";
 import DeleteLoanModal from "@/components/dashboard/forms/DeleteLoanModal";
 import { useAuthApi } from "@/hooks/useAuthApi";
-import { deleteLoan } from "@/services/loans/mutation";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { deleteLoanLocalFirst } from "@/services/loans/delete-local-first";
 import { formatLoanTerm } from "@/utils/formatLoanTerm";
+import { LoanProfilesSection } from "@/components/dashboard/tabs/loans/loan-profiles-section";
+import { LoanUpcomingSections } from "@/components/dashboard/tabs/loans/loan-upcoming-sections";
 
 interface LoansTabProps {}
+
+const loanStatusClassName = (status: string) => {
+  if (status === "paid_off") {
+    return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400";
+  }
+
+  if (status === "defaulted") {
+    return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-700";
+  }
+
+  return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400";
+};
+
+const formatMaturityDate = (maturityDate: string) =>
+  new Date(maturityDate).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 
 const LoansTab = ({}: LoansTabProps) => {
   const router = useRouter();
@@ -43,6 +61,7 @@ const LoansTab = ({}: LoansTabProps) => {
 
   const isLoading = isFetching && loans.length === 0;
   const queryClient = useQueryClient();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions write:transactions",
   });
@@ -58,11 +77,30 @@ const LoansTab = ({}: LoansTabProps) => {
     if (!api) {
       throw new Error("API not available");
     }
-    const response = await deleteLoan(api, loanId);
-    queryClient.invalidateQueries({ queryKey: ["loans"] });
-    queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    return response;
+
+    const loan = loans.find((row) => row.id === loanId);
+    if (!loan || !spaceCode) {
+      throw new Error("Loan not found");
+    }
+
+    const result = await deleteLoanLocalFirst(
+      api,
+      { spaceId: spaceCode, loan },
+      { queryClient, waitForSync: false },
+    );
+
+    void Promise.resolve(result.syncPromise)
+      .then(async (synced) => {
+        if (synced.pendingSync) {
+          return;
+        }
+        await queryClient.invalidateQueries({ queryKey: ["loans"] });
+        await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+        await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      })
+      .catch(() => undefined);
+
+    return { success: true, pendingSync: result.pendingSync };
   };
 
   const sortedLoans = React.useMemo(() => {
@@ -80,9 +118,6 @@ const LoansTab = ({}: LoansTabProps) => {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Loans</CardTitle>
-          <CardDescription>
-            Manage your borrowed and lent money
-          </CardDescription>
         </div>
         <Button
           onClick={() => setIsAddLoanOpen(true)}
@@ -121,6 +156,8 @@ const LoansTab = ({}: LoansTabProps) => {
 
         {isSuccess && sortedLoans.length > 0 && (
           <div className="space-y-2">
+            <LoanProfilesSection loans={loans} />
+            <LoanUpcomingSections loans={loans} />
             {sortedLoans.map((loan, idx) => {
               const loanDate = new Date(loan.date);
               const currentDate = loanDate.toLocaleDateString("en-US", {
@@ -140,12 +177,8 @@ const LoansTab = ({}: LoansTabProps) => {
               const textColorClass = isBorrowed
                 ? "text-red-900 dark:text-red-700"
                 : "text-teal-600 dark:text-teal-500";
-              const statusColorClass =
-                loan.status === "paid_off"
-                  ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400"
-                  : loan.status === "defaulted"
-                    ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-700"
-                    : "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400";
+              const statusColorClass = loanStatusClassName(loan.status);
+              const maturityLabel = formatMaturityDate(loan.maturityDate);
 
               return (
                 <React.Fragment key={loan.id}>
@@ -165,7 +198,7 @@ const LoansTab = ({}: LoansTabProps) => {
                     </div>
                   )}
                   <div
-                    className="flex min-h-[80px] items-center justify-between rounded bg-white p-3 transition-colors hover:bg-gray-100 dark:bg-card dark:hover:bg-accent/50 cursor-pointer"
+                    className="flex min-h-[64px] items-stretch rounded bg-white p-3 transition-colors hover:bg-gray-100 dark:bg-card dark:hover:bg-accent/50 cursor-pointer"
                     onClick={() =>
                       router.push(
                         `/dashboard/loans/detail?loanId=${loan.id}`,
@@ -173,22 +206,31 @@ const LoansTab = ({}: LoansTabProps) => {
                     }
                   >
                     <div
-                      className={`w-1 rounded mr-3 flex-shrink-0 self-stretch ${colorClass}`}
+                      className={cn(
+                        "mr-3 w-1 flex-shrink-0 self-stretch rounded",
+                        colorClass,
+                      )}
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-auto min-w-0">
-                          <h4 className="font-medium text-sm text-primary truncate">
+                    <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <h4 className="truncate text-sm font-medium text-primary">
                             {loan.entityName}
                           </h4>
                           <span
-                            className={`text-xs px-2 py-1 rounded-full ${statusColorClass}`}
+                            className={cn(
+                              "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize",
+                              statusColorClass,
+                            )}
                           >
                             {loan.status.replace("_", " ")}
                           </span>
                         </div>
                         <div
-                          className={`font-semibold text-sm ${textColorClass} flex-shrink-0`}
+                          className={cn(
+                            "shrink-0 text-sm font-semibold tabular-nums",
+                            textColorClass,
+                          )}
                         >
                           {formatCurrency(
                             loan.outstandingBalance,
@@ -197,74 +239,20 @@ const LoansTab = ({}: LoansTabProps) => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-600 dark:text-muted-foreground relative">
-                        <div className="flex items-center gap-1">
-                          <CalendarLucide className="h-3 w-3" />
-                          <span>
-                            {loanDate.toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Percent className="h-3 w-3" />
-                          <span>{loan.interestRate}%</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium">Principal:</span>
-                          <span>
-                            {formatCurrency(
-                              loan.principalAmount,
-                              loan.principalAmountCurrency,
-                            )}
-                          </span>
-                        </div>
-                        {loan.description && (
-                          <div className="hidden md:flex items-center gap-1 flex-1 min-w-0">
-                            <FileText className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">{loan.description}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {loan.description && (
-                        <div className="md:hidden flex items-center gap-1 mt-1 mb-1 text-xs text-gray-600 dark:text-muted-foreground">
-                          <FileText className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{loan.description}</span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between gap-3 mt-2 text-xs">
-                        <div className="flex items-center gap-3">
-                          <span className={`${textColorClass} font-medium`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="min-w-0 truncate text-xs text-muted-foreground">
+                          <span className={cn("font-medium", textColorClass)}>
                             {isBorrowed ? "Borrowed" : "Lent"}
                           </span>
-                          <span className="text-gray-500 dark:text-muted-foreground">
-                            <span className="font-medium">Term:</span>{" "}
-                            {formatLoanTerm(loan.loanTermMonths)}
-                          </span>
-                          <span className="text-gray-500 dark:text-muted-foreground">
-                            Matures:{" "}
-                            {new Date(loan.maturityDate).toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              },
-                            )}
-                          </span>
-                          {loan.files && loan.files.length > 0 && (
-                            <span className="text-gray-500 dark:text-muted-foreground">
-                              {loan.files.length} file
-                              {loan.files.length > 1 ? "s" : ""}
-                            </span>
-                          )}
-                        </div>
+                          <span aria-hidden="true"> · </span>
+                          {loan.interestRate}%
+                          <span aria-hidden="true"> · </span>
+                          {formatLoanTerm(loan.loanTermMonths)}
+                          <span aria-hidden="true"> · </span>
+                          Matures {maturityLabel}
+                        </p>
                         <div
-                          className="flex items-center gap-1"
+                          className="flex shrink-0 items-center gap-1"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <EditLoanModal loan={loan} />
@@ -274,6 +262,12 @@ const LoansTab = ({}: LoansTabProps) => {
                           />
                         </div>
                       </div>
+
+                      {loan.description ? (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {loan.description}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </React.Fragment>

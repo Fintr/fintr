@@ -91,14 +91,21 @@ export const fetchLoans = async (api: AxiosInstance): Promise<Loan[]> => {
  */
 export const fetchLoansPage = async (
   api: AxiosInstance,
-  { pageParam = 1 }: { pageParam?: number }
+  {
+    pageParam = 1,
+    requestConfig,
+  }: {
+    pageParam?: number;
+    requestConfig?: import("axios").AxiosRequestConfig;
+  },
 ): Promise<LoansPage> => {
   try {
     const response = await api.get('/transactions/loans', {
       params: {
         page: pageParam,
         per_page: 10
-      }
+      },
+      ...requestConfig,
     });
     
     const loans = response?.data?.data?.loans || [];
@@ -131,9 +138,13 @@ export const fetchLoansPage = async (
 export const fetchLoanById = async (
   api: AxiosInstance,
   loanId: string,
+  requestConfig?: import("axios").AxiosRequestConfig,
 ): Promise<Loan> => {
   try {
-    const response = await api.get(`/transactions/loans/${loanId}`);
+    const response = await api.get(
+      `/transactions/loans/${loanId}`,
+      requestConfig,
+    );
     return response.data?.data;
   } catch (error) {
     const axiosError = error as AxiosError;

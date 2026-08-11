@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CalculationBreakdownContent } from "@/components/dashboard/insights/calculation-breakdown-content";
 import { MetricCalculation } from "@/services/insights/types";
+import { useRevealProgress } from "@/hooks/useRevealProgress";
 import { CircleHelp } from "lucide-react";
 
 export type HealthScoreFactorVariant = "savings" | "budget" | "debt";
@@ -56,9 +57,15 @@ export const HealthScoreFactorRow = ({
 }: HealthScoreFactorRowProps) => {
   const styles = FACTOR_STYLES[variant];
   const popoverTitle = helpTitle ?? label;
+  const targetBarValue = scoreBarValue(score);
+  const { ref, progress } = useRevealProgress({
+    amount: 0.45,
+    durationMs: 1200,
+  });
+  const animatedBarValue = targetBarValue * progress;
 
   return (
-    <div className="space-y-2">
+    <div ref={ref} className="space-y-2">
       <div className="flex justify-between items-center gap-2">
         <div className="flex items-center gap-1 min-w-0">
           <span className="text-sm font-medium">{label}</span>
@@ -100,9 +107,9 @@ export const HealthScoreFactorRow = ({
       </div>
 
       <Progress
-        value={scoreBarValue(score)}
+        value={animatedBarValue}
         className="h-2 bg-gray-200"
-        indicatorClassName={styles.bar}
+        indicatorClassName={`${styles.bar} transition-none`}
         aria-label={`${label} health score ${score} out of 100`}
       />
     </div>

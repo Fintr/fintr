@@ -111,21 +111,14 @@ export function shouldUseStoredConversionForPreview({
   return true;
 }
 
-export function shouldPreviewConversionOnlyInEdit({
-  isEditMode,
-  hadStoredConversion,
-  targetCurrency,
-  effectiveSpaceCurrency,
-}: {
+/** Edit mode allows changing FX; rates must sync to the parent snapshot for submit. */
+export function shouldPreviewConversionOnlyInEdit(_args: {
   isEditMode: boolean;
   hadStoredConversion: boolean;
   targetCurrency: string | null;
   effectiveSpaceCurrency: string;
 }): boolean {
-  if (!isEditMode) return false;
-  if (!hadStoredConversion) return true;
-
-  return targetCurrency === effectiveSpaceCurrency;
+  return false;
 }
 
 /** When amount currency differs from the ledger target — API needs conversion metadata. */
@@ -141,18 +134,16 @@ export function transactionNeedsConversion({
   return amountCurrency !== targetCurrency;
 }
 
-/** Create flow only — blocks submit while the rate is still loading. */
+/** Blocks submit while the rate is still loading (create and edit). */
 export function createTransactionNeedsConversion({
   amountCurrency,
   targetCurrency,
-  isEditMode,
 }: {
   amountCurrency: string;
   targetCurrency: string | null;
-  isEditMode: boolean;
+  /** @deprecated Ignored — edit mode also requires a conversion snapshot when currencies differ. */
+  isEditMode?: boolean;
 }): boolean {
-  if (isEditMode) return false;
-
   return transactionNeedsConversion({ amountCurrency, targetCurrency });
 }
 

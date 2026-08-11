@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useId } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AnimatedSheetShell } from "@/components/ui/animated-sheet-shell";
 import { CustomModal } from "@/components/ui/custom-modal";
 import ExpenseForm from "./ExpenseForm";
 import IncomeForm from "./IncomeForm";
@@ -6,20 +8,84 @@ import TransferForm from "./TransferForm";
 import ScopeModal, { UpdateScope, Scope, DeleteScope } from "./ScopeModal";
 import { IndexTransaction, CombinedTransactionTypeEnum, TransferUpdateTransactionType, UpdateTransactionType, CurrencyConversionType } from "@/types/transactionTypes";
 import { UpdateTransferType, updateTransfer } from "@/services/transactions/transfers/mutation";
+import { buildTransferInitialData } from "./transfer-form-initial-data";
+import { patchTransferAndFeeCaches } from "@/services/transactions/transfers/patch-transfer-fee-caches";
 import { updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
-import { deleteTransfer } from "@/services/transactions/transfers/mutation";
-import { fetchTransactionById } from "@/services/transactions/queries";
-import { fetchTransferById } from "@/services/transactions/transfers/queries";
+import { deleteTransactionLocalFirst } from "@/services/transactions/delete-local-first";
+import {
+  enrichTransactionEditDetail,
+  seedTransactionEditFromListRow,
+} from "@/services/transactions/detail-local";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ScheduleTypeEnum, UpdateScopeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createDisplayFileFromAttachment } from "@/utils/fileUtils";
-import { formatWithDelimiters } from "@/lib/utils";
-import { ArrowLeftRight } from "lucide-react";
+import { cn, formatWithDelimiters } from "@/lib/utils";
+import { ArrowLeftRight, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  TransactionEditorPresence,
+  useTransactionEditingPresence,
+} from "@/hooks/useTransactionEditingPresence";
+
+const getEditorInitials = (name?: string | null): string | null => {
+  const trimmedName = name?.trim();
+  if (!trimmedName) {
+    return null;
+  }
+
+  const parts = trimmedName.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const EditorPresenceAvatar = ({
+  editor,
+}: {
+  editor: TransactionEditorPresence;
+}) => {
+  const [imageFailed, setImageFailed] = useState(false);
+  const initials = getEditorInitials(editor.fullName);
+  const showImage = Boolean(editor.photoUrl) && !imageFailed;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [editor.photoUrl]);
+
+  return (
+    <div
+      className={cn(
+        "flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full",
+        "bg-amber-500/20 text-xs font-semibold text-amber-950 dark:text-amber-100",
+        "ring-1 ring-amber-500/30",
+      )}
+      aria-hidden
+    >
+      {showImage ? (
+        <img
+          src={editor.photoUrl ?? undefined}
+          alt=""
+          className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
+          onError={() => setImageFailed(true)}
+        />
+      ) : initials ? (
+        <span>{initials}</span>
+      ) : (
+        <User className="h-4 w-4" />
+      )}
+    </div>
+  );
+};
 
 interface FileAttachment {
   id: string;
@@ -92,11 +158,16 @@ function ConversionInfoPopover({ conv }: { conv: CurrencyConversionType }) {
   );
 }
 
+export type EditTransactionSuccessOptions = {
+  /** Transfer (+ fee) lists are patched locally; skip refetch races. */
+  skipTransactionsInvalidate?: boolean;
+};
+
 interface EditTransactionDialogProps {
   transaction: IndexTransaction | null;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (options?: EditTransactionSuccessOptions) => void;
 }
 
 const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
@@ -105,12 +176,28 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const titleId = useId();
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const [fullTransactionData, setFullTransactionData] = useState<UpdateTransactionType | TransferUpdateTransactionType | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const queryClient = useQueryClient();
   const { api } = useAuthApi();
   const { currentSpace } = useSpaceContext(api);
+  const [spaceCode] = useLocalStorage("spaceCode", "");
+  const preferLocal = useSkipCachedNetworkFetch();
   const spaceCurrency = currentSpace?.currency ?? "PHP";
   const defaultTransactionCurrency = currentSpace?.defaultTransactionCurrency ?? null;
+  const presenceSpaceId = currentSpace?.id || spaceCode;
+  const {
+    isLockedByOther,
+    lockMessage,
+    lockingEditor,
+  } = useTransactionEditingPresence({
+    spaceId: presenceSpaceId,
+    transactionId: transaction?.id,
+    enabled: isOpen && Boolean(transaction?.id),
+  });
+  const editingLockedReason = isLockedByOther ? lockMessage : null;
   const [isLoading, setIsLoading] = useState(false);
   const [fileAttachments, setFileAttachments] = useState<FileAttachment[]>([]);
   
@@ -152,67 +239,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   }, [conversionPopoverOpen]);
 
   useEffect(() => {
-    const fetchTransactionDetails = async () => {
-      if (!transaction?.id || !api || !isOpen) return; // Only fetch if dialog is open, transaction exists, and api is ready
-
-      // Prevent editing of loan payment transactions
-      if (transaction.hasLoanPayment) {
-        toast.error("This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.");
-        onClose();
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        let data;
-        
-        // Use the appropriate endpoint based on transaction type
-        if (transaction.type === CombinedTransactionTypeEnum.TRANSFER) {
-          data = await fetchTransferById(api, transaction.id);
-        } else {
-          data = await fetchTransactionById(api, transaction.id);
-        }
-        
-        let processedData = { ...data }; // Create a mutable copy
-
-        // Process file attachments if they exist AND no file is already set (e.g., from a new selection)
-        if (processedData.files && Array.isArray(processedData.files) && processedData.files.length > 0 && !processedData.file) {
-          setFileAttachments(processedData.files);
-          
-          // Create a special file object that works with the form components
-          const fileAttachment = processedData.files[0];
-          if (fileAttachment && fileAttachment.url) {
-            // Use the reusable utility to create display file object
-            const customFile = createDisplayFileFromAttachment(fileAttachment);
-            
-            // Add the custom file to the transaction data
-            processedData.file = customFile;
-            
-          }
-        }
-        
-        setFullTransactionData(processedData);
-        setDataKey(prev => prev + 1); // Increment key to force re-render
-        
-        // Set the date from the transaction data
-        if (processedData.date) {
-          // Create a clean UTC date without time components to avoid timezone issues
-          const dateObj = new Date(processedData.date);
-          const cleanDate = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
-          setDate(cleanDate);
-        }
-      } catch (error) {
-        toast.error("Failed to fetch transaction details.");
-        console.error(error);
-        onClose();
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (isOpen && transaction) {
-      fetchTransactionDetails();
-    } else {
+    if (!isOpen || !transaction?.id) {
       // Reset data when dialog is closed or transaction is null
       setFullTransactionData(null);
       setDate(new Date());
@@ -226,9 +253,80 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       setDeleteScope(DeleteScopeEnum.THIS_ONLY);
       setIsUpdating(false);
       setIsDeleting(false);
+      setIsLoading(false);
       resolveScopeModal();
+      return;
     }
-  }, [transaction?.id, isOpen, api]); // Simplified dependencies for better control
+
+    if (!preferLocal && !api) return;
+
+    // Prevent editing of loan payment transactions
+    if (transaction.hasLoanPayment) {
+      toast.error("This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.");
+      onClose();
+      return;
+    }
+
+    let cancelled = false;
+
+    // Service owns seed/enrich; component only binds result to UI state.
+    const seed = seedTransactionEditFromListRow(transaction);
+    setFullTransactionData(seed.data);
+    setDataKey((prev) => prev + 1);
+    if (seed.date) {
+      setDate(seed.date);
+    }
+    setIsLoading(false);
+
+    void (async () => {
+      try {
+        const enriched = await enrichTransactionEditDetail({
+          api,
+          spaceId: spaceCode,
+          transaction,
+          preferLocal,
+        });
+        if (cancelled) return;
+
+        let processedData = {
+          ...enriched.data,
+        } as UpdateTransactionType | TransferUpdateTransactionType;
+
+        const detailFiles = (processedData as { files?: FileAttachment[] }).files;
+        if (
+          detailFiles &&
+          Array.isArray(detailFiles) &&
+          detailFiles.length > 0 &&
+          !processedData.file
+        ) {
+          setFileAttachments(detailFiles);
+
+          const fileAttachment = detailFiles[0];
+          if (fileAttachment && fileAttachment.url) {
+            // Display File object is a UI concern; keep it in the component.
+            processedData.file = createDisplayFileFromAttachment(fileAttachment);
+          }
+        }
+
+        setFullTransactionData(processedData);
+        if (enriched.date) {
+          setDate(enriched.date);
+        }
+      } catch (error) {
+        if (cancelled) return;
+        console.error(error);
+        toast.error(
+          preferLocal
+            ? "Could not load full details from local DB."
+            : "Could not refresh transaction details.",
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [transaction?.id, isOpen, api, preferLocal, spaceCode]);
 
   const validateScheduleTypeChange = (originalScheduleType: ScheduleTypeEnum, newScheduleType: ScheduleTypeEnum) => {
     // Rule 2: Cannot change from one_time or repeat to installment
@@ -373,11 +471,85 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
 
     setIsDeleting(true);
     try {
-      if (transaction.type === CombinedTransactionTypeEnum.TRANSFER) {
-        await deleteTransfer(api, { id: transaction.id, deleteScope: scope as DeleteScope });
-        toast.success("Transfer deleted successfully");
+      if (
+        transaction.type === CombinedTransactionTypeEnum.TRANSFER ||
+        transaction.type === CombinedTransactionTypeEnum.INCOME ||
+        transaction.type === CombinedTransactionTypeEnum.EXPENSE ||
+        transaction.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT ||
+        transaction.type === CombinedTransactionTypeEnum.LOAN_PAYMENT
+      ) {
+        const isTransfer =
+          transaction.type === CombinedTransactionTypeEnum.TRANSFER;
+        const isOptimisticLocalFirstDelete =
+          isTransfer ||
+          transaction.type === CombinedTransactionTypeEnum.INCOME ||
+          transaction.type === CombinedTransactionTypeEnum.EXPENSE ||
+          transaction.type === CombinedTransactionTypeEnum.LOAN_PAYMENT ||
+          transaction.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT;
+        const result = await deleteTransactionLocalFirst(
+          api,
+          {
+            spaceId: spaceCode,
+            transactionId: transaction.id,
+            deleteScope: scope as DeleteScopeEnum,
+            listRow: transaction,
+          },
+          isOptimisticLocalFirstDelete
+            ? { queryClient, waitForSync: false }
+            : { queryClient },
+        );
+        if (isOptimisticLocalFirstDelete) {
+          toast.success(
+            isTransfer
+              ? "Transfer deleted successfully"
+              : "Transaction deleted successfully",
+          );
+          setShowDeleteScopeModal(false);
+          onClose();
+          // Local-first already patched list caches. Do not invalidate
+          // transactions — under space-sync pull the refetch reads IndexedDB
+          // and stale page snapshots can wipe sibling rows that were only
+          // present via optimistic create.
+          void Promise.resolve(result.syncPromise)
+            .then((synced) => {
+              if (synced.pendingSync) {
+                toast.message(
+                  isTransfer
+                    ? "Transfer deleted on this device. Will sync when online."
+                    : "Transaction deleted on this device. Will sync when online.",
+                );
+              }
+              onSuccess({ skipTransactionsInvalidate: true });
+            })
+            .catch(() => undefined);
+          return;
+        }
+
+        if (
+          transaction.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT ||
+          transaction.type === CombinedTransactionTypeEnum.LOAN_PAYMENT
+        ) {
+          toast.success(
+            result.pendingSync
+              ? "Loan activity deleted on this device. Will sync when online."
+              : "Loan activity deleted successfully",
+          );
+          void queryClient.invalidateQueries({
+            queryKey: ["loans"],
+            refetchType: "active",
+          });
+        } else {
+          toast.success(
+            result.pendingSync
+              ? "Transaction deleted on this device. Will sync when online."
+              : "Transaction deleted successfully",
+          );
+        }
       } else {
-        await deleteTransaction(api, { id: transaction.id, deleteScope: scope as DeleteScope });
+        await deleteTransaction(api, {
+          id: transaction.id,
+          deleteScope: scope as DeleteScope,
+        });
         toast.success("Transaction deleted successfully");
       }
 
@@ -419,14 +591,41 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       const dataWithFile = { ...data };
 
       if (transaction?.type === CombinedTransactionTypeEnum.TRANSFER) {
+        // Paint transfer + fee immediately, then sync to the server.
+        await patchTransferAndFeeCaches({
+          spaceId: spaceCode,
+          queryClient,
+          transferId: transaction.id,
+          data: dataWithFile as UpdateTransferType,
+          amountCurrency: transaction.amountCurrency,
+          previousTransfer: transaction,
+        });
         response = await updateTransfer(api, dataWithFile);
+        await patchTransferAndFeeCaches({
+          spaceId: spaceCode,
+          queryClient,
+          transferId: transaction.id,
+          data: dataWithFile as UpdateTransferType,
+          amountCurrency: transaction.amountCurrency,
+          previousTransfer: {
+            ...transaction,
+            description: dataWithFile.description ?? transaction.description,
+            amount: dataWithFile.amount ?? transaction.amount,
+            date: dataWithFile.date ?? transaction.date,
+            fromAccountName:
+              dataWithFile.fromAccountName ?? transaction.fromAccountName,
+            toAccountName:
+              dataWithFile.toAccountName ?? transaction.toAccountName,
+          },
+        });
         toast.success("Transfer updated successfully");
+        onSuccess({ skipTransactionsInvalidate: true });
       } else {
         response = await updateTransaction(api, dataWithFile);
         toast.success("Transaction updated successfully");
+        onSuccess();
       }
-      
-      onSuccess();
+
       onClose();
     } catch (error) {
       console.error("Error updating transaction:", error);
@@ -463,6 +662,36 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     }
   };
 
+  const transferInitialData = useMemo((): UpdateTransferType | null => {
+    if (
+      !fullTransactionData ||
+      transaction?.type !== CombinedTransactionTypeEnum.TRANSFER
+    ) {
+      return null;
+    }
+
+    return buildTransferInitialData(
+      fullTransactionData,
+      getConversion(fullTransactionData),
+    );
+  }, [
+    fullTransactionData?.id,
+    fullTransactionData?.amount,
+    fullTransactionData?.description,
+    fullTransactionData?.date,
+    fullTransactionData?.scheduleType,
+    fullTransactionData?.repeatInterval,
+    fullTransactionData?.hasCurrencyConversion,
+    (fullTransactionData as { transactionCost?: number })?.transactionCost,
+    (fullTransactionData as { fromAccountName?: string })?.fromAccountName,
+    (fullTransactionData as { toAccountName?: string })?.toAccountName,
+    (fullTransactionData as { updateScope?: string })?.updateScope,
+    (fullTransactionData as { currencyConversion?: unknown })?.currencyConversion,
+    (fullTransactionData as { currency_conversion?: unknown })?.currency_conversion,
+    transaction?.type,
+    dataKey,
+  ]);
+
   const renderForm = () => {
     if (isLoading) {
       return (
@@ -493,6 +722,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             isEditMode={true}
             onFileUpdate={handleFileUpdate} // Pass the new handler
             onDelete={handleDelete} // Pass the delete handler
+            editingLockedReason={editingLockedReason}
           />
         );
       case CombinedTransactionTypeEnum.INCOME:
@@ -510,34 +740,21 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             isEditMode={true}
             onFileUpdate={handleFileUpdate} // Pass the new handler
             onDelete={handleDelete} // Pass the delete handler
+            editingLockedReason={editingLockedReason}
           />
         );
       case CombinedTransactionTypeEnum.TRANSFER:
-        // For transfers, we need to map the transaction data to the expected format.
-        // When there's a currency conversion, the stored amount is in to-account currency;
-        // the form expects amount in from-account currency (original amount).
-        const transferConv = getConversion(fullTransactionData);
-        const transferData: UpdateTransferType = {
-          id: fullTransactionData.id,
-          amount: transferConv ? transferConv.originalAmount : fullTransactionData.amount,
-          transactionCost: (fullTransactionData as any).transactionCost || 0,
-          fromAccountName: (fullTransactionData as any).fromAccountName || "",
-          toAccountName: (fullTransactionData as any).toAccountName || "",
-          description: fullTransactionData.description,
-          date: fullTransactionData.date,
-          scheduleType: fullTransactionData.scheduleType,
-          repeatInterval: fullTransactionData.repeatInterval,
-          file: fullTransactionData.file || undefined, // Ensure file is explicitly included here
-          updateScope: fullTransactionData.updateScope,
-          hasCurrencyConversion: fullTransactionData.hasCurrencyConversion ?? (fullTransactionData as any).has_currency_conversion,
-          currencyConversion: transferConv ?? undefined,
-        };
-        
+        if (!transferInitialData) {
+          return (
+            <div className="py-8 text-center">No transaction data available</div>
+          );
+        }
+
         return (
           <TransferForm
             key={`transfer-form-${dataKey}`}
             id={transaction.id}
-            initialData={transferData}
+            initialData={transferInitialData}
             date={date}
             setDate={setDate}
             spaceCurrency={spaceCurrency}
@@ -546,6 +763,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             isEditMode={true}
             onFileUpdate={handleFileUpdate} // Pass the new handler
             onDelete={handleDelete} // Pass the delete handler
+            editingLockedReason={editingLockedReason}
           />
         );
       default:
@@ -553,61 +771,108 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     }
   };
 
+  const editBody = (
+    <div
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      onPointerDown={(e) => {
+        if (!conversionPopoverOpen) return;
+        const target = e.target as Node;
+        if (conversionPopoverTriggerRef.current?.contains(target)) return;
+        if (conversionPopoverContentRef.current?.contains(target)) return;
+        setConversionPopoverOpen(false);
+      }}
+    >
+      <div className="shrink-0 space-y-4 px-6">
+        <p className="text-sm text-muted-foreground">
+          {getDialogDescription()}
+        </p>
+        {isLockedByOther && lockMessage && lockingEditor && (
+          <div
+            role="status"
+            className="flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
+          >
+            <EditorPresenceAvatar editor={lockingEditor} />
+            <p className="min-w-0 pt-1">
+              {lockMessage}. Fields are read-only until they finish.
+            </p>
+          </div>
+        )}
+        {hasConversion(fullTransactionData) && getConversion(fullTransactionData) && (
+          <div ref={conversionPopoverTriggerRef}>
+            <Popover
+              open={conversionPopoverOpen}
+              onOpenChange={setConversionPopoverOpen}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <ArrowLeftRight className="h-4 w-4" />
+                  View conversion
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-80">
+                <div ref={conversionPopoverContentRef}>
+                  <ConversionInfoPopover conv={getConversion(fullTransactionData)!} />
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {renderForm()}
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <CustomModal
-        isOpen={isOpen}
-        onClose={onClose}
-        title={getDialogTitle()}
-        maxWidth="2xl"
-        className="p-0"
-        pinBodyLayout
-      >
-        <div
-          className="flex h-full min-h-0 flex-col"
-          onPointerDown={(e) => {
-            if (!conversionPopoverOpen) return;
-            const target = e.target as Node;
-            if (conversionPopoverTriggerRef.current?.contains(target)) return;
-            if (conversionPopoverContentRef.current?.contains(target)) return;
-            setConversionPopoverOpen(false);
-          }}
+      {isMobile ? (
+        <AnimatedSheetShell
+          open={isOpen}
+          onRequestClose={onClose}
+          titleId={titleId}
+          side="right"
+          swipeToClose
+          historyKey="__fintrEditTransactionSheet"
+          panelClassName="w-full flex flex-col h-full min-h-0 overflow-hidden p-0"
         >
-          <div className="shrink-0 space-y-4 px-6 pt-4">
-            <p className="text-sm text-muted-foreground">
-              {getDialogDescription()}
-            </p>
-            {hasConversion(fullTransactionData) && getConversion(fullTransactionData) && (
-              <div ref={conversionPopoverTriggerRef}>
-                <Popover
-                  open={conversionPopoverOpen}
-                  onOpenChange={setConversionPopoverOpen}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                    >
-                      <ArrowLeftRight className="h-4 w-4" />
-                      View conversion
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-80">
-                    <div ref={conversionPopoverContentRef}>
-                      <ConversionInfoPopover conv={getConversion(fullTransactionData)!} />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
+          <div className="flex shrink-0 items-center justify-between px-6 pb-2 pt-4">
+            <h2
+              id={titleId}
+              className="text-lg font-semibold text-primary"
+            >
+              {getDialogTitle()}
+            </h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col">
-            {renderForm()}
-          </div>
-        </div>
-      </CustomModal>
+          {editBody}
+        </AnimatedSheetShell>
+      ) : (
+        <CustomModal
+          isOpen={isOpen}
+          onClose={onClose}
+          title={getDialogTitle()}
+          maxWidth="2xl"
+          className="p-0"
+          pinBodyLayout
+        >
+          {editBody}
+        </CustomModal>
+      )}
 
       {/* Update Scope Modal */}
       <ScopeModal

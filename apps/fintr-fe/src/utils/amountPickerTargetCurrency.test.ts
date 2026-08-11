@@ -3,6 +3,7 @@ import {
   conversionSnapshotMatchesTarget,
   createTransactionNeedsConversion,
   resolveAmountPickerTargetCurrency,
+  shouldPreviewConversionOnlyInEdit,
   shouldShowAmountFxInEdit,
   shouldUseStoredConversionForPreview,
   transactionNeedsConversion,
@@ -164,7 +165,7 @@ describe("transactionNeedsConversion", () => {
 });
 
 describe("createTransactionNeedsConversion", () => {
-  it("returns true when create mode amount currency differs from ledger target", () => {
+  it("returns true when amount currency differs from ledger target in create or edit", () => {
     expect(
       createTransactionNeedsConversion({
         amountCurrency: "VND",
@@ -172,22 +173,22 @@ describe("createTransactionNeedsConversion", () => {
         isEditMode: false,
       }),
     ).toBe(true);
-  });
-
-  it("returns false when amount matches target or in edit mode", () => {
-    expect(
-      createTransactionNeedsConversion({
-        amountCurrency: "PHP",
-        targetCurrency: "PHP",
-        isEditMode: false,
-      }),
-    ).toBe(false);
 
     expect(
       createTransactionNeedsConversion({
         amountCurrency: "VND",
         targetCurrency: "PHP",
         isEditMode: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when amount matches target", () => {
+    expect(
+      createTransactionNeedsConversion({
+        amountCurrency: "PHP",
+        targetCurrency: "PHP",
+        isEditMode: false,
       }),
     ).toBe(false);
   });
@@ -203,5 +204,18 @@ describe("shouldShowAmountFxInEdit", () => {
         targetCurrency: "GBP",
       }),
     ).toBe(true);
+  });
+});
+
+describe("shouldPreviewConversionOnlyInEdit", () => {
+  it("always returns false so edit FX syncs to the parent for submit", () => {
+    expect(
+      shouldPreviewConversionOnlyInEdit({
+        isEditMode: true,
+        hadStoredConversion: false,
+        targetCurrency: "USD",
+        effectiveSpaceCurrency: "PHP",
+      }),
+    ).toBe(false);
   });
 });

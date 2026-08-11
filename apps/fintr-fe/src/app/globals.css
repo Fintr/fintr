@@ -241,9 +241,64 @@ body > .profiler-results {
     @apply py-10 md:py-12;
   }
 
+  .insight-rail-peek {
+    scrollbar-width: thin;
+  }
+
+  .insight-rail-peek::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .insight-rail-peek::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-primary) 35%, transparent);
+  }
+
+  .insight-metric-carousel {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .insight-metric-carousel::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (min-width: 768px) {
+    .insight-rail-peek {
+      mask-image: linear-gradient(
+        to right,
+        black 0%,
+        black calc(100% - 2.5rem),
+        transparent 100%
+      );
+    }
+  }
+
   .pt-safe-top {
     /* Default: use native safe-area for iOS and mobile browsers with minimum fallback */
     padding-top: max(env(safe-area-inset-top, 0px), 0px);
+  }
+
+  /* Home hero: primary chrome through status bar + overscroll (mobile only). */
+  @media (max-width: 767px) {
+    html.fintr-home-screen {
+      overscroll-behavior-y: none;
+      background-color: var(--primary);
+    }
+
+    html.fintr-home-screen body {
+      background-color: var(--primary);
+    }
+
+    /* Insights ledger header: primary overscroll, content on background. */
+    html.fintr-insights-screen {
+      overscroll-behavior-y: none;
+      background-color: var(--primary);
+    }
+
+    html.fintr-insights-screen body {
+      background-color: var(--background);
+    }
   }
 
   .pb-safe-bottom {

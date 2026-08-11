@@ -26,6 +26,7 @@ import { CategoryTypeEnum } from "@/types/categoryTypes";
 import { CategoryConversionType } from "@/types/categoryConversionTypes";
 import { CategoryBudgetSection } from "@/components/dashboard/category-budget-section";
 import { CategoryDetailTransactions } from "@/components/dashboard/category-detail-transactions";
+import { CategoryIconBadge } from "@/components/dashboard/category-icon-badge";
 
 type CategoryDetailContentProps = {
   categoryId: string;
@@ -80,19 +81,32 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
     name: string,
     type: CategoryTypeEnum,
     parentId?: string | null,
+    appearance?: {
+      icon: string;
+      color: string;
+    },
   ) => {
     await createCategoryMutation.mutateAsync({
       name,
       categoryType: type,
       parentId: parentId ?? null,
+      icon: appearance?.icon,
+      color: appearance?.color,
     });
     invalidateCategories();
   };
 
-  const handleUpdate = async (id: string, newName: string) => {
+  const handleUpdate = async (
+    id: string,
+    updateData: {
+      name: string;
+      icon: string;
+      color: string;
+    },
+  ) => {
     await updateCategoryMutation.mutateAsync({
       categoryId: id,
-      updateData: { name: newName },
+      updateData,
     });
     invalidateCategories();
   };
@@ -156,14 +170,25 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
   return (
     <div className="max-w-2xl mx-auto px-2 pb-24 md:pb-8 space-y-6">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm text-muted-foreground">{kindLabel} category</p>
-          <h1 className="text-2xl font-bold text-primary truncate">
-            {parent.name}
-          </h1>
+        <div className="min-w-0 flex-1 flex items-start gap-3">
+          <CategoryIconBadge
+            icon={parent.icon}
+            color={parent.color}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-muted-foreground">{kindLabel} category</p>
+            <h1 className="text-2xl font-bold text-primary truncate">
+              {parent.name}
+            </h1>
+          </div>
         </div>
         <CategoryActionsMenu
-          item={{ id: parent.id, name: parent.name }}
+          item={{
+            id: parent.id,
+            name: parent.name,
+            icon: parent.icon,
+            color: parent.color,
+          }}
           variant="parent"
           onEdit={(item) => setEditTarget(item)}
           onDelete={(item) => setDeleteTarget(item)}
@@ -203,11 +228,23 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
                 key={sub.id}
                 className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-muted/30 px-3 py-2"
               >
-                <span className="text-sm text-foreground truncate">
-                  {sub.name}
-                </span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <CategoryIconBadge
+                    icon={sub.icon}
+                    color={sub.color}
+                    size="sm"
+                  />
+                  <span className="text-sm text-foreground truncate">
+                    {sub.name}
+                  </span>
+                </div>
                 <CategoryActionsMenu
-                  item={{ id: sub.id, name: sub.name }}
+                  item={{
+                    id: sub.id,
+                    name: sub.name,
+                    icon: sub.icon,
+                    color: sub.color,
+                  }}
                   variant="subcategory"
                   onEdit={(item) => setEditTarget(item)}
                   onDelete={(item) => setDeleteTarget(item)}

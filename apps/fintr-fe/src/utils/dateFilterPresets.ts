@@ -3,6 +3,7 @@ import {
   endOfWeek,
   endOfYear,
   format,
+  parseISO,
   startOfMonth,
   startOfWeek,
   startOfYear,
@@ -44,8 +45,45 @@ export const DATE_FILTER_TYPE_OPTIONS = [
   { value: "custom", label: "Custom Range" },
 ] as const;
 
-/** Earliest date used when the "All Time" predefined period is selected. */
-export const DATE_FILTER_ALL_TIME_START_DATE = "2000-01-01";
+export type PresetDateRangeOptions = {
+  earliestTransactionDate?: string | null;
+  spaceCreatedAt?: string | null;
+};
+
+const formatYmd = (date: Date): string => format(date, "yyyy-MM-dd");
+
+const parsePresetAnchorDate = (value?: string | null): Date | null => {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = parseISO(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+};
+
+/** Start date for "All Time" — earliest transaction, then space creation, then today. */
+export const resolveAllTimeStartDate = (
+  options: PresetDateRangeOptions = {},
+  referenceDate: Date = new Date(),
+): string => {
+  const earliestTransactionDate = parsePresetAnchorDate(
+    options.earliestTransactionDate,
+  );
+  const spaceCreatedAt = parsePresetAnchorDate(options.spaceCreatedAt);
+
+  const anchorDate = earliestTransactionDate ?? spaceCreatedAt;
+
+  if (anchorDate) {
+    return formatYmd(anchorDate);
+  }
+
+  return formatYmd(referenceDate);
+};
 
 export const DATE_FILTER_PRESETS: DateFilterPreset[] = [
   { id: "this_week", label: "This Week" },
@@ -82,11 +120,10 @@ export const getDateFilterPresetLabel = (
 
 const WEEK_OPTIONS = { weekStartsOn: 0 as const };
 
-const formatYmd = (date: Date): string => format(date, "yyyy-MM-dd");
-
 export const getPresetDateRange = (
   presetId: DateFilterPresetId,
   referenceDate: Date = new Date(),
+  options: PresetDateRangeOptions = {},
 ): { startDate: string; endDate: string } => {
   switch (presetId) {
     case "this_week":
@@ -138,7 +175,7 @@ export const getPresetDateRange = (
     }
     case "all_time":
       return {
-        startDate: DATE_FILTER_ALL_TIME_START_DATE,
+        startDate: resolveAllTimeStartDate(options, referenceDate),
         endDate: formatYmd(referenceDate),
       };
     case "a_week_ago":
@@ -167,11 +204,12 @@ export const getPresetDateRange = (
 export const matchPresetFromDateRange = (
   startDate: string,
   endDate: string,
+  options: PresetDateRangeOptions = {},
 ): DateFilterPresetId | null => {
   const allPresets = [...DATE_FILTER_PRESETS, ...DATE_FILTER_RELATIVE_PRESETS];
 
   for (const preset of allPresets) {
-    const range = getPresetDateRange(preset.id);
+    const range = getPresetDateRange(preset.id, new Date(), options);
     if (range.startDate === startDate && range.endDate === endDate) {
       return preset.id;
     }
@@ -183,8 +221,9 @@ export const matchPresetFromDateRange = (
 export const inferDateFilterTypeSelector = (
   startDate: string,
   endDate: string,
+  options: PresetDateRangeOptions = {},
 ): DateFilterTypeSelector => {
-  if (matchPresetFromDateRange(startDate, endDate)) {
+  if (matchPresetFromDateRange(startDate, endDate, options)) {
     return "predefined";
   }
 

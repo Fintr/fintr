@@ -17,8 +17,9 @@ import { format } from "date-fns";
 import ExpandableTextarea from "../../ui/expandable-textarea";
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useQueryClient } from "@tanstack/react-query";
-import { createLoan } from "@/services/loans/mutation";
+import { createLoanLocalFirst } from "@/services/loans/create-local-first";
 import { numberFormatting } from "@/lib/utils";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import { extractFieldErrors } from "@/utils/errorUtils";
@@ -44,6 +45,9 @@ interface LoanFormProps {
   setDate?: React.Dispatch<React.SetStateAction<Date | undefined>>;
   onSubmitSuccess?: (data: any) => void;
   onCancel?: () => void;
+  /** Amount carried across Add Transaction tabs (expense/income/transfer/loan). */
+  prefillAmount?: string;
+  onPrefillAmountChange?: (amount: string) => void;
 }
 
 const LoanForm: React.FC<LoanFormProps> = ({
@@ -51,13 +55,16 @@ const LoanForm: React.FC<LoanFormProps> = ({
   setDate,
   onSubmitSuccess = () => {},
   onCancel = () => {},
+  prefillAmount,
+  onPrefillAmountChange,
 }) => {
   const { api } = useAuthApi();
   const queryClient = useQueryClient();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
   
   // Internal state for the form
   const [loanForm, setLoanForm] = useState({
-    amount: "",
+    amount: prefillAmount || "",
     description: "",
     type: "borrowed" as "borrowed" | "lent",
     entityName: "",
@@ -75,7 +82,8 @@ const LoanForm: React.FC<LoanFormProps> = ({
     initialValue: loanForm.amount,
     onValueChange: (cleanValue) => {
       setLoanForm((prev) => ({ ...prev, amount: cleanValue.toString() }));
-    }
+      onPrefillAmountChange?.(cleanValue !== 0 ? String(cleanValue) : "");
+    },
   });
 
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -259,9 +267,29 @@ const LoanForm: React.FC<LoanFormProps> = ({
                 ...(loanForm.receipt && { file: loanForm.receipt })
               };
 
-      const response = await createLoan(api, loanData);
+      const response = await createLoanLocalFirst(
+        api,
+        {
+          spaceId: spaceCode,
+          data: loanData,
+        },
+        {
+          queryClient,
+          waitForSync: false,
+        },
+      );
       toast.success("Loan created successfully");
-      
+      void response.syncPromise.then((synced) => {
+        if (synced.pendingSync) {
+          toast.message("Loan saved on this device. Will sync when online.");
+        }
+      }).catch((error) => {
+        const fieldErrors = extractFieldErrors(error);
+        toast.error(
+          fieldErrors.detail || "Failed to create loan. Please try again.",
+        );
+      });
+
       if (onSubmitSuccess) {
         onSubmitSuccess(response);
       }

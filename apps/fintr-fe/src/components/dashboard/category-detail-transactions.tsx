@@ -30,8 +30,8 @@ import ScopeModal, {
   DeleteScope,
   Scope,
 } from "@/components/dashboard/forms/ScopeModal";
+import { deleteTransactionLocalFirst } from "@/services/transactions/delete-local-first";
 import { deleteTransaction } from "@/services/transactions/mutation";
-import { deleteTransfer } from "@/services/transactions/transfers/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import {
   CombinedTransactionTypeEnum,
@@ -45,7 +45,9 @@ import { useAtom } from "jotai";
 import {
   dateFilterEndDateAtom,
   dateFilterStartDateAtom,
+  dateRangeToMonthYear,
 } from "@/atoms/dateFilterAtoms";
+import { toast } from "sonner";
 
 type SubcategoryFilterOption = {
   id: string;
@@ -76,10 +78,6 @@ export function CategoryDetailTransactions({
   const currency = currentSpace?.currency ?? spaceCurrency;
 
   const { firstDay, lastDay } = getCurrentMonthDates();
-  const currentMonth = new Date()
-    .toLocaleString("default", { month: "long" })
-    .toLowerCase();
-  const currentYear = new Date().getFullYear().toString();
   const [startDate] = useAtom(dateFilterStartDateAtom);
   const [endDate] = useAtom(dateFilterEndDateAtom);
 
@@ -88,22 +86,66 @@ export function CategoryDetailTransactions({
     [categoryId],
   );
 
-  const [appliedFilters, setAppliedFilters] = useState<FilterTypes>(() => ({
-    selectedMonth: currentMonth,
-    selectedYear: currentYear,
-    startMonth: currentMonth,
-    startYear: currentYear,
-    endMonth: currentMonth,
-    endYear: currentYear,
-    selectedCategories: [categoryId],
-    appliedCategories: [categoryId],
-    queryStartDate: startDate || firstDay,
-    queryEndDate: endDate || lastDay,
-    appliedMinAmount: "",
-    appliedMaxAmount: "",
-    searchQuery: "",
-    appliedAccounts: [],
-  }));
+  const [appliedFilters, setAppliedFilters] = useState<FilterTypes>(() => {
+    const queryStartDate = startDate || firstDay;
+    const queryEndDate = endDate || lastDay;
+    const monthYearFromDates = dateRangeToMonthYear(
+      queryStartDate,
+      queryEndDate,
+    );
+
+    return {
+      selectedMonth: monthYearFromDates.selectedMonth,
+      selectedYear: monthYearFromDates.selectedYear,
+      startMonth: monthYearFromDates.startMonth,
+      startYear: monthYearFromDates.startYear,
+      endMonth: monthYearFromDates.endMonth,
+      endYear: monthYearFromDates.endYear,
+      selectedCategories: [categoryId],
+      appliedCategories: [categoryId],
+      queryStartDate,
+      queryEndDate,
+      appliedMinAmount: "",
+      appliedMaxAmount: "",
+      searchQuery: "",
+      appliedAccounts: [],
+    };
+  });
+
+  useEffect(() => {
+    const fallbackDates = getCurrentMonthDates();
+    const queryStartDate = startDate || fallbackDates.firstDay;
+    const queryEndDate = endDate || fallbackDates.lastDay;
+
+    setAppliedFilters((previous) => {
+      const monthYearFromDates = dateRangeToMonthYear(
+        queryStartDate,
+        queryEndDate,
+      );
+      const isSameDateRange =
+        previous.queryStartDate === queryStartDate
+        && previous.queryEndDate === queryEndDate;
+      const isSameMonthYear =
+        previous.selectedMonth === monthYearFromDates.selectedMonth
+        && previous.selectedYear === monthYearFromDates.selectedYear;
+
+      if (isSameDateRange && isSameMonthYear) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        selectedMonth: monthYearFromDates.selectedMonth,
+        selectedYear: monthYearFromDates.selectedYear,
+        startMonth: monthYearFromDates.startMonth,
+        startYear: monthYearFromDates.startYear,
+        endMonth: monthYearFromDates.endMonth,
+        endYear: monthYearFromDates.endYear,
+        queryStartDate,
+        queryEndDate,
+      };
+    });
+  }, [startDate, endDate]);
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
@@ -271,26 +313,64 @@ export function CategoryDetailTransactions({
       id: string;
       deleteScope: DeleteScope;
       transactionType?: string;
+      listRow?: IndexTransaction | null;
     }) => {
       let result;
-      if (deleteData.transactionType === CombinedTransactionTypeEnum.TRANSFER) {
-        result = await deleteTransfer(api, {
-          id: deleteData.id,
-          deleteScope: deleteData.deleteScope,
+      const isOptimisticLocalFirstDelete =
+        deleteData.transactionType === CombinedTransactionTypeEnum.TRANSFER ||
+        deleteData.transactionType === CombinedTransactionTypeEnum.INCOME ||
+        deleteData.transactionType === CombinedTransactionTypeEnum.EXPENSE;
+      const isTransferDelete =
+        deleteData.transactionType === CombinedTransactionTypeEnum.TRANSFER;
+
+      if (isOptimisticLocalFirstDelete) {
+        result = await deleteTransactionLocalFirst(
+          api,
+          {
+            spaceId: spaceCode,
+            transactionId: deleteData.id,
+            deleteScope: deleteData.deleteScope as DeleteScopeEnum,
+            listRow: deleteData.listRow,
+          },
+          { queryClient, waitForSync: false },
+        );
+        toast.success(
+          isTransferDelete ? "Transfer deleted" : "Transaction deleted",
+        );
+        void Promise.resolve(result.syncPromise).then((synced) => {
+          if (synced.pendingSync) {
+            toast.message(
+              isTransferDelete
+                ? "Transfer deleted on this device. Will sync when online."
+                : "Transaction deleted on this device. Will sync when online.",
+            );
+          }
         });
       } else {
         result = await deleteTransaction(api, {
           id: deleteData.id,
           deleteScope: deleteData.deleteScope,
         });
+        toast.success("Transaction deleted");
       }
 
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["budgets"] });
-      queryClient.invalidateQueries({ queryKey: ["insights"] });
-      toast.success("Transaction deleted");
+      const refreshSecondaryCaches = () => {
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["accounts"] });
+        queryClient.invalidateQueries({ queryKey: ["budgets"] });
+        queryClient.invalidateQueries({ queryKey: ["insights"] });
+      };
+
+      if (isOptimisticLocalFirstDelete) {
+        void Promise.resolve(result.syncPromise)
+          .then(() => {
+            refreshSecondaryCaches();
+          })
+          .catch(() => undefined);
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        refreshSecondaryCaches();
+      }
 
       return result;
     },
@@ -308,8 +388,12 @@ export function CategoryDetailTransactions({
     setEditDialogOpen(true);
   };
 
-  const handleEditSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+  const handleEditSuccess = (options?: {
+    skipTransactionsInvalidate?: boolean;
+  }) => {
+    if (!options?.skipTransactionsInvalidate) {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    }
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     queryClient.invalidateQueries({ queryKey: ["accounts"] });
     queryClient.invalidateQueries({ queryKey: ["budgets"] });
@@ -342,20 +426,22 @@ export function CategoryDetailTransactions({
     }
 
     setTransactionToDelete(transaction);
+    setSelectedDeleteScope(DeleteScopeEnum.THIS_ONLY);
     setDeleteScopeModalOpen(true);
   };
 
   const handleDeleteConfirm = (scope: Scope) => {
     if (transactionToDelete) {
+      setDeleteScopeModalOpen(false);
       deleteMutation.mutate(
         {
           id: transactionToDelete.id,
           deleteScope: scope as DeleteScope,
           transactionType: transactionToDelete.type,
+          listRow: transactionToDelete,
         },
         {
           onSuccess: () => {
-            setDeleteScopeModalOpen(false);
             setTransactionToDelete(null);
           },
           onError: () => {
@@ -470,7 +556,7 @@ export function CategoryDetailTransactions({
         onScopeChange={(scope) => setSelectedDeleteScope(scope as DeleteScope)}
         operationType="delete"
         transactionType={transactionToDelete?.type}
-        inSeries={transactionToDelete?.inSeries ?? true}
+        inSeries={Boolean(transactionToDelete?.inSeries)}
       />
     </section>
   );

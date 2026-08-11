@@ -7,9 +7,11 @@ export const fetchBudgetsPage = async (
   {
     pageParam = 1,
     queryKey,
+    requestConfig,
   }: {
     pageParam?: number;
     queryKey: readonly unknown[];
+    requestConfig?: import("axios").AxiosRequestConfig;
   }
 ): Promise<BudgetsPage> => {
   const [_key, spaceCode, startDate, endDate] = queryKey as [
@@ -39,6 +41,7 @@ export const fetchBudgetsPage = async (
   try {
     const response = await api.get('/budgets', {
       params: input,
+      ...requestConfig,
     });
 
     const budgets = response?.data?.data?.budgets || [];

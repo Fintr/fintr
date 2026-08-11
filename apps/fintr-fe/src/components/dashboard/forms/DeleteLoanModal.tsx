@@ -37,21 +37,31 @@ const DeleteLoanModal: React.FC<DeleteLoanModalProps> = ({
   const handleDelete = useCallback(async () => {
     setIsDeleting(true);
     setErrorMessage(null);
-    
+    setInternalIsOpen(false);
+
+    const loanDisplayName = loan.entityName || "Loan";
+    toast.success(`Loan "${loanDisplayName}" has been deleted`);
+
     try {
       const response = await onDelete(loan.id);
 
-      if (response?.success === true) {
-        toast.success(`Loan "${loan.entityName || 'Loan'}" has been deleted`);
-        setInternalIsOpen(false);
-        setErrorMessage(null);
-      } else {
-        const backendMessage = response?.error?.details?.loan_id || response?.error?.message || "Failed to delete loan.";
-        setErrorMessage(backendMessage);
+      if (response?.pendingSync) {
+        toast.message("Loan deleted on this device. Will sync when online.");
+      } else if (response?.success !== true) {
+        const backendMessage =
+          response?.error?.details?.loan_id ||
+          response?.error?.message ||
+          "Failed to delete loan.";
+        toast.error(backendMessage);
       }
-    } catch (error: any) {
-      const errorMessageText = error?.response?.data?.error?.message || "An unexpected error occurred. Please try again.";
-      setErrorMessage(errorMessageText);
+    } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { data?: { error?: { message?: string } } };
+      };
+      const errorMessageText =
+        axiosError?.response?.data?.error?.message ||
+        "An unexpected error occurred. Please try again.";
+      toast.error(errorMessageText);
     } finally {
       setIsDeleting(false);
     }

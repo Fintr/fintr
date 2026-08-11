@@ -27,6 +27,11 @@ interface CustomModalProps {
    * an internal scroll region and a pinned footer (e.g. form action buttons).
    */
   pinBodyLayout?: boolean;
+  /**
+   * Touch action for the modal body scroll region. Use "none" when children
+   * need drag gestures (e.g. image cropper).
+   */
+  bodyTouchAction?: React.CSSProperties["touchAction"];
 }
 
 const maxWidthClasses = {
@@ -57,6 +62,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   closeButtonDataTarget = "close-modal-button",
   minContentHeightOnKeyboard = "60vh",
   pinBodyLayout = false,
+  bodyTouchAction,
 }) => {
   const [mounted, setMounted] = React.useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -519,7 +525,13 @@ export const CustomModal: React.FC<CustomModalProps> = ({
                 "min-h-0 rounded-none",
                 pinBodyLayout ? "h-full flex-1" : "flex-1",
               )
-            : cn("rounded-lg", maxWidthClasses[maxWidth], "max-h-[90vh]"),
+            : cn(
+                "rounded-lg",
+                maxWidthClasses[maxWidth],
+                "max-h-[90vh]",
+                // Let pinBodyLayout children shrink so their internal scroll region works.
+                pinBodyLayout && "min-h-0",
+              ),
           isMobile && !isAndroidNative && "pt-safe-top",
           "overflow-hidden flex flex-col",
           "transition-opacity duration-200",
@@ -531,7 +543,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         onPointerDown={(e) => e.stopPropagation()}
       >
         {title && (
-          <div className="px-6 pt-6 pb-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex flex-shrink-0 items-center justify-between px-6 pb-2 pt-6">
             <h2 className="text-lg font-semibold text-primary">{title}</h2>
           </div>
         )}
@@ -540,12 +552,12 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           className={cn(
             "flex-1 min-h-0",
             pinBodyLayout
-              ? "flex h-full flex-col overflow-hidden"
+              ? "flex flex-col overflow-hidden"
               : "overflow-y-auto",
           )}
           style={{
             WebkitOverflowScrolling: pinBodyLayout ? undefined : "touch",
-            touchAction: pinBodyLayout ? undefined : "pan-y",
+            touchAction: bodyTouchAction ?? (pinBodyLayout ? undefined : "pan-y"),
             minHeight: useKeyboardSizedMobileFrame
               ? `max(200px, calc(100% - ${title ? '80px' : '0px'}))`
               : undefined,
