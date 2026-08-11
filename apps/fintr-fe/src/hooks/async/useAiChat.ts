@@ -5,11 +5,23 @@ import { startChatQuery, ChatSession } from '@/services/ai/chat';
 import { parseContentWithCharts, detectIncompleteCharts, parseContentWithInlineCharts } from '@/utils/chartParser';
 import { createActionCableConsumer, getConsumer } from '@/lib/actionCable';
 import { Subscription } from '@rails/actioncable';
+import { isNativeCapacitor } from '@/lib/capacitor';
+import { useAiLlmPriority } from '@/hooks/useAiLlmPriority';
+import {
+  getOnDeviceLlmReadiness,
+  initializeOnDeviceLlm,
+  promptOnDeviceLlm,
+  resetOnDeviceLlmSession,
+  resolveAiLlmRoute,
+  shouldFallbackToCloudAfterLocalFailure,
+  shouldFallbackToOnDeviceLlm,
+} from '@/lib/on-device-llm';
 
 export const useAiChat = () => {
   const { api, getToken } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:ai_usage",
   });
+  const { priority: llmPriority } = useAiLlmPriority();
 
   const [chatState, setChatState] = useState<ChatState>({
     messages: [],
@@ -469,6 +481,88 @@ export const useAiChat = () => {
     }
   }, [getToken, updateMessage, startTypingAnimation, cleanStreamingContent]);
 
+  const deliverOnDeviceResponse = useCallback(async (
+    query: string,
+    assistantMessageId: string,
+  ): Promise<boolean> => {
+    setChatState((prev) => ({
+      ...prev,
+      isLoading: true,
+      isStreaming: true,
+      error: null,
+      currentStreamingMessage: '',
+    }));
+
+    try {
+      await initializeOnDeviceLlm();
+
+      const { text } = await promptOnDeviceLlm({
+        message: query,
+        onChunk: (chunk) => {
+          setChatState((prev) => ({
+            ...prev,
+            isLoading: false,
+            isStreaming: true,
+            currentStreamingMessage: chunk,
+          }));
+        },
+      });
+
+      const body = text.trim() || "I couldn't generate a response on this device.";
+      const content = `${body}\n\n_(Answered on-device. Switch to Cloud in AI settings for full ledger-aware answers.)_`;
+
+      updateMessage(assistantMessageId, { content });
+      setChatState((prev) => ({
+        ...prev,
+        isLoading: false,
+        isStreaming: false,
+        currentStreamingMessage: '',
+      }));
+      return true;
+    } catch (error) {
+      console.error("[useAiChat] on-device LLM failed:", error);
+      const message = error instanceof Error
+        ? error.message
+        : "On-device AI is unavailable on this phone.";
+
+      setChatState((prev) => ({
+        ...prev,
+        error: message,
+        isLoading: false,
+        isStreaming: false,
+        currentStreamingMessage: '',
+      }));
+
+      updateMessage(assistantMessageId, {
+        content: `Sorry, on-device AI isn't available: ${message}`,
+      });
+      return false;
+    }
+  }, [updateMessage]);
+
+  const sendCloudMessage = useCallback(async (
+    query: string,
+    assistantMessageId: string,
+  ) => {
+    const { sessionId, conversationId } = await startChatQuery(api, {
+      query,
+      conversation_id: currentConversationId || undefined,
+    });
+    currentSessionRef.current = sessionId;
+
+    if (conversationId) {
+      setCurrentConversationId(conversationId);
+      await subscribeToChat(conversationId, assistantMessageId);
+      return;
+    }
+
+    setChatState((prev) => ({
+      ...prev,
+      error: 'Failed to get conversation ID',
+      isLoading: false,
+    }));
+  }, [api, currentConversationId, subscribeToChat]);
+
   const sendMessage = useCallback(async (query: string, options?: Partial<ChatParams>) => {
     if (!query.trim()) return;
 
@@ -513,31 +607,62 @@ export const useAiChat = () => {
       currentStreamingMessage: '',
     }));
 
-    try {
-      // Start the chat session
-      const { sessionId, conversationId } = await startChatQuery(api, { 
-        query, 
-        conversation_id: currentConversationId || undefined
-      });
-      currentSessionRef.current = sessionId;
-      
-      // Update conversation ID if we got a new one
-      if (conversationId) {
-        setCurrentConversationId(conversationId);
-        
-        // Subscribe to Action Cable for real-time updates using conversation_id
-        await subscribeToChat(conversationId, assistantMessageId);
-      } else {
-        // Fallback: if no conversation_id, we can't subscribe
-        setChatState(prev => ({
-          ...prev,
-          error: 'Failed to get conversation ID',
-          isLoading: false,
-        }));
+    const isOnline = typeof navigator === "undefined" ? true : navigator.onLine !== false;
+    let readiness = getOnDeviceLlmReadiness();
+
+    if (isNativeCapacitor() && readiness !== "ready") {
+      readiness = await initializeOnDeviceLlm();
+    }
+
+    const route = resolveAiLlmRoute({
+      priority: llmPriority,
+      isNative: isNativeCapacitor(),
+      isOnline,
+      readiness,
+    });
+
+    if (route === "local") {
+      const usedLocal = await deliverOnDeviceResponse(query, assistantMessageId);
+      if (usedLocal) {
+        return;
       }
-      
+
+      if (
+        shouldFallbackToCloudAfterLocalFailure({
+          priority: llmPriority,
+          isOnline,
+        })
+      ) {
+        updateMessage(assistantMessageId, { content: "" });
+        setChatState((prev) => ({
+          ...prev,
+          isLoading: true,
+          isStreaming: false,
+          error: null,
+          currentStreamingMessage: '',
+        }));
+      } else {
+        return;
+      }
+    }
+
+    try {
+      await sendCloudMessage(query, assistantMessageId);
     } catch (error) {
       console.error("Error starting chat:", error);
+
+      if (
+        shouldFallbackToOnDeviceLlm({
+          isNative: isNativeCapacitor(),
+          readiness: getOnDeviceLlmReadiness(),
+          error,
+          priority: llmPriority,
+        })
+      ) {
+        updateMessage(assistantMessageId, { content: "" });
+        await deliverOnDeviceResponse(query, assistantMessageId);
+        return;
+      }
 
       // Extract detailed error message from API response (supports snake_case and camelCase)
       let errorMessage: unknown = "An unknown error occurred";
@@ -575,7 +700,7 @@ export const useAiChat = () => {
         content: `Sorry, I encountered an error: ${errorText}`,
       });
     }
-  }, [addMessage, api, subscribeToChat, currentConversationId, updateMessage]);
+  }, [addMessage, currentConversationId, deliverOnDeviceResponse, llmPriority, sendCloudMessage, updateMessage]);
 
   const clearChat = useCallback(() => {
     // Stop subscription and typing animation
@@ -669,6 +794,7 @@ export const useAiChat = () => {
 
   const startNewConversation = useCallback(async () => {
     setCurrentConversationId(null);
+    await resetOnDeviceLlmSession();
     setChatState({
       messages: [],
       isLoading: false,
@@ -681,6 +807,7 @@ export const useAiChat = () => {
   return {
     ...chatState,
     currentConversationId,
+    llmPriority,
     sendMessage,
     clearChat,
     cancelStreaming,

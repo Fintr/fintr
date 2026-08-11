@@ -1,7 +1,7 @@
 "use client";
 
 import { TransactionTotals } from "@/types/transactionTypes";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency, cn, summaryAmountFractionDigits } from "@/lib/utils";
 import { AnimatedCurrency } from "@/components/ui/animated-currency";
 import { ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from "lucide-react";
 
@@ -53,10 +53,6 @@ interface TransactionTotalsDisplayProps {
   totalsCurrency?: string;
   /** "default" for the transactions tab; "summary" for account/category detail pages. */
   variant?: "default" | "summary";
-}
-
-function summaryAmountFractionDigits(amount: number): number {
-  return Math.abs(amount) >= 1_000_000 ? 0 : 2;
 }
 
 function SummaryTotals({

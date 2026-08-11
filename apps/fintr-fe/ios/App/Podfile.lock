@@ -13,7 +13,14 @@ PODS:
     - Capacitor
   - CapacitorShare (7.0.4):
     - Capacitor
+  - CapgoCapacitorLlm (7.2.15):
+    - Capacitor
+    - MediaPipeTasksGenAI
+    - MediaPipeTasksGenAIC
   - IONFilesystemLib (1.1.2)
+  - MediaPipeTasksGenAI (0.10.21):
+    - MediaPipeTasksGenAIC (= 0.10.21)
+  - MediaPipeTasksGenAIC (0.10.21)
   - Sentry (8.58.0):
     - Sentry/Core (= 8.58.0)
   - Sentry/Core (8.58.0)
@@ -26,11 +33,14 @@ DEPENDENCIES:
   - "CapacitorFilesystem (from `../../node_modules/.pnpm/@capacitor+filesystem@7.1.8_@capacitor+core@7.6.5/node_modules/@capacitor/filesystem`)"
   - "CapacitorKeyboard (from `../../node_modules/.pnpm/@capacitor+keyboard@7.0.6_@capacitor+core@7.6.5/node_modules/@capacitor/keyboard`)"
   - "CapacitorShare (from `../../node_modules/.pnpm/@capacitor+share@7.0.4_@capacitor+core@7.6.5/node_modules/@capacitor/share`)"
+  - "CapgoCapacitorLlm (from `../../node_modules/.pnpm/@capgo+capacitor-llm@7.2.15_@capacitor+core@7.6.5_@mediapipe+tasks-genai@0.10.29/node_modules/@capgo/capacitor-llm`)"
   - Sentry
 
 SPEC REPOS:
   trunk:
     - IONFilesystemLib
+    - MediaPipeTasksGenAI
+    - MediaPipeTasksGenAIC
     - Sentry
 
 EXTERNAL SOURCES:
@@ -48,6 +58,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/.pnpm/@capacitor+keyboard@7.0.6_@capacitor+core@7.6.5/node_modules/@capacitor/keyboard"
   CapacitorShare:
     :path: "../../node_modules/.pnpm/@capacitor+share@7.0.4_@capacitor+core@7.6.5/node_modules/@capacitor/share"
+  CapgoCapacitorLlm:
+    :path: "../../node_modules/.pnpm/@capgo+capacitor-llm@7.2.15_@capacitor+core@7.6.5_@mediapipe+tasks-genai@0.10.29/node_modules/@capgo/capacitor-llm"
 
 SPEC CHECKSUMS:
   Capacitor: 358dd1c3fdd71d969547b17e159fd8a7736cb45f
@@ -57,9 +69,12 @@ SPEC CHECKSUMS:
   CapacitorFilesystem: c63fc54df41e5a6761785a7f3c49dc696c22e296
   CapacitorKeyboard: a2e0869edd229490ce36aed2549c0d6b95e27ee8
   CapacitorShare: 25f7fc5dd0e4edbde5d6801c6de5d14a8b450a41
+  CapgoCapacitorLlm: 5cb42c64f42203effe5a3da59331619d3cd45c10
   IONFilesystemLib: 21a63377696b2d8fab5632ecfb7d2ac67bddb68a
+  MediaPipeTasksGenAI: 64f91ec1f2666abeb6dc719a8e8d1e2bf36374c0
+  MediaPipeTasksGenAIC: 1df8d7c6fcbe797d2a04a514edd8b31445291ec8
   Sentry: d587a8fe91ca13503ecd69a1905f3e8a0fcf61be
 
-PODFILE CHECKSUM: 85fb47b22eea08b8d6ce1190398021a6223e6048
+PODFILE CHECKSUM: 8a17ca52a352e022cdcff25ea1e4cef4d7cd6fb0
 
 COCOAPODS: 1.16.2

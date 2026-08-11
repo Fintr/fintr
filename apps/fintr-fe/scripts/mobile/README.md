@@ -34,37 +34,52 @@ This is your **all-in-one production workflow script**.
 ./scripts/mobile/build-production.sh
 ```
 
-### What It Does:
+### What It Does (FIN-194 bundled shell — default):
 
-1. **🧹 Cleans**: Removes `.next`, `out`, and old Capacitor configs
-2. **⚙️  Sets Up**: 
-   - Unsets `CAPACITOR_SERVER_URL` (uses bundled files)
-   - Loads `.env.mobile.production`
-   - Overrides `NEXT_PUBLIC_APP_BASE_URL` to `https://www.fintr.ai`
-3. **🔨 Builds**: Creates static Next.js export in `out/` directory
-4. **🔄 Syncs**: Copies built files to iOS/Android native projects
-5. **🔍 Verifies**: Checks that config is correct (no server URL)
-6. **📱 Runs**: Launches app on iOS simulator
+1. **Cleans**: Removes `.next`, `out`, and old Capacitor configs
+2. **Sets Up**: **Unsets** `CAPACITOR_SERVER_URL`, loads `.env.mobile.production`, sets `NEXT_PUBLIC_APP_BASE_URL`
+3. **Builds**: Static Next.js export in `out/`
+4. **Syncs**: Capacitor iOS/Android with bundled `webDir`
+5. **Verifies**: Config has **no** `server.url`
+6. **Opens**: Xcode
+
+`build-production-bundled.sh` is an alias of `build-production.sh`.
 
 ### When To Use:
 
-- ✅ Testing production build
-- ✅ Before creating App Store archive
-- ✅ Before building Android APK/AAB
-- ✅ Verifying bundled app works correctly
-- ✅ Any time you need a production build
+- ✅ App Store / Play Store / Ad Hoc builds
+- ✅ Offline-first cold start (local shell + IndexedDB)
+- ✅ Any production Capacitor build
+
+Live reload still uses `CAPACITOR_SERVER_URL=http://localhost:5173` in dev scripts only.
+
+### On-device AI (local phone LLMs)
+
+Fintr uses `@capgo/capacitor-llm` so AI chat can answer **offline on native** via:
+
+- **iOS 26+**: Apple Intelligence (`Apple Intelligence` system model)
+- **Android**: Gemini Nano on supported hardware (e.g. Pixel 9+), `minSdkVersion` 28
+
+When the phone is offline, `useAiChat` routes prompts to the on-device model instead of Rails RAG. Cloud AI still runs when online.
+
+**Requirements:**
+
+- Physical device (Android emulators lack Gemini Nano)
+- Apple Intelligence enabled on supported iPhones, or Gemini Nano downloaded on Android
+- Rebuild native app after `pnpm add @capgo/capacitor-llm` (`npx cap sync` + Xcode/Android Studio)
+
+iOS CocoaPods needs static frameworks for MediaPipe (`use_frameworks! :linkage => :static` in `ios/App/Podfile`).
 
 ## 🔑 Key Concepts
 
 ### Bundled App vs Live Reload
 
-**Bundled App (Production):**
+**Bundled App (Production — default):**
 ```bash
 ./scripts/mobile/build-production.sh
 ```
-- App uses files built into the package
-- No dev server needed
-- This is what App Store users get
+- App uses files built into the package (`out/`)
+- No remote `fintr.ai` WebView load
 - **CAPACITOR_SERVER_URL is UNSET**
 
 **Live Reload (Development):**
@@ -73,8 +88,6 @@ export CAPACITOR_SERVER_URL=http://localhost:5173
 npx cap run ios
 ```
 - App loads from localhost dev server
-- Changes appear immediately
-- Faster development
 - **CAPACITOR_SERVER_URL is SET**
 
 ### Environment Variables
@@ -84,9 +97,8 @@ npx cap run ios
 - **Set to localhost (dev):** App loads from dev server
 
 **`NEXT_PUBLIC_APP_BASE_URL`:**
-- Must be `https://www.fintr.ai` during build
-- Used for API calls, OAuth redirects
-- **NOT** the custom URL scheme (`fintrapp://`)
+- Must be `https://www.fintr.ai` during build (API / OAuth origin)
+- **NOT** the Capacitor WebView content URL in production anymore
 
 **Custom URL Scheme (`fintrapp://`):**
 - Only used at **runtime** for deep linking

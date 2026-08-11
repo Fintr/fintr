@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ActivitiesPage,
@@ -9,7 +9,7 @@ import {
   TransactionsPage,
 } from "@/types/transactionTypes";
 import { formatCurrency, truncateText } from "@/lib/utils";
-import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Image, Landmark } from "lucide-react";
+import { Image } from "lucide-react";
 import { InfiniteData } from "@tanstack/react-query";
 import {
   Popover,
@@ -19,8 +19,13 @@ import {
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import { useAuthApi } from "@/hooks/useAuthApi";
-import { fetchTransactionById } from "@/services/transactions/queries";
-import { fetchTransferById } from "@/services/transactions/transfers/queries";
+import {
+  TRANSACTION_DAY_DATA_ATTR,
+  useAnchorTransactionsListToToday,
+} from "@/hooks/useAnchorTransactionsListToToday";
+import { resolveTransactionDetail } from "@/services/transactions/detail-local";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import { toast } from "sonner";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { cn } from "@/lib/utils";
@@ -31,6 +36,7 @@ import {
 import {
   formatTransactionDayDividerDate,
   formatTransactionRowDate,
+  getLocalIsoDateKey,
   getTransactionDayGroupKey,
 } from "@/utils/dateUtils";
 import {
@@ -39,7 +45,10 @@ import {
   activityPresentsAsTransfer,
   activityRecordId,
   activityRowIsEditable,
+  activityShowsCalculatedIndicator,
 } from "@/utils/activityDisplay";
+import { TransactionRowTypeIcon } from "@/components/dashboard/tabs/transactions/transaction-row-type-icon";
+import { TagChip } from "@/components/ui/tag-chip";
 
 interface ListViewProps {
   variant?: "transactions" | "activities";
@@ -55,6 +64,12 @@ interface ListViewProps {
   loadMoreRef: React.RefObject<HTMLDivElement>;
   /** When true, row amounts use booked (ledger) currency from the API instead of space-normalized. */
   showBookedCurrencies?: boolean;
+  /** Land on today after reload (future days stay above). */
+  anchorToToday?: boolean;
+  queryStartDate?: string;
+  queryEndDate?: string;
+  fetchNextPage?: () => void;
+  anchorResetKey?: string;
 }
 
 function flattenRows(
@@ -92,37 +107,73 @@ export function ListView({
   onRowDelete,
   loadMoreRef,
   showBookedCurrencies = false,
+  anchorToToday = false,
+  queryStartDate = "",
+  queryEndDate = "",
+  fetchNextPage,
+  anchorResetKey = "",
 }: ListViewProps) {
   const router = useRouter();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<Array<{ url: string; filename?: string; contentType?: string; byteSize?: number }>>([]);
+
+  const dayKeysNewestFirst = useMemo(() => {
+    if (!data?.pages?.length) return [] as string[];
+
+    const keys: string[] = [];
+    let lastKey: string | null = null;
+    for (const row of flattenRows(data, variant)) {
+      const dayKey = getLocalIsoDateKey(row.date);
+      if (dayKey !== lastKey) {
+        keys.push(dayKey);
+        lastKey = dayKey;
+      }
+    }
+    return keys;
+  }, [data, variant]);
+
+  useAnchorTransactionsListToToday({
+    enabled: anchorToToday && Boolean(isSuccess || data?.pages?.length),
+    startDate: queryStartDate,
+    endDate: queryEndDate,
+    dayKeysNewestFirst,
+    hasNextPage: Boolean(hasNextPage),
+    isFetchingNextPage,
+    fetchNextPage,
+    resetKey: anchorResetKey,
+  });
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [hoveredCalculatedId, setHoveredCalculatedId] = useState<string | null>(null);
   const { api } = useAuthApi();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
+  const preferLocal = useSkipCachedNetworkFetch();
   
   // Get space context for currency
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
+  const hasLoadedPages = Boolean(data?.pages?.length);
 
   const handleImageClick = async (row: IndexTransaction | IndexActivity) => {
-    if (!api) return;
+    if (!preferLocal && !api) return;
 
     try {
-      let transactionData;
-
       const recordId =
         variant === "activities" && "activitableId" in row
           ? (row.activitableId ?? row.id)
           : row.id;
 
-      if (row.type === CombinedTransactionTypeEnum.TRANSFER) {
-        transactionData = await fetchTransferById(api, recordId);
-      } else {
-        transactionData = await fetchTransactionById(api, recordId);
-      }
+      const transactionData = await resolveTransactionDetail({
+        api,
+        spaceId: spaceCode,
+        transactionId: recordId,
+        type: row.type as CombinedTransactionTypeEnum,
+        listRow: row as IndexTransaction,
+        preferLocal,
+      });
 
-      if (transactionData?.files && Array.isArray(transactionData.files) && transactionData.files.length > 0) {
-        const images = transactionData.files.map((file: any) => ({
+      const files = (transactionData as { files?: unknown }).files;
+      if (Array.isArray(files) && files.length > 0) {
+        const images = files.map((file: any) => ({
           url: file.url,
           filename: file.filename,
           contentType: file.contentType,
@@ -133,7 +184,11 @@ export function ListView({
         setLightboxIndex(0);
         setLightboxOpen(true);
       } else {
-        toast.error("No image found for this transaction.");
+        toast.error(
+          preferLocal
+            ? "Image not available offline."
+            : "No image found for this transaction.",
+        );
       }
     } catch (error) {
       console.error("Error fetching transaction image:", error);
@@ -143,15 +198,17 @@ export function ListView({
 
   return (
     <div className="space-y-3 rounded-lg overflow-hidden">
-      {isPending && (
+      {isPending && !hasLoadedPages && (
         <div className="text-center py-4">
           <LoadingSpinner size="medium" />
         </div>
       )}
-      {isError && error && (
-        <div className="text-red-900 text-center py-4">Error: {error.message}</div>
+      {isError && !hasLoadedPages && (
+        <div className="text-red-900 text-center py-4">
+          Error: {error?.message ?? "Failed to load transactions"}
+        </div>
       )}
-      {isSuccess && data && (
+      {hasLoadedPages && data && (
         <>
           {(() => {
             let lastDisplayedDate: string | null = null;
@@ -193,6 +250,7 @@ export function ListView({
             return uniqueRows.map((row: IndexTransaction | IndexActivity, idx: number) => {
               const transactionDate = new Date(row.date);
               const currentDate = getTransactionDayGroupKey(transactionDate);
+              const currentIsoDay = getLocalIsoDateKey(row.date);
               let showDivider = false;
 
               if (currentDate !== lastDisplayedDate) {
@@ -231,7 +289,8 @@ export function ListView({
                   {showDivider && (
                     <div
                       key={`divider-${currentDate}-${idx}`}
-                      className="flex items-center my-5"
+                      className="flex items-center my-5 scroll-mt-3"
+                      {...{ [TRANSACTION_DAY_DATA_ATTR]: currentIsoDay }}
                     >
                       <div className="border-t border-gray-300 dark:border-border" style={{width: '2rem'}} />
                       <span className="text-xs font-semibold text-primary bg-background px-3">
@@ -249,8 +308,7 @@ export function ListView({
                   )}
                   <div 
                     className={cn(
-                      "transaction-item relative flex justify-between p-3 bg-white rounded hover:bg-gray-100 transition-colors cursor-pointer dark:bg-card dark:hover:bg-accent/50",
-                      "items-stretch",
+                      "transaction-item relative flex items-center gap-3 p-3 bg-white rounded hover:bg-gray-100 transition-colors cursor-pointer dark:bg-card dark:hover:bg-accent/50",
                       hasSubcategory
                         ? "min-h-[78px] md:min-h-[60px]"
                         : "min-h-[60px]",
@@ -277,7 +335,7 @@ export function ListView({
                     }}
                   >
                     {/* Calculated indicator - triangle in upper right corner */}
-                    {row.calculated && (
+                    {activityShowsCalculatedIndicator(row) && (
                       <Popover
                         open={hoveredCalculatedId === row.id}
                         onOpenChange={(open) => {
@@ -308,10 +366,9 @@ export function ListView({
                         </PopoverContent>
                       </Popover>
                     )}
-                    {/* Color indicator */}
                     <div
                       className={cn(
-                        "w-1 shrink-0 self-center rounded mr-3 h-[90%] min-h-12",
+                        "w-1 shrink-0 self-center rounded h-[90%] min-h-12",
                         presentsAsIncome
                           ? "bg-teal-600"
                           : presentsAsTransfer
@@ -319,7 +376,7 @@ export function ListView({
                             : "bg-red-900",
                       )}
                     />
-                    
+
                     {/* Main content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
@@ -344,50 +401,23 @@ export function ListView({
                             </button>
                           )}
                         </div>
-                        <div className="flex shrink-0 items-center gap-2">
+                        <div className="flex shrink-0 items-center gap-1.5">
                           <div
-                                  className={`font-semibold text-sm ${
+                            className={`font-semibold text-sm ${
                               presentsAsIncome
                                 ? "text-teal-600 dark:text-teal-500"
-                                      : presentsAsTransfer
-                                ? "text-blue-900 dark:text-blue-400"
-                                : "text-red-900 dark:text-red-700"
+                                : presentsAsTransfer
+                                  ? "text-blue-900 dark:text-blue-400"
+                                  : "text-red-900 dark:text-red-700"
                             }`}
                           >
-                              {formatIndexTransactionListAmount(
-                                rowAmount,
-                                rowCurrencyCode,
-                                showBookedCurrencies,
-                              )}
+                            {formatIndexTransactionListAmount(
+                              rowAmount,
+                              rowCurrencyCode,
+                              showBookedCurrencies,
+                            )}
                           </div>
-                          <span
-                                  className={`px-1 md:px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 gap-1 ${
-                              presentsAsIncome
-                                      ? "bg-teal-100/50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-500"
-                                      : presentsAsTransfer
-                                      ? "bg-blue-100/50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-400"
-                                      : "bg-red-100/50 text-red-900 dark:bg-red-950/40 dark:text-red-700"
-                            }`}
-                          >
-                                  {presentsAsIncome && <ArrowUpRight className="h-3 w-3 inline" />}
-                                  {!presentsAsIncome && !presentsAsTransfer && <ArrowDownLeft className="h-3 w-3 inline" />}
-                                  {presentsAsTransfer && <ArrowLeftRight className="h-3 w-3 inline" />}
-                                  {(row.type === ActivitiesTypeEnum.LOAN_DISBURSEMENT ||
-                                    row.type === ActivitiesTypeEnum.LOAN_PAYMENT ||
-                                    row.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT ||
-                                    row.type === CombinedTransactionTypeEnum.LOAN_PAYMENT) && (
-                                    <Landmark className="h-3 w-3 inline" />
-                                  )}
-                            <span className="hidden md:inline">
-                              {row.type === ActivitiesTypeEnum.LOAN_DISBURSEMENT ||
-                              row.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT
-                                ? "loan"
-                                : row.type === ActivitiesTypeEnum.LOAN_PAYMENT ||
-                                    row.type === CombinedTransactionTypeEnum.LOAN_PAYMENT
-                                  ? "payment"
-                                  : row.type}
-                            </span>
-                          </span>
+                          <TransactionRowTypeIcon row={row} size="sm" />
                         </div>
                       </div>
                       
@@ -437,20 +467,34 @@ export function ListView({
                           )}
                         </div>
                       </div>
+
+                      {row.tags && row.tags.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {row.tags.slice(0, 3).map((tag) => (
+                            <TagChip key={tag.id} tag={tag} />
+                          ))}
+                          {row.tags.length > 3 && (
+                            <span className="text-[11px] text-muted-foreground">
+                              +{row.tags.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </React.Fragment>
               );
             });
           })()}
-          <div ref={loadMoreRef} style={{ height: "10px" }} />
+          {hasNextPage && (
+            <div
+              ref={loadMoreRef}
+              aria-hidden
+              className="h-8 w-full"
+            />
+          )}
         </>
       )}
-      {isSuccess && (!data || rowCount(data, variant) === 0) && (
-          <div className="text-center py-8 text-gray-500">
-            {variant === "activities" ? "No activity found" : "No transactions found"}
-          </div>
-        )}
       {isFetchingNextPage && (
         <div className="text-center py-2 text-sm">
           <LoadingSpinner size="small" />

@@ -44,8 +44,14 @@ export function useCloseOnPopStateWhenOpen(
 
     return () => {
       window.removeEventListener("popstate", handlePopState)
-      if (historyEntryActiveRef.current) {
-        historyEntryActiveRef.current = false
+      if (!historyEntryActiveRef.current) {
+        return
+      }
+
+      historyEntryActiveRef.current = false
+
+      // Drop the synthetic overlay entry without leaving a stale listener cycle.
+      if (window.history.state?.[historyKey]) {
         window.history.back()
       }
     }

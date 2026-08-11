@@ -97,6 +97,8 @@ export const createAccountAtom = atom(
             label: accountData.name,
             value: accountData.name,
             currency: accountData.balanceCurrency ?? "PHP",
+            accountCategory: accountData.accountCategory,
+            balance: accountData.balance,
           },
         ];
         set(accountOptionsAtom, updatedOptions);

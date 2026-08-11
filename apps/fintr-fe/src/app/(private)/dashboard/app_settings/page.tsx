@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import React from "react";
 import {
   CreditCard,
   Settings,
@@ -8,12 +8,13 @@ import {
   Download,
   Folder,
   MessageSquare,
-  ArrowLeft,
   LogOut,
   FileText,
+  Wallet,
+  Contact,
+  Tags,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { SpaceSwitcher } from "@/components/space/space-switcher";
 import { useAtomValue } from "jotai";
@@ -22,6 +23,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { resetGlobalAuthLock } from "@/components/deep-link-handler";
 import { ThemeToggleCard } from "@/components/settings/theme-toggle-card";
 import { ProfileSunAvatar } from "@/components/settings/profile-sun-avatar";
+import { TitleBadge } from "@/components/badges/title-badge";
+import { TitleLadder } from "@/components/badges/title-ladder";
+import { BadgeShelf } from "@/components/badges/badge-shelf";
+import { ProfileLevelBar } from "@/components/badges/profile-level-bar";
+import { AchievementDetailSheet } from "@/components/badges/achievement-detail-sheet";
+import { useGamificationProfile } from "@/hooks/async/useGamificationProfile";
+import type { GamificationAchievement } from "@/types/badgeTypes";
+import type { LevelTitle } from "@/types/badgeTypes";
 import { cn } from "@/lib/utils";
 
 const settingsMenuCardClassName = cn(
@@ -51,10 +60,14 @@ interface SettingsSection {
 }
 
 export default function AppSettingsPage() {
-  const router = useRouter();
   const { user, logout } = useAuth();
   const isAdmin = useAtomValue(isAdminAtom);
   const queryClient = useQueryClient();
+  const { data: profile } = useGamificationProfile();
+  const [selectedAchievement, setSelectedAchievement] =
+    React.useState<GamificationAchievement | null>(null);
+  const [selectedTitle, setSelectedTitle] = React.useState<LevelTitle | null>(null);
+  const [showBadges, setShowBadges] = React.useState(false);
 
   // Extract login provider from user.sub (e.g., "google-oauth2|123" or "apple|456")
   const getLoginProvider = (): string => {
@@ -104,9 +117,24 @@ export default function AppSettingsPage() {
       title: "Menu",
       cards: [
         {
+          title: "Budget",
+          icon: Wallet,
+          href: "/dashboard/budgets",
+        },
+        {
           title: "Loans",
           icon: FileText,
           href: "/dashboard/loans",
+        },
+        {
+          title: "Entities",
+          icon: Contact,
+          href: "/dashboard/space_settings/entities",
+        },
+        {
+          title: "Tags",
+          icon: Tags,
+          href: "/dashboard/space_settings/tags",
         },
       ],
     },
@@ -162,11 +190,16 @@ export default function AppSettingsPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6 flex flex-col items-center px-4 py-8 text-center">
-          <ProfileSunAvatar
-            src={user?.picture}
-            name={user?.name}
-            alt={user?.name ? `${user.name}'s profile photo` : "Profile photo"}
-          />
+          <div className="relative mb-3">
+            <ProfileSunAvatar
+              src={user?.picture}
+              name={user?.name}
+              alt={user?.name ? `${user.name}'s profile photo` : "Profile photo"}
+            />
+            <div className="absolute -bottom-1 -right-1">
+              <TitleBadge title={profile?.title} size="sm" />
+            </div>
+          </div>
 
           <h1 className="text-2xl font-bold text-primary md:text-3xl">
             {user?.name || "User"}
@@ -176,11 +209,60 @@ export default function AppSettingsPage() {
             <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
               {loginProvider}
             </span>
+            {profile?.title ? (
+              <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                {profile.title.title}
+              </span>
+            ) : null}
             <span className="break-all text-sm text-primary/70">
               {user?.email}
             </span>
           </div>
+
+          {profile ? (
+            <ProfileLevelBar
+              className="mt-4"
+              level={profile.level}
+              xpIntoLevel={profile.xpIntoLevel}
+              xpPerLevel={profile.xpPerLevel}
+            />
+          ) : null}
+
+          {profile?.titles?.length || profile?.achievements?.length ? (
+            <div className="mt-4 flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full border-primary/20 bg-primary/5 px-4 text-primary hover:bg-primary/10"
+                onClick={() => setShowBadges((open) => !open)}
+                aria-expanded={showBadges}
+              >
+                {showBadges ? "hide badges" : "show badges"}
+              </Button>
+            </div>
+          ) : null}
         </div>
+
+        {showBadges && profile?.titles?.length ? (
+          <div className="mb-6 rounded-lg border border-primary/10 bg-primary/5 p-4">
+            <TitleLadder
+              titles={profile.titles}
+              currentLevel={profile.level}
+              onSelect={setSelectedTitle}
+            />
+          </div>
+        ) : null}
+
+        {showBadges && profile?.achievements?.length ? (
+          <div className="mb-8 rounded-lg border border-primary/10 bg-primary/5 p-4">
+            <BadgeShelf
+              achievements={profile.achievements}
+              title="Badges"
+              onSelect={setSelectedAchievement}
+            />
+          </div>
+        ) : null}
 
         {/* Menu Sections */}
         <div className="space-y-8">
@@ -238,6 +320,21 @@ export default function AppSettingsPage() {
           </Button>
         </div>
       </div>
+
+      <AchievementDetailSheet
+        achievement={selectedAchievement}
+        open={Boolean(selectedAchievement)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedAchievement(null);
+        }}
+      />
+      <AchievementDetailSheet
+        title={selectedTitle}
+        open={Boolean(selectedTitle)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTitle(null);
+        }}
+      />
     </div>
   );
 }

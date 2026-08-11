@@ -3,14 +3,16 @@
 import { Tabs } from "@/components/ui/tabs";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { shouldShowV2Features } from "@/lib/utils";
+import { shouldShowV2Features, cn } from "@/lib/utils";
 
 // path is like /landlords/inbox/123
 function getDefaultValue(path: string) {
   let defaultValue: string = "transactions";
   const showV2Features = shouldShowV2Features();
 
-  if (path.includes("/dashboard/budgets")) {
+  if (path.includes("/dashboard/home")) {
+    defaultValue = "home";
+  } else if (path.includes("/dashboard/budgets")) {
     defaultValue = "budgets";
   } else if (path.includes("/dashboard/loans")) {
     defaultValue = "loans";
@@ -27,7 +29,13 @@ function getDefaultValue(path: string) {
   return defaultValue;
 }
 
-export function TabsWrapper({ children }: { children: React.ReactNode }) {
+export function TabsWrapper({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   const pathname = usePathname();
   const [value, setValue] = useState<string>(() => getDefaultValue(pathname));
 
@@ -35,5 +43,9 @@ export function TabsWrapper({ children }: { children: React.ReactNode }) {
     setValue(getDefaultValue(pathname));
   }, [pathname]);
 
-  return <Tabs value={value}>{children}</Tabs>;
+  return (
+    <Tabs value={value} className={cn("gap-0 md:gap-2", className)}>
+      {children}
+    </Tabs>
+  );
 }

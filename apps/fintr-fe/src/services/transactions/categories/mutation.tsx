@@ -47,7 +47,11 @@ export const createTransactionCategory = async (
 export const updateTransactionCategory = async (
   api: AxiosInstance,
   categoryId: string,
-  updateData: { name: string }
+  updateData: {
+    name: string;
+    icon?: string;
+    color?: string;
+  }
 ) => {
   try {
     const response = await api.put(`/transactions/categories/${categoryId}`, updateData);

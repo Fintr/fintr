@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn, formatCurrency } from "@/lib/utils";
 import { Loan } from "@/services/loans/queries";
 import { getAmortizationSchedule } from "@/utils/loanAmortization";
+import { parseLoanPaymentAmount } from "@/utils/loan-payment-amounts";
 
 type LoanSummaryStatsProps = {
   loan: Loan;
@@ -55,7 +56,10 @@ export function LoanSummaryStats({
   const schedule = React.useMemo(() => getAmortizationSchedule(loan), [loan]);
 
   const totalInterest = React.useMemo(() => {
-    const sum = schedule.reduce((acc, payment) => acc + payment.interestPayment, 0);
+    const sum = schedule.reduce(
+      (acc, payment) => acc + parseLoanPaymentAmount(payment.interestPayment),
+      0,
+    );
     return Math.round(sum * 100) / 100;
   }, [schedule]);
 

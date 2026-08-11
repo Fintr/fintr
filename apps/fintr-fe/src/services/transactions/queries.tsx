@@ -1,8 +1,13 @@
-import { AxiosInstance } from 'axios';
+import { AxiosInstance, type AxiosRequestConfig } from 'axios';
 import { downloadBlobAsFile } from '@/lib/download-blob';
 import { getUserFacingExportErrorMessage } from '@/lib/user-facing-export-error';
 import { parseCategoryPickerValue } from '@/types/categoryTreeTypes';
 import { TransactionsPage, TransactionIndexInputType } from '@/types/transactionTypes'; // Use path alias
+import {
+  entryTypeFilterToApiParam,
+  type TransactionEntryTypeFilter,
+} from '@/utils/transactionEntryTypeFilter';
+import { parseSerializedFilterValues } from '@/utils/transactionFilterValues';
 
 /** Only include min/max in the request when the client intends a bound (backend skips both if absent). */
 function optionalAmountQueryParam(raw: unknown): number | undefined {
@@ -25,21 +30,6 @@ function omitUndefinedParams(
   return Object.fromEntries(
     Object.entries(record).filter(([, v]) => v !== undefined),
   ) as Record<string, string | number | string[]>;
-}
-
-function parseSerializedFilterValues(raw: unknown): string[] {
-  if (typeof raw !== "string" || raw.trim() === "") {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed)
-      ? parsed.map((value) => String(value)).filter(Boolean)
-      : [];
-  } catch {
-    return [];
-  }
 }
 
 export type FetchAccountTransactionsPageParams = {
@@ -136,13 +126,15 @@ export const fetchTransactionsPage = async (
   {
     pageParam = 1, // Default to page 1
     queryKey,
+    requestConfig,
   }: {
     pageParam?: number;
     queryKey: readonly unknown[];
+    requestConfig?: AxiosRequestConfig;
   }
 ): Promise<TransactionsPage> => {
   // Extract other parameters from the queryKey
-  const [_key, spaceCode, categoryFiltersSerialized, startDate, endDate, minAmount, maxAmount, searchQuery, accountNamesSerialized] = queryKey as [
+  const [_key, spaceCode, categoryFiltersSerialized, startDate, endDate, minAmount, maxAmount, searchQuery, accountNamesSerialized, tagIdsSerialized, entryType] = queryKey as [
     string,
     string,
     string,
@@ -152,12 +144,17 @@ export const fetchTransactionsPage = async (
     unknown,
     string,
     string,
+    string,
+    TransactionEntryTypeFilter | undefined,
   ];
 
   const minIncluded = optionalAmountQueryParam(minAmount);
   const maxIncluded = optionalAmountQueryParam(maxAmount);
   const categoryFilters = parseSerializedFilterValues(categoryFiltersSerialized);
   const accountNames = parseSerializedFilterValues(accountNamesSerialized);
+  const tagIds = parseSerializedFilterValues(tagIdsSerialized);
+
+  const entryTypeParam = entryTypeFilterToApiParam(entryType ?? "all");
 
   const requestParams = omitUndefinedParams({
     spaceCode,
@@ -169,6 +166,8 @@ export const fetchTransactionsPage = async (
     ...(minIncluded !== undefined ? { minAmount: minIncluded } : {}),
     ...(maxIncluded !== undefined ? { maxAmount: maxIncluded } : {}),
     ...(categoryFilters.length > 0 ? { categoryFilters } : {}),
+    ...(tagIds.length > 0 ? { tagIds } : {}),
+    ...(entryTypeParam ? { entryType: entryTypeParam } : {}),
   });
 
   console.log('Fetching transactions page:', requestParams);
@@ -176,6 +175,7 @@ export const fetchTransactionsPage = async (
   try {
     const response = await api.get('/transactions', {
       params: requestParams,
+      ...requestConfig,
     });
     
     // Adapt this based on your actual API response structure
@@ -193,8 +193,18 @@ export const fetchTransactionsPage = async (
       return { transactions: [], nextPage: null, totalPages: null, totalCount: null, totals: null }; // Return structure expected by useInfiniteQuery
     }
 
-    console.log('Transactions page fetched:', { transactions, nextPage, totals });
-    return { transactions, nextPage, totalPages, totalCount, totals };
+    const filteredTransactions =
+      tagIds.length > 0
+        ? transactions.filter((transaction) => {
+            const transactionTagIds =
+              transaction.tagIds ?? transaction.tags?.map((tag) => tag.id) ?? [];
+            const allowed = new Set(tagIds);
+            return transactionTagIds.some((tagId) => allowed.has(tagId));
+          })
+        : transactions;
+
+    console.log('Transactions page fetched:', { transactions: filteredTransactions, nextPage, totals });
+    return { transactions: filteredTransactions, nextPage, totalPages, totalCount, totals };
   } catch (error) {
     console.error("Error fetching transactions page:", error);
     throw error; // Re-throw for React Query error handling

@@ -11,6 +11,8 @@ import {
   mobileTutorialCompletedAtom,
   tutorialDataLoadedAtom,
 } from "@/atoms/tutorialAtoms";
+import { loadCachedCurrentUserResponse } from "@/services/auth/local-cache";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 
 const normalizeOnboardingStep = (step: unknown) => {
   if (step && String(step).trim()) {
@@ -18,6 +20,56 @@ const normalizeOnboardingStep = (step: unknown) => {
   }
 
   return "currency";
+};
+
+const getPersistedSpaceCode = (): string => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  try {
+    return window.localStorage.getItem("spaceCode")?.trim() ?? "";
+  } catch {
+    return "";
+  }
+};
+
+const applyCurrentUserPayload = (
+  payload: Awaited<ReturnType<typeof loadCachedCurrentUserResponse>>,
+  handlers: {
+    setSpaceCode: (value: string) => void;
+    setIsAdmin: (value: boolean) => void;
+    setOnboardingStep: (value: string) => void;
+    setDesktopTutorialCompleted: (value: boolean) => void;
+    setMobileTutorialCompleted: (value: boolean) => void;
+    setTutorialDataLoaded: (value: boolean) => void;
+  },
+) => {
+  const fetchedSpaceCode = payload?.data?.spaceCode;
+  const fetchedIsAdmin = payload?.data?.isAdmin;
+  const fetchedOnboardingStep = payload?.data?.onboardingStep;
+  const fetchedDesktopTutorial = payload?.data?.desktopTutorial;
+  const fetchedMobileTutorial = payload?.data?.mobileTutorial;
+
+  // /auth/private always returns the personal space. Prefer the last-touched
+  // workspace already persisted locally (e.g. a guest space) on reload.
+  if (fetchedSpaceCode && !getPersistedSpaceCode()) {
+    handlers.setSpaceCode(fetchedSpaceCode);
+  }
+  if (fetchedIsAdmin !== undefined) {
+    handlers.setIsAdmin(fetchedIsAdmin);
+  }
+
+  handlers.setOnboardingStep(normalizeOnboardingStep(fetchedOnboardingStep));
+
+  if (fetchedDesktopTutorial !== undefined) {
+    handlers.setDesktopTutorialCompleted(fetchedDesktopTutorial);
+  }
+  if (fetchedMobileTutorial !== undefined) {
+    handlers.setMobileTutorialCompleted(fetchedMobileTutorial);
+  }
+
+  handlers.setTutorialDataLoaded(true);
 };
 
 export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = false) {
@@ -32,41 +84,39 @@ export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = f
   const setTutorialDataLoaded = useSetAtom(tutorialDataLoadedAtom);
   const queryEnabled = isClient && isAuthenticated;
 
+  const localCurrentUserQuery = useQuery({
+    queryKey: ["currentUser", "local"],
+    queryFn: async () => (await loadCachedCurrentUserResponse()) ?? null,
+    enabled: queryEnabled,
+    staleTime: Infinity,
+  });
+
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCurrentUserQuery);
+
   const currentUserQuery = useQuery({
     queryKey: ["currentUser"],
     queryFn: async () => {
       const response = await api.get("/auth/private");
-      const fetchedSpaceCode = response.data?.data?.spaceCode;
-      const fetchedIsAdmin = response.data?.data?.isAdmin;
-      const fetchedOnboardingStep = response.data?.data?.onboardingStep;
-      const fetchedDesktopTutorial = response.data?.data?.desktopTutorial;
-      const fetchedMobileTutorial = response.data?.data?.mobileTutorial;
+      const payload = response.data;
 
       if (isClient) {
-        if (fetchedSpaceCode && !spaceCode) {
-          setSpaceCode(fetchedSpaceCode);
-        }
-        if (fetchedIsAdmin !== undefined) {
-          setIsAdmin(fetchedIsAdmin);
-        }
-
-        setOnboardingStep(normalizeOnboardingStep(fetchedOnboardingStep));
-
-        if (fetchedDesktopTutorial !== undefined) {
-          setDesktopTutorialCompleted(fetchedDesktopTutorial);
-        }
-        if (fetchedMobileTutorial !== undefined) {
-          setMobileTutorialCompleted(fetchedMobileTutorial);
-        }
-
-        setTutorialDataLoaded(true);
+        applyCurrentUserPayload(payload, {
+          setSpaceCode,
+          setIsAdmin,
+          setOnboardingStep,
+          setDesktopTutorialCompleted,
+          setMobileTutorialCompleted,
+          setTutorialDataLoaded,
+        });
       }
 
-      return response.data;
+      return payload;
     },
-    enabled: queryEnabled,
-    staleTime: 5 * 60 * 1000,
+    enabled: queryEnabled && !skipNetworkFetch,
+    placeholderData: localCurrentUserQuery.data ?? undefined,
+    staleTime: skipNetworkFetch ? Infinity : 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    refetchOnMount: !skipNetworkFetch,
     retry: (failureCount, error) => {
       const status = (error as AxiosError)?.response?.status;
 
@@ -78,6 +128,30 @@ export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = f
     },
     retryDelay: (attemptIndex) => Math.min(400 * 2 ** attemptIndex, 2000),
   });
+
+  useEffect(() => {
+    if (!localCurrentUserQuery.data || currentUserQuery.data) {
+      return;
+    }
+
+    applyCurrentUserPayload(localCurrentUserQuery.data, {
+      setSpaceCode,
+      setIsAdmin,
+      setOnboardingStep,
+      setDesktopTutorialCompleted,
+      setMobileTutorialCompleted,
+      setTutorialDataLoaded,
+    });
+  }, [
+    currentUserQuery.data,
+    localCurrentUserQuery.data,
+    setDesktopTutorialCompleted,
+    setIsAdmin,
+    setMobileTutorialCompleted,
+    setOnboardingStep,
+    setSpaceCode,
+    setTutorialDataLoaded,
+  ]);
 
   useEffect(() => {
     if (!currentUserQuery.isError || onboardingStep !== null) {
@@ -97,11 +171,14 @@ export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = f
 
   const isUserContextResolved =
     currentUserQuery.isSuccess ||
+    (localCurrentUserQuery.data != null && skipNetworkFetch) ||
     (currentUserQuery.isError && onboardingStep !== null);
   const isUserContextLoading =
     queryEnabled &&
     !isUserContextResolved &&
-    (currentUserQuery.isPending || currentUserQuery.isFetching);
+    (currentUserQuery.isPending ||
+      currentUserQuery.isFetching ||
+      localCurrentUserQuery.isPending);
 
   return {
     spaceCode,

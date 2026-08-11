@@ -8,6 +8,10 @@ import useAuthApi from '@/hooks/useAuthApi';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { useAIUsage } from '@/hooks/async/useAIUsage';
 import { useDashboardData } from '@/hooks/async/useDashboardData';
+import {
+  isReceiptImageFile,
+  prepareReceiptImagePreview,
+} from '@/lib/receipt-image-preview';
 
 interface AddReceiptDialogProps {
   isOpen: boolean;
@@ -33,6 +37,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isFileSelectionInProgressRef = useRef<boolean>(false);
+  const imagePreviewUrlRef = useRef<string | null>(null);
 
   const { api } = useAuthApi({
     scope: "openid profile email read:users read:current_user read:ai_usage",
@@ -78,22 +83,66 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     setIsFileSelectionInProgress(value);
   }, []);
 
+  const revokeImagePreviewUrl = useCallback(() => {
+    if (imagePreviewUrlRef.current) {
+      URL.revokeObjectURL(imagePreviewUrlRef.current);
+      imagePreviewUrlRef.current = null;
+    }
+  }, []);
+
+  const loadImagePreview = useCallback(async (file: File) => {
+    revokeImagePreviewUrl();
+    setIsLoadingPreview(true);
+
+    try {
+      const preview = await prepareReceiptImagePreview(file);
+      imagePreviewUrlRef.current = preview.previewUrl;
+      setSelectedImage(preview.file);
+      setImagePreview(preview.previewUrl);
+    } catch (error) {
+      console.error('Error preparing image preview:', error);
+      toast.error('Error reading image file');
+      setSelectedImage(null);
+      setImagePreview(null);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  }, [revokeImagePreviewUrl]);
+
+  const clearSelectedImage = useCallback(() => {
+    revokeImagePreviewUrl();
+    isFileSelectionInProgressRef.current = false;
+    (window as any).__fileSelectionInProgress = false;
+    setSelectedImage(null);
+    setImagePreview(null);
+    setIsLoadingPreview(false);
+    setFileSelectionInProgress(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [revokeImagePreviewUrl, setFileSelectionInProgress]);
+
   // Preserve selected image when dialog is open (important for mobile)
   useEffect(() => {
     if (!isOpen) {
-      // Only reset state when dialog is closed, not when it opens
       setSelectedImage(null);
+      revokeImagePreviewUrl();
       setImagePreview(null);
       setFileSelectionInProgress(false);
       setIsLoadingPreview(false);
       stopCamera();
       (window as any).__fileSelectionInProgress = false;
-      // Clear file input when dialog closes
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
-  }, [isOpen, stopCamera, setFileSelectionInProgress]);
+  }, [isOpen, stopCamera, setFileSelectionInProgress, revokeImagePreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      revokeImagePreviewUrl();
+    };
+  }, [revokeImagePreviewUrl]);
 
   // CRITICAL: Global popstate interceptor to prevent navigation during file selection
   useEffect(() => {
@@ -118,18 +167,16 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     };
   }, [isOpen]);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     
-    // Clear any pending timeout from handleFileUpload
     if (fileInputRef.current && (fileInputRef.current as any)._pickTimeout) {
       clearTimeout((fileInputRef.current as any)._pickTimeout);
       delete (fileInputRef.current as any)._pickTimeout;
     }
     
     if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
+      if (!isReceiptImageFile(file)) {
         toast.error('Please select an image file');
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
@@ -139,7 +186,6 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         return;
       }
       
-      // Validate file size (e.g., max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error('File size must be less than 10MB');
         if (fileInputRef.current) {
@@ -150,38 +196,13 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         return;
       }
       
-      // Store the file immediately to prevent loss on mobile
       setSelectedImage(file);
-      
-      // Create preview only for images
-      if (file.type.startsWith('image/')) {
-        setIsLoadingPreview(true);
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setImagePreview(e.target?.result as string);
-          setIsLoadingPreview(false);
-          // Clear flag after successful load
-          setTimeout(() => {
-            setFileSelectionInProgress(false);
-            (window as any).__fileSelectionInProgress = false;
-          }, 100);
-        };
-        reader.onerror = () => {
-          toast.error('Error reading image file');
-          setSelectedImage(null);
-          setImagePreview(null);
-          setIsLoadingPreview(false);
-          setFileSelectionInProgress(false);
-          (window as any).__fileSelectionInProgress = false;
-        };
-        reader.readAsDataURL(file);
-      } else {
-        setImagePreview(null);
+      await loadImagePreview(file);
+      setTimeout(() => {
         setFileSelectionInProgress(false);
         (window as any).__fileSelectionInProgress = false;
-      }
+      }, 100);
     } else {
-      // No file selected (user cancelled)
       setFileSelectionInProgress(false);
       (window as any).__fileSelectionInProgress = false;
     }
@@ -234,20 +255,11 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         // Convert canvas to blob
-        canvas.toBlob((blob) => {
+        canvas.toBlob(async (blob) => {
           if (blob) {
-            // Create a File object from the blob
             const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
             setSelectedImage(file);
-            
-            // Create preview
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              setImagePreview(e.target?.result as string);
-            };
-            reader.readAsDataURL(file);
-            
-            // Stop camera
+            await loadImagePreview(file);
             stopCamera();
           }
         }, 'image/jpeg', 0.9);
@@ -275,13 +287,12 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         (window as any).__fileSelectionInProgress = false;
       }, 300000);
       
-      input.onchange = (e) => {
+      input.onchange = async (e) => {
         clearTimeout(safetyTimeoutId);
         const file = (e.target as HTMLInputElement).files?.[0];
         
         if (file) {
-          // Validate file type
-          if (!file.type.startsWith('image/')) {
+          if (!isReceiptImageFile(file)) {
             toast.error('Please select an image file');
             isFileSelectionInProgressRef.current = false;
             setIsFileSelectionInProgress(false);
@@ -289,7 +300,6 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             return;
           }
           
-          // Validate file size
           if (file.size > 10 * 1024 * 1024) {
             toast.error('File size must be less than 10MB');
             isFileSelectionInProgressRef.current = false;
@@ -298,35 +308,14 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             return;
           }
           
-          // Store the file immediately
           setSelectedImage(file);
-          
-          // Create preview
-          setIsLoadingPreview(true);
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setImagePreview(e.target?.result as string);
-            setIsLoadingPreview(false);
-            // Clear flag after successful load
-            setTimeout(() => {
-              isFileSelectionInProgressRef.current = false;
-              setIsFileSelectionInProgress(false);
-              (window as any).__fileSelectionInProgress = false;
-            }, 100);
-          };
-          reader.onerror = () => {
-            console.error('Error reading mobile camera file');
-            toast.error('Error reading image file');
-            setSelectedImage(null);
-            setImagePreview(null);
-            setIsLoadingPreview(false);
+          await loadImagePreview(file);
+          setTimeout(() => {
             isFileSelectionInProgressRef.current = false;
             setIsFileSelectionInProgress(false);
             (window as any).__fileSelectionInProgress = false;
-          };
-          reader.readAsDataURL(file);
+          }, 100);
         } else {
-          // User cancelled the file picker
           isFileSelectionInProgressRef.current = false;
           setIsFileSelectionInProgress(false);
           (window as any).__fileSelectionInProgress = false;
@@ -479,6 +468,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     // Force clear the flag immediately when user explicitly cancels
     isFileSelectionInProgressRef.current = false;
     (window as any).__fileSelectionInProgress = false;
+    revokeImagePreviewUrl();
     setSelectedImage(null);
     setImagePreview(null);
     setFileSelectionInProgress(false);
@@ -488,7 +478,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
       fileInputRef.current.value = '';
     }
     onClose();
-  }, [stopCamera, onClose, setFileSelectionInProgress]);
+  }, [stopCamera, onClose, setFileSelectionInProgress, revokeImagePreviewUrl]);
 
   // Wrap onClose to prevent closing during file selection or upload
   const handleDialogClose = useCallback(() => {
@@ -506,201 +496,199 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
   }, [isFileSelectionInProgress, isUploading, handleCancel, selectedImage]);
 
 
+  const previewFooter = !isCameraActive && selectedImage ? (
+    <div className="grid grid-cols-3 gap-2">
+      <Button
+        variant="outline"
+        onClick={handleCancel}
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="outline"
+        onClick={clearSelectedImage}
+        disabled={!canUploadReceipt}
+      >
+        Change
+      </Button>
+      <Button
+        onClick={handleSubmit}
+        disabled={isUploading || !hasTokensAvailable || !canUploadReceipt}
+        className="bg-primary hover:bg-primary/80"
+      >
+        {isUploading ? (
+          <div className="flex items-center justify-center gap-2">
+            <LoadingSpinner size="small" />
+            <span>Uploading...</span>
+          </div>
+        ) : (
+          <>
+            <Upload className="h-4 w-4 mr-2" />
+            Upload
+          </>
+        )}
+      </Button>
+    </div>
+  ) : undefined;
+
+  const tokenUsageBadge = isLoadingUsage ? (
+    <div className="flex items-center justify-center text-sm text-muted-foreground">
+      <span className="font-medium">Loading token usage...</span>
+    </div>
+  ) : aiUsage ? (
+    <div className="flex items-center justify-center">
+      <div className="flex w-fit flex-col items-center justify-between rounded-md border border-primary/50 bg-primary/5 p-2 text-sm text-primary">
+        <span className={`font-medium ${!hasTokensAvailable ? 'text-destructive' : ''}`}>
+          <strong>{aiUsage.remaining}</strong> tokens left
+        </span>
+        <span className="text-xs">{aiUsage.usagePeriod}</span>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <CustomDialog 
       isOpen={isOpen}
       onClose={handleDialogClose}
       title="Add Receipt"
+      fullScreen
+      footer={previewFooter}
     >
-      <div className="px-6 pb-6 space-y-4">
-        {isLoadingUsage ? (
-          <div className="flex items-center justify-center text-sm text-muted-foreground">
-            <span className="font-medium">Loading token usage...</span>
-          </div>
-        ) : aiUsage ? (
-          <div className="flex items-center justify-center">
-            <div className="flex flex-col items-center justify-between text-sm bg-primary/5 w-fit p-2 rounded-md border-primary/50 border text-primary">
-              <span className={`font-medium ${!hasTokensAvailable ? 'text-destructive' : ''}`}>
-                <strong>{aiUsage.remaining}</strong> tokens left
-              </span>
-              <span className="text-xs">{aiUsage.usagePeriod}</span>
+      <div className="flex min-h-0 flex-1 flex-col text-primary">
+        {isCameraActive ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="relative min-h-0 flex-1 bg-black">
+              <video
+                ref={videoRef}
+                className="h-full w-full object-cover"
+                autoPlay
+                playsInline
+                muted
+              />
+              <canvas ref={canvasRef} className="hidden" />
             </div>
-          </div>
-        ) : null}
-        
-        <div className="space-y-4 text-primary">
-          {isCameraActive ? (
-            /* Camera View */
-            <div className="space-y-4">
-              <div className="relative">
-                <video
-                  ref={videoRef}
-                  className="w-full h-64 object-cover bg-gray-100 rounded-lg"
-                  autoPlay
-                  playsInline
-                  muted
-                />
-                <canvas ref={canvasRef} className="hidden" />
-              </div>
-              
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={stopCamera}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={capturePhoto}
-                  className="flex-1 bg-primary hover:bg-primary/80"
-                >
-                  <Camera className="h-4 w-4 mr-2" />
-                  Capture
-                </Button>
-              </div>
-            </div>
-          ) : selectedImage ? (
-            /* Image Preview */
-            <div className="space-y-4">
-              {!isLoadingDashboard && !canUploadReceipt && (
-                <div className="text-center p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <p className="text-sm text-destructive font-medium mb-1">Missing Required Setup</p>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    {!hasAccounts && <p>• You need to create an account first</p>}
-                    {!hasExpenseCategories && <p>• You need to create an expense category first</p>}
-                  </div>
-                </div>
-              )}
-              {isLoadingPreview ? (
-                <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin mb-2" />
-                    <p className="text-sm text-gray-500">Loading image preview...</p>
-                  </div>
-                </div>
-              ) : imagePreview ? (
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="Receipt preview"
-                    className="w-full h-64 object-cover bg-gray-100 rounded-lg"
-                  />
-                </div>
-              ) : (
-                <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <FileImage className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500">Image Selected</p>
-                    <p className="text-xs text-gray-400">{selectedImage.name}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Initial Options */
-            <div data-tutorial-target="add-receipt-modal">
-              {!isLoadingDashboard && !canUploadReceipt && (
-                <div className="text-center p-4 bg-destructive/10 border border-destructive/20 rounded-lg mb-4">
-                  <p className="text-sm text-destructive font-medium mb-1">Missing Required Setup</p>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    {!hasAccounts && <p>• You need to create an account first</p>}
-                    {!hasExpenseCategories && <p>• You need to create an expense category first</p>}
-                  </div>
-                </div>
-              )}
-              {!hasTokensAvailable && (
-                <div className="text-center p-4 bg-destructive/10 border border-destructive/20 rounded-lg mb-4">
-                  <p className="text-sm text-destructive font-medium mb-1">No tokens available</p>
-                  <p className="text-xs text-muted-foreground">
-                    You've used all your AI tokens for this period. Please wait until the next billing cycle or contact support.
-                  </p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <Button
-                  variant="outline"
-                  className="h-24 flex flex-col items-center gap-2"
-                  onClick={handleTakePhoto}
-                  disabled={!hasTokensAvailable || !canUploadReceipt}
-                  data-tutorial-target="take-photo"
-                >
-                  <Camera className="h-8 w-8" />
-                  <span>Take Photo</span>
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  className="h-24 flex flex-col items-center gap-2"
-                  onClick={handleFileUpload}
-                  disabled={!hasTokensAvailable || !canUploadReceipt}
-                  data-tutorial-target="upload-file"
-                >
-                  <FileImage className="h-8 w-8" />
-                  <span>Upload File</span>
-                </Button>
-              </div>
-            </div>
-          )}
-          
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          
-          {/* Action Buttons */}
-          {!isCameraActive && (
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={handleCancel}>
+
+            <div className="grid grid-cols-2 gap-2 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <Button
+                variant="outline"
+                onClick={stopCamera}
+              >
                 Cancel
               </Button>
-              
-              {selectedImage && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      isFileSelectionInProgressRef.current = false;
-                      (window as any).__fileSelectionInProgress = false;
-                      setSelectedImage(null);
-                      setImagePreview(null);
-                      setIsLoadingPreview(false);
-                      setFileSelectionInProgress(false);
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = '';
-                      }
-                    }}
-                    disabled={!canUploadReceipt}
-                  >
-                    Choose Different
-                  </Button>
-                  
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={isUploading || !hasTokensAvailable || !canUploadReceipt}
-                    className="bg-primary hover:bg-primary/80"
-                  >
-                    {isUploading ? (
-                      <div className="flex items-center gap-2">
-                        <LoadingSpinner size="small" />
-                        <span>Uploading...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload Receipt
-                      </>
-                    )}
-                  </Button>
-                </>
+              <Button
+                onClick={capturePhoto}
+                className="bg-primary hover:bg-primary/80"
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Capture
+              </Button>
+            </div>
+          </div>
+        ) : selectedImage ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 px-4 pb-3 pt-2">
+              {tokenUsageBadge}
+            </div>
+
+            {!isLoadingDashboard && !canUploadReceipt && (
+              <div className="mx-4 mb-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-center">
+                <p className="mb-1 text-sm font-medium text-destructive">Missing Required Setup</p>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  {!hasAccounts && <p>• You need to create an account first</p>}
+                  {!hasExpenseCategories && <p>• You need to create an expense category first</p>}
+                </div>
+              </div>
+            )}
+
+            <div className="flex min-h-0 flex-1 items-center justify-center bg-muted/20 px-4 pb-4">
+              {isLoadingPreview ? (
+                <div className="text-center">
+                  <Loader2 className="mx-auto mb-2 h-12 w-12 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading image preview...</p>
+                </div>
+              ) : imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt="Receipt preview"
+                  className="max-h-full max-w-full object-contain"
+                />
+              ) : (
+                <div className="text-center">
+                  <FileImage className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Image selected</p>
+                  <p className="text-xs text-muted-foreground">{selectedImage.name}</p>
+                </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6">
+            <div className="space-y-4 py-4">
+              {tokenUsageBadge}
+
+              <div data-tutorial-target="add-receipt-modal">
+                {!isLoadingDashboard && !canUploadReceipt && (
+                  <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-center">
+                    <p className="mb-1 text-sm font-medium text-destructive">Missing Required Setup</p>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      {!hasAccounts && <p>• You need to create an account first</p>}
+                      {!hasExpenseCategories && <p>• You need to create an expense category first</p>}
+                    </div>
+                  </div>
+                )}
+                {!hasTokensAvailable && (
+                  <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-center">
+                    <p className="mb-1 text-sm font-medium text-destructive">No tokens available</p>
+                    <p className="text-xs text-muted-foreground">
+                      You've used all your AI tokens for this period. Please wait until the next billing cycle or contact support.
+                    </p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <Button
+                    variant="outline"
+                    className="flex h-24 flex-col items-center gap-2"
+                    onClick={handleTakePhoto}
+                    disabled={!hasTokensAvailable || !canUploadReceipt}
+                    data-tutorial-target="take-photo"
+                  >
+                    <Camera className="h-8 w-8" />
+                    <span>Take Photo</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="flex h-24 flex-col items-center gap-2"
+                    onClick={handleFileUpload}
+                    disabled={!hasTokensAvailable || !canUploadReceipt}
+                    data-tutorial-target="upload-file"
+                  >
+                    <FileImage className="h-8 w-8" />
+                    <span>Upload File</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-auto border-t pt-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleCancel}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
       </div>
     </CustomDialog>
   );

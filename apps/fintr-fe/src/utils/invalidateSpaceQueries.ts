@@ -27,6 +27,20 @@ export async function invalidateSpaceFinancialQueries(
   );
 }
 
+/**
+ * Recompute insights from IndexedDB (monthly buckets + all-time transactions).
+ * Safe immediately after local-first writes — does not hit the network.
+ */
+export function invalidateLocalInsightsQueries(
+  queryClient: QueryClient,
+): void {
+  void queryClient.invalidateQueries({
+    queryKey: ["insights"],
+    refetchType: "active",
+    exact: false,
+  });
+}
+
 export async function invalidateSpaceSwitchQueries(
   queryClient: QueryClient,
 ) {
@@ -41,5 +55,71 @@ export async function invalidateSpaceSwitchQueries(
     queryClient.invalidateQueries({ queryKey: ["tickets"] }),
     queryClient.invalidateQueries({ queryKey: ["messages"] }),
     queryClient.invalidateQueries({ queryKey: ["ai", "usage"] }),
+  ]);
+}
+
+const SPACE_SWITCH_CRITICAL_QUERY_ROOTS = new Set([
+  "space-context",
+  "dashboard",
+  "transactions",
+  "monthlyFinancialSummaries",
+]);
+
+function isCriticalSpaceSwitchFetch(
+  queryClient: QueryClient,
+): boolean {
+  return (
+    queryClient.isFetching({
+      predicate: (query) => {
+        const root = query.queryKey[0];
+        return (
+          typeof root === "string" &&
+          SPACE_SWITCH_CRITICAL_QUERY_ROOTS.has(root)
+        );
+      },
+    }) > 0
+  );
+}
+
+function waitForCriticalSpaceSwitchFetches(
+  queryClient: QueryClient,
+): Promise<void> {
+  if (!isCriticalSpaceSwitchFetch(queryClient)) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
+      if (!isCriticalSpaceSwitchFetch(queryClient)) {
+        unsubscribe();
+        resolve();
+      }
+    });
+  });
+}
+
+/** Minimum overlay time + critical refetches, capped so switches feel snappy. */
+export async function waitForSpaceSwitchReady(
+  queryClient: QueryClient,
+  {
+    minMs = 500,
+    maxMs = 1200,
+  }: {
+    minMs?: number;
+    maxMs?: number;
+  } = {},
+): Promise<void> {
+  const minDelay = new Promise<void>((resolve) => {
+    setTimeout(resolve, minMs);
+  });
+
+  await Promise.race([
+    Promise.all([
+      minDelay,
+      waitForCriticalSpaceSwitchFetches(queryClient),
+    ]),
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, maxMs);
+    }),
   ]);
 }

@@ -8,10 +8,7 @@ import { FilterSheet } from "@/components/ui/filter-sheet";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { useAtom } from "jotai";
-import {
-  getCurrentMonthDates,
-  monthNames,
-} from "@/utils/dateUtils";
+import { getCurrentMonthDates } from "@/utils/dateUtils";
 import { useAtomValue } from "jotai";
 import {
   accountOptionsAtom,
@@ -24,6 +21,8 @@ import {
   dateFilterEndDateAtom,
   dateFilterMonthYearAtom,
   dateFilterTypeAtom,
+  dateRangeToMonthYear,
+  monthYearToDateRange,
 } from "@/atoms/dateFilterAtoms";
 import {
   DateFilterPresetId,
@@ -33,7 +32,12 @@ import {
   matchPresetFromDateRange,
 } from "@/utils/dateFilterPresets";
 import { resolveQueryDateRange } from "@/utils/resolveQueryDateRange";
-import { normalizeFilterValues } from "@/utils/transactionFilterValues";
+import { usePresetDateRangeOptions } from "@/hooks/usePresetDateRangeOptions";
+import { TagFilterComboBox } from "@/components/ui/tag-filter-combobox";
+import { useTransactionTags } from "@/hooks/async/useTransactionTags";
+import {
+  normalizeFilterValues,
+} from "@/utils/transactionFilterValues";
 import {
   FILTER_CLEAR_ALL_MIN_COUNT,
   FilterClearAllButton,
@@ -54,6 +58,8 @@ export interface FilterTypes {
   appliedMaxAmount: string;
   searchQuery: string;
   appliedAccounts: string[];
+  selectedTags: string[];
+  appliedTags: string[];
 }
 
 interface TransactionFiltersSheetProps {
@@ -84,9 +90,11 @@ export function TransactionFiltersSheet({
   useCategoryDefaultsWhenEmpty = false,
   defaultPresetId,
 }: TransactionFiltersSheetProps) {
+  const presetOptions = usePresetDateRangeOptions();
   const expenseCategoryOptionsFromAtom = useAtomValue(expenseCategoryOptionsAtom);
   const incomeCategoryOptionsFromAtom = useAtomValue(incomeCategoryOptionsAtom);
   const accountOptions = useAtomValue(accountOptionsAtom);
+  const { tags: transactionTags } = useTransactionTags();
   const expenseCategoryOptions =
     expenseCategoryOptionsOverride ?? expenseCategoryOptionsFromAtom;
   const incomeCategoryOptions =
@@ -103,7 +111,7 @@ export function TransactionFiltersSheet({
 
   const [filterTypeSelector, setFilterTypeSelector] =
     useState<DateFilterTypeSelector>(() =>
-      inferDateFilterTypeSelector(startDate, endDate),
+      inferDateFilterTypeSelector(startDate, endDate, presetOptions),
     );
   const [selectedPreset, setSelectedPreset] =
     useState<DateFilterPresetId>("this_week");
@@ -132,7 +140,11 @@ export function TransactionFiltersSheet({
     if (filterType === "single") {
       setFilterTypeSelector("single");
     } else {
-      const matchedPreset = matchPresetFromDateRange(startDate, endDate);
+      const matchedPreset = matchPresetFromDateRange(
+        startDate,
+        endDate,
+        presetOptions,
+      );
       if (matchedPreset) {
         setFilterTypeSelector("predefined");
         setSelectedPreset(matchedPreset);
@@ -140,10 +152,11 @@ export function TransactionFiltersSheet({
         setFilterTypeSelector("custom");
       }
     }
-  }, [filterType, startDate, endDate]);
+  }, [filterType, presetOptions, startDate, endDate]);
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [appliedMinAmount, setAppliedMinAmount] = useState("");
   const [appliedMaxAmount, setAppliedMaxAmount] = useState("");
 
@@ -173,41 +186,52 @@ export function TransactionFiltersSheet({
     }
 
     const frame = requestAnimationFrame(() => {
+      const queryStartDate =
+        appliedFilters.queryStartDate || startDate;
+      const queryEndDate =
+        appliedFilters.queryEndDate || endDate;
+      const monthYearFromQuery = dateRangeToMonthYear(
+        queryStartDate,
+        queryEndDate,
+      );
       const inferredType = inferDateFilterTypeSelector(
-        appliedFilters.queryStartDate,
-        appliedFilters.queryEndDate,
+        queryStartDate,
+        queryEndDate,
+        presetOptions,
       );
       setFilterTypeSelector(inferredType);
       const matchedPreset = matchPresetFromDateRange(
-        appliedFilters.queryStartDate,
-        appliedFilters.queryEndDate,
+        queryStartDate,
+        queryEndDate,
+        presetOptions,
       );
       if (matchedPreset) {
         setSelectedPreset(matchedPreset);
       }
       setFilters({
-        selectedMonth: appliedFilters.selectedMonth,
-        selectedYear: appliedFilters.selectedYear,
-        startMonth: appliedFilters.startMonth,
-        startYear: appliedFilters.startYear,
-        endMonth: appliedFilters.endMonth,
-        endYear: appliedFilters.endYear,
+        selectedMonth: monthYearFromQuery.selectedMonth,
+        selectedYear: monthYearFromQuery.selectedYear,
+        startMonth: monthYearFromQuery.startMonth,
+        startYear: monthYearFromQuery.startYear,
+        endMonth: monthYearFromQuery.endMonth,
+        endYear: monthYearFromQuery.endYear,
       });
       setSelectedCategories(normalizeFilterValues(appliedFilters.selectedCategories));
       setSelectedAccounts(normalizeFilterValues(appliedFilters.appliedAccounts));
+      setSelectedTags(normalizeFilterValues(appliedFilters.selectedTags));
       setAppliedMinAmount(appliedFilters.appliedMinAmount);
       setAppliedMaxAmount(appliedFilters.appliedMaxAmount);
 
-      if (appliedFilters.queryStartDate && appliedFilters.queryEndDate) {
+      if (queryStartDate && queryEndDate) {
         setDateRange({
-          from: new Date(appliedFilters.queryStartDate),
-          to: new Date(appliedFilters.queryEndDate),
+          from: new Date(queryStartDate),
+          to: new Date(queryEndDate),
         });
       }
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [open, appliedFilters, filterType]);
+  }, [open, appliedFilters, filterType, presetOptions, startDate, endDate]);
 
   function handleFilterChange(key: keyof typeof filters, value: string) {
     if (filters[key] === value) return;
@@ -239,25 +263,28 @@ export function TransactionFiltersSheet({
   const handleFilterTypeChange = (value: DateFilterTypeSelector) => {
     setFilterTypeSelector(value);
     if (value === "single") {
-      const { firstDay, lastDay } = getCurrentMonthDates();
-      const currentMonthNum = new Date().getMonth() + 1;
-      const currentYearNum = new Date().getFullYear();
-      const monthName = monthNames[currentMonthNum - 1].value;
+      const viewingMonthYear = dateRangeToMonthYear(startDate, endDate);
+      const { startDate: rangeStart, endDate: rangeEnd } = monthYearToDateRange(
+        viewingMonthYear.selectedMonth,
+        viewingMonthYear.selectedYear,
+        viewingMonthYear.selectedMonth,
+        viewingMonthYear.selectedYear,
+      );
       setFilters({
-        selectedMonth: monthName,
-        selectedYear: currentYearNum.toString(),
-        startMonth: monthName,
-        startYear: currentYearNum.toString(),
-        endMonth: monthName,
-        endYear: currentYearNum.toString(),
+        selectedMonth: viewingMonthYear.selectedMonth,
+        selectedYear: viewingMonthYear.selectedYear,
+        startMonth: viewingMonthYear.selectedMonth,
+        startYear: viewingMonthYear.selectedYear,
+        endMonth: viewingMonthYear.selectedMonth,
+        endYear: viewingMonthYear.selectedYear,
       });
       setDateRange({
-        from: new Date(firstDay),
-        to: new Date(lastDay),
+        from: new Date(rangeStart),
+        to: new Date(rangeEnd),
       });
     } else if (value === "predefined") {
       const { startDate: presetStart, endDate: presetEnd } =
-        getPresetDateRange(selectedPreset);
+        getPresetDateRange(selectedPreset, new Date(), presetOptions);
       setDateRange({
         from: new Date(presetStart),
         to: new Date(presetEnd),
@@ -273,7 +300,7 @@ export function TransactionFiltersSheet({
   const handlePresetChange = (preset: DateFilterPresetId) => {
     setSelectedPreset(preset);
     const { startDate: presetStart, endDate: presetEnd } =
-      getPresetDateRange(preset);
+      getPresetDateRange(preset, new Date(), presetOptions);
     setDateRange({
       from: new Date(presetStart),
       to: new Date(presetEnd),
@@ -287,6 +314,7 @@ export function TransactionFiltersSheet({
       selectedYear: filters.selectedYear,
       selectedPreset,
       dateRange,
+      presetOptions,
     });
 
     const resolvedCategoryValues =
@@ -303,6 +331,8 @@ export function TransactionFiltersSheet({
       selectedCategories: categoryValues,
       appliedCategories: categoryValues,
       appliedAccounts: normalizeFilterValues(selectedAccounts),
+      selectedTags: normalizeFilterValues(selectedTags),
+      appliedTags: normalizeFilterValues(selectedTags),
       appliedMinAmount,
       appliedMaxAmount,
       searchQuery: appliedFilters.searchQuery,
@@ -310,17 +340,20 @@ export function TransactionFiltersSheet({
   };
 
   const handleApply = () => {
+    setDateRangePickerOpen(false);
+
     const updatedFilters = buildAppliedFilters();
     setStartDate(updatedFilters.queryStartDate);
     setEndDate(updatedFilters.queryEndDate);
     applyFilters(updatedFilters);
-    onOpenChange(false);
   };
 
   const handleReset = () => {
+    setDateRangePickerOpen(false);
+
     if (defaultPresetId) {
       const { startDate: presetStart, endDate: presetEnd } =
-        getPresetDateRange(defaultPresetId);
+        getPresetDateRange(defaultPresetId, new Date(), presetOptions);
 
       setStartDate(presetStart);
       setEndDate(presetEnd);
@@ -332,6 +365,7 @@ export function TransactionFiltersSheet({
       });
       setSelectedCategories([]);
       setSelectedAccounts([]);
+      setSelectedTags([]);
       setAppliedMinAmount("");
       setAppliedMaxAmount("");
 
@@ -353,11 +387,12 @@ export function TransactionFiltersSheet({
         appliedMinAmount: "",
         appliedMaxAmount: "",
         appliedAccounts: [],
+        selectedTags: [],
+        appliedTags: [],
         searchQuery: appliedFilters.searchQuery,
       };
 
       applyFilters(resetFiltersData);
-      onOpenChange(false);
       return;
     }
 
@@ -373,6 +408,7 @@ export function TransactionFiltersSheet({
     });
     setSelectedCategories([]);
     setSelectedAccounts([]);
+    setSelectedTags([]);
     setAppliedMinAmount("");
     setAppliedMaxAmount("");
 
@@ -394,11 +430,12 @@ export function TransactionFiltersSheet({
       appliedMinAmount: "",
       appliedMaxAmount: "",
       appliedAccounts: [],
+      selectedTags: [],
+      appliedTags: [],
       searchQuery: appliedFilters.searchQuery,
     };
 
     applyFilters(resetFiltersData);
-    onOpenChange(false);
   };
 
   return (
@@ -440,6 +477,23 @@ export function TransactionFiltersSheet({
           multiple={true}
           values={selectedCategories}
           onValuesChange={setSelectedCategories}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <Label>Tags</Label>
+          {selectedTags.length >= FILTER_CLEAR_ALL_MIN_COUNT ? (
+            <FilterClearAllButton onClick={() => setSelectedTags([])} />
+          ) : null}
+        </div>
+        <TagFilterComboBox
+          tags={transactionTags}
+          placeholder="Select tags"
+          className="w-full"
+          showAllOnFocus={true}
+          values={selectedTags}
+          onValuesChange={setSelectedTags}
         />
       </div>
 

@@ -44,10 +44,28 @@ export const FilterSheet = ({
   const titleId = useId();
   const { isAndroidNative, isIOSNative } = usePlatformDetection();
 
+  const dismissSheet = () => {
+    onOpenChange(false);
+  };
+
+  const handleApplyClick = () => {
+    dismissSheet();
+    onApply();
+  };
+
+  const handleResetClick = () => {
+    dismissSheet();
+    onReset();
+  };
+
+  const stopFooterGesture = (event: React.SyntheticEvent) => {
+    event.stopPropagation();
+  };
+
   return (
     <AnimatedSheetShell
       open={open}
-      onRequestClose={() => onOpenChange(false)}
+      onRequestClose={dismissSheet}
       titleId={titleId}
       side="right"
       swipeToClose
@@ -72,19 +90,23 @@ export const FilterSheet = ({
           "mt-auto shrink-0 border-t bg-background p-4 sm:p-6 gap-2 flex flex-col sm:flex-row sm:justify-between",
           (isAndroidNative || isIOSNative) && "pb-safe-bottom",
         )}
+        onTouchStart={stopFooterGesture}
+        onTouchMove={stopFooterGesture}
+        onTouchEnd={stopFooterGesture}
+        onPointerDown={stopFooterGesture}
       >
         <Button
           type="button"
           variant="ghost"
           className="w-full sm:w-auto order-2 sm:order-1"
-          onClick={onReset}
+          onClick={handleResetClick}
         >
           Reset filters
         </Button>
         <Button
           type="button"
           className="w-full sm:w-auto order-1 sm:order-2"
-          onClick={onApply}
+          onClick={handleApplyClick}
           disabled={applyDisabled || applyLoading}
         >
           {applyLoading ? (

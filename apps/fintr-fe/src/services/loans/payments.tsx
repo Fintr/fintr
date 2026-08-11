@@ -1,5 +1,7 @@
 import { AxiosInstance, AxiosError } from 'axios';
 
+import { normalizeLoanPayments } from '@/utils/loan-payment-amounts';
+
 export interface LoanPayment {
   id: string;
   loanId: string;
@@ -37,7 +39,7 @@ export const fetchLoanPayments = async (
 ): Promise<LoanPayment[]> => {
   try {
     const response = await api.get(`/transactions/loans/${loanId}/loan_payments`);
-    return response.data?.data || [];
+    return normalizeLoanPayments(response.data?.data);
   } catch (error) {
     const axiosError = error as AxiosError;
     if (axiosError.response?.data) {

@@ -70,6 +70,20 @@ export const useCurrentSubscription = () => {
   };
 };
 
+export const useHasPaidSubscription = () => {
+  const { activeSubscription, isLoading } = useCurrentSubscription();
+
+  const hasPaidSubscription =
+    activeSubscription != null &&
+    activeSubscription.status === "active" &&
+    activeSubscription.subscriptionType !== "free";
+
+  return {
+    hasPaidSubscription,
+    isLoading,
+  };
+};
+
 const attachSubscriptionErrorMessage = (error: any) => {
   let message = "Failed to create subscription";
   if (error?.response?.data?.error?.message) {

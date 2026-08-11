@@ -31,6 +31,8 @@ import { ChartComponent } from "./chart-components";
 import { ChartPlaceholder } from "./chart-placeholder";
 import { MarkdownContent } from "./markdown-content";
 import { parseContentWithCharts, parseContentWithInlineCharts } from "@/utils/chartParser";
+import { AiLlmPriorityPicker } from "./ai-llm-priority-picker";
+import { useAiLlmPriority } from "@/hooks/useAiLlmPriority";
 
 interface EnhancedAiChatModalProps {
   isOpen: boolean;
@@ -73,6 +75,12 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   } = useAiChat();
   
   const { data: aiUsage, isLoading: isLoadingUsage, refetch: refetchAIUsage } = useAIUsage();
+  const {
+    canChoose: canChooseLlmPriority,
+    priority: llmPriority,
+    setPriority: setLlmPriority,
+    localAvailable,
+  } = useAiLlmPriority();
   const { fetchConversation, createNewConversation, isCreating } = useConversations();
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -638,6 +646,14 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                   </div>
                 </div>
               </DialogHeader>
+
+              {canChooseLlmPriority ? (
+                <AiLlmPriorityPicker
+                  priority={llmPriority}
+                  localAvailable={localAvailable}
+                  onChange={setLlmPriority}
+                />
+              ) : null}
               
               {/* Token usage display */}
               <div className="flex justify-center py-2 border-b bg-muted/20">

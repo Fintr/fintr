@@ -135,4 +135,29 @@ describe("transformNarratives", () => {
     );
     expect(result.insights[0].actionLabel).toBe("Filter transactions");
   });
+
+  it("maps profileKey and imageKey on profile insight cards", () => {
+    const result = transformNarratives({
+      headline: { text: "You look like a Strong Saver", sentiment: "positive" },
+      metrics: [],
+      insights: [
+        {
+          type: "profile",
+          severity: "positive",
+          title: "Strong Saver",
+          body: "You retained 30%.",
+          action_label: "View transactions",
+          action_href: "/dashboard",
+          profile_key: "strong_saver",
+          image_key: "strong_saver",
+        },
+      ],
+      dataQuality: {
+        completeness_tier: "complete",
+      },
+    });
+
+    expect(result.insights[0].profileKey).toBe("strong_saver");
+    expect(result.insights[0].imageKey).toBe("strong_saver");
+  });
 });

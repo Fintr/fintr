@@ -26,6 +26,15 @@ export interface CreateTransactionType {
   original_currency?: string;
   exchange_rate?: number;
   exchange_rate_source?: "auto" | "manual" | "recent";
+  /** Client UUID for idempotent creates (offline outbox / retries). */
+  clientMutationId?: string;
+  /** Optional counterparty (merchant, payee, payer, etc.). */
+  entityName?: string;
+  /** Raw merchant text from receipt OCR for learning merchant aliases. */
+  receiptMerchantDetected?: string;
+  tagIds?: string[];
+  /** Resolved tag objects for optimistic list rows (client-only). */
+  tags?: import("@/types/transactionTagTypes").TransactionTag[];
 }
 
 // Type for updating a transaction

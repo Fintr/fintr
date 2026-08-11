@@ -24,9 +24,15 @@ import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import * as z from "zod"; 
-import { createTransaction, updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
-import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
+import { createTransactionLocalFirst } from "@/services/transactions/create-local-first";
+import { updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { ScheduleTypeEnum, TransactionTypeEnum, DeleteScopeEnum, EXPENSE_SCHEDULE_TYPE_OPTIONS } from "@/constants/transactionConstants";
 import GridPicker from "./GridPicker";
+import { TagMultiPicker } from "./TagMultiPicker";
+import { useTransactionTags } from "@/hooks/async/useTransactionTags";
+import { useInitializeDefaultTransactionTags } from "@/hooks/useInitializeDefaultTransactionTags";
+import TransactionScheduleFields from "./TransactionScheduleFields";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import {
   buildTransactionCategoryFields,
@@ -36,6 +42,7 @@ import {
 import { UpdateTransactionType } from "@/types/transactionTypes";
 import NotesAutocomplete from "@/components/ui/notes-autocomplete";
 import FileUploadField from "./FileUploadField";
+import TransactionEntityField from "./TransactionEntityField";
 import { createDisplayFileFromDraft } from "@/utils/fileUtils";
 import { useTransactionDrafts } from "@/hooks/async/useTransactionDrafts";
 import DraftItems from "./DraftItems";
@@ -62,7 +69,6 @@ import {
   createTransactionNeedsConversion,
   resolveAmountPickerTargetCurrency,
   transactionNeedsConversion,
-  shouldPreviewConversionOnlyInEdit,
   shouldShowAmountFxInEdit,
   shouldUseStoredConversionForPreview,
   transactionHadStoredConversion,
@@ -132,10 +138,18 @@ interface ExpenseFormProps {
   formRef?: React.RefObject<HTMLFormElement | null>; // Keep if needed for external interaction
   // Edit mode props
   id?: string;
-  initialData?: UpdateTransactionType & { draftId?: string };
+  initialData?: UpdateTransactionType & {
+    draftId?: string;
+    receiptMerchantDetected?: string;
+  };
   isEditMode?: boolean;
   onFileUpdate?: (file: File | null) => void; // New prop for file updates
   onDelete?: () => void; // New prop for delete action
+  /** When set, all fields are read-only (another user is editing via presence). */
+  editingLockedReason?: string | null;
+  /** Amount carried across Add Transaction tabs (expense/income/transfer/loan). */
+  prefillAmount?: string;
+  onPrefillAmountChange?: (amount: string) => void;
 }
 
 // Main Expense Form using @tanstack/react-form
@@ -155,10 +169,27 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   isEditMode = false,
   onFileUpdate,
   onDelete,
+  editingLockedReason = null,
+  prefillAmount,
+  onPrefillAmountChange,
 }) => {
   // Get options from atoms
   const categoryOptionsRaw = useAtomValue(expenseCategoryOptionsAtom);
+  const { tags: availableTags, createTag } = useTransactionTags();
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
+    () => initialData?.tags?.map((tag) => tag.id) ?? initialData?.tagIds ?? [],
+  );
+
+  useInitializeDefaultTransactionTags({
+    tags: availableTags,
+    isEditMode,
+    hasInitialTags: Boolean(
+      initialData?.tags?.length || initialData?.tagIds?.length,
+    ),
+    setSelectedTagIds,
+  });
   const accountOptionsRaw = useAtomValue(accountOptionsAtom);
+  const [spaceCode] = useLocalStorage("spaceCode", "");
 
   // Use provided spaceCurrency or fallback to PHP if not provided
   const effectiveSpaceCurrency = spaceCurrency ?? "PHP";
@@ -210,10 +241,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   
   // Track whether form has been submitted (for validation display)
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [entityName, setEntityName] = useState(initialData?.entityName || "");
+  const [receiptMerchantDetected, setReceiptMerchantDetected] = useState(
+    initialData?.receiptMerchantDetected,
+  );
   
   // Form state management
   const [formState, setFormState] = useState<ExpenseFormValues>({
-    amount: initialData?.amount?.toString() || "",
+    amount: prefillAmount || initialData?.amount?.toString() || "",
     description: initialData?.description || "",
     categoryName: initialData?.categoryName || "",
     accountName: initialData?.accountName || "",
@@ -381,13 +416,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     targetCurrency: amountPickerTargetCurrency,
   });
 
-  const previewConversionOnlyInEdit = shouldPreviewConversionOnlyInEdit({
-    isEditMode,
-    hadStoredConversion,
-    targetCurrency: amountPickerTargetCurrency,
-    effectiveSpaceCurrency,
-  });
-
   useEffect(() => {
     if (!conversionSnapshot) return;
 
@@ -436,7 +464,10 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Number input hook for amount field
   const amountInput = useNumberInput({
     initialValue: formState.amount,
-    onValueChange: (cleanValue) => handleFieldChange("amount", cleanValue.toString())
+    onValueChange: (cleanValue) => {
+      handleFieldChange("amount", cleanValue.toString());
+      onPrefillAmountChange?.(cleanValue !== 0 ? String(cleanValue) : "");
+    },
   });
   
   // Store draftId separately since it's not part of the form values
@@ -520,6 +551,16 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         installmentPeriod: initialData.installmentPeriod?.toString() || "",
         file: initialData.file || null,
       });
+      setEntityName(initialData.entityName || "");
+      setReceiptMerchantDetected(initialData.receiptMerchantDetected);
+      const nextTagIds =
+        initialData.tags?.map((tag) => tag.id) ?? initialData.tagIds ?? [];
+      const hasTagsInPayload =
+        (initialData.tags?.length ?? 0) > 0 ||
+        (initialData.tagIds?.length ?? 0) > 0;
+      if (hasTagsInPayload) {
+        setSelectedTagIds(nextTagIds);
+      }
 
       if (initialAmount) {
         amountInput.setDisplayValue(numberFormatting.formatForInput(initialAmount));
@@ -581,7 +622,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         installmentPeriod: "",
         file: null,
       });
-      // Reset number input hook
+      setEntityName("");
       amountInput.reset();
       setDate(undefined);
       setScheduleType(ScheduleTypeEnum.ONE_TIME);
@@ -661,6 +702,10 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (editingLockedReason) {
+      return;
+    }
     
     // Prevent form submission if we're deleting a draft
     if (isDeletingDraft) {
@@ -683,11 +728,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     }
 
     if (
-      !isEditMode &&
       createTransactionNeedsConversion({
         amountCurrency,
         targetCurrency: amountPickerTargetCurrency,
-        isEditMode,
       }) &&
       !conversionSnapshot
     ) {
@@ -749,6 +792,20 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           exchange_rate: conversionSnapshot.exchangeRate,
           exchange_rate_source: conversionSnapshot.exchangeRateSource,
         }),
+        ...(isEditMode
+          ? { entityName: entityName.trim() }
+          : entityName.trim()
+            ? { entityName: entityName.trim() }
+            : {}),
+        ...(receiptMerchantDetected?.trim()
+          ? { receiptMerchantDetected: receiptMerchantDetected.trim() }
+          : {}),
+        tagIds: selectedTagIds,
+        ...(selectedTagIds.length > 0
+          ? {
+              tags: availableTags.filter((tag) => selectedTagIds.includes(tag.id)),
+            }
+          : {}),
       };
       
       let response;
@@ -759,10 +816,31 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         response = await onSubmitSuccess?.(submitData);
         return; // Let parent handle the actual update
       } else {
-        // Create new transaction
-        response = await createTransaction(api, transactionData);
+        // Optimistic: patch list immediately after client validation; sync in background.
+        response = await createTransactionLocalFirst(
+          api,
+          {
+            spaceId: spaceCode,
+            data: transactionData,
+            amountCurrency: effectiveSpaceCurrency,
+          },
+          {
+            queryClient,
+            waitForSync: false,
+          },
+        );
         transactionCreated = true;
         toast.success("Expense created successfully");
+        void response.syncPromise.then((synced) => {
+          if (synced.pendingSync) {
+            toast.message("Expense saved on this device. Will sync when online.");
+          }
+        }).catch((error) => {
+          const fieldErrors = extractFieldErrors(error);
+          toast.error(
+            fieldErrors.detail || "Failed to create expense. Please try again.",
+          );
+        });
       }
       
       // Call onSubmitSuccess callback to notify parent component
@@ -786,6 +864,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           installmentPeriod: "",
           file: null, // Reset file in formState
         });
+        setEntityName("");
         // Reset number input hook
         amountInput.reset();
         setConversionSnapshot(null);
@@ -939,7 +1018,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         installmentPeriod: "",
         file: null,
       });
-      setFileId(null);
+      setEntityName("");
       setDate(new Date());
       setDraftId(undefined);
       
@@ -1007,7 +1086,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       onSubmit={handleSubmit}
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
+      {/* Scroll on a div — fieldset ignores overflow-y in most browsers. */}
       <div className={pinnedFormScrollAreaClassName}>
+      <fieldset
+        disabled={Boolean(editingLockedReason)}
+        className="min-w-0 space-y-4 border-0 p-0 m-0 disabled:pointer-events-none disabled:opacity-70"
+      >
         {!isEditMode && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -1115,9 +1199,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 ? "border-red-800 focus-visible:ring-red-800"
                 : ""
             }
-            lockFromCurrency={isEditMode}
+            lockFromCurrency={false}
             hideRatePicker={isEditMode && !showAmountFxInEdit}
-            previewOnly={previewConversionOnlyInEdit}
+            previewOnly={false}
             onConversionChange={setConversionSnapshot}
             date={date ? format(date, "yyyy-MM-dd") : undefined}
             initialConversion={amountPickerInitialConversion}
@@ -1126,57 +1210,18 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="min-w-0">
-            <FormControlField label="Schedule Type" htmlFor="scheduleType">
-              <Select
-                value={formState.scheduleType}
-                onValueChange={(value) => handleFieldChange("scheduleType", value)}
-              >
-                <SelectTrigger
-                  id="scheduleType"
-                  className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                >
-                  <SelectValue placeholder="Select schedule type" className="text-sm" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ScheduleTypeEnum.ONE_TIME} className="text-sm">One-Time</SelectItem>
-                  <SelectItem value={ScheduleTypeEnum.REPEAT} className="text-sm">Recurring</SelectItem>
-                  <SelectItem value={ScheduleTypeEnum.INSTALLMENT} className="text-sm">Installment</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormControlField>
-            {formSubmitted && formErrors.scheduleType?.map((error) => (
-              <FormError key={error}>{error}</FormError>
-            ))}
-
-            {/* Conditional Fields */}
-            {scheduleType === ScheduleTypeEnum.REPEAT && (
-              <div className="mt-3">
-                <Label htmlFor="repeatInterval" className="text-sm">Repeat Interval</Label>
-                <Select
-                  value={formState.repeatInterval || ""}
-                  onValueChange={(value) => handleFieldChange("repeatInterval", value)}
-                >
-                  <SelectTrigger 
-                    id="repeatInterval" 
-                    className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.repeatInterval ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                  >
-                    <SelectValue placeholder="Select interval" className="text-sm" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REPEAT_INTERVALS.map(option => (
-                      <SelectItem key={option.value} value={option.value} className="text-sm">{option.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formSubmitted && formErrors.repeatInterval?.map((error) => (
-                  <FormError key={error}>{error}</FormError>
-                ))}
-              </div>
-            )}
-            
+          <TransactionScheduleFields
+            scheduleType={formState.scheduleType}
+            onScheduleTypeChange={(value) => handleFieldChange("scheduleType", value)}
+            scheduleTypeOptions={EXPENSE_SCHEDULE_TYPE_OPTIONS}
+            repeatInterval={formState.repeatInterval}
+            onRepeatIntervalChange={(value) => handleFieldChange("repeatInterval", value)}
+            showRepeatInterval={scheduleType === ScheduleTypeEnum.REPEAT}
+            scheduleTypeErrors={formSubmitted ? formErrors.scheduleType : undefined}
+            repeatIntervalErrors={formSubmitted ? formErrors.repeatInterval : undefined}
+          >
             {scheduleType === ScheduleTypeEnum.INSTALLMENT && (
-              <div className="mt-3">
+              <div className="space-y-2">
                 <Label htmlFor="installmentPeriod" className="text-sm">Number of Months</Label>
                 <Input
                   id="installmentPeriod"
@@ -1192,7 +1237,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 ))}
               </div>
             )}
-          </div>
+          </TransactionScheduleFields>
 
           <FormControlField label="Expense Category" htmlFor="category">
             <GridPicker
@@ -1247,10 +1292,35 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           )}
         </div>
 
+        <TransactionEntityField
+          id="expense-entity"
+          kind="merchant"
+          value={entityName}
+          onChange={setEntityName}
+        />
+
+        <TagMultiPicker
+          tags={availableTags}
+          value={selectedTagIds}
+          onChange={setSelectedTagIds}
+          onCreateTag={async (name, color) => {
+            const created = await createTag({ name, color });
+            const id = created?.data?.id as string | undefined;
+            if (id) {
+              return { id, name, color };
+            }
+            return undefined;
+          }}
+          disabled={Boolean(editingLockedReason)}
+        />
+
         <div className="min-w-0 space-y-2">
-          <Label htmlFor="description" className="text-sm">
-            Note (Optional)
-          </Label>
+          <div className="flex items-baseline justify-between gap-3">
+            <Label htmlFor="description" className="text-sm font-medium text-primary">
+              Note
+            </Label>
+            <span className="text-xs text-muted-foreground">Optional</span>
+          </div>
           <NotesAutocomplete
             id="description"
             value={formState.description || ""}
@@ -1271,6 +1341,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           onRemoveFile={handleRemoveFile}
         />
 
+      </fieldset>
       </div>
       <StickyFormActions>
         <div>
@@ -1280,8 +1351,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 e.preventDefault();
                 onDelete();
               }}
-              disabled={isSubmitting}
-              title="Delete transaction"
+              disabled={isSubmitting || Boolean(editingLockedReason)}
+              title={editingLockedReason ?? "Delete transaction"}
             />
           )}
         </div>
@@ -1292,7 +1363,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           <Button 
             type="submit" 
             className="bg-primary hover:bg-primary/80 text-sm" 
-            disabled={isSubmitting}
+            disabled={isSubmitting || Boolean(editingLockedReason)}
+            title={editingLockedReason ?? undefined}
             data-tutorial-target="add-expense-button"
           >
             {isSubmitting ? (isEditMode ? "Updating Expense..." : "Adding Expense...") : (isEditMode ? "Update Expense" : "Add Expense")}

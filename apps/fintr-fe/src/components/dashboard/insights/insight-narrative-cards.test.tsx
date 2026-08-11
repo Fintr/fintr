@@ -1,7 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { InsightNarrativeCards } from "./insight-narrative-cards";
 import { InsightCard } from "@/services/insights/types";
+
+vi.mock("next/image", () => ({
+  default: ({
+    alt,
+    ...props
+  }: {
+    alt: string;
+    src: string;
+    fill?: boolean;
+    className?: string;
+    sizes?: string;
+  }) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img alt={alt} src={typeof props.src === "string" ? props.src : ""} />
+  ),
+}));
 
 const categorySpikeInsight: InsightCard = {
   type: "category_trend",
@@ -26,5 +42,25 @@ describe("InsightNarrativeCards", () => {
   it("renders nothing when insights are empty", () => {
     const { container } = render(<InsightNarrativeCards insights={[]} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders LinkedIn-style illustration for profile cards", () => {
+    const profileInsight: InsightCard = {
+      type: "profile",
+      severity: "positive",
+      title: "Strong Saver",
+      body: "You retained 30.00% of income this period — outstanding buffer-building.",
+      actionLabel: "View transactions",
+      actionHref: "/dashboard",
+      profileKey: "strong_saver",
+      imageKey: "strong_saver",
+    };
+
+    render(<InsightNarrativeCards insights={[profileInsight]} />);
+
+    expect(screen.getByText("Strong Saver")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "View transactions" }),
+    ).toHaveAttribute("href", "/dashboard");
   });
 });

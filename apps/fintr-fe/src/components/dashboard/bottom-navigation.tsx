@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Wallet, Plus, BarChart3, Menu, MessageSquare, Camera } from "lucide-react";
+import { Home, FileText, Plus, BarChart3, Menu, MessageSquare, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -35,16 +35,18 @@ export default function BottomNavigation() {
 
   // Determine active tab based on pathname
   const getActiveValue = () => {
+    if (pathname.startsWith("/dashboard/home")) {
+      return "home";
+    }
     if (pathname === "/dashboard/" || pathname === "/dashboard") {
       return "transactions";
-    }
-    if (pathname.startsWith("/dashboard/budgets")) {
-      return "budgets";
     }
     if (pathname.startsWith("/dashboard/insights")) {
       return "insights";
     }
     if (
+      pathname.startsWith("/dashboard/budgets") ||
+      pathname.startsWith("/dashboard/loans") ||
       pathname.startsWith("/dashboard/app_settings") ||
       pathname.startsWith("/dashboard/space_settings") ||
       pathname.startsWith("/dashboard/settings") ||
@@ -60,20 +62,26 @@ export default function BottomNavigation() {
 
   const navItemClassName = (isActive: boolean) =>
     cn(
-      "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2",
-      isActive ? "text-white dark:text-primary-dark-mode" : "text-white/70 dark:text-muted-foreground",
+      "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors",
+      isActive
+        ? "text-primary dark:text-primary-dark-mode"
+        : "text-foreground/60 dark:text-muted-foreground",
     );
 
   const navIconClassName = (isActive: boolean) =>
     cn(
       "h-5 w-5",
-      isActive ? "text-white dark:text-primary-dark-mode" : "text-white/70 dark:text-muted-foreground",
+      isActive
+        ? "text-primary dark:text-primary-dark-mode"
+        : "text-foreground/60 dark:text-muted-foreground",
     );
 
   const navLabelClassName = (isActive: boolean) =>
     cn(
       "w-full truncate text-center text-xs font-medium",
-      isActive ? "text-white dark:text-primary-dark-mode" : "text-white/70 dark:text-muted-foreground",
+      isActive
+        ? "text-primary dark:text-primary-dark-mode"
+        : "text-foreground/60 dark:text-muted-foreground",
     );
 
   const handleReceiptSuccess = (suggestedTransactionPayload: any, receiptImage: File, draftId?: string) => {
@@ -84,6 +92,12 @@ export default function BottomNavigation() {
       accountName: suggestedTransactionPayload?.accountName || suggestedTransactionPayload?.account_name,
       date: suggestedTransactionPayload?.date,
       scheduleType: suggestedTransactionPayload?.scheduleType || suggestedTransactionPayload?.schedule_type,
+      entityName:
+        suggestedTransactionPayload?.entityName ||
+        suggestedTransactionPayload?.entity_name,
+      receiptMerchantDetected:
+        suggestedTransactionPayload?.receiptMerchantDetected ||
+        suggestedTransactionPayload?.receipt_merchant_detected,
       receiptImage: receiptImage,
       draftId: draftId,
     };
@@ -102,7 +116,9 @@ export default function BottomNavigation() {
 
       <nav
         className={cn(
-          "fixed left-0 right-0 z-50 border-t border-primary/20 bg-primary shadow-xs md:hidden dark:border-border dark:bg-card",
+          "fixed left-0 right-0 z-50 md:hidden",
+          "border-t border-border/60 bg-card/95 backdrop-blur-md",
+          "shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.35)]",
           isAndroidNative
             ? ""
             : isIOSNative
@@ -114,6 +130,17 @@ export default function BottomNavigation() {
         }}
       >
         <div className="flex items-center justify-around h-16 px-2 max-w-full">
+          {/* Home */}
+          <Link
+            href="/dashboard/home"
+            className={navItemClassName(activeValue === "home")}
+          >
+            <Home className={navIconClassName(activeValue === "home")} />
+            <span className={navLabelClassName(activeValue === "home")}>
+              Home
+            </span>
+          </Link>
+
           {/* Transactions */}
           <Link
             href="/dashboard/"
@@ -125,23 +152,12 @@ export default function BottomNavigation() {
             </span>
           </Link>
 
-          {/* Budget */}
-          <Link
-            href="/dashboard/budgets"
-            className={navItemClassName(activeValue === "budgets")}
-          >
-            <Wallet className={navIconClassName(activeValue === "budgets")} />
-            <span className={navLabelClassName(activeValue === "budgets")}>
-              Budget
-            </span>
-          </Link>
-
           {/* Add Button (Center) with Menu */}
           <div className="flex flex-col items-center justify-center -mt-4">
             <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <PopoverTrigger asChild>
                 <Button
-                  className="h-14 w-14 rounded-full border-2 border-white/30 bg-primary p-0 shadow-lg transition-all hover:bg-primary/90 dark:border-border"
+                  className="h-14 w-14 rounded-full border border-border bg-primary p-0 shadow-lg transition-all hover:bg-primary/90 dark:border-border/60"
                   size="icon"
                   aria-label="Add Options"
                   data-tutorial-target="mobile-add-button"
@@ -152,7 +168,7 @@ export default function BottomNavigation() {
               <PopoverContent
                 side="top"
                 align="center"
-                className="w-56 p-2 mb-2 z-[10010]"
+                className="w-72 p-2 mb-2 z-[10010]"
                 sideOffset={12}
                 style={{ zIndex: 10010 }}
               >
@@ -165,8 +181,13 @@ export default function BottomNavigation() {
                       setIsMenuOpen(false);
                     }}
                   >
-                    <MessageSquare className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-medium">Chat with AI</span>
+                    <MessageSquare className="h-5 w-5 shrink-0 text-primary" />
+                    <div className="flex min-w-0 flex-col items-start gap-0.5 text-left">
+                      <span className="text-sm font-medium">Chat with AI</span>
+                      <span className="text-[11px] leading-snug text-muted-foreground">
+                        Ask about your spending, budgets, and finances
+                      </span>
+                    </div>
                   </Button>
                   <Button
                     variant="ghost"
@@ -189,8 +210,13 @@ export default function BottomNavigation() {
                     data-tutorial-target="mobile-add-transaction"
                     data-testid="mobile-add-transaction"
                   >
-                    <Plus className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-medium">Add Transaction</span>
+                    <Plus className="h-5 w-5 shrink-0 text-primary" />
+                    <div className="flex min-w-0 flex-col items-start gap-0.5 text-left">
+                      <span className="text-sm font-medium">Add Transaction</span>
+                      <span className="text-[11px] leading-snug text-muted-foreground">
+                        Record expenses, income, transfers, or loans
+                      </span>
+                    </div>
                   </Button>
                   <Button
                     variant="ghost"
@@ -201,8 +227,13 @@ export default function BottomNavigation() {
                     }}
                     data-tutorial-target="mobile-add-receipt"
                   >
-                    <Camera className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-medium">Add Receipt</span>
+                    <Camera className="h-5 w-5 shrink-0 text-primary" />
+                    <div className="flex min-w-0 flex-col items-start gap-0.5 text-left">
+                      <span className="text-sm font-medium">Add Receipt</span>
+                      <span className="text-[11px] leading-snug text-muted-foreground">
+                        Snap or upload a receipt to auto-fill details
+                      </span>
+                    </div>
                   </Button>
                 </div>
               </PopoverContent>

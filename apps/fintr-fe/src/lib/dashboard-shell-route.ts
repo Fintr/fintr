@@ -9,3 +9,11 @@ export function isDashboardShellRoute(pathname: string): boolean {
     !pathname.startsWith("/dashboard/subscriptions/create")
   );
 }
+
+/** Routes with a full-bleed primary hero that replace the mobile sticky header. */
+export function hasEmbeddedHeroHeader(pathname: string): boolean {
+  return (
+    pathname.startsWith("/dashboard/home") ||
+    pathname.startsWith("/dashboard/insights")
+  );
+}

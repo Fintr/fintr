@@ -4,7 +4,7 @@ import InsightsTab from "@/components/dashboard/tabs/insights-tab";
 
 export default function page() {
   return (
-    <TabsContent value="insights" className="p-2">
+    <TabsContent value="insights" className="p-0">
       <InsightsTab />
     </TabsContent>
   );

@@ -53,6 +53,7 @@ export const getMetricCalculation = (
         formula: "(Current expenses − Prior expenses) ÷ Prior expenses × 100",
         details: [
           "Compares total expenses in your selected period to the immediately preceding period of the same length.",
+          "Not compared to your monthly budget—only to the prior period.",
           "“Less” means you spent a smaller share than last period; “more” means spending rose.",
           "The icon uses the same income (teal) and expense (red) arrows as transactions.",
         ],

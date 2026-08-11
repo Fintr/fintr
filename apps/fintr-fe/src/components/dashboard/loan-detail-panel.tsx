@@ -3,6 +3,7 @@
 import React from "react";
 import {
   CalendarIcon,
+  ChevronDown,
   Edit,
   Trash2,
   Wallet,
@@ -49,6 +50,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { getAmortizationSchedule } from "@/utils/loanAmortization";
+import { sumActualLoanInterestPaid } from "@/utils/loan-payment-amounts";
 
 interface LoanDetailPanelProps {
   loan: Loan;
@@ -59,22 +61,24 @@ interface LoanDetailPanelProps {
 const LOAN_TABLE_WRAPPER_CLASS =
   "max-h-[32rem] overflow-auto overscroll-contain touch-manipulation rounded-lg border border-gray-200 bg-white md:max-h-96 dark:border-border dark:bg-background";
 
-const LOAN_TABLE_CONTAINER_CLASS = "overflow-visible w-fit min-w-full";
+const LOAN_TABLE_CONTAINER_CLASS = "overflow-visible w-full";
 
-const LOAN_SCHEDULE_DATE_COL_CLASS = "w-[100px] md:w-[140px]";
+const LOAN_SCHEDULE_DATE_COL_CLASS = "min-w-[100px] md:min-w-[140px]";
 const LOAN_SCHEDULE_AMOUNT_COL_CLASS = "w-[90px] md:w-[120px]";
 
 const LOAN_PAYMENTS_DATE_COL_CLASS = "w-[96px] md:w-[120px]";
 const LOAN_PAYMENTS_ACCOUNT_COL_CLASS = "w-[84px] md:w-[100px]";
 const LOAN_PAYMENTS_AMOUNT_COL_CLASS = "w-[92px] md:w-[110px]";
-const LOAN_PAYMENTS_NOTES_COL_CLASS = "w-[100px] md:w-[150px]";
+const LOAN_PAYMENTS_NOTES_COL_CLASS = "min-w-[100px] md:min-w-[150px]";
 const LOAN_PAYMENTS_ACTIONS_COL_CLASS = "w-[72px] md:w-[100px]";
 
 /** 6 data columns; compact on mobile to balance horizontal vs vertical scroll. */
-const LOAN_SCHEDULE_TABLE_CLASS = "w-max min-w-[34.375rem] md:min-w-[47rem]";
+const LOAN_SCHEDULE_TABLE_CLASS =
+  "w-full table-fixed min-w-[34.375rem] md:min-w-[47rem]";
 
 /** 7 columns incl. Actions; compact on mobile to balance horizontal vs vertical scroll. */
-const LOAN_PAYMENTS_TABLE_CLASS = "w-max min-w-[39.25rem] md:min-w-[50rem]";
+const LOAN_PAYMENTS_TABLE_CLASS =
+  "w-full table-fixed min-w-[39.25rem] md:min-w-[50rem]";
 
 const LOAN_TABLE_HEAD_CLASS =
   "sticky top-0 z-10 bg-gray-100 px-2 py-2 text-xs font-medium whitespace-nowrap text-gray-600 shadow-[inset_0_-1px_0_0_rgb(229_231_235)] md:px-3 dark:bg-muted dark:text-muted-foreground dark:shadow-[inset_0_-1px_0_0_hsl(var(--border))]";
@@ -122,18 +126,16 @@ export function LoanDetailPanel({
   const [recordPaymentDatePickerOpen, setRecordPaymentDatePickerOpen] = React.useState(false);
   const [editPaymentDatePickerOpen, setEditPaymentDatePickerOpen] = React.useState(false);
   const [adjustsAccountBalance, setAdjustsAccountBalance] = React.useState(true);
-  
+  const [isScheduleOpen, setIsScheduleOpen] = React.useState(false);
+
   const totalPaymentInput = useNumberInput({
     initialValue: "",
   });
   
-  const totalInterestPaid = React.useMemo(() => {
-    const sum = payments.reduce(
-      (acc, payment) => acc + payment.interestPayment,
-      0,
-    );
-    return Math.round(sum * 100) / 100;
-  }, [payments]);
+  const totalInterestPaid = React.useMemo(
+    () => sumActualLoanInterestPaid(payments),
+    [payments],
+  );
 
   const netCost = totalInterestPaid;
 
@@ -189,7 +191,10 @@ export function LoanDetailPanel({
     }
 
     try {
-      await createPayment({
+      closeRecordPaymentModal();
+      toast.success("Payment recorded successfully");
+
+      const result = await createPayment({
         accountName,
         date: paymentDate ? format(paymentDate, "yyyy-MM-dd") : "",
         totalPayment: totalPaymentValue,
@@ -197,8 +202,17 @@ export function LoanDetailPanel({
         adjustsAccountBalance,
       });
 
-      toast.success("Payment recorded successfully");
-      closeRecordPaymentModal();
+      void Promise.resolve(result.syncPromise)
+        .then((synced) => {
+          if (synced.pendingSync) {
+            toast.message(
+              "Payment saved on this device. Will sync when online.",
+            );
+          }
+        })
+        .catch(() => {
+          toast.error("Failed to record payment. Please try again.");
+        });
     } catch (error: any) {
       const fieldErrors = extractFieldErrors(error);
       // Convert string[] to string for validation errors
@@ -273,95 +287,6 @@ export function LoanDetailPanel({
   return (
     <div className="space-y-6">
       <section className="space-y-8">
-      <div>
-          <h5 className="mb-3 text-lg font-semibold text-primary">
-            Payment schedule
-          </h5>
-          <div className={LOAN_TABLE_WRAPPER_CLASS}>
-            <Table
-              containerClassName={LOAN_TABLE_CONTAINER_CLASS}
-              className={LOAN_SCHEDULE_TABLE_CLASS}
-            >
-              <TableHeader>
-                <TableRow className={LOAN_TABLE_ROW_CLASS}>
-                  <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_DATE_COL_CLASS}`}>
-                    Date
-                  </TableHead>
-                  <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_AMOUNT_COL_CLASS} text-right`}>
-                    Beginning
-                  </TableHead>
-                  <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_AMOUNT_COL_CLASS} text-right`}>
-                    Payment
-                  </TableHead>
-                  <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_AMOUNT_COL_CLASS} text-right`}>
-                    Principal
-                  </TableHead>
-                  <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_AMOUNT_COL_CLASS} text-right`}>
-                    Interest
-                  </TableHead>
-                  <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_AMOUNT_COL_CLASS} text-right`}>
-                    Balance
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {schedule.map((payment, index) => (
-                  <TableRow
-                    key={index}
-                    className={cn(
-                      LOAN_TABLE_ROW_CLASS,
-                      payment.isActual && LOAN_TABLE_PAID_ROW_CLASS,
-                    )}
-                  >
-                    <TableCell className={LOAN_TABLE_CELL_CLASS}>
-                      <span>
-                        {payment.paymentDate.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </span>
-                      {payment.isActual && (
-                        <span className={LOAN_TABLE_PAID_LABEL_CLASS}>(Paid)</span>
-                      )}
-                    </TableCell>
-                    <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right`}>
-                      {formatCurrency(
-                        payment.beginningBalance,
-                        loan.outstandingBalanceCurrency,
-                      )}
-                    </TableCell>
-                    <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right font-medium`}>
-                      {formatCurrency(
-                        payment.paymentAmount,
-                        loan.outstandingBalanceCurrency,
-                      )}
-                    </TableCell>
-                    <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right`}>
-                      {formatCurrency(
-                        payment.principalPayment,
-                        loan.outstandingBalanceCurrency,
-                      )}
-                    </TableCell>
-                    <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right ${textColorClass}`}>
-                      {formatCurrency(
-                        payment.interestPayment,
-                        loan.outstandingBalanceCurrency,
-                      )}
-                    </TableCell>
-                    <TableCell className={`${LOAN_TABLE_CELL_MUTED_CLASS} text-right`}>
-                      {formatCurrency(
-                        payment.endingBalance,
-                        loan.outstandingBalanceCurrency,
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-
         <div>
           <div className="mb-3 flex items-center justify-between gap-3">
             <h5 className="text-lg font-semibold text-primary">
@@ -509,6 +434,111 @@ export function LoanDetailPanel({
               </TableBody>
             </Table>
           </div>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            className="mb-3 flex w-full items-center justify-between gap-3 text-left"
+            aria-expanded={isScheduleOpen}
+            onClick={() => setIsScheduleOpen((open) => !open)}
+          >
+            <h5 className="text-lg font-semibold text-primary">
+              Payment schedule
+            </h5>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                isScheduleOpen && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+          {isScheduleOpen ? (
+            <div className={LOAN_TABLE_WRAPPER_CLASS}>
+              <Table
+                containerClassName={LOAN_TABLE_CONTAINER_CLASS}
+                className={LOAN_SCHEDULE_TABLE_CLASS}
+              >
+                <TableHeader>
+                  <TableRow className={LOAN_TABLE_ROW_CLASS}>
+                    <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_DATE_COL_CLASS}`}>
+                      Date
+                    </TableHead>
+                    <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_AMOUNT_COL_CLASS} text-right`}>
+                      Beginning
+                    </TableHead>
+                    <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_AMOUNT_COL_CLASS} text-right`}>
+                      Payment
+                    </TableHead>
+                    <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_AMOUNT_COL_CLASS} text-right`}>
+                      Principal
+                    </TableHead>
+                    <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_AMOUNT_COL_CLASS} text-right`}>
+                      Interest
+                    </TableHead>
+                    <TableHead className={`${LOAN_TABLE_HEAD_CLASS} ${LOAN_SCHEDULE_AMOUNT_COL_CLASS} text-right`}>
+                      Balance
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {schedule.map((payment, index) => (
+                    <TableRow
+                      key={index}
+                      className={cn(
+                        LOAN_TABLE_ROW_CLASS,
+                        payment.isActual && LOAN_TABLE_PAID_ROW_CLASS,
+                      )}
+                    >
+                      <TableCell className={LOAN_TABLE_CELL_CLASS}>
+                        <span>
+                          {payment.paymentDate.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                        {payment.isActual && (
+                          <span className={LOAN_TABLE_PAID_LABEL_CLASS}>(Paid)</span>
+                        )}
+                      </TableCell>
+                      <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right`}>
+                        {formatCurrency(
+                          payment.beginningBalance,
+                          loan.outstandingBalanceCurrency,
+                        )}
+                      </TableCell>
+                      <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right font-medium`}>
+                        {formatCurrency(
+                          payment.paymentAmount,
+                          loan.outstandingBalanceCurrency,
+                        )}
+                      </TableCell>
+                      <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right`}>
+                        {formatCurrency(
+                          payment.principalPayment,
+                          loan.outstandingBalanceCurrency,
+                        )}
+                      </TableCell>
+                      <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right ${textColorClass}`}>
+                        {formatCurrency(
+                          payment.interestPayment,
+                          loan.outstandingBalanceCurrency,
+                        )}
+                      </TableCell>
+                      <TableCell className={`${LOAN_TABLE_CELL_MUTED_CLASS} text-right`}>
+                        {formatCurrency(
+                          payment.endingBalance,
+                          loan.outstandingBalanceCurrency,
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : null}
         </div>
 
         <CustomModal
@@ -824,15 +854,15 @@ export function LoanDetailPanel({
           }}
           onConfirm={async () => {
             if (!paymentToDelete) return;
-            
+
+            const paymentId = paymentToDelete.id;
+            setIsDeletePaymentModalOpen(false);
+            setPaymentToDelete(null);
+
             try {
-              await deletePayment(paymentToDelete.id);
+              await deletePayment(paymentId);
               toast.success("Payment deleted successfully");
-              setIsDeletePaymentModalOpen(false);
-              setTimeout(() => {
-                setPaymentToDelete(null);
-              }, 300);
-            } catch (error: any) {
+            } catch {
               toast.error("Failed to delete payment. Please try again.");
             }
           }}

@@ -43,11 +43,10 @@ echo ""
 # Step 2: Set up environment
 echo "Step 2: Setting up environment..."
 
-# App loads web from live URL so website updates apply without app store release
-# Use www so the app hits the same origin as the live site (avoids redirect/blank in WebView)
+# FIN-194: bundled shell — cold open uses local out/, not remote fintr.ai
 PRODUCTION_WEB_URL="https://www.fintr.ai"
-export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
-echo "App will load web app from: ${PRODUCTION_WEB_URL}"
+unset CAPACITOR_SERVER_URL
+echo "App will use bundled webDir (CAPACITOR_SERVER_URL unset)"
 
 # shellcheck source=scripts/mobile/load-mobile-env.sh
 source "${SCRIPT_DIR}/load-mobile-env.sh"
@@ -103,25 +102,30 @@ fi
 echo "Next.js build complete"
 echo ""
 
-# Step 4: Sync to Android (app will load from PRODUCTION_WEB_URL)
+# Step 4: Sync to Android (bundled out/ shell)
 echo "Step 4: Syncing to Android..."
-export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
+unset CAPACITOR_SERVER_URL
 mkdir -p android/app/src/main/assets
 npx cap sync android
 echo "Capacitor sync complete"
 echo ""
 
-# Step 5: Verify app loads from production URL (config may include ?cv=...)
-if ! grep -qF "\"url\": \"${PRODUCTION_WEB_URL}" android/app/src/main/assets/capacitor.config.json 2>/dev/null; then
-  echo "ERROR: capacitor.config.json should load from ${PRODUCTION_WEB_URL}"
-  grep -A 2 '"server"' android/app/src/main/assets/capacitor.config.json 2>/dev/null || true
+# Step 5: Verify bundled shell (no remote server.url)
+ANDROID_CONFIG="android/app/src/main/assets/capacitor.config.json"
+if [ ! -f "$ANDROID_CONFIG" ]; then
+  echo "ERROR: missing $ANDROID_CONFIG"
   exit 1
 fi
-if grep -q 'localhost' android/app/src/main/assets/capacitor.config.json 2>/dev/null; then
-  echo "ERROR: config contains localhost; production should use ${PRODUCTION_WEB_URL}"
+if grep -q '"url"' "$ANDROID_CONFIG"; then
+  echo "ERROR: capacitor.config.json still has server.url — bundled shell requires it unset"
+  grep -A 5 '"server"' "$ANDROID_CONFIG" || true
   exit 1
 fi
-echo "Capacitor config OK (app loads from ${PRODUCTION_WEB_URL})"
+if grep -q 'localhost' "$ANDROID_CONFIG"; then
+  echo "ERROR: config contains localhost"
+  exit 1
+fi
+echo "Capacitor config OK (bundled shell, no remote server.url)"
 echo ""
 
 # Step 6: Release artifact (no emulator) or run on emulator

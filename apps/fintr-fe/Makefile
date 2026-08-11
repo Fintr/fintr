@@ -1,7 +1,7 @@
 # Fintr Frontend Makefile
 # Usage: make <command>
 
-# Remote URL baked into capacitor.config.json when CAPACITOR_SERVER_URL is set (see ios-prod).
+# Production Capacitor builds leave CAPACITOR_SERVER_URL unset (bundled out/ shell; FIN-194).
 PRODUCTION_WEB_URL := https://www.fintr.ai
 
 # Local Next.js dev server (pnpm dev -p 5173). iOS Simulator can use localhost.
@@ -175,14 +175,14 @@ ios-dev:
 	@CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL) pnpm cap run ios
 
 ios-prod:
-	@echo "🚀 Starting iOS build (WebView loads $(PRODUCTION_WEB_URL))..."
+	@echo "🚀 Starting iOS build (bundled out/ shell)..."
 	@echo ""
 	@echo "📋 This will:"
 	@echo "   1. Build Next.js (pnpm build) with NEXT_PUBLIC_APP_BASE_URL=$(PRODUCTION_WEB_URL)"
-	@echo "   2. Sync Capacitor with CAPACITOR_SERVER_URL=$(PRODUCTION_WEB_URL)"
+	@echo "   2. Sync Capacitor with CAPACITOR_SERVER_URL unset (bundled webDir)"
 	@echo "   3. Run on iOS simulator or device"
 	@echo ""
-	@echo "💡 This matches the production Capacitor setup (remote website, not bundled out/)."
+	@echo "💡 FIN-194: production uses bundled shell for cold start / offline-first."
 	@echo ""
 	@sleep 2
 	@echo "🔨 Step 1/3: Building Next.js app..."
@@ -190,15 +190,15 @@ ios-prod:
 	@echo "✅ Next.js build complete"
 	@echo ""
 	@echo "🔄 Step 2/3: Syncing Capacitor to iOS..."
-	@CAPACITOR_SERVER_URL=$(PRODUCTION_WEB_URL) pnpm cap sync ios || (echo "❌ Capacitor sync failed"; exit 1)
-	@if ! grep -qF "$(PRODUCTION_WEB_URL)" ios/App/App/capacitor.config.json 2>/dev/null; then \
-		echo "❌ Expected $(PRODUCTION_WEB_URL) in ios/App/App/capacitor.config.json"; \
+	@unset CAPACITOR_SERVER_URL && pnpm cap sync ios || (echo "❌ Capacitor sync failed"; exit 1)
+	@if grep -q '"url"' ios/App/App/capacitor.config.json 2>/dev/null; then \
+		echo "❌ Expected no server.url in ios/App/App/capacitor.config.json (bundled shell)"; \
 		exit 1; \
 	fi
-	@echo "✅ Capacitor sync complete"
+	@echo "✅ Capacitor sync complete (bundled shell)"
 	@echo ""
 	@echo "📱 Step 3/3: Running on iOS..."
-	@CAPACITOR_SERVER_URL=$(PRODUCTION_WEB_URL) pnpm cap run ios
+	@unset CAPACITOR_SERVER_URL && pnpm cap run ios
 
 ios-live:
 	@echo "🚀 Starting iOS with live reload..."

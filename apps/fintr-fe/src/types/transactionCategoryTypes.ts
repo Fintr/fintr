@@ -9,6 +9,8 @@ export interface CreateTransactionCategoryType {
   name: string;
   categoryType: CategoryTypeEnum;
   parentId?: string | null;
+  icon?: string;
+  color?: string;
 }
 
 /**
@@ -20,5 +22,6 @@ export interface TransactionCategory {
   categoryType: CategoryTypeEnum;
   parentId?: string | null;
   children?: TransactionCategory[];
+  icon?: string;
   color?: string;
 }

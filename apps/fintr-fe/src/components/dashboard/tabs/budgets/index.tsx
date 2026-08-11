@@ -41,6 +41,7 @@ import {
   matchPresetFromDateRange,
 } from "@/utils/dateFilterPresets";
 import { resolveQueryDateRange } from "@/utils/resolveQueryDateRange";
+import { usePresetDateRangeOptions } from "@/hooks/usePresetDateRangeOptions";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 
@@ -57,6 +58,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   // Get space context for currency
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
+  const presetOptions = usePresetDateRangeOptions();
 
   // Use shared date filter atoms
   const [startDate, setStartDate] = useAtom(dateFilterStartDateAtom);
@@ -72,7 +74,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   // Local state for filter type selector (single month vs predefined vs custom)
   const [filterTypeSelector, setFilterTypeSelector] =
     useState<DateFilterTypeSelector>(() =>
-      inferDateFilterTypeSelector(startDate, endDate),
+      inferDateFilterTypeSelector(startDate, endDate, presetOptions),
     );
   const [selectedPreset, setSelectedPreset] =
     useState<DateFilterPresetId>("this_week");
@@ -125,7 +127,11 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     if (filterType === "single") {
       setFilterTypeSelector("single");
     } else {
-      const matchedPreset = matchPresetFromDateRange(startDate, endDate);
+      const matchedPreset = matchPresetFromDateRange(
+        startDate,
+        endDate,
+        presetOptions,
+      );
       if (matchedPreset) {
         setFilterTypeSelector("predefined");
         setSelectedPreset(matchedPreset);
@@ -133,7 +139,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
         setFilterTypeSelector("custom");
       }
     }
-  }, [filterType, startDate, endDate]);
+  }, [filterType, presetOptions, startDate, endDate]);
   
   // Format the selected month/year for display
   const getFormattedDate = () => {
@@ -263,7 +269,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
       });
     } else if (value === "predefined") {
       const { startDate: presetStart, endDate: presetEnd } =
-        getPresetDateRange(selectedPreset);
+        getPresetDateRange(selectedPreset, new Date(), presetOptions);
       setDateRange({
         from: new Date(presetStart),
         to: new Date(presetEnd),
@@ -285,7 +291,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   const handlePresetChange = (preset: DateFilterPresetId) => {
     setSelectedPreset(preset);
     const { startDate: presetStart, endDate: presetEnd } =
-      getPresetDateRange(preset);
+      getPresetDateRange(preset, new Date(), presetOptions);
     setDateRange({
       from: new Date(presetStart),
       to: new Date(presetEnd),
@@ -303,11 +309,13 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
       const inferredType = inferDateFilterTypeSelector(
         appliedStartDate,
         appliedEndDate,
+        presetOptions,
       );
       setFilterTypeSelector(inferredType);
       const matchedPreset = matchPresetFromDateRange(
         appliedStartDate,
         appliedEndDate,
+        presetOptions,
       );
       if (matchedPreset) {
         setSelectedPreset(matchedPreset);
@@ -322,7 +330,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [filtersOpen, monthYear, filterType, appliedStartDate, appliedEndDate]);
+  }, [filtersOpen, monthYear, filterType, presetOptions, appliedStartDate, appliedEndDate]);
 
   const handleResetFilters = () => {
     const { firstDay, lastDay } = getCurrentMonthDates();
@@ -350,6 +358,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
       selectedYear,
       selectedPreset,
       dateRange,
+      presetOptions,
     });
 
     setAppliedStartDate(queryStartDate);

@@ -1,4 +1,5 @@
 import { UpdateScopeEnum } from "@/constants/transactionConstants";
+import type { TransactionTag } from "@/types/transactionTagTypes";
 
 /** Currency conversion details when a transaction used a different currency. */
 export interface CurrencyConversionType {
@@ -16,6 +17,8 @@ export interface CurrencyConversionType {
 export interface IndexTransaction {
   id: string;
   date: string;
+  /** ISO timestamp; used with `date` for newest-first list order (matches BE). */
+  createdAt?: string;
   description: string;
   amount: number;
   /** ISO currency code for `amount` (from API; matches space when converted, else native e.g. USD). */
@@ -25,6 +28,8 @@ export interface IndexTransaction {
   bookedAmountCurrency?: string;
   categoryName: string;
   subcategoryName?: string | null;
+  categoryId?: string;
+  subcategoryId?: string | null;
   fromAccountName: string;
   toAccountName: string;
   type: CombinedTransactionTypeEnum;
@@ -37,6 +42,7 @@ export interface IndexTransaction {
   loanType?: "borrowed" | "lent";
   loanId?: string;
   entityName?: string;
+  tags?: TransactionTag[];
 }
 
 export interface IndexActivity {
@@ -62,6 +68,7 @@ export interface IndexActivity {
   loanType?: "borrowed" | "lent";
   loanId?: string;
   entityName?: string;
+  tags?: TransactionTag[];
 }
 
 export interface TransactionIndexInputType {
@@ -77,6 +84,8 @@ export interface TransactionIndexInputType {
   maxAmount: number | string;
   page: number;
   searchQuery?: string;
+  tagIds?: string[];
+  entryType?: string;
 };
 
 export interface UpdateTransactionType {
@@ -100,6 +109,8 @@ export interface UpdateTransactionType {
   repeatInterval: string;
   installmentPeriod: number;
   file: File | null;
+  entityName?: string;
+  tagIds?: string[];
   updateScope?: UpdateScopeEnum;
   hasCurrencyConversion?: boolean;
   currencyConversion?: CurrencyConversionType;

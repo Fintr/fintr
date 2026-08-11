@@ -6,11 +6,18 @@ import Link from "next/link";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useGetSpaceCode } from "@/hooks/useGetSpaceCode";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useTransactionsRealtime } from "@/hooks/useTransactionsRealtime";
+import { useSpaceSettingsRealtime } from "@/hooks/useSpaceSettingsRealtime";
+import { useOpenTransactionRequest } from "@/hooks/useOpenTransactionRequest";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
-import { shouldShowV2Features, formatCurrency } from "@/lib/utils";
+import { cn, shouldShowV2Features, formatCurrency } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { dashboardShellReadyAtom } from "@/atoms/dashboardAtoms";
+import {
+  dateFilterEndDateAtom,
+  dateFilterStartDateAtom,
+} from "@/atoms/dateFilterAtoms";
 import { Edit, ArrowRight } from "lucide-react";
 import ExpandableTextarea from "@/components/ui/expandable-textarea";
 import { Button } from "@/components/ui/button";
@@ -28,6 +35,7 @@ import {
   calculateBottomPadding,
   calculateHeaderSpacerHeight,
 } from "@/lib/platform-detection";
+import { hasEmbeddedHeroHeader } from "@/lib/dashboard-shell-route";
 
 // Dynamic imports for heavier components to reduce initial compile time
 const MobileStickyHeader = dynamic(
@@ -69,15 +77,22 @@ export default function Layout({
   
   // Skip dashboard layout elements for standalone subscription create page
   const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
+  const usesEmbeddedHeroHeader = hasEmbeddedHeroHeader(pathname);
   const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
   
   const { spaceCode } = useGetSpaceCode(api, isAuthenticated);
-  const { data, isLoading: isLoadingDashboardData, isError, refetch } = useDashboardData();
+  useTransactionsRealtime({ spaceId: spaceCode ?? "" });
+  useSpaceSettingsRealtime({ spaceId: spaceCode ?? "" });
+  useOpenTransactionRequest();
+  const startDate = useAtomValue(dateFilterStartDateAtom);
+  const endDate = useAtomValue(dateFilterEndDateAtom);
+  const { data, isLoading: isLoadingDashboardData, isError } =
+    useDashboardData(startDate, endDate);
   const isWaitingForDashboardShell =
     !spaceCode ||
-    (isLoadingDashboardData && !isError);
+    (isLoadingDashboardData && !isError && !data);
   const { shouldBlock: shouldBlockOnDashboardLoading } = useBootstrapLoadingTimeout(
     isWaitingForDashboardShell,
   );
@@ -91,11 +106,7 @@ export default function Layout({
   const [goalDescription, setGoalDescription] = useState(data?.goalDescription || "Set your own financial freedom goal, whatever milestone or lifestyle you’re aiming for.");
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (spaceCode) {
-      refetch();
-    }
-  }, [spaceCode, refetch]);
+  // spaceCode is already in useDashboardData query keys — no manual refetch loop.
 
   useEffect(() => {
     if (data?.goalDescription) {
@@ -146,15 +157,25 @@ export default function Layout({
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Mobile Sticky Header */}
-      <MobileStickyHeader />
+    <div
+      className={cn(
+        "flex min-h-screen flex-col",
+        usesEmbeddedHeroHeader &&
+          "max-md:h-dvh max-md:max-h-dvh max-md:overflow-hidden",
+      )}
+    >
+      {!usesEmbeddedHeroHeader ? (
+        <>
+          {/* Mobile Sticky Header */}
+          <MobileStickyHeader />
 
-      {/* Spacer for fixed header on mobile (includes safe area for status bar) */}
-      <div
-        className="mobile-header-spacer md:hidden"
-        style={{ height: headerSpacerHeight }}
-      />
+          {/* Spacer for fixed header on mobile (includes safe area for status bar) */}
+          <div
+            className="mobile-header-spacer md:hidden"
+            style={{ height: headerSpacerHeight }}
+          />
+        </>
+      ) : null}
 
       <div className="p-0 md:p-4 md:px-8 flex flex-col">
             <div className="hidden md:flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6 gap-2 md:gap-0">
@@ -231,8 +252,19 @@ export default function Layout({
               </div>
             </div>
           </div>
-          <div>
-            <TabsWrapper>
+          <div
+            className={cn(
+              usesEmbeddedHeroHeader &&
+                "max-md:flex max-md:min-h-0 max-md:flex-1 max-md:flex-col",
+            )}
+          >
+            <TabsWrapper
+              className={
+                usesEmbeddedHeroHeader
+                  ? "max-md:flex max-md:min-h-0 max-md:flex-1 max-md:flex-col"
+                  : undefined
+              }
+            >
               <div className="w-full">
                 {/* Desktop Horizontal Layout */}
                 <TabsList className="hidden md:flex w-full min-w-0 flex-nowrap overflow-x-auto bg-white dark:bg-card dark:shadow-sm">
@@ -265,8 +297,14 @@ export default function Layout({
                 </TabsList>
               </div>
               <div
-                className="pt-0 md:pt-2 flex-1 overflow-y-auto md:pb-0"
-                style={{ paddingBottom: bottomPadding }}
+                className={cn(
+                  "pt-0 md:pt-2 flex-1 overflow-y-auto md:pb-0",
+                  usesEmbeddedHeroHeader &&
+                    "max-md:min-h-0 max-md:bg-background max-md:overscroll-y-auto md:bg-transparent",
+                )}
+                style={{
+                  paddingBottom: usesEmbeddedHeroHeader ? undefined : bottomPadding,
+                }}
               >
                 {children}
               </div>

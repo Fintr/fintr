@@ -16,3 +16,6 @@ project(':capacitor-keyboard').projectDir = new File('../node_modules/.pnpm/@cap
 
 include ':capacitor-share'
 project(':capacitor-share').projectDir = new File('../node_modules/.pnpm/@capacitor+share@7.0.4_@capacitor+core@7.6.5/node_modules/@capacitor/share/android')
+
+include ':capgo-capacitor-llm'
+project(':capgo-capacitor-llm').projectDir = new File('../node_modules/.pnpm/@capgo+capacitor-llm@7.2.15_@capacitor+core@7.6.5_@mediapipe+tasks-genai@0.10.29/node_modules/@capgo/capacitor-llm/android')
