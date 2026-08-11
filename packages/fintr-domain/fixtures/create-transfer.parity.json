@@ -1,0 +1,32 @@
+[
+  {
+    "name": "minimal valid transfer",
+    "payload": {
+      "user_id": "user-1",
+      "space_id": "space-1",
+      "amount": 100,
+      "transaction_cost": 0,
+      "date": "2026-08-08",
+      "from_account_name": "Cash",
+      "to_account_name": "Bank",
+      "schedule_type": "one_time",
+      "description": ""
+    },
+    "expect_valid": true
+  },
+  {
+    "name": "recurring without interval",
+    "payload": {
+      "user_id": "user-1",
+      "space_id": "space-1",
+      "amount": 100,
+      "transaction_cost": 0,
+      "date": "2026-08-08",
+      "from_account_name": "Cash",
+      "to_account_name": "Bank",
+      "schedule_type": "repeat"
+    },
+    "expect_valid": false,
+    "expected_error_keys": ["repeat_interval"]
+  }
+]

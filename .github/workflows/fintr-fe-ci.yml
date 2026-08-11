@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "apps/fintr-fe/**"
+      - "packages/fintr-domain/**"
       - ".github/workflows/fintr-fe-ci.yml"
   push:
     branches:
       - main
     paths:
       - "apps/fintr-fe/**"
+      - "packages/fintr-domain/**"
       - ".github/workflows/fintr-fe-ci.yml"
 
 jobs:

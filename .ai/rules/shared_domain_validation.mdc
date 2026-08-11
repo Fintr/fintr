@@ -1,0 +1,53 @@
+---
+description: Shared FE/BE validation via @fintr/domain (FIN-197). Use for forms, local-first writes, and Dry::Operation contracts.
+globs: apps/fintr-fe/**/*.{ts,tsx},apps/fintr-be/app/operations/**/*.rb,packages/fintr-domain/**/*
+alwaysApply: false
+---
+
+# Shared domain validation (`@fintr/domain`, FIN-197)
+
+Offline-first means **the same business rules on FE and BE**. Do not add ad-hoc Zod or inline validators that duplicate `Dry::Validation::Contract` logic.
+
+## Package
+
+`packages/fintr-domain` (`@fintr/domain`) — Zod schemas + shared primitives mirroring backend operation contracts.
+
+## When adding or changing validation
+
+1. **Find the backend contract** — e.g. `Transactions::Operations::CreateTransaction::Contract`.
+2. **Add or update the Zod schema** in `packages/fintr-domain/src/schemas/`.
+3. **Add parity fixtures** in `packages/fintr-domain/fixtures/*.parity.json`.
+4. **Extend** `apps/fintr-be/spec/lib/fintr/domain/contract_parity_spec.rb` so Dry and Zod stay aligned.
+5. **Consume from FE** — forms, `*-local-first.ts`, and offline mirrors import `@fintr/domain`; do not copy rules inline.
+
+## FE usage
+
+```typescript
+import {
+  assertCreateTransactionForOptimistic,
+  createTransactionClientSchema,
+} from "@fintr/domain";
+
+assertCreateTransactionForOptimistic(payload); // local-first gate
+createTransactionClientSchema.safeParse(payload); // forms
+```
+
+## BE usage
+
+- Keep `Dry::Validation::Contract` as the server enforcement layer.
+- Mirror enums/constants in `apps/fintr-be/lib/fintr/domain/constants.rb` when shared with TS.
+- **Never** weaken BE validation because FE validates — both layers enforce the same rules.
+
+## Covered today
+
+- Create transaction (client + params schemas)
+- Create transfer (client + params schemas)
+- Delete transaction
+
+## Still to migrate
+
+- Form-level Zod in `ExpenseForm`, `TransferForm`, `IncomeForm`, etc.
+- Loan payment local-first validators
+- Insights offline mirrors (`offline-narratives`, `offline-profiles`) — domain rules, not request contracts
+
+See `packages/fintr-domain/README.md` and skill `shared-domain-validation`.

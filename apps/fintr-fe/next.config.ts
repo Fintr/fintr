@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["@fintr/domain"],
   allowedDevOrigins: ["10.0.2.2"],
   async rewrites() {
     if (process.env.NODE_ENV !== "development") {
