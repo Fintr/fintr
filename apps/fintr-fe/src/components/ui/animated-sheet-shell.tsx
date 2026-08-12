@@ -243,6 +243,9 @@ export function AnimatedSheetShell({
 
       if (
         target.closest("[data-animated-sheet-panel]")
+        || target.closest("[data-fintr-nested-overlay-root]")
+        || target.closest("[data-grid-picker-modal]")
+        || target.closest("[data-calculator-keyboard]")
         || target.closest("[data-slot='select-content']")
         || target.closest("[data-radix-popper-content-wrapper]")
         || target.closest("[role='dialog']")

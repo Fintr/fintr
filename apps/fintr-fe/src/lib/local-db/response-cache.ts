@@ -5,6 +5,10 @@ import { getLocalDb } from "./db";
  * Returns undefined if the value cannot be serialized.
  */
 const toStorableValue = (value: unknown): unknown | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
   try {
     return JSON.parse(JSON.stringify(value));
   } catch (error) {
@@ -21,8 +25,20 @@ export const putLocalResponseSnapshot = async (
     return;
   }
 
+  if (value === undefined) {
+    console.warn(
+      "[local-db] Skipping cache snapshot — value was undefined",
+      key,
+    );
+    return;
+  }
+
   const storable = toStorableValue(value);
   if (storable === undefined) {
+    console.warn(
+      "[local-db] Skipping cache snapshot — value could not be serialized",
+      key,
+    );
     return;
   }
 

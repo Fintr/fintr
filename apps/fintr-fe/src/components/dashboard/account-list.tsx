@@ -38,6 +38,7 @@ import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { getCurrentRate } from "@/services/exchangeRates/queries";
 import { useAccounts } from "@/hooks/async/useAccounts";
+import { usePrefetchAccountDetailRoutes } from "@/hooks/usePrefetchAccountDetailRoutes";
 import Link from "next/link";
 
 interface AccountListProps {
@@ -143,6 +144,7 @@ const AccountList: React.FC<AccountListProps> = ({
     totalBalanceCurrencyProp ?? currentSpace?.currency ?? "PHP";
 
   const { accountCategoryOptions } = useAccounts();
+  usePrefetchAccountDetailRoutes(accounts);
   const [ratesToSpace, setRatesToSpace] = useState<Record<string, number>>({});
   const [ratesLoading, setRatesLoading] = useState(false);
   const [showMoreInfo, setShowMoreInfo] = useState(false);

@@ -14,6 +14,8 @@ import {
   type InsightsCategoryFilter,
 } from "@/utils/transactionListFilter";
 
+import { filterInsightsTransactions } from "./filter-insights-transactions";
+
 import {
   buildOfflineProfileCards,
   extractInvestmentAccountNames,
@@ -247,7 +249,10 @@ export const buildOfflineNarratives = async (params: {
   ]);
 
   const applyTransactionFilters = (txs: IndexTransaction[]) => {
-    let next = filterTransactionsByInsightsCategory(txs, categoryFilter);
+    let next = filterTransactionsByInsightsCategory(
+      filterInsightsTransactions(txs),
+      categoryFilter,
+    );
 
     if (tagIds.length > 0) {
       const allowed = new Set(tagIds);

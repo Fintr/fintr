@@ -7,18 +7,19 @@ import {
   mergeFetchedTransactionsIntoAllTimeCache,
   mergePendingLocalIndexRowsIntoPage,
 } from "@/services/transactions/local-cache";
-import { buildTransactionsInfiniteQueryKey } from "@/services/transactions/query-keys";
+import { buildTransactionsInfiniteQueryKey, resolveTransactionsFilterKeyForQuery } from "@/services/transactions/query-keys";
 import useAuthApi from "../useAuthApi";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
 import type { TransactionsPage } from "@/types/transactionTypes";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
+
+import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
 import { useLocalStorage } from "../useLocalStorage";
 import { serializeFilterValues } from "@/utils/transactionFilterValues";
 import type { TransactionEntryTypeFilter } from "@/utils/transactionEntryTypeFilter";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
-import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
 import { shouldFetchNextInfinitePage } from "./shouldFetchNextInfinitePage";
 
 export const useInfiniteTransactions = ({
@@ -52,7 +53,6 @@ export const useInfiniteTransactions = ({
     scope: "openid profile email read:current_user read:transactions",
   });
   const queryClient = useQueryClient();
-  const offlineSyncReady = useAtomValue(offlineSyncReadyAtom);
 
   const [spaceCode] = useLocalStorage("spaceCode", "");
 
@@ -102,6 +102,10 @@ export const useInfiniteTransactions = ({
   });
 
   const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery, spaceCode);
+  const offlineSyncReady = useAtomValue(offlineSyncReadyAtom);
+
+  // After bootstrap, IndexedDB is the source of truth for every filter (including All + All Time).
+  const preferLocalIndexReads = skipNetworkFetch || offlineSyncReady;
 
   const infiniteQueryKey = useMemo(
     () =>
@@ -116,7 +120,7 @@ export const useInfiniteTransactions = ({
         accountNamesSerialized,
         tagIdsSerialized,
         entryType,
-        mode: skipNetworkFetch ? "local" : "network",
+        mode: preferLocalIndexReads ? "local" : "network",
       }),
     [
       spaceCode,
@@ -129,11 +133,19 @@ export const useInfiniteTransactions = ({
       accountNamesSerialized,
       tagIdsSerialized,
       entryType,
-      skipNetworkFetch,
+      preferLocalIndexReads,
     ],
   );
 
   const cachedInfiniteData = useMemo((): InfiniteData<TransactionsPage, number> | undefined => {
+    // Offline / entry-type reads must come from IndexedDB for the active filter.
+    if (preferLocalIndexReads && localCacheQuery.data?.pages?.length) {
+      return {
+        pages: localCacheQuery.data.pages.slice(0, 1),
+        pageParams: [1],
+      };
+    }
+
     const seeded = queryClient.getQueryData<InfiniteData<TransactionsPage, number>>(
       infiniteQueryKey,
     );
@@ -154,14 +166,17 @@ export const useInfiniteTransactions = ({
       pages: localCacheQuery.data.pages.slice(0, 1),
       pageParams: [1],
     };
-  }, [infiniteQueryKey, localCacheQuery.data, queryClient]);
+  }, [
+    infiniteQueryKey,
+    localCacheQuery.data,
+    queryClient,
+    preferLocalIndexReads,
+  ]);
 
   const hasSeededPages = Boolean(cachedInfiniteData?.pages?.length);
 
-  // Only block on local cache when we will actually read from it and have no seed yet.
   const waitingForLocalCache =
-    skipNetworkFetch &&
-    offlineSyncReady &&
+    preferLocalIndexReads &&
     !hasSeededPages &&
     (localCacheQuery.isPending || localCacheQuery.isFetching);
 
@@ -188,10 +203,15 @@ export const useInfiniteTransactions = ({
   } = useInfiniteQuery({
     queryKey: infiniteQueryKey,
     queryFn: async ({ pageParam = 1, queryKey }) => {
-      if (skipNetworkFetch && spaceCode) {
+      const activeFilterKey = resolveTransactionsFilterKeyForQuery(
+        queryKey,
+        filterKey,
+      );
+
+      if (preferLocalIndexReads && spaceCode) {
         const localPage = await loadCachedTransactionsPageAt(
           spaceCode,
-          filterKey,
+          activeFilterKey,
           pageParam,
         );
 
@@ -223,7 +243,11 @@ export const useInfiniteTransactions = ({
         // Keep optimistic `local:` rows (income/expense/transfer/fees) across remount refetch.
         const mergedPage =
           pageParam === 1 && spaceCode
-            ? await mergePendingLocalIndexRowsIntoPage(spaceCode, page, filterKey)
+            ? await mergePendingLocalIndexRowsIntoPage(
+                spaceCode,
+                page,
+                activeFilterKey,
+              )
             : page;
         if (spaceCode) {
           // Every network page upserts into the all-time store so offline insights
@@ -232,7 +256,7 @@ export const useInfiniteTransactions = ({
 
           if (pageParam === 1) {
             // Cache must never fail the network query (IndexedDB clone errors, etc.)
-            void cacheTransactionsPage(spaceCode, filterKey, mergedPage).then(
+            void cacheTransactionsPage(spaceCode, activeFilterKey, mergedPage).then(
               () => {
                 queryClient.setQueryData(localCacheQueryKey, {
                   pages: [mergedPage],
@@ -247,7 +271,7 @@ export const useInfiniteTransactions = ({
         if (pageParam === 1 && spaceCode) {
           const cached = await loadCachedTransactionsPageAt(
             spaceCode,
-            filterKey,
+            activeFilterKey,
             1,
           );
           if (cached) {
@@ -261,12 +285,12 @@ export const useInfiniteTransactions = ({
     initialPageParam: 1,
     enabled: queryEnabled,
     retry: false,
-    refetchOnWindowFocus: !skipNetworkFetch,
-    refetchOnMount: !skipNetworkFetch,
-    staleTime: skipNetworkFetch ? Infinity : 30000,
+    refetchOnWindowFocus: !preferLocalIndexReads,
+    refetchOnMount: !preferLocalIndexReads,
+    staleTime: preferLocalIndexReads ? Infinity : 30000,
     gcTime: 300000,
     initialData: () => cachedInfiniteData,
-    placeholderData: (previousData) => previousData ?? cachedInfiniteData,
+    placeholderData: cachedInfiniteData,
   });
 
   useEffect(() => {
@@ -323,7 +347,9 @@ export const useInfiniteTransactions = ({
     isError,
     isSuccess: isSuccess || hasCachedPages,
     refetch,
-    isLoading: (isLoading || isFetching) && !hasCachedPages,
+    isLoading:
+      (isLoading || isFetching || (preferLocalIndexReads && localCacheQuery.isFetching))
+      && !hasCachedPages,
     isShowingLocalCache: Boolean(localCacheQuery.data) && !isSuccess,
   };
 };

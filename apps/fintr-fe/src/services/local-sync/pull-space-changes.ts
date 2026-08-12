@@ -12,6 +12,7 @@ import type {
 
 import { applySpaceChange } from "./apply-change";
 import { bootstrapRequiredDetails, isBootstrapRequiredError } from "./sync-errors";
+import { refreshReferenceDataCaches } from "./refresh-reference-data-caches";
 
 const spaceRequestConfig = (spaceCode: string) => ({
   headers: {
@@ -81,6 +82,18 @@ export const pullSpaceChanges = async (params: {
           lastPulledSeq: data.latestSeq,
           lastPulledAt: Date.now(),
         });
+
+        if (
+          typeof navigator === "undefined" ||
+          navigator.onLine !== false
+        ) {
+          await refreshReferenceDataCaches({
+            api: params.api,
+            spaceCode: params.spaceId,
+            queryClient: params.queryClient,
+          });
+        }
+
         return { status: "complete", latestSeq: data.latestSeq };
       }
 

@@ -41,11 +41,18 @@ RSpec.describe Sync::Operations::BootstrapSpace do
       expect(value[:totals][:truncated]).to be(false)
       expect(value[:accounts]).to include(:accounts)
       expect(value[:categories]).to include(:expense_categories, :income_categories)
+      expect(value[:tags]).to be_an(Array)
+      expect(value[:entities]).to be_an(Array)
       expect(value[:transactions]).to be_an(Array)
       expect(value[:monthly_financial_summaries]).to be_an(Array)
       expect(value[:loans]).to be_an(Array)
       expect(value[:budgets_by_month]).to be_a(Hash)
       expect(value[:space]).to include(id: space.id)
+      expect(value[:dashboard_shell]).to include(
+        :goal_description,
+        :category_options,
+        :account_options,
+      )
     end
 
     it "fails when the space does not exist" do

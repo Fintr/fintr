@@ -114,8 +114,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     isAuthenticated &&
     !isAuthLoading &&
     !isOnOnboardingPage &&
-    !isOnAdminPage &&
-    !isOfflineSyncBlocking,
+    !isOnAdminPage,
   );
 
   const {

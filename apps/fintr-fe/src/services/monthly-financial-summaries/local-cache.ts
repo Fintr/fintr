@@ -1,16 +1,32 @@
+import type { AxiosInstance } from "axios";
 import type { QueryClient } from "@tanstack/react-query";
 
 import {
   getLocalResponseSnapshot,
   putLocalResponseSnapshot,
 } from "@/lib/local-db/response-cache";
-import type { DashboardData } from "@/types/spaceTypes";
 
-import { combineMonthlyFinancialSummaries } from "./combine";
+import { fetchMonthlyFinancialSummaries } from "./queries";
+import type { DashboardData } from "@/types/spaceTypes";
+import type { ExchangeRateLookup } from "@/services/insights/space-currency-amount";
+
+import { combineMonthlyFinancialSummaries, financialSummaryForDateRange } from "./combine";
+import {
+  hydrateMonthlyFinancialSummariesFromLocalTransactions,
+  mergeSummariesPreferNonEmpty,
+  summariesNeedLocalHydration,
+} from "./hydrate-from-local-transactions";
+import {
+  normalizeMonthlyFinancialSummaries,
+} from "./normalize";
 import type { MonthlyFinancialSummary } from "./types";
 
 const summariesKey = (spaceCode: string): string =>
   `monthlyFinancialSummaries:${spaceCode}`;
+
+const spaceRequestConfig = (spaceCode: string) => ({
+  headers: { "X-Space-Code": spaceCode },
+});
 
 const dashboardShellKey = (spaceCode: string): string =>
   `dashboardShell:${spaceCode}`;
@@ -43,6 +59,11 @@ export const buildDashboardDataFromBuckets = (
   summaries: MonthlyFinancialSummary[],
   startDate: string,
   endDate: string,
+  options?: {
+    transactions?: IndexTransaction[];
+    spaceCurrency?: string;
+    rateLookup?: ExchangeRateLookup;
+  },
 ): DashboardData => ({
   id: shell.id,
   categoryOptions: shell.categoryOptions,
@@ -51,28 +72,89 @@ export const buildDashboardDataFromBuckets = (
   incomeCategoryOptions: shell.incomeCategoryOptions,
   goalDescription: shell.goalDescription,
   earliestTransactionDate: shell.earliestTransactionDate ?? null,
-  financialSummary: combineMonthlyFinancialSummaries(
-    summaries,
-    startDate,
-    endDate,
-  ),
+  financialSummary:
+    options?.transactions && options.transactions.length > 0
+      ? financialSummaryForDateRange({
+          summaries,
+          transactions: options.transactions,
+          startDate,
+          endDate,
+          spaceCurrency: options.spaceCurrency,
+          rateLookup: options.rateLookup,
+        })
+      : combineMonthlyFinancialSummaries(
+          summaries,
+          startDate,
+          endDate,
+        ),
 });
 
 export const cacheMonthlyFinancialSummaries = async (
   spaceCode: string,
-  summaries: MonthlyFinancialSummary[],
+  summaries: MonthlyFinancialSummary[] | null | undefined,
 ): Promise<void> => {
   if (!spaceCode) {
     return;
   }
 
+  const normalized = normalizeMonthlyFinancialSummaries(summaries);
+
   try {
-    await putLocalResponseSnapshot(summariesKey(spaceCode), summaries);
+    await putLocalResponseSnapshot(summariesKey(spaceCode), normalized);
   } catch (error) {
     console.warn(
       "[local-db] Failed to cache monthly financial summaries",
       error,
     );
+  }
+};
+
+/**
+ * Ensure `monthlyFinancialSummaries:{spaceCode}` exists in IndexedDB meta.
+ * Fetches from the API when the key was never written or is still empty after bootstrap.
+ */
+export const ensureMonthlyFinancialSummariesCached = async (
+  api: AxiosInstance,
+  spaceCode: string,
+  options?: { refetchWhenEmpty?: boolean },
+): Promise<MonthlyFinancialSummary[]> => {
+  if (!spaceCode) {
+    return [];
+  }
+
+  const cached = await loadCachedMonthlyFinancialSummaries(spaceCode);
+  const shouldRefetchFromApi =
+    cached === undefined
+    || (options?.refetchWhenEmpty
+      && (cached.length === 0 || await summariesNeedLocalHydration(spaceCode, cached)));
+
+  if (cached !== undefined && !shouldRefetchFromApi) {
+    return cached;
+  }
+
+  try {
+    const fetched = await fetchMonthlyFinancialSummaries(api, {
+      requestConfig: spaceRequestConfig(spaceCode),
+    });
+    const merged = mergeSummariesPreferNonEmpty(cached ?? [], fetched);
+    await cacheMonthlyFinancialSummaries(spaceCode, merged);
+
+    if (await summariesNeedLocalHydration(spaceCode, merged)) {
+      return await hydrateMonthlyFinancialSummariesFromLocalTransactions(
+        spaceCode,
+        { existingSummaries: merged },
+      );
+    }
+
+    return merged;
+  } catch (error) {
+    console.warn(
+      "[local-db] Failed to fetch monthly financial summaries",
+      spaceCode,
+      error,
+    );
+    await cacheMonthlyFinancialSummaries(spaceCode, []);
+    return [];
   }
 };
 
@@ -84,9 +166,15 @@ export const loadCachedMonthlyFinancialSummaries = async (
   }
 
   try {
-    return await getLocalResponseSnapshot<MonthlyFinancialSummary[]>(
+    const snapshot = await getLocalResponseSnapshot<unknown>(
       summariesKey(spaceCode),
     );
+
+    if (snapshot == null) {
+      return undefined;
+    }
+
+    return normalizeMonthlyFinancialSummaries(snapshot);
   } catch (error) {
     console.warn(
       "[local-db] Failed to load monthly financial summaries",
@@ -221,6 +309,51 @@ export const applyLocalTransactionToMonthlySummaries = async (params: {
 
   await cacheMonthlyFinancialSummaries(spaceCode, next);
   return next;
+};
+
+export const repairOfflineSpaceCaches = async (
+  api: AxiosInstance,
+  queryClient: QueryClient,
+  spaceCodes: string[],
+): Promise<void> => {
+  for (const spaceCode of spaceCodes) {
+    if (!spaceCode) {
+      continue;
+    }
+
+    try {
+      let summaries = await ensureMonthlyFinancialSummariesCached(
+        api,
+        spaceCode,
+        { refetchWhenEmpty: true },
+      );
+
+      if (await summariesNeedLocalHydration(spaceCode, summaries)) {
+        summaries = await hydrateMonthlyFinancialSummariesFromLocalTransactions(
+          spaceCode,
+          { existingSummaries: summaries },
+        );
+      }
+
+      queryClient.setQueryData(
+        ["monthlyFinancialSummaries", "local", spaceCode],
+        summaries,
+      );
+      queryClient.setQueryData(
+        ["monthlyFinancialSummaries", spaceCode],
+        summaries,
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["insights", "local", spaceCode],
+      });
+    } catch (error) {
+      console.warn(
+        "[local-sync] Monthly summaries repair failed",
+        spaceCode,
+        error,
+      );
+    }
+  }
 };
 
 /** Push monthly-summary buckets into React Query so Income/Expenses cards update immediately. */

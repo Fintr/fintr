@@ -13,7 +13,7 @@ import {
   TRANSACTION_DAY_DATA_ATTR,
   useAnchorTransactionsListToToday,
 } from "@/hooks/useAnchorTransactionsListToToday";
-import { resolveTransactionDetail } from "@/services/transactions/detail-local";
+import { resolveAttachmentsForTransaction } from "@/services/attachments/resolve";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import { toast } from "sonner";
@@ -91,6 +91,7 @@ export function SheetsView({
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxImages, setLightboxImages] = useState<Array<{ url: string; filename?: string; contentType?: string; byteSize?: number }>>([]);
     const [lightboxIndex, setLightboxIndex] = useState(0);
+    const lightboxRevokeRef = useRef<(() => void) | null>(null);
     const { api } = useAuthApi();
     const [spaceCode] = useLocalStorage("spaceCode", "");
     const preferLocal = useSkipCachedNetworkFetch();
@@ -127,11 +128,20 @@ export function SheetsView({
       resetKey: anchorResetKey,
     });
 
+    const handleCloseLightbox = () => {
+        lightboxRevokeRef.current?.();
+        lightboxRevokeRef.current = null;
+        setLightboxOpen(false);
+    };
+
     const handleImageClick = async (transaction: IndexTransaction) => {
         if (!preferLocal && !api) return;
 
         try {
-            const transactionData = await resolveTransactionDetail({
+            lightboxRevokeRef.current?.();
+            lightboxRevokeRef.current = null;
+
+            const result = await resolveAttachmentsForTransaction({
                 api,
                 spaceId: spaceCode,
                 transactionId: transaction.id,
@@ -140,25 +150,19 @@ export function SheetsView({
                 preferLocal,
             });
 
-            const files = (transactionData as { files?: unknown }).files;
-            if (Array.isArray(files) && files.length > 0) {
-                const images = files.map((file: any) => ({
-                    url: file.url,
-                    filename: file.filename,
-                    contentType: file.contentType,
-                    byteSize: file.byteSize,
-                }));
-                
-                setLightboxImages(images);
+            if (result.images.length > 0) {
+                lightboxRevokeRef.current = result.revoke;
+                setLightboxImages(result.images);
                 setLightboxIndex(0);
                 setLightboxOpen(true);
-            } else {
-                toast.error(
-                    preferLocal
-                        ? "Image not available offline."
-                        : "No image found for this transaction.",
-                );
+                return;
             }
+
+            toast.error(
+                preferLocal
+                    ? "Image not available offline."
+                    : "No image found for this transaction.",
+            );
         } catch (error) {
             console.error("Error fetching transaction image:", error);
             toast.error("Failed to load transaction image.");
@@ -642,7 +646,7 @@ export function SheetsView({
           images={lightboxImages}
           isOpen={lightboxOpen}
           initialIndex={lightboxIndex}
-          onClose={() => setLightboxOpen(false)}
+          onClose={handleCloseLightbox}
         />
       </div>
     

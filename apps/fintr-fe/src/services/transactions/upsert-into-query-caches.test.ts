@@ -499,4 +499,49 @@ describe("upsertIndexTransactionsIntoQueryCaches", () => {
       "server-1",
     ]);
   });
+
+  it("patches dashboard period transaction caches used by Income/Savings cards", () => {
+    const queryClient = new QueryClient();
+    const spaceId = "space-a";
+    const dashboardKey = [
+      "dashboard",
+      "transactions",
+      spaceId,
+      "2026-08-01",
+      "2026-08-31",
+    ] as const;
+
+    queryClient.setQueryData(dashboardKey, {
+      transactions: [
+        {
+          ...baseRow,
+          id: "income-1",
+          date: "2026-08-11",
+          amount: 10_000_000,
+          type: CombinedTransactionTypeEnum.INCOME,
+          categoryName: "Freelance",
+        },
+      ],
+    });
+
+    upsertIndexTransactionsIntoQueryCaches(queryClient, {
+      spaceId,
+      transactions: [
+        {
+          ...baseRow,
+          id: "income-1",
+          date: "2026-08-11",
+          amount: 1,
+          type: CombinedTransactionTypeEnum.INCOME,
+          categoryName: "Freelance",
+        },
+      ],
+    });
+
+    const next = queryClient.getQueryData<{
+      transactions: Array<{ amount: number }>;
+    }>(dashboardKey);
+
+    expect(next?.transactions[0]?.amount).toBe(1);
+  });
 });

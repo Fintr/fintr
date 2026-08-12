@@ -54,7 +54,11 @@ export const shouldSkipCachedNetworkFetch = (params: {
     return params.hasSyncCursor !== false;
   }
 
-  return params.offlineSyncReady && !params.isOnline;
+  if (!params.isOnline) {
+    return true;
+  }
+
+  return false;
 };
 
 /**

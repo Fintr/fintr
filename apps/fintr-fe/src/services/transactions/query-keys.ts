@@ -1,5 +1,6 @@
 import { serializeFilterValues } from "@/utils/transactionFilterValues";
 import type { TransactionEntryTypeFilter } from "@/utils/transactionEntryTypeFilter";
+import { parseTransactionListFilterFromQueryKey } from "@/utils/transactionListFilter";
 
 import { buildTransactionsFilterKey } from "./local-cache";
 
@@ -32,6 +33,34 @@ export const buildTransactionsInfiniteQueryKey = (params: {
     params.entryType ?? "all",
     params.mode,
   ] as const;
+
+/** Rebuild the IndexedDB filter key from an infinite-query key (includes entry type). */
+export const buildTransactionsFilterKeyFromInfiniteQueryKey = (
+  queryKey: readonly unknown[],
+): string | null => {
+  const filter = parseTransactionListFilterFromQueryKey(queryKey);
+  if (!filter) {
+    return null;
+  }
+
+  return buildTransactionsFilterKey({
+    categoriesSerialized: serializeFilterValues(filter.categories),
+    startDate: filter.startDate,
+    endDate: filter.endDate,
+    minAmount: filter.minAmount,
+    maxAmount: filter.maxAmount,
+    searchQuery: filter.searchQuery,
+    accountNamesSerialized: serializeFilterValues(filter.accountNames),
+    tagIdsSerialized: serializeFilterValues(filter.tagIds),
+    entryType: filter.entryType,
+  });
+};
+
+export const resolveTransactionsFilterKeyForQuery = (
+  queryKey: readonly unknown[],
+  fallbackFilterKey: string,
+): string =>
+  buildTransactionsFilterKeyFromInfiniteQueryKey(queryKey) ?? fallbackFilterKey;
 
 export const buildDefaultTransactionsFilterKey = (
   spaceCode: string,

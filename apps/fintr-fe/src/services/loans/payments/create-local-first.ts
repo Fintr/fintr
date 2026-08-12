@@ -38,6 +38,9 @@ export type LoanPaymentCreateOutboxPayload = {
   principalPayment?: number;
   notes?: string;
   adjustsAccountBalance?: boolean;
+  originalCurrency?: string;
+  exchangeRate?: number;
+  exchangeRateSource?: "auto" | "manual" | "recent";
 };
 
 export type CreateLoanPaymentLocalFirstResult = {
@@ -52,6 +55,7 @@ export type CreateLoanPaymentLocalFirstOptions = {
   queryClient?: QueryClient;
   waitForSync?: boolean;
   currency?: string;
+  spaceCurrency?: string;
 };
 
 const newClientMutationId = (): string => {
@@ -135,25 +139,53 @@ const extractCreatedId = (response: unknown): string | undefined => {
   return undefined;
 };
 
+const roundMoney = (value: number): number =>
+  Math.round((value + Number.EPSILON) * 100) / 100;
+
 export const buildOptimisticLoanPayment = (params: {
   id: string;
   loanId: string;
   data: Omit<CreateLoanPaymentType, "loanId">;
   currency?: string;
-}): LoanPayment => ({
-  id: params.id,
-  loanId: params.loanId,
-  accountId: "",
-  accountName: params.data.accountName,
-  date: params.data.date,
-  principalPayment:
-    params.data.principalPayment ?? params.data.totalPayment,
-  interestPayment: 0,
-  totalPayment: params.data.totalPayment,
-  currency: params.currency ?? "PHP",
-  notes: params.data.notes,
-  adjustsAccountBalance: params.data.adjustsAccountBalance ?? true,
-});
+  spaceCurrency?: string;
+}): LoanPayment => {
+  const loanCurrency = params.currency ?? params.data.originalCurrency ?? "PHP";
+  const originalCurrency = params.data.originalCurrency?.trim();
+  const exchangeRate = params.data.exchangeRate;
+  const spaceCurrency = params.spaceCurrency ?? loanCurrency;
+
+  const currencyConversion =
+    originalCurrency &&
+    exchangeRate != null &&
+    Number.isFinite(exchangeRate) &&
+    exchangeRate > 0 &&
+    originalCurrency.toUpperCase() !== spaceCurrency.toUpperCase()
+      ? {
+          originalAmount: params.data.totalPayment,
+          originalCurrency,
+          convertedAmount: roundMoney(params.data.totalPayment * exchangeRate),
+          convertedCurrency: spaceCurrency,
+          exchangeRate,
+          source: params.data.exchangeRateSource,
+        }
+      : undefined;
+
+  return {
+    id: params.id,
+    loanId: params.loanId,
+    accountId: "",
+    accountName: params.data.accountName,
+    date: params.data.date,
+    principalPayment:
+      params.data.principalPayment ?? params.data.totalPayment,
+    interestPayment: 0,
+    totalPayment: params.data.totalPayment,
+    currency: loanCurrency,
+    notes: params.data.notes,
+    adjustsAccountBalance: params.data.adjustsAccountBalance ?? true,
+    currencyConversion,
+  };
+};
 
 /**
  * Local-first loan payment create: payments list + optional transaction index
@@ -169,7 +201,7 @@ export const createLoanPaymentLocalFirst = async (
   options: CreateLoanPaymentLocalFirstOptions = {},
 ): Promise<CreateLoanPaymentLocalFirstResult> => {
   const { spaceId, loanId, data } = params;
-  const { queryClient, waitForSync = true, currency } = options;
+  const { queryClient, waitForSync = true, currency, spaceCurrency } = options;
 
   if (!spaceId) {
     throw new Error("spaceId is required to create a local loan payment");
@@ -184,9 +216,13 @@ export const createLoanPaymentLocalFirst = async (
     loanId,
     data,
     currency,
+    spaceCurrency,
   });
   const adjustsBalance = localPayment.adjustsAccountBalance !== false;
-  const indexRow = loanPaymentToIndexRow(localPayment, loanId);
+  const indexRow = loanPaymentToIndexRow(localPayment, loanId, {
+    spaceCurrency: spaceCurrency ?? currency ?? localPayment.currency,
+    createData: data,
+  });
 
   const previousPayments =
     queryClient?.getQueryData<LoanPayment[]>(["loanPayments", loanId]) ?? [];
@@ -229,6 +265,15 @@ export const createLoanPaymentLocalFirst = async (
     ...(data.adjustsAccountBalance !== undefined
       ? { adjustsAccountBalance: data.adjustsAccountBalance }
       : {}),
+    ...(data.originalCurrency
+      ? { originalCurrency: data.originalCurrency }
+      : {}),
+    ...(data.exchangeRate !== undefined
+      ? { exchangeRate: data.exchangeRate }
+      : {}),
+    ...(data.exchangeRateSource
+      ? { exchangeRateSource: data.exchangeRateSource }
+      : {}),
   };
 
   await enqueueOutboxRecord({
@@ -251,37 +296,46 @@ export const createLoanPaymentLocalFirst = async (
           loanId,
           data,
           currency,
+          spaceCurrency,
         });
       const serverId = created.id;
+      const syncedIndexRow = loanPaymentToIndexRow(created, loanId, {
+        spaceCurrency: spaceCurrency ?? currency ?? created.currency,
+      });
 
       if (serverId !== localId) {
         if (adjustsBalance) {
           await replaceLocalIndexTransactionId(spaceId, localId, serverId);
+          await upsertLocalIndexTransaction(spaceId, syncedIndexRow);
           if (queryClient) {
             replaceIndexTransactionIdInQueryCaches(queryClient, {
               spaceId,
               previousId: localId,
               nextId: serverId,
             });
+            upsertIndexTransactionsIntoQueryCaches(queryClient, {
+              spaceId,
+              transactions: [syncedIndexRow],
+            });
           }
         }
-
-        await replaceLoanPaymentIdInLocalStores({
-          spaceCode: spaceId,
-          loanId,
-          previousId: localId,
-          nextPayment: created,
-          queryClient,
-        });
-      } else {
-        await replaceLoanPaymentIdInLocalStores({
-          spaceCode: spaceId,
-          loanId,
-          previousId: localId,
-          nextPayment: created,
-          queryClient,
-        });
+      } else if (adjustsBalance) {
+        await upsertLocalIndexTransaction(spaceId, syncedIndexRow);
+        if (queryClient) {
+          upsertIndexTransactionsIntoQueryCaches(queryClient, {
+            spaceId,
+            transactions: [syncedIndexRow],
+          });
+        }
       }
+
+      await replaceLoanPaymentIdInLocalStores({
+        spaceCode: spaceId,
+        loanId,
+        previousId: localId,
+        nextPayment: created,
+        queryClient,
+      });
 
       await removeOutboxRecord(clientMutationId);
 

@@ -22,7 +22,10 @@ function getDefaultValue(path: string) {
     defaultValue = "investments";
   } else if (path.includes("/dashboard/insights")) {
     defaultValue = "insights";
-  } else if (path.includes("/dashboard/space_settings")) {
+  } else if (
+    path.includes("/dashboard/space_settings") ||
+    path.includes("/dashboard/app_settings")
+  ) {
     defaultValue = "space_settings";
   }
 

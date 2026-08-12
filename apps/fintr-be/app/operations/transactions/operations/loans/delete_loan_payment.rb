@@ -114,13 +114,13 @@ module Transactions
             transactions:,
             actor:,
           )
-          Loans::Broadcasts::LoanChange.loan_payment_deleted(
+          ::Loans::Broadcasts::LoanChange.loan_payment_deleted(
             loan_payment_id: result.id,
             loan_id: result.loan_id,
             space_id:,
             actor:,
           )
-          Loans::Broadcasts::LoanChange.loan_updated(loan: result.loan.reload, actor:)
+          ::Loans::Broadcasts::LoanChange.loan_updated(loan: result.loan.reload, actor:)
           Success(result)
         end
       end

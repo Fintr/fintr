@@ -6,10 +6,12 @@ import {
   toggleDefaultTransactionTag,
   updateTransactionTag,
 } from "@/services/transactions/tags/mutation";
+import { loadCachedTransactionTagsResponse } from "@/services/transactions/tags/local-cache";
 import type { TransactionTag } from "@/types/transactionTagTypes";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import useAuthApi from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 
 export const useTransactionTags = () => {
   const queryClient = useQueryClient();
@@ -19,12 +21,24 @@ export const useTransactionTags = () => {
 
   const [spaceCode] = useLocalStorage("spaceCode", "");
 
+  const localTagsQuery = useQuery({
+    queryKey: ["transactionTags", "local", spaceCode],
+    queryFn: async () =>
+      (await loadCachedTransactionTagsResponse(spaceCode)) ?? [],
+    enabled: Boolean(spaceCode),
+    staleTime: Infinity,
+  });
+
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localTagsQuery, spaceCode);
+
   const { data, error, isLoading, isError, isSuccess, refetch } = useQuery({
     queryKey: ["transactionTags", spaceCode],
     queryFn: () => fetchTransactionTags(api),
-    enabled: Boolean(spaceCode),
-    retry: 2,
-    staleTime: 30000,
+    enabled: Boolean(spaceCode) && !skipNetworkFetch,
+    placeholderData: localTagsQuery.data ?? undefined,
+    retry: skipNetworkFetch ? false : 2,
+    refetchOnMount: !skipNetworkFetch,
+    staleTime: skipNetworkFetch ? Infinity : 30000,
   });
 
   const createTagMutation = useMutation({
@@ -116,11 +130,13 @@ export const useTransactionTags = () => {
     },
   });
 
+  const tags = data ?? [];
+
   return {
-    tags: data ?? [],
-    defaultTag: (data ?? []).find((tag) => tag.isDefault),
+    tags,
+    defaultTag: tags.find((tag) => tag.isDefault),
     error,
-    isLoading,
+    isLoading: skipNetworkFetch ? localTagsQuery.isLoading : isLoading,
     isError,
     isSuccess,
     refetch,

@@ -28,6 +28,11 @@ const PULL_THROTTLE_MS = 30_000;
 const PERIODIC_PULL_MS = 5 * 60_000;
 const SYNC_BROADCAST_CHANNEL = "fintr-sync";
 
+const zeroThrottleReasons = new Set<SyncPullReason>([
+  "cable_disconnect",
+  "online",
+]);
+
 const lastPullAtBySpace = new Map<string, number>();
 let periodicTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -180,14 +185,21 @@ export const schedulePullForSpace = async (
     return;
   }
 
-  const throttleMs = reason === "cable_disconnect" ? 0 : PULL_THROTTLE_MS;
+  // Always push pending outbox rows when reconnecting — do not let pull
+  // throttling skip offline creates (e.g. airplane mode → back online).
+  try {
+    await drainAllOutboxes({ api: opts.api, spaceIds: [spaceId] });
+  } catch (error) {
+    console.warn("[sync] Outbox drain failed for space", spaceId, error);
+  }
+
+  const throttleMs = zeroThrottleReasons.has(reason) ? 0 : PULL_THROTTLE_MS;
   const last = lastPullAtBySpace.get(spaceId) ?? 0;
   if (Date.now() - last < throttleMs) {
     return;
   }
 
   try {
-    await drainAllOutboxes({ api: opts.api, spaceIds: [spaceId] });
     await pullSpaceWithBootstrapRecovery({
       api: opts.api,
       queryClient: opts.queryClient,

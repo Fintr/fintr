@@ -87,55 +87,95 @@ const asType = (value: unknown): CombinedTransactionTypeEnum => {
   return CombinedTransactionTypeEnum.EXPENSE;
 };
 
+const pickField = (
+  payload: Record<string, unknown>,
+  camel: string,
+  snake: string,
+): unknown => payload[camel] ?? payload[snake];
+
 export const normalizeRealtimeIndexTransaction = (
   payload: Record<string, unknown>,
 ): IndexTransactionWithCategoryIds | null => {
-  const id = asString(payload.id);
+  const id = asString(pickField(payload, "id", "id"));
   if (!id) return null;
 
   const tags = parseRealtimeTransactionTags(payload);
 
   return {
     id,
-    date: asString(payload.date),
-    description: asString(payload.description),
-    amount: asNumber(payload.amount),
-    amountCurrency: payload.amountCurrency
-      ? asString(payload.amountCurrency)
+    date: asString(pickField(payload, "date", "date")),
+    description: asString(pickField(payload, "description", "description")),
+    amount: asNumber(pickField(payload, "amount", "amount")),
+    amountCurrency: pickField(payload, "amountCurrency", "amount_currency")
+      ? asString(pickField(payload, "amountCurrency", "amount_currency"))
       : undefined,
     bookedAmount:
-      payload.bookedAmount != null ? asNumber(payload.bookedAmount) : undefined,
-    bookedAmountCurrency: payload.bookedAmountCurrency
-      ? asString(payload.bookedAmountCurrency)
+      pickField(payload, "bookedAmount", "booked_amount") != null
+        ? asNumber(pickField(payload, "bookedAmount", "booked_amount"))
+        : undefined,
+    bookedAmountCurrency: pickField(
+      payload,
+      "bookedAmountCurrency",
+      "booked_amount_currency",
+    )
+      ? asString(
+          pickField(payload, "bookedAmountCurrency", "booked_amount_currency"),
+        )
       : undefined,
-    createdAt: payload.createdAt
-      ? asString(payload.createdAt)
+    createdAt: pickField(payload, "createdAt", "created_at")
+      ? asString(pickField(payload, "createdAt", "created_at"))
       : new Date().toISOString(),
-    categoryName: asString(payload.categoryName),
+    categoryName: asString(
+      pickField(payload, "categoryName", "category_name"),
+    ),
     subcategoryName:
-      payload.subcategoryName == null
+      pickField(payload, "subcategoryName", "subcategory_name") == null
         ? null
-        : asString(payload.subcategoryName),
-    fromAccountName: asString(payload.fromAccountName),
-    toAccountName: asString(payload.toAccountName),
-    type: asType(payload.type),
-    inSeries: Boolean(payload.inSeries),
-    hasImage: Boolean(payload.hasImage),
-    hasLoanPayment: Boolean(payload.hasLoanPayment),
-    calculated: payload.calculated == null ? undefined : Boolean(payload.calculated),
-    activitableId: payload.activitableId
-      ? asString(payload.activitableId)
+        : asString(
+            pickField(payload, "subcategoryName", "subcategory_name"),
+          ),
+    fromAccountName: asString(
+      pickField(payload, "fromAccountName", "from_account_name"),
+    ),
+    toAccountName: asString(
+      pickField(payload, "toAccountName", "to_account_name"),
+    ),
+    type: asType(pickField(payload, "type", "type")),
+    inSeries: Boolean(
+      pickField(payload, "inSeries", "in_series") ?? false,
+    ),
+    hasImage: Boolean(
+      pickField(payload, "hasImage", "has_image") ?? false,
+    ),
+    hasLoanPayment: Boolean(
+      pickField(payload, "hasLoanPayment", "has_loan_payment") ?? false,
+    ),
+    calculated:
+      pickField(payload, "calculated", "calculated") == null
+        ? undefined
+        : Boolean(pickField(payload, "calculated", "calculated")),
+    activitableId: pickField(payload, "activitableId", "activitable_id")
+      ? asString(pickField(payload, "activitableId", "activitable_id"))
       : id,
     isLoanActivity:
-      payload.isLoanActivity == null
+      pickField(payload, "isLoanActivity", "is_loan_activity") == null
         ? undefined
-        : Boolean(payload.isLoanActivity),
-    loanType: payload.loanType as IndexTransactionWithCategoryIds["loanType"],
-    loanId: payload.loanId ? asString(payload.loanId) : undefined,
-    entityName: payload.entityName ? asString(payload.entityName) : undefined,
-    categoryId: payload.categoryId ? asString(payload.categoryId) : null,
-    subcategoryId: payload.subcategoryId
-      ? asString(payload.subcategoryId)
+        : Boolean(
+            pickField(payload, "isLoanActivity", "is_loan_activity"),
+          ),
+    loanType: pickField(payload, "loanType", "loan_type") as
+      IndexTransactionWithCategoryIds["loanType"],
+    loanId: pickField(payload, "loanId", "loan_id")
+      ? asString(pickField(payload, "loanId", "loan_id"))
+      : undefined,
+    entityName: pickField(payload, "entityName", "entity_name")
+      ? asString(pickField(payload, "entityName", "entity_name"))
+      : undefined,
+    categoryId: pickField(payload, "categoryId", "category_id")
+      ? asString(pickField(payload, "categoryId", "category_id"))
+      : null,
+    subcategoryId: pickField(payload, "subcategoryId", "subcategory_id")
+      ? asString(pickField(payload, "subcategoryId", "subcategory_id"))
       : null,
     ...(tags && tags.length > 0
       ? {

@@ -200,7 +200,10 @@ export const transactionMatchesInsightsCategoryFilter = (
       if (normalizeCategoryMatchKey(transaction.subcategoryName ?? "") === filterNameKey) {
         return true;
       }
-    } else if (normalizeCategoryMatchKey(transaction.categoryName ?? "") === filterNameKey) {
+    } else if (
+      normalizeCategoryMatchKey(transaction.categoryName ?? "") === filterNameKey
+      || normalizeCategoryMatchKey(transaction.subcategoryName ?? "") === filterNameKey
+    ) {
       return true;
     }
   }

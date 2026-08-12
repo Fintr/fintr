@@ -3,6 +3,7 @@
 module Transactions
   class LoanPayment < ApplicationRecord
     include Versionable
+    include HasCurrencyConversion
 
     belongs_to :loan, class_name: "Transactions::Loan"
     belongs_to :account, class_name: "Transactions::Account"

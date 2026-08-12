@@ -5,6 +5,7 @@ import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
 import {
+  dateRangePieces,
   financialTrendsDateRange,
   insightsSummaryFromMonthlyBuckets,
   insightsSummaryHybrid,
@@ -152,6 +153,28 @@ describe("insights from monthly buckets", () => {
     ]);
   });
 
+  describe("dateRangePieces", () => {
+    it("treats a single calendar month as one partial slice (backend parity)", () => {
+      expect(dateRangePieces("2026-08-01", "2026-08-31")).toEqual({
+        firstStart: "2026-08-01",
+        firstEnd: "2026-08-31",
+        lastStart: null,
+        lastEnd: null,
+        fullMonthDates: [],
+      });
+    });
+
+    it("splits Aug 1 – Sep 5 into a full August month and partial September", () => {
+      expect(dateRangePieces("2026-08-01", "2026-09-05")).toEqual({
+        firstStart: null,
+        firstEnd: null,
+        lastStart: "2026-09-01",
+        lastEnd: "2026-09-05",
+        fullMonthDates: ["2026-08-01"],
+      });
+    });
+  });
+
   describe("splitDateRangeIntoMonthSegments", () => {
     it("splits Aug 1 – Sep 5 into a full August month and partial September", () => {
       expect(
@@ -200,42 +223,71 @@ describe("insights from monthly buckets", () => {
       ...overrides,
     });
 
-    it("uses the August bucket plus September edge transactions", () => {
+    it("uses a full-month bucket plus edge transactions", () => {
       const summaries = [
         bucket({
-          month: 8,
+          month: 5,
           totalIncome: 1000,
           totalExpenses: 400,
-          monthStartDate: "2026-08-01",
-          monthEndDate: "2026-08-31",
+          monthStartDate: "2026-05-01",
+          monthEndDate: "2026-05-31",
         }),
         bucket({
-          id: "sep",
-          month: 9,
+          id: "jul",
+          month: 7,
           totalIncome: 900,
           totalExpenses: 900,
-          monthStartDate: "2026-09-01",
-          monthEndDate: "2026-09-30",
+          monthStartDate: "2026-07-01",
+          monthEndDate: "2026-07-31",
         }),
       ];
 
       const transactions = [
-        tx({ id: "sep-1", date: "2026-09-02", amount: 50 }),
-        tx({ id: "sep-2", date: "2026-09-05", amount: 30 }),
-        tx({ id: "aug-late", date: "2026-08-30", amount: 999 }),
+        tx({ id: "jul-1", date: "2026-07-02", amount: 50 }),
+        tx({ id: "jul-2", date: "2026-07-05", amount: 30 }),
+        tx({ id: "may-late", date: "2026-05-30", amount: 999 }),
       ];
 
       expect(
         insightsSummaryHybrid({
           summaries,
           transactions,
-          startDate: "2026-08-01",
-          endDate: "2026-09-05",
+          startDate: "2026-05-01",
+          endDate: "2026-07-05",
         }),
       ).toEqual({
         totalIncome: 1000,
         totalExpenses: 480,
         netSavings: 520,
+      });
+    });
+
+    it("treats bucket currency case-insensitively when matching space currency", () => {
+      const summaries = [
+        bucket({
+          month: 12,
+          year: 2025,
+          currency: "php",
+          totalIncome: 0,
+          totalExpenses: 15238,
+          netSavings: -15238,
+          monthStartDate: "2025-12-01",
+          monthEndDate: "2025-12-31",
+        }),
+      ];
+
+      expect(
+        insightsSummaryHybrid({
+          summaries,
+          transactions: [],
+          startDate: "2025-12-01",
+          endDate: "2025-12-31",
+          spaceCurrency: "PHP",
+        }),
+      ).toEqual({
+        totalIncome: 0,
+        totalExpenses: 15238,
+        netSavings: -15238,
       });
     });
 
@@ -263,6 +315,138 @@ describe("insights from monthly buckets", () => {
         totalIncome: 150,
         totalExpenses: 50,
         netSavings: 100,
+      });
+    });
+
+    it("aggregates August from transactions when the month bucket is missing", () => {
+      const transactions = [
+        tx({ id: "in-1", date: "2026-08-05", amount: 500, type: CombinedTransactionTypeEnum.INCOME }),
+        tx({ id: "out-1", date: "2026-08-12", amount: 120 }),
+      ];
+
+      expect(
+        insightsSummaryHybrid({
+          summaries: [],
+          transactions,
+          startDate: "2026-08-01",
+          endDate: "2026-08-31",
+        }),
+      ).toEqual({
+        totalIncome: 500,
+        totalExpenses: 120,
+        netSavings: 380,
+      });
+    });
+
+    it("uses a fresh bucket when local transactions are empty", () => {
+      expect(
+        insightsSummaryHybrid({
+          summaries: [
+            bucket({
+              month: 6,
+              totalIncome: 900,
+              totalExpenses: 300,
+              monthStartDate: "2026-06-01",
+              monthEndDate: "2026-06-30",
+            }),
+          ],
+          transactions: [],
+          startDate: "2026-06-01",
+          endDate: "2026-06-30",
+        }),
+      ).toEqual({
+        totalIncome: 900,
+        totalExpenses: 300,
+        netSavings: 600,
+      });
+    });
+
+    it("prefers transactions when the month bucket is empty", () => {
+      expect(
+        insightsSummaryHybrid({
+          summaries: [
+            bucket({
+              month: 7,
+              totalIncome: 0,
+              totalExpenses: 0,
+              monthStartDate: "2026-07-01",
+              monthEndDate: "2026-07-31",
+            }),
+          ],
+          transactions: [
+            tx({
+              id: "in-1",
+              date: "2026-07-10",
+              amount: 800,
+              type: CombinedTransactionTypeEnum.INCOME,
+            }),
+            tx({ id: "out-1", date: "2026-07-15", amount: 250 }),
+          ],
+          startDate: "2026-07-01",
+          endDate: "2026-07-31",
+        }),
+      ).toEqual({
+        totalIncome: 800,
+        totalExpenses: 250,
+        netSavings: 550,
+      });
+    });
+
+    it("falls back to the month bucket when current-month transactions are empty", () => {
+      expect(
+        insightsSummaryHybrid({
+          summaries: [
+            bucket({
+              month: 8,
+              totalIncome: 900,
+              totalExpenses: 300,
+              monthStartDate: "2026-08-01",
+              monthEndDate: "2026-08-31",
+            }),
+          ],
+          transactions: [],
+          startDate: "2026-08-01",
+          endDate: "2026-08-31",
+          spaceCurrency: "PHP",
+        }),
+      ).toEqual({
+        totalIncome: 900,
+        totalExpenses: 300,
+        netSavings: 600,
+      });
+    });
+
+    it("uses calculated transactions for the current calendar month", () => {
+      const transactions = [
+        tx({
+          id: "in-1",
+          date: "2026-08-05",
+          amount: 500,
+          type: CombinedTransactionTypeEnum.INCOME,
+        }),
+        tx({ id: "out-1", date: "2026-08-12", amount: 120 }),
+      ];
+
+      expect(
+        insightsSummaryHybrid({
+          summaries: [
+            bucket({
+              month: 8,
+              totalIncome: 1,
+              totalExpenses: 1,
+              monthStartDate: "2026-08-01",
+              monthEndDate: "2026-08-31",
+            }),
+          ],
+          transactions,
+          startDate: "2026-08-01",
+          endDate: "2026-08-31",
+          spaceCurrency: "PHP",
+        }),
+      ).toEqual({
+        totalIncome: 500,
+        totalExpenses: 120,
+        netSavings: 380,
       });
     });
   });

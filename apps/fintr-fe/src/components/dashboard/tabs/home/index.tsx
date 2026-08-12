@@ -61,6 +61,7 @@ import { HomeLoansSection } from "@/components/dashboard/tabs/home/home-loans-se
 import { HomeExchangeRatesSection } from "@/components/dashboard/tabs/home/home-exchange-rates-section";
 import { TagsTravelHintPill } from "@/components/dashboard/tags-travel-hint-pill";
 import { useTransactionTags } from "@/hooks/async/useTransactionTags";
+import { usePrefetchAccountDetailRoutes } from "@/hooks/usePrefetchAccountDetailRoutes";
 
 const parseBalance = (value: string): number => {
   const parsed = Number.parseFloat(value);
@@ -102,6 +103,7 @@ const HomeTab = () => {
     useDashboardData(startDate, endDate);
   const { accounts, balanceTotals, isLoading: isLoadingAccounts } =
     useAccounts();
+  usePrefetchAccountDetailRoutes(accounts);
   const { defaultTag } = useTransactionTags();
 
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);

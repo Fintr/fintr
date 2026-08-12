@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect } from "react";
 import { useSetAtom } from "jotai";
 
 import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
 import { backfillSyncCursorHint } from "@/lib/local-db/sync-cursor";
 import {
   backfillOfflineSyncReadyHint,
-  readOfflineSyncReadyHint,
   shouldRunFullOfflineSync,
 } from "@/lib/local-db/sync-state";
 import { isSpaceSyncPullEnabled } from "@/lib/space-sync-feature-flag";
@@ -27,12 +26,6 @@ const getPersistedSpaceCode = (): string => {
 /** Hydrate offline-read mode from IndexedDB before hooks mount. */
 export const useHydrateOfflineSyncReady = () => {
   const setOfflineSyncReady = useSetAtom(offlineSyncReadyAtom);
-
-  useLayoutEffect(() => {
-    if (readOfflineSyncReadyHint()) {
-      setOfflineSyncReady(true);
-    }
-  }, [setOfflineSyncReady]);
 
   useEffect(() => {
     void (async () => {

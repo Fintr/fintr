@@ -59,6 +59,30 @@ export const normalizeLoanPayment = (raw: unknown): LoanPayment | null => {
       record.adjusts_account_balance === false
         ? false
         : true,
+    currencyConversion: (() => {
+      const conversion =
+        record.currencyConversion ?? record.currency_conversion;
+      if (!conversion || typeof conversion !== "object") {
+        return undefined;
+      }
+      const conv = conversion as Record<string, unknown>;
+      return {
+        originalAmount: parseLoanPaymentAmount(
+          readField(conv, "originalAmount", "original_amount"),
+        ),
+        originalCurrency: String(
+          readField(conv, "originalCurrency", "original_currency") ?? "",
+        ),
+        convertedAmount: parseLoanPaymentAmount(
+          readField(conv, "convertedAmount", "converted_amount"),
+        ),
+        convertedCurrency: String(
+          readField(conv, "convertedCurrency", "converted_currency") ?? "",
+        ),
+        exchangeRate: parseLoanPaymentAmount(conv.exchangeRate ?? conv.exchange_rate),
+        source: (conv.source as "auto" | "manual" | "recent" | undefined) ?? undefined,
+      };
+    })(),
   };
 };
 

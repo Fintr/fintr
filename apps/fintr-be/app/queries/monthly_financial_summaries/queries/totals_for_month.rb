@@ -18,7 +18,7 @@ module MonthlyFinancialSummaries
           month: month_start.month
         )
 
-        if summary&.fresh?
+        if summary&.fresh? && !MonthlyFinancialSummary.totals_empty?(cached_totals(summary:))
           return cached_totals(summary:)
         end
 

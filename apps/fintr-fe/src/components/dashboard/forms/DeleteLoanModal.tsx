@@ -2,6 +2,7 @@ import React, { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -17,6 +18,7 @@ interface DeleteLoanModalProps {
   onDelete: (loanId: string) => Promise<any>;
   isLoading?: boolean;
   triggerVariant?: "inline" | "toolbar";
+  triggerAccentClassName?: string;
 }
 
 const DeleteLoanModal: React.FC<DeleteLoanModalProps> = ({
@@ -24,6 +26,7 @@ const DeleteLoanModal: React.FC<DeleteLoanModalProps> = ({
   onDelete,
   isLoading = false,
   triggerVariant = "inline",
+  triggerAccentClassName,
 }) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -86,6 +89,18 @@ const DeleteLoanModal: React.FC<DeleteLoanModalProps> = ({
   const loanCurrency = loan.principalAmountCurrency || 'PHP';
 
   const isToolbarTrigger = triggerVariant === "toolbar";
+  const triggerClassName = triggerAccentClassName
+    ? cn(
+        triggerAccentClassName,
+        "hover:bg-accent/50",
+        isToolbarTrigger && "rounded-lg border border-current/25 p-0",
+      )
+    : cn(
+        transactionDeleteIconButtonClassName,
+        isToolbarTrigger
+          ? "rounded-lg border border-red-900/30 p-0 dark:border-red-700/35"
+          : "h-6 w-6 p-0",
+      );
 
   return (
     <Dialog open={internalIsOpen} onOpenChange={handleOpenChangeFromDialog}>
@@ -94,14 +109,7 @@ const DeleteLoanModal: React.FC<DeleteLoanModalProps> = ({
           type="button"
           size={isToolbarTrigger ? "icon" : "sm"}
           variant={isToolbarTrigger ? "outline" : "ghost"}
-          className={
-            isToolbarTrigger
-              ? "rounded-lg border-red-800/35 text-red-800 hover:bg-red-100/50 hover:text-red-800 dark:hover:bg-red-950/40"
-              : cn(
-                  transactionDeleteIconButtonClassName,
-                  "h-6 w-6 p-0",
-                )
-          }
+          className={triggerClassName}
           onClick={(e) => {
             e.stopPropagation();
             handleTriggerClick();
@@ -110,36 +118,44 @@ const DeleteLoanModal: React.FC<DeleteLoanModalProps> = ({
           aria-label={`Delete loan with ${loanDisplayName}`}
         >
           <Trash2
-            className={
-              isToolbarTrigger
-                ? "h-4 w-4 text-red-800"
-                : "h-3 w-3"
-            }
+            className={isToolbarTrigger ? "h-4 w-4" : "h-3 w-3"}
             aria-hidden
           />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Delete Loan</DialogTitle>
+          <DialogTitle className="text-primary">Delete Loan</DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-3 text-left">
+              <p>
+                Are you sure you want to delete the loan with{" "}
+                <span className="font-semibold text-foreground">
+                  &ldquo;{loanDisplayName}&rdquo;
+                </span>
+                ?
+              </p>
+              <p>
+                This will also delete all associated loan payments and reverse
+                the account balance adjustments.
+              </p>
+              <p className="font-medium text-foreground">
+                Principal Amount:{" "}
+                {loanAmount.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                {loanCurrency}
+              </p>
+            </div>
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="text-sm text-gray-600">
-            Are you sure you want to delete the loan with{" "}
-            <span className="font-semibold text-gray-900">"{loanDisplayName}"</span>?
-            <br />
-            <br />
-            This will also delete all associated loan payments and reverse the account balance adjustments.
-            <br />
-            <br />
-            <span className="font-medium">Principal Amount: {loanAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {loanCurrency}</span>
-          </div>
-
           {errorMessage && (
-            <div className="text-sm text-red-900 bg-red-100/50 p-3 rounded-md border border-red-300">
+            <div className="rounded-md border border-red-300 bg-red-100/50 p-3 text-sm text-red-900 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-400">
               <strong>Error:</strong> {errorMessage}
             </div>
-          )}          
+          )}
 
           <div className="flex justify-end space-x-2">
             <Button

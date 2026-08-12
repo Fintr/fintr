@@ -7,7 +7,8 @@ import { Label } from '../../../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { updateUser, requestPasswordReset } from '@/services/auth/user/mutations';
+import { requestPasswordReset } from '@/services/auth/user/mutations';
+import { updateUserSettingsLocalFirst } from '@/services/auth/user/update-settings-local-first';
 import { getUserAuth0Settings } from '@/services/auth/user/queries';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { CheckCircle, AlertTriangle, Users } from 'lucide-react';
@@ -50,8 +51,19 @@ const SettingsPage = () => {
   const handleUpdateName = async () => {
     setIsNameLoading(true);
     try {
-      const response = await updateUser({ api, name });
-      toast.success(response.message);
+      const result = await updateUserSettingsLocalFirst(
+        api,
+        { name },
+        { waitForSync: false },
+      );
+      toast.success("Name updated successfully");
+      void result.syncPromise.then((synced) => {
+        if (synced.pendingSync) {
+          toast.message("Update saved on this device. Will sync when online.");
+        }
+      }).catch((error) => {
+        toast.error(`Failed to update name: ${(error as Error).message}`);
+      });
     } catch (error) {
       toast.error(`Failed to update name: ${(error as Error).message}`);
       console.error('Failed to update name:', error);
@@ -68,8 +80,19 @@ const SettingsPage = () => {
   const handleUpdateEmail = async () => {
     setIsEmailLoading(true);
     try {
-      const response = await updateUser({ api, email });
-      toast.success(response.message);
+      const result = await updateUserSettingsLocalFirst(
+        api,
+        { email },
+        { waitForSync: false },
+      );
+      toast.success("Email updated successfully");
+      void result.syncPromise.then((synced) => {
+        if (synced.pendingSync) {
+          toast.message("Update saved on this device. Will sync when online.");
+        }
+      }).catch((error) => {
+        toast.error(`Failed to update email: ${(error as Error).message}`);
+      });
     } catch (error) {
       toast.error(`Failed to update email: ${(error as Error).message}`);
       console.error('Failed to update email:', error);

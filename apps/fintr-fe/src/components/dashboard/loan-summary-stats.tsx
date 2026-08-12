@@ -14,34 +14,31 @@ type LoanSummaryStatsProps = {
   textColorClass: string;
 };
 
-type StatCellProps = {
+type StatItemProps = {
   label: string;
   value: React.ReactNode;
   valueClassName?: string;
   labelExtra?: React.ReactNode;
-  className?: string;
 };
 
-function StatCell({
+function StatItem({
   label,
   value,
   valueClassName,
   labelExtra,
-  className,
-}: StatCellProps) {
+}: StatItemProps) {
   return (
-    <div
-      className={cn(
-        "min-w-[9.5rem] flex-1 px-4 py-3 first:pl-4 last:pr-4",
-        "sm:min-w-0",
-        className,
-      )}
-    >
-      <div className="mb-1 flex items-center gap-1 text-xs font-medium capitalize text-muted-foreground">
+    <div className="flex flex-col gap-0.5 px-4 py-3.5 first:pl-4 last:pr-4">
+      <div className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
         {labelExtra}
       </div>
-      <div className={cn("text-base font-semibold md:text-lg", valueClassName)}>
+      <div
+        className={cn(
+          "text-base font-bold tabular-nums md:text-lg",
+          valueClassName,
+        )}
+      >
         {value}
       </div>
     </div>
@@ -72,19 +69,17 @@ export function LoanSummaryStats({
   }, [loan]);
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white dark:border-border dark:bg-card">
-      <div className="flex overflow-x-auto sm:overflow-visible">
-        <StatCell
-          label="Total principal"
+    <section className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <StatItem
+          label="Principal"
           value={formatCurrency(totalPrincipal, loan.principalAmountCurrency)}
-          valueClassName="text-primary"
-          className="border-r border-gray-200 dark:border-border"
+          valueClassName="text-foreground"
         />
-        <StatCell
+        <StatItem
           label="Total interest"
           value={formatCurrency(totalInterest, loan.outstandingBalanceCurrency)}
           valueClassName={textColorClass}
-          className="border-r border-gray-200 dark:border-border"
           labelExtra={
             <Popover>
               <PopoverTrigger asChild>
@@ -99,14 +94,14 @@ export function LoanSummaryStats({
               <PopoverContent className="w-80 p-4">
                 <div className="space-y-3">
                   <h4 className="mb-2 text-sm font-semibold text-primary">
-                    Interest Calculation
+                    Interest calculation
                   </h4>
                   <div className="space-y-2 text-xs">
                     <div>
-                      <div className="mb-1 font-medium text-gray-700 dark:text-foreground">
-                        Formula (Daily Simple Interest):
+                      <div className="mb-1 font-medium text-foreground">
+                        Formula (daily simple interest):
                       </div>
-                      <div className="rounded bg-gray-50 p-2 font-mono text-xs text-gray-600 dark:bg-muted dark:text-muted-foreground">
+                      <div className="rounded-lg bg-muted p-2 font-mono text-xs text-muted-foreground">
                         Daily Rate = Annual Rate ÷ 365
                         <br />
                         Interest = Beginning Balance × Daily Rate × Days
@@ -115,16 +110,16 @@ export function LoanSummaryStats({
                       </div>
                     </div>
                     <div>
-                      <div className="mb-1 font-medium text-gray-700 dark:text-foreground">
-                        Your Loan:
+                      <div className="mb-1 font-medium text-foreground">
+                        Your loan:
                       </div>
-                      <div className="space-y-1 text-gray-600 dark:text-muted-foreground">
-                        <div>Annual Rate: {loan.interestRate}%</div>
+                      <div className="space-y-1 text-muted-foreground">
+                        <div>Annual rate: {loan.interestRate}%</div>
                         <div>
-                          Daily Rate:{" "}
+                          Daily rate:{" "}
                           {(((loan.interestRate / 100) / 365) * 100).toFixed(6)}%
                         </div>
-                        <div>Number of Payments: {schedule.length}</div>
+                        <div>Number of payments: {schedule.length}</div>
                         <div>
                           Principal:{" "}
                           {formatCurrency(
@@ -134,13 +129,13 @@ export function LoanSummaryStats({
                         </div>
                       </div>
                     </div>
-                    <div className="border-t pt-2 dark:border-border">
-                      <div className="mb-1 font-medium text-gray-700 dark:text-foreground">
-                        Calculation Method:
+                    <div className="border-t border-border pt-2">
+                      <div className="mb-1 font-medium text-foreground">
+                        Method:
                       </div>
-                      <div className="text-gray-600 dark:text-muted-foreground">
-                        Daily simple interest: Interest accrues daily based on the
-                        actual number of days between payments.
+                      <div className="text-muted-foreground">
+                        Daily simple interest accrues based on the actual number
+                        of days between payments.
                       </div>
                     </div>
                   </div>
@@ -149,8 +144,8 @@ export function LoanSummaryStats({
             </Popover>
           }
         />
-        <StatCell
-          label="Total value"
+        <StatItem
+          label={isBorrowed ? "Net cost" : "Net gain"}
           value={
             isBorrowed
               ? `-${formatCurrency(loan.totalValue, loan.outstandingBalanceCurrency)}`

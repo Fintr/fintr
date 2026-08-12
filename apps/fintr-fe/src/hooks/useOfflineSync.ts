@@ -7,7 +7,11 @@ import { toast } from "sonner";
 
 import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
 import { isSpaceSyncPullEnabled } from "@/lib/space-sync-feature-flag";
-import { shouldRunFullOfflineSync } from "@/lib/local-db/sync-state";
+import {
+  getOfflineSyncMeta,
+  shouldRunFullOfflineSync,
+} from "@/lib/local-db/sync-state";
+import { repairOfflineSpaceCaches } from "@/services/monthly-financial-summaries/local-cache";
 import { offlineBootstrapDateRange } from "@/lib/local-sync/offline-bootstrap-dates";
 import {
   refreshOnlineLocalCaches,
@@ -19,6 +23,7 @@ import {
   type OfflineSyncProgress,
 } from "@/services/local-sync/bootstrap-local-data";
 import { drainAllOutboxes } from "@/services/local-sync/drain-outbox";
+import { refreshSpaceExchangeRatesFromCache } from "@/services/exchangeRates/prefetch-space-rates";
 import {
   resolveAccessibleSpaceCodes,
   schedulePullAllSpaces,
@@ -111,12 +116,21 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
               activeSpaceCode: spaceCode || undefined,
               onProgress: setProgress,
               onTierReady: (tier) => {
-                if (tier === 0 && runId === runIdRef.current) {
+                if (tier === 1 && runId === runIdRef.current) {
                   setOfflineSyncReady(true);
                 }
               },
             },
           );
+
+          const syncMeta = await getOfflineSyncMeta();
+          if (syncMeta?.spaceCodes?.length) {
+            await repairOfflineSpaceCaches(
+              api,
+              queryClient,
+              syncMeta.spaceCodes,
+            );
+          }
 
           if (spaceCode) {
             await seedReactQueryFromLocalCache(queryClient, {
@@ -176,6 +190,17 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
             spaceCode,
             ...uiDateParams,
           });
+        }
+
+        if (isBrowserOnline()) {
+          const syncMeta = await getOfflineSyncMeta();
+          if (syncMeta?.spaceCodes?.length) {
+            await repairOfflineSpaceCaches(
+              api,
+              queryClient,
+              syncMeta.spaceCodes,
+            );
+          }
         }
 
         setOfflineSyncReady(true);
@@ -293,7 +318,23 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
       }
 
       toast.message("Back online. Syncing your data…");
-      void runSync(false);
+      const code = localStorage.getItem("spaceCode") ?? "";
+      if (code) {
+        void refreshSpaceExchangeRatesFromCache(api, code, { force: true }).catch(
+          (refreshError) => {
+            console.warn("[exchange-rates] Online refresh failed", refreshError);
+          },
+        );
+      }
+
+      // Push pending outbox rows immediately — do not wait for throttled pull.
+      void drainAllOutboxes({ api })
+        .catch((drainError) => {
+          console.warn("[outbox] Drain on reconnect failed", drainError);
+        })
+        .finally(() => {
+          void runSync(false);
+        });
     };
 
     const handleVisibility = () => {
@@ -312,8 +353,19 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
         ).catch((refreshError) => {
           console.warn("[offline-sync] Focus pull failed", refreshError);
         });
+        void refreshSpaceExchangeRatesFromCache(api, code, { force: false }).catch(
+          (refreshError) => {
+            console.warn("[exchange-rates] Focus refresh failed", refreshError);
+          },
+        );
         return;
       }
+
+      void refreshSpaceExchangeRatesFromCache(api, code, { force: false }).catch(
+        (refreshError) => {
+          console.warn("[exchange-rates] Focus refresh failed", refreshError);
+        },
+      );
 
       const { firstDay, lastDay } = getCurrentMonthDates();
       void refreshOnlineLocalCaches(api, queryClient, {

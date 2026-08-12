@@ -9,6 +9,7 @@ import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog"
 import AddReceiptDialog from "@/components/dashboard/add-receipt-dialog";
 import EnhancedAiChatModal from "@/components/ai-chat/enhanced-ai-chat-modal";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import { usePrefetchDashboardNavRoutes } from "@/hooks/usePrefetchDashboardNavRoutes";
 import { calculateNavBottomOffset } from "@/lib/platform-detection";
 import {
   Popover,
@@ -25,6 +26,8 @@ export default function BottomNavigation() {
   const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
 
   const { isAndroidNative, isIOSNative, safeAreaInsetBottom, hasAndroid3ButtonNav } = usePlatformDetection();
+
+  usePrefetchDashboardNavRoutes();
 
   const navBottomOffset = calculateNavBottomOffset(
     isAndroidNative,
@@ -133,6 +136,11 @@ export default function BottomNavigation() {
           {/* Home */}
           <Link
             href="/dashboard/home"
+            onPointerEnter={() => {
+              if (navigator.onLine) {
+                void import("@/components/dashboard/tabs/home");
+              }
+            }}
             className={navItemClassName(activeValue === "home")}
           >
             <Home className={navIconClassName(activeValue === "home")} />
@@ -144,6 +152,7 @@ export default function BottomNavigation() {
           {/* Transactions */}
           <Link
             href="/dashboard/"
+            data-testid="mobile-nav-transactions"
             className={navItemClassName(activeValue === "transactions")}
           >
             <FileText className={navIconClassName(activeValue === "transactions")} />
@@ -244,6 +253,7 @@ export default function BottomNavigation() {
           <Link
             href="/dashboard/insights"
             data-tutorial-target="mobile-dashboard-button"
+            data-testid="mobile-nav-dashboard"
             className={navItemClassName(activeValue === "insights")}
           >
             <BarChart3 className={navIconClassName(activeValue === "insights")} />
@@ -256,6 +266,7 @@ export default function BottomNavigation() {
           <Link
             href="/dashboard/app_settings"
             data-tutorial-target="mobile-menu-button"
+            data-testid="mobile-nav-menu"
             className={navItemClassName(activeValue === "space_settings")}
           >
             <Menu className={navIconClassName(activeValue === "space_settings")} />

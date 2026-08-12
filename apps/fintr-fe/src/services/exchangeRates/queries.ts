@@ -170,3 +170,68 @@ export const getRecentRates = async (
 
   return data;
 };
+
+/**
+ * Always fetches the current rate from the network and writes through to IDB.
+ */
+export const fetchAndCacheCurrentRate = async (
+  api: AxiosInstance,
+  fromCurrency: string,
+  toCurrency: string,
+  date?: string,
+  requestConfig?: AxiosRequestConfig,
+): Promise<CurrentRateResponse> => {
+  const rateDate = date || todayIsoDate();
+  const response = await api.get("/exchange_rates/current", {
+    ...requestConfig,
+    params: {
+      from_currency: fromCurrency,
+      to_currency: toCurrency,
+      date: rateDate,
+      ...(requestConfig?.params as Record<string, unknown> | undefined),
+    },
+  });
+  const data = normalizeCurrentRate(response.data?.data ?? response.data);
+  await cacheCurrentExchangeRate({
+    fromCurrency,
+    toCurrency,
+    date: rateDate,
+    payload: data,
+  });
+  return data;
+};
+
+/**
+ * Always fetches recent rates from the network and writes through to IDB.
+ */
+export const fetchAndCacheRecentRates = async (
+  api: AxiosInstance,
+  fromCurrency: string,
+  toCurrency: string,
+  options?: {
+    spaceId?: string;
+    requestConfig?: AxiosRequestConfig;
+  },
+): Promise<RecentRatesResponse> => {
+  const spaceId = options?.spaceId || readSpaceCode();
+  const response = await api.get("/exchange_rates/recent", {
+    ...options?.requestConfig,
+    params: {
+      from_currency: fromCurrency,
+      to_currency: toCurrency,
+      ...(options?.requestConfig?.params as Record<string, unknown> | undefined),
+    },
+  });
+  const data = normalizeRecentRates(response.data?.data ?? response.data);
+
+  if (spaceId) {
+    await cacheRecentExchangeRates({
+      spaceId,
+      fromCurrency,
+      toCurrency,
+      payload: data,
+    });
+  }
+
+  return data;
+};

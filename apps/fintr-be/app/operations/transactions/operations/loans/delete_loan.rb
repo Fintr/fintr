@@ -151,7 +151,7 @@ module Transactions
             transactions:,
             actor:,
           )
-          Loans::Broadcasts::LoanChange.loan_deleted(
+          ::Loans::Broadcasts::LoanChange.loan_deleted(
             loan_id: params[:loan_id],
             space_id:,
             actor:,

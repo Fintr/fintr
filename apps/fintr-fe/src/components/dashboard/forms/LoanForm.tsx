@@ -25,7 +25,8 @@ import { useNumberInput } from "@/hooks/useNumberInput";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import { ComboBox } from "@/components/ui/combobox";
-import { fetchEntities, createEntity } from "@/services/entities/mutation";
+import { createEntity } from "@/services/entities/mutation";
+import { fetchEntitiesLocalFirst } from "@/services/entities/queries";
 import EntityCreationForm from "./EntityCreationForm";
 import { useAtomValue } from "jotai";
 import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
@@ -113,29 +114,26 @@ const LoanForm: React.FC<LoanFormProps> = ({
 
   const fetchEntityOptions = useCallback(async (query: string): Promise<Array<{ label: string; value: string }>> => {
     try {
-      const response = await fetchEntities(api, {
-        entityType: 'loan',
-        search: query
+      const entities = await fetchEntitiesLocalFirst(api, spaceCode, {
+        entityType: "loan",
+        search: query,
       });
-      // Response structure from fetchEntities: { success: true, data: [...] }
-      // The data array contains entities with camelCase keys (fullName)
-      const entities = response?.data || [];
-      return entities.map((entity: { id: string; fullName: string }) => {
-        const fullName = entity.fullName || '';
+
+      return entities.map((entity) => {
+        const fullName = entity.fullName || "";
         return {
           label: fullName,
-          value: fullName
+          value: fullName,
         };
       });
-    } catch (error: any) {
-      // Silently handle errors to prevent console spam and stack frame requests
-      // Only log if it's not a validation error (422) or auth error
-      if (error?.error?.message !== "Unprocessable Entity" && error?.status !== 422) {
-        console.error('Error fetching entities:', error);
+    } catch (error: unknown) {
+      const err = error as { error?: { message?: string }; status?: number };
+      if (err?.error?.message !== "Unprocessable Entity" && err?.status !== 422) {
+        console.error("Error fetching entities:", error);
       }
       return [];
     }
-  }, [api]);
+  }, [api, spaceCode]);
 
   const handleEntityCreated = (fullName: string) => {
     if (fullName) {

@@ -732,6 +732,14 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
 
     // Invalidate dashboard and accounts to refresh financial summary and balances
     queryClient.invalidateQueries({
+      queryKey: ["dashboard", "transactions", spaceCode],
+      exact: false,
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["monthlyFinancialSummaries", spaceCode],
+      exact: false,
+    });
+    queryClient.invalidateQueries({
       queryKey: ["dashboard", spaceCode, startDate, endDate],
     });
     queryClient.invalidateQueries({

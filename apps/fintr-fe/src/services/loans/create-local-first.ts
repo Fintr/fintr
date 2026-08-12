@@ -21,6 +21,11 @@ import {
 } from "@/services/transactions/upsert-into-query-caches";
 
 import { createLoan, type CreateLoanType } from "./mutation";
+import {
+  buildCreateOutboxPayload,
+  rollbackCreateAttachments,
+  syncAttachmentOwnerId,
+} from "@/services/attachments/create-outbox";
 
 export type CreateLoanLocalFirstResult = {
   data: { id: string };
@@ -146,7 +151,12 @@ export const createLoanLocalFirst = async (
     }
   }
 
-  const { file: _file, ...payloadForOutbox } = data;
+  const payloadForOutbox = await buildCreateOutboxPayload({
+    spaceId,
+    ownerType: "loan",
+    ownerId: localId,
+    data,
+  });
   await enqueueOutboxRecord({
     spaceId,
     commandType: OUTBOX_COMMAND_LOAN_CREATE,
@@ -169,6 +179,15 @@ export const createLoanLocalFirst = async (
             nextId: serverId,
           });
         }
+      }
+
+      if (serverId !== localId) {
+        await syncAttachmentOwnerId({
+          spaceId,
+          ownerType: "loan",
+          localOwnerId: localId,
+          serverOwnerId: serverId,
+        });
       }
 
       await removeOutboxRecord(clientMutationId);
@@ -218,6 +237,11 @@ export const createLoanLocalFirst = async (
           });
         }
       }
+      await rollbackCreateAttachments({
+        spaceId,
+        ownerType: "loan",
+        ownerId: localId,
+      });
       await removeOutboxRecord(clientMutationId);
       throw error;
     }

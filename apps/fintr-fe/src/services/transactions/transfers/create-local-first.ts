@@ -42,6 +42,12 @@ import {
 import { assertCreateTransferForOptimistic } from "@fintr/domain";
 
 import {
+  buildCreateOutboxPayload,
+  rollbackCreateAttachments,
+  syncAttachmentOwnerId,
+} from "@/services/attachments/create-outbox";
+
+import {
   createTransfer,
   type CreateTransferType,
 } from "./mutation";
@@ -404,7 +410,12 @@ export const createTransferLocalFirst = async (
     invalidateLocalInsightsQueries(queryClient);
   }
 
-  const { file: _file, ...payloadForOutbox } = data;
+  const payloadForOutbox = await buildCreateOutboxPayload({
+    spaceId,
+    ownerType: "transfer",
+    ownerId: localId,
+    data,
+  });
   await enqueueOutboxRecord({
     spaceId,
     commandType: OUTBOX_COMMAND_TRANSFER_CREATE,
@@ -420,6 +431,12 @@ export const createTransferLocalFirst = async (
 
       if (serverId !== localId) {
         await replaceLocalIndexTransactionId(spaceId, localId, serverId);
+        await syncAttachmentOwnerId({
+          spaceId,
+          ownerType: "transfer",
+          localOwnerId: localId,
+          serverOwnerId: serverId,
+        });
         if (queryClient) {
           replaceIndexTransactionIdInQueryCaches(queryClient, {
             spaceId,
@@ -505,6 +522,11 @@ export const createTransferLocalFirst = async (
       }
 
       await removeLocalIndexTransaction(spaceId, localId);
+      await rollbackCreateAttachments({
+        spaceId,
+        ownerType: "transfer",
+        ownerId: localId,
+      });
       await removeOptimisticSeriesChildren({
         spaceId,
         clientMutationId,

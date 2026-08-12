@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { MerchantPicker } from "@/components/ui/merchant-picker";
 import { Button } from "@/components/ui/button";
 import { useAuthApi } from "@/hooks/useAuthApi";
-import { createEntity, fetchEntities } from "@/services/entities/mutation";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { createEntity } from "@/services/entities/mutation";
+import { fetchEntitiesLocalFirst } from "@/services/entities/queries";
 import { extractFieldErrors } from "@/utils/errorUtils";
 
 import EntityCreationForm from "./EntityCreationForm";
@@ -69,6 +71,7 @@ const TransactionEntityField: React.FC<TransactionEntityFieldProps> = ({
 }) => {
   const copy = FIELD_COPY[kind];
   const { api } = useAuthApi();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
   const queryClient = useQueryClient();
   const [showCreationPanel, setShowCreationPanel] = useState(false);
   const [isCreatingEntity, setIsCreatingEntity] = useState(false);
@@ -77,25 +80,25 @@ const TransactionEntityField: React.FC<TransactionEntityFieldProps> = ({
   const fetchEntityOptions = useCallback(
     async (query: string) => {
       try {
-        const response = await fetchEntities(api, {
+        const entities = await fetchEntitiesLocalFirst(api, spaceCode, {
           entityType: "transaction",
           search: query,
         });
-        const entities = response?.data || [];
 
         return entities.map((entity) => ({
           id: entity.id,
           fullName: entity.fullName || "",
           photoUrl: entity.photoUrl,
         }));
-      } catch (error: any) {
-        if (error?.error?.message !== "Unprocessable Entity" && error?.status !== 422) {
+      } catch (error: unknown) {
+        const err = error as { error?: { message?: string }; status?: number };
+        if (err?.error?.message !== "Unprocessable Entity" && err?.status !== 422) {
           console.error("Failed to fetch entities:", error);
         }
         return [];
       }
     },
-    [api],
+    [api, spaceCode],
   );
 
   const openCreationPanel = (seed = "") => {

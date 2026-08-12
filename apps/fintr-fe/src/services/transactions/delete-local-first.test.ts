@@ -14,6 +14,7 @@ import {
 } from "@/lib/local-db";
 import { loadCachedTransactionsInRange } from "@/services/transactions/local-cache";
 import { upsertLocalIndexTransaction } from "@/services/transactions/local-cache";
+import { cacheMonthlyFinancialSummaries } from "@/services/monthly-financial-summaries/local-cache";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
 vi.mock("./mutation", () => ({
@@ -108,6 +109,116 @@ describe("deleteTransactionLocalFirst", () => {
     );
     expect(rows).toHaveLength(0);
     expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("patches dashboard period txs and monthly summary RQ on delete", async () => {
+    await upsertLocalIndexTransaction("space-a", {
+      id: "income-big",
+      date: "2026-08-11",
+      description: "SAMPLE BDO",
+      amount: 2_462_142,
+      amountCurrency: "PHP",
+      categoryName: "Freelance",
+      fromAccountName: "",
+      toAccountName: "Cash",
+      type: CombinedTransactionTypeEnum.INCOME,
+      inSeries: false,
+      hasImage: false,
+    });
+    await cacheMonthlyFinancialSummaries("space-a", [
+      {
+        id: "sum-2026-08",
+        year: 2026,
+        month: 8,
+        currency: "PHP",
+        fxBased: false,
+        calculatedAt: new Date().toISOString(),
+        totalIncome: 2_462_390,
+        totalExpenses: 1_589_535,
+        netSavings: 872_855,
+        savingsPercentage: 35,
+        monthStartDate: "2026-08-01",
+        monthEndDate: "2026-08-31",
+      },
+    ]);
+
+    vi.mocked(deleteTransaction).mockRejectedValue(
+      new Error("Failed to delete transaction"),
+    );
+
+    const queryClient = new QueryClient();
+    const dashboardKey = [
+      "dashboard",
+      "transactions",
+      "space-a",
+      "2026-08-01",
+      "2026-08-31",
+    ] as const;
+    queryClient.setQueryData(dashboardKey, {
+      transactions: [
+        {
+          id: "income-big",
+          date: "2026-08-11",
+          description: "SAMPLE BDO",
+          amount: 2_462_142,
+          categoryName: "Freelance",
+          fromAccountName: "",
+          toAccountName: "Cash",
+          type: CombinedTransactionTypeEnum.INCOME,
+          inSeries: false,
+          hasImage: false,
+        },
+        {
+          id: "income-small",
+          date: "2026-08-11",
+          description: "Keep",
+          amount: 247.72,
+          categoryName: "Freelance",
+          fromAccountName: "",
+          toAccountName: "Cash",
+          type: CombinedTransactionTypeEnum.INCOME,
+          inSeries: false,
+          hasImage: false,
+        },
+      ],
+    });
+
+    const result = await deleteTransactionLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        transactionId: "income-big",
+        deleteScope: DeleteScopeEnum.THIS_ONLY,
+        listRow: {
+          id: "income-big",
+          date: "2026-08-11",
+          description: "SAMPLE BDO",
+          amount: 2_462_142,
+          categoryName: "Freelance",
+          fromAccountName: "",
+          toAccountName: "Cash",
+          type: CombinedTransactionTypeEnum.INCOME,
+          inSeries: false,
+          hasImage: false,
+        },
+      },
+      { queryClient, waitForSync: true },
+    );
+
+    expect(result.pendingSync).toBe(true);
+
+    const dashboardCache = queryClient.getQueryData<{
+      transactions: Array<{ id: string }>;
+    }>(dashboardKey);
+    expect(dashboardCache?.transactions.map((row) => row.id)).toEqual([
+      "income-small",
+    ]);
+
+    const summaries = queryClient.getQueryData<
+      Array<{ totalIncome: number; month: number }>
+    >(["monthlyFinancialSummaries", "space-a"]);
+    const august = summaries?.find((row) => row.month === 8);
+    expect(august?.totalIncome).toBeCloseTo(2_462_390 - 2_462_142);
   });
 
   it("keeps the local delete and a pending outbox when the network fails", async () => {

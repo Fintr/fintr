@@ -1,4 +1,8 @@
 import type { FinancialSummary } from "@/types/spaceTypes";
+import type { IndexTransaction } from "@/types/transactionTypes";
+
+import type { ExchangeRateLookup } from "@/services/insights/space-currency-amount";
+import { insightsSummaryHybrid } from "@/services/insights/from-monthly-buckets";
 
 import type { MonthlyFinancialSummary } from "./types";
 
@@ -30,9 +34,33 @@ const parseYearMonth = (
   };
 };
 
+const summaryToFinancialSummary = (
+  totals: {
+    totalIncome: number;
+    totalExpenses: number;
+    netSavings: number;
+    calculatedAt?: string;
+  },
+): FinancialSummary => {
+  const latestCalculatedAt = totals.calculatedAt ?? "";
+
+  const savingsPercentage =
+    totals.totalIncome > 0
+      ? Number(((totals.netSavings / totals.totalIncome) * 100).toFixed(2))
+      : 0;
+
+  return {
+    totalIncome: String(Number(totals.totalIncome.toFixed(2))),
+    totalExpenses: String(Number(totals.totalExpenses.toFixed(2))),
+    netSavings: String(Number(totals.netSavings.toFixed(2))),
+    savingsPercentage: String(savingsPercentage),
+    calculatedAt: latestCalculatedAt || "",
+  };
+};
+
 /**
- * Sum monthly summary buckets that fall fully inside [startDate, endDate].
- * Matches the backend full-month path used by DateRangeSummary / TotalsInSpaceForRange.
+ * Sum monthly buckets for [startDate, endDate], mirroring backend TotalsInSpaceForRange
+ * when transactions are unavailable.
  */
 export const combineMonthlyFinancialSummaries = (
   summaries: MonthlyFinancialSummary[],
@@ -59,24 +87,79 @@ export const combineMonthlyFinancialSummaries = (
       totalIncome += toNumber(summary.totalIncome);
       totalExpenses += toNumber(summary.totalExpenses);
       if (
-        summary.calculatedAt &&
-        (!latestCalculatedAt || summary.calculatedAt > latestCalculatedAt)
+        summary.calculatedAt
+        && (!latestCalculatedAt || summary.calculatedAt > latestCalculatedAt)
       ) {
         latestCalculatedAt = summary.calculatedAt;
       }
     }
   }
 
-  const netSavings = totalIncome - totalExpenses;
-  const savingsPercentage =
-    totalIncome > 0 ? Number(((netSavings / totalIncome) * 100).toFixed(2)) : 0;
+  return summaryToFinancialSummary({
+    totalIncome,
+    totalExpenses,
+    netSavings: totalIncome - totalExpenses,
+    calculatedAt: latestCalculatedAt,
+  });
+};
 
-  return {
-    totalIncome: String(Number(totalIncome.toFixed(2))),
-    totalExpenses: String(Number(totalExpenses.toFixed(2))),
-    netSavings: String(Number(netSavings.toFixed(2))),
-    savingsPercentage: String(savingsPercentage),
-    // Stable fallback — avoid new Date() so consumers don't thrash on identity.
-    calculatedAt: latestCalculatedAt || "",
-  };
+/**
+ * Dashboard / insights summary for a date range — buckets plus transaction fallback
+ * (mirrors CreateSummaryStructure + TotalsInSpaceForRange hybrid path).
+ */
+export const financialSummaryForDateRange = (params: {
+  summaries: MonthlyFinancialSummary[];
+  transactions: IndexTransaction[];
+  startDate: string;
+  endDate: string;
+  spaceCurrency?: string;
+  rateLookup?: ExchangeRateLookup;
+}): FinancialSummary => {
+  const {
+    summaries,
+    transactions,
+    startDate,
+    endDate,
+    spaceCurrency = "PHP",
+    rateLookup,
+  } = params;
+
+  const hybrid = insightsSummaryHybrid({
+    summaries,
+    transactions,
+    startDate,
+    endDate,
+    spaceCurrency,
+    rateLookup,
+  });
+
+  let latestCalculatedAt = "";
+  const start = parseYearMonth(startDate);
+  const end = parseYearMonth(endDate);
+
+  if (start && end) {
+    const startKey = yearMonthKey(start.year, start.month);
+    const endKey = yearMonthKey(end.year, end.month);
+
+    for (const summary of summaries) {
+      const key = yearMonthKey(summary.year, summary.month);
+      if (key < startKey || key > endKey) {
+        continue;
+      }
+
+      if (
+        summary.calculatedAt
+        && (!latestCalculatedAt || summary.calculatedAt > latestCalculatedAt)
+      ) {
+        latestCalculatedAt = summary.calculatedAt;
+      }
+    }
+  }
+
+  return summaryToFinancialSummary({
+    totalIncome: hybrid.totalIncome,
+    totalExpenses: hybrid.totalExpenses,
+    netSavings: hybrid.netSavings,
+    calculatedAt: latestCalculatedAt,
+  });
 };

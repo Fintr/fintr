@@ -1,4 +1,5 @@
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
+import { normalizeRealtimeIndexTransaction } from "@/hooks/useTransactionsRealtime";
 import { getLocalDb } from "@/lib/local-db/db";
 import {
   countSpaceTransactions,
@@ -90,14 +91,45 @@ export const buildTransactionsFilterKey = (parts: {
     parts.entryType ?? "all",
   ].join("|");
 
+const parseFilterKeyParts = (filterKey: string) => {
+  const parts = filterKey.split("|");
+
+  return {
+    categoriesSerialized: parts[0] ?? "[]",
+    startDate: parts[1] ?? "",
+    endDate: parts[2] ?? "",
+    minAmount: parts[3] ?? "",
+    maxAmount: parts[4] ?? "",
+    searchQuery: parts[5] ?? "",
+    accountNamesSerialized: parts[6] ?? "[]",
+    tagIdsSerialized: parts[7] ?? "[]",
+    entryType: parts[8] ?? "all",
+  };
+};
+
+/** Same filters and date range as `filterKey`, but entry type is `all`. */
+export const buildUnfilteredEntryTypeFilterKey = (filterKey: string): string => {
+  const parts = parseFilterKeyParts(filterKey);
+
+  return buildTransactionsFilterKey({
+    categoriesSerialized: parts.categoriesSerialized,
+    startDate: parts.startDate,
+    endDate: parts.endDate,
+    minAmount: parts.minAmount,
+    maxAmount: parts.maxAmount,
+    searchQuery: parts.searchQuery,
+    accountNamesSerialized: parts.accountNamesSerialized,
+    tagIdsSerialized: parts.tagIdsSerialized,
+    entryType: "all",
+  });
+};
+
 const parseFilterKeyDates = (
   filterKey: string,
 ): { startDate: string; endDate: string } => {
-  const parts = filterKey.split("|");
-  return {
-    startDate: parts[1] ?? "",
-    endDate: parts[2] ?? "",
-  };
+  const { startDate, endDate } = parseFilterKeyParts(filterKey);
+
+  return { startDate, endDate };
 };
 
 const transactionDateKey = (date: string): string => date.slice(0, 10);
@@ -197,12 +229,22 @@ const loadRawCachedTransactionsPages = async (
   spaceId: string,
   filterKey: string,
 ): Promise<TransactionsPage[] | undefined> => {
-  const allPages = await getLocalResponseSnapshot<TransactionsPage[]>(
+  const allPages = await getLocalResponseSnapshot<unknown>(
     transactionsAllPagesCacheKey(spaceId, filterKey),
   );
 
-  if (allPages?.length) {
-    return allPages;
+  if (Array.isArray(allPages) && allPages.length > 0) {
+    return allPages as TransactionsPage[];
+  }
+
+  const singlePage = allPages as TransactionsPage | undefined;
+  if (singlePage?.transactions?.length) {
+    return [singlePage];
+  }
+
+  const infiniteShape = allPages as { pages?: TransactionsPage[] } | undefined;
+  if (Array.isArray(infiniteShape?.pages) && infiniteShape.pages.length > 0) {
+    return infiniteShape.pages;
   }
 
   const firstPage = await loadCachedTransactionsPage(spaceId, filterKey);
@@ -222,14 +264,14 @@ const resolveSourcePagesForFilter = async (
   endDate: string;
 } | undefined> => {
   const { startDate, endDate } = parseFilterKeyDates(filterKey);
-  const filterParts = filterKey.split("|");
+  const filterParts = parseFilterKeyParts(filterKey);
   const allTimeFilterKey = buildAllTimeTransactionsFilterKey({
-    categoriesSerialized: filterParts[0] ?? "[]",
-    minAmount: filterParts[3] ?? "",
-    maxAmount: filterParts[4] ?? "",
-    searchQuery: filterParts[5] ?? "",
-    accountNamesSerialized: filterParts[6] ?? "[]",
-    tagIdsSerialized: filterParts[7] ?? "[]",
+    categoriesSerialized: filterParts.categoriesSerialized,
+    minAmount: filterParts.minAmount,
+    maxAmount: filterParts.maxAmount,
+    searchQuery: filterParts.searchQuery,
+    accountNamesSerialized: filterParts.accountNamesSerialized,
+    tagIdsSerialized: filterParts.tagIdsSerialized,
   });
 
   const allTimePages = await loadRawCachedTransactionsPages(
@@ -241,6 +283,18 @@ const resolveSourcePagesForFilter = async (
     return { sourcePages: allTimePages, startDate, endDate };
   }
 
+  if (filterParts.entryType !== "all") {
+    // Entry-type pills filter client-side; reuse the cached "all" snapshot for this range.
+    const rangeAllPages = await loadRawCachedTransactionsPages(
+      spaceId,
+      buildUnfilteredEntryTypeFilterKey(filterKey),
+    );
+
+    if (rangeAllPages?.length) {
+      return { sourcePages: rangeAllPages, startDate, endDate };
+    }
+  }
+
   const bootstrapPages = await loadRawCachedTransactionsPages(
     spaceId,
     unfilteredAllTimeTransactionsFilterKey(),
@@ -250,11 +304,28 @@ const resolveSourcePagesForFilter = async (
   }
 
   const exactPages = await loadRawCachedTransactionsPages(spaceId, filterKey);
-  if (!exactPages?.length) {
-    return undefined;
+  if (exactPages?.length) {
+    return { sourcePages: exactPages, startDate, endDate };
   }
 
-  return { sourcePages: exactPages, startDate, endDate };
+  const scattered = await loadScatteredCachedTransactions(spaceId);
+  if (scattered.length > 0) {
+    return {
+      sourcePages: [
+        {
+          transactions: scattered,
+          nextPage: null,
+          totalPages: 1,
+          totalCount: scattered.length,
+          totals: null,
+        },
+      ],
+      startDate,
+      endDate,
+    };
+  }
+
+  return undefined;
 };
 
 const filterTransactionsForRange = (
@@ -315,11 +386,32 @@ export const cacheTransactionsAllPages = async (
   }
 
   try {
+    // Merge tag/category metadata from Dexie only (no legacy migrate) so a
+    // re-sync that writes sparse list rows cannot wipe filter metadata from
+    // meta snapshots, and partial month caches are not promoted early.
+    const existingById = new Map(
+      (await listSpaceTransactions(spaceId)).map((row) => [row.id, row]),
+    );
+    const pagesWithMetadata = pages.map((page) => ({
+      ...page,
+      transactions: page.transactions.map((row) => {
+        const existing = existingById.get(row.id);
+        if (!existing) {
+          return row;
+        }
+
+        return mergeIndexTransactionMetadata(
+          existing as IndexTransactionWithMetadata,
+          row as IndexTransactionWithMetadata,
+        ) as IndexTransaction;
+      }),
+    }));
+
     await putLocalResponseSnapshot(
       transactionsAllPagesCacheKey(spaceId, filterKey),
-      pages,
+      pagesWithMetadata,
     );
-    await cacheTransactionsPage(spaceId, filterKey, pages[0]);
+    await cacheTransactionsPage(spaceId, filterKey, pagesWithMetadata[0]);
   } catch (error) {
     console.warn("[local-db] Failed to cache transactions pages", error);
   }
@@ -343,6 +435,31 @@ const loadLegacyTransactionSnapshotsFromMeta = async (
   }
 };
 
+const normalizeCachedIndexTransaction = (
+  raw: IndexTransaction,
+): IndexTransaction => {
+  const normalized = normalizeRealtimeIndexTransaction(
+    raw as unknown as Record<string, unknown>,
+  );
+
+  if (!normalized) {
+    return raw;
+  }
+
+  const merged = {
+    ...raw,
+    ...normalized,
+  };
+
+  const tagIds = resolveTransactionTagIds(merged);
+  if (tagIds.length === 0) {
+    delete (merged as IndexTransactionWithTagIds).tags;
+    delete (merged as IndexTransactionWithTagIds).tagIds;
+  }
+
+  return merged;
+};
+
 const mergeTransactionRowsIntoMap = (
   byId: Map<string, IndexTransaction>,
   rows: IndexTransaction[],
@@ -353,15 +470,14 @@ const mergeTransactionRowsIntoMap = (
     }
 
     const existing = byId.get(row.id);
-    byId.set(
-      row.id,
-      existing
-        ? mergeIndexTransactionMetadata(
-            existing,
-            row as IndexTransactionWithMetadata,
-          )
-        : row,
-    );
+    const merged = existing
+      ? mergeIndexTransactionMetadata(
+          existing,
+          row as IndexTransactionWithMetadata,
+        )
+      : row;
+
+    byId.set(row.id, normalizeCachedIndexTransaction(merged));
   }
 };
 
@@ -378,12 +494,24 @@ const extractTransactionsFromMetaRow = (
     return [];
   }
 
-  const pages = value as TransactionsPage[] | undefined;
-  if (!Array.isArray(pages)) {
-    return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((page) => {
+      const row = page as TransactionsPage;
+      return row?.transactions ?? [];
+    });
   }
 
-  return pages.flatMap((page) => page.transactions ?? []);
+  const singlePage = value as TransactionsPage | undefined;
+  if (singlePage?.transactions?.length) {
+    return singlePage.transactions;
+  }
+
+  const infiniteShape = value as { pages?: TransactionsPage[] } | undefined;
+  if (Array.isArray(infiniteShape?.pages)) {
+    return infiniteShape.pages.flatMap((page) => page.transactions ?? []);
+  }
+
+  return [];
 };
 
 /**
@@ -423,6 +551,61 @@ const loadScatteredCachedTransactions = async (
   }
 };
 
+/** Meta snapshots from bootstrap / online page-1 caches (not always in Dexie). */
+export const loadScatteredTransactionSnapshotsFromMeta = async (
+  spaceId: string,
+): Promise<IndexTransaction[]> => loadScatteredCachedTransactions(spaceId);
+
+/** Load every cached transaction row for a space (meta snapshots + Dexie index). */
+export const loadAllCachedTransactionsForInsights = async (
+  spaceId: string,
+): Promise<IndexTransaction[]> => {
+  if (!spaceId) {
+    return [];
+  }
+
+  // Only migrate/rewrite when the index is empty. Re-merging meta into Dexie on
+  // every insights open was loading + writing the full history and froze the UI.
+  const existingCount = await countSpaceTransactions(spaceId);
+  if (existingCount === 0) {
+    await mergeMetaTransactionSnapshotsIntoIndex(spaceId);
+  }
+
+  const byId = new Map<string, IndexTransaction>();
+
+  const mergeRows = (rows: IndexTransaction[]): void => {
+    for (const row of rows) {
+      if (!row?.id) {
+        continue;
+      }
+
+      const existing = byId.get(row.id);
+      byId.set(
+        row.id,
+        existing
+          ? (mergeIndexTransactionMetadata(
+              existing as IndexTransactionWithMetadata,
+              row as IndexTransactionWithMetadata,
+            ) as IndexTransaction)
+          : row,
+      );
+    }
+  };
+
+  // Meta first (bootstrap often has full tags), then Dexie — merge metadata
+  // instead of blind overwrite so list rows without tags cannot wipe them.
+  mergeRows(await loadScatteredCachedTransactions(spaceId));
+  mergeRows(await loadAllTransactionsFromLocalIndex(spaceId));
+
+  if (byId.size > 0) {
+    return Array.from(byId.values());
+  }
+
+  return await listSpaceTransactions(spaceId);
+};
+
+const legacyMigrationPromises = new Map<string, Promise<void>>();
+
 /**
  * One-time import from legacy response snapshots into the normalized
  * `transactions` IndexedDB table (schema v2).
@@ -434,23 +617,42 @@ export const migrateLegacyTransactionSnapshotsIfNeeded = async (
     return;
   }
 
-  const existingCount = await countSpaceTransactions(spaceId);
-  if (existingCount > 0) {
+  const inFlight = legacyMigrationPromises.get(spaceId);
+  if (inFlight) {
+    await inFlight;
     return;
   }
 
-  const byId = new Map<string, IndexTransaction>();
-  mergeTransactionRowsIntoMap(
-    byId,
-    await loadLegacyTransactionSnapshotsFromMeta(spaceId),
-  );
-  mergeTransactionRowsIntoMap(byId, await loadScatteredCachedTransactions(spaceId));
+  const migration = (async () => {
+    const existingCount = await countSpaceTransactions(spaceId);
+    if (existingCount > 0) {
+      return;
+    }
 
-  if (byId.size === 0) {
-    return;
+    const byId = new Map<string, IndexTransaction>();
+    mergeTransactionRowsIntoMap(
+      byId,
+      await loadLegacyTransactionSnapshotsFromMeta(spaceId),
+    );
+    mergeTransactionRowsIntoMap(
+      byId,
+      await loadScatteredCachedTransactions(spaceId),
+    );
+
+    if (byId.size === 0) {
+      return;
+    }
+
+    await putSpaceTransactions(spaceId, Array.from(byId.values()));
+  })();
+
+  legacyMigrationPromises.set(spaceId, migration);
+
+  try {
+    await migration;
+  } finally {
+    legacyMigrationPromises.delete(spaceId);
   }
-
-  await putSpaceTransactions(spaceId, Array.from(byId.values()));
 };
 
 const loadAllTimeTransactionsFlat = async (
@@ -470,6 +672,85 @@ const loadAllCachedTransactionsForSpace = async (
   spaceId: string,
 ): Promise<IndexTransaction[]> => loadAllTimeTransactionsFlat(spaceId);
 
+/** All transactions in the local Dexie index (after legacy migration). */
+export const loadAllTransactionsFromLocalIndex = async (
+  spaceId: string,
+): Promise<IndexTransaction[]> => loadAllCachedTransactionsForSpace(spaceId);
+
+/** Merge meta transaction snapshots into Dexie even when the index is partially populated. */
+export const mergeMetaTransactionSnapshotsIntoIndex = async (
+  spaceId: string,
+): Promise<void> => {
+  if (!spaceId) {
+    return;
+  }
+
+  try {
+    await migrateLegacyTransactionSnapshotsIfNeeded(spaceId);
+
+    const byId = new Map<string, IndexTransaction>();
+    mergeTransactionRowsIntoMap(
+      byId,
+      await listSpaceTransactions(spaceId),
+    );
+    mergeTransactionRowsIntoMap(
+      byId,
+      await loadScatteredCachedTransactions(spaceId),
+    );
+    mergeTransactionRowsIntoMap(
+      byId,
+      await loadLegacyTransactionSnapshotsFromMeta(spaceId),
+    );
+
+    if (byId.size === 0) {
+      return;
+    }
+
+    await putSpaceTransactions(spaceId, Array.from(byId.values()));
+  } catch (error) {
+    console.warn(
+      "[local-db] Failed to merge meta transaction snapshots into index",
+      spaceId,
+      error,
+    );
+  }
+};
+
+const loadFlatTransactionRowsForFilterKey = async (
+  spaceId: string,
+  filterKey: string,
+): Promise<IndexTransaction[]> => {
+  const filter = parseTransactionListFilterFromFilterKey(filterKey);
+  const { startDate, endDate } = filter;
+
+  if (startDate && endDate) {
+    const rows = await listSpaceTransactionsInDateRange(
+      spaceId,
+      startDate,
+      endDate,
+    );
+
+    if (rows.length > 0) {
+      return rows;
+    }
+
+    const allRows = await listSpaceTransactions(spaceId);
+    if (allRows.length > 0) {
+      const inRange = allRows.filter((transaction) =>
+        transactionInDateRange(transaction.date, startDate, endDate),
+      );
+
+      if (inRange.length > 0) {
+        return inRange;
+      }
+    }
+
+    return [];
+  }
+
+  return listSpaceTransactions(spaceId);
+};
+
 /**
  * All cached transactions in a date range (from the local transaction index).
  */
@@ -486,28 +767,47 @@ export const loadCachedTransactionsInRange = async (
 
   try {
     await migrateLegacyTransactionSnapshotsIfNeeded(spaceId);
-    const rows = await listSpaceTransactionsInDateRange(
+    const rows = await loadFlatTransactionRowsForFilterKey(
       spaceId,
-      startDate,
-      endDate,
+      rangeFilterKey,
     );
 
     if (rows.length > 0) {
-      return filterTransactionsForRange(
+      const filtered = filterTransactionsForRange(
         [{ transactions: rows }],
+        rangeFilterKey,
+      );
+
+      if (filtered.length > 0) {
+        return filtered.sort(compareTransactionsNewestFirst);
+      }
+    }
+
+    const resolved = await resolveSourcePagesForFilter(spaceId, rangeFilterKey);
+    if (resolved) {
+      const fromPages = filterTransactionsForRange(
+        resolved.sourcePages,
+        rangeFilterKey,
+      );
+
+      if (fromPages.length > 0) {
+        return fromPages.sort(compareTransactionsNewestFirst);
+      }
+    }
+
+    const allRows = await listSpaceTransactions(spaceId);
+    const inRange = allRows.filter((transaction) =>
+      transactionInDateRange(transaction.date, startDate, endDate),
+    );
+
+    if (inRange.length > 0) {
+      return filterTransactionsForRange(
+        [{ transactions: inRange }],
         rangeFilterKey,
       ).sort(compareTransactionsNewestFirst);
     }
 
-    const resolved = await resolveSourcePagesForFilter(spaceId, rangeFilterKey);
-    if (!resolved) {
-      return [];
-    }
-
-    return filterTransactionsForRange(
-      resolved.sourcePages,
-      rangeFilterKey,
-    ).sort(compareTransactionsNewestFirst);
+    return [];
   } catch (error) {
     console.warn("[local-db] Failed to load cached transactions in range", error);
     return [];
@@ -550,15 +850,7 @@ export const loadCachedTransactionsPageAt = async (
   try {
     await migrateLegacyTransactionSnapshotsIfNeeded(spaceId);
 
-    const filter = parseTransactionListFilterFromFilterKey(filterKey);
-    const flatRows =
-      filter.startDate && filter.endDate
-        ? await listSpaceTransactionsInDateRange(
-            spaceId,
-            filter.startDate,
-            filter.endDate,
-          )
-        : await listSpaceTransactions(spaceId);
+    const flatRows = await loadFlatTransactionRowsForFilterKey(spaceId, filterKey);
 
     if (flatRows.length > 0) {
       const transactions = filterTransactionsForRange(
@@ -823,7 +1115,8 @@ const resolveTransactionTagIds = (
 
 /**
  * Keep tag metadata when a server/realtime upsert omits tags (common on create sync).
- * Respect explicit clears (`tags: []` / `tagIds: []`).
+ * List rows often include `tags: []` for untagged expenses — that is not an explicit
+ * clear. Only `tagIds: []` on the payload means the user removed all tags.
  */
 export const mergeIndexTransactionTags = (
   existing: IndexTransactionWithTagIds | undefined,
@@ -831,13 +1124,26 @@ export const mergeIndexTransactionTags = (
 ): IndexTransactionWithTagIds => {
   const incomingTagIds = resolveTransactionTagIds(incoming);
   if (incomingTagIds.length > 0) {
-    return incoming;
+    // Keep existing row fields (amounts, etc.) and only refresh tag metadata.
+    return {
+      ...(existing ?? {}),
+      ...incoming,
+      tags: incoming.tags ?? existing?.tags,
+      tagIds: incomingTagIds,
+    };
   }
 
   const explicitlyCleared =
-    incoming.tags?.length === 0 || incoming.tagIds?.length === 0;
+    Object.prototype.hasOwnProperty.call(incoming, "tagIds")
+    && Array.isArray(incoming.tagIds)
+    && incoming.tagIds.length === 0;
   if (explicitlyCleared) {
-    return incoming;
+    return {
+      ...(existing ?? {}),
+      ...incoming,
+      tags: [],
+      tagIds: [],
+    };
   }
 
   const existingTagIds = resolveTransactionTagIds(existing ?? {});

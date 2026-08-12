@@ -220,9 +220,11 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
         it 'calls UpdateAccountBalanceForLoanPayment with correct parameters' do
           call_operation
           expect(update_account_balance_operation).to have_received(:call).with(
-            loan_payment: loan_payment,
-            loan: loan,
-            account: new_account
+            hash_including(
+              loan: loan,
+              account: new_account,
+              pending_conversion_data: hash_including(needs_conversion: false),
+            ),
           )
         end
       end
@@ -290,9 +292,11 @@ RSpec.describe Transactions::Operations::Loans::UpdateLoanPayment do
       it 'calls UpdateAccountBalanceForLoanPayment with correct parameters' do
         call_operation
         expect(update_account_balance_operation).to have_received(:call).with(
-          loan_payment: loan_payment,
-          loan: loan,
-          account: account
+          hash_including(
+            loan: loan,
+            account: account,
+            pending_conversion_data: hash_including(needs_conversion: false),
+          ),
         )
       end
 

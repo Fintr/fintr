@@ -1,6 +1,9 @@
 const CHUNK_RELOAD_STORAGE_KEY = "fintr_chunk_reload_at";
 const CHUNK_RELOAD_COOLDOWN_MS = 60_000;
 
+const readBrowserOnline = (): boolean =>
+  typeof navigator === "undefined" ? true : navigator.onLine !== false;
+
 const CHUNK_LOAD_MESSAGE_PATTERNS = [
   /loading chunk \d+ failed/i,
   /failed to fetch dynamically imported module/i,
@@ -53,6 +56,10 @@ export function isChunkLoadError(error: unknown): boolean {
  */
 export function reloadForStaleChunks(): boolean {
   if (typeof window === "undefined") {
+    return false;
+  }
+
+  if (!readBrowserOnline()) {
     return false;
   }
 

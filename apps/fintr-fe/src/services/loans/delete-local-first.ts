@@ -35,7 +35,7 @@ export const deleteLoanLocalFirst = async (
   const { queryClient, waitForSync = false } = options;
 
   if (queryClient) {
-    removeLoanFromQueryCaches(queryClient, loan.id);
+    removeLoanFromQueryCaches(queryClient, loan.id, spaceId);
   }
   void removeLoanFromCachedPages(spaceId, loan.id);
 

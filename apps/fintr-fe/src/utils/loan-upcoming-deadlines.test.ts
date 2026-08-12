@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { Loan } from "@/services/loans/queries";
 import {
+  compareActiveLoansByNextDueDate,
+  excludeLoansById,
   formatLoanDueLabel,
+  getFeaturedUpcomingLoanIds,
   getNextLoanPaymentDeadline,
   getUpcomingLoanDeadlines,
+  partitionAndSortLoans,
 } from "@/utils/loan-upcoming-deadlines";
 
 const toLocalDateString = (date: Date): string => {
@@ -77,6 +81,89 @@ describe("loan-upcoming-deadlines", () => {
     expect(deadline).not.toBeNull();
     expect(toLocalDateString(deadline!.dueDate)).toBe("2024-03-01");
     expect(deadline?.paymentAmount).toBe(1_060);
+  });
+
+  it("advances past overdue projected installments after a catch-up payment", () => {
+    const loan = createLoan({
+      entityName: "Jerry Oquendo",
+      amortizationSchedule: [
+        {
+          paymentDate: "2026-07-18",
+          beginningBalance: 151_744.07,
+          paymentAmount: 16_847.77,
+          principalPayment: 15_000,
+          interestPayment: 1_847.77,
+          endingBalance: 136_744.07,
+          isActual: false,
+        },
+        {
+          paymentDate: "2026-08-18",
+          beginningBalance: 136_744.07,
+          paymentAmount: 16_847.77,
+          principalPayment: 15_100,
+          interestPayment: 1_747.77,
+          endingBalance: 121_644.07,
+          isActual: false,
+        },
+      ],
+      loanPayments: [
+        {
+          id: "payment-1",
+          date: "2026-08-11",
+          principalPayment: 15_000,
+          interestPayment: 1_847.77,
+          totalPayment: 16_847.77,
+          currency: "PHP",
+        },
+      ],
+    });
+
+    const deadline = getNextLoanPaymentDeadline(loan);
+
+    expect(deadline).not.toBeNull();
+    expect(toLocalDateString(deadline!.dueDate)).toBe("2026-08-18");
+    expect(deadline?.paymentAmount).toBe(16_847.77);
+  });
+
+  it("keeps overdue installment visible when catch-up payment is partial", () => {
+    const loan = createLoan({
+      amortizationSchedule: [
+        {
+          paymentDate: "2026-07-18",
+          beginningBalance: 151_744.07,
+          paymentAmount: 16_847.77,
+          principalPayment: 15_000,
+          interestPayment: 1_847.77,
+          endingBalance: 136_744.07,
+          isActual: false,
+        },
+        {
+          paymentDate: "2026-08-18",
+          beginningBalance: 136_744.07,
+          paymentAmount: 16_847.77,
+          principalPayment: 15_100,
+          interestPayment: 1_747.77,
+          endingBalance: 121_644.07,
+          isActual: false,
+        },
+      ],
+      loanPayments: [
+        {
+          id: "payment-1",
+          date: "2026-08-11",
+          principalPayment: 1_000,
+          interestPayment: 200,
+          totalPayment: 1_200,
+          currency: "PHP",
+        },
+      ],
+    });
+
+    const deadline = getNextLoanPaymentDeadline(loan);
+
+    expect(deadline).not.toBeNull();
+    expect(toLocalDateString(deadline!.dueDate)).toBe("2026-07-18");
+    expect(deadline?.isOverdue).toBe(true);
   });
 
   it("ignores paid-off and zero-balance loans", () => {
@@ -181,5 +268,112 @@ describe("loan-upcoming-deadlines", () => {
     expect(
       formatLoanDueLabel(new Date("2024-02-28"), true, referenceDate),
     ).toBe("Overdue by 2 days");
+  });
+
+  it("sorts active loans with overdue deadlines first", () => {
+    const loans: Loan[] = [
+      createLoan({
+        id: "future-loan",
+        entityName: "Future lender",
+        amortizationSchedule: [
+          {
+            paymentDate: "2030-01-01",
+            beginningBalance: 10_000,
+            paymentAmount: 500,
+            principalPayment: 400,
+            interestPayment: 100,
+            endingBalance: 9_600,
+            isActual: false,
+          },
+        ],
+      }),
+      createLoan({
+        id: "overdue-loan",
+        entityName: "Overdue lender",
+        amortizationSchedule: [
+          {
+            paymentDate: "2024-01-01",
+            beginningBalance: 10_000,
+            paymentAmount: 500,
+            principalPayment: 400,
+            interestPayment: 100,
+            endingBalance: 9_600,
+            isActual: false,
+          },
+        ],
+      }),
+    ];
+
+    const sorted = [...loans].sort(compareActiveLoansByNextDueDate);
+
+    expect(sorted.map((loan) => loan.id)).toEqual([
+      "overdue-loan",
+      "future-loan",
+    ]);
+  });
+
+  it("partitions active and completed loans while sorting by next due date", () => {
+    const loans: Loan[] = [
+      createLoan({
+        id: "completed-loan",
+        status: "paid_off",
+        outstandingBalance: 0,
+      }),
+      createLoan({
+        id: "active-loan",
+        amortizationSchedule: [
+          {
+            paymentDate: "2026-01-01",
+            beginningBalance: 10_000,
+            paymentAmount: 500,
+            principalPayment: 400,
+            interestPayment: 100,
+            endingBalance: 9_600,
+            isActual: false,
+          },
+        ],
+      }),
+    ];
+
+    const { activeLoans, completedLoans } = partitionAndSortLoans(loans);
+
+    expect(activeLoans.map((loan) => loan.id)).toEqual(["active-loan"]);
+    expect(completedLoans.map((loan) => loan.id)).toEqual(["completed-loan"]);
+  });
+
+  it("collects loan ids shown in featured upcoming sections", () => {
+    const loans: Loan[] = [
+      createLoan({
+        id: "borrowed-upcoming",
+        loanType: "borrowed",
+        amortizationSchedule: [
+          {
+            paymentDate: "2024-01-01",
+            beginningBalance: 10_000,
+            paymentAmount: 500,
+            principalPayment: 400,
+            interestPayment: 100,
+            endingBalance: 9_600,
+            isActual: false,
+          },
+        ],
+      }),
+    ];
+
+    const featuredIds = getFeaturedUpcomingLoanIds(loans, { loanType: "borrowed" });
+
+    expect([...featuredIds]).toEqual(["borrowed-upcoming"]);
+  });
+
+  it("excludes featured upcoming loans from the all-loans list", () => {
+    const loans: Loan[] = [
+      createLoan({ id: "featured-loan" }),
+      createLoan({ id: "other-loan" }),
+    ];
+    const featuredIds = new Set(["featured-loan"]);
+
+    expect(excludeLoansById(loans, featuredIds).map((loan) => loan.id)).toEqual([
+      "other-loan",
+    ]);
   });
 });

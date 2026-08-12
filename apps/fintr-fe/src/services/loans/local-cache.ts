@@ -3,8 +3,16 @@ import {
   putLocalResponseSnapshot,
   deleteLocalResponseSnapshot,
 } from "@/lib/local-db/response-cache";
+import type { InfiniteData, QueryClient } from "@tanstack/react-query";
+
 import type { Loan, LoansPage } from "@/services/loans/queries";
 import type { LoanPayment } from "@/services/loans/payments";
+import {
+  upsertLoanInInfiniteData,
+  upsertLoanInQueryCaches,
+  type UpsertLoanListOptions,
+} from "@/services/loans/loans-list-cache";
+import { patchLoanFromPayments } from "@/utils/patch-loan-from-payments";
 
 const loansAllPagesKey = (spaceCode: string): string =>
   `loansAllPages:${spaceCode}`;
@@ -96,6 +104,58 @@ export const loadCachedLoanDetail = async (
   }
 };
 
+/**
+ * Loads a loan from IndexedDB — detail snapshot first, then the loans list pages.
+ */
+export const loadCachedLoanSnapshot = async (
+  spaceCode: string,
+  loanId: string,
+): Promise<Loan | undefined> => {
+  const detail = await loadCachedLoanDetail(spaceCode, loanId);
+  if (detail) {
+    return detail;
+  }
+
+  const listData = await loadCachedLoansInfiniteData(spaceCode);
+
+  return listData?.pages
+    .flatMap((page) => page.loans ?? [])
+    .find((loan) => loan.id === loanId);
+};
+
+/**
+ * Recomputes loan balance + embedded payments in IndexedDB after payments change.
+ * React Query mirrors are updated only after the IDB write succeeds.
+ */
+export const refreshLoanSnapshotInIndexedDb = async (params: {
+  spaceCode: string;
+  loanId: string;
+  payments: LoanPayment[];
+  queryClient?: QueryClient;
+}): Promise<void> => {
+  const { spaceCode, loanId, payments, queryClient } = params;
+
+  if (!spaceCode || !loanId) {
+    return;
+  }
+
+  const loan = await loadCachedLoanSnapshot(spaceCode, loanId);
+  if (!loan) {
+    return;
+  }
+
+  const patchedLoan = patchLoanFromPayments(loan, payments);
+
+  await upsertLoanInCachedPages(spaceCode, patchedLoan, { queryClient });
+
+  if (queryClient) {
+    upsertLoanInQueryCaches(queryClient, {
+      spaceCode,
+      loan: patchedLoan,
+    });
+  }
+};
+
 export const removeCachedLoanDetail = async (
   spaceCode: string,
   loanId: string,
@@ -110,49 +170,47 @@ export const removeCachedLoanDetail = async (
 export const upsertLoanInCachedPages = async (
   spaceCode: string,
   loan: Loan,
+  options: UpsertLoanListOptions & { queryClient?: QueryClient } = {},
 ): Promise<void> => {
   if (!spaceCode || !loan.id) {
     return;
   }
 
+  const { queryClient, seedListWhenEmpty = false, fallback } = options;
+
   try {
     const cached = await loadCachedLoansInfiniteData(spaceCode);
-    const pages = cached?.pages?.length
-      ? cached.pages.map((page) => {
-          const existingIndex = page.loans.findIndex(
-            (existing) => existing.id === loan.id,
-          );
+    const queryFallback =
+      fallback ??
+      (queryClient
+        ? queryClient.getQueryData<InfiniteData<LoansPage>>([
+            "loans",
+            "local",
+            spaceCode,
+          ]) ??
+          queryClient.getQueryData<InfiniteData<LoansPage>>(["loans"])
+        : undefined);
 
-          if (existingIndex >= 0) {
-            const loans = [...page.loans];
-            loans[existingIndex] = loan;
-            return { ...page, loans };
-          }
-
-          return page;
-        })
-      : [
-          {
-            loans: [loan],
-            nextPage: null,
-            totalPages: 1,
-            totalCount: 1,
-          },
-        ];
-
-    let found = pages.some((page) =>
-      page.loans.some((existing) => existing.id === loan.id),
+    const merged = upsertLoanInInfiniteData(
+      cached ?? undefined,
+      loan,
+      {
+        seedListWhenEmpty,
+        fallback: queryFallback,
+      },
     );
 
-    if (!found && pages.length > 0) {
-      pages[0] = {
-        ...pages[0],
-        loans: [loan, ...pages[0].loans],
-      };
+    if (!merged?.pages?.length) {
+      await cacheLoanDetail(spaceCode, loan.id, loan);
+      return;
     }
 
-    await cacheLoansAllPages(spaceCode, pages);
+    await cacheLoansAllPages(spaceCode, merged.pages);
     await cacheLoanDetail(spaceCode, loan.id, loan);
+
+    if (queryClient) {
+      queryClient.setQueryData(["loans", "local", spaceCode], merged);
+    }
   } catch (error) {
     console.warn("[local-db] Failed to upsert loan in cached pages", error);
   }

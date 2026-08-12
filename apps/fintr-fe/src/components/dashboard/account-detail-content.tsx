@@ -470,6 +470,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
 
   const mainQuery = useAccountDetailActivities({
     accountId: account?.id ?? "",
+    accountName,
     startDate: appliedFilters.queryStartDate,
     endDate: appliedFilters.queryEndDate,
     categoryFilters: appliedFilters.appliedCategories,

@@ -39,6 +39,11 @@ export function invalidateLocalInsightsQueries(
     refetchType: "active",
     exact: false,
   });
+  void queryClient.invalidateQueries({
+    queryKey: ["transactions", "insights-count"],
+    refetchType: "active",
+    exact: false,
+  });
 }
 
 export async function invalidateSpaceSwitchQueries(

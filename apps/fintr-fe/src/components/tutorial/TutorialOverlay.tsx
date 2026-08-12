@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import Joyride, { CallBackProps, STATUS, Step, TooltipRenderProps } from 'react-joyride';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { useAtomValue, useSetAtom } from 'jotai';
@@ -9,6 +9,10 @@ import { onboardingStepAtom } from '@/atoms/onboardingAtoms';
 import { dashboardShellReadyAtom } from '@/atoms/dashboardAtoms';
 import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
+import {
+  hasNestedOverlayContent,
+  isVisibleModalContentOpen,
+} from '@/lib/nested-overlay-portal';
 
 const TUTORIAL_Z_INDEX = 10050;
 
@@ -126,6 +130,7 @@ const TutorialOverlay: React.FC = () => {
   const [run, setRun] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
   const [stepIndex, setStepIndex] = useState(0);
+  const [allowModalInteraction, setAllowModalInteraction] = useState(false);
   const isHandlingClickRef = React.useRef(false);
   const stepIndexRef = React.useRef(0);
   
@@ -340,34 +345,28 @@ const TutorialOverlay: React.FC = () => {
     trackTimeout,
   ]);
 
-  // Ensure popover content and modal have appropriate z-index
-  useEffect(() => {
-    // Don't run tutorial on onboarding pages
-    if (isOnOnboardingPage || !isActive) return;
+  // Let users interact with modals and nested pickers (category, calculator, etc.)
+  // while the tour tooltip remains visible.
+  useLayoutEffect(() => {
+    if (!isActive || !run) {
+      setAllowModalInteraction(false);
+      return;
+    }
 
-    const ensureElementsAccessible = () => {
-      // Ensure popover content has high z-index
-      const popoverContent = document.querySelector('[data-radix-portal]');
-      if (popoverContent) {
-        (popoverContent as HTMLElement).style.zIndex = '10010';
-      }
-      
-      // Ensure modal content is below tutorial but still accessible
-      const modalContent = document.querySelector('[data-modal-content]');
-      if (modalContent) {
-        (modalContent as HTMLElement).style.zIndex = '10040';
-      }
-      
-      // Ensure modal overlay is below tutorial
-      const modalOverlay = document.querySelector('[data-modal-content]')?.parentElement?.previousElementSibling as HTMLElement;
-      if (modalOverlay) {
-        modalOverlay.style.zIndex = '10039';
-      }
+    const syncModalInteraction = () => {
+      setAllowModalInteraction(
+        isVisibleModalContentOpen() || hasNestedOverlayContent(),
+      );
     };
 
-    const interval = setInterval(ensureElementsAccessible, 100);
-    return () => clearInterval(interval);
-  }, [isActive, isOnOnboardingPage]);
+    syncModalInteraction();
+    const interval = setInterval(syncModalInteraction, 100);
+
+    return () => {
+      clearInterval(interval);
+      setAllowModalInteraction(false);
+    };
+  }, [isActive, run]);
 
   // Watch for popover menu opening after clicking "+" button
   useEffect(() => {
@@ -892,11 +891,12 @@ const TutorialOverlay: React.FC = () => {
       continuous={true}
       showProgress={false}
       showSkipButton={false}
+      disableOverlay={allowModalInteraction}
       disableOverlayClose={false}
       disableScrolling={true}
       scrollOffset={20}
       scrollToFirstStep={true}
-      spotlightClicks={false}
+      spotlightClicks={allowModalInteraction}
       debug={process.env.NODE_ENV === 'development'}
       callback={handleJoyrideCallback}
       tooltipComponent={(props) => (

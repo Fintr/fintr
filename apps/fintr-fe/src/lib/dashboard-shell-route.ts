@@ -17,3 +17,15 @@ export function hasEmbeddedHeroHeader(pathname: string): boolean {
     pathname.startsWith("/dashboard/insights")
   );
 }
+
+/**
+ * Settings routes do not need the dashboard financial summary shell.
+ * Blocking the whole layout on summary fetch causes a full-screen splash offline.
+ */
+export function isDashboardSettingsRoute(pathname: string): boolean {
+  return (
+    pathname.startsWith("/dashboard/space_settings") ||
+    pathname.startsWith("/dashboard/app_settings") ||
+    pathname.startsWith("/dashboard/settings")
+  );
+}

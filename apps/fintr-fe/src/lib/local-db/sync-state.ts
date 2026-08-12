@@ -2,8 +2,9 @@ import {
   getLocalResponseSnapshot,
   putLocalResponseSnapshot,
 } from "./response-cache";
+import { isSpaceTransactionIndexComplete } from "./transactions";
 
-export const OFFLINE_SYNC_VERSION = 6;
+export const OFFLINE_SYNC_VERSION = 9;
 
 const OFFLINE_SYNC_META_KEY = "offlineSyncMeta";
 const OFFLINE_SYNC_READY_HINT_KEY = "fintr:offlineSyncReadyVersion";
@@ -91,12 +92,39 @@ export const backfillOfflineSyncReadyHint = async (): Promise<void> => {
   }
 };
 
+export const isOfflineSpaceCacheComplete = async (
+  spaceCode: string,
+): Promise<boolean> => {
+  if (!spaceCode) {
+    return false;
+  }
+
+  const summaries = await getLocalResponseSnapshot<unknown[]>(
+    `monthlyFinancialSummaries:${spaceCode}`,
+  );
+  if (summaries === undefined) {
+    return false;
+  }
+
+  if (!(await isSpaceTransactionIndexComplete(spaceCode))) {
+    return false;
+  }
+
+  return true;
+};
+
 export const shouldRunFullOfflineSync = async (): Promise<boolean> => {
   const meta = await getOfflineSyncMeta();
 
-  if (!meta) {
+  if (!meta || meta.version !== OFFLINE_SYNC_VERSION) {
     return true;
   }
 
-  return meta.version !== OFFLINE_SYNC_VERSION;
+  for (const spaceCode of meta.spaceCodes) {
+    if (!(await isOfflineSpaceCacheComplete(spaceCode))) {
+      return true;
+    }
+  }
+
+  return false;
 };

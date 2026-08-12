@@ -23,7 +23,7 @@ const LoanDetailInner = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 pt-4 pb-24 md:pb-4">
+    <div className="min-h-screen bg-background px-3 pt-3 pb-24 md:px-4 md:pt-4 md:pb-4">
       <LoanDetailContent loanId={loanId} />
     </div>
   );

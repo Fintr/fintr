@@ -61,6 +61,53 @@ const subtractFromTotals = (
   };
 };
 
+const removeFromDashboardTransactionCaches = (
+  queryClient: QueryClient,
+  params: {
+    spaceId: string;
+    removedIds: string[];
+  },
+): void => {
+  const { spaceId, removedIds } = params;
+  if (!spaceId || removedIds.length === 0) {
+    return;
+  }
+
+  const idSet = new Set(removedIds);
+  const entries = queryClient.getQueriesData<{
+    transactions?: IndexTransaction[];
+    rateLookup?: unknown;
+  }>({
+    predicate: (query) => {
+      const key = query.queryKey;
+      return (
+        Array.isArray(key)
+        && key[0] === "dashboard"
+        && key[1] === "transactions"
+        && key[2] === spaceId
+      );
+    },
+  });
+
+  for (const [queryKey, old] of entries) {
+    if (!old?.transactions?.length) {
+      continue;
+    }
+
+    const nextTransactions = old.transactions.filter(
+      (row) => !idSet.has(row.id),
+    );
+    if (nextTransactions.length === old.transactions.length) {
+      continue;
+    }
+
+    queryClient.setQueryData(queryKey, {
+      ...old,
+      transactions: nextTransactions,
+    });
+  }
+};
+
 const removeFromTransactionsPages = (
   pages: TransactionsPage[],
   matchingRemoved: IndexTransaction[],
@@ -231,4 +278,9 @@ export const removeIndexTransactionsFromQueryCaches = (
       };
     },
   );
+
+  removeFromDashboardTransactionCaches(queryClient, {
+    spaceId,
+    removedIds: Array.from(idSet),
+  });
 };

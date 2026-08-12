@@ -123,8 +123,11 @@ export type SyncBootstrapResponse = {
   generatedAt: string;
   totals: SyncBootstrapTotals;
   space: Record<string, unknown>;
+  dashboardShell?: Record<string, unknown>;
   accounts: unknown;
   categories: unknown;
+  tags: unknown[];
+  entities: unknown[];
   transactions: SyncIndexTransaction[];
   monthlyFinancialSummaries: unknown[];
   loans: unknown[];

@@ -25,6 +25,42 @@ const recentRatesKey = (
 ): string =>
   `exchangeRate:recent:${spaceId}:${normalizeCurrency(fromCurrency)}:${normalizeCurrency(toCurrency)}`;
 
+const exchangeRatesRefreshKey = (spaceId: string): string =>
+  `exchangeRates:lastRefreshDate:${spaceId}`;
+
+export const getExchangeRatesLastRefreshDate = async (
+  spaceId: string,
+): Promise<string | undefined> => {
+  if (!spaceId) {
+    return undefined;
+  }
+
+  try {
+    const value = await getLocalResponseSnapshot<string>(
+      exchangeRatesRefreshKey(spaceId),
+    );
+    return typeof value === "string" ? value : undefined;
+  } catch (error) {
+    console.warn("[local-db] Failed to read exchange rate refresh date", error);
+    return undefined;
+  }
+};
+
+export const markExchangeRatesRefreshed = async (
+  spaceId: string,
+  date: string,
+): Promise<void> => {
+  if (!spaceId || !date) {
+    return;
+  }
+
+  try {
+    await putLocalResponseSnapshot(exchangeRatesRefreshKey(spaceId), date);
+  } catch (error) {
+    console.warn("[local-db] Failed to mark exchange rates refreshed", error);
+  }
+};
+
 export const cacheCurrentExchangeRate = async (params: {
   fromCurrency: string;
   toCurrency: string;

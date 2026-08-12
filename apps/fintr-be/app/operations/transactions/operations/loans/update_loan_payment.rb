@@ -18,6 +18,9 @@ module Transactions
             optional(:principal_payment).value(:decimal, gteq?: 0)
             optional(:adjusts_account_balance).maybe(:bool)
             optional(:notes).value(:string)
+            optional(:original_currency).value(:string)
+            optional(:exchange_rate).value(:decimal)
+            optional(:exchange_rate_source).value(:string)
           end
         end
 
@@ -48,8 +51,22 @@ module Transactions
               calculated_interest:,
               loan_payment:
             )
+            conversion_data     = step prepare_payment_conversion(
+              params:,
+              account:,
+              loan_payment:,
+            )
             loan_payment        = step assign_loan_payment_attributes(loan_payment:, params: update_params)
-            _                   = step update_account_balance(loan_payment:, loan:, account:)
+            _                   = step update_account_balance(
+              loan_payment:,
+              loan:,
+              account:,
+              pending_conversion_data: conversion_data,
+            )
+            _                   = step persist_payment_conversion(
+              loan_payment:,
+              conversion_data:,
+            )
             loan_payment        = step save_loan_payment(loan_payment:)
             _                   = step process_loan_payment(loan_payment:)
             _                   = step update_loan(loan:)
@@ -67,8 +84,8 @@ module Transactions
             transaction: loan_payment,
             actor:,
           )
-          Loans::Broadcasts::LoanChange.loan_payment_updated(loan_payment:, actor:)
-          Loans::Broadcasts::LoanChange.loan_updated(loan: loan_payment.loan.reload, actor:)
+          ::Loans::Broadcasts::LoanChange.loan_payment_updated(loan_payment:, actor:)
+          ::Loans::Broadcasts::LoanChange.loan_updated(loan: loan_payment.loan.reload, actor:)
           Success(loan_payment)
         end
 
@@ -139,6 +156,29 @@ module Transactions
           Success(update_params)
         end
 
+        def prepare_payment_conversion(params:, account:, loan_payment:)
+          payment_amount = params[:total_payment] || loan_payment.total_payment.amount
+
+          ::Transactions::Operations::PrepareCurrencyConversion.new.call(
+            params: {
+              space_id: params[:space_id],
+              date: params[:date] || loan_payment.date,
+              amount: payment_amount,
+              original_currency: params[:original_currency],
+              exchange_rate: params[:exchange_rate],
+              exchange_rate_source: params[:exchange_rate_source],
+            },
+            account:,
+          )
+        end
+
+        def persist_payment_conversion(loan_payment:, conversion_data:)
+          PersistLoanPaymentCurrencyConversion.new.call(
+            loan_payment:,
+            conversion_data:,
+          )
+        end
+
         def assign_loan_payment_attributes(loan_payment:, params:)
           loan_payment.assign_attributes(params)
           Success(loan_payment)
@@ -162,11 +202,12 @@ module Transactions
           Failure(error: e)
         end
 
-        def update_account_balance(loan_payment:, loan:, account:)
+        def update_account_balance(loan_payment:, loan:, account:, pending_conversion_data: nil)
           operation = UpdateAccountBalanceForLoanPayment.new.call(
             loan_payment:,
             loan:,
-            account:
+            account:,
+            pending_conversion_data:,
           )
           return operation unless operation.success?
 

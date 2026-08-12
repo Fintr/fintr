@@ -59,7 +59,10 @@ module Api
             :total_payment,
             :principal_payment,
             :adjusts_account_balance,
-            :notes
+            :notes,
+            :original_currency,
+            :exchange_rate,
+            :exchange_rate_source
           )
         end
 
@@ -70,7 +73,10 @@ module Api
             :total_payment,
             :principal_payment,
             :adjusts_account_balance,
-            :notes
+            :notes,
+            :original_currency,
+            :exchange_rate,
+            :exchange_rate_source
           )
         end
       end

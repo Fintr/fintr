@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import { getNestedOverlayPortalRoot } from "@/lib/nested-overlay-portal";
 
 const GRID_PICKER_MODAL_HISTORY_KEY = "__fintrGridPickerModal";
 
@@ -92,7 +93,7 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
           key="grid-picker-backdrop"
           data-grid-picker-modal=""
           className={cn(
-            "pointer-events-auto fixed inset-0 z-[110] flex items-end justify-center overflow-hidden bg-black/50",
+            "pointer-events-auto fixed inset-0 z-[125] flex items-end justify-center overflow-hidden bg-black/50",
           )}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -103,7 +104,7 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
         >
           <motion.div
             className={cn(
-              "relative z-[2] mx-auto flex w-full max-w-md flex-col overflow-hidden rounded-t-2xl shadow-lg",
+              "relative z-[130] mx-auto flex w-full max-w-md flex-col overflow-hidden rounded-t-2xl shadow-lg",
               panelHeightClassName ?? "max-h-[85vh]",
               isAndroidNative ? "bg-background" : "bg-white dark:bg-card",
               !isAndroidNative && "pb-safe-bottom",
@@ -133,5 +134,7 @@ export const GridPickerModalShell: React.FC<GridPickerModalShellProps> = ({
     return null;
   }
 
-  return createPortal(modalContent, document.body);
+  const portalRoot = getNestedOverlayPortalRoot() ?? document.body;
+
+  return createPortal(modalContent, portalRoot);
 };

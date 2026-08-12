@@ -51,6 +51,7 @@ const InsightNarrativeCard = ({ insight }: { insight: InsightCard }) => {
             src={imageSrc}
             alt=""
             fill
+            priority
             className="object-cover"
             sizes="(max-width: 640px) 100vw, 320px"
           />

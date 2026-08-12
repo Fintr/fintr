@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { currentSpaceAtom } from "@/atoms/spaceAtoms";
 import {
   fetchLoanPayments,
-  updateLoanPayment,
   CreateLoanPaymentType,
   LoanPayment,
 } from "@/services/loans/payments";
 import { createLoanPaymentLocalFirst } from "@/services/loans/payments/create-local-first";
+import { updateLoanPaymentLocalFirst } from "@/services/loans/payments/update-local-first";
 import { LOAN_DETAIL_KEY } from "@/hooks/async/useLoan";
 import { ACCOUNT_DETAIL_ACTIVITIES_KEY } from "@/hooks/async/useAccountDetailActivities";
 import { ACCOUNT_DETAIL_TRANSACTIONS_KEY } from "@/hooks/async/useAccountDetailTransactions";
@@ -23,7 +25,6 @@ import { loadCachedLoanPayments } from "@/services/loans/local-cache";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import type { Loan } from "@/services/loans/queries";
 import {
-  normalizeLoanPayment,
   normalizeLoanPayments,
 } from "@/utils/loan-payment-amounts";
 
@@ -49,6 +50,8 @@ export const useLoanPayments = (loanId: string) => {
   });
   const queryClient = useQueryClient();
   const [spaceCode] = useLocalStorage("spaceCode", "");
+  const currentSpace = useAtomValue(currentSpaceAtom);
+  const spaceCurrency = currentSpace?.currency ?? "PHP";
 
   const invalidateLoanPaymentQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ["loanPayments", loanId] });
@@ -134,6 +137,7 @@ export const useLoanPayments = (loanId: string) => {
           queryClient,
           waitForSync: false,
           currency: loanCurrency,
+          spaceCurrency,
         },
       );
 
@@ -151,55 +155,6 @@ export const useLoanPayments = (loanId: string) => {
   });
 
   const updateMutation = useMutation({
-    onMutate: async ({
-      paymentId,
-      paymentData,
-    }: {
-      paymentId: string;
-      paymentData: Partial<Omit<CreateLoanPaymentType, "loanId">>;
-    }) => {
-      await queryClient.cancelQueries({ queryKey: ["loanPayments", loanId] });
-
-      const previousPayments =
-        queryClient.getQueryData<LoanPayment[]>(["loanPayments", loanId]) ??
-        payments;
-
-      const nextPayments = previousPayments.map((payment) => {
-        if (payment.id !== paymentId) {
-          return payment;
-        }
-
-        return {
-          ...payment,
-          ...(paymentData.accountName
-            ? { accountName: paymentData.accountName }
-            : {}),
-          ...(paymentData.date ? { date: paymentData.date } : {}),
-          ...(paymentData.totalPayment !== undefined
-            ? {
-                totalPayment: paymentData.totalPayment,
-                principalPayment:
-                  paymentData.principalPayment ?? paymentData.totalPayment,
-              }
-            : {}),
-          ...(paymentData.notes !== undefined
-            ? { notes: paymentData.notes }
-            : {}),
-          ...(paymentData.adjustsAccountBalance !== undefined
-            ? { adjustsAccountBalance: paymentData.adjustsAccountBalance }
-            : {}),
-        };
-      });
-
-      await syncLoanPaymentsToLocalStores({
-        spaceCode,
-        loanId,
-        payments: nextPayments,
-        queryClient,
-      });
-
-      return { previousPayments };
-    },
     mutationFn: async ({
       paymentId,
       paymentData,
@@ -207,43 +162,38 @@ export const useLoanPayments = (loanId: string) => {
       paymentId: string;
       paymentData: Partial<Omit<CreateLoanPaymentType, "loanId">>;
     }) => {
-      const result = await updateLoanPayment(
+      const previous =
+        queryClient.getQueryData<LoanPayment[]>(["loanPayments", loanId])?.find(
+          (row) => row.id === paymentId,
+        )
+        ?? payments.find((row) => row.id === paymentId);
+
+      const result = await updateLoanPaymentLocalFirst(
         api,
-        loanId,
-        paymentId,
-        paymentData,
-      );
-      const updated = normalizeLoanPayment(
-        (result as { data?: unknown })?.data ?? result,
-      );
-
-      if (updated) {
-        const current =
-          queryClient.getQueryData<LoanPayment[]>(["loanPayments", loanId]) ??
-          [];
-        const nextPayments = current.map((payment) =>
-          payment.id === paymentId ? updated : payment,
-        );
-        await syncLoanPaymentsToLocalStores({
-          spaceCode,
+        {
+          spaceId: spaceCode,
           loanId,
-          payments: nextPayments,
+          paymentId,
+          data: paymentData,
+          previous,
+        },
+        {
           queryClient,
-        });
-      }
+          waitForSync: false,
+          spaceCurrency,
+        },
+      );
 
-      void invalidateLoanPaymentQueries();
+      void Promise.resolve(result.syncPromise)
+        .then(async (synced) => {
+          if (synced.pendingSync) {
+            return;
+          }
+          await invalidateLoanPaymentQueries();
+        })
+        .catch(() => undefined);
+
       return result;
-    },
-    onError: (_error, _variables, context) => {
-      if (context?.previousPayments) {
-        void syncLoanPaymentsToLocalStores({
-          spaceCode,
-          loanId,
-          payments: context.previousPayments,
-          queryClient,
-        });
-      }
     },
   });
 
@@ -273,7 +223,7 @@ export const useLoanPayments = (loanId: string) => {
         payments.find((row) => row.id === paymentId);
 
       const listRow = payment
-        ? loanPaymentToIndexRow(payment, loanId)
+        ? loanPaymentToIndexRow(payment, loanId, { spaceCurrency })
         : {
             id: paymentId,
             date: "",

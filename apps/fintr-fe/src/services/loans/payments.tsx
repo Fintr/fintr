@@ -14,6 +14,14 @@ export interface LoanPayment {
   currency: string;
   notes?: string;
   adjustsAccountBalance?: boolean;
+  currencyConversion?: {
+    originalAmount?: number;
+    originalCurrency?: string;
+    convertedAmount?: number;
+    convertedCurrency?: string;
+    exchangeRate?: number;
+    source?: "auto" | "manual" | "recent";
+  };
 }
 
 export interface CreateLoanPaymentType {
@@ -24,6 +32,9 @@ export interface CreateLoanPaymentType {
   principalPayment?: number;
   notes?: string;
   adjustsAccountBalance?: boolean;
+  originalCurrency?: string;
+  exchangeRate?: number;
+  exchangeRateSource?: "auto" | "manual" | "recent";
 }
 
 /**
@@ -72,7 +83,16 @@ export const createLoanPayment = async (
       ...(paymentData.adjustsAccountBalance !== undefined && {
         adjusts_account_balance: paymentData.adjustsAccountBalance,
       }),
-      ...(paymentData.notes && { notes: paymentData.notes })
+      ...(paymentData.notes && { notes: paymentData.notes }),
+      ...(paymentData.originalCurrency && {
+        original_currency: paymentData.originalCurrency,
+      }),
+      ...(paymentData.exchangeRate !== undefined && {
+        exchange_rate: paymentData.exchangeRate,
+      }),
+      ...(paymentData.exchangeRateSource && {
+        exchange_rate_source: paymentData.exchangeRateSource,
+      }),
     };
 
     const response = await api.post(`/transactions/loans/${loanId}/loan_payments`, backendData);
@@ -114,6 +134,15 @@ export const updateLoanPayment = async (
       backendData.adjusts_account_balance = paymentData.adjustsAccountBalance;
     }
     if (paymentData.notes !== undefined) backendData.notes = paymentData.notes;
+    if (paymentData.originalCurrency) {
+      backendData.original_currency = paymentData.originalCurrency;
+    }
+    if (paymentData.exchangeRate !== undefined) {
+      backendData.exchange_rate = paymentData.exchangeRate;
+    }
+    if (paymentData.exchangeRateSource) {
+      backendData.exchange_rate_source = paymentData.exchangeRateSource;
+    }
 
     const response = await api.put(`/transactions/loans/${loanId}/loan_payments/${paymentId}`, backendData);
     return response.data;

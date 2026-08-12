@@ -223,6 +223,8 @@ const applyUpsertsToCachedValue = (
 /**
  * Upsert created/updated index rows into matching React Query transaction lists
  * (filter match + date-desc order). Idempotent by id.
+ * Also patches dashboard period transaction caches so Income/Savings cards
+ * (hybrid summary) update immediately after local-first edits.
  */
 export const upsertIndexTransactionsIntoQueryCaches = (
   queryClient: QueryClient,
@@ -270,6 +272,87 @@ export const upsertIndexTransactionsIntoQueryCaches = (
       queryKey,
       applyUpsertsToCachedValue(seeded, matching),
     );
+  }
+
+  patchDashboardTransactionCaches(queryClient, {
+    spaceId,
+    transactions,
+  });
+};
+
+const patchDashboardTransactionCaches = (
+  queryClient: QueryClient,
+  params: {
+    spaceId: string;
+    transactions: IndexTransactionWithCategoryIds[];
+  },
+): void => {
+  const { spaceId, transactions } = params;
+  const byId = new Map(transactions.map((row) => [row.id, row]));
+
+  const entries = queryClient.getQueriesData<{
+    transactions?: IndexTransaction[];
+    rateLookup?: unknown;
+  }>({
+    predicate: (query) => {
+      const key = query.queryKey;
+      return (
+        Array.isArray(key)
+        && key[0] === "dashboard"
+        && key[1] === "transactions"
+        && key[2] === spaceId
+      );
+    },
+  });
+
+  for (const [queryKey, old] of entries) {
+    if (!old?.transactions?.length) {
+      continue;
+    }
+
+    let changed = false;
+    const nextTransactions = old.transactions.map((row) => {
+      const patch = byId.get(row.id);
+      if (!patch) {
+        return row;
+      }
+
+      changed = true;
+      return {
+        ...row,
+        ...patch,
+      };
+    });
+
+    // Include rows that belong in this period cache but were missing.
+    for (const row of transactions) {
+      if (nextTransactions.some((existing) => existing.id === row.id)) {
+        continue;
+      }
+
+      const startDate = typeof queryKey[3] === "string" ? queryKey[3] : "";
+      const endDate = typeof queryKey[4] === "string" ? queryKey[4] : "";
+      const day = row.date.slice(0, 10);
+      if (
+        startDate
+        && endDate
+        && (day < startDate || day > endDate)
+      ) {
+        continue;
+      }
+
+      nextTransactions.push(row);
+      changed = true;
+    }
+
+    if (!changed) {
+      continue;
+    }
+
+    queryClient.setQueryData(queryKey, {
+      ...old,
+      transactions: nextTransactions,
+    });
   }
 };
 

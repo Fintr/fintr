@@ -6,16 +6,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { SquarePen, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loan } from "@/services/loans/queries";
-import { updateLoan } from "@/services/loans/mutation";
+import { updateLoanLocalFirst } from "@/services/loans/update-local-first";
 import { ComboBox } from "@/components/ui/combobox";
-import { fetchEntities, createEntity } from "@/services/entities/mutation";
+import { createEntity } from "@/services/entities/mutation";
+import { fetchEntitiesLocalFirst } from "@/services/entities/queries";
 import EntityCreationForm from "./EntityCreationForm";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import { handleMultilineNotesKeyDown } from "@/lib/multiline-notes-keydown";
-import { LOAN_DETAIL_KEY } from "@/hooks/async/useLoan";
 import { StickyFormActions, pinnedFormScrollAreaClassName } from "./StickyFormActions";
 
 interface EditLoanModalProps {
@@ -30,6 +31,7 @@ const EditLoanModal: React.FC<EditLoanModalProps> = ({
   triggerVariant = "inline",
 }) => {
   const { api } = useAuthApi();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [entityName, setEntityName] = useState(loan.entityName);
@@ -55,12 +57,12 @@ const EditLoanModal: React.FC<EditLoanModalProps> = ({
   const fetchEntityOptions = useCallback(
     async (query: string): Promise<Array<{ label: string; value: string }>> => {
       try {
-        const response = await fetchEntities(api, {
+        const entities = await fetchEntitiesLocalFirst(api, spaceCode, {
           entityType: "loan",
           search: query,
         });
-        const entities = response?.data || [];
-        return entities.map((entity: { id: string; fullName: string }) => ({
+
+        return entities.map((entity) => ({
           label: entity.fullName || "",
           value: entity.fullName || "",
         }));
@@ -68,7 +70,7 @@ const EditLoanModal: React.FC<EditLoanModalProps> = ({
         return [];
       }
     },
-    [api]
+    [api, spaceCode],
   );
 
   const handleEntityCreated = (fullName: string) => {
@@ -143,15 +145,31 @@ const EditLoanModal: React.FC<EditLoanModalProps> = ({
     setValidationErrors({});
 
     try {
-      await updateLoan(api, {
-        id: loan.id,
-        entityName: entityChanged ? trimmedEntity : undefined,
-        description: descriptionChanged ? trimmedDescription : undefined,
-      });
+      const result = await updateLoanLocalFirst(
+        api,
+        {
+          spaceId: spaceCode,
+          previous: loan,
+          data: {
+            id: loan.id,
+            entityName: entityChanged ? trimmedEntity : undefined,
+            description: descriptionChanged ? trimmedDescription : undefined,
+          },
+        },
+        {
+          queryClient,
+          waitForSync: false,
+        },
+      );
 
       toast.success("Loan updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, loan.id] });
+      void result.syncPromise.then((synced) => {
+        if (synced.pendingSync) {
+          toast.message("Update saved on this device. Will sync when online.");
+        }
+      }).catch(() => {
+        toast.error("Failed to sync loan update.");
+      });
       onUpdated?.();
       setIsOpen(false);
     } catch (error: unknown) {

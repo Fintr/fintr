@@ -174,11 +174,42 @@ export const applyLoanCreated = async (
 
   const spaceCode = params.targetSpace ?? params.spaceId;
 
-  upsertLoanInQueryCaches(params.queryClient, { spaceCode, loan });
-  await upsertLoanInCachedPages(spaceCode, loan);
+  upsertLoanInQueryCaches(params.queryClient, {
+    spaceCode,
+    loan,
+    seedListWhenEmpty: true,
+  });
+  await upsertLoanInCachedPages(spaceCode, loan, {
+    queryClient: params.queryClient,
+    seedListWhenEmpty: true,
+  });
 };
 
-export const applyLoanUpdated = applyLoanCreated;
+export const applyLoanUpdated = async (
+  params: ApplyLoanChangeParams,
+): Promise<void> => {
+  const payload = params.change.payload as LoanChangePayload;
+  if (!("loan" in payload) || !payload.loan) {
+    return;
+  }
+
+  const loan = normalizeLoan(payload.loan);
+  if (!loan) {
+    return;
+  }
+
+  const spaceCode = params.targetSpace ?? params.spaceId;
+
+  upsertLoanInQueryCaches(params.queryClient, {
+    spaceCode,
+    loan,
+    seedListWhenEmpty: false,
+  });
+  await upsertLoanInCachedPages(spaceCode, loan, {
+    queryClient: params.queryClient,
+    seedListWhenEmpty: false,
+  });
+};
 
 export const applyLoanDeleted = async (
   params: ApplyLoanChangeParams,
@@ -198,7 +229,7 @@ export const applyLoanDeleted = async (
 
   const spaceCode = params.targetSpace ?? params.spaceId;
 
-  removeLoanFromQueryCaches(params.queryClient, loanId);
+  removeLoanFromQueryCaches(params.queryClient, loanId, spaceCode);
   await removeLoanFromCachedPages(spaceCode, loanId);
 };
 

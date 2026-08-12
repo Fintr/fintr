@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ActivitiesPage,
@@ -23,7 +23,7 @@ import {
   TRANSACTION_DAY_DATA_ATTR,
   useAnchorTransactionsListToToday,
 } from "@/hooks/useAnchorTransactionsListToToday";
-import { resolveTransactionDetail } from "@/services/transactions/detail-local";
+import { resolveAttachmentsForTransaction } from "@/services/attachments/resolve";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import { toast } from "sonner";
@@ -143,6 +143,7 @@ export function ListView({
     resetKey: anchorResetKey,
   });
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const lightboxRevokeRef = useRef<(() => void) | null>(null);
   const [hoveredCalculatedId, setHoveredCalculatedId] = useState<string | null>(null);
   const { api } = useAuthApi();
   const [spaceCode] = useLocalStorage("spaceCode", "");
@@ -153,6 +154,12 @@ export function ListView({
   const spaceCurrency = currentSpace?.currency ?? "PHP";
   const hasLoadedPages = Boolean(data?.pages?.length);
 
+  const handleCloseLightbox = () => {
+    lightboxRevokeRef.current?.();
+    lightboxRevokeRef.current = null;
+    setLightboxOpen(false);
+  };
+
   const handleImageClick = async (row: IndexTransaction | IndexActivity) => {
     if (!preferLocal && !api) return;
 
@@ -162,7 +169,10 @@ export function ListView({
           ? (row.activitableId ?? row.id)
           : row.id;
 
-      const transactionData = await resolveTransactionDetail({
+      lightboxRevokeRef.current?.();
+      lightboxRevokeRef.current = null;
+
+      const result = await resolveAttachmentsForTransaction({
         api,
         spaceId: spaceCode,
         transactionId: recordId,
@@ -171,25 +181,19 @@ export function ListView({
         preferLocal,
       });
 
-      const files = (transactionData as { files?: unknown }).files;
-      if (Array.isArray(files) && files.length > 0) {
-        const images = files.map((file: any) => ({
-          url: file.url,
-          filename: file.filename,
-          contentType: file.contentType,
-          byteSize: file.byteSize,
-        }));
-        
-        setLightboxImages(images);
+      if (result.images.length > 0) {
+        lightboxRevokeRef.current = result.revoke;
+        setLightboxImages(result.images);
         setLightboxIndex(0);
         setLightboxOpen(true);
-      } else {
-        toast.error(
-          preferLocal
-            ? "Image not available offline."
-            : "No image found for this transaction.",
-        );
+        return;
       }
+
+      toast.error(
+        preferLocal
+          ? "Image not available offline."
+          : "No image found for this transaction.",
+      );
     } catch (error) {
       console.error("Error fetching transaction image:", error);
       toast.error("Failed to load transaction image.");
@@ -513,7 +517,7 @@ export function ListView({
         images={lightboxImages}
         isOpen={lightboxOpen}
         initialIndex={lightboxIndex}
-        onClose={() => setLightboxOpen(false)}
+        onClose={handleCloseLightbox}
       />
     </div>
   );

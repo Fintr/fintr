@@ -36,14 +36,37 @@ export async function setAuthStorageForE2e(
         scope: "openid profile email",
       }
       const expiresAt = Date.now() + 3_600_000
+      const issuedAt = Date.now()
+      const domainSuffixes = Array.from(
+        new Set([domain, "default"].filter(Boolean)),
+      )
 
-      localStorage.setItem(`@@auth0@@.access_token.${domain}`, mockTokens.access_token)
-      localStorage.setItem(`@@auth0@@.id_token.${domain}`, mockTokens.id_token)
-      localStorage.setItem(`@@auth0@@.refresh_token.${domain}`, mockTokens.refresh_token)
-      localStorage.setItem(`@@auth0@@.expires_at.${domain}`, expiresAt.toString())
-      localStorage.setItem(`@@auth0@@.user.${domain}`, JSON.stringify(mockUser))
-      localStorage.setItem(`@@auth0@@.scope.${domain}`, mockTokens.scope)
-      localStorage.setItem(`@@auth0@@.issued_at.${domain}`, Date.now().toString())
+      for (const suffix of domainSuffixes) {
+        localStorage.setItem(
+          `@@auth0@@.access_token.${suffix}`,
+          mockTokens.access_token,
+        )
+        localStorage.setItem(`@@auth0@@.id_token.${suffix}`, mockTokens.id_token)
+        localStorage.setItem(
+          `@@auth0@@.refresh_token.${suffix}`,
+          mockTokens.refresh_token,
+        )
+        localStorage.setItem(
+          `@@auth0@@.expires_at.${suffix}`,
+          expiresAt.toString(),
+        )
+        localStorage.setItem(
+          `@@auth0@@.user.${suffix}`,
+          JSON.stringify(mockUser),
+        )
+        localStorage.setItem(`@@auth0@@.scope.${suffix}`, mockTokens.scope)
+        localStorage.setItem(
+          `@@auth0@@.issued_at.${suffix}`,
+          issuedAt.toString(),
+        )
+      }
+
+      localStorage.setItem("auth_tokens", JSON.stringify(mockTokens))
       localStorage.setItem(
         "fintr_auth_data",
         JSON.stringify({ tokens: mockTokens, user: mockUser }),

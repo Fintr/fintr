@@ -24,14 +24,8 @@ import { putLocalResponseSnapshot } from "@/lib/local-db/response-cache";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import {
   cacheAccountsResponse,
-  extractAccountsFromResponse,
   loadCachedAccountsResponse,
 } from "@/services/transactions/accounts/local-cache";
-import {
-  getCurrentRate,
-  getRecentRates,
-} from "@/services/exchangeRates/queries";
-import { buildCurrencyPairs } from "@/services/exchangeRates/local-db";
 import {
   cacheDashboardResponse,
   loadCachedDashboardResponse,
@@ -50,6 +44,20 @@ import {
   cacheTransactionCategoriesResponse,
   loadCachedTransactionCategoriesResponse,
 } from "@/services/transactions/categories/local-cache";
+import {
+  cacheEntitiesResponse,
+  loadCachedEntitiesResponse,
+} from "@/services/entities/local-cache";
+import {
+  cacheTransactionTagsResponse,
+  loadCachedTransactionTagsResponse,
+} from "@/services/transactions/tags/local-cache";
+import { fetchTransactionTags } from "@/services/transactions/tags/mutation";
+import { fetchEntities } from "@/services/entities/mutation";
+import {
+  refreshSpaceExchangeRates,
+  refreshSpaceExchangeRatesFromCache,
+} from "@/services/exchangeRates/prefetch-space-rates";
 import { fetchLoansPage, fetchLoanById } from "@/services/loans/queries";
 import { fetchLoanPayments } from "@/services/loans/payments";
 import {
@@ -205,6 +213,12 @@ export const refreshOnlineLocalCaches = async (
   if (!spaceCode) return;
 
   await drainAllOutboxes({ api, spaceIds: [spaceCode] });
+
+  void refreshSpaceExchangeRatesFromCache(api, spaceCode, { force: false }).catch(
+    (error) => {
+      console.warn("[exchange-rates] Online refresh failed", spaceCode, error);
+    },
+  );
 
   if (isSpaceSyncPullEnabled()) {
     return;
@@ -532,6 +546,25 @@ export const seedReactQueryFromLocalCache = async (
     queryClient.setQueryData(
       ["transactionCategories", spaceCode],
       cachedCategories,
+    );
+    seededAny = true;
+  }
+
+  const cachedTags = await loadCachedTransactionTagsResponse(spaceCode);
+  if (cachedTags) {
+    queryClient.setQueryData(
+      ["transactionTags", "local", spaceCode],
+      cachedTags,
+    );
+    queryClient.setQueryData(["transactionTags", spaceCode], cachedTags);
+    seededAny = true;
+  }
+
+  const cachedEntities = await loadCachedEntitiesResponse(spaceCode);
+  if (cachedEntities) {
+    queryClient.setQueryData(
+      ["entities", "local", spaceCode],
+      cachedEntities,
     );
     seededAny = true;
   }
@@ -966,6 +999,38 @@ const syncLocalDataFromBackendV1 = async (
     );
   }
 
+  try {
+    const tags = await fetchTransactionTags(api);
+    await cacheTransactionTagsResponse(spaceCode, tags);
+    queryClient.setQueryData(["transactionTags", "local", spaceCode], tags);
+    queryClient.setQueryData(["transactionTags", spaceCode], tags);
+  } catch (error) {
+    result.errors.push("tags");
+    console.warn(
+      "[local-sync] Tags bootstrap fetch failed",
+      spaceCode,
+      error,
+    );
+  }
+
+  try {
+    const merchantsResponse = await fetchEntities(api, { entityType: "transaction" });
+    const loanContactsResponse = await fetchEntities(api, { entityType: "loan" });
+    const allEntities = [
+      ...(merchantsResponse?.data ?? []),
+      ...(loanContactsResponse?.data ?? []),
+    ];
+    await cacheEntitiesResponse(spaceCode, allEntities);
+    queryClient.setQueryData(["entities", "local", spaceCode], allEntities);
+  } catch (error) {
+    result.errors.push("entities");
+    console.warn(
+      "[local-sync] Entities bootstrap fetch failed",
+      spaceCode,
+      error,
+    );
+  }
+
   options?.onStep?.("transfers");
   try {
     const transferIds = collectTransferIds(result.transactionPages);
@@ -1001,54 +1066,14 @@ const syncLocalDataFromBackendV1 = async (
 
   options?.onStep?.("exchange-rates");
   try {
-    const spaceContext = await loadCachedSpaceContext(spaceCode);
-    const spaceCurrency = spaceContext?.currency ?? "PHP";
-    const accountCurrencies = extractAccountsFromResponse(result.accounts).map(
-      (account) => account.balanceCurrency,
-    );
-    const transactionCurrencies = result.transactionPages.flatMap((page) =>
-      page.transactions.flatMap((transaction) => [
-        transaction.amountCurrency,
-        transaction.bookedAmountCurrency,
-      ]),
-    );
-    const pairs = buildCurrencyPairs([
-      spaceCurrency,
-      ...accountCurrencies,
-      ...transactionCurrencies.filter(
-        (code): code is string => typeof code === "string" && code.length > 0,
-      ),
-    ]);
-    const rateDate = new Date().toISOString().slice(0, 10);
-    const requestConfig = spaceRequestConfig(spaceCode);
-
-    for (const pair of pairs) {
-      try {
-        await getCurrentRate(
-          api,
-          pair.fromCurrency,
-          pair.toCurrency,
-          rateDate,
-          requestConfig,
-        );
-        await getRecentRates(
-          api,
-          pair.fromCurrency,
-          pair.toCurrency,
-          {
-            spaceId: spaceCode,
-            requestConfig,
-          },
-        );
-      } catch (rateError) {
-        console.warn(
-          "[local-sync] Exchange rate bootstrap fetch failed",
-          spaceCode,
-          pair,
-          rateError,
-        );
-      }
-    }
+    await refreshSpaceExchangeRates({
+      api,
+      spaceCode,
+      accounts: result.accounts ?? { accounts: [] },
+      transactionPages: result.transactionPages,
+      requestConfig: spaceRequestConfig(spaceCode),
+      force: true,
+    });
   } catch (error) {
     result.errors.push("exchange-rates");
     console.warn(
@@ -1216,9 +1241,11 @@ export const syncAllWorkspacesLocalData = async (
         { onStep: stepProgress, onTierReady },
       );
 
-      const coreFailures = ["dashboard", "accounts", "transactions"].every((step) =>
-        outcome.errors.includes(step),
-      );
+      const coreFailures = isSpaceSyncPullEnabled()
+        ? outcome.errors.includes("tier-0")
+        : ["dashboard", "accounts", "transactions"].every((step) =>
+            outcome.errors.includes(step),
+          );
 
       if (coreFailures) {
         failedSpaceCodes.push(space.code);

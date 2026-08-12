@@ -1,5 +1,7 @@
 import Dexie, { type EntityTable } from "dexie";
 
+import type { LocalAttachmentRecord } from "@/services/attachments/types";
+
 import type {
   LocalAccountRecord,
   LocalMetaRecord,
@@ -7,7 +9,7 @@ import type {
   LocalTransactionRecord,
 } from "./types";
 
-export const LOCAL_DB_SCHEMA_VERSION = 2;
+export const LOCAL_DB_SCHEMA_VERSION = 3;
 
 /**
  * Client-side IndexedDB (Dexie) for offline-first reads.
@@ -16,6 +18,7 @@ export const LOCAL_DB_SCHEMA_VERSION = 2;
  */
 export class FintrLocalDatabase extends Dexie {
   accounts!: EntityTable<LocalAccountRecord, "key">;
+  attachments!: EntityTable<LocalAttachmentRecord, "key">;
   outbox!: EntityTable<LocalOutboxRecord, "id">;
   meta!: EntityTable<LocalMetaRecord, "key">;
   transactions!: EntityTable<LocalTransactionRecord, "key">;
@@ -29,8 +32,17 @@ export class FintrLocalDatabase extends Dexie {
       meta: "key",
     });
 
+    this.version(2).stores({
+      accounts: "key, spaceId, id, cachedAt",
+      outbox: "id, spaceId, status, createdAt, clientMutationId",
+      meta: "key",
+      transactions: "key, spaceId, id, date, type, [spaceId+date]",
+    });
+
     this.version(LOCAL_DB_SCHEMA_VERSION).stores({
       accounts: "key, spaceId, id, cachedAt",
+      attachments:
+        "key, spaceId, ownerType, ownerId, lastAccessedAt, [spaceId+ownerType+ownerId]",
       outbox: "id, spaceId, status, createdAt, clientMutationId",
       meta: "key",
       transactions: "key, spaceId, id, date, type, [spaceId+date]",

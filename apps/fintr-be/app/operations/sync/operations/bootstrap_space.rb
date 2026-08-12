@@ -21,11 +21,14 @@ module Sync
 
         accounts = step load_accounts(space:)
         categories = step load_categories(space:)
+        tags = step load_tags(space:)
+        entities = step load_entities(space:)
         transactions = step load_transactions(space:)
         summaries = step load_monthly_summaries(space:)
         loans = step load_loans(space:)
         budgets_by_month = step load_budgets_by_month(space:, transactions:)
         space_payload = step serialize_space(space:, current_user:)
+        dashboard_shell = step load_dashboard_shell(space:)
 
         _ = step verify_latest_seq_unchanged(space:, expected_seq: latest_seq)
 
@@ -41,8 +44,11 @@ module Sync
             truncated: false,
           },
           space: space_payload,
+          dashboard_shell:,
           accounts:,
           categories:,
+          tags:,
+          entities:,
           transactions:,
           monthly_financial_summaries: summaries,
           loans:,
@@ -100,6 +106,27 @@ module Sync
         return result if result.failure?
 
         Success(result.value!)
+      end
+
+      def load_tags(space:)
+        result = Transactions::Operations::Tags::ShowAllTags.new.call(
+          space_id: space.id.to_s,
+        )
+        return result if result.failure?
+
+        Success(
+          Transactions::Serializers::TagSerializer.render_as_hash(result.value!),
+        )
+      end
+
+      def load_entities(space:)
+        records = Entities::Entity
+          .for_space(space.id)
+          .order(:full_name)
+
+        Success(
+          Entities::Serializers::EntitySerializer.render_as_hash(records),
+        )
       end
 
       def load_transactions(space:)
@@ -168,6 +195,19 @@ module Sync
           Spaces::Serializers::SpaceSerializer.render_as_hash(
             space,
             current_user:,
+          ),
+        )
+      end
+
+      def load_dashboard_shell(space:)
+        dashboard_data = Spaces::Queries::DashboardData.call(
+          params: { space_code: space.code },
+        )
+        return dashboard_data if dashboard_data.failure?
+
+        Success(
+          Spaces::Serializers::DashboardSerializer.render_as_hash(
+            dashboard_data.value!,
           ),
         )
       end

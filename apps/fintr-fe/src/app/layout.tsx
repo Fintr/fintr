@@ -7,6 +7,7 @@ import {
   miniProfilerInlineBootstrapScript,
   shouldEnableRackMiniProfiler,
 } from "@/lib/rack-mini-profiler-inline-bootstrap";
+import { buildServiceWorkerBootstrapScript } from "@/lib/service-worker-bootstrap-script";
 
 const leagueSpartan = League_Spartan({
   variable: "--font-league-spartan",
@@ -50,8 +51,14 @@ const EarlyErrorDetection = () => {
               return;
             }
             
-            // Stale chunk after deploy: reload once so the user gets the new build
+            // Stale chunk after deploy: reload once so the user gets the new build.
+            // Never auto-reload while offline — chunks cannot be fetched and reload loops.
             if (e.target && e.target.tagName === 'SCRIPT' && e.target.src && e.target.src.includes('_next/static/chunks')) {
+              if (navigator.onLine === false) {
+                console.warn('[EarlyError] Chunk script failed while offline — skipping auto-reload');
+                return;
+              }
+
               try {
                 var key = 'fintr_chunk_reload_at';
                 var last = sessionStorage.getItem(key);
@@ -61,7 +68,9 @@ const EarlyErrorDetection = () => {
                   window.location.reload();
                 }
               } catch (err) {
-                window.location.reload();
+                if (navigator.onLine !== false) {
+                  window.location.reload();
+                }
               }
               return;
             }
@@ -114,6 +123,7 @@ export default function RootLayout({
 }>) {
   const serviceWorkerUrl =
     process.env.NODE_ENV === "development" ? "/sw-dev.js" : "/sw.js";
+  const serviceWorkerBootstrap = buildServiceWorkerBootstrapScript(serviceWorkerUrl);
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -121,11 +131,7 @@ export default function RootLayout({
         <EarlyErrorDetection />
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              if ("serviceWorker" in navigator) {
-                navigator.serviceWorker.register("${serviceWorkerUrl}", { scope: "/" });
-              }
-            `,
+            __html: serviceWorkerBootstrap,
           }}
         />
         <script

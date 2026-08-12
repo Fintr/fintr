@@ -13,6 +13,11 @@ import {
   loadCachedMonthlyFinancialSummaries,
   type DashboardShell,
 } from "@/services/monthly-financial-summaries/local-cache";
+import {
+  hydrateMonthlyFinancialSummariesFromLocalTransactions,
+  mergeSummariesPreferNonEmpty,
+  summariesNeedLocalHydration,
+} from "@/services/monthly-financial-summaries/hydrate-from-local-transactions";
 import type { MonthlyFinancialSummary } from "@/services/monthly-financial-summaries/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import useAuthApi from "../useAuthApi";
@@ -25,10 +30,15 @@ import {
   categoryOptionsAtom,
 } from "@/atoms/dashboardAtoms";
 import { useCallback, useEffect, useMemo } from "react";
+import { useAtomValue } from "jotai";
+import { currentSpaceAtom } from "@/atoms/spaceAtoms";
 import { mapApiCategoryTree } from "@/utils/categoryTreeOptions";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import type { DashboardData } from "@/types/spaceTypes";
+import { filterInsightsTransactions } from "@/services/insights/filter-insights-transactions";
+import { buildTransactionTotalsContext } from "@/services/insights/transaction-space-totals";
+import { loadTransactionsForInsightsRange } from "@/services/insights/load-local-sources";
 
 export const useDashboardData = (startDate?: string, endDate?: string) => {
   const { api, isAuthenticated } = useAuthApi({
@@ -36,7 +46,16 @@ export const useDashboardData = (startDate?: string, endDate?: string) => {
   });
   const queryClient = useQueryClient();
 
-  const [spaceCode] = useLocalStorage("spaceCode", "");
+  const [storedSpaceCode] = useLocalStorage("spaceCode", "");
+  const currentSpace = useAtomValue(currentSpaceAtom);
+  const spaceCode =
+    storedSpaceCode
+    || (typeof window !== "undefined"
+      ? window.localStorage.getItem("spaceCode")?.trim() ?? ""
+      : "")
+    || currentSpace?.code?.trim()
+    || "";
+  const spaceCurrency = currentSpace?.currency ?? "PHP";
 
   const setAccountOptions = useSetAtom(accountOptionsAtom);
   const setExpenseCategoryOptions = useSetAtom(expenseCategoryOptionsAtom);
@@ -71,13 +90,49 @@ export const useDashboardData = (startDate?: string, endDate?: string) => {
     staleTime: Infinity,
   });
 
+  const localTransactionsQuery = useQuery({
+    queryKey: ["dashboard", "transactions", spaceCode, rangeStart, rangeEnd],
+    queryFn: async () => {
+      const transactions = filterInsightsTransactions(
+        await loadTransactionsForInsightsRange(
+          spaceCode,
+          rangeStart,
+          rangeEnd,
+        ),
+      );
+      const totalsContext = await buildTransactionTotalsContext({
+        spaceCode,
+        spaceCurrency,
+        transactions,
+      });
+
+      return {
+        transactions,
+        rateLookup: totalsContext.rateLookup,
+      };
+    },
+    enabled: Boolean(spaceCode && rangeStart && rangeEnd),
+    staleTime: Infinity,
+  });
+
   const skipSummariesNetwork = useSkipCachedNetworkFetch(localSummariesQuery);
   const skipShellNetwork = useSkipCachedNetworkFetch(localShellQuery);
 
   const summariesQuery = useQuery({
     queryKey: ["monthlyFinancialSummaries", spaceCode],
     queryFn: async () => {
-      const summaries = await fetchMonthlyFinancialSummaries(api);
+      const fetched = await fetchMonthlyFinancialSummaries(api);
+      const cached = (await loadCachedMonthlyFinancialSummaries(spaceCode)) ?? [];
+      const merged = mergeSummariesPreferNonEmpty(fetched, cached);
+      let summaries = merged;
+
+      if (await summariesNeedLocalHydration(spaceCode, merged)) {
+        summaries = await hydrateMonthlyFinancialSummariesFromLocalTransactions(
+          spaceCode,
+          { existingSummaries: merged, currency: spaceCurrency },
+        );
+      }
+
       await cacheMonthlyFinancialSummaries(spaceCode, summaries);
       queryClient.setQueryData(
         ["monthlyFinancialSummaries", "local", spaceCode],
@@ -110,59 +165,83 @@ export const useDashboardData = (startDate?: string, endDate?: string) => {
     refetchOnMount: !skipShellNetwork,
   });
 
-  const summaries: MonthlyFinancialSummary[] | undefined =
-    summariesQuery.data ?? localSummariesQuery.data ?? undefined;
+  const summariesLoaded =
+    localSummariesQuery.isSuccess || summariesQuery.isSuccess;
+  const summaries: MonthlyFinancialSummary[] =
+    summariesQuery.data ?? localSummariesQuery.data ?? [];
   const shell: DashboardShell | undefined =
     shellQuery.data ?? localShellQuery.data ?? undefined;
 
-  const data = useMemo((): DashboardData | undefined => {
-    if (shell && summaries && rangeStart && rangeEnd) {
-      return buildDashboardDataFromBuckets(
-        shell,
-        summaries,
-        rangeStart,
-        rangeEnd,
-      );
-    }
-
-    return localCacheQuery.data ?? undefined;
-  }, [shell, summaries, rangeStart, rangeEnd, localCacheQuery.data]);
-
   useEffect(() => {
-    if (!data || !spaceCode || !rangeStart || !rangeEnd || !shell || !summaries) {
+    if (!shell) {
       return;
     }
 
-    // Persist composed dashboard for offline reads; do not write back into a
-    // query that feeds `data` or we can create a render loop.
-    void cacheDashboardResponse(spaceCode, data, rangeStart, rangeEnd);
-  }, [data, spaceCode, rangeStart, rangeEnd, shell, summaries]);
-
-  useEffect(() => {
-    if (data) {
-      setAccountOptions(data.accountOptions || []);
-      setExpenseCategoryOptions(
-        mapApiCategoryTree(
-          data.expenseCategoryOptions as Array<Record<string, unknown>>,
-        ),
-      );
-      setIncomeCategoryOptions(
-        mapApiCategoryTree(
-          data.incomeCategoryOptions as Array<Record<string, unknown>>,
-        ),
-      );
-      setCategoryOptions(data.categoryOptions || []);
-    }
+    setAccountOptions(shell.accountOptions || []);
+    setExpenseCategoryOptions(
+      mapApiCategoryTree(
+        shell.expenseCategoryOptions as Array<Record<string, unknown>>,
+      ),
+    );
+    setIncomeCategoryOptions(
+      mapApiCategoryTree(
+        shell.incomeCategoryOptions as Array<Record<string, unknown>>,
+      ),
+    );
+    setCategoryOptions(shell.categoryOptions || []);
   }, [
-    data,
+    shell,
     setAccountOptions,
     setExpenseCategoryOptions,
     setIncomeCategoryOptions,
     setCategoryOptions,
   ]);
 
+  const data = useMemo((): DashboardData | undefined => {
+    if (shell && summariesLoaded && rangeStart && rangeEnd) {
+      const transactionBundle = localTransactionsQuery.data;
+      const transactions = transactionBundle?.transactions ?? [];
+      return buildDashboardDataFromBuckets(
+        shell,
+        summaries,
+        rangeStart,
+        rangeEnd,
+        {
+          transactions,
+          spaceCurrency,
+          rateLookup: transactionBundle?.rateLookup,
+        },
+      );
+    }
+
+    return localCacheQuery.data ?? undefined;
+  }, [
+    shell,
+    summaries,
+    summariesLoaded,
+    rangeStart,
+    rangeEnd,
+    localCacheQuery.data,
+    localTransactionsQuery.data,
+    spaceCurrency,
+  ]);
+
+  useEffect(() => {
+    if (!data || !spaceCode || !rangeStart || !rangeEnd || !shell || !summariesLoaded) {
+      return;
+    }
+
+    // Persist composed dashboard for offline reads; do not write back into a
+    // query that feeds `data` or we can create a render loop.
+    void cacheDashboardResponse(spaceCode, data, rangeStart, rangeEnd);
+  }, [data, spaceCode, rangeStart, rangeEnd, shell, summariesLoaded]);
+
   const isLoading =
-    (summariesQuery.isLoading || shellQuery.isLoading) && !data;
+    (
+      (localSummariesQuery.isPending && !summariesLoaded)
+      || (localShellQuery.isPending && !shell)
+      || ((summariesQuery.isLoading || shellQuery.isLoading) && !data)
+    );
   const isError = (summariesQuery.isError || shellQuery.isError) && !data;
 
   const refetch = useCallback(async () => {
@@ -171,6 +250,8 @@ export const useDashboardData = (startDate?: string, endDate?: string) => {
 
   return {
     data,
+    summaries,
+    periodTransactions: localTransactionsQuery.data?.transactions ?? [],
     error: summariesQuery.error ?? shellQuery.error,
     isLoading: isLoading && !localCacheQuery.data,
     isShowingLocalCache:

@@ -17,6 +17,18 @@ import {
   CalendarIcon,
 } from "lucide-react";
 import { useInsightsQueries } from "@/hooks/async/useInsightsQueries";
+import { useDashboardData } from "@/hooks/async/useDashboardData";
+import {
+  healthScoresFromLocalData,
+  periodDaysBetween,
+  expenseBreakdownFromTransactions,
+  weeklySpendingFromTransactions,
+} from "@/services/insights/offline-calculations";
+import {
+  financialTrendsDateRange,
+  monthlySpendingFromBuckets,
+} from "@/services/insights/from-monthly-buckets";
+import type { InsightsSummary } from "@/services/insights/types";
 import { InsightNarrativeCards } from "@/components/dashboard/insights/insight-narrative-cards";
 import { InsightMetricCards } from "@/components/dashboard/insights/insight-metric-cards";
 import { DashboardSummarySection } from "@/components/dashboard/insights/dashboard-summary-section";
@@ -39,6 +51,7 @@ import { formatCurrency, getColor, getColorByIndex, shouldShowV2Features } from 
 import { useMemo, useEffect, useState } from "react";
 import {
   buildTransactionCategoryFields,
+  isCategoryPickerId,
   parseCategoryPickerValue,
 } from "@/types/categoryTreeTypes";
 import { useAtom, useAtomValue } from "jotai";
@@ -228,6 +241,14 @@ const InsightsTab = () => {
             expenseCategoryOptions,
             incomeCategoryOptions,
           );
+    const categoryDisplayName =
+      selectedCategory === "all"
+        ? ""
+        : getCategoryFilterDisplayLabel(
+            selectedCategory,
+            expenseCategoryOptions,
+            incomeCategoryOptions,
+          );
 
     return {
       filterType: filterType === "single" ? "single" : "range",
@@ -242,7 +263,20 @@ const InsightsTab = () => {
       selectedCategory: selectedCategory === "all" ? "all" : selectedCategory,
       selectedCategoryId: categoryFields?.categoryId ?? null,
       selectedSubcategoryId: categoryFields?.subcategoryId ?? null,
-      selectedCategoryName: categoryFields?.categoryName || undefined,
+      selectedCategoryName:
+        (
+          categoryFields?.categoryName
+          && categoryFields.categoryName.trim().length > 0
+            ? categoryFields.categoryName
+            : undefined
+        )
+        || (
+          categoryDisplayName
+          && categoryDisplayName.trim().length > 0
+          && !isCategoryPickerId(categoryDisplayName)
+            ? categoryDisplayName
+            : undefined
+        ),
       selectedTagIds: normalizeFilterValues(selectedTagIds),
     };
   }, [
@@ -260,6 +294,8 @@ const InsightsTab = () => {
     summary,
     narratives,
     healthScores: healthScoresData,
+    totalBudget: insightsTotalBudget,
+    monthlyDebt: insightsMonthlyDebt,
     expenseBreakdown,
     merchantBreakdown,
     subcategoryBreakdown,
@@ -273,16 +309,122 @@ const InsightsTab = () => {
     refetch,
   } = useInsightsQueries(getInsightsParams);
 
+  const filterStartDate = useAtomValue(dateFilterStartDateAtom);
+  const filterEndDate = useAtomValue(dateFilterEndDateAtom);
+
+  const { data: dashboardData, summaries: dashboardSummaries, periodTransactions: dashboardPeriodTransactions, isLoading: isDashboardLoading } =
+    useDashboardData(filterStartDate, filterEndDate);
+
+  const isUnfilteredView =
+    selectedCategory === "all" && !hasAppliedTagFilters(selectedTagIds);
+
+  const dashboardSummary = useMemo((): InsightsSummary | undefined => {
+    const financialSummary = dashboardData?.financialSummary;
+    if (!financialSummary) {
+      return undefined;
+    }
+
+    return {
+      totalIncome: Number.parseFloat(financialSummary.totalIncome) || 0,
+      totalExpenses: Number.parseFloat(financialSummary.totalExpenses) || 0,
+      netSavings: Number.parseFloat(financialSummary.netSavings) || 0,
+    };
+  }, [dashboardData?.financialSummary]);
+
+  const displaySummary = isUnfilteredView
+    ? dashboardSummary ?? summary
+    : summary;
+
+  const displayHealthScores = useMemo(() => {
+    if (!displaySummary) {
+      return healthScoresData;
+    }
+
+    // Always derive health from the same totals shown in Net Income so the
+    // gauge cannot stay at 0 / "Good" defaults while chips show real money.
+    return healthScoresFromLocalData({
+      summary: displaySummary,
+      periodDays: periodDaysBetween(startDate, endDate),
+      totalBudget: insightsTotalBudget,
+      monthlyDebt: insightsMonthlyDebt,
+    });
+  }, [
+    displaySummary,
+    healthScoresData,
+    insightsTotalBudget,
+    insightsMonthlyDebt,
+    startDate,
+    endDate,
+  ]);
+
+  const displayLoading = isUnfilteredView
+    ? (!displaySummary && (isLoading || isDashboardLoading))
+    : (!displaySummary && isLoading);
+
+  const dashboardExpenseBreakdown = useMemo(() => {
+    if (!isUnfilteredView || dashboardPeriodTransactions.length === 0) {
+      return [];
+    }
+
+    return expenseBreakdownFromTransactions(dashboardPeriodTransactions);
+  }, [isUnfilteredView, dashboardPeriodTransactions]);
+
+  const dashboardMonthlySpending = useMemo(() => {
+    if (!isUnfilteredView || !dashboardSummaries?.length) {
+      return [];
+    }
+
+    const trendsRange = financialTrendsDateRange(endDate);
+    return monthlySpendingFromBuckets(
+      dashboardSummaries,
+      trendsRange.startDate,
+      trendsRange.endDate,
+    ).map((row) => ({
+      ...row,
+      expenses: -Math.abs(row.expenses),
+    }));
+  }, [isUnfilteredView, dashboardSummaries, endDate]);
+
+  const dashboardWeeklySpending = useMemo(() => {
+    if (!isUnfilteredView) {
+      return [];
+    }
+
+    return weeklySpendingFromTransactions(
+      dashboardPeriodTransactions,
+      new Date(),
+    );
+  }, [isUnfilteredView, dashboardPeriodTransactions]);
+
+  const chartHasSignal = (
+    rows: Array<{ income?: number; expenses?: number; savings?: number; amount?: number; value?: number }>,
+  ) =>
+    rows.some(
+      (row) =>
+        Math.abs(row.income ?? 0) > 0
+        || Math.abs(row.expenses ?? 0) > 0
+        || Math.abs(row.savings ?? 0) > 0
+        || Math.abs(row.amount ?? 0) > 0
+        || Math.abs(row.value ?? 0) > 0,
+    );
+
   const insightsData = {
-    summary,
-    healthScores: healthScoresData,
-    expenseBreakdown,
+    summary: displaySummary,
+    healthScores: displayHealthScores,
+    expenseBreakdown: chartHasSignal(expenseBreakdown)
+      ? expenseBreakdown
+      : dashboardExpenseBreakdown,
     merchantBreakdown,
     subcategoryBreakdown,
-    monthlySpending,
-    weeklySpending,
-    // accountBreakdown,
+    monthlySpending: chartHasSignal(monthlySpending)
+      ? monthlySpending
+      : dashboardMonthlySpending,
+    weeklySpending: chartHasSignal(weeklySpending)
+      ? weeklySpending
+      : dashboardWeeklySpending,
   };
+
+  const monthlySpendingChartData = insightsData.monthlySpending;
 
   // Weekly spending is always "this week" (calendar), so only show it for the current month.
   const showWeeklySpending = useMemo(() => {
@@ -307,9 +449,8 @@ const InsightsTab = () => {
 
   // Whether we actually have negative savings in the series
   const hasNegativeSavings = useMemo(() => {
-    const data = insightsData?.monthlySpending || monthlyFinancialData;
-    return data.some((item) => (item.savings || 0) < 0);
-  }, [insightsData?.monthlySpending]);
+    return monthlySpendingChartData.some((item) => (item.savings || 0) < 0);
+  }, [monthlySpendingChartData]);
 
   const financialTrendsSeriesMode = useMemo(() => {
     if (selectedCategory === "all") {
@@ -329,7 +470,7 @@ const InsightsTab = () => {
 
   // Calculate Y-axis domain for bar chart with padding
   const barChartYAxisDomain = useMemo(() => {
-    const data = insightsData?.monthlySpending || monthlyFinancialData;
+    const data = monthlySpendingChartData;
 
     if (!data || data.length === 0) {
       return [0, 100000];
@@ -359,10 +500,10 @@ const InsightsTab = () => {
     const domainMin = minValue < 0 ? minValue * 1.1 : 0;
 
     return [domainMin, domainMax];
-  }, [insightsData?.monthlySpending, financialTrendsSeriesMode]);
+  }, [monthlySpendingChartData, financialTrendsSeriesMode]);
   // Calculate Y-axis domain for financial trends chart with padding
   const yAxisDomain = useMemo(() => {
-    const data = insightsData?.monthlySpending || monthlyFinancialData;
+    const data = monthlySpendingChartData;
     if (!data || data.length === 0) {
       return ['auto', 'auto'];
     }
@@ -385,7 +526,7 @@ const InsightsTab = () => {
     const domainMax = maxValue + padding;
     
     return [domainMin, domainMax];
-  }, [insightsData?.monthlySpending]);
+  }, [monthlySpendingChartData]);
 
   // Process expense breakdown data to show top 5 categories and group others
   const processBreakdownTop5 = (
@@ -431,9 +572,8 @@ const InsightsTab = () => {
   };
 
   const processedExpenseBreakdown = useMemo(() => {
-    const data = insightsData?.expenseBreakdown || categoryExpenseData;
-    return processBreakdownTop5(data);
-  }, [insightsData?.expenseBreakdown]);
+    return processBreakdownTop5(insightsData.expenseBreakdown);
+  }, [insightsData.expenseBreakdown]);
 
   const processedMerchantBreakdown = useMemo(() => {
     return processBreakdownTop5(insightsData?.merchantBreakdown ?? []);
@@ -714,8 +854,8 @@ const InsightsTab = () => {
         </FilterSheet>
 
         <DashboardSummarySection
-          summary={summary}
-          isLoading={isLoading}
+          summary={displaySummary}
+          isLoading={displayLoading}
           isError={isError}
           formatAmount={formatAmount}
           dateFilterLabel={getDateFilterLabel()}
@@ -724,20 +864,20 @@ const InsightsTab = () => {
           onOpenFilters={() => setFiltersOpen(true)}
         />
 
-        {(isLoading ||
+        {(displayLoading ||
           (narratives?.metrics?.length ?? 0) > 0 ||
           (narratives?.insights?.length ?? 0) > 0) && (
           <div className="space-y-5">
             <InsightMetricCards
               metrics={narratives?.metrics ?? []}
-              isLoading={isLoading}
+              isLoading={displayLoading}
               isBusiness={currentSpace?.isOrganization ?? false}
             />
 
             <div className="px-4">
               <InsightNarrativeCards
                 insights={narratives?.insights ?? []}
-                isLoading={isLoading}
+                isLoading={displayLoading}
               />
             </div>
           </div>
@@ -756,7 +896,7 @@ const InsightsTab = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-4">
-                {isLoading ? (
+                {displayLoading ? (
                   <div className="text-center py-8">
                     <LoadingSpinner size="medium" />
                   </div>
@@ -992,9 +1132,13 @@ const InsightsTab = () => {
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
             <div className="h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                initialDimension={{ width: 320, height: 320 }}
+              >
                 <RechartsLineChart
-                  data={(insightsData?.monthlySpending || monthlyFinancialData).map(item => ({
+                  data={monthlySpendingChartData.map(item => ({
                     ...item,
                     expensesPositive: Math.abs(item.expenses), // Show expenses as positive for better visibility
                   }))}
@@ -1069,7 +1213,11 @@ const InsightsTab = () => {
 
         {showWeeklySpending ? (
           <WeeklySpendingCard
-            data={insightsData?.weeklySpending ?? weeklySpendingData}
+            data={
+              insightsData.weeklySpending.length > 0
+                ? insightsData.weeklySpending
+                : weeklySpendingData
+            }
             isLoading={isLoading || isChartsLoading}
             formatAmount={formatAmount}
           />

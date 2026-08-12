@@ -3,12 +3,21 @@ import type { LocalOutboxRecord, LocalOutboxStatus } from "./types";
 
 export const OUTBOX_COMMAND_TRANSACTION_CREATE = "transaction.create";
 export const OUTBOX_COMMAND_TRANSACTION_DELETE = "transaction.delete";
+export const OUTBOX_COMMAND_TRANSACTION_UPDATE = "transaction.update";
 export const OUTBOX_COMMAND_TRANSFER_CREATE = "transfer.create";
 export const OUTBOX_COMMAND_TRANSFER_DELETE = "transfer.delete";
+export const OUTBOX_COMMAND_TRANSFER_UPDATE = "transfer.update";
 export const OUTBOX_COMMAND_LOAN_CREATE = "loan.create";
 export const OUTBOX_COMMAND_LOAN_DELETE = "loan.delete";
+export const OUTBOX_COMMAND_LOAN_UPDATE = "loan.update";
 export const OUTBOX_COMMAND_LOAN_PAYMENT_CREATE = "loan_payment.create";
 export const OUTBOX_COMMAND_LOAN_PAYMENT_DELETE = "loan_payment.delete";
+export const OUTBOX_COMMAND_LOAN_PAYMENT_UPDATE = "loan_payment.update";
+export const OUTBOX_COMMAND_SPACE_SETTINGS_UPDATE = "space.settings.update";
+export const OUTBOX_COMMAND_USER_SETTINGS_UPDATE = "user.settings.update";
+
+/** Outbox rows that are not scoped to a real space (e.g. profile updates). */
+export const OUTBOX_SPACE_ID_USER = "__user__";
 
 /** Recover rows stuck in `syncing` longer than this (ms). */
 export const OUTBOX_STUCK_SYNCING_MS = 5 * 60 * 1000;

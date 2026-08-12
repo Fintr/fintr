@@ -14,6 +14,7 @@ import { cn, shouldShowV2Features, formatCurrency } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { dashboardShellReadyAtom } from "@/atoms/dashboardAtoms";
+import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
 import {
   dateFilterEndDateAtom,
   dateFilterStartDateAtom,
@@ -29,13 +30,15 @@ import {
 import { toast } from "sonner";
 import LoadingScreen from "@/components/ui/loading-screen";
 import { useBootstrapLoadingTimeout } from "@/hooks/useBootstrapLoadingTimeout";
+import { usePrefetchDashboardNavRoutes } from "@/hooks/usePrefetchDashboardNavRoutes";
+import { useBrowserOnline } from "@/hooks/useOfflineReadMode";
 import { usePathname } from "next/navigation";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import {
   calculateBottomPadding,
   calculateHeaderSpacerHeight,
 } from "@/lib/platform-detection";
-import { hasEmbeddedHeroHeader } from "@/lib/dashboard-shell-route";
+import { hasEmbeddedHeroHeader, isDashboardSettingsRoute } from "@/lib/dashboard-shell-route";
 
 // Dynamic imports for heavier components to reduce initial compile time
 const MobileStickyHeader = dynamic(
@@ -90,9 +93,20 @@ export default function Layout({
   const endDate = useAtomValue(dateFilterEndDateAtom);
   const { data, isLoading: isLoadingDashboardData, isError } =
     useDashboardData(startDate, endDate);
+  const offlineSyncReady = useAtomValue(offlineSyncReadyAtom);
+  const isOnline = useBrowserOnline();
+  usePrefetchDashboardNavRoutes();
+  const needsDashboardSummaryForShell = !isDashboardSettingsRoute(pathname);
   const isWaitingForDashboardShell =
     !spaceCode ||
-    (isLoadingDashboardData && !isError && !data);
+    (
+      isOnline &&
+      needsDashboardSummaryForShell &&
+      !offlineSyncReady &&
+      isLoadingDashboardData &&
+      !isError &&
+      !data
+    );
   const { shouldBlock: shouldBlockOnDashboardLoading } = useBootstrapLoadingTimeout(
     isWaitingForDashboardShell,
   );
@@ -118,7 +132,11 @@ export default function Layout({
     const ready =
       !isStandalonePage &&
       Boolean(spaceCode) &&
-      !isLoadingDashboardData;
+      (
+        !isLoadingDashboardData ||
+        !isOnline ||
+        offlineSyncReady
+      );
 
     setDashboardShellReady(ready);
 
@@ -129,6 +147,8 @@ export default function Layout({
     isStandalonePage,
     spaceCode,
     isLoadingDashboardData,
+    isOnline,
+    offlineSyncReady,
     setDashboardShellReady,
   ]);
 

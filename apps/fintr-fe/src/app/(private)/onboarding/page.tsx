@@ -15,7 +15,7 @@ export default function OnboardingIndex() {
     scope: "openid profile email read:current_user read:transactions read:users",
   });
 
-  const { onboardingStep } = useGetSpaceCode(
+  const { onboardingStep, isUserContextLoading, isVerifyingSpaces } = useGetSpaceCode(
     api!,
     isAuthenticated && !isApiLoading,
   );
@@ -41,14 +41,18 @@ export default function OnboardingIndex() {
   }, [onboardingStep, isApiLoading, router]);
 
   // Show loading state while checking user status
-  if (isApiLoading || onboardingStep === null) {
+  if (isApiLoading || isUserContextLoading || onboardingStep === null) {
     return (
       <div
         className="flex min-h-[50vh] flex-col items-center justify-center text-center space-y-4"
         data-testid="onboarding-setup-loading"
       >
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p className="text-muted-foreground">Preparing your workspace setup...</p>
+        <p className="text-muted-foreground">
+          {isVerifyingSpaces
+            ? "Finding your workspaces…"
+            : "Preparing your workspace setup..."}
+        </p>
       </div>
     );
   }

@@ -58,6 +58,13 @@ describe("reloadForStaleChunks", () => {
     expect(reloadForStaleChunks()).toBe(false);
     expect(reload).not.toHaveBeenCalled();
   });
+
+  it("skips reload while offline", () => {
+    vi.stubGlobal("navigator", { onLine: false });
+
+    expect(reloadForStaleChunks()).toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
 });
 
 describe("recoverFromChunkLoadError", () => {

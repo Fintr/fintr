@@ -1,20 +1,28 @@
 import { getColorByIndex } from "@/lib/utils";
 import { monthRangesInclusive } from "@/lib/local-sync/offline-bootstrap-dates";
 import { loadCachedBudgetsResponse } from "@/services/budgets/local-cache";
-import { loadCachedLoansInfiniteData } from "@/services/loans/local-cache";
-import type { Loan } from "@/services/loans/queries";
-import { loadCachedMonthlyFinancialSummaries } from "@/services/monthly-financial-summaries/local-cache";
-import { loadCachedTransactionsInRange } from "@/services/transactions/local-cache";
+import {
+  enrichTransactionsForInsights,
+  loadInsightsLocalSources,
+} from "./load-local-sources";
+import { filterInsightsTransactions } from "./filter-insights-transactions";
+import { financialSummaryForDateRange } from "@/services/monthly-financial-summaries/combine";
+import type { MonthlyFinancialSummary } from "@/services/monthly-financial-summaries/types";
+import { upsertLiveCurrentMonthSummary } from "@/services/monthly-financial-summaries/live-current-month-summary";
 import type { Budget } from "@/types/budgetTypes";
+import type { Loan } from "@/services/loans/queries";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import {
   filterTransactionsByInsightsCategory,
   type InsightsCategoryFilter,
 } from "@/utils/transactionListFilter";
+import { getLocalIsoDateKey } from "@/utils/dateUtils";
 
 import {
   formatCategoryPickerValue,
+  isCategoryPickerId,
+  type CategoryTreeOption,
 } from "@/types/categoryTreeTypes";
 import {
   isExpenseCategoryFilterValue,
@@ -22,11 +30,13 @@ import {
 } from "@/utils/categoryFilterOptions";
 
 import {
+  buildTransactionTotalsContext,
+  amountNumericForSpaceTotal,
+} from "@/services/insights/transaction-space-totals";
+import {
   financialTrendsDateRange,
-  insightsSummaryHybrid,
   monthlySpendingFromBuckets,
   monthlySpendingFromTransactions,
-  summaryFromTransactions,
   type MonthlySpendingSeriesMode,
 } from "./from-monthly-buckets";
 import { transformHealthScores } from "./transforms";
@@ -37,6 +47,131 @@ import type {
   MonthlySpending,
   WeeklySpending,
 } from "./types";
+
+const dayKey = (isoDate: string): string => isoDate.slice(0, 10);
+
+const isLocalInsightsDebugEnabled = (): boolean => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return (
+    window.location.hostname === "localhost"
+    || window.location.hostname === "127.0.0.1"
+  );
+};
+
+const insightsSummaryFromFinancialSummary = (
+  financialSummary: {
+    totalIncome: string;
+    totalExpenses: string;
+    netSavings: string;
+  },
+): InsightsSummary => ({
+  totalIncome: Number.parseFloat(financialSummary.totalIncome) || 0,
+  totalExpenses: Number.parseFloat(financialSummary.totalExpenses) || 0,
+  netSavings: Number.parseFloat(financialSummary.netSavings) || 0,
+});
+
+const rowTagCount = (row: IndexTransaction): number =>
+  (row as IndexTransaction & { tagIds?: string[] }).tagIds?.length
+  ?? row.tags?.length
+  ?? 0;
+
+/**
+ * Write seed-restored tag/category metadata back to IndexedDB so offline
+ * category/tag filters keep working after React Query caches are cleared.
+ */
+const persistRestoredInsightsMetadata = async (params: {
+  spaceCode: string;
+  before: IndexTransaction[];
+  after: IndexTransaction[];
+}): Promise<void> => {
+  const { spaceCode, before, after } = params;
+  if (!spaceCode || after.length === 0) {
+    return;
+  }
+
+  const beforeById = new Map(before.map((row) => [row.id, row]));
+  const toPersist: IndexTransaction[] = [];
+
+  for (const row of after) {
+    if (!row?.id) {
+      continue;
+    }
+
+    const prior = beforeById.get(row.id);
+    const gainedTags = rowTagCount(row) > 0 && rowTagCount(prior ?? { tags: [] } as IndexTransaction) === 0;
+    const gainedCategory =
+      Boolean(row.categoryId || row.categoryName?.trim())
+      && !prior?.categoryId
+      && !prior?.categoryName?.trim();
+
+    if (gainedTags || gainedCategory) {
+      toPersist.push(row);
+    }
+  }
+
+  if (toPersist.length === 0) {
+    return;
+  }
+
+  try {
+    const { upsertLocalIndexTransaction } = await import(
+      "@/services/transactions/local-cache"
+    );
+
+    await Promise.all(
+      toPersist.map((row) => upsertLocalIndexTransaction(spaceCode, row)),
+    );
+  } catch (error) {
+    console.warn(
+      "[insights] Failed to persist restored filter metadata",
+      error,
+    );
+  }
+};
+
+const resolveInsightsCategoryName = (params: {
+  categoryName?: string;
+  categoryId?: string;
+  subcategoryId?: string;
+  categoryOptions?: {
+    expense: CategoryTreeOption[];
+    income: CategoryTreeOption[];
+  };
+}): string | undefined => {
+  const trimmed = params.categoryName?.trim();
+  // Offline UI may pass the raw category picker UUID as `categoryName` when
+  // options were empty at selection time — never treat that as a display name.
+  if (trimmed && !isCategoryPickerId(trimmed)) {
+    return trimmed;
+  }
+
+  if (!params.categoryId || !params.categoryOptions) {
+    return undefined;
+  }
+
+  const parents = [
+    ...params.categoryOptions.expense,
+    ...params.categoryOptions.income,
+  ];
+  const parent = parents.find((option) => option.id === params.categoryId);
+  if (!parent) {
+    return undefined;
+  }
+
+  if (params.subcategoryId) {
+    const subcategory = parent.children?.find(
+      (child) => child.id === params.subcategoryId,
+    );
+    if (subcategory) {
+      return subcategory.name;
+    }
+  }
+
+  return parent.name;
+};
 
 export const resolveCategoryTrendsSeriesMode = (params: {
   categoryName?: string;
@@ -86,9 +221,7 @@ const toAmount = (value: IndexTransaction["amount"] | number | string): number =
 
 const formatPercentage = (value: number): string => `${value.toFixed(2)}%`;
 
-const dayKey = (isoDate: string): string => isoDate.slice(0, 10);
-
-const periodDaysBetween = (startDate: string, endDate: string): number => {
+export const periodDaysBetween = (startDate: string, endDate: string): number => {
   const start = new Date(`${startDate}T00:00:00Z`);
   const end = new Date(`${endDate}T00:00:00Z`);
   const ms = end.getTime() - start.getTime();
@@ -98,8 +231,19 @@ const periodDaysBetween = (startDate: string, endDate: string): number => {
   return Math.max(1, Math.round(ms / (24 * 60 * 60 * 1000)) + 1);
 };
 
-const isExpense = (tx: IndexTransaction): boolean =>
-  tx.type === CombinedTransactionTypeEnum.EXPENSE;
+const isExpense = (tx: IndexTransaction): boolean => {
+  const type = String(tx.type ?? "").trim().toLowerCase();
+  if (!type) {
+    return true;
+  }
+
+  return (
+    type === CombinedTransactionTypeEnum.EXPENSE
+    || type === "transactions::expense"
+    || type.endsWith("::expense")
+    || type === "expense"
+  );
+};
 
 const filterByTagIds = (
   transactions: IndexTransaction[],
@@ -193,14 +337,16 @@ export const loadLocalBudgetsForRange = async (
 
 export const expenseBreakdownFromTransactions = (
   transactions: IndexTransaction[],
+  amountForTotal?: (transaction: IndexTransaction) => number,
 ): ExpenseBreakdown[] => {
+  const readAmount = amountForTotal ?? ((tx) => Math.abs(toAmount(tx.amount)));
   const expenses = transactions.filter(isExpense);
   if (expenses.length === 0) {
     return [];
   }
 
   const total = expenses.reduce(
-    (sum, tx) => sum + Math.abs(toAmount(tx.amount)),
+    (sum, tx) => sum + readAmount(tx),
     0,
   );
   if (total <= 0) {
@@ -212,7 +358,7 @@ export const expenseBreakdownFromTransactions = (
     const name = tx.categoryName || "Uncategorized";
     byCategory.set(
       name,
-      (byCategory.get(name) ?? 0) + Math.abs(toAmount(tx.amount)),
+      (byCategory.get(name) ?? 0) + readAmount(tx),
     );
   }
 
@@ -232,14 +378,16 @@ export const UNASSIGNED_SUBCATEGORY_LABEL = "Unassigned";
 const expenseBreakdownByLabel = (
   transactions: IndexTransaction[],
   labelFor: (tx: IndexTransaction) => string,
+  amountForTotal?: (transaction: IndexTransaction) => number,
 ): ExpenseBreakdown[] => {
+  const readAmount = amountForTotal ?? ((tx) => Math.abs(toAmount(tx.amount)));
   const expenses = transactions.filter(isExpense);
   if (expenses.length === 0) {
     return [];
   }
 
   const total = expenses.reduce(
-    (sum, tx) => sum + Math.abs(toAmount(tx.amount)),
+    (sum, tx) => sum + readAmount(tx),
     0,
   );
   if (total <= 0) {
@@ -251,7 +399,7 @@ const expenseBreakdownByLabel = (
     const name = labelFor(tx);
     byLabel.set(
       name,
-      (byLabel.get(name) ?? 0) + Math.abs(toAmount(tx.amount)),
+      (byLabel.get(name) ?? 0) + readAmount(tx),
     );
   }
 
@@ -273,64 +421,77 @@ const expenseBreakdownByLabel = (
     }));
 };
 
-/** Groups expense amounts by merchant (`entityName`); blank merchants → Unassigned. */
 export const merchantBreakdownFromTransactions = (
   transactions: IndexTransaction[],
+  amountForTotal?: (transaction: IndexTransaction) => number,
 ): ExpenseBreakdown[] =>
-  expenseBreakdownByLabel(transactions, (tx) => {
-    const trimmed = tx.entityName?.trim() ?? "";
-    return trimmed.length > 0 ? trimmed : UNASSIGNED_MERCHANT_LABEL;
-  });
+  expenseBreakdownByLabel(
+    transactions,
+    (tx) => {
+      const trimmed = tx.entityName?.trim() ?? "";
+      return trimmed.length > 0 ? trimmed : UNASSIGNED_MERCHANT_LABEL;
+    },
+    amountForTotal,
+  );
 
 /** Groups expense amounts by subcategory; blank subcategory → Unassigned. */
 export const subcategoryBreakdownFromTransactions = (
   transactions: IndexTransaction[],
+  amountForTotal?: (transaction: IndexTransaction) => number,
 ): ExpenseBreakdown[] =>
-  expenseBreakdownByLabel(transactions, (tx) => {
-    const trimmed = tx.subcategoryName?.trim() ?? "";
-    return trimmed.length > 0 ? trimmed : UNASSIGNED_SUBCATEGORY_LABEL;
-  });
+  expenseBreakdownByLabel(
+    transactions,
+    (tx) => {
+      const trimmed = tx.subcategoryName?.trim() ?? "";
+      return trimmed.length > 0 ? trimmed : UNASSIGNED_SUBCATEGORY_LABEL;
+    },
+    amountForTotal,
+  );
 
 /**
- * Mirrors CreateWeeklySpending: last 7 calendar days ending today.
- * Amounts are returned in the API shape expected by aggregateWeeklySpending.
+ * Mirrors CreateWeeklySpending: last 7 calendar days ending today (local).
  */
 export const weeklySpendingFromTransactions = (
   transactions: IndexTransaction[],
   today: Date = new Date(),
+  amountForTotal?: (transaction: IndexTransaction) => number,
 ): WeeklySpending[] => {
+  const readAmount = amountForTotal ?? ((tx) => Math.abs(toAmount(tx.amount)));
+  const endKey = getLocalIsoDateKey(today);
+  const endParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(endKey);
+  if (!endParts) {
+    return [];
+  }
+
   const end = new Date(
-    Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()),
+    Number(endParts[1]),
+    Number(endParts[2]) - 1,
+    Number(endParts[3]),
   );
   const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 6);
-
-  const startKey = start.toISOString().slice(0, 10);
-  const endKey = end.toISOString().slice(0, 10);
+  start.setDate(start.getDate() - 6);
+  const startKey = getLocalIsoDateKey(start);
 
   const expenses = transactions.filter(
     (tx) =>
-      isExpense(tx) &&
-      dayKey(tx.date) >= startKey &&
-      dayKey(tx.date) <= endKey,
+      isExpense(tx)
+      && dayKey(tx.date) >= startKey
+      && dayKey(tx.date) <= endKey,
   );
 
   const byDate = new Map<string, number>();
   for (const tx of expenses) {
     const key = dayKey(tx.date);
-    byDate.set(key, (byDate.get(key) ?? 0) + Math.abs(toAmount(tx.amount)));
+    byDate.set(key, (byDate.get(key) ?? 0) + readAmount(tx));
   }
 
   const ordered: WeeklySpending[] = [];
   for (let offset = 0; offset < 7; offset += 1) {
     const date = new Date(start);
-    date.setUTCDate(start.getUTCDate() + offset);
-    const key = date.toISOString().slice(0, 10);
+    date.setDate(start.getDate() + offset);
+    const key = getLocalIsoDateKey(date);
     const amount = byDate.get(key) ?? 0;
-    const day = date.toLocaleDateString("en-US", {
-      weekday: "short",
-      timeZone: "UTC",
-    });
+    const day = date.toLocaleDateString("en-US", { weekday: "short" });
     ordered.push({ day, amount });
   }
 
@@ -393,31 +554,47 @@ export type OfflineInsightsBundle = {
   weeklySpending: WeeklySpending[];
   monthlySpending: MonthlySpending[];
   healthScores: FinancialHealthScore;
+  totalBudget: number;
+  monthlyDebt: number;
 };
 
 export const buildOfflineInsightsBundle = async (params: {
   spaceCode: string;
   startDate: string;
   endDate: string;
+  currency?: string;
   categoryName?: string;
   categoryId?: string;
   subcategoryId?: string;
   tagIds?: string[];
   categoryOptions?: InsightsCategoryFilter["categoryOptions"];
+  prefetchedSummaries?: MonthlyFinancialSummary[];
+  /** Dashboard-range txs already in React Query — merge when IndexedDB is sparse. */
+  seedTransactions?: IndexTransaction[];
 }): Promise<OfflineInsightsBundle> => {
   const {
     spaceCode,
     startDate,
     endDate,
+    currency = "PHP",
     categoryName,
     categoryId,
     subcategoryId,
     tagIds = [],
     categoryOptions,
+    prefetchedSummaries,
+    seedTransactions = [],
   } = params;
 
-  const categoryFilter: InsightsCategoryFilter = {
+  const resolvedCategoryName = resolveInsightsCategoryName({
     categoryName,
+    categoryId,
+    subcategoryId,
+    categoryOptions,
+  });
+
+  const categoryFilter: InsightsCategoryFilter = {
+    categoryName: resolvedCategoryName,
     categoryId,
     subcategoryId,
     categoryOptions,
@@ -426,12 +603,11 @@ export const buildOfflineInsightsBundle = async (params: {
   const categoryFiltered = Boolean(
     categoryId
     || subcategoryId
-    || (categoryName && categoryName.length > 0),
+    || (resolvedCategoryName && resolvedCategoryName.length > 0),
   );
   const tagFiltered = tagIds.length > 0;
   const useTransactionSummary = categoryFiltered || tagFiltered;
 
-  // Trends are anchored to the filtered month, not "today".
   const trendsRange = financialTrendsDateRange(endDate);
   const txLoadStart =
     categoryFiltered && trendsRange.startDate < startDate
@@ -442,15 +618,130 @@ export const buildOfflineInsightsBundle = async (params: {
       ? trendsRange.endDate
       : endDate;
 
-  const [summaries, transactions, budgets, loansData] = await Promise.all([
-    loadCachedMonthlyFinancialSummaries(spaceCode),
-    loadCachedTransactionsInRange(spaceCode, txLoadStart, txLoadEnd),
-    loadLocalBudgetsForRange(spaceCode, startDate, endDate),
-    loadCachedLoansInfiniteData(spaceCode),
-  ]);
+  const {
+    summaries: loadedSummaries,
+    transactionsInRange,
+    allCalculatedTransactions,
+    budgets,
+    loans,
+  } = await loadInsightsLocalSources({
+    spaceCode,
+    startDate,
+    endDate,
+    transactionLoadStart: txLoadStart,
+    transactionLoadEnd: txLoadEnd,
+  });
+
+  const summaries =
+    prefetchedSummaries && prefetchedSummaries.length > 0
+      ? prefetchedSummaries
+      : loadedSummaries;
+
+  // Prefer the enriched all-time set from loadInsightsLocalSources so category /
+  // tag metadata from bootstrap meta is not lost on a second Dexie-only read.
+  const seededPeriod = filterInsightsTransactions(seedTransactions).filter(
+    (transaction) =>
+      dayKey(transaction.date) >= startDate
+      && dayKey(transaction.date) <= endDate,
+  );
+
+  const periodFromCache = (
+    allCalculatedTransactions.length > 0
+      ? allCalculatedTransactions
+      : filterInsightsTransactions(transactionsInRange)
+  ).filter(
+    (transaction) =>
+      dayKey(transaction.date) >= startDate
+      && dayKey(transaction.date) <= endDate,
+  );
+
+  const periodById = new Map<string, IndexTransaction>();
+  for (const transaction of [...seededPeriod, ...periodFromCache]) {
+    if (!transaction?.id) {
+      continue;
+    }
+    periodById.set(transaction.id, transaction);
+  }
+  const periodTransactions = Array.from(periodById.values());
+  const calculatedTransactions = filterInsightsTransactions(transactionsInRange);
+  const rateContextTransactions =
+    allCalculatedTransactions.length > 0
+      ? allCalculatedTransactions
+      : calculatedTransactions.length > 0
+        ? calculatedTransactions
+        : periodTransactions;
+
+  const totalsContext = await buildTransactionTotalsContext({
+    spaceCode,
+    spaceCurrency: currency,
+    transactions: rateContextTransactions,
+  });
+  const expenseAmountForTotal = (transaction: IndexTransaction) => {
+    const converted = Math.abs(
+      amountNumericForSpaceTotal(
+        transaction,
+        currency,
+        totalsContext.rateLookup,
+      ),
+    );
+    if (converted > 0) {
+      return converted;
+    }
+
+    // List `amount` is already space currency from the API — use it when FX
+    // lookup misses so offline charts still render.
+    return Math.abs(toAmount(transaction.amount));
+  };
+
+  const hybridTransactions =
+    periodTransactions.length > 0
+      ? periodTransactions
+      : calculatedTransactions.filter(
+          (transaction) =>
+            dayKey(transaction.date) >= startDate
+            && dayKey(transaction.date) <= endDate,
+        );
+
+  const liveMonthTransactions =
+    allCalculatedTransactions.length > 0
+      ? allCalculatedTransactions
+      : periodTransactions;
+
+  const hybridSummaries = useTransactionSummary
+    ? summaries
+    : upsertLiveCurrentMonthSummary({
+        summaries,
+        transactions: liveMonthTransactions,
+        currency,
+      });
+
+  const sourceBase =
+    allCalculatedTransactions.length > 0
+      ? allCalculatedTransactions
+      : calculatedTransactions.length > 0
+        ? calculatedTransactions
+        : periodTransactions.length > 0
+          ? periodTransactions
+          : seededPeriod;
+
+  // List / dashboard RQ rows often keep tag+category metadata after a re-sync
+  // wipes it from Dexie — fold that metadata into the filter source.
+  const sourceForFilters = enrichTransactionsForInsights(
+    sourceBase,
+    seedTransactions,
+  );
+
+  if (seedTransactions.length > 0 && (categoryFiltered || tagFiltered)) {
+    // Heal IndexedDB so the next offline open still filters without RQ seeds.
+    await persistRestoredInsightsMetadata({
+      spaceCode,
+      before: sourceBase,
+      after: sourceForFilters,
+    });
+  }
 
   const categoryFilteredTransactions = filterTransactionsByInsightsCategory(
-    transactions,
+    sourceForFilters,
     categoryFilter,
   );
   const filteredTransactions = filterByTagIds(
@@ -463,50 +754,90 @@ export const buildOfflineInsightsBundle = async (params: {
 
   if (
     process.env.NODE_ENV === "development"
-    && (categoryName || categoryId || subcategoryId)
+    && (categoryName || categoryId || subcategoryId || tagIds.length > 0)
   ) {
-    console.debug("[insights:category-filter]", {
+    console.debug("[insights:offline-filter]", {
       startDate,
       endDate,
-      categoryName: categoryName ?? "",
+      categoryName: resolvedCategoryName ?? categoryName ?? "",
       categoryId: categoryId ?? "",
       subcategoryId: subcategoryId ?? "",
-      loadedTransactions: transactions.length,
-      matchedTransactions: categoryFilteredTransactions.length,
+      tagIds,
+      loadedTransactions: sourceForFilters.length,
+      matchedCategory: categoryFilteredTransactions.length,
+      matchedAfterTags: filteredTransactions.length,
+      matchedInPeriod: periodFilteredTransactions.length,
       sampleCategoryNames: [
         ...new Set(
-          transactions
+          sourceForFilters
             .slice(0, 50)
             .map((tx) => tx.categoryName)
             .filter(Boolean),
         ),
       ],
-      sampleCategoryIds: [
+      sampleTagIds: [
         ...new Set(
-          transactions
+          sourceForFilters
             .slice(0, 50)
-            .map((tx) => (tx as IndexTransaction & { categoryId?: string }).categoryId)
-            .filter(Boolean),
+            .flatMap(
+              (tx) =>
+                (tx as IndexTransaction & { tagIds?: string[] }).tagIds
+                ?? tx.tags?.map((tag) => tag.id)
+                ?? [],
+            ),
         ),
       ],
     });
   }
 
-  const summary = useTransactionSummary
-    ? summaryFromTransactions(periodFilteredTransactions)
-    : insightsSummaryHybrid({
-        summaries: summaries ?? [],
-        transactions: periodFilteredTransactions,
-        startDate,
-        endDate,
-      });
+  if (isLocalInsightsDebugEnabled()) {
+    console.info("[insights:offline-bundle]", {
+      spaceCode,
+      startDate,
+      endDate,
+      summariesCount: summaries.length,
+      periodTransactions: periodTransactions.length,
+      transactionsInRange: transactionsInRange.length,
+      allCalculatedTransactions: allCalculatedTransactions.length,
+      hybridTransactions: hybridTransactions.length,
+      sampleSummaryMonths: summaries
+        .filter((row) => row.year === Number(startDate.slice(0, 4)))
+        .map((row) => ({
+          month: row.month,
+          income: row.totalIncome,
+          expenses: row.totalExpenses,
+          fxBased: row.fxBased,
+          currency: row.currency,
+        })),
+    });
+  }
+
+  const resolvedSummary = useTransactionSummary
+    ? totalsContext.summaryFromTransactions(periodFilteredTransactions)
+    : insightsSummaryFromFinancialSummary(
+        financialSummaryForDateRange({
+          summaries,
+          transactions: periodTransactions,
+          startDate,
+          endDate,
+          spaceCurrency: currency,
+          rateLookup: totalsContext.rateLookup,
+        }),
+      );
 
   const trendsSeriesMode = resolveCategoryTrendsSeriesMode({
-    categoryName,
+    categoryName: resolvedCategoryName,
     categoryId,
     subcategoryId,
     categoryOptions,
   });
+
+  const chartTransactions =
+    periodFilteredTransactions.length > 0
+      ? periodFilteredTransactions
+      : useTransactionSummary
+        ? periodFilteredTransactions
+        : hybridTransactions;
 
   const monthlySpending = (
     trendsSeriesMode
@@ -515,36 +846,90 @@ export const buildOfflineInsightsBundle = async (params: {
           trendsRange.startDate,
           trendsRange.endDate,
           trendsSeriesMode,
+          currency,
+          totalsContext.rateLookup,
         )
-      : monthlySpendingFromBuckets(
-          summaries ?? [],
-          trendsRange.startDate,
-          trendsRange.endDate,
-        )
+      : summaries.length > 0
+        ? monthlySpendingFromBuckets(
+            hybridSummaries,
+            trendsRange.startDate,
+            trendsRange.endDate,
+          )
+        : monthlySpendingFromTransactions(
+            chartTransactions,
+            trendsRange.startDate,
+            trendsRange.endDate,
+            "all",
+            currency,
+            totalsContext.rateLookup,
+          )
   ).map((row) => ({
     ...row,
-    // Match transformMonthlySpending: expenses plotted as negative.
     expenses: -Math.abs(row.expenses),
   }));
+
+  // If bucket series is all-zero but we have local expenses, rebuild from txs
+  // so Financial Trends is not a blank/flat chart while Net Income shows totals.
+  const monthlySpendingHasSignal = monthlySpending.some(
+    (row) =>
+      Math.abs(row.income) > 0
+      || Math.abs(row.expenses) > 0
+      || Math.abs(row.savings) > 0,
+  );
+
+  const resolvedMonthlySpending =
+    !trendsSeriesMode
+    && !monthlySpendingHasSignal
+    && chartTransactions.length > 0
+      ? monthlySpendingFromTransactions(
+          chartTransactions,
+          trendsRange.startDate,
+          trendsRange.endDate,
+          "all",
+          currency,
+          totalsContext.rateLookup,
+        ).map((row) => ({
+          ...row,
+          expenses: -Math.abs(row.expenses),
+        }))
+      : monthlySpending;
 
   const totalBudget = budgets.reduce(
     (sum, budget) => sum + toAmount(budget.amount),
     0,
   );
-  const loans = (loansData?.pages ?? []).flatMap((page) => page.loans);
   const monthlyDebt = totalMonthlyDebtFromLoans(loans);
 
   return {
-    summary,
-    expenseBreakdown: expenseBreakdownFromTransactions(periodFilteredTransactions),
-    merchantBreakdown: merchantBreakdownFromTransactions(periodFilteredTransactions),
-    subcategoryBreakdown: subcategoryBreakdownFromTransactions(
-      periodFilteredTransactions,
+    summary: resolvedSummary,
+    expenseBreakdown: expenseBreakdownFromTransactions(
+      chartTransactions,
+      expenseAmountForTotal,
     ),
-    weeklySpending: weeklySpendingFromTransactions(periodFilteredTransactions),
-    monthlySpending,
+    merchantBreakdown: merchantBreakdownFromTransactions(
+      chartTransactions,
+      expenseAmountForTotal,
+    ),
+    subcategoryBreakdown: subcategoryBreakdownFromTransactions(
+      chartTransactions,
+      expenseAmountForTotal,
+    ),
+    weeklySpending: weeklySpendingFromTransactions(
+      // Backend weekly card is always "this calendar week", independent of the
+      // filtered month — only category/tag filters narrow the expense set.
+      filteredTransactions.length > 0 || useTransactionSummary
+        ? filteredTransactions
+        : allCalculatedTransactions.length > 0
+          ? allCalculatedTransactions
+          : chartTransactions,
+      new Date(),
+      expenseAmountForTotal,
+    ),
+    monthlySpending: resolvedMonthlySpending,
+    totalBudget,
+    monthlyDebt,
     healthScores: healthScoresFromLocalData({
-      summary,
+      summary: resolvedSummary,
       periodDays: periodDaysBetween(startDate, endDate),
       totalBudget,
       monthlyDebt,

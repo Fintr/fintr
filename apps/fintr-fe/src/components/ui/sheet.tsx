@@ -3,6 +3,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { getNestedOverlayPortalRoot } from "@/lib/nested-overlay-portal"
 
 const Sheet = SheetPrimitive.Root
 
@@ -121,6 +122,11 @@ interface SheetContentProps
   swipeToClose?: boolean
   /** Invoked after a successful swipe-to-dismiss gesture (typically close the sheet). */
   onSwipeToClose?: () => void
+  /**
+   * Portal into the shared nested-overlay layer (above modals and tutorial).
+   * Use for pickers opened from inside transaction modals/sheets.
+   */
+  nestedOverlay?: boolean
 }
 
 const SWIPE_LOCK_MIN_PX = 28
@@ -140,6 +146,7 @@ const SheetContent = React.forwardRef<
       onOverlayClick,
       swipeToClose = false,
       onSwipeToClose,
+      nestedOverlay = false,
       children,
       style,
       onTouchStart: onTouchStartProp,
@@ -253,6 +260,10 @@ const SheetContent = React.forwardRef<
     }
 
     const swipeEnabled = Boolean(swipeToClose && side === "right" && onSwipeToClose)
+    const portalContainer = React.useMemo(
+      () => (nestedOverlay ? getNestedOverlayPortalRoot() ?? undefined : undefined),
+      [nestedOverlay],
+    )
 
     React.useLayoutEffect(() => {
       if (!swipeEnabled) return
@@ -292,7 +303,7 @@ const SheetContent = React.forwardRef<
     }, [swipeEnabled])
 
     return (
-      <SheetPortal>
+      <SheetPortal container={portalContainer}>
         <SheetOverlay className={overlayClassName} onClick={handleOverlayClick} />
         <SheetPrimitive.Content
           ref={setRefs}

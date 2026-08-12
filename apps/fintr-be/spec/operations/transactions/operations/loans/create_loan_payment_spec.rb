@@ -561,6 +561,77 @@ RSpec.describe Transactions::Operations::Loans::CreateLoanPayment do
       end
     end
 
+    context 'when paying from an account in a different currency than the loan' do
+      subject(:call_operation) { operation.call(params) }
+
+      let(:php_account) do
+        create(
+          :account,
+          space: space,
+          balance: Money.from_amount(50_000, 'PHP'),
+          name: 'PHP Wallet'
+        )
+      end
+
+      let(:pln_loan) do
+        create(
+          :loan,
+          user: user,
+          space: space,
+          entity: entity,
+          account: php_account,
+          principal_amount_cents: 10_000_00,
+          outstanding_balance_cents: 10_000_00,
+          interest_rate: 0.0,
+          loan_term_months: 12,
+          date: Date.new(2024, 1, 1),
+          maturity_date: Date.new(2024, 12, 31),
+          loan_type: 'borrowed',
+          currency: 'PLN'
+        )
+      end
+
+      let(:params) do
+        valid_params.merge(
+          loan_id: pln_loan.id.to_s,
+          account_name: php_account.name,
+          date: Date.new(2024, 2, 1),
+          total_payment: 1_000,
+          original_currency: 'PLN',
+          exchange_rate: 0.14,
+          exchange_rate_source: 'manual'
+        )
+      end
+
+      it { is_expected.to be_success }
+
+      it 'persists currency conversion on the payment' do
+        payment = call_operation.value!
+        conversion = payment.currency_conversion
+
+        expect(conversion).to be_present
+        expect(conversion.original_currency).to eq('PLN')
+        expect(conversion.converted_currency).to eq('PHP')
+        expect(conversion.exchange_rate).to eq(0.14)
+        expect(conversion.source).to eq('manual')
+      end
+
+      it 'keeps the payment amount in loan currency' do
+        payment = call_operation.value!
+        expect(payment.total_payment.currency.to_s).to eq('PLN')
+        expect(payment.total_payment.amount).to eq(1_000)
+      end
+
+      it 'deducts the converted amount from the paying account' do
+        initial_balance = Transactions::Account.find(php_account.id).balance.amount
+        call_operation
+        expected_deduction = 140.0
+
+        final_balance = Transactions::Account.find(php_account.id).balance.amount
+        expect(final_balance).to be_within(0.01).of(initial_balance - expected_deduction)
+      end
+    end
+
     context 'with account balance errors' do
       subject(:call_operation) { operation.call(params) }
 

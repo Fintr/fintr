@@ -4,26 +4,45 @@ import { LOAN_DETAIL_KEY } from "@/hooks/async/useLoan";
 
 import type { Loan, LoansPage } from "./queries";
 
-const upsertLoanInInfiniteData = (
+export type UpsertLoanListOptions = {
+  /** When true, seed a one-loan list if no list exists (loan.created). */
+  seedListWhenEmpty?: boolean;
+  /** Secondary list source when the primary cache is empty. */
+  fallback?: InfiniteData<LoansPage> | undefined;
+};
+
+const emptyLoansPage = (loan: Loan): LoansPage => ({
+  loans: [loan],
+  nextPage: null,
+  totalPages: 1,
+  totalCount: 1,
+});
+
+export const upsertLoanInInfiniteData = (
   current: InfiniteData<LoansPage> | undefined,
   loan: Loan,
-): InfiniteData<LoansPage> => {
-  if (!current?.pages?.length) {
+  options: UpsertLoanListOptions = {},
+): InfiniteData<LoansPage> | undefined => {
+  const base =
+    current?.pages?.length
+      ? current
+      : options.fallback?.pages?.length
+        ? options.fallback
+        : undefined;
+
+  if (!base?.pages?.length) {
+    if (!options.seedListWhenEmpty) {
+      return current;
+    }
+
     return {
-      pages: [
-        {
-          loans: [loan],
-          nextPage: null,
-          totalPages: 1,
-          totalCount: 1,
-        },
-      ],
+      pages: [emptyLoansPage(loan)],
       pageParams: [1],
     };
   }
 
   let found = false;
-  const pages = current.pages.map((page) => ({
+  const pages = base.pages.map((page) => ({
     ...page,
     loans: page.loans.map((existing) => {
       if (existing.id !== loan.id) {
@@ -42,35 +61,62 @@ const upsertLoanInInfiniteData = (
       loans: [loan, ...firstPage.loans],
     };
     return {
-      ...current,
+      ...base,
       pages: [pages[0], ...rest],
     };
   }
 
   return {
-    ...current,
+    ...base,
     pages,
   };
 };
+
+const readLoansInfiniteFromQueryCaches = (
+  queryClient: QueryClient,
+  spaceCode: string,
+): {
+  loans: InfiniteData<LoansPage> | undefined;
+  local: InfiniteData<LoansPage> | undefined;
+} => ({
+  loans: queryClient.getQueryData<InfiniteData<LoansPage>>(["loans"]),
+  local: spaceCode
+    ? queryClient.getQueryData<InfiniteData<LoansPage>>([
+        "loans",
+        "local",
+        spaceCode,
+      ])
+    : undefined,
+});
 
 export const upsertLoanInQueryCaches = (
   queryClient: QueryClient,
   params: {
     spaceCode: string;
     loan: Loan;
+    seedListWhenEmpty?: boolean;
   },
 ): void => {
-  const { spaceCode, loan } = params;
+  const { spaceCode, loan, seedListWhenEmpty = false } = params;
+  const { loans: loansData, local: localData } =
+    readLoansInfiniteFromQueryCaches(queryClient, spaceCode);
 
-  queryClient.setQueryData<InfiniteData<LoansPage>>(["loans"], (current) =>
-    upsertLoanInInfiniteData(current, loan),
-  );
+  const nextLoans = upsertLoanInInfiniteData(loansData, loan, {
+    seedListWhenEmpty,
+    fallback: localData,
+  });
+  if (nextLoans !== loansData) {
+    queryClient.setQueryData(["loans"], nextLoans);
+  }
 
   if (spaceCode) {
-    queryClient.setQueryData<InfiniteData<LoansPage>>(
-      ["loans", "local", spaceCode],
-      (current) => upsertLoanInInfiniteData(current, loan),
-    );
+    const nextLocal = upsertLoanInInfiniteData(localData, loan, {
+      seedListWhenEmpty,
+      fallback: nextLoans ?? loansData,
+    });
+    if (nextLocal !== localData) {
+      queryClient.setQueryData(["loans", "local", spaceCode], nextLocal);
+    }
   }
 
   queryClient.setQueryData([LOAN_DETAIL_KEY, loan.id], loan);
@@ -79,8 +125,11 @@ export const upsertLoanInQueryCaches = (
 export const removeLoanFromQueryCaches = (
   queryClient: QueryClient,
   loanId: string,
+  spaceCode?: string,
 ): void => {
-  queryClient.setQueryData<InfiniteData<LoansPage>>(["loans"], (current) => {
+  const filterLoanFromInfinite = (
+    current: InfiniteData<LoansPage> | undefined,
+  ): InfiniteData<LoansPage> | undefined => {
     if (!current) {
       return current;
     }
@@ -92,7 +141,18 @@ export const removeLoanFromQueryCaches = (
         loans: page.loans.filter((loan) => loan.id !== loanId),
       })),
     };
-  });
+  };
+
+  queryClient.setQueryData<InfiniteData<LoansPage>>(["loans"], (current) =>
+    filterLoanFromInfinite(current),
+  );
+
+  if (spaceCode) {
+    queryClient.setQueryData<InfiniteData<LoansPage>>(
+      ["loans", "local", spaceCode],
+      (current) => filterLoanFromInfinite(current),
+    );
+  }
 
   queryClient.removeQueries({
     queryKey: ["loanPayments", loanId],
@@ -103,7 +163,6 @@ export const removeLoanFromQueryCaches = (
   queryClient.removeQueries({
     queryKey: ["loanDetail", "local"],
     predicate: (query) =>
-      Array.isArray(query.queryKey) &&
-      query.queryKey.includes(loanId),
+      Array.isArray(query.queryKey) && query.queryKey.includes(loanId),
   });
 };

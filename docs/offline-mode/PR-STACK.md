@@ -158,6 +158,8 @@ EOF
 
 Tags, merchant aliases, monthly financial summaries API, achievements — largely parallel to offline writes but serializers/controllers touch transaction payloads.
 
+**Coverage checklist:** [`DATA_MANIFEST.md`](DATA_MANIFEST.md) — tags and entities are **not** in bootstrap v2 yet; close those rows before marking PR 7 done.
+
 ---
 
 ## PR 8 — Frontend UI integration (forms, modals, tabs)

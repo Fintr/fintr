@@ -2,7 +2,10 @@ import { combineMonthlyFinancialSummaries } from "@/services/monthly-financial-s
 import type { MonthlyFinancialSummary } from "@/services/monthly-financial-summaries/types";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { getLocalIsoDateKey } from "@/utils/dateUtils";
 
+import type { ExchangeRateLookup } from "./space-currency-amount";
+import { summaryFromTransactionsForSpace } from "./transaction-space-totals";
 import type { InsightsSummary, MonthlySpending } from "./types";
 
 const MONTH_LABELS = [
@@ -54,6 +57,99 @@ const lastDayOfMonth = (year: number, month: number): number =>
 const formatYmd = (year: number, month: number, day: number): string =>
   `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
+const monthStartDate = (year: number, month: number): string =>
+  formatYmd(year, month, 1);
+
+const monthEndDate = (year: number, month: number): string =>
+  formatYmd(year, month, lastDayOfMonth(year, month));
+
+/**
+ * Mirrors MonthlyFinancialSummaries::Support::DateRangePieces (backend).
+ * Single-calendar-month ranges are one partial slice (live transactions), not bucket lookups.
+ */
+export type DateRangePieces = {
+  firstStart: string | null;
+  firstEnd: string | null;
+  lastStart: string | null;
+  lastEnd: string | null;
+  fullMonthDates: string[];
+};
+
+export const dateRangePieces = (
+  startDate: string,
+  endDate: string,
+): DateRangePieces => {
+  const startYm = parseYearMonth(startDate);
+  const endYm = parseYearMonth(endDate);
+
+  if (!startYm || !endYm) {
+    return {
+      firstStart: startDate,
+      firstEnd: endDate,
+      lastStart: null,
+      lastEnd: null,
+      fullMonthDates: [],
+    };
+  }
+
+  const firstMonthStart = monthStartDate(startYm.year, startYm.month);
+  const lastMonthStart = monthStartDate(endYm.year, endYm.month);
+  const lastMonthEnd = monthEndDate(endYm.year, endYm.month);
+
+  let firstStart: string | null = null;
+  let firstEnd: string | null = null;
+  let lastStart: string | null = null;
+  let lastEnd: string | null = null;
+  const fullMonthDates: string[] = [];
+
+  if (firstMonthStart === lastMonthStart) {
+    firstStart = startDate;
+    firstEnd = endDate;
+  } else {
+    if (startDate !== firstMonthStart) {
+      firstStart = startDate;
+      firstEnd = monthEndDate(startYm.year, startYm.month);
+    }
+
+    let year = startYm.year;
+    let month = startYm.month + 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+
+    while (year < endYm.year || (year === endYm.year && month < endYm.month)) {
+      fullMonthDates.push(monthStartDate(year, month));
+      month += 1;
+      if (month > 12) {
+        month = 1;
+        year += 1;
+      }
+    }
+
+    if (startDate === firstMonthStart) {
+      fullMonthDates.unshift(firstMonthStart);
+    }
+
+    if (endDate === lastMonthEnd) {
+      fullMonthDates.push(lastMonthStart);
+    }
+
+    if (endDate !== lastMonthEnd) {
+      lastStart = lastMonthStart;
+      lastEnd = endDate;
+    }
+  }
+
+  return {
+    firstStart,
+    firstEnd,
+    lastStart,
+    lastEnd,
+    fullMonthDates,
+  };
+};
+
 const transactionDateKey = (date: string): string => date.slice(0, 10);
 
 const transactionInDateRange = (
@@ -65,8 +161,19 @@ const transactionInDateRange = (
   return key >= startDate && key <= endDate;
 };
 
-const isExpense = (tx: IndexTransaction): boolean =>
-  tx.type === CombinedTransactionTypeEnum.EXPENSE;
+const isExpense = (tx: IndexTransaction): boolean => {
+  const type = String(tx.type ?? "").trim().toLowerCase();
+  if (!type) {
+    return true;
+  }
+
+  return (
+    type === CombinedTransactionTypeEnum.EXPENSE
+    || type === "transactions::expense"
+    || type.endsWith("::expense")
+    || type === "expense"
+  );
+};
 
 export type MonthSegment =
   | { kind: "full_month"; year: number; month: number }
@@ -131,72 +238,262 @@ const findSummaryForMonth = (
 
 export const summaryFromTransactions = (
   transactions: IndexTransaction[],
-): InsightsSummary => {
-  const income = transactions
-    .filter((tx) => tx.type === CombinedTransactionTypeEnum.INCOME)
-    .reduce((sum, tx) => sum + toNumber(tx.amount), 0);
-  const expenses = transactions
-    .filter(isExpense)
-    .reduce((sum, tx) => sum + Math.abs(toNumber(tx.amount)), 0);
-
-  return {
-    totalIncome: income,
-    totalExpenses: expenses,
-    netSavings: income - expenses,
-  };
-};
+  spaceCurrency = "PHP",
+  rateLookup?: ExchangeRateLookup,
+): InsightsSummary =>
+  summaryFromTransactionsForSpace(
+    transactions,
+    spaceCurrency,
+    rateLookup,
+  );
 
 const summaryFromTransactionSlice = (
   transactions: IndexTransaction[],
   startDate: string,
   endDate: string,
+  spaceCurrency?: string,
+  rateLookup?: ExchangeRateLookup,
 ): InsightsSummary => {
   const slice = transactions.filter((tx) =>
     transactionInDateRange(tx.date, startDate, endDate),
   );
 
-  return summaryFromTransactions(slice);
+  return summaryFromTransactions(
+    slice,
+    spaceCurrency ?? "PHP",
+    rateLookup,
+  );
+};
+
+const isBucketTotalsEmpty = (
+  income: number,
+  expenses: number,
+): boolean => income === 0 && expenses === 0;
+
+const resolveMonthTotals = (
+  summaries: MonthlyFinancialSummary[],
+  transactions: IndexTransaction[],
+  year: number,
+  month: number,
+  spaceCurrency?: string,
+  rateLookup?: ExchangeRateLookup,
+): { totalIncome: number; totalExpenses: number } => {
+  const monthStart = monthStartDate(year, month);
+  const monthEnd = monthEndDate(year, month);
+  const partial = summaryFromTransactionSlice(
+    transactions,
+    monthStart,
+    monthEnd,
+    spaceCurrency,
+    rateLookup,
+  );
+
+  const bucket = findSummaryForMonth(summaries, year, month);
+  const bucketIncome = bucket ? toNumber(bucket.totalIncome) : 0;
+  const bucketExpenses = bucket ? toNumber(bucket.totalExpenses) : 0;
+  const bucketHasTotals = !isBucketTotalsEmpty(bucketIncome, bucketExpenses);
+  const partialHasTotals =
+    partial.totalIncome > 0 || partial.totalExpenses > 0;
+  const bucketIsFresh =
+    bucket != null && isMonthlySummaryBucketFresh(bucket, spaceCurrency);
+
+  if (isCurrentCalendarMonth(year, month)) {
+    if (partialHasTotals) {
+      return {
+        totalIncome: partial.totalIncome,
+        totalExpenses: partial.totalExpenses,
+      };
+    }
+
+    if (bucketIsFresh && bucketHasTotals) {
+      return {
+        totalIncome: bucketIncome,
+        totalExpenses: bucketExpenses,
+      };
+    }
+
+    return {
+      totalIncome: partial.totalIncome,
+      totalExpenses: partial.totalExpenses,
+    };
+  }
+
+  if (bucketIsFresh && bucketHasTotals) {
+    return {
+      totalIncome: bucketIncome,
+      totalExpenses: bucketExpenses,
+    };
+  }
+
+  return {
+    totalIncome: partial.totalIncome,
+    totalExpenses: partial.totalExpenses,
+  };
+};
+
+const addPartialSummary = (
+  summaries: MonthlyFinancialSummary[],
+  transactions: IndexTransaction[],
+  start: string | null,
+  end: string | null,
+  totals: { totalIncome: number; totalExpenses: number },
+  spaceCurrency?: string,
+  rateLookup?: ExchangeRateLookup,
+): void => {
+  if (!start || !end) {
+    return;
+  }
+
+  const startYm = parseYearMonth(start);
+  const endYm = parseYearMonth(end);
+
+  if (
+    startYm
+    && endYm
+    && startYm.year === endYm.year
+    && startYm.month === endYm.month
+  ) {
+    const monthStart = monthStartDate(startYm.year, startYm.month);
+    const monthEnd = monthEndDate(startYm.year, startYm.month);
+    const isFullCalendarMonth = start === monthStart && end === monthEnd;
+
+    if (isFullCalendarMonth) {
+      const monthTotals = resolveMonthTotals(
+        summaries,
+        transactions,
+        startYm.year,
+        startYm.month,
+        spaceCurrency,
+        rateLookup,
+      );
+      totals.totalIncome += monthTotals.totalIncome;
+      totals.totalExpenses += monthTotals.totalExpenses;
+      return;
+    }
+  }
+
+  const partial = summaryFromTransactionSlice(
+    transactions,
+    start,
+    end,
+    spaceCurrency,
+    rateLookup,
+  );
+  totals.totalIncome += partial.totalIncome;
+  totals.totalExpenses += partial.totalExpenses;
+};
+
+const addFullMonthSummary = (
+  summaries: MonthlyFinancialSummary[],
+  transactions: IndexTransaction[],
+  monthStart: string,
+  totals: { totalIncome: number; totalExpenses: number },
+  spaceCurrency?: string,
+  rateLookup?: ExchangeRateLookup,
+): void => {
+  const ym = parseYearMonth(monthStart);
+  if (!ym) {
+    return;
+  }
+
+  const monthTotals = resolveMonthTotals(
+    summaries,
+    transactions,
+    ym.year,
+    ym.month,
+    spaceCurrency,
+    rateLookup,
+  );
+  totals.totalIncome += monthTotals.totalIncome;
+  totals.totalExpenses += monthTotals.totalExpenses;
+};
+
+const normalizeSummaryCurrency = (code: string | undefined): string =>
+  (code ?? "PHP").trim().toUpperCase();
+
+const isMonthlySummaryBucketFresh = (
+  summary: MonthlyFinancialSummary,
+  spaceCurrency?: string,
+): boolean => {
+  if (!summary.fxBased) {
+    return false;
+  }
+
+  if (!spaceCurrency) {
+    return true;
+  }
+
+  return (
+    normalizeSummaryCurrency(summary.currency)
+    === normalizeSummaryCurrency(spaceCurrency)
+  );
+};
+
+const isCurrentCalendarMonth = (
+  year: number,
+  month: number,
+  today = getLocalIsoDateKey(),
+): boolean => {
+  const current = parseYearMonth(today);
+  if (!current) {
+    return false;
+  }
+
+  return current.year === year && current.month === month;
 };
 
 /**
- * Unfiltered insights summary: full months from buckets, partial edge months from transactions.
+ * Unfiltered insights summary: mirrors TotalsInSpaceForRange — partial edges and
+ * single-month filters from transactions; interior full months from FX buckets.
  */
 export const insightsSummaryHybrid = (params: {
   summaries: MonthlyFinancialSummary[];
   transactions: IndexTransaction[];
   startDate: string;
   endDate: string;
+  spaceCurrency?: string;
+  rateLookup?: ExchangeRateLookup;
 }): InsightsSummary => {
-  const { summaries, transactions, startDate, endDate } = params;
-  const segments = splitDateRangeIntoMonthSegments(startDate, endDate);
+  const { summaries, transactions, startDate, endDate, spaceCurrency, rateLookup } =
+    params;
+  const pieces = dateRangePieces(startDate, endDate);
 
-  let totalIncome = 0;
-  let totalExpenses = 0;
+  const totals = { totalIncome: 0, totalExpenses: 0 };
 
-  for (const segment of segments) {
-    if (segment.kind === "full_month") {
-      const bucket = findSummaryForMonth(
-        summaries,
-        segment.year,
-        segment.month,
-      );
-      totalIncome += toNumber(bucket?.totalIncome);
-      totalExpenses += toNumber(bucket?.totalExpenses);
-    } else {
-      const partial = summaryFromTransactionSlice(
-        transactions,
-        segment.startDate,
-        segment.endDate,
-      );
-      totalIncome += partial.totalIncome;
-      totalExpenses += partial.totalExpenses;
-    }
+  addPartialSummary(
+    summaries,
+    transactions,
+    pieces.firstStart,
+    pieces.firstEnd,
+    totals,
+    spaceCurrency,
+    rateLookup,
+  );
+  addPartialSummary(
+    summaries,
+    transactions,
+    pieces.lastStart,
+    pieces.lastEnd,
+    totals,
+    spaceCurrency,
+    rateLookup,
+  );
+
+  for (const monthStart of pieces.fullMonthDates) {
+    addFullMonthSummary(
+      summaries,
+      transactions,
+      monthStart,
+      totals,
+      spaceCurrency,
+      rateLookup,
+    );
   }
 
   return {
-    totalIncome,
-    totalExpenses,
-    netSavings: totalIncome - totalExpenses,
+    totalIncome: totals.totalIncome,
+    totalExpenses: totals.totalExpenses,
+    netSavings: totals.totalIncome - totals.totalExpenses,
   };
 };
 
@@ -248,47 +545,6 @@ export const financialTrendsDateRange = (
   };
 };
 
-/** Monthly spending series for charts from the same buckets. */
-export const monthlySpendingFromBuckets = (
-  summaries: MonthlyFinancialSummary[],
-  startDate: string,
-  endDate: string,
-): MonthlySpending[] => {
-  const start = parseYearMonth(startDate);
-  const end = parseYearMonth(endDate);
-  if (!start || !end) {
-    return [];
-  }
-
-  const startKey = yearMonthKey(start.year, start.month);
-  const endKey = yearMonthKey(end.year, end.month);
-
-  return summaries
-    .filter((summary) => {
-      const key = yearMonthKey(summary.year, summary.month);
-      return key >= startKey && key <= endKey;
-    })
-    .sort((a, b) => {
-      if (a.year !== b.year) {
-        return a.year - b.year;
-      }
-      return a.month - b.month;
-    })
-    .map((summary) => {
-      const income = toNumber(summary.totalIncome);
-      const expenses = toNumber(summary.totalExpenses);
-      return {
-        // Match transformMonthlySpending short month labels.
-        month: MONTH_LABELS[summary.month - 1],
-        income,
-        expenses,
-        savings: income - expenses,
-      };
-    });
-};
-
-export type MonthlySpendingSeriesMode = "all" | "expense" | "income";
-
 const eachMonthInRange = (
   startDate: string,
   endDate: string,
@@ -316,6 +572,39 @@ const eachMonthInRange = (
   return months;
 };
 
+/** Monthly spending series for charts from the same buckets. */
+export const monthlySpendingFromBuckets = (
+  summaries: MonthlyFinancialSummary[],
+  startDate: string,
+  endDate: string,
+): MonthlySpending[] => {
+  const start = parseYearMonth(startDate);
+  const end = parseYearMonth(endDate);
+  if (!start || !end) {
+    return [];
+  }
+
+  const byMonth = new Map<string, MonthlyFinancialSummary>();
+  for (const summary of summaries) {
+    byMonth.set(yearMonthKey(summary.year, summary.month), summary);
+  }
+
+  return eachMonthInRange(startDate, endDate).map(({ year, month }) => {
+    const summary = byMonth.get(yearMonthKey(year, month));
+    const income = toNumber(summary?.totalIncome);
+    const expenses = toNumber(summary?.totalExpenses);
+    return {
+      // Match transformMonthlySpending short month labels.
+      month: MONTH_LABELS[month - 1],
+      income,
+      expenses,
+      savings: income - expenses,
+    };
+  });
+};
+
+export type MonthlySpendingSeriesMode = "all" | "expense" | "income";
+
 /**
  * Monthly spending series from transactions (category/tag filtered trends).
  * When seriesMode is expense or income, amounts land on that series only and savings stay 0.
@@ -325,6 +614,8 @@ export const monthlySpendingFromTransactions = (
   startDate: string,
   endDate: string,
   seriesMode: MonthlySpendingSeriesMode = "all",
+  spaceCurrency = "PHP",
+  rateLookup?: ExchangeRateLookup,
 ): MonthlySpending[] => {
   const months = eachMonthInRange(startDate, endDate);
   if (months.length === 0) {
@@ -345,25 +636,37 @@ export const monthlySpendingFromTransactions = (
     }
 
     const key = yearMonthKey(parsed.year, parsed.month);
-    const amount = Math.abs(toNumber(tx.amount));
+    const spaceAmount = summaryFromTransactionsForSpace(
+      [tx],
+      spaceCurrency,
+      rateLookup,
+    );
+    const incomeAmount = spaceAmount.totalIncome;
+    const expenseAmount = spaceAmount.totalExpenses;
 
     if (seriesMode === "expense") {
-      expensesByMonth.set(key, (expensesByMonth.get(key) ?? 0) + amount);
+      expensesByMonth.set(
+        key,
+        (expensesByMonth.get(key) ?? 0) + expenseAmount,
+      );
       continue;
     }
 
     if (seriesMode === "income") {
-      incomeByMonth.set(key, (incomeByMonth.get(key) ?? 0) + amount);
+      incomeByMonth.set(key, (incomeByMonth.get(key) ?? 0) + incomeAmount);
       continue;
     }
 
     if (tx.type === CombinedTransactionTypeEnum.INCOME) {
-      incomeByMonth.set(key, (incomeByMonth.get(key) ?? 0) + amount);
+      incomeByMonth.set(key, (incomeByMonth.get(key) ?? 0) + incomeAmount);
       continue;
     }
 
     if (isExpense(tx)) {
-      expensesByMonth.set(key, (expensesByMonth.get(key) ?? 0) + amount);
+      expensesByMonth.set(
+        key,
+        (expensesByMonth.get(key) ?? 0) + expenseAmount,
+      );
     }
   }
 

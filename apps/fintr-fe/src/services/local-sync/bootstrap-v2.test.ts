@@ -1,7 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { verifyBootstrapTotals } from "./bootstrap-v2-helpers";
+import {
+  resolveBootstrapMonthlySummaries,
+  verifyBootstrapTotals,
+} from "./bootstrap-v2-helpers";
 import type { SyncBootstrapResponse } from "@/types/syncTypes";
+
+describe("resolveBootstrapMonthlySummaries", () => {
+  it("reads camelCase monthlyFinancialSummaries from the bundle", () => {
+    expect(
+      resolveBootstrapMonthlySummaries({
+        monthlyFinancialSummaries: [{ id: "1", month: 8 }],
+      }),
+    ).toEqual([{ id: "1", month: 8 }]);
+  });
+
+  it("falls back to snake_case monthly_financial_summaries", () => {
+    expect(
+      resolveBootstrapMonthlySummaries({
+        monthly_financial_summaries: [{ id: "2", month: 7 }],
+      }),
+    ).toEqual([{ id: "2", month: 7 }]);
+  });
+
+  it("returns an empty array when summaries are missing", () => {
+    expect(resolveBootstrapMonthlySummaries({})).toEqual([]);
+  });
+});
 
 describe("bootstrap v2 totals verification", () => {
   it("passes when transaction count matches totals", () => {
@@ -72,6 +97,8 @@ describe("fetchSpaceBootstrap", () => {
             monthlyFinancialSummaries: [],
             loans: [],
             budgetsByMonth: {},
+            tags: [],
+            entities: [],
           },
         },
       }),

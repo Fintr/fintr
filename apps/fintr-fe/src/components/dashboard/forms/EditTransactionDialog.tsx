@@ -7,10 +7,11 @@ import IncomeForm from "./IncomeForm";
 import TransferForm from "./TransferForm";
 import ScopeModal, { UpdateScope, Scope, DeleteScope } from "./ScopeModal";
 import { IndexTransaction, CombinedTransactionTypeEnum, TransferUpdateTransactionType, UpdateTransactionType, CurrencyConversionType } from "@/types/transactionTypes";
-import { UpdateTransferType, updateTransfer } from "@/services/transactions/transfers/mutation";
+import { UpdateTransferType } from "@/services/transactions/transfers/mutation";
 import { buildTransferInitialData } from "./transfer-form-initial-data";
-import { patchTransferAndFeeCaches } from "@/services/transactions/transfers/patch-transfer-fee-caches";
-import { updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
+import { updateTransferLocalFirst } from "@/services/transactions/transfers/update-local-first";
+import { deleteTransaction } from "@/services/transactions/mutation";
+import { updateTransactionLocalFirst } from "@/services/transactions/update-local-first";
 import { deleteTransactionLocalFirst } from "@/services/transactions/delete-local-first";
 import {
   enrichTransactionEditDetail,
@@ -33,6 +34,9 @@ import {
   TransactionEditorPresence,
   useTransactionEditingPresence,
 } from "@/hooks/useTransactionEditingPresence";
+
+/** Keep form data visible through sheet/modal close animations (~400ms). */
+const EDIT_DIALOG_CLOSE_RESET_DELAY_MS = 450;
 
 const getEditorInitials = (name?: string | null): string | null => {
   const trimmedName = name?.trim();
@@ -178,6 +182,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
 }) => {
   const titleId = useId();
   const isMobile = useMediaQuery("(max-width: 767px)");
+  const [activeTransaction, setActiveTransaction] = useState<IndexTransaction | null>(null);
   const [fullTransactionData, setFullTransactionData] = useState<UpdateTransactionType | TransferUpdateTransactionType | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const queryClient = useQueryClient();
@@ -194,8 +199,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     lockingEditor,
   } = useTransactionEditingPresence({
     spaceId: presenceSpaceId,
-    transactionId: transaction?.id,
-    enabled: isOpen && Boolean(transaction?.id),
+    transactionId: activeTransaction?.id,
+    enabled: isOpen && Boolean(activeTransaction?.id),
   });
   const editingLockedReason = isLockedByOther ? lockMessage : null;
   const [isLoading, setIsLoading] = useState(false);
@@ -239,8 +244,18 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   }, [conversionPopoverOpen]);
 
   useEffect(() => {
-    if (!isOpen || !transaction?.id) {
-      // Reset data when dialog is closed or transaction is null
+    if (isOpen && transaction?.id) {
+      setActiveTransaction(transaction);
+    }
+  }, [isOpen, transaction]);
+
+  useEffect(() => {
+    if (isOpen) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setActiveTransaction(null);
       setFullTransactionData(null);
       setDate(new Date());
       setShowUpdateScopeModal(false);
@@ -248,20 +263,29 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       setPendingFormData(null);
       setHasScheduleChanges(false);
       setFileAttachments([]);
-      setDataKey(0); // Reset dataKey when closing
+      setDataKey(0);
       setShowDeleteScopeModal(false);
       setDeleteScope(DeleteScopeEnum.THIS_ONLY);
       setIsUpdating(false);
       setIsDeleting(false);
       setIsLoading(false);
       resolveScopeModal();
+    }, EDIT_DIALOG_CLOSE_RESET_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !activeTransaction?.id) {
       return;
     }
 
     if (!preferLocal && !api) return;
 
     // Prevent editing of loan payment transactions
-    if (transaction.hasLoanPayment) {
+    if (activeTransaction.hasLoanPayment) {
       toast.error("This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.");
       onClose();
       return;
@@ -270,7 +294,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     let cancelled = false;
 
     // Service owns seed/enrich; component only binds result to UI state.
-    const seed = seedTransactionEditFromListRow(transaction);
+    const seed = seedTransactionEditFromListRow(activeTransaction);
     setFullTransactionData(seed.data);
     setDataKey((prev) => prev + 1);
     if (seed.date) {
@@ -283,7 +307,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         const enriched = await enrichTransactionEditDetail({
           api,
           spaceId: spaceCode,
-          transaction,
+          transaction: activeTransaction,
           preferLocal,
         });
         if (cancelled) return;
@@ -326,7 +350,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [transaction?.id, isOpen, api, preferLocal, spaceCode]);
+  }, [activeTransaction?.id, isOpen, api, preferLocal, spaceCode]);
 
   const validateScheduleTypeChange = (originalScheduleType: ScheduleTypeEnum, newScheduleType: ScheduleTypeEnum) => {
     // Rule 2: Cannot change from one_time or repeat to installment
@@ -461,38 +485,38 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
 
   // Handle delete action
   const handleDelete = () => {
-    if (!transaction) return;
+    if (!activeTransaction) return;
     setShowDeleteScopeModal(true);
     setDeleteScope(DeleteScopeEnum.THIS_ONLY);
   };
 
   const handleDeleteConfirm = async (scope: Scope) => {
-    if (!transaction) return;
+    if (!activeTransaction) return;
 
     setIsDeleting(true);
     try {
       if (
-        transaction.type === CombinedTransactionTypeEnum.TRANSFER ||
-        transaction.type === CombinedTransactionTypeEnum.INCOME ||
-        transaction.type === CombinedTransactionTypeEnum.EXPENSE ||
-        transaction.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT ||
-        transaction.type === CombinedTransactionTypeEnum.LOAN_PAYMENT
+        activeTransaction.type === CombinedTransactionTypeEnum.TRANSFER ||
+        activeTransaction.type === CombinedTransactionTypeEnum.INCOME ||
+        activeTransaction.type === CombinedTransactionTypeEnum.EXPENSE ||
+        activeTransaction.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT ||
+        activeTransaction.type === CombinedTransactionTypeEnum.LOAN_PAYMENT
       ) {
         const isTransfer =
-          transaction.type === CombinedTransactionTypeEnum.TRANSFER;
+          activeTransaction.type === CombinedTransactionTypeEnum.TRANSFER;
         const isOptimisticLocalFirstDelete =
           isTransfer ||
-          transaction.type === CombinedTransactionTypeEnum.INCOME ||
-          transaction.type === CombinedTransactionTypeEnum.EXPENSE ||
-          transaction.type === CombinedTransactionTypeEnum.LOAN_PAYMENT ||
-          transaction.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT;
+          activeTransaction.type === CombinedTransactionTypeEnum.INCOME ||
+          activeTransaction.type === CombinedTransactionTypeEnum.EXPENSE ||
+          activeTransaction.type === CombinedTransactionTypeEnum.LOAN_PAYMENT ||
+          activeTransaction.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT;
         const result = await deleteTransactionLocalFirst(
           api,
           {
             spaceId: spaceCode,
-            transactionId: transaction.id,
+            transactionId: activeTransaction.id,
             deleteScope: scope as DeleteScopeEnum,
-            listRow: transaction,
+            listRow: activeTransaction,
           },
           isOptimisticLocalFirstDelete
             ? { queryClient, waitForSync: false }
@@ -506,10 +530,9 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
           );
           setShowDeleteScopeModal(false);
           onClose();
-          // Local-first already patched list caches. Do not invalidate
-          // transactions — under space-sync pull the refetch reads IndexedDB
-          // and stale page snapshots can wipe sibling rows that were only
-          // present via optimistic create.
+          // Local-first already patched list + dashboard caches. Refresh
+          // secondary queries immediately; do not wait for network sync.
+          onSuccess({ skipTransactionsInvalidate: true });
           void Promise.resolve(result.syncPromise)
             .then((synced) => {
               if (synced.pendingSync) {
@@ -519,15 +542,14 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
                     : "Transaction deleted on this device. Will sync when online.",
                 );
               }
-              onSuccess({ skipTransactionsInvalidate: true });
             })
             .catch(() => undefined);
           return;
         }
 
         if (
-          transaction.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT ||
-          transaction.type === CombinedTransactionTypeEnum.LOAN_PAYMENT
+          activeTransaction.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT ||
+          activeTransaction.type === CombinedTransactionTypeEnum.LOAN_PAYMENT
         ) {
           toast.success(
             result.pendingSync
@@ -547,7 +569,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         }
       } else {
         await deleteTransaction(api, {
-          id: transaction.id,
+          id: activeTransaction.id,
           deleteScope: scope as DeleteScope,
         });
         toast.success("Transaction deleted successfully");
@@ -584,46 +606,67 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   const handleSuccess = async (data: any) => {
     setIsUpdating(true);
     try {
-      let response;
-      
       // File updates are explicit: uploadable `file` replaces, `removeFile` clears,
       // and omitting both leaves the existing attachment unchanged.
       const dataWithFile = { ...data };
 
-      if (transaction?.type === CombinedTransactionTypeEnum.TRANSFER) {
-        // Paint transfer + fee immediately, then sync to the server.
-        await patchTransferAndFeeCaches({
-          spaceId: spaceCode,
-          queryClient,
-          transferId: transaction.id,
-          data: dataWithFile as UpdateTransferType,
-          amountCurrency: transaction.amountCurrency,
-          previousTransfer: transaction,
-        });
-        response = await updateTransfer(api, dataWithFile);
-        await patchTransferAndFeeCaches({
-          spaceId: spaceCode,
-          queryClient,
-          transferId: transaction.id,
-          data: dataWithFile as UpdateTransferType,
-          amountCurrency: transaction.amountCurrency,
-          previousTransfer: {
-            ...transaction,
-            description: dataWithFile.description ?? transaction.description,
-            amount: dataWithFile.amount ?? transaction.amount,
-            date: dataWithFile.date ?? transaction.date,
-            fromAccountName:
-              dataWithFile.fromAccountName ?? transaction.fromAccountName,
-            toAccountName:
-              dataWithFile.toAccountName ?? transaction.toAccountName,
+      if (activeTransaction?.type === CombinedTransactionTypeEnum.TRANSFER) {
+        const result = await updateTransferLocalFirst(
+          api,
+          {
+            spaceId: spaceCode,
+            data: dataWithFile as UpdateTransferType,
+            previous: activeTransaction,
+            amountCurrency:
+              activeTransaction.amountCurrency
+              ?? spaceCurrency,
           },
-        });
+          {
+            queryClient,
+            waitForSync: false,
+          },
+        );
         toast.success("Transfer updated successfully");
+        void result.syncPromise.then((synced) => {
+          if (synced.pendingSync) {
+            toast.message(
+              "Update saved on this device. Will sync when online.",
+            );
+          }
+        }).catch(() => {
+          toast.error("Failed to sync transfer update.");
+        });
         onSuccess({ skipTransactionsInvalidate: true });
       } else {
-        response = await updateTransaction(api, dataWithFile);
+        if (!activeTransaction) {
+          throw new Error("No transaction loaded for update");
+        }
+        const result = await updateTransactionLocalFirst(
+          api,
+          {
+            spaceId: spaceCode,
+            data: dataWithFile,
+            previous: activeTransaction,
+            amountCurrency:
+              activeTransaction.amountCurrency
+              ?? spaceCurrency,
+          },
+          {
+            queryClient,
+            waitForSync: false,
+          },
+        );
         toast.success("Transaction updated successfully");
-        onSuccess();
+        void result.syncPromise.then((synced) => {
+          if (synced.pendingSync) {
+            toast.message(
+              "Update saved on this device. Will sync when online.",
+            );
+          }
+        }).catch(() => {
+          toast.error("Failed to sync transaction update.");
+        });
+        onSuccess({ skipTransactionsInvalidate: true });
       }
 
       onClose();
@@ -637,7 +680,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   };
 
   const getDialogTitle = () => {
-    switch (transaction?.type) {
+    switch (activeTransaction?.type) {
       case CombinedTransactionTypeEnum.EXPENSE:
         return "Edit Expense";
       case CombinedTransactionTypeEnum.INCOME:
@@ -650,7 +693,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   };
 
   const getDialogDescription = () => {
-    switch (transaction?.type) {
+    switch (activeTransaction?.type) {
       case CombinedTransactionTypeEnum.EXPENSE:
         return "Update the details of your expense transaction.";
       case CombinedTransactionTypeEnum.INCOME:
@@ -665,7 +708,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   const transferInitialData = useMemo((): UpdateTransferType | null => {
     if (
       !fullTransactionData ||
-      transaction?.type !== CombinedTransactionTypeEnum.TRANSFER
+      activeTransaction?.type !== CombinedTransactionTypeEnum.TRANSFER
     ) {
       return null;
     }
@@ -688,7 +731,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     (fullTransactionData as { updateScope?: string })?.updateScope,
     (fullTransactionData as { currencyConversion?: unknown })?.currencyConversion,
     (fullTransactionData as { currency_conversion?: unknown })?.currency_conversion,
-    transaction?.type,
+    activeTransaction?.type,
     dataKey,
   ]);
 
@@ -701,17 +744,17 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       );
     }
 
-    if (!fullTransactionData || !transaction) {
+    if (!fullTransactionData || !activeTransaction) {
       return <div className="py-8 text-center">No transaction data available</div>;
     }
 
     // Use the key to force re-render when data changes
-    switch (transaction.type) {
+    switch (activeTransaction.type) {
       case CombinedTransactionTypeEnum.EXPENSE:
         return (
           <ExpenseForm
             key={`expense-form-${dataKey}`}
-            id={transaction.id}
+            id={activeTransaction.id}
             initialData={fullTransactionData}
             date={date}
             setDate={setDate}
@@ -729,7 +772,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         return (
           <IncomeForm
             key={`income-form-${dataKey}`}
-            id={transaction.id}
+            id={activeTransaction.id}
             initialData={fullTransactionData}
             date={date}
             setDate={setDate}
@@ -753,7 +796,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         return (
           <TransferForm
             key={`transfer-form-${dataKey}`}
-            id={transaction.id}
+            id={activeTransaction.id}
             initialData={transferInitialData}
             date={date}
             setDate={setDate}
@@ -884,7 +927,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         selectedScope={updateScope}
         onScopeChange={handleUpdateScopeChange}
         hasScheduleChanges={hasScheduleChanges}
-        transactionType={transaction?.type}
+        transactionType={activeTransaction?.type}
         inSeries={fullTransactionData?.scheduleType === ScheduleTypeEnum.REPEAT || fullTransactionData?.scheduleType === ScheduleTypeEnum.INSTALLMENT}
         isLoading={isUpdating}
       />
@@ -897,7 +940,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         onConfirm={handleDeleteConfirm}
         selectedScope={deleteScope}
         onScopeChange={handleDeleteScopeChange}
-        transactionType={transaction?.type}
+        transactionType={activeTransaction?.type}
         inSeries={fullTransactionData?.scheduleType === ScheduleTypeEnum.REPEAT || fullTransactionData?.scheduleType === ScheduleTypeEnum.INSTALLMENT}
         isLoading={isDeleting}
       />

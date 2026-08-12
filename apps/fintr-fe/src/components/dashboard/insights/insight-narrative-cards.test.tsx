@@ -60,6 +60,9 @@ describe("InsightNarrativeCards", () => {
 
     expect(screen.getByText("Strong Saver")).toBeInTheDocument();
     expect(
+      document.querySelector('img[src="/profiles/strong_saver.png"]'),
+    ).not.toBeNull();
+    expect(
       screen.getByRole("link", { name: "View transactions" }),
     ).toHaveAttribute("href", "/dashboard");
   });

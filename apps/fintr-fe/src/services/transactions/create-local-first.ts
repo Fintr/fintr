@@ -39,6 +39,12 @@ import {
 import { invalidateLocalInsightsQueries } from "@/utils/invalidateSpaceQueries";
 import { assertCreateTransactionForOptimistic } from "@fintr/domain";
 
+import {
+  buildCreateOutboxPayload,
+  rollbackCreateAttachments,
+  syncAttachmentOwnerId,
+} from "@/services/attachments/create-outbox";
+
 export type CreateTransactionLocalFirstResult = {
   data: { id: string };
   pendingSync: boolean;
@@ -393,8 +399,13 @@ export const createTransactionLocalFirst = async (
     invalidateLocalInsightsQueries(queryClient);
   }
 
-  // Strip File from outbox payload (not structured-clone friendly / not for later drain yet).
-  const { file: _file, ...payloadForOutbox } = data;
+  // Persist attachment blob + JSON-safe outbox payload (file stripped).
+  const payloadForOutbox = await buildCreateOutboxPayload({
+    spaceId,
+    ownerType: "transaction",
+    ownerId: localTransaction.id,
+    data,
+  });
   await enqueueOutboxRecord({
     spaceId,
     commandType: OUTBOX_COMMAND_TRANSACTION_CREATE,
@@ -417,6 +428,12 @@ export const createTransactionLocalFirst = async (
           localTransaction.id,
           serverId,
         );
+        await syncAttachmentOwnerId({
+          spaceId,
+          ownerType: "transaction",
+          localOwnerId: localTransaction.id,
+          serverOwnerId: serverId,
+        });
         if (queryClient) {
           replaceIndexTransactionIdInQueryCaches(queryClient, {
             spaceId,
@@ -496,6 +513,11 @@ export const createTransactionLocalFirst = async (
         spaceId,
         seriesRows.map((row) => row.id),
       );
+      await rollbackCreateAttachments({
+        spaceId,
+        ownerType: "transaction",
+        ownerId: localTransaction.id,
+      });
       await applySummariesForRows({
         spaceId,
         rows: seriesRows,

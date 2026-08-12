@@ -18,16 +18,20 @@ import {
   insertTransactionNewestFirst,
   LOCAL_TRANSACTIONS_PAGE_SIZE,
   getLocalTransactionsPrefetchIndex,
+  loadAllCachedTransactionsForInsights,
   loadCachedTransactionsInfiniteData,
   loadCachedTransactionsInRange,
   loadCachedTransactionsPage,
   loadCachedTransactionsPageAt,
+  loadScatteredTransactionSnapshotsFromMeta,
   mergeFetchedTransactionsIntoAllTimeCache,
   replaceLocalIndexTransactionId,
   upsertLocalIndexTransaction,
   mergeIndexTransactionTags,
   mergeIndexTransactionMetadata,
+  transactionsAllPagesCacheKey,
 } from "./local-cache";
+import { putLocalResponseSnapshot } from "@/lib/local-db/response-cache";
 
 describe("transactions local-cache", () => {
   afterEach(async () => {
@@ -102,6 +106,137 @@ describe("transactions local-cache", () => {
       "newer-first",
       "newer-second",
       "older",
+    ]);
+  });
+
+  it("filters cached transactions by entry type (e.g. loans only)", async () => {
+    const baseFilter = {
+      categoriesSerialized: "[]",
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    };
+
+    await upsertLocalIndexTransaction("space-a", {
+      id: "expense-row",
+      date: "2026-08-10",
+      description: "Medicine",
+      amount: 100,
+      amountCurrency: "PHP",
+      categoryName: "Medicine",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    });
+    await upsertLocalIndexTransaction("space-a", {
+      id: "loan-payment-row",
+      date: "2026-08-11",
+      description: "Mortgage payment",
+      amount: 500,
+      amountCurrency: "PHP",
+      categoryName: "Loan",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.LOAN_PAYMENT,
+      inSeries: false,
+      hasImage: false,
+    });
+
+    const allFilterKey = buildTransactionsFilterKey({
+      ...baseFilter,
+      entryType: "all",
+    });
+    const loansFilterKey = buildTransactionsFilterKey({
+      ...baseFilter,
+      entryType: "loans",
+    });
+
+    const allPage = await loadCachedTransactionsPageAt("space-a", allFilterKey, 1);
+    expect(allPage?.transactions.map((row) => row.id)).toEqual([
+      "loan-payment-row",
+      "expense-row",
+    ]);
+
+    const loansPage = await loadCachedTransactionsPageAt(
+      "space-a",
+      loansFilterKey,
+      1,
+    );
+    expect(loansPage?.transactions.map((row) => row.id)).toEqual([
+      "loan-payment-row",
+    ]);
+  });
+
+  it("filters entry type from a cached all-types page snapshot when the flat index is empty", async () => {
+    const baseFilter = {
+      categoriesSerialized: "[]",
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    };
+
+    const allFilterKey = buildTransactionsFilterKey({
+      ...baseFilter,
+      entryType: "all",
+    });
+    const expenseFilterKey = buildTransactionsFilterKey({
+      ...baseFilter,
+      entryType: "expense",
+    });
+
+    await cacheTransactionsPage("space-a", allFilterKey, {
+      transactions: [
+        {
+          id: "expense-only",
+          date: "2026-08-10",
+          description: "Medicine",
+          amount: 100,
+          amountCurrency: "PHP",
+          categoryName: "Medicine",
+          fromAccountName: "Cash",
+          toAccountName: "",
+          type: CombinedTransactionTypeEnum.EXPENSE,
+          inSeries: false,
+          hasImage: false,
+        },
+        {
+          id: "income-only",
+          date: "2026-08-10",
+          description: "Salary",
+          amount: 500,
+          amountCurrency: "PHP",
+          categoryName: "Salary",
+          fromAccountName: "Cash",
+          toAccountName: "",
+          type: CombinedTransactionTypeEnum.INCOME,
+          inSeries: false,
+          hasImage: false,
+        },
+      ],
+      nextPage: null,
+      totalPages: 1,
+      totalCount: 2,
+      totals: { income: 500, expense: 100, transfer: 0 },
+    });
+
+    const expensePage = await loadCachedTransactionsPageAt(
+      "space-a",
+      expenseFilterKey,
+      1,
+    );
+
+    expect(expensePage?.transactions.map((row) => row.id)).toEqual([
+      "expense-only",
     ]);
   });
 
@@ -498,6 +633,48 @@ describe("transactions local-cache", () => {
     expect(cleared.tagIds).toEqual([]);
   });
 
+  it("mergeIndexTransactionTags preserves tags when incoming only has tags: []", () => {
+    const existing = {
+      id: "tx-1",
+      tags: [{ id: "tag-a", name: "Japan 2026", color: "#000" }],
+      tagIds: ["tag-a"],
+    };
+
+    const merged = mergeIndexTransactionTags(
+      existing as never,
+      {
+        id: "tx-1",
+        tags: [],
+      } as never,
+    );
+
+    expect(merged.tags?.map((tag) => tag.id)).toEqual(["tag-a"]);
+    expect(merged.tagIds).toEqual(["tag-a"]);
+  });
+
+  it("mergeIndexTransactionTags overlays tags without dropping existing row fields", () => {
+    const existing = {
+      id: "tx-1",
+      amount: 10_000_000,
+      categoryName: "Freelance",
+      tags: [],
+    };
+
+    const merged = mergeIndexTransactionTags(
+      existing as never,
+      {
+        id: "tx-1",
+        amount: 164.15,
+        tags: [{ id: "tag-a", name: "Japan 2026", color: "#000" }],
+        tagIds: ["tag-a"],
+      } as never,
+    );
+
+    expect(merged.amount).toBe(164.15);
+    expect(merged.categoryName).toBe("Freelance");
+    expect(merged.tagIds).toEqual(["tag-a"]);
+  });
+
   it("preserves category metadata when a server upsert omits category fields", async () => {
     await upsertLocalIndexTransaction("space-a", {
       id: "tx-home",
@@ -773,5 +950,219 @@ describe("transactions local-cache", () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.id).toBe("tx-online-page-1");
+  });
+
+  it("loads all-time UI ranges from month-scoped caches via page reads", async () => {
+    const spaceId = "space-all-time-ui";
+    const augustFilterKey = buildTransactionsFilterKey({
+      categoriesSerialized: "[]",
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    });
+
+    const allTimeUiFilterKey = buildTransactionsFilterKey({
+      categoriesSerialized: "[]",
+      startDate: "2026-01-01",
+      endDate: "2026-08-31",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    });
+
+    await cacheTransactionsAllPages(spaceId, augustFilterKey, [
+      {
+        transactions: [
+          {
+            id: "tx-august-all-time",
+            date: "2026-08-12",
+            description: "August dinner",
+            amount: 500,
+            categoryName: "Dine Out & Entertainment",
+            fromAccountName: "Cash",
+            toAccountName: "",
+            type: CombinedTransactionTypeEnum.EXPENSE,
+            inSeries: false,
+            hasImage: false,
+          } as TransactionsPage["transactions"][number],
+        ],
+        nextPage: null,
+        totalPages: 1,
+        totalCount: 1,
+        totals: null,
+      },
+    ]);
+
+    const seeded = await loadCachedTransactionsInfiniteData(
+      spaceId,
+      allTimeUiFilterKey,
+    );
+
+    expect(seeded?.pages[0]?.transactions).toHaveLength(1);
+    expect(seeded?.pages[0]?.transactions[0]?.id).toBe("tx-august-all-time");
+  });
+
+  it("reads transactionsAllPages snapshots stored as a single page object", async () => {
+    const spaceId = "miguel-dagatan-gmail-com-personal-space";
+    const filterKey = buildAllTimeTransactionsFilterKey({
+      categoriesSerialized: "[]",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    });
+
+    await putLocalResponseSnapshot(
+      transactionsAllPagesCacheKey(spaceId, filterKey),
+      {
+        transactions: [
+          {
+            id: "dec-salary",
+            date: "2025-12-31",
+            description: "Salary",
+            amount: 50000,
+            categoryName: "Salary",
+            fromAccountName: "",
+            toAccountName: "Cash",
+            type: CombinedTransactionTypeEnum.INCOME,
+            inSeries: false,
+            hasImage: false,
+          } as TransactionsPage["transactions"][number],
+        ],
+        nextPage: null,
+        totalPages: 1,
+        totalCount: 1,
+        totals: null,
+      },
+    );
+
+    const scattered = await loadScatteredTransactionSnapshotsFromMeta(spaceId);
+    expect(scattered).toHaveLength(1);
+    expect(scattered[0]?.id).toBe("dec-salary");
+
+    const insights = await loadAllCachedTransactionsForInsights(spaceId);
+    expect(insights.some((row) => row.id === "dec-salary")).toBe(true);
+  });
+
+  it("keeps bootstrap tags when Dexie index has a tagless overwrite", async () => {
+    const spaceId = "space-a";
+    const tagId = "tag-japan-2026";
+    const filterKey = buildTransactionsFilterKey({
+      categoriesSerialized: "[]",
+      startDate: OFFLINE_BOOTSTRAP_START_DATE,
+      endDate: OFFLINE_BOOTSTRAP_END_DATE,
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    });
+
+    await cacheTransactionsAllPages(spaceId, filterKey, [
+      {
+        transactions: [
+          {
+            id: "tx-trip",
+            date: "2026-03-15",
+            description: "Tokyo",
+            amount: 1200,
+            categoryName: "Travel",
+            fromAccountName: "Cash",
+            toAccountName: "",
+            type: CombinedTransactionTypeEnum.EXPENSE,
+            inSeries: false,
+            hasImage: false,
+            tags: [{ id: tagId, name: "Japan 2026", color: "#0A3D62" }],
+          } as TransactionsPage["transactions"][number],
+        ],
+        nextPage: null,
+        totalPages: 1,
+        totalCount: 1,
+        totals: null,
+      },
+    ]);
+
+    await upsertLocalIndexTransaction(spaceId, {
+      id: "tx-trip",
+      date: "2026-03-15",
+      description: "Tokyo",
+      amount: 1200,
+      categoryName: "Travel",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+      tags: [],
+    });
+
+    const insights = await loadAllCachedTransactionsForInsights(spaceId);
+    const trip = insights.find((row) => row.id === "tx-trip");
+
+    expect(trip?.tags?.map((tag) => tag.id)).toEqual([tagId]);
+  });
+
+  it("keeps Church categoryName when Dexie row omits category metadata", async () => {
+    const spaceId = "space-a";
+    const filterKey = buildTransactionsFilterKey({
+      categoriesSerialized: "[]",
+      startDate: OFFLINE_BOOTSTRAP_START_DATE,
+      endDate: OFFLINE_BOOTSTRAP_END_DATE,
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    });
+
+    await cacheTransactionsAllPages(spaceId, filterKey, [
+      {
+        transactions: [
+          {
+            id: "tx-church",
+            date: "2026-03-15",
+            description: "Tithe",
+            amount: 2500,
+            categoryName: "Church",
+            categoryId: "cat-church",
+            fromAccountName: "Cash",
+            toAccountName: "",
+            type: CombinedTransactionTypeEnum.EXPENSE,
+            inSeries: false,
+            hasImage: false,
+          } as TransactionsPage["transactions"][number],
+        ],
+        nextPage: null,
+        totalPages: 1,
+        totalCount: 1,
+        totals: null,
+      },
+    ]);
+
+    await upsertLocalIndexTransaction(spaceId, {
+      id: "tx-church",
+      date: "2026-03-15",
+      description: "Tithe",
+      amount: 2500,
+      categoryName: "",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    });
+
+    const insights = await loadAllCachedTransactionsForInsights(spaceId);
+    const church = insights.find((row) => row.id === "tx-church");
+
+    expect(church?.categoryName).toBe("Church");
+    expect(church?.categoryId).toBe("cat-church");
   });
 });

@@ -18,6 +18,7 @@ import {
   getSafeAreaInsets,
 } from "@/lib/platform-detection";
 import { numberFormatting } from "@/lib/utils";
+import { getNestedOverlayPortalRoot } from "@/lib/nested-overlay-portal";
 import {
   acquireCalculatorScrollPadding,
   computeKeyboardPlacement,
@@ -806,7 +807,7 @@ export function CalculatorInput({
     showKeyboard,
   ]);
 
-  const handleFocus = useCallback(() => {
+  const openKeyboard = useCallback(() => {
     if (disabled) {
       return;
     }
@@ -821,6 +822,23 @@ export function CalculatorInput({
     setShowKeyboard(true);
     requestAnimationFrame(collapseSelectionToEnd);
   }, [applyKeyboardPlacement, collapseSelectionToEnd, disabled]);
+
+  const handleFocus = useCallback(() => {
+    openKeyboard();
+  }, [openKeyboard]);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLInputElement>) => {
+      if (disabled) {
+        return;
+      }
+
+      // Mobile sheets can swallow click-before-focus; open keyboard on pointer down.
+      e.stopPropagation();
+      openKeyboard();
+    },
+    [disabled, openKeyboard],
+  );
 
   const handleCalculatorButtonPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -982,6 +1000,7 @@ export function CalculatorInput({
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
+        onPointerDown={handlePointerDown}
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
@@ -994,7 +1013,7 @@ export function CalculatorInput({
       {/* Calculator keyboard - rendered via portal to avoid clipping */}
       {mounted && showKeyboard && !disabled && createPortal(
         renderKeyboard(),
-        document.body
+        getNestedOverlayPortalRoot() ?? document.body,
       )}
     </div>
   );

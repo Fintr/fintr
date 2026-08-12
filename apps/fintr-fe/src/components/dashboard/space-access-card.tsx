@@ -39,6 +39,7 @@ import { Users, UserPlus, Trash2, Mail, Shield, User, Edit2, Save, X, Info, LogO
 import { SpaceUser } from "@/types/spaceTypes";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { spacesApi } from "@/services/spaces/api";
+import { updateSpaceSettingsLocalFirst } from "@/services/spaces/update-settings-local-first";
 import { toast } from "sonner";
 import { currentSpaceAtom, availableSpacesAtom } from "@/atoms/spaceAtoms";
 import { CurrencyPicker } from "@/components/ui/currency-picker";
@@ -49,7 +50,6 @@ import {
 } from "@/components/ui/popover";
 import { CURRENCY_CODES } from "@/data/currencies";
 import { cn } from "@/lib/utils";
-import { invalidateSpaceFinancialQueries } from "@/utils/invalidateSpaceQueries";
 
 type SpaceAccessCardProps = {
   className?: string;
@@ -99,50 +99,46 @@ const SpaceAccessCard = ({ className }: SpaceAccessCardProps) => {
       defaultTransactionCurrency?: string | null;
     }) => {
       if (!currentSpace?.id) throw new Error("No space selected");
-      const response = await spacesApi.updateSpace(api, currentSpace.id, {
-        name: params.name,
-        ...(params.currency !== undefined && {
-          currency: params.currency,
-        }),
-        ...(params.defaultTransactionCurrency !== undefined && {
-          defaultTransactionCurrency: params.defaultTransactionCurrency,
-        }),
-      });
-      const updatedSpace = response.data.data.space;
+
+      const result = await updateSpaceSettingsLocalFirst(
+        api,
+        {
+          space: currentSpace,
+          name: params.name,
+          ...(params.currency !== undefined ? { currency: params.currency } : {}),
+          ...(params.defaultTransactionCurrency !== undefined
+            ? {
+                defaultTransactionCurrency: params.defaultTransactionCurrency,
+              }
+            : {}),
+        },
+        {
+          queryClient,
+          waitForSync: false,
+          setCurrentSpace,
+          setAvailableSpaces,
+        },
+      );
 
       toast.success("Space updated successfully");
       setIsEditingSpaceName(false);
-      setSpaceName(updatedSpace.name);
-      setSpaceCurrency(updatedSpace.currency ?? "PHP");
+      setSpaceName(result.localSpace.name);
+      setSpaceCurrency(result.localSpace.currency ?? "PHP");
       setDefaultCurrency(
-        updatedSpace.defaultTransactionCurrency ?? updatedSpace.currency ?? "",
+        result.localSpace.defaultTransactionCurrency
+          ?? result.localSpace.currency
+          ?? "",
       );
 
-      if (currentSpace?.id === updatedSpace.id) {
-        setCurrentSpace(updatedSpace);
-      }
-
-      setAvailableSpaces((prevSpaces) =>
-        prevSpaces.map((space) =>
-          space.id === updatedSpace.id ? updatedSpace : space,
-        ),
-      );
-
-      queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      queryClient.invalidateQueries({
-        queryKey: ["space-context", currentSpace?.code],
+      void result.syncPromise.then((synced) => {
+        if (synced.pendingSync) {
+          toast.message("Update saved on this device. Will sync when online.");
+        }
+      }).catch(() => {
+        toast.error("Failed to sync space update.");
       });
-      queryClient.invalidateQueries({ queryKey: ["space-context"] });
 
-      const currencySettingsChanged =
-        params.currency !== undefined ||
-        params.defaultTransactionCurrency !== undefined;
-
-      if (currencySettingsChanged) {
-        await invalidateSpaceFinancialQueries(queryClient);
-      }
-
-      return updatedSpace;
+      return result.localSpace;
     },
   });
 

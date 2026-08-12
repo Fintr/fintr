@@ -13,7 +13,7 @@ import {
 } from "./useOfflineReadMode";
 
 describe("shouldSkipCachedNetworkFetch", () => {
-  it("allows network before offline sync is ready", () => {
+  it("allows network before offline sync is ready only while online", () => {
     expect(
       shouldSkipCachedNetworkFetch({
         offlineSyncReady: false,
@@ -25,7 +25,7 @@ describe("shouldSkipCachedNetworkFetch", () => {
         offlineSyncReady: false,
         isOnline: false,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("refetches from the network while online after offline-ready without space sync pull", () => {

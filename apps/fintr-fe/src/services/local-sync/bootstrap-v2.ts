@@ -9,22 +9,34 @@ import { markSpaceTransactionIndexComplete } from "@/lib/local-db/transactions";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import {
   cacheAccountsResponse,
-  extractAccountsFromResponse,
 } from "@/services/transactions/accounts/local-cache";
 import {
-  getCurrentRate,
-  getRecentRates,
-} from "@/services/exchangeRates/queries";
-import { buildCurrencyPairs } from "@/services/exchangeRates/local-db";
+  refreshSpaceExchangeRates,
+} from "@/services/exchangeRates/prefetch-space-rates";
 import {
   buildDashboardDataFromBuckets,
   cacheDashboardShell,
   cacheMonthlyFinancialSummaries,
   dashboardShellFromDashboard,
+  ensureMonthlyFinancialSummariesCached,
+  loadCachedMonthlyFinancialSummaries,
 } from "@/services/monthly-financial-summaries/local-cache";
+import { dashboardShellFromBootstrap } from "@/services/monthly-financial-summaries/dashboard-shell-from-bootstrap";
+import {
+  hydrateMonthlyFinancialSummariesFromLocalTransactions,
+  summariesNeedLocalHydration,
+} from "@/services/monthly-financial-summaries/hydrate-from-local-transactions";
+import { filterInsightsTransactions } from "@/services/insights/filter-insights-transactions";
 import {
   cacheTransactionCategoriesResponse,
 } from "@/services/transactions/categories/local-cache";
+import {
+  cacheEntitiesResponse,
+} from "@/services/entities/local-cache";
+import {
+  cacheTransactionTagsResponse,
+  normalizeTransactionTags,
+} from "@/services/transactions/tags/local-cache";
 import {
   cacheLoanDetail,
   cacheLoanPayments,
@@ -62,7 +74,14 @@ import {
   type LocalDataBootstrapParams,
   type SyncStep,
 } from "./bootstrap-local-data";
-import { verifyBootstrapTotals } from "./bootstrap-v2-helpers";
+import {
+  cacheTransactionDetailsFromIndexPages,
+  prefetchRemoteAttachmentsForTransactions,
+} from "./cache-bootstrap-details";
+import {
+  resolveBootstrapMonthlySummaries,
+  verifyBootstrapTotals,
+} from "./bootstrap-v2-helpers";
 
 const spaceRequestConfig = (spaceCode: string) => ({
   headers: {
@@ -172,24 +191,31 @@ const applyBootstrapTier0 = async (params: {
   const { bundle, spaceCode, queryClient } = params;
   const { firstDay: currentMonthStart, lastDay: currentMonthEnd } =
     getCurrentMonthDates();
+  const monthlySummaries = resolveBootstrapMonthlySummaries(bundle);
 
   await cacheSpaceContext(spaceCode, { space: bundle.space as never });
 
+  const shellFromBundle = dashboardShellFromBootstrap(bundle, spaceCode);
+
   try {
-    const shellDashboard = await fetchDashboardForSpace(
-      params.api,
-      spaceCode,
-      currentMonthStart,
-      currentMonthEnd,
-    );
-    const shell = dashboardShellFromDashboard(shellDashboard);
+    const shell =
+      shellFromBundle ??
+      dashboardShellFromDashboard(
+        await fetchDashboardForSpace(
+          params.api,
+          spaceCode,
+          currentMonthStart,
+          currentMonthEnd,
+        ),
+      );
+
     await cacheDashboardShell(spaceCode, shell);
     queryClient.setQueryData(["dashboard", "shell", "local", spaceCode], shell);
     queryClient.setQueryData(["dashboard", "shell", spaceCode], shell);
 
     const composed = buildDashboardDataFromBuckets(
       shell,
-      bundle.monthlyFinancialSummaries as never,
+      monthlySummaries as never,
       currentMonthStart,
       currentMonthEnd,
     );
@@ -209,7 +235,7 @@ const applyBootstrapTier0 = async (params: {
       composed,
     );
   } catch (error) {
-    console.warn("[sync] Bootstrap v2 dashboard shell fetch failed", error);
+    console.warn("[sync] Bootstrap v2 dashboard shell build failed", error);
   }
 
   await cacheAccountsResponse(spaceCode, bundle.accounts);
@@ -229,17 +255,28 @@ const applyBootstrapTier0 = async (params: {
     bundle.categories,
   );
 
-  await cacheMonthlyFinancialSummaries(
-    spaceCode,
-    bundle.monthlyFinancialSummaries as never,
+  const normalizedTags = normalizeTransactionTags(bundle.tags ?? []);
+  await cacheTransactionTagsResponse(spaceCode, normalizedTags);
+  queryClient.setQueryData(
+    ["transactionTags", "local", spaceCode],
+    normalizedTags,
   );
+  queryClient.setQueryData(["transactionTags", spaceCode], normalizedTags);
+
+  await cacheEntitiesResponse(spaceCode, bundle.entities ?? []);
+  queryClient.setQueryData(
+    ["entities", "local", spaceCode],
+    bundle.entities ?? [],
+  );
+
+  await cacheMonthlyFinancialSummaries(spaceCode, monthlySummaries);
   queryClient.setQueryData(
     ["monthlyFinancialSummaries", "local", spaceCode],
-    bundle.monthlyFinancialSummaries,
+    monthlySummaries,
   );
   queryClient.setQueryData(
     ["monthlyFinancialSummaries", spaceCode],
-    bundle.monthlyFinancialSummaries,
+    monthlySummaries,
   );
 
   const normalizedTransactions = normalizeBootstrapTransactions(bundle.transactions);
@@ -257,6 +294,7 @@ const applyBootstrapTier0 = async (params: {
   if (currentMonthRows.length > 0) {
     const currentMonthPages = transactionsToPages(currentMonthRows);
     await cacheTransactionsAllPages(spaceCode, filterKey, currentMonthPages);
+    await mergeFetchedTransactionsIntoAllTimeCache(spaceCode, currentMonthPages);
     const seededLocal = {
       pages: currentMonthPages,
       pageParams: [1],
@@ -378,6 +416,8 @@ const applyBootstrapTier2 = async (params: {
     queryClient.setQueryData(["loanPayments", loan.id], payments);
   }
 
+  await cacheTransactionDetailsFromIndexPages(spaceCode, transactionPages);
+
   const transferIds = collectTransferIds(transactionPages);
   for (const transferId of transferIds) {
     try {
@@ -400,37 +440,25 @@ const applyBootstrapTier2 = async (params: {
     }
   }
 
+  const flatTransactions = transactionPages.flatMap((page) => page.transactions);
+  await prefetchRemoteAttachmentsForTransactions({
+    api,
+    spaceId: spaceCode,
+    transactions: flatTransactions,
+  });
+
   const spaceCurrency =
     (bundle.space as { currency?: string }).currency ?? "PHP";
-  const accountCurrencies = extractAccountsFromResponse(bundle.accounts).map(
-    (account) => account.balanceCurrency,
-  );
-  const transactionCurrencies = transactionPages.flatMap((page) =>
-    page.transactions.flatMap((transaction) => [
-      transaction.amountCurrency,
-      transaction.bookedAmountCurrency,
-    ]),
-  );
-  const pairs = buildCurrencyPairs([
-    spaceCurrency,
-    ...accountCurrencies,
-    ...transactionCurrencies.filter(
-      (code): code is string => typeof code === "string" && code.length > 0,
-    ),
-  ]);
 
-  for (const pair of pairs) {
-    try {
-      await getCurrentRate(api, pair.from, pair.to);
-      await getRecentRates(api, pair.from, pair.to);
-    } catch (rateError) {
-      console.warn(
-        "[sync] Bootstrap v2 exchange rate fetch failed",
-        pair,
-        rateError,
-      );
-    }
-  }
+  await refreshSpaceExchangeRates({
+    api,
+    spaceCode,
+    accounts: bundle.accounts,
+    transactionPages,
+    spaceCurrency,
+    requestConfig: spaceRequestConfig(spaceCode),
+    force: true,
+  });
 };
 
 export const bootstrapSpaceV2 = async (
@@ -446,6 +474,20 @@ export const bootstrapSpaceV2 = async (
   const { spaceCode, startDate, endDate } = params;
 
   const bundle = await fetchSpaceBootstrap(api, spaceCode);
+  const monthlySummaries = resolveBootstrapMonthlySummaries(bundle);
+  const normalizedBootstrapTransactions = normalizeBootstrapTransactions(
+    bundle.transactions,
+  );
+  const bootstrapCalculatedTransactions = filterInsightsTransactions(
+    normalizedBootstrapTransactions,
+  );
+  const spaceCurrency =
+    typeof bundle.space?.currency === "string"
+      ? bundle.space.currency
+      : "PHP";
+
+  await cacheMonthlyFinancialSummaries(spaceCode, monthlySummaries);
+
   verifyBootstrapTotals(bundle);
 
   options?.onStep?.("accounts");
@@ -480,14 +522,31 @@ export const bootstrapSpaceV2 = async (
       lastPulledSeq: bundle.latestSeq,
       lastPulledAt: Date.now(),
     });
+
+    const hydratedSummaries =
+      await hydrateMonthlyFinancialSummariesFromLocalTransactions(spaceCode, {
+        currency: spaceCurrency,
+        existingSummaries: monthlySummaries,
+        transactions: bootstrapCalculatedTransactions,
+      });
+    queryClient.setQueryData(
+      ["monthlyFinancialSummaries", "local", spaceCode],
+      hydratedSummaries,
+    );
+    queryClient.setQueryData(
+      ["monthlyFinancialSummaries", spaceCode],
+      hydratedSummaries,
+    );
+    queryClient.invalidateQueries({
+      queryKey: ["insights", "local", spaceCode],
+    });
   } catch (error) {
     errors.push("transactions");
     console.warn("[sync] Bootstrap v2 tier 1 failed", spaceCode, error);
     throw error;
   }
 
-  const normalizedTransactions = normalizeBootstrapTransactions(bundle.transactions);
-  const transactionPages = transactionsToPages(normalizedTransactions);
+  const transactionPages = transactionsToPages(normalizedBootstrapTransactions);
 
   options?.onStep?.("monthly-summaries");
   options?.onStep?.("dashboard");
@@ -511,6 +570,63 @@ export const bootstrapSpaceV2 = async (
   options?.onStep?.("loans");
   options?.onStep?.("transfers");
   options?.onStep?.("exchange-rates");
+
+  try {
+    await hydrateMonthlyFinancialSummariesFromLocalTransactions(spaceCode, {
+      currency: spaceCurrency,
+      transactions: bootstrapCalculatedTransactions,
+    });
+
+    const summaries =
+      (await loadCachedMonthlyFinancialSummaries(spaceCode)) ?? [];
+
+    if (
+      await summariesNeedLocalHydration(
+        spaceCode,
+        summaries,
+        bootstrapCalculatedTransactions,
+      )
+    ) {
+      const fromApi = await ensureMonthlyFinancialSummariesCached(
+        api,
+        spaceCode,
+        { refetchWhenEmpty: true },
+      );
+      const rehydrated =
+        await hydrateMonthlyFinancialSummariesFromLocalTransactions(spaceCode, {
+          currency: spaceCurrency,
+          existingSummaries: fromApi,
+          transactions: bootstrapCalculatedTransactions,
+        });
+      queryClient.setQueryData(
+        ["monthlyFinancialSummaries", "local", spaceCode],
+        rehydrated,
+      );
+      queryClient.setQueryData(
+        ["monthlyFinancialSummaries", spaceCode],
+        rehydrated,
+      );
+    } else {
+      queryClient.setQueryData(
+        ["monthlyFinancialSummaries", "local", spaceCode],
+        summaries,
+      );
+      queryClient.setQueryData(
+        ["monthlyFinancialSummaries", spaceCode],
+        summaries,
+      );
+    }
+
+    queryClient.invalidateQueries({
+      queryKey: ["insights", "local", spaceCode],
+    });
+  } catch (error) {
+    console.warn(
+      "[sync] Bootstrap v2 monthly summaries ensure failed",
+      spaceCode,
+      error,
+    );
+  }
 
   return {
     latestSeq: bundle.latestSeq,

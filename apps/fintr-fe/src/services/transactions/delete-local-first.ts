@@ -15,12 +15,20 @@ import {
   removeOutboxRecord,
   updateOutboxStatus,
 } from "@/lib/local-db";
+import {
+  purgeAttachmentsForLocalCreate,
+  purgeAttachmentsForTransactions,
+} from "@/services/attachments/create-outbox";
 import { getLocalDb } from "@/lib/local-db/db";
 import { deleteLoan } from "@/services/loans/mutation";
 import { removeLoanFromCachedPages } from "@/services/loans/local-cache";
 import { removeLoanFromQueryCaches } from "@/services/loans/loans-list-cache";
 import { deleteLoanPayment } from "@/services/loans/payments";
-import { applyLocalTransactionToMonthlySummaries } from "@/services/monthly-financial-summaries/local-cache";
+import {
+  applyLocalTransactionToMonthlySummaries,
+  setMonthlyFinancialSummariesQueryData,
+} from "@/services/monthly-financial-summaries/local-cache";
+import type { MonthlyFinancialSummary } from "@/services/monthly-financial-summaries/types";
 import { invalidateLocalInsightsQueries } from "@/utils/invalidateSpaceQueries";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
@@ -31,6 +39,7 @@ import {
   loadAllTimeTransactionsForDeleteScope,
   removeLocalIndexTransactionsByIds,
 } from "./local-cache";
+import { clearCachedTransactionDetail } from "./detail-local";
 import { deleteTransaction } from "./mutation";
 import { removeIndexTransactionsFromQueryCaches } from "./remove-from-query-caches";
 import {
@@ -83,11 +92,14 @@ const adjustSummariesForRemoved = async (
   spaceId: string,
   removed: IndexTransaction[],
   mode: "add" | "remove",
-): Promise<void> => {
+  queryClient?: QueryClient,
+): Promise<MonthlyFinancialSummary[] | null> => {
+  let nextSummaries: MonthlyFinancialSummary[] | null = null;
+
   for (const row of removed) {
     const summaryType = incomeExpenseType(row.type);
     if (!summaryType) continue;
-    await applyLocalTransactionToMonthlySummaries({
+    nextSummaries = await applyLocalTransactionToMonthlySummaries({
       spaceCode: spaceId,
       date: row.date,
       amount: Math.abs(Number(row.amount) || 0),
@@ -96,6 +108,12 @@ const adjustSummariesForRemoved = async (
       currency: row.amountCurrency,
     });
   }
+
+  if (queryClient && nextSummaries) {
+    setMonthlyFinancialSummariesQueryData(queryClient, spaceId, nextSummaries);
+  }
+
+  return nextSummaries;
 };
 
 const isNetworkLikeDeleteError = (error: unknown): boolean => {
@@ -152,6 +170,7 @@ const patchQueryCachesForDelete = (params: {
 
 const cancelPendingLocalCreate = async (
   transactionId: string,
+  spaceId?: string,
 ): Promise<boolean> => {
   if (!transactionId.startsWith("local:")) {
     return false;
@@ -166,9 +185,18 @@ const cancelPendingLocalCreate = async (
   if (
     !existing ||
     (existing.commandType !== OUTBOX_COMMAND_TRANSACTION_CREATE &&
-      existing.commandType !== OUTBOX_COMMAND_TRANSFER_CREATE)
+      existing.commandType !== OUTBOX_COMMAND_TRANSFER_CREATE &&
+      existing.commandType !== OUTBOX_COMMAND_LOAN_CREATE)
   ) {
     return false;
+  }
+
+  if (spaceId) {
+    await purgeAttachmentsForLocalCreate({
+      spaceId,
+      commandType: existing.commandType,
+      localOwnerId: transactionId,
+    });
   }
 
   await removeOutboxRecord(clientMutationId);
@@ -307,7 +335,7 @@ const deleteIndexRowsOptimistic = async (params: {
 
   for (const id of scopedIds) {
     if (id.startsWith("local:")) {
-      await cancelPendingLocalCreate(id);
+      await cancelPendingLocalCreate(id, spaceId);
     }
   }
 
@@ -316,17 +344,32 @@ const deleteIndexRowsOptimistic = async (params: {
     removed.length > 0 ? mergeRowsById(removed, allPreview) : allPreview;
   const removedIds = removedTransactions.map((row) => row.id);
 
+  await purgeAttachmentsForTransactions(spaceId, removedTransactions);
+
   if (kind === "transaction") {
-    await adjustSummariesForRemoved(spaceId, removedTransactions, "remove");
+    await adjustSummariesForRemoved(
+      spaceId,
+      removedTransactions,
+      "remove",
+      queryClient,
+    );
   } else if (kind === "transfer") {
     const feeRows = removedTransactions.filter(
       (row) => row.type === CombinedTransactionTypeEnum.EXPENSE,
     );
-    await adjustSummariesForRemoved(spaceId, feeRows, "remove");
+    await adjustSummariesForRemoved(spaceId, feeRows, "remove", queryClient);
   }
+
+  await Promise.all(
+    removedIds.map((id) => clearCachedTransactionDetail(spaceId, id)),
+  );
 
   if (queryClient) {
     invalidateLocalInsightsQueries(queryClient);
+    queryClient.invalidateQueries({
+      queryKey: ["dashboard", "transactions", spaceId],
+      exact: false,
+    });
   }
 
   if (transactionId.startsWith("local:")) {
@@ -513,7 +556,7 @@ export const deleteTransactionLocalFirst = async (
   if (!target) {
     // Still attempt server delete when we have a real id (cache miss).
     if (transactionId.startsWith("local:")) {
-      await cancelPendingLocalCreate(transactionId);
+      await cancelPendingLocalCreate(transactionId, spaceId);
       return resolvedDeleteResult({
         pendingSync: false,
         removedIds: [transactionId],
@@ -657,12 +700,10 @@ export const deleteTransactionLocalFirst = async (
       removed.length > 0 ? removed : [target];
     const removedIds = removedTransactions.map((row) => row.id);
 
+    await purgeAttachmentsForTransactions(spaceId, removedTransactions);
+
     if (transactionId.startsWith("local:")) {
-      const clientMutationId = transactionId.slice("local:".length);
-      const existing = await getLocalDb().outbox.get(clientMutationId);
-      if (existing?.commandType === OUTBOX_COMMAND_LOAN_CREATE) {
-        await removeOutboxRecord(clientMutationId);
-      }
+      await cancelPendingLocalCreate(transactionId, spaceId);
 
       return resolvedDeleteResult({
         pendingSync: false,

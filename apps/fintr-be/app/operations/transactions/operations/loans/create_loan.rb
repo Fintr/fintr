@@ -79,7 +79,7 @@ module Transactions
             transaction: loan,
             actor:,
           )
-          Loans::Broadcasts::LoanChange.loan_created(loan:, actor:)
+          ::Loans::Broadcasts::LoanChange.loan_created(loan:, actor:)
           Success(loan)
         end
 

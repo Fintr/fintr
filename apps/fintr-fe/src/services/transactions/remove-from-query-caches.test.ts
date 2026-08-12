@@ -84,6 +84,66 @@ describe("removeIndexTransactionsFromQueryCaches", () => {
     expect(next?.pages[0]?.totals?.expense).toBe(10);
   });
 
+  it("removes deleted rows from dashboard period transaction caches", () => {
+    const queryClient = new QueryClient();
+    const spaceId = "space-a";
+    const dashboardKey = [
+      "dashboard",
+      "transactions",
+      spaceId,
+      "2026-08-01",
+      "2026-08-31",
+    ];
+
+    queryClient.setQueryData(dashboardKey, {
+      transactions: [
+        {
+          ...baseExpense,
+          id: "keep-1",
+          date: "2026-08-08",
+          amount: 10,
+          type: CombinedTransactionTypeEnum.INCOME,
+          fromAccountName: "",
+          toAccountName: "Cash",
+        },
+        {
+          ...baseExpense,
+          id: "remove-1",
+          date: "2026-08-08",
+          amount: 2_462_142,
+          type: CombinedTransactionTypeEnum.INCOME,
+          fromAccountName: "",
+          toAccountName: "Cash",
+          categoryName: "Freelance",
+        },
+      ],
+    });
+
+    removeIndexTransactionsFromQueryCaches(queryClient, {
+      spaceId,
+      removedIds: ["remove-1"],
+      removedTransactions: [
+        {
+          ...baseExpense,
+          id: "remove-1",
+          date: "2026-08-08",
+          amount: 2_462_142,
+          type: CombinedTransactionTypeEnum.INCOME,
+          fromAccountName: "",
+          toAccountName: "Cash",
+          categoryName: "Freelance",
+        },
+      ],
+    });
+
+    const next = queryClient.getQueryData<{
+      transactions: Array<{ id: string; amount: number }>;
+    }>(dashboardKey);
+
+    expect(next?.transactions).toHaveLength(1);
+    expect(next?.transactions[0]?.id).toBe("keep-1");
+  });
+
   it("removes a visible row even when the seed preview fails the list filter", () => {
     const queryClient = new QueryClient();
     const spaceId = "space-a";

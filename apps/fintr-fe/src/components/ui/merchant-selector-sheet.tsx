@@ -358,6 +358,7 @@ export function MerchantSelectorSheet({
         <SheetTrigger asChild>{trigger}</SheetTrigger>
         <SheetContent
           side="bottom"
+          nestedOverlay
           overlayClassName="z-[125]"
           onOverlayClick={handleClose}
           className={bottomSheetClassName}
@@ -373,6 +374,7 @@ export function MerchantSelectorSheet({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent
+        nestedOverlay
         align="start"
         className="flex max-h-[min(32rem,calc(100vh-4rem))] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden p-0"
       >

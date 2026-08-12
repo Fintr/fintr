@@ -8,6 +8,7 @@ import type { DashboardData } from "@/types/spaceTypes";
 import {
   cacheDashboardShell,
   cacheMonthlyFinancialSummaries,
+  loadCachedMonthlyFinancialSummaries,
 } from "@/services/monthly-financial-summaries/local-cache";
 
 import {
@@ -47,6 +48,14 @@ describe("dashboard local-cache", () => {
     await expect(
       loadCachedDashboardResponse("space-a", "2026-07-01", "2026-07-31")
     ).resolves.toBeUndefined();
+  });
+
+  it("writes an empty array when summaries are undefined", async () => {
+    await cacheMonthlyFinancialSummaries("space-a", undefined);
+
+    await expect(
+      loadCachedMonthlyFinancialSummaries("space-a"),
+    ).resolves.toEqual([]);
   });
 
   it("composes dashboard financial summary from monthly buckets when no exact cache", async () => {

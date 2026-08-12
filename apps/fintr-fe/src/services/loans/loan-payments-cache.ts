@@ -1,25 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-import type { Loan } from "@/services/loans/queries";
 import type { LoanPayment } from "@/services/loans/payments";
 import {
-  cacheLoanDetail,
   cacheLoanPayments,
-  loadCachedLoanDetail,
   loadCachedLoanPayments,
+  refreshLoanSnapshotInIndexedDb,
 } from "@/services/loans/local-cache";
-
-const toEmbeddedLoanPayment = (
-  payment: LoanPayment,
-): NonNullable<Loan["loanPayments"]>[number] => ({
-  id: payment.id,
-  date: payment.date,
-  principalPayment: payment.principalPayment,
-  interestPayment: payment.interestPayment,
-  totalPayment: payment.totalPayment,
-  currency: payment.currency,
-  adjustsAccountBalance: payment.adjustsAccountBalance,
-});
 
 export const setLoanPaymentsInQueryCache = (
   queryClient: QueryClient,
@@ -53,22 +39,12 @@ export const syncLoanPaymentsToLocalStores = async (
 
   await cacheLoanPayments(spaceCode, loanId, payments);
 
-  try {
-    const loan = await loadCachedLoanDetail(spaceCode, loanId);
-    if (!loan) {
-      return;
-    }
-
-    await cacheLoanDetail(spaceCode, loanId, {
-      ...loan,
-      loanPayments: payments.map(toEmbeddedLoanPayment),
-    });
-  } catch (error) {
-    console.warn(
-      "[local-db] Failed to sync loan payments into cached loan detail",
-      error,
-    );
-  }
+  await refreshLoanSnapshotInIndexedDb({
+    spaceCode,
+    loanId,
+    payments,
+    queryClient,
+  });
 };
 
 export const replaceLoanPaymentIdInLocalStores = async (
@@ -109,35 +85,6 @@ export const removeLoanPaymentFromQueryCache = (
   );
 };
 
-export const removeLoanPaymentFromCachedLoanDetail = async (
-  spaceCode: string,
-  loanId: string,
-  paymentId: string,
-): Promise<void> => {
-  if (!spaceCode || !loanId) {
-    return;
-  }
-
-  try {
-    const loan = await loadCachedLoanDetail(spaceCode, loanId);
-    if (!loan?.loanPayments?.length) {
-      return;
-    }
-
-    await cacheLoanDetail(spaceCode, loanId, {
-      ...loan,
-      loanPayments: loan.loanPayments.filter(
-        (payment) => payment.id !== paymentId,
-      ),
-    });
-  } catch (error) {
-    console.warn(
-      "[local-db] Failed to remove loan payment from cached loan detail",
-      error,
-    );
-  }
-};
-
 export const upsertLoanPaymentInLocalStores = async (
   params: {
     spaceCode: string;
@@ -173,17 +120,22 @@ export const removeLoanPaymentFromLocalStores = async (
 ): Promise<void> => {
   const { spaceCode, loanId, paymentId, queryClient } = params;
 
+  const cached = (await loadCachedLoanPayments(spaceCode, loanId)) ?? [];
+  const remaining = cached.filter((payment) => payment.id !== paymentId);
+
   if (queryClient) {
     removeLoanPaymentFromQueryCache(queryClient, loanId, paymentId);
-
-    const remaining =
-      queryClient.getQueryData<LoanPayment[]>(["loanPayments", loanId]) ?? [];
     queryClient.setQueryData(
       ["loanPayments", "local", spaceCode, loanId],
       remaining,
     );
-    await cacheLoanPayments(spaceCode, loanId, remaining);
   }
 
-  await removeLoanPaymentFromCachedLoanDetail(spaceCode, loanId, paymentId);
+  await cacheLoanPayments(spaceCode, loanId, remaining);
+  await refreshLoanSnapshotInIndexedDb({
+    spaceCode,
+    loanId,
+    payments: remaining,
+    queryClient,
+  });
 };

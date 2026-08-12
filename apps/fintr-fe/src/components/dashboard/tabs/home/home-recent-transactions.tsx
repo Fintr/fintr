@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { requestOpenTransaction } from "@/lib/open-transaction-request";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import { offlineBootstrapDateRange } from "@/lib/local-sync/offline-bootstrap-dates";
 import { defaultTransactionsQueryKey } from "@/services/local-sync/bootstrap-local-data";
 import {
@@ -43,7 +44,7 @@ export const HomeRecentTransactions = ({
   });
   const bootstrapRange = useMemo(() => offlineBootstrapDateRange(), []);
 
-  const { data: cachedRows = [], isLoading: isLoadingCache } = useQuery({
+  const localCacheQuery = useQuery({
     queryKey: [
       "home",
       "recent-transactions",
@@ -62,8 +63,18 @@ export const HomeRecentTransactions = ({
     staleTime: Infinity,
   });
 
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery);
+
   const shouldFetchFromNetwork =
-    !!spaceCode && !!api && isAuthenticated && !isLoadingCache && cachedRows.length === 0;
+    !!spaceCode &&
+    !!api &&
+    isAuthenticated &&
+    !skipNetworkFetch &&
+    !localCacheQuery.isPending &&
+    localCacheQuery.data?.length === 0;
+
+  const cachedRows = localCacheQuery.data ?? [];
+  const isLoadingCache = localCacheQuery.isPending;
 
   const { data: networkRows = [], isLoading: isLoadingNetwork } = useQuery({
     queryKey: [
