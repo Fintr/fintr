@@ -70,6 +70,7 @@ import {
   transactionHadStoredConversion,
   transactionNeedsConversion,
 } from "@/utils/amountPickerTargetCurrency";
+import { positiveTransactionFormAmountString } from "@/utils/transactionFormAmount";
 
 // Income form schema using Zod
 const incomeFormSchema = z.object({
@@ -493,11 +494,13 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     const hasOriginal = originalAmount != null && originalCurrency != null && String(originalCurrency).trim() !== "";
 
     if (initialData && (initialData !== prevInitialDataRef.current)) {
-      const initialAmount = hasOriginal
-        ? String(originalAmount)
+      const rawInitialAmount = hasOriginal
+        ? originalAmount
         : rawConv != null
-          ? String((rawConv as any).original_amount ?? (rawConv as any).originalAmount ?? initialData.amount ?? "")
-          : (initialData.amount?.toString() ?? "");
+          ? (rawConv as any).original_amount ?? (rawConv as any).originalAmount ?? initialData.amount ?? ""
+          : (initialData.amount ?? "");
+
+      const initialAmount = positiveTransactionFormAmountString(rawInitialAmount);
 
       const displayCurrency = hasOriginal
         ? String(originalCurrency)

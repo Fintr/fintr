@@ -107,11 +107,27 @@ const PRECACHE_URLS = ${manifestJson};
 const PRECACHE_BATCH_SIZE = ${PRECACHE_BATCH_SIZE};
 const CACHE_MATCH_OPTIONS = { ignoreVary: true };
 
+const CRITICAL_PRECACHE_PREFIXES = ["/profiles/", "/badges/"];
+
 async function precacheInBatches(cache, urls) {
   for (let index = 0; index < urls.length; index += PRECACHE_BATCH_SIZE) {
     const batch = urls.slice(index, index + PRECACHE_BATCH_SIZE);
     await Promise.allSettled(batch.map((url) => cache.add(url)));
   }
+}
+
+async function criticalPrecacheReady(cache) {
+  const requests = await cache.keys();
+  const cachedPaths = new Set(
+    requests.map((request) => {
+      const url = new URL(request.url);
+      return url.pathname;
+    }),
+  );
+
+  return PRECACHE_URLS.filter((url) =>
+    CRITICAL_PRECACHE_PREFIXES.some((prefix) => url.startsWith(prefix)),
+  ).every((url) => cachedPaths.has(url));
 }
 
 self.addEventListener("install", (event) => {
@@ -123,15 +139,30 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
+    (async () => {
+      const newCache = await caches.open(CACHE_NAME);
+      await seedCriticalFromLegacyCaches(newCache);
+      const ready = await criticalPrecacheReady(newCache);
+
+      if (!ready) {
+        console.warn(
+          "[fintr-sw] Keeping previous shell caches — profile/badge precache incomplete (stay online and reload once).",
+        );
+        await self.clients.claim();
+        return;
+      }
+
+      const keys = await caches.keys();
+
+      await Promise.all(
         keys
           .filter((key) => key.startsWith("fintr-shell-") && key !== CACHE_NAME)
           .map((key) => caches.delete(key)),
-      ),
-    ),
+      );
+
+      await self.clients.claim();
+    })(),
   );
-  self.clients.claim();
 });
 
 function shouldHandleRequest(request) {
@@ -169,25 +200,83 @@ function normalizePathname(pathname) {
   return pathname;
 }
 
+async function listShellCacheNames() {
+  const keys = await caches.keys();
+
+  return keys
+    .filter((key) => key.startsWith("fintr-shell-"))
+    .sort()
+    .reverse();
+}
+
 async function resolveCachedByPathname(pathname) {
   const target = normalizePathname(pathname);
-  const cache = await caches.open(CACHE_NAME);
-  const requests = await cache.keys();
+  const shellKeys = await listShellCacheNames();
 
-  for (const request of requests) {
-    const url = new URL(request.url);
-    const candidate = normalizePathname(url.pathname);
+  for (const shellKey of shellKeys) {
+    const cache = await caches.open(shellKey);
+    const requests = await cache.keys();
 
-    if (candidate === target) {
-      const response = await cache.match(request, CACHE_MATCH_OPTIONS);
+    for (const request of requests) {
+      const url = new URL(request.url);
+      const candidate = normalizePathname(url.pathname);
 
-      if (response) {
-        return response;
+      if (candidate === target) {
+        const response = await cache.match(request, CACHE_MATCH_OPTIONS);
+
+        if (response) {
+          return response;
+        }
       }
+    }
+
+    const absoluteUrl = new URL(target, self.location.origin).href;
+    const direct =
+      (await cache.match(target, CACHE_MATCH_OPTIONS))
+      ?? (await cache.match(absoluteUrl, CACHE_MATCH_OPTIONS));
+
+    if (direct) {
+      return direct;
     }
   }
 
   return null;
+}
+
+async function seedCriticalFromLegacyCaches(newCache) {
+  const shellKeys = await listShellCacheNames();
+  const legacyKeys = shellKeys.filter((key) => key !== CACHE_NAME);
+
+  if (legacyKeys.length === 0) {
+    return;
+  }
+
+  const criticalUrls = PRECACHE_URLS.filter((url) =>
+    CRITICAL_PRECACHE_PREFIXES.some((prefix) => url.startsWith(prefix)),
+  );
+
+  for (const legacyKey of legacyKeys) {
+    const legacyCache = await caches.open(legacyKey);
+
+    for (const url of criticalUrls) {
+      const existing = await newCache.match(url, CACHE_MATCH_OPTIONS);
+
+      if (existing) {
+        continue;
+      }
+
+      const legacy =
+        (await legacyCache.match(url, CACHE_MATCH_OPTIONS))
+        ?? (await legacyCache.match(
+          new URL(url, self.location.origin).href,
+          CACHE_MATCH_OPTIONS,
+        ));
+
+      if (legacy) {
+        await newCache.put(url, legacy);
+      }
+    }
+  }
 }
 
 function navigationCandidates(pathname) {
@@ -211,7 +300,25 @@ function navigationCandidates(pathname) {
 }
 
 async function openCurrentCache() {
-  return caches.open(CACHE_NAME);
+  const primary = await caches.open(CACHE_NAME);
+  const keys = await primary.keys();
+
+  if (keys.length > 0) {
+    return primary;
+  }
+
+  const shellKeys = await listShellCacheNames();
+
+  for (const shellKey of shellKeys) {
+    const cache = await caches.open(shellKey);
+    const shellKeysList = await cache.keys();
+
+    if (shellKeysList.length > 0) {
+      return cache;
+    }
+  }
+
+  return primary;
 }
 
 async function resolveNavigation(request) {

@@ -13,11 +13,13 @@ import {
 } from "@/services/transactions/transfers/local-cache";
 import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import type {
+  CurrencyConversionType,
   IndexTransaction,
   TransferUpdateTransactionType,
   UpdateTransactionType,
 } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { positiveTransactionFormAmount } from "@/utils/transactionFormAmount";
 
 import { loadLocalIndexTransactionById } from "./local-cache";
 import { fetchTransactionById } from "./queries";
@@ -166,7 +168,7 @@ export const mapIndexTransactionToEditDataSync = (
     id: row.id,
     date: row.date,
     description: row.description ?? "",
-    amount: typeof row.amount === "number" ? row.amount : Number(row.amount) || 0,
+    amount: positiveTransactionFormAmount(row.amount),
     amountCurrency: row.amountCurrency,
     categoryName: row.categoryName ?? "",
     categoryId: categoryIds?.categoryId,
@@ -198,15 +200,18 @@ export const mapIndexTransactionToEditDataSync = (
   };
 
   if (isTransfer) {
-    return {
-      ...base,
-      fromAccountName: row.fromAccountName ?? "",
-      toAccountName: row.toAccountName ?? "",
-      transactionCost: 0,
-    };
+    return applyListRowFxToEditDetail(
+      {
+        ...base,
+        fromAccountName: row.fromAccountName ?? "",
+        toAccountName: row.toAccountName ?? "",
+        transactionCost: 0,
+      },
+      row,
+    );
   }
 
-  return base;
+  return applyListRowFxToEditDetail(base, row);
 };
 
 export const mapIndexTransactionToEditData = async (
@@ -254,6 +259,58 @@ const listRowHasCrossCurrencyBooked = (listRow: IndexTransaction): boolean => {
   );
 };
 
+const buildListRowFxConversion = (
+  listRow: IndexTransaction,
+  existing?: CurrencyConversionType | null,
+): CurrencyConversionType => {
+  const bookedAmount = positiveTransactionFormAmount(listRow.bookedAmount);
+  const bookedCurrency = listRow.bookedAmountCurrency!;
+  const listAmount = positiveTransactionFormAmount(listRow.amount);
+  const convertedCurrency = listRow.amountCurrency ?? "PHP";
+
+  return {
+    originalAmount: bookedAmount,
+    originalCurrency: bookedCurrency,
+    convertedAmount: listAmount,
+    convertedCurrency,
+    exchangeRate:
+      existing?.exchangeRate
+      ?? (bookedAmount !== 0 ? listAmount / bookedAmount : 1),
+    source: existing?.source ?? "manual",
+    rateTimestamp: existing?.rateTimestamp,
+    note: existing?.note ?? null,
+  };
+};
+
+/** Applies list-row booked/original FX legs onto edit-form detail payloads. */
+export const applyListRowFxToEditDetail = <
+  T extends UpdateTransactionType | TransferUpdateTransactionType,
+>(
+  detail: T,
+  listRow: IndexTransaction,
+): T => {
+  if (!listRowHasCrossCurrencyBooked(listRow)) {
+    return detail;
+  }
+
+  const conversion = buildListRowFxConversion(
+    listRow,
+    detail.currencyConversion,
+  );
+
+  return {
+    ...detail,
+    amount: conversion.originalAmount,
+    amountCurrency: conversion.originalCurrency,
+    hasCurrencyConversion: true,
+    original_display_amount: conversion.originalAmount,
+    original_display_currency: conversion.originalCurrency,
+    originalDisplayAmount: conversion.originalAmount,
+    originalDisplayCurrency: conversion.originalCurrency,
+    currencyConversion: conversion,
+  };
+};
+
 /**
  * List / IndexedDB index rows are patched immediately on local-first edits.
  * Cached full detail payloads often still carry pre-edit amounts and FX
@@ -281,23 +338,7 @@ export const applyListRowMoneyToDetail = (
   }
 
   if (listRowHasCrossCurrencyBooked(listRow)) {
-    const bookedAmount = toAmountNumber(listRow.bookedAmount);
-    const bookedCurrency = listRow.bookedAmountCurrency!;
-    next.amount = bookedAmount;
-    (next as { original_display_amount?: number }).original_display_amount =
-      bookedAmount;
-    (next as { original_display_currency?: string }).original_display_currency =
-      bookedCurrency;
-    next.hasCurrencyConversion = true;
-    next.currencyConversion = {
-      originalAmount: bookedAmount,
-      originalCurrency: bookedCurrency,
-      convertedAmount: listAmount,
-      convertedCurrency: listRow.amountCurrency ?? detail.amountCurrency ?? "PHP",
-      exchangeRate: listAmount !== 0 ? listAmount / bookedAmount : 1,
-      source: "manual",
-    };
-    return next;
+    return applyListRowFxToEditDetail(next, listRow);
   }
 
   // Same-currency (or no booked leg): drop stale conversion so Income/Expense
@@ -469,5 +510,5 @@ export const resolveTransactionDetail = async (params: {
 
   const data = await fetchTransactionById(api, transactionId);
   void cacheTransactionDetail(spaceId, transactionId, data);
-  return data;
+  return listRow ? applyListRowMoneyToDetail(data, listRow) : data;
 };

@@ -3,9 +3,10 @@ import type { AxiosInstance, AxiosRequestConfig } from "axios";
 import {
   cacheCurrentExchangeRate,
   cacheRecentExchangeRates,
-  loadCachedCurrentExchangeRate,
+  loadCachedCurrentExchangeRateWithFallback,
   loadCachedRecentExchangeRates,
 } from "./local-db";
+import { canFetchExchangeRatesFromNetwork } from "./network-guard";
 
 export interface CurrentRateResponse {
   rate: number;
@@ -83,22 +84,37 @@ const normalizeRecentRates = (data: unknown): RecentRatesResponse => {
  * Local-first current rate: IndexedDB → network → store.
  * Falls back to network when the pair/date is missing locally.
  */
+export class ExchangeRateOfflineError extends Error {
+  constructor(message: string = "Exchange rate is not available offline") {
+    super(message);
+    this.name = "ExchangeRateOfflineError";
+  }
+}
+
 export const getCurrentRate = async (
   api: AxiosInstance,
   fromCurrency: string,
   toCurrency: string,
   date?: string,
   requestConfig?: AxiosRequestConfig,
+  options?: {
+    allowNetwork?: boolean;
+  },
 ): Promise<CurrentRateResponse> => {
   const rateDate = date || todayIsoDate();
 
-  const cached = await loadCachedCurrentExchangeRate({
+  const cached = await loadCachedCurrentExchangeRateWithFallback({
     fromCurrency,
     toCurrency,
     date: rateDate,
+    today: todayIsoDate(),
   });
-  if (cached && Number.isFinite(Number(cached.rate)) && Number(cached.rate) > 0) {
+  if (cached) {
     return normalizeCurrentRate(cached);
+  }
+
+  if (!canFetchExchangeRatesFromNetwork(options?.allowNetwork)) {
+    throw new ExchangeRateOfflineError();
   }
 
   const params: { from_currency: string; to_currency: string; date?: string } = {
@@ -134,6 +150,7 @@ export const getRecentRates = async (
   options?: {
     spaceId?: string;
     requestConfig?: AxiosRequestConfig;
+    allowNetwork?: boolean;
   },
 ): Promise<RecentRatesResponse> => {
   const spaceId = options?.spaceId || readSpaceCode();
@@ -147,6 +164,10 @@ export const getRecentRates = async (
     if (cached && Array.isArray(cached.rates)) {
       return normalizeRecentRates(cached);
     }
+  }
+
+  if (!canFetchExchangeRatesFromNetwork(options?.allowNetwork)) {
+    return { rates: [], source: "recent" };
   }
 
   const response = await api.get("/exchange_rates/recent", {
@@ -169,6 +190,23 @@ export const getRecentRates = async (
   }
 
   return data;
+};
+
+export type BatchCurrentRateRequest = {
+  fromCurrency: string;
+  toCurrency: string;
+  date?: string;
+};
+
+type BatchCurrentRateRow = {
+  rate: number;
+  from_currency?: string;
+  fromCurrency?: string;
+  to_currency?: string;
+  toCurrency?: string;
+  date?: string;
+  source?: string;
+  timestamp?: string;
 };
 
 /**
@@ -199,6 +237,50 @@ export const fetchAndCacheCurrentRate = async (
     payload: data,
   });
   return data;
+};
+
+/**
+ * Fetches many dated current rates in one request and writes each to IDB.
+ */
+export const fetchAndCacheBatchCurrentRates = async (
+  api: AxiosInstance,
+  requests: BatchCurrentRateRequest[],
+  requestConfig?: AxiosRequestConfig,
+): Promise<void> => {
+  if (requests.length === 0) {
+    return;
+  }
+
+  const response = await api.post(
+    "/exchange_rates/batch",
+    {
+      requests: requests.map((request) => ({
+        from_currency: request.fromCurrency,
+        to_currency: request.toCurrency,
+        date: request.date || todayIsoDate(),
+      })),
+    },
+    requestConfig,
+  );
+
+  const rows = (response.data?.data?.rates ?? response.data?.rates ?? []) as BatchCurrentRateRow[];
+
+  for (const row of rows) {
+    const fromCurrency = String(row.from_currency ?? row.fromCurrency ?? "");
+    const toCurrency = String(row.to_currency ?? row.toCurrency ?? "");
+    const rateDate = String(row.date ?? todayIsoDate());
+    if (!fromCurrency || !toCurrency) {
+      continue;
+    }
+
+    const payload = normalizeCurrentRate(row);
+    await cacheCurrentExchangeRate({
+      fromCurrency,
+      toCurrency,
+      date: rateDate,
+      payload,
+    });
+  }
 };
 
 /**

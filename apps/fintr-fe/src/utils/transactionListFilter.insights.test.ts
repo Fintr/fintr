@@ -228,4 +228,19 @@ describe("transactionMatchesInsightsCategoryFilter", () => {
 
     expect(filtered.map((row) => row.id)).toEqual(["dining"]);
   });
+
+  it("matches child categoryName when filter only has parent categoryId + options", () => {
+    const groceries = tx({
+      id: "name-only-child",
+      categoryName: "Groceries",
+      amount: 90,
+    });
+
+    expect(
+      transactionMatchesInsightsCategoryFilter(groceries, {
+        categoryId: PARENT_ID,
+        categoryOptions,
+      }),
+    ).toBe(true);
+  });
 });

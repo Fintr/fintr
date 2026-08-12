@@ -33,6 +33,7 @@ import {
   subscribeSyncBroadcast,
 } from "@/services/local-sync/sync-coordinator";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
+import { subscribeCapacitorAppResume } from "@/lib/capacitor-app-resume";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
@@ -337,8 +338,7 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
         });
     };
 
-    const handleVisibility = () => {
-      if (document.visibilityState !== "visible") return;
+    const handleForegroundRefresh = () => {
       if (!isBrowserOnline()) return;
       const code = localStorage.getItem("spaceCode") ?? "";
       if (!code || !api || !isAuthenticated) return;
@@ -380,13 +380,22 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
       });
     };
 
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      handleForegroundRefresh();
+    };
+
     window.addEventListener("spaceCodeChanged", handleSpaceChange);
     window.addEventListener("online", handleOnline);
     document.addEventListener("visibilitychange", handleVisibility);
+    const unsubscribeCapacitorResume = subscribeCapacitorAppResume(
+      handleForegroundRefresh,
+    );
     return () => {
       window.removeEventListener("spaceCodeChanged", handleSpaceChange);
       window.removeEventListener("online", handleOnline);
       document.removeEventListener("visibilitychange", handleVisibility);
+      unsubscribeCapacitorResume();
     };
   }, [api, isAuthenticated, queryClient, runSync]);
 

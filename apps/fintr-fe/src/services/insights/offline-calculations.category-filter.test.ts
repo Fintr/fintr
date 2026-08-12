@@ -466,4 +466,34 @@ describe("buildOfflineInsightsBundle category filter", () => {
     });
     expect(byTag.summary.totalExpenses).toBeCloseTo(41037.1);
   });
+
+  it("still totals tagged rows when Dexie kept tags but tagIds was wiped to []", async () => {
+    const tagId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    vi.mocked(loadAllCachedTransactionsForInsights).mockResolvedValue([
+      {
+        id: "japan-empty-tagids",
+        date: "2026-08-11",
+        description: "Trip",
+        amount: 41037.1,
+        categoryName: "Dine Out & Entertainment",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+        tagIds: [],
+        tags: [{ id: tagId, name: "Japan 2026", color: "#f472b6" }],
+      },
+    ]);
+    vi.mocked(loadCachedTransactionsInRange).mockResolvedValue([]);
+
+    const bundle = await buildOfflineInsightsBundle({
+      spaceCode: "space-a",
+      startDate: "2005-08-01",
+      endDate: "2026-08-31",
+      tagIds: [tagId],
+    });
+
+    expect(bundle.summary.totalExpenses).toBeCloseTo(41037.1);
+  });
 });

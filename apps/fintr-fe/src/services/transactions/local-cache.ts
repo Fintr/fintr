@@ -23,6 +23,7 @@ import {
   parseTransactionListFilterFromFilterKey,
   transactionMatchesListFilter,
 } from "@/utils/transactionListFilter";
+import { resolveIndexTransactionTagIds } from "@/utils/resolveIndexTransactionTagIds";
 import type {
   IndexTransaction,
   TransactionTotals,
@@ -730,25 +731,10 @@ const loadFlatTransactionRowsForFilterKey = async (
       endDate,
     );
 
-    if (rows.length > 0) {
-      return rows;
-    }
-
-    const allRows = await listSpaceTransactions(spaceId);
-    if (allRows.length > 0) {
-      const inRange = allRows.filter((transaction) =>
-        transactionInDateRange(transaction.date, startDate, endDate),
-      );
-
-      if (inRange.length > 0) {
-        return inRange;
-      }
-    }
-
-    return [];
+    return rows;
   }
 
-  return listSpaceTransactions(spaceId);
+  return [];
 };
 
 /**
@@ -793,18 +779,6 @@ export const loadCachedTransactionsInRange = async (
       if (fromPages.length > 0) {
         return fromPages.sort(compareTransactionsNewestFirst);
       }
-    }
-
-    const allRows = await listSpaceTransactions(spaceId);
-    const inRange = allRows.filter((transaction) =>
-      transactionInDateRange(transaction.date, startDate, endDate),
-    );
-
-    if (inRange.length > 0) {
-      return filterTransactionsForRange(
-        [{ transactions: inRange }],
-        rangeFilterKey,
-      ).sort(compareTransactionsNewestFirst);
     }
 
     return [];
@@ -1101,6 +1075,8 @@ export const loadAllTimeTransactionsForDeleteScope = async (params: {
 
 export { sameSeriesFingerprint };
 
+export { resolveIndexTransactionTagIds };
+
 type IndexTransactionWithTagIds = IndexTransaction & { tagIds?: string[] };
 
 type IndexTransactionWithMetadata = IndexTransactionWithTagIds & {
@@ -1109,9 +1085,7 @@ type IndexTransactionWithMetadata = IndexTransactionWithTagIds & {
   subcategoryName?: string;
 };
 
-const resolveTransactionTagIds = (
-  row: IndexTransactionWithTagIds,
-): string[] => row.tagIds ?? row.tags?.map((tag) => tag.id) ?? [];
+const resolveTransactionTagIds = resolveIndexTransactionTagIds;
 
 /**
  * Keep tag metadata when a server/realtime upsert omits tags (common on create sync).
@@ -1128,7 +1102,7 @@ export const mergeIndexTransactionTags = (
     return {
       ...(existing ?? {}),
       ...incoming,
-      tags: incoming.tags ?? existing?.tags,
+      tags: incoming.tags?.length ? incoming.tags : existing?.tags,
       tagIds: incomingTagIds,
     };
   }
@@ -1136,7 +1110,9 @@ export const mergeIndexTransactionTags = (
   const explicitlyCleared =
     Object.prototype.hasOwnProperty.call(incoming, "tagIds")
     && Array.isArray(incoming.tagIds)
-    && incoming.tagIds.length === 0;
+    && incoming.tagIds.length === 0
+    // Inconsistent payloads (`tagIds: []` + non-empty `tags`) keep tags.
+    && !(Array.isArray(incoming.tags) && incoming.tags.length > 0);
   if (explicitlyCleared) {
     return {
       ...(existing ?? {}),

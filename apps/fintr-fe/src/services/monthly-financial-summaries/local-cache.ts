@@ -5,6 +5,7 @@ import {
   getLocalResponseSnapshot,
   putLocalResponseSnapshot,
 } from "@/lib/local-db/response-cache";
+import { getLocalDb } from "@/lib/local-db/db";
 
 import { fetchMonthlyFinancialSummaries } from "./queries";
 import type { DashboardData } from "@/types/spaceTypes";
@@ -182,6 +183,56 @@ export const loadCachedMonthlyFinancialSummaries = async (
     );
     return undefined;
   }
+};
+
+/**
+ * Prefer `preferredSpaceCode`, but fall back to any IndexedDB bucket cache that
+ * has rows (localStorage spaceCode can lag behind bootstrap keys).
+ */
+export const resolveMonthlySummariesForInsights = async (
+  preferredSpaceCode: string,
+): Promise<{
+  spaceCode: string;
+  summaries: MonthlyFinancialSummary[];
+}> => {
+  if (preferredSpaceCode) {
+    const summaries =
+      (await loadCachedMonthlyFinancialSummaries(preferredSpaceCode)) ?? [];
+
+    if (summaries.length > 0) {
+      return { spaceCode: preferredSpaceCode, summaries };
+    }
+  }
+
+  try {
+    const prefix = summariesKey("");
+    const rows = await getLocalDb()
+      .meta
+      .where("key")
+      .startsWith(prefix)
+      .toArray();
+
+    for (const row of rows) {
+      const summaries = normalizeMonthlyFinancialSummaries(row.value);
+
+      if (summaries.length > 0) {
+        return {
+          spaceCode: row.key.slice(prefix.length),
+          summaries,
+        };
+      }
+    }
+  } catch (error) {
+    console.warn(
+      "[insights] Failed to discover monthly summaries in IndexedDB",
+      error,
+    );
+  }
+
+  return {
+    spaceCode: preferredSpaceCode,
+    summaries: [],
+  };
 };
 
 export const cacheDashboardShell = async (

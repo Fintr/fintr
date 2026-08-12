@@ -20,6 +20,11 @@ import {
 import { numberFormatting } from "@/lib/utils";
 import { getNestedOverlayPortalRoot } from "@/lib/nested-overlay-portal";
 import {
+  acquireCalculatorHistoryEntry,
+  releaseCalculatorHistoryEntry,
+  subscribeCalculatorPopState,
+} from "@/lib/calculator-keyboard-history";
+import {
   acquireCalculatorScrollPadding,
   computeKeyboardPlacement,
   findScrollableAncestor,
@@ -84,97 +89,6 @@ const DESKTOP_KEYBOARD_MIN_HEIGHT =
 export const MOBILE_CALC_BUTTON_MIN_HEIGHT_PX = 48;
 const MOBILE_CALC_GRID_GAP_CLASS = "gap-2.5";
 const MOBILE_CALC_BUTTON_ROW_CLASS = "h-12 min-h-12 w-full";
-
-const CALCULATOR_KEYBOARD_HISTORY_KEY = "__fintrCalculatorKeyboard";
-
-const calculatorHistoryRegistry = {
-  openCount: 0,
-  historyActive: false,
-};
-
-let pendingCalculatorHistoryBackTimer: ReturnType<typeof setTimeout> | null = null;
-const calculatorPopStateSubscribers = new Set<() => void>();
-let calculatorPopStateListenerAttached = false;
-
-function cancelPendingCalculatorHistoryBack() {
-  if (pendingCalculatorHistoryBackTimer !== null) {
-    clearTimeout(pendingCalculatorHistoryBackTimer);
-    pendingCalculatorHistoryBackTimer = null;
-  }
-}
-
-function handleCalculatorPopState(event: PopStateEvent) {
-  if (event.state?.[CALCULATOR_KEYBOARD_HISTORY_KEY]) {
-    return;
-  }
-
-  calculatorHistoryRegistry.historyActive = false;
-  calculatorHistoryRegistry.openCount = 0;
-  cancelPendingCalculatorHistoryBack();
-  calculatorPopStateSubscribers.forEach((subscriber) => subscriber());
-}
-
-function ensureCalculatorPopStateListener() {
-  if (calculatorPopStateListenerAttached) {
-    return;
-  }
-
-  window.addEventListener("popstate", handleCalculatorPopState);
-  calculatorPopStateListenerAttached = true;
-}
-
-function acquireCalculatorHistoryEntry() {
-  cancelPendingCalculatorHistoryBack();
-
-  if (!calculatorHistoryRegistry.historyActive) {
-    window.history.pushState({ [CALCULATOR_KEYBOARD_HISTORY_KEY]: true }, "");
-    calculatorHistoryRegistry.historyActive = true;
-  }
-
-  calculatorHistoryRegistry.openCount += 1;
-}
-
-function releaseCalculatorHistoryEntry() {
-  calculatorHistoryRegistry.openCount = Math.max(
-    0,
-    calculatorHistoryRegistry.openCount - 1,
-  );
-
-  if (calculatorHistoryRegistry.openCount > 0) {
-    cancelPendingCalculatorHistoryBack();
-    return;
-  }
-
-  cancelPendingCalculatorHistoryBack();
-  pendingCalculatorHistoryBackTimer = setTimeout(() => {
-    pendingCalculatorHistoryBackTimer = null;
-
-    if (calculatorHistoryRegistry.openCount > 0) {
-      return;
-    }
-
-    if (!calculatorHistoryRegistry.historyActive) {
-      return;
-    }
-
-    calculatorHistoryRegistry.historyActive = false;
-    window.history.back();
-  }, 0);
-}
-
-function subscribeCalculatorPopState(onClose: () => void) {
-  ensureCalculatorPopStateListener();
-  calculatorPopStateSubscribers.add(onClose);
-
-  return () => {
-    calculatorPopStateSubscribers.delete(onClose);
-
-    if (calculatorPopStateSubscribers.size === 0 && calculatorPopStateListenerAttached) {
-      window.removeEventListener("popstate", handleCalculatorPopState);
-      calculatorPopStateListenerAttached = false;
-    }
-  };
-}
 
 function useCalculatorKeyboardHistory(
   open: boolean,

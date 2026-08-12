@@ -62,6 +62,8 @@ const toIncomeExpenseType = (
   return "expense";
 };
 
+const normalizeCurrency = (code: string): string => code.trim().toUpperCase();
+
 const isNetworkLikeUpdateError = (error: unknown): boolean => {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
@@ -143,12 +145,19 @@ export const buildUpdatedIndexTransaction = (params: {
       : previous.fromAccountName)
     || "";
 
-  const bookedAmount =
-    money.bookedAmount ?? Math.abs(Number(money.amount) || 0);
+  const bookedAmount = Math.abs(
+    money.bookedAmount ?? Math.abs(Number(money.amount) || 0),
+  );
   const bookedAmountCurrency =
     money.bookedAmountCurrency
     ?? money.amountCurrency
     ?? previous.amountCurrency;
+
+  const updateData = data as UpdateTransactionType & {
+    original_currency?: string;
+    exchange_rate?: number;
+    exchange_rate_source?: "auto" | "manual" | "recent";
+  };
 
   const previousConversion = (
     previous as IndexTransaction & {
@@ -192,20 +201,43 @@ export const buildUpdatedIndexTransaction = (params: {
     bookedAmountCurrency,
   };
 
-  if (previousConversion) {
+  const hasFxConversion =
+    Boolean(updateData.original_currency?.trim())
+    && Number(updateData.exchange_rate) > 0
+    && bookedAmountCurrency
+    && money.amountCurrency
+    && normalizeCurrency(bookedAmountCurrency)
+      !== normalizeCurrency(money.amountCurrency);
+
+  if (hasFxConversion || previousConversion) {
+    const exchangeRate = Number(updateData.exchange_rate) > 0
+      ? Number(updateData.exchange_rate)
+      : previousConversion?.exchangeRate
+        ?? (
+          bookedAmount !== 0
+            ? Math.abs(Number(money.amount) || 0) / bookedAmount
+            : 1
+        );
+
     next.currencyConversion = {
       ...previousConversion,
       originalAmount: bookedAmount,
       originalCurrency:
-        previousConversion.originalCurrency
+        updateData.original_currency?.trim()
+        ?? previousConversion?.originalCurrency
         ?? bookedAmountCurrency
         ?? "PHP",
       convertedAmount: Math.abs(Number(money.amount) || 0),
       convertedCurrency:
-        previousConversion.convertedCurrency
+        previousConversion?.convertedCurrency
         ?? money.amountCurrency
         ?? bookedAmountCurrency
         ?? "PHP",
+      exchangeRate,
+      source:
+        updateData.exchange_rate_source
+        ?? previousConversion?.source
+        ?? "manual",
     };
   }
 
@@ -331,9 +363,15 @@ export const updateTransactionLocalFirst = async (
 
   if (queryClient) {
     invalidateLocalInsightsQueries(queryClient);
-    queryClient.invalidateQueries({
+    void queryClient.invalidateQueries({
       queryKey: ["dashboard", "transactions", spaceId],
       exact: false,
+      refetchType: "active",
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["dashboard", "local", spaceId],
+      exact: false,
+      refetchType: "active",
     });
   }
 

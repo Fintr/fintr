@@ -1,23 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { InsightNarrativeCards } from "./insight-narrative-cards";
 import { InsightCard } from "@/services/insights/types";
-
-vi.mock("next/image", () => ({
-  default: ({
-    alt,
-    ...props
-  }: {
-    alt: string;
-    src: string;
-    fill?: boolean;
-    className?: string;
-    sizes?: string;
-  }) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img alt={alt} src={typeof props.src === "string" ? props.src : ""} />
-  ),
-}));
 
 const categorySpikeInsight: InsightCard = {
   type: "category_trend",
@@ -59,9 +43,7 @@ describe("InsightNarrativeCards", () => {
     render(<InsightNarrativeCards insights={[profileInsight]} />);
 
     expect(screen.getByText("Strong Saver")).toBeInTheDocument();
-    expect(
-      document.querySelector('img[src="/profiles/strong_saver.png"]'),
-    ).not.toBeNull();
+    expect(document.querySelector("img")).not.toBeNull();
     expect(
       screen.getByRole("link", { name: "View transactions" }),
     ).toHaveAttribute("href", "/dashboard");

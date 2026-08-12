@@ -1,10 +1,12 @@
-import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { InsightCard } from "@/services/insights/types";
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { dashboardSectionInsetClassName } from "@/components/dashboard/insights/dashboard-insights-surface";
+import { useShellCachedImageSrc } from "@/hooks/useShellCachedImageSrc";
 import { profileImageForKey } from "@/lib/insights/profile-catalog";
+import { resolveShellCachedAssetObjectUrl } from "@/lib/insights/resolve-shell-cached-asset";
 
 interface InsightNarrativeCardsProps {
   insights: InsightCard[];
@@ -32,36 +34,51 @@ const severityStyles = {
   },
 };
 
-const InsightNarrativeCard = ({ insight }: { insight: InsightCard }) => {
+const InsightIllustrationCard = ({
+  insight,
+  imageSrc,
+}: {
+  insight: InsightCard;
+  imageSrc: string;
+}) => {
+  const [imageFailed, setImageFailed] = useState(false);
+  const [fallbackSrc, setFallbackSrc] = useState<string | null>(null);
+  const { src: resolvedSrc } = useShellCachedImageSrc(imageSrc);
+  const displaySrc = fallbackSrc ?? resolvedSrc;
   const styles = severityStyles[insight.severity];
   const Icon = styles.Icon;
-  const imageSrc = insight.imageKey
-    ? profileImageForKey(insight.imageKey)
-    : null;
 
-  if (imageSrc) {
+  const handleImageError = () => {
+    void (async () => {
+      const cachedObjectUrl = await resolveShellCachedAssetObjectUrl(imageSrc);
+
+      if (cachedObjectUrl) {
+        setImageFailed(false);
+        setFallbackSrc(cachedObjectUrl);
+        return;
+      }
+
+      setImageFailed(true);
+    })();
+  };
+
+  if (imageFailed || !displaySrc) {
     return (
       <div
         className={cn(
           "flex h-full flex-col overflow-hidden rounded-xl border border-border/40 bg-card",
         )}
       >
-        <div className="relative aspect-[4/3] w-full bg-muted/40">
-          <Image
-            src={imageSrc}
-            alt=""
-            fill
-            priority
-            className="object-cover"
-            sizes="(max-width: 640px) 100vw, 320px"
-          />
+        <div
+          className={cn(
+            "flex aspect-[4/3] w-full items-center justify-center",
+            styles.container,
+          )}
+        >
+          <Icon className={cn("h-10 w-10", styles.title)} aria-hidden />
         </div>
         <div className="flex flex-1 flex-col px-3 py-2.5">
-          <h4
-            className={cn(
-              "text-xs font-semibold leading-snug text-primary",
-            )}
-          >
+          <h4 className="text-xs font-semibold leading-snug text-primary">
             {insight.title}
           </h4>
           <p className="mt-1 text-[12px] leading-snug text-muted-foreground line-clamp-3">
@@ -78,6 +95,54 @@ const InsightNarrativeCard = ({ insight }: { insight: InsightCard }) => {
         </div>
       </div>
     );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex h-full flex-col overflow-hidden rounded-xl border border-border/40 bg-card",
+      )}
+    >
+      <div className="relative aspect-[4/3] w-full bg-muted/40">
+        {/* Blob URL from shell Cache Storage when available — works offline. */}
+        <img
+          src={displaySrc}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={handleImageError}
+        />
+      </div>
+      <div className="flex flex-1 flex-col px-3 py-2.5">
+        <h4 className="text-xs font-semibold leading-snug text-primary">
+          {insight.title}
+        </h4>
+        <p className="mt-1 text-[12px] leading-snug text-muted-foreground line-clamp-3">
+          {insight.body}
+        </p>
+        {insight.actionLabel && insight.actionHref && (
+          <Link
+            href={insight.actionHref}
+            className="mt-1.5 inline-block text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+          >
+            {insight.actionLabel}
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const InsightNarrativeCard = ({ insight }: { insight: InsightCard }) => {
+  const styles = severityStyles[insight.severity];
+  const Icon = styles.Icon;
+  const imageSrc = insight.imageKey
+    ? profileImageForKey(insight.imageKey)
+    : null;
+
+  if (imageSrc) {
+    return <InsightIllustrationCard insight={insight} imageSrc={imageSrc} />;
   }
 
   return (

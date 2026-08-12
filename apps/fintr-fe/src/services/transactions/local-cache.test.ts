@@ -652,6 +652,40 @@ describe("transactions local-cache", () => {
     expect(merged.tagIds).toEqual(["tag-a"]);
   });
 
+  it("resolveIndexTransactionTagIds reads tags when tagIds is an empty array", async () => {
+    const { resolveIndexTransactionTagIds } = await import(
+      "@/utils/resolveIndexTransactionTagIds"
+    );
+
+    expect(
+      resolveIndexTransactionTagIds({
+        id: "tx-1",
+        tagIds: [],
+        tags: [{ id: "tag-japan", name: "Japan 2026", color: "#f00" }],
+      } as never),
+    ).toEqual(["tag-japan"]);
+  });
+
+  it("mergeIndexTransactionTags keeps tags when tagIds [] contradicts non-empty tags", () => {
+    const existing = {
+      id: "tx-1",
+      tags: [{ id: "tag-a", name: "A", color: "#000" }],
+      tagIds: ["tag-a"],
+    };
+
+    const merged = mergeIndexTransactionTags(
+      existing as never,
+      {
+        id: "tx-1",
+        tags: [{ id: "tag-b", name: "Japan 2026", color: "#f00" }],
+        tagIds: [],
+      } as never,
+    );
+
+    expect(merged.tagIds).toEqual(["tag-b"]);
+    expect(merged.tags?.map((tag) => tag.id)).toEqual(["tag-b"]);
+  });
+
   it("mergeIndexTransactionTags overlays tags without dropping existing row fields", () => {
     const existing = {
       id: "tx-1",

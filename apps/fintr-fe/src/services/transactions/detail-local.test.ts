@@ -13,6 +13,7 @@ import {
   mapIndexTransactionToEditData,
   mapIndexTransactionToEditDataSync,
   resolveTransactionDetail,
+  seedTransactionEditFromListRow,
 } from "./detail-local";
 import { putLocalAttachment } from "@/services/attachments/local-store";
 
@@ -220,5 +221,81 @@ describe("transaction detail local", () => {
       (detail as { currency_conversion?: unknown }).currency_conversion,
     ).toBeUndefined();
     expect(detail.hasCurrencyConversion).toBeFalsy();
+  });
+
+  it("seeds GBP original amount and manual rate when opening edit from a converted list row", () => {
+    const listRow = {
+      id: "tx-gbp",
+      date: "2026-08-12",
+      description: "EXTEST1",
+      amount: 20_000,
+      amountCurrency: "PHP",
+      bookedAmount: -200,
+      bookedAmountCurrency: "GBP",
+      categoryName: "Medicine",
+      fromAccountName: "SAMPLE BDO LONG ASS NAME",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    };
+
+    const seed = seedTransactionEditFromListRow(listRow);
+
+    expect(seed.data.amount).toBe(200);
+    expect(seed.data.amountCurrency).toBe("GBP");
+    expect(
+      (seed.data as { original_display_currency?: string }).original_display_currency,
+    ).toBe("GBP");
+    expect(
+      (seed.data as { original_display_amount?: number }).original_display_amount,
+    ).toBe(200);
+    expect(seed.data.currencyConversion).toMatchObject({
+      originalAmount: 200,
+      originalCurrency: "GBP",
+      convertedAmount: 20_000,
+      convertedCurrency: "PHP",
+      exchangeRate: 100,
+      source: "manual",
+    });
+  });
+
+  it("preferLocal without cached detail still exposes GBP amount for edit", async () => {
+    const listRow = {
+      id: "tx-gbp",
+      date: "2026-08-12",
+      description: "EXTEST1",
+      amount: 20_000,
+      amountCurrency: "PHP",
+      bookedAmount: 200,
+      bookedAmountCurrency: "GBP",
+      categoryName: "Medicine",
+      fromAccountName: "SAMPLE BDO LONG ASS NAME",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    };
+
+    await upsertLocalIndexTransaction("space-a", listRow);
+
+    const detail = await resolveTransactionDetail({
+      api: null,
+      spaceId: "space-a",
+      transactionId: "tx-gbp",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      listRow,
+      preferLocal: true,
+    });
+
+    expect(detail.amount).toBe(200);
+    expect(detail.amountCurrency).toBe("GBP");
+    expect(detail.currencyConversion).toMatchObject({
+      originalAmount: 200,
+      originalCurrency: "GBP",
+      convertedAmount: 20_000,
+      convertedCurrency: "PHP",
+      exchangeRate: 100,
+    });
   });
 });

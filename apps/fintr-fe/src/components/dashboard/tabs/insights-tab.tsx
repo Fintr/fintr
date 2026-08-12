@@ -17,18 +17,7 @@ import {
   CalendarIcon,
 } from "lucide-react";
 import { useInsightsQueries } from "@/hooks/async/useInsightsQueries";
-import { useDashboardData } from "@/hooks/async/useDashboardData";
-import {
-  healthScoresFromLocalData,
-  periodDaysBetween,
-  expenseBreakdownFromTransactions,
-  weeklySpendingFromTransactions,
-} from "@/services/insights/offline-calculations";
-import {
-  financialTrendsDateRange,
-  monthlySpendingFromBuckets,
-} from "@/services/insights/from-monthly-buckets";
-import type { InsightsSummary } from "@/services/insights/types";
+import { warmInsightProfileImages } from "@/lib/insights/warm-insight-profile-images";
 import { InsightNarrativeCards } from "@/components/dashboard/insights/insight-narrative-cards";
 import { InsightMetricCards } from "@/components/dashboard/insights/insight-metric-cards";
 import { DashboardSummarySection } from "@/components/dashboard/insights/dashboard-summary-section";
@@ -290,138 +279,41 @@ const InsightsTab = () => {
     incomeCategoryOptions,
   ]);
   
+  // IndexedDB → offline bundle only. React Query schedules the read/calc;
+  // it is not a financial data source (no dashboard / network fallbacks).
   const {
     summary,
     narratives,
-    healthScores: healthScoresData,
-    totalBudget: insightsTotalBudget,
-    monthlyDebt: insightsMonthlyDebt,
+    healthScores,
     expenseBreakdown,
     merchantBreakdown,
     subcategoryBreakdown,
     monthlySpending,
     weeklySpending,
-    // accountBreakdown,
     isLoading,
+    isNarrativesLoading,
     isError,
-    // isAccountLoading,
     isChartsLoading,
     refetch,
   } = useInsightsQueries(getInsightsParams);
 
-  const filterStartDate = useAtomValue(dateFilterStartDateAtom);
-  const filterEndDate = useAtomValue(dateFilterEndDateAtom);
+  useEffect(() => {
+    void warmInsightProfileImages();
+  }, []);
 
-  const { data: dashboardData, summaries: dashboardSummaries, periodTransactions: dashboardPeriodTransactions, isLoading: isDashboardLoading } =
-    useDashboardData(filterStartDate, filterEndDate);
-
-  const isUnfilteredView =
-    selectedCategory === "all" && !hasAppliedTagFilters(selectedTagIds);
-
-  const dashboardSummary = useMemo((): InsightsSummary | undefined => {
-    const financialSummary = dashboardData?.financialSummary;
-    if (!financialSummary) {
-      return undefined;
-    }
-
-    return {
-      totalIncome: Number.parseFloat(financialSummary.totalIncome) || 0,
-      totalExpenses: Number.parseFloat(financialSummary.totalExpenses) || 0,
-      netSavings: Number.parseFloat(financialSummary.netSavings) || 0,
-    };
-  }, [dashboardData?.financialSummary]);
-
-  const displaySummary = isUnfilteredView
-    ? dashboardSummary ?? summary
-    : summary;
-
-  const displayHealthScores = useMemo(() => {
-    if (!displaySummary) {
-      return healthScoresData;
-    }
-
-    // Always derive health from the same totals shown in Net Income so the
-    // gauge cannot stay at 0 / "Good" defaults while chips show real money.
-    return healthScoresFromLocalData({
-      summary: displaySummary,
-      periodDays: periodDaysBetween(startDate, endDate),
-      totalBudget: insightsTotalBudget,
-      monthlyDebt: insightsMonthlyDebt,
-    });
-  }, [
-    displaySummary,
-    healthScoresData,
-    insightsTotalBudget,
-    insightsMonthlyDebt,
-    startDate,
-    endDate,
-  ]);
-
-  const displayLoading = isUnfilteredView
-    ? (!displaySummary && (isLoading || isDashboardLoading))
-    : (!displaySummary && isLoading);
-
-  const dashboardExpenseBreakdown = useMemo(() => {
-    if (!isUnfilteredView || dashboardPeriodTransactions.length === 0) {
-      return [];
-    }
-
-    return expenseBreakdownFromTransactions(dashboardPeriodTransactions);
-  }, [isUnfilteredView, dashboardPeriodTransactions]);
-
-  const dashboardMonthlySpending = useMemo(() => {
-    if (!isUnfilteredView || !dashboardSummaries?.length) {
-      return [];
-    }
-
-    const trendsRange = financialTrendsDateRange(endDate);
-    return monthlySpendingFromBuckets(
-      dashboardSummaries,
-      trendsRange.startDate,
-      trendsRange.endDate,
-    ).map((row) => ({
-      ...row,
-      expenses: -Math.abs(row.expenses),
-    }));
-  }, [isUnfilteredView, dashboardSummaries, endDate]);
-
-  const dashboardWeeklySpending = useMemo(() => {
-    if (!isUnfilteredView) {
-      return [];
-    }
-
-    return weeklySpendingFromTransactions(
-      dashboardPeriodTransactions,
-      new Date(),
-    );
-  }, [isUnfilteredView, dashboardPeriodTransactions]);
-
-  const chartHasSignal = (
-    rows: Array<{ income?: number; expenses?: number; savings?: number; amount?: number; value?: number }>,
-  ) =>
-    rows.some(
-      (row) =>
-        Math.abs(row.income ?? 0) > 0
-        || Math.abs(row.expenses ?? 0) > 0
-        || Math.abs(row.savings ?? 0) > 0
-        || Math.abs(row.amount ?? 0) > 0
-        || Math.abs(row.value ?? 0) > 0,
-    );
+  const displaySummary = summary;
+  const displayNarratives = narratives;
+  const displayLoading = isLoading;
+  const displayNarrativesLoading = isNarrativesLoading;
 
   const insightsData = {
     summary: displaySummary,
-    healthScores: displayHealthScores,
-    expenseBreakdown: chartHasSignal(expenseBreakdown)
-      ? expenseBreakdown
-      : dashboardExpenseBreakdown,
+    healthScores,
+    expenseBreakdown,
     merchantBreakdown,
     subcategoryBreakdown,
-    monthlySpending: chartHasSignal(monthlySpending)
-      ? monthlySpending
-      : dashboardMonthlySpending,
-    weeklySpending: chartHasSignal(weeklySpending)
-      ? weeklySpending
-      : dashboardWeeklySpending,
+    monthlySpending,
+    weeklySpending,
   };
 
   const monthlySpendingChartData = insightsData.monthlySpending;
@@ -864,20 +756,20 @@ const InsightsTab = () => {
           onOpenFilters={() => setFiltersOpen(true)}
         />
 
-        {(displayLoading ||
-          (narratives?.metrics?.length ?? 0) > 0 ||
-          (narratives?.insights?.length ?? 0) > 0) && (
+        {(displayNarrativesLoading ||
+          (displayNarratives?.metrics?.length ?? 0) > 0 ||
+          (displayNarratives?.insights?.length ?? 0) > 0) && (
           <div className="space-y-5">
             <InsightMetricCards
-              metrics={narratives?.metrics ?? []}
-              isLoading={displayLoading}
+              metrics={displayNarratives?.metrics ?? []}
+              isLoading={displayNarrativesLoading}
               isBusiness={currentSpace?.isOrganization ?? false}
             />
 
             <div className="px-4">
               <InsightNarrativeCards
-                insights={narratives?.insights ?? []}
-                isLoading={displayLoading}
+                insights={displayNarratives?.insights ?? []}
+                isLoading={displayNarrativesLoading}
               />
             </div>
           </div>

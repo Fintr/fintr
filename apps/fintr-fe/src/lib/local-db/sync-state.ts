@@ -4,7 +4,7 @@ import {
 } from "./response-cache";
 import { isSpaceTransactionIndexComplete } from "./transactions";
 
-export const OFFLINE_SYNC_VERSION = 9;
+export const OFFLINE_SYNC_VERSION = 10;
 
 const OFFLINE_SYNC_META_KEY = "offlineSyncMeta";
 const OFFLINE_SYNC_READY_HINT_KEY = "fintr:offlineSyncReadyVersion";

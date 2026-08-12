@@ -258,7 +258,10 @@ export const buildOfflineNarratives = async (params: {
       const allowed = new Set(tagIds);
       next = next.filter((tx) => {
         const transactionTagIds =
-          tx.tagIds ?? tx.tags?.map((tag) => tag.id) ?? [];
+          (tx.tagIds && tx.tagIds.length > 0
+            ? tx.tagIds
+            : tx.tags?.map((tag) => tag.id))
+          ?? [];
         return transactionTagIds.some((tagId) => allowed.has(tagId));
       });
     }

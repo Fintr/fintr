@@ -35,6 +35,34 @@ describe("resolveAutoExchangeRates", () => {
         source: "auto",
       },
     });
+
+    const resolved = await resolveAutoExchangeRates({
+      api: {} as never,
+      fromCurrency: "GBP",
+      toCurrency: "USD",
+      date: "2026-08-08",
+      spaceId: "space-a",
+      pairChanged: true,
+    });
+
+    expect(resolved.fromLocal).toBe(true);
+    expect(resolved.appliedRate).toBe(1.25);
+    expect(getCurrentRate).not.toHaveBeenCalled();
+    expect(getRecentRates).not.toHaveBeenCalled();
+  });
+
+  it("prefers a cached recent rate when it is close to the cached current rate", async () => {
+    await cacheCurrentExchangeRate({
+      fromCurrency: "GBP",
+      toCurrency: "USD",
+      date: "2026-08-08",
+      payload: {
+        rate: 1.25,
+        from_currency: "GBP",
+        to_currency: "USD",
+        source: "auto",
+      },
+    });
     await cacheRecentExchangeRates({
       spaceId: "space-a",
       fromCurrency: "GBP",
@@ -51,11 +79,12 @@ describe("resolveAutoExchangeRates", () => {
       toCurrency: "USD",
       date: "2026-08-08",
       spaceId: "space-a",
-      pairChanged: true,
+      pairChanged: false,
     });
 
     expect(resolved.fromLocal).toBe(true);
-    expect(resolved.appliedRate).toBe(1.25);
+    expect(resolved.appliedRate).toBe(1.24);
+    expect(resolved.appliedSource).toBe("recent");
     expect(getCurrentRate).not.toHaveBeenCalled();
     expect(getRecentRates).not.toHaveBeenCalled();
   });

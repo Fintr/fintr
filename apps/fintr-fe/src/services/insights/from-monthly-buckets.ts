@@ -305,7 +305,9 @@ const resolveMonthTotals = (
       };
     }
 
-    if (bucketIsFresh && bucketHasTotals) {
+    // Current month with no local txs yet: still use IndexedDB monthly buckets
+    // (including non-fx rows) so Insights matches the dashboard card totals.
+    if (bucketHasTotals) {
       return {
         totalIncome: bucketIncome,
         totalExpenses: bucketExpenses,
@@ -319,6 +321,22 @@ const resolveMonthTotals = (
   }
 
   if (bucketIsFresh && bucketHasTotals) {
+    return {
+      totalIncome: bucketIncome,
+      totalExpenses: bucketExpenses,
+    };
+  }
+
+  if (partialHasTotals) {
+    return {
+      totalIncome: partial.totalIncome,
+      totalExpenses: partial.totalExpenses,
+    };
+  }
+
+  // Last resort: non-fresh buckets still beat an all-zero card when Dexie
+  // transactions for the month are missing.
+  if (bucketHasTotals) {
     return {
       totalIncome: bucketIncome,
       totalExpenses: bucketExpenses,
@@ -514,6 +532,21 @@ export const insightsSummaryFromMonthlyBuckets = (
     totalExpenses: Number.parseFloat(combined.totalExpenses) || 0,
     netSavings: Number.parseFloat(combined.netSavings) || 0,
   };
+};
+
+/** True when monthly buckets already cover the filtered range with non-zero totals. */
+export const insightsRangeBucketsHaveSignal = (
+  summaries: MonthlyFinancialSummary[],
+  startDate: string,
+  endDate: string,
+): boolean => {
+  const summary = insightsSummaryFromMonthlyBuckets(
+    summaries,
+    startDate,
+    endDate,
+  );
+
+  return summary.totalIncome !== 0 || summary.totalExpenses !== 0;
 };
 
 /**

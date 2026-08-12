@@ -3,6 +3,7 @@ import { monthRangesInclusive } from "@/lib/local-sync/offline-bootstrap-dates";
 import { loadCachedBudgetsResponse } from "@/services/budgets/local-cache";
 import {
   enrichTransactionsForInsights,
+  loadInsightsBucketSources,
   loadInsightsLocalSources,
 } from "./load-local-sources";
 import { filterInsightsTransactions } from "./filter-insights-transactions";
@@ -18,6 +19,9 @@ import {
   type InsightsCategoryFilter,
 } from "@/utils/transactionListFilter";
 import { getLocalIsoDateKey } from "@/utils/dateUtils";
+import { resolveIndexTransactionTagIds } from "@/utils/resolveIndexTransactionTagIds";
+import { mergeMetaTransactionSnapshotsIntoIndex } from "@/services/transactions/local-cache";
+import { loadCachedDashboardFinancialSummary } from "@/services/spaces/local-cache";
 
 import {
   formatCategoryPickerValue,
@@ -37,6 +41,7 @@ import {
   financialTrendsDateRange,
   monthlySpendingFromBuckets,
   monthlySpendingFromTransactions,
+  insightsSummaryFromMonthlyBuckets,
   type MonthlySpendingSeriesMode,
 } from "./from-monthly-buckets";
 import { transformHealthScores } from "./transforms";
@@ -72,6 +77,135 @@ const insightsSummaryFromFinancialSummary = (
   totalExpenses: Number.parseFloat(financialSummary.totalExpenses) || 0,
   netSavings: Number.parseFloat(financialSummary.netSavings) || 0,
 });
+
+export const summaryHasInsightsSignal = (summary: InsightsSummary): boolean =>
+  summary.totalIncome !== 0 || summary.totalExpenses !== 0;
+
+/**
+ * Pick unfiltered Net / In / Out totals from IndexedDB sources.
+ * Order: monthly buckets → cached dashboard snapshot → hybrid (buckets + txs)
+ * → period txs. Buckets are authoritative for unfiltered month views; period
+ * transactions enrich breakdowns and charts without replacing hero totals.
+ */
+export const resolveUnfilteredInsightsSummary = (params: {
+  fromPeriodTransactions: InsightsSummary;
+  hybridSummary: InsightsSummary;
+  bucketSummary: InsightsSummary;
+  cachedDashboardSummary?: InsightsSummary;
+}): InsightsSummary => {
+  const {
+    fromPeriodTransactions,
+    hybridSummary,
+    bucketSummary,
+    cachedDashboardSummary,
+  } = params;
+
+  if (summaryHasInsightsSignal(bucketSummary)) {
+    return bucketSummary;
+  }
+
+  if (
+    cachedDashboardSummary
+    && summaryHasInsightsSignal(cachedDashboardSummary)
+  ) {
+    return cachedDashboardSummary;
+  }
+
+  if (summaryHasInsightsSignal(hybridSummary)) {
+    return hybridSummary;
+  }
+
+  if (summaryHasInsightsSignal(fromPeriodTransactions)) {
+    return fromPeriodTransactions;
+  }
+
+  return bucketSummary;
+};
+
+const EMPTY_INSIGHTS_SUMMARY: InsightsSummary = {
+  totalIncome: 0,
+  totalExpenses: 0,
+  netSavings: 0,
+};
+
+const assembleBucketOnlyOfflineInsightsBundle = async (params: {
+  spaceCode: string;
+  startDate: string;
+  endDate: string;
+  currency: string;
+  summaries: MonthlyFinancialSummary[];
+  budgets: Budget[];
+  loans: Loan[];
+}): Promise<OfflineInsightsBundle> => {
+  const {
+    spaceCode,
+    startDate,
+    endDate,
+    currency,
+    summaries,
+    budgets,
+    loans,
+  } = params;
+
+  const trendsRange = financialTrendsDateRange(endDate);
+  const bucketSummary = insightsSummaryFromMonthlyBuckets(
+    summaries,
+    startDate,
+    endDate,
+  );
+  const cachedDashboardFinancialSummary = await loadCachedDashboardFinancialSummary(
+    spaceCode,
+    startDate,
+    endDate,
+  );
+  const cachedDashboardSummary = cachedDashboardFinancialSummary
+    ? insightsSummaryFromFinancialSummary(cachedDashboardFinancialSummary)
+    : undefined;
+
+  const resolvedSummary = resolveUnfilteredInsightsSummary({
+    fromPeriodTransactions: EMPTY_INSIGHTS_SUMMARY,
+    hybridSummary: EMPTY_INSIGHTS_SUMMARY,
+    bucketSummary,
+    cachedDashboardSummary,
+  });
+
+  const hybridSummaries = upsertLiveCurrentMonthSummary({
+    summaries,
+    transactions: [],
+    currency,
+  });
+  const monthlySpending = monthlySpendingFromBuckets(
+    hybridSummaries,
+    trendsRange.startDate,
+    trendsRange.endDate,
+  ).map((row) => ({
+    ...row,
+    expenses: -Math.abs(row.expenses),
+  }));
+
+  const totalBudget = budgets.reduce(
+    (sum, budget) => sum + toAmount(budget.amount),
+    0,
+  );
+  const monthlyDebt = totalMonthlyDebtFromLoans(loans);
+
+  return {
+    summary: resolvedSummary,
+    expenseBreakdown: [],
+    merchantBreakdown: [],
+    subcategoryBreakdown: [],
+    weeklySpending: [],
+    monthlySpending,
+    totalBudget,
+    monthlyDebt,
+    healthScores: healthScoresFromLocalData({
+      summary: resolvedSummary,
+      periodDays: periodDaysBetween(startDate, endDate),
+      totalBudget,
+      monthlyDebt,
+    }),
+  };
+};
 
 const rowTagCount = (row: IndexTransaction): number =>
   (row as IndexTransaction & { tagIds?: string[] }).tagIds?.length
@@ -166,11 +300,11 @@ const resolveInsightsCategoryName = (params: {
       (child) => child.id === params.subcategoryId,
     );
     if (subcategory) {
-      return subcategory.name;
+      return subcategory.name || subcategory.label;
     }
   }
 
-  return parent.name;
+  return parent.name || parent.label;
 };
 
 export const resolveCategoryTrendsSeriesMode = (params: {
@@ -255,10 +389,70 @@ const filterByTagIds = (
 
   const allowed = new Set(tagIds);
   return transactions.filter((tx) => {
-    const transactionTagIds =
-      tx.tagIds ?? tx.tags?.map((tag) => tag.id) ?? [];
+    const transactionTagIds = resolveIndexTransactionTagIds(tx);
     return transactionTagIds.some((tagId) => allowed.has(tagId));
   });
+};
+
+const metadataRichness = (row: IndexTransaction): number => {
+  let score = 0;
+  if (row.categoryId) {
+    score += 2;
+  }
+  if (row.categoryName?.trim()) {
+    score += 1;
+  }
+  if (row.subcategoryId) {
+    score += 1;
+  }
+  if (row.subcategoryName?.trim()) {
+    score += 1;
+  }
+  score += resolveIndexTransactionTagIds(row).length * 3;
+  return score;
+};
+
+const preferRicherTransaction = (
+  current: IndexTransaction | undefined,
+  incoming: IndexTransaction,
+): IndexTransaction => {
+  if (!current) {
+    return incoming;
+  }
+
+  if (metadataRichness(incoming) > metadataRichness(current)) {
+    return {
+      ...current,
+      ...incoming,
+      tags: incoming.tags?.length ? incoming.tags : current.tags,
+      tagIds:
+        resolveIndexTransactionTagIds(incoming).length > 0
+          ? resolveIndexTransactionTagIds(incoming)
+          : resolveIndexTransactionTagIds(current),
+      categoryName: incoming.categoryName?.trim()
+        ? incoming.categoryName
+        : current.categoryName,
+      categoryId: incoming.categoryId ?? current.categoryId,
+      subcategoryId: incoming.subcategoryId ?? current.subcategoryId,
+      subcategoryName: incoming.subcategoryName ?? current.subcategoryName,
+    } as IndexTransaction;
+  }
+
+  return {
+    ...incoming,
+    ...current,
+    tags: current.tags?.length ? current.tags : incoming.tags,
+    tagIds:
+      resolveIndexTransactionTagIds(current).length > 0
+        ? resolveIndexTransactionTagIds(current)
+        : resolveIndexTransactionTagIds(incoming),
+    categoryName: current.categoryName?.trim()
+      ? current.categoryName
+      : incoming.categoryName,
+    categoryId: current.categoryId ?? incoming.categoryId,
+    subcategoryId: current.subcategoryId ?? incoming.subcategoryId,
+    subcategoryName: current.subcategoryName ?? incoming.subcategoryName,
+  } as IndexTransaction;
 };
 
 /** Mirrors Insights::MonthlyDebtPayments.estimate_monthly_payment */
@@ -558,6 +752,8 @@ export type OfflineInsightsBundle = {
   monthlyDebt: number;
 };
 
+export type OfflineInsightsTransactionPhase = "none" | "period" | "all";
+
 export const buildOfflineInsightsBundle = async (params: {
   spaceCode: string;
   startDate: string;
@@ -569,8 +765,18 @@ export const buildOfflineInsightsBundle = async (params: {
   tagIds?: string[];
   categoryOptions?: InsightsCategoryFilter["categoryOptions"];
   prefetchedSummaries?: MonthlyFinancialSummary[];
-  /** Dashboard-range txs already in React Query — merge when IndexedDB is sparse. */
+  /**
+   * Optional test/metadata enrichment rows. Production Insights never pass
+   * React Query caches here — IndexedDB (via loadInsightsLocalSources) is the
+   * sole source of transactions.
+   */
   seedTransactions?: IndexTransaction[];
+  /**
+   * `none` — monthly buckets only (fast Net / In / Out).
+   * `period` — load period transactions for breakdown / weekly charts.
+   * `all` — full history (category / tag filters).
+   */
+  transactionPhase?: OfflineInsightsTransactionPhase;
 }): Promise<OfflineInsightsBundle> => {
   const {
     spaceCode,
@@ -584,6 +790,7 @@ export const buildOfflineInsightsBundle = async (params: {
     categoryOptions,
     prefetchedSummaries,
     seedTransactions = [],
+    transactionPhase,
   } = params;
 
   const resolvedCategoryName = resolveInsightsCategoryName({
@@ -607,6 +814,16 @@ export const buildOfflineInsightsBundle = async (params: {
   );
   const tagFiltered = tagIds.length > 0;
   const useTransactionSummary = categoryFiltered || tagFiltered;
+  const resolvedTransactionPhase: OfflineInsightsTransactionPhase =
+    transactionPhase
+    ?? (useTransactionSummary ? "all" : "period");
+
+  // Re-sync / list refreshes can leave Dexie rows without tags while meta still
+  // has bootstrap snapshots. Heal the index before filtering so offline
+  // category/tag chips do not stay at ₱0 after a pull.
+  if (useTransactionSummary && spaceCode) {
+    await mergeMetaTransactionSnapshotsIntoIndex(spaceCode);
+  }
 
   const trendsRange = financialTrendsDateRange(endDate);
   const txLoadStart =
@@ -618,24 +835,51 @@ export const buildOfflineInsightsBundle = async (params: {
       ? trendsRange.endDate
       : endDate;
 
-  const {
-    summaries: loadedSummaries,
-    transactionsInRange,
-    allCalculatedTransactions,
-    budgets,
-    loans,
-  } = await loadInsightsLocalSources({
+  let loadedSummaries: MonthlyFinancialSummary[] = [];
+  let transactionsInRange: IndexTransaction[] = [];
+  let allCalculatedTransactions: IndexTransaction[] = [];
+  let budgets: Budget[] = [];
+  let loans: Loan[] = [];
+
+  if (resolvedTransactionPhase === "none") {
+    const bucketSources = await loadInsightsBucketSources({
+      spaceCode,
+      startDate,
+      endDate,
+    });
+
+    return assembleBucketOnlyOfflineInsightsBundle({
+      spaceCode: bucketSources.resolvedSpaceCode || spaceCode,
+      startDate,
+      endDate,
+      currency,
+      summaries: bucketSources.summaries,
+      budgets: bucketSources.budgets,
+      loans: bucketSources.loans,
+    });
+  }
+
+  const localSources = await loadInsightsLocalSources({
     spaceCode,
     startDate,
     endDate,
     transactionLoadStart: txLoadStart,
     transactionLoadEnd: txLoadEnd,
+    loadAllTransactions: resolvedTransactionPhase === "all",
   });
 
+  loadedSummaries = localSources.summaries;
+  transactionsInRange = localSources.transactionsInRange;
+  allCalculatedTransactions = localSources.allCalculatedTransactions;
+  budgets = localSources.budgets;
+  loans = localSources.loans;
+
+  // Always prefer summaries from loadInsightsLocalSources (hydrated from
+  // IndexedDB txs). Prefetched rows are only a fallback for tests/callers.
   const summaries =
-    prefetchedSummaries && prefetchedSummaries.length > 0
-      ? prefetchedSummaries
-      : loadedSummaries;
+    loadedSummaries.length > 0
+      ? loadedSummaries
+      : (prefetchedSummaries ?? []);
 
   // Prefer the enriched all-time set from loadInsightsLocalSources so category /
   // tag metadata from bootstrap meta is not lost on a second Dexie-only read.
@@ -660,7 +904,10 @@ export const buildOfflineInsightsBundle = async (params: {
     if (!transaction?.id) {
       continue;
     }
-    periodById.set(transaction.id, transaction);
+    periodById.set(
+      transaction.id,
+      preferRicherTransaction(periodById.get(transaction.id), transaction),
+    );
   }
   const periodTransactions = Array.from(periodById.values());
   const calculatedTransactions = filterInsightsTransactions(transactionsInRange);
@@ -724,15 +971,15 @@ export const buildOfflineInsightsBundle = async (params: {
           ? periodTransactions
           : seededPeriod;
 
-  // List / dashboard RQ rows often keep tag+category metadata after a re-sync
-  // wipes it from Dexie — fold that metadata into the filter source.
+  // Optional seed rows (tests / one-off metadata heal) fold into the filter
+  // source; production Insights loads only from IndexedDB.
   const sourceForFilters = enrichTransactionsForInsights(
     sourceBase,
     seedTransactions,
   );
 
   if (seedTransactions.length > 0 && (categoryFiltered || tagFiltered)) {
-    // Heal IndexedDB so the next offline open still filters without RQ seeds.
+    // Persist enriched category/tag metadata back into IndexedDB.
     await persistRestoredInsightsMetadata({
       spaceCode,
       before: sourceBase,
@@ -812,18 +1059,47 @@ export const buildOfflineInsightsBundle = async (params: {
     });
   }
 
+  const fromPeriodTransactions = totalsContext.summaryFromTransactions(
+    useTransactionSummary
+      ? periodFilteredTransactions
+      : periodTransactions,
+  );
+
+  const hybridSummary = insightsSummaryFromFinancialSummary(
+    financialSummaryForDateRange({
+      summaries,
+      transactions: periodTransactions,
+      startDate,
+      endDate,
+      spaceCurrency: currency,
+      rateLookup: totalsContext.rateLookup,
+    }),
+  );
+
+  const bucketSummary = insightsSummaryFromMonthlyBuckets(
+    summaries,
+    startDate,
+    endDate,
+  );
+
+  const cachedDashboardFinancialSummary = useTransactionSummary
+    ? undefined
+    : await loadCachedDashboardFinancialSummary(spaceCode, startDate, endDate);
+
+  const cachedDashboardSummary = cachedDashboardFinancialSummary
+    ? insightsSummaryFromFinancialSummary(cachedDashboardFinancialSummary)
+    : undefined;
+
+  // IndexedDB is authoritative: prefer live period txs, then hybrid
+  // (buckets + txs), then monthly buckets, then the range dashboard snapshot.
   const resolvedSummary = useTransactionSummary
-    ? totalsContext.summaryFromTransactions(periodFilteredTransactions)
-    : insightsSummaryFromFinancialSummary(
-        financialSummaryForDateRange({
-          summaries,
-          transactions: periodTransactions,
-          startDate,
-          endDate,
-          spaceCurrency: currency,
-          rateLookup: totalsContext.rateLookup,
-        }),
-      );
+    ? fromPeriodTransactions
+    : resolveUnfilteredInsightsSummary({
+        fromPeriodTransactions,
+        hybridSummary,
+        bucketSummary,
+        cachedDashboardSummary,
+      });
 
   const trendsSeriesMode = resolveCategoryTrendsSeriesMode({
     categoryName: resolvedCategoryName,

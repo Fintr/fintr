@@ -435,7 +435,7 @@ export const buildTransactionCategoryFields = (
 
     if (subcategory) {
       return {
-        categoryName: subcategory.name,
+        categoryName: subcategory.name || subcategory.label,
         categoryId: assignment.categoryId,
         subcategoryId: assignment.subcategoryId,
       };
@@ -443,7 +443,7 @@ export const buildTransactionCategoryFields = (
   }
 
   return {
-    categoryName: parent.name,
+    categoryName: parent.name || parent.label,
     categoryId: assignment.categoryId,
     ...(assignment.subcategoryId
       ? { subcategoryId: assignment.subcategoryId }

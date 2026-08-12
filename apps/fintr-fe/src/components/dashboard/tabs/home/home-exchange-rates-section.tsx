@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { TrendingUp } from "lucide-react";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { getCurrentRate } from "@/services/exchangeRates/queries";
 import { formatFxQuoteCompact } from "@/utils/fxQuoteDisplay";
@@ -36,6 +37,7 @@ export const HomeExchangeRatesSection = ({
     scope: "openid profile email read:current_user read:transactions",
   });
   const [spaceCode] = useLocalStorage("spaceCode", "");
+  const skipNetworkFetch = useSkipCachedNetworkFetch(undefined, spaceCode);
   const rateDate = todayIsoDate();
 
   const currencyPairs = useMemo(() => {
@@ -76,7 +78,10 @@ export const HomeExchangeRatesSection = ({
           rateDate,
         ),
       enabled: !!spaceCode && isAuthenticated,
-      staleTime: RATE_STALE_TIME_MS,
+      staleTime: skipNetworkFetch ? Infinity : RATE_STALE_TIME_MS,
+      retry: skipNetworkFetch ? false : 2,
+      refetchOnMount: !skipNetworkFetch,
+      refetchOnWindowFocus: !skipNetworkFetch,
     })),
   });
 

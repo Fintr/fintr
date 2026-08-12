@@ -392,6 +392,31 @@ describe("insights from monthly buckets", () => {
       });
     });
 
+    it("falls back to non-fx month buckets when current-month transactions are empty", () => {
+      expect(
+        insightsSummaryHybrid({
+          summaries: [
+            bucket({
+              month: 8,
+              totalIncome: 1_641_483.57,
+              totalExpenses: 1_810_920.05,
+              monthStartDate: "2026-08-01",
+              monthEndDate: "2026-08-31",
+              fxBased: false,
+            }),
+          ],
+          transactions: [],
+          startDate: "2026-08-01",
+          endDate: "2026-08-31",
+          spaceCurrency: "PHP",
+        }),
+      ).toEqual({
+        totalIncome: 1_641_483.57,
+        totalExpenses: 1_810_920.05,
+        netSavings: 1_641_483.57 - 1_810_920.05,
+      });
+    });
+
     it("falls back to the month bucket when current-month transactions are empty", () => {
       expect(
         insightsSummaryHybrid({

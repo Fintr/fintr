@@ -555,9 +555,9 @@
     "semantic_hash": ""
   },
   "apps/fintr-be/app/controllers/api/v1/exchange_rates_controller.rb": {
-    "mtime": 1778070730.317588,
-    "ast_hash": "8bfbe6642e4d489a31c9462463c11852",
-    "semantic_hash": "8bfbe6642e4d489a31c9462463c11852"
+    "mtime": 1786532061.1543198,
+    "ast_hash": "125421436c3d3a7562e155b2cd8ee516",
+    "semantic_hash": ""
   },
   "apps/fintr-be/app/controllers/api/v1/finance/subscriptions_controller.rb": {
     "mtime": 1778070730.3178458,
@@ -3470,9 +3470,9 @@
     "semantic_hash": "cf64cdd04f0889749df0cfa3dfc3fb83"
   },
   "apps/fintr-fe/e2e/calculator-keyboard.spec.ts": {
-    "mtime": 1782144777.3818872,
-    "ast_hash": "71fd521a31f4ed49ec503e8155fc15cd",
-    "semantic_hash": "71fd521a31f4ed49ec503e8155fc15cd"
+    "mtime": 1786532652.385166,
+    "ast_hash": "b379f016eb519a46acd8b386c97d44f6",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/e2e/calendar-overlay-close.spec.ts": {
     "mtime": 1782144414.192166,
@@ -4450,13 +4450,13 @@
     "semantic_hash": "e9b5617fc70b91c9faacf16d0b68c761"
   },
   "apps/fintr-fe/src/components/dashboard/forms/AmountWithRatePicker.test.tsx": {
-    "mtime": 1786435812.5789008,
-    "ast_hash": "5e0aeba6a74512cc7ea0c590ea14c678",
+    "mtime": 1786530088.0192351,
+    "ast_hash": "7d7f66a247690049e6e5aadef9d6fa04",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/forms/AmountWithRatePicker.tsx": {
-    "mtime": 1786435812.5793152,
-    "ast_hash": "66d898e8fcc38e26135ec314775c4b40",
+    "mtime": 1786530594.5961251,
+    "ast_hash": "70b731dc173f061b51fc4ea80fa3d2ec",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/forms/CategoryCreationForm.tsx": {
@@ -4495,8 +4495,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/forms/ExpenseForm.tsx": {
-    "mtime": 1786435812.5808291,
-    "ast_hash": "c81ac9d7b662a2f20ac5ee7e6361f00f",
+    "mtime": 1786533277.4369957,
+    "ast_hash": "c79d748501c2877db9bf6ef4de0029b4",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/forms/FileUploadField.tsx": {
@@ -4520,8 +4520,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/forms/IncomeForm.tsx": {
-    "mtime": 1786435812.5833676,
-    "ast_hash": "ec47089ca637ff0cbd9c5c028a8e9f89",
+    "mtime": 1786533277.4370303,
+    "ast_hash": "00b67fb6437e53b22e5fac9a0889e8c9",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/forms/InvestmentForm.tsx": {
@@ -4615,13 +4615,13 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/insights/insight-narrative-cards.test.tsx": {
-    "mtime": 1786529629.9524932,
-    "ast_hash": "0952b1c3ad77af78ef5bf903dd19d0d1",
+    "mtime": 1786549426.155806,
+    "ast_hash": "670b9875f8b4a36819fefd0964ad76ff",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/insights/insight-narrative-cards.tsx": {
-    "mtime": 1786529629.9525816,
-    "ast_hash": "ec3d6baad93ff121fb405bec659cf16a",
+    "mtime": 1786549414.826317,
+    "ast_hash": "5051675aa8c80b53c5423cfdea7219a0",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/insights/recharts-tooltip-props.ts": {
@@ -4730,8 +4730,8 @@
     "semantic_hash": "31f2238c4bd1bb3e354fa18088b5d545"
   },
   "apps/fintr-fe/src/components/dashboard/tabs/insights-tab.tsx": {
-    "mtime": 1786529629.953323,
-    "ast_hash": "44d52332fd8da51a70046966ca7a9a3b",
+    "mtime": 1786548803.395923,
+    "ast_hash": "b70a6a120c938a2f25a5bec08c78cecd",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/tabs/investments-tab.tsx": {
@@ -5105,13 +5105,13 @@
     "semantic_hash": "1fddadf7415f69364b23b07a3d41c3ea"
   },
   "apps/fintr-fe/src/components/ui/calculator-input.test.tsx": {
-    "mtime": 1782142971.4626243,
-    "ast_hash": "e865f3eb9d89435586affa9da1e9541a",
-    "semantic_hash": "e865f3eb9d89435586affa9da1e9541a"
+    "mtime": 1786532652.3949425,
+    "ast_hash": "245548671817ca1eef1ba230f85bc4e7",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/ui/calculator-input.tsx": {
-    "mtime": 1786529629.953946,
-    "ast_hash": "41cbe8693bbadb0645b11df88858b5ad",
+    "mtime": 1786532652.3949916,
+    "ast_hash": "5a5bd787fc0c7eadec2f652baf3658a4",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/ui/calculator-keyboard-scroll.test.ts": {
@@ -5510,8 +5510,8 @@
     "semantic_hash": "c086eb5307df934240a6e3beae83ca86"
   },
   "apps/fintr-fe/src/hooks/async/useInsightsQueries.ts": {
-    "mtime": 1786529629.9552393,
-    "ast_hash": "4c9315fd7e2380736c2be72a38d21c64",
+    "mtime": 1786543945.26365,
+    "ast_hash": "21ff19d33867c5fbfd9a6c7d3a6bd051",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/hooks/async/useLoan.ts": {
@@ -5595,8 +5595,8 @@
     "semantic_hash": "a60ea5ecbe4b38e0bc27438f0eeeff26"
   },
   "apps/fintr-fe/src/hooks/useCloseOnPopStateWhenOpen.ts": {
-    "mtime": 1786459547.3934262,
-    "ast_hash": "742b48f81130d764586bcc33b116cb06",
+    "mtime": 1786532652.3851678,
+    "ast_hash": "64f0a22f8474c926356923b535508a03",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/hooks/useCountUp.ts": {
@@ -6085,8 +6085,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/exchangeRates/queries.ts": {
-    "mtime": 1786529629.9577444,
-    "ast_hash": "62ef1a928439ca40d26c20415b851604",
+    "mtime": 1786532061.1207197,
+    "ast_hash": "c9013d6708384091feb3138fb114bce5",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/finance/payment-methods/mutations.tsx": {
@@ -6325,8 +6325,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/types/categoryTreeTypes.ts": {
-    "mtime": 1786435812.6986644,
-    "ast_hash": "309c79117ea0dd4803ddad8f6b2d6078",
+    "mtime": 1786538346.0142598,
+    "ast_hash": "d35210a3b96d97a3857b15c1ced9e60c",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/types/categoryTypes.ts": {
@@ -8005,8 +8005,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/scripts/generate-service-worker.mjs": {
-    "mtime": 1786529629.951085,
-    "ast_hash": "1ee9b17203efd43ae551fecb7ecc559f",
+    "mtime": 1786549411.5858247,
+    "ast_hash": "593ce59f5f346fd32a1ba83873d8fef5",
     "semantic_hash": ""
   },
   "apps/fintr-fe/scripts/mobile/build-production-bundled.sh": {
@@ -8165,8 +8165,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/tabs/home/home-exchange-rates-section.tsx": {
-    "mtime": 1786435812.5961726,
-    "ast_hash": "4ba9a36ab8194163806d916876b7a695",
+    "mtime": 1786530597.919906,
+    "ast_hash": "266ba6968c33016ca29c8f7fe455e213",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/tabs/home/home-loans-section.tsx": {
@@ -8375,8 +8375,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/hooks/useOfflineSync.ts": {
-    "mtime": 1786529629.9564693,
-    "ast_hash": "57ae2db40fbec58faffc8b069d55cbf5",
+    "mtime": 1786530284.2200532,
+    "ast_hash": "ebb86e56bc69aca3c994e7f6e1e1f58a",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/hooks/useOpenTransactionRequest.ts": {
@@ -8490,8 +8490,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/local-db/sync-state.ts": {
-    "mtime": 1786529629.9575963,
-    "ast_hash": "860b7ee33cd8f34e386f184ff7513262",
+    "mtime": 1786530743.3025432,
+    "ast_hash": "a42cdff5c00b837a2d7e54233d5b35c2",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/local-db/transactions.test.ts": {
@@ -8605,33 +8605,33 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/exchangeRates/local-db.ts": {
-    "mtime": 1786529629.9576728,
-    "ast_hash": "dcb1e874cba90d31c4a28cfd425e5cb4",
+    "mtime": 1786530567.5503812,
+    "ast_hash": "848b7ae047e36d78dd02e41e11f87bb2",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/exchangeRates/resolve-auto-rates.test.ts": {
-    "mtime": 1786459547.3934977,
-    "ast_hash": "6f6e3c5c05f2b2268b79c74a092add90",
+    "mtime": 1786530088.019104,
+    "ast_hash": "84f5304b3a4ce485da84e6056d7aa2d0",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/exchangeRates/resolve-auto-rates.ts": {
-    "mtime": 1786459547.7246943,
-    "ast_hash": "e2c518884c84474235cb78eb8132398f",
+    "mtime": 1786530585.268929,
+    "ast_hash": "ed46c61dc393b2ed1891fc90cf728aee",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/from-monthly-buckets.test.ts": {
-    "mtime": 1786529629.957881,
-    "ast_hash": "29e557f6530fd2b109a928c23a3dc698",
+    "mtime": 1786538346.0420113,
+    "ast_hash": "20d3b9329b58f57b6460a623e3b2eadc",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/from-monthly-buckets.ts": {
-    "mtime": 1786529629.9579527,
-    "ast_hash": "426eb9130291fd0ce10aa0da0d3e9a7b",
+    "mtime": 1786538800.641738,
+    "ast_hash": "0923de2fcaa9e2fc0be70bfdc819ae3a",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/offline-calculations.category-filter.test.ts": {
-    "mtime": 1786529629.9580922,
-    "ast_hash": "8f19536ef73f2a1ac4341fcfdb53cabd",
+    "mtime": 1786538345.8942626,
+    "ast_hash": "010d8ba720c1a3ab9c5df59f6fb63ea9",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/offline-calculations.test.ts": {
@@ -8640,18 +8640,18 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/offline-calculations.ts": {
-    "mtime": 1786529629.9581602,
-    "ast_hash": "bb7bd3ff813db66ef6742d63043d497b",
+    "mtime": 1786543927.9001646,
+    "ast_hash": "a0f0b67a0a66cb14f0dfbc3b0da954b2",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/offline-narratives.test.ts": {
-    "mtime": 1786459547.7245731,
+    "mtime": 1786538345.8388584,
     "ast_hash": "a49f66c2c49f8551c2fad6985c46494f",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/offline-narratives.ts": {
-    "mtime": 1786529629.958256,
-    "ast_hash": "7c88c125c5bfe8abe5ed42fe54fbb763",
+    "mtime": 1786538345.998961,
+    "ast_hash": "e6dec3d4a603b555f3122a29a1912858",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/offline-profiles.test.ts": {
@@ -8775,8 +8775,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/local-sync/bootstrap-v2.ts": {
-    "mtime": 1786529629.9592714,
-    "ast_hash": "2b6ddababe0852eac05c0ef56428db6e",
+    "mtime": 1786529854.196689,
+    "ast_hash": "d3ff6f8543b4003f43d32e0d5a1beb3d",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/local-sync/drain-outbox.test.ts": {
@@ -8845,8 +8845,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/monthly-financial-summaries/local-cache.ts": {
-    "mtime": 1786529629.9600496,
-    "ast_hash": "87b5475e12ef41b0eff053dc89545c23",
+    "mtime": 1786540062.6180875,
+    "ast_hash": "d49f70e9acdffe58b2e0c8a9ca45a317",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/monthly-financial-summaries/queries.ts": {
@@ -8860,13 +8860,13 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/spaces/local-cache.test.ts": {
-    "mtime": 1786529629.96013,
-    "ast_hash": "23637372617aab2af9172221a08eb5b3",
+    "mtime": 1786538346.0967138,
+    "ast_hash": "c3694cc3672a0235dd1d91e7f7391805",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/spaces/local-cache.ts": {
-    "mtime": 1786459547.559421,
-    "ast_hash": "0a4b3ae8bb2c6f4e5743bca4c69504c4",
+    "mtime": 1786538346.0515952,
+    "ast_hash": "f8495f345529cb45cfdc6aeeb1c23131",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/spaces/spaces-list-cache.ts": {
@@ -8920,13 +8920,13 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/transactions/detail-local.test.ts": {
-    "mtime": 1786529629.9603875,
-    "ast_hash": "730a073716c1ab2b74daa0859f16c83a",
+    "mtime": 1786533277.42606,
+    "ast_hash": "fc752aa3d02c266b51e059812111a548",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/transactions/detail-local.ts": {
-    "mtime": 1786529629.9604645,
-    "ast_hash": "1b429c7ff6230e6d7c1ad43ff9aa3a3c",
+    "mtime": 1786533277.4370043,
+    "ast_hash": "6ad476e8e44bc69d66a39bc27f9e89e1",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/transactions/list-anchor-day.test.ts": {
@@ -8945,13 +8945,13 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/transactions/local-cache.test.ts": {
-    "mtime": 1786529629.960515,
-    "ast_hash": "1e2bea527cb3005bea2d4d0e118377a2",
+    "mtime": 1786538345.9206853,
+    "ast_hash": "bdb8d3767720fd43e53d1e844dad5689",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/transactions/local-cache.ts": {
-    "mtime": 1786529629.960565,
-    "ast_hash": "82649c3db6103d15c08b09fea29b7027",
+    "mtime": 1786538800.6417193,
+    "ast_hash": "2637cca396a59d44634fd3db0db912c7",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/transactions/query-keys.ts": {
@@ -9175,13 +9175,13 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/utils/transactionListFilter.insights.test.ts": {
-    "mtime": 1786435812.71821,
-    "ast_hash": "ad3441f7c8f9b2a39245804d5ef75188",
+    "mtime": 1786538346.0237143,
+    "ast_hash": "895c44e8b20e8c85a1ff8b15e6a124f5",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/utils/transactionListFilter.ts": {
-    "mtime": 1786529629.963002,
-    "ast_hash": "11d5375dd2cd33a2da604ac37742d461",
+    "mtime": 1786538345.9430778,
+    "ast_hash": "da5f49932fde4adb7c33f2c165d0483b",
     "semantic_hash": ""
   },
   "apps/fintr-fe/docs/mobile/SPACE_SYNC_CHANGE_LOG.md": {
@@ -9380,13 +9380,13 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/exchangeRates/prefetch-space-rates.test.ts": {
-    "mtime": 1786519763.7643006,
-    "ast_hash": "f156b59250e28d2e0b05e548dcf49710",
+    "mtime": 1786532061.120533,
+    "ast_hash": "e419ee0cfffda85821a5fa30a595e773",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/exchangeRates/prefetch-space-rates.ts": {
-    "mtime": 1786519702.3822405,
-    "ast_hash": "8fe9d8604585baffa9f100d7a4c527c2",
+    "mtime": 1786532061.1205826,
+    "ast_hash": "27d957faa540775402644d1a49b5345b",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/filter-insights-transactions.test.ts": {
@@ -9405,8 +9405,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/load-local-sources.ts": {
-    "mtime": 1786524947.7574375,
-    "ast_hash": "0098247ab868044b7a2ce4b41c25d9c1",
+    "mtime": 1786540062.6009238,
+    "ast_hash": "77ff324ddcb0b355024f2cfa6af0e932",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/space-currency-amount.ts": {
@@ -9415,13 +9415,13 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/transaction-space-totals.test.ts": {
-    "mtime": 1786518985.7186458,
-    "ast_hash": "eefaf7ec075b560f641e2c98f75ae2b2",
+    "mtime": 1786532869.325014,
+    "ast_hash": "fe4d7661254b48ec95109e1b68cf9953",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/insights/transaction-space-totals.ts": {
-    "mtime": 1786519763.7642884,
-    "ast_hash": "cb581864acf52865c118c737f59c0bc2",
+    "mtime": 1786538345.854971,
+    "ast_hash": "3ecf0c85f33a73b31bbccc41b60ea18b",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/loans/loan-payment-index-row.test.ts": {
@@ -9545,8 +9545,8 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/transactions/offline-update-insights.integration.test.ts": {
-    "mtime": 1786526975.4299383,
-    "ast_hash": "c84ad024dab805c4fafa80e0fc1e5488",
+    "mtime": 1786538345.9885244,
+    "ast_hash": "15336da14040d4c48c515dddc6eef3f6",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/transactions/query-keys.test.ts": {
@@ -9570,13 +9570,13 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/transactions/update-local-first.test.ts": {
-    "mtime": 1786526579.8661165,
-    "ast_hash": "f683bf2014c96457aa108a6e5600d4a7",
+    "mtime": 1786532869.3248532,
+    "ast_hash": "cbb56d946cc268789a3d96dc082dc859",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/transactions/update-local-first.ts": {
-    "mtime": 1786528453.3381672,
-    "ast_hash": "a91b35bef9ba11769d05f31e9d2589c6",
+    "mtime": 1786533277.4370143,
+    "ast_hash": "35d6832e43c75f076ec8caeb50b1cab5",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/types/loanPaymentTypes.ts": {
@@ -9752,6 +9752,101 @@
   "docs/offline-mode/DATA_MANIFEST.md": {
     "mtime": 1786524086.683104,
     "ast_hash": "8db4066738f6635b00fe533a52cbc754",
+    "semantic_hash": ""
+  },
+  "apps/fintr-be/app/operations/exchange_rates/operations/fetch_batch_rates.rb": {
+    "mtime": 1786532061.1575897,
+    "ast_hash": "8da8b729c02a268aa670b7c2abe0fc4c",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/hooks/async/useInsightsQueries.test.tsx": {
+    "mtime": 1786543972.3809674,
+    "ast_hash": "6089e957ec20b6534cebd1c5b16aff1a",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/hooks/useCloseOnPopStateWhenOpen.test.ts": {
+    "mtime": 1786532652.3948307,
+    "ast_hash": "dfaba3c90f49fe9590ce1004e8b90a96",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/hooks/useShellCachedImageSrc.ts": {
+    "mtime": 1786549387.821201,
+    "ast_hash": "d0154146534a82fa84592833d4b06d12",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/lib/calculator-keyboard-history.ts": {
+    "mtime": 1786532652.385176,
+    "ast_hash": "7c6019b993948c5188259149c32d50ae",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/lib/capacitor-app-resume.test.ts": {
+    "mtime": 1786530284.220071,
+    "ast_hash": "6eb92ff79d7329abce3ec55b7b659122",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/lib/capacitor-app-resume.ts": {
+    "mtime": 1786530284.2200642,
+    "ast_hash": "febc9bd27774d645f5c105752b42b2ef",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/lib/insights/resolve-shell-cached-asset.test.ts": {
+    "mtime": 1786549471.1011136,
+    "ast_hash": "dd65c8ff36de4b80ab06446aca041177",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/lib/insights/resolve-shell-cached-asset.ts": {
+    "mtime": 1786549425.3648686,
+    "ast_hash": "2e7d69083661d7c173b538178fde2d2c",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/lib/insights/warm-insight-profile-images.test.ts": {
+    "mtime": 1786548803.3749745,
+    "ast_hash": "0a11070ed75f981f7442d67d635cda0e",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/lib/insights/warm-insight-profile-images.ts": {
+    "mtime": 1786549425.053425,
+    "ast_hash": "5689c58395cf47f5380d651e621ab81f",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/services/exchangeRates/exchange-rates-sync.integration.test.ts": {
+    "mtime": 1786532061.1205337,
+    "ast_hash": "b42fd122a81723b8f83ac2a746878411",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/services/exchangeRates/network-guard.ts": {
+    "mtime": 1786530567.551414,
+    "ast_hash": "c0e2c3aa8bdea6b85df752be6fb41854",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/services/insights/insights-debug.ts": {
+    "mtime": 1786540062.6009722,
+    "ast_hash": "98db1a832ba0f11716f8da8d744bd5e0",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/services/insights/offline-insights-dashboard.integration.test.ts": {
+    "mtime": 1786539576.4853725,
+    "ast_hash": "bc2ef57b6a583b1b0fc8fb0ed15c871e",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/services/insights/resolve-unfiltered-insights-summary.test.ts": {
+    "mtime": 1786543931.9965544,
+    "ast_hash": "d950278451eeb8a3651fc5e36f75f62c",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/utils/resolveIndexTransactionTagIds.ts": {
+    "mtime": 1786538346.0327299,
+    "ast_hash": "2924fd843f448f82446183f53baafcd3",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/utils/transactionFormAmount.test.ts": {
+    "mtime": 1786533277.4260328,
+    "ast_hash": "d02d8033164f154f7e7f1addb59a4d49",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/utils/transactionFormAmount.ts": {
+    "mtime": 1786533277.4260404,
+    "ast_hash": "9f03bf0ecbd8bbbfbcae4dbbde9e98d9",
     "semantic_hash": ""
   }
 }

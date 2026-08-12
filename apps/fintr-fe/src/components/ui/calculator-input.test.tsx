@@ -426,4 +426,104 @@ describe("CalculatorInput", () => {
       expect(mockOnChange).toHaveBeenCalledWith("123");
     });
   });
+
+  describe("History handoff when opening another overlay", () => {
+    const PARENT_SHEET_HISTORY_KEY = "__fintrAddTransactionSheet";
+    const RATES_HISTORY_KEY = "__fintrExchangeRateSelector";
+
+    it("does not history.back over a newer overlay that opened during calculator dismiss", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+      try {
+        await act(async () => {
+          render(
+            <div>
+              <CalculatorInput
+                value=""
+                onChange={mockOnChange}
+                placeholder="0.00"
+              />
+              <button type="button" data-testid="rates">
+                Rates
+              </button>
+            </div>,
+          );
+        });
+
+        const input = screen.getByPlaceholderText("0.00");
+        fireEvent.focus(input);
+        expect(
+          document.body.querySelector("[data-calculator-keyboard]"),
+        ).toBeTruthy();
+        expect(window.history.state?.__fintrCalculatorKeyboard).toBe(true);
+
+        fireEvent.mouseDown(screen.getByTestId("rates"));
+
+        window.history.pushState({ [RATES_HISTORY_KEY]: true }, "");
+        expect(window.history.state?.[RATES_HISTORY_KEY]).toBe(true);
+
+        const backSpy = vi.spyOn(window.history, "back");
+
+        await act(async () => {
+          vi.runAllTimers();
+        });
+
+        expect(backSpy).not.toHaveBeenCalled();
+        expect(window.history.state?.[RATES_HISTORY_KEY]).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not dismiss the parent sheet when Rates opens while the calculator is up", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const onParentClose = vi.fn();
+
+      window.history.pushState({ [PARENT_SHEET_HISTORY_KEY]: true }, "");
+
+      const handleParentPopState = (event: PopStateEvent) => {
+        if (event.state?.[PARENT_SHEET_HISTORY_KEY]) {
+          return;
+        }
+
+        onParentClose();
+      };
+
+      window.addEventListener("popstate", handleParentPopState);
+
+      try {
+        await act(async () => {
+          render(
+            <div>
+              <CalculatorInput
+                value=""
+                onChange={mockOnChange}
+                placeholder="0.00"
+              />
+              <button type="button" data-testid="rates">
+                Rates
+              </button>
+            </div>,
+          );
+        });
+
+        const input = screen.getByPlaceholderText("0.00");
+        fireEvent.focus(input);
+        expect(window.history.state?.__fintrCalculatorKeyboard).toBe(true);
+
+        fireEvent.mouseDown(screen.getByTestId("rates"));
+        window.history.pushState({ [RATES_HISTORY_KEY]: true }, "");
+
+        await act(async () => {
+          vi.runAllTimers();
+        });
+
+        expect(onParentClose).not.toHaveBeenCalled();
+        expect(window.history.state?.[RATES_HISTORY_KEY]).toBe(true);
+      } finally {
+        window.removeEventListener("popstate", handleParentPopState);
+        vi.useRealTimers();
+      }
+    });
+  });
 });

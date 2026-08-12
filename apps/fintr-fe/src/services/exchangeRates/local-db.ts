@@ -82,6 +82,15 @@ export const cacheCurrentExchangeRate = async (params: {
   }
 };
 
+const isValidCachedCurrentRate = (
+  payload: CurrentRateResponse | undefined,
+): payload is CurrentRateResponse =>
+  Boolean(
+    payload
+    && Number.isFinite(Number(payload.rate))
+    && Number(payload.rate) > 0,
+  );
+
 export const loadCachedCurrentExchangeRate = async (params: {
   fromCurrency: string;
   toCurrency: string;
@@ -93,13 +102,39 @@ export const loadCachedCurrentExchangeRate = async (params: {
   }
 
   try {
-    return await getLocalResponseSnapshot<CurrentRateResponse>(
+    const cached = await getLocalResponseSnapshot<CurrentRateResponse>(
       currentRateKey(fromCurrency, toCurrency, date),
     );
+    return isValidCachedCurrentRate(cached) ? cached : undefined;
   } catch (error) {
     console.warn("[local-db] Failed to load current exchange rate", error);
     return undefined;
   }
+};
+
+/** Tries the requested date, then today's rate (bootstrap usually caches today). */
+export const loadCachedCurrentExchangeRateWithFallback = async (params: {
+  fromCurrency: string;
+  toCurrency: string;
+  date: string;
+  today?: string;
+}): Promise<CurrentRateResponse | undefined> => {
+  const today = params.today ?? new Date().toISOString().slice(0, 10);
+  const dates =
+    params.date === today ? [params.date] : [params.date, today];
+
+  for (const date of dates) {
+    const cached = await loadCachedCurrentExchangeRate({
+      fromCurrency: params.fromCurrency,
+      toCurrency: params.toCurrency,
+      date,
+    });
+    if (cached) {
+      return cached;
+    }
+  }
+
+  return undefined;
 };
 
 export const clearCachedCurrentExchangeRate = async (params: {

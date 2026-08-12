@@ -7,14 +7,29 @@ import {
   loadCachedDashboardShell,
   loadCachedMonthlyFinancialSummaries,
 } from "@/services/monthly-financial-summaries/local-cache";
-import type { DashboardData } from "@/types/spaceTypes";
+import type { DashboardData, FinancialSummary } from "@/types/spaceTypes";
 
-const dashboardCacheKey = (
+export const dashboardResponseCacheKey = (
   spaceId: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
 ): string =>
   `dashboardResponse:${spaceId}:${startDate ?? ""}:${endDate ?? ""}`;
+
+const dashboardCacheKey = dashboardResponseCacheKey;
+
+const financialSummaryHasSignal = (
+  financialSummary: FinancialSummary | undefined,
+): boolean => {
+  if (!financialSummary) {
+    return false;
+  }
+
+  const totalIncome = Number.parseFloat(financialSummary.totalIncome) || 0;
+  const totalExpenses = Number.parseFloat(financialSummary.totalExpenses) || 0;
+
+  return totalIncome !== 0 || totalExpenses !== 0;
+};
 
 export const cacheDashboardResponse = async (
   spaceId: string,
@@ -50,11 +65,36 @@ const buildDashboardFromMonthlyBuckets = async (
     loadCachedMonthlyFinancialSummaries(spaceId),
   ]);
 
-  if (!shell || !summaries) {
+  if (!shell || !summaries || summaries.length === 0) {
     return undefined;
   }
 
   return buildDashboardDataFromBuckets(shell, summaries, startDate, endDate);
+};
+
+/** Range-scoped dashboard financialSummary stored in IndexedDB response cache. */
+export const loadCachedDashboardFinancialSummary = async (
+  spaceId: string,
+  startDate: string,
+  endDate: string,
+): Promise<FinancialSummary | undefined> => {
+  if (!spaceId || !startDate || !endDate) {
+    return undefined;
+  }
+
+  try {
+    const cached = await getLocalResponseSnapshot<DashboardData>(
+      dashboardCacheKey(spaceId, startDate, endDate),
+    );
+
+    return cached?.financialSummary;
+  } catch (error) {
+    console.warn(
+      "[local-db] Failed to load cached dashboard financial summary",
+      error,
+    );
+    return undefined;
+  }
 };
 
 export const loadCachedDashboardResponse = async (
@@ -73,12 +113,12 @@ export const loadCachedDashboardResponse = async (
       startDate,
       endDate,
     );
-    if (fromBuckets) {
+    if (fromBuckets && financialSummaryHasSignal(fromBuckets.financialSummary)) {
       return fromBuckets;
     }
 
     return await getLocalResponseSnapshot<DashboardData>(
-      dashboardCacheKey(spaceId, startDate, endDate)
+      dashboardCacheKey(spaceId, startDate, endDate),
     );
   } catch (error) {
     console.warn("[local-db] Failed to load cached dashboard", error);

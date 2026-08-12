@@ -1,7 +1,7 @@
 import { loadCachedBudgetsResponse } from "@/services/budgets/local-cache";
 import { loadCachedLoansInfiniteData } from "@/services/loans/local-cache";
 import {
-  loadCachedMonthlyFinancialSummaries,
+  resolveMonthlySummariesForInsights,
 } from "@/services/monthly-financial-summaries/local-cache";
 import {
   loadAllCachedTransactionsForInsights,
@@ -43,6 +43,18 @@ const filterTransactionsToRange = (
 ): IndexTransaction[] =>
   transactions.filter((transaction) =>
     transactionInDateRange(transaction.date, startDate, endDate),
+  );
+
+const transactionsNeedMetaEnrichment = (
+  transactions: IndexTransaction[],
+): boolean =>
+  transactions.some(
+    (transaction) =>
+      !transaction.categoryName?.trim()
+      || (
+        !(transaction.tagIds?.length ?? 0)
+        && !(transaction.tags?.length ?? 0)
+      ),
   );
 
 /**
@@ -128,40 +140,31 @@ export const loadTransactionsForInsightsRange = async (
     return [];
   }
 
-  const allTransactions = await loadAllTransactionsForInsights(spaceCode);
-  const inRange = filterTransactionsToRange(
-    allTransactions,
+  const fromIndex = await loadCachedTransactionsInRange(
+    spaceCode,
     startDate,
     endDate,
   );
 
-  if (inRange.length > 0) {
-    return inRange;
+  if (fromIndex.length > 0) {
+    return fromIndex;
   }
 
-  const byId = new Map<string, IndexTransaction>();
-
-  mergeInRangeFallback(
-    byId,
-    await loadCachedTransactionsInRange(spaceCode, startDate, endDate),
+  const fromMeta = filterTransactionsToRange(
+    await loadScatteredTransactionSnapshotsFromMeta(spaceCode),
     startDate,
     endDate,
   );
 
-  return Array.from(byId.values());
-};
-
-const mergeInRangeFallback = (
-  byId: Map<string, IndexTransaction>,
-  rows: IndexTransaction[],
-  startDate: string,
-  endDate: string,
-): void => {
-  for (const transaction of rows) {
-    if (transactionInDateRange(transaction.date, startDate, endDate)) {
-      byId.set(transaction.id, transaction);
-    }
+  if (fromMeta.length > 0) {
+    return fromMeta;
   }
+
+  return filterTransactionsToRange(
+    await loadAllTransactionsForInsights(spaceCode),
+    startDate,
+    endDate,
+  );
 };
 
 const loadBudgetsForInsightsRange = async (
@@ -187,6 +190,41 @@ export type InsightsLocalSources = {
   loans: Loan[];
 };
 
+export type InsightsBucketSources = Pick<
+  InsightsLocalSources,
+  "summaries" | "budgets" | "loans"
+> & {
+  resolvedSpaceCode: string;
+};
+
+/**
+ * Fast path: monthly buckets + budgets + loans only (no transaction scans).
+ */
+export const loadInsightsBucketSources = async (params: {
+  spaceCode: string;
+  startDate: string;
+  endDate: string;
+}): Promise<InsightsBucketSources> => {
+  const { spaceCode, startDate, endDate } = params;
+
+  const [
+    resolvedSummaries,
+    budgets,
+    loansData,
+  ] = await Promise.all([
+    resolveMonthlySummariesForInsights(spaceCode),
+    loadBudgetsForInsightsRange(spaceCode, startDate, endDate),
+    loadCachedLoansInfiniteData(spaceCode),
+  ]);
+
+  return {
+    resolvedSpaceCode: resolvedSummaries.spaceCode,
+    summaries: resolvedSummaries.summaries,
+    budgets,
+    loans: (loansData?.pages ?? []).flatMap((page) => page.loans),
+  };
+};
+
 /**
  * Load everything insights needs from IndexedDB / local response cache.
  * No network calls — mirrors backend ResolveContext inputs.
@@ -197,6 +235,11 @@ export const loadInsightsLocalSources = async (params: {
   endDate: string;
   transactionLoadStart: string;
   transactionLoadEnd: string;
+  /**
+   * Unfiltered dashboard views only need period rows + monthly buckets.
+   * Category/tag filters need the full IndexedDB history for metadata + matching.
+   */
+  loadAllTransactions?: boolean;
 }): Promise<InsightsLocalSources> => {
   const {
     spaceCode,
@@ -204,47 +247,74 @@ export const loadInsightsLocalSources = async (params: {
     endDate,
     transactionLoadStart,
     transactionLoadEnd,
+    loadAllTransactions = true,
   } = params;
 
-  const allTransactionsRaw = enrichTransactionsForInsights(
-    await loadAllTransactionsForInsights(spaceCode),
-    await loadScatteredTransactionSnapshotsFromMeta(spaceCode),
-  );
-  const allCalculatedTransactions = filterInsightsTransactions(allTransactionsRaw);
-  const transactionsInRange = allCalculatedTransactions.filter((transaction) =>
-    transactionInDateRange(
-      transaction.date,
-      transactionLoadStart,
-      transactionLoadEnd,
-    ),
-  );
-
   const [
-    summariesRaw,
+    resolvedSummaries,
     budgets,
     loansData,
   ] = await Promise.all([
-    loadCachedMonthlyFinancialSummaries(spaceCode),
+    resolveMonthlySummariesForInsights(spaceCode),
     loadBudgetsForInsightsRange(spaceCode, startDate, endDate),
     loadCachedLoansInfiniteData(spaceCode),
   ]);
 
-  let summaries = summariesRaw ?? [];
+  let summaries = resolvedSummaries.summaries;
+  let allCalculatedTransactions: IndexTransaction[] = [];
+  let transactionsInRange: IndexTransaction[] = [];
 
-  if (
-    await summariesNeedLocalHydration(
-      spaceCode,
-      summaries,
-      allCalculatedTransactions,
-    )
-  ) {
-    summaries = await hydrateMonthlyFinancialSummariesFromLocalTransactions(
-      spaceCode,
-      {
-        existingSummaries: summaries,
-        transactions: allCalculatedTransactions,
-      },
+  const transactionLoadSpaceCode =
+    resolvedSummaries.spaceCode || spaceCode;
+
+  if (loadAllTransactions) {
+    const allTransactionsRaw = enrichTransactionsForInsights(
+      await loadAllTransactionsForInsights(transactionLoadSpaceCode),
+      await loadScatteredTransactionSnapshotsFromMeta(transactionLoadSpaceCode),
     );
+    allCalculatedTransactions = filterInsightsTransactions(allTransactionsRaw);
+    transactionsInRange = allCalculatedTransactions.filter((transaction) =>
+      transactionInDateRange(
+        transaction.date,
+        transactionLoadStart,
+        transactionLoadEnd,
+      ),
+    );
+
+    if (
+      await summariesNeedLocalHydration(
+        transactionLoadSpaceCode,
+        summaries,
+        allCalculatedTransactions,
+      )
+    ) {
+      summaries = await hydrateMonthlyFinancialSummariesFromLocalTransactions(
+        transactionLoadSpaceCode,
+        {
+          existingSummaries: summaries,
+          transactions: allCalculatedTransactions,
+        },
+      );
+    }
+  } else {
+    let periodRaw = await loadTransactionsForInsightsRange(
+      transactionLoadSpaceCode,
+      transactionLoadStart,
+      transactionLoadEnd,
+    );
+
+    if (
+      periodRaw.length > 0
+      && transactionsNeedMetaEnrichment(periodRaw)
+    ) {
+      periodRaw = enrichTransactionsForInsights(
+        periodRaw,
+        await loadScatteredTransactionSnapshotsFromMeta(transactionLoadSpaceCode),
+      );
+    }
+
+    allCalculatedTransactions = filterInsightsTransactions(periodRaw);
+    transactionsInRange = allCalculatedTransactions;
   }
 
   return {

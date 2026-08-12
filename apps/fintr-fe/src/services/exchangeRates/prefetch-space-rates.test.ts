@@ -10,6 +10,7 @@ import {
 } from "./local-db";
 import {
   collectDatedExchangeRateRequests,
+  collectExchangeRatePairs,
   refreshSpaceExchangeRates,
 } from "./prefetch-space-rates";
 
@@ -53,11 +54,24 @@ describe("refreshSpaceExchangeRates", () => {
       get: vi.fn().mockResolvedValue({
         data: {
           data: {
-            rate: 56,
-            from_currency: "USD",
-            to_currency: "PHP",
-            source: "auto",
             rates: [{ rate: 56, used_at: todayIsoDate() }],
+            source: "recent",
+          },
+        },
+      }),
+      post: vi.fn().mockResolvedValue({
+        data: {
+          data: {
+            rates: [
+              {
+                rate: 56,
+                from_currency: "USD",
+                to_currency: "PHP",
+                date: todayIsoDate(),
+                source: "auto",
+              },
+            ],
+            errors: [],
           },
         },
       }),
@@ -72,6 +86,9 @@ describe("refreshSpaceExchangeRates", () => {
       force: true,
     });
 
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.post.mock.calls[0]?.[0]).toBe("/exchange_rates/batch");
+    expect(api.post.mock.calls[0]?.[1]?.requests?.length).toBeGreaterThan(0);
     expect(api.get).toHaveBeenCalled();
   });
 });
@@ -115,5 +132,39 @@ describe("collectDatedExchangeRateRequests", () => {
         date: "2026-04-02",
       },
     ]);
+  });
+});
+
+describe("collectExchangeRatePairs", () => {
+  it("includes popular currencies toward the space currency for PHP-only accounts", () => {
+    const pairs = collectExchangeRatePairs({
+      spaceCurrency: "PHP",
+      accounts: { accounts: [{ balanceCurrency: "PHP" }] },
+      transactionPages: [],
+    });
+
+    expect(pairs).toContainEqual({
+      fromCurrency: "GBP",
+      toCurrency: "PHP",
+    });
+    expect(pairs).toContainEqual({
+      fromCurrency: "USD",
+      toCurrency: "PHP",
+    });
+    expect(pairs.some((pair) => pair.fromCurrency === "PHP")).toBe(false);
+  });
+
+  it("includes default transaction currency toward account ledger currencies", () => {
+    const pairs = collectExchangeRatePairs({
+      spaceCurrency: "PHP",
+      accounts: { accounts: [{ balanceCurrency: "PHP" }] },
+      transactionPages: [],
+      defaultTransactionCurrency: "GBP",
+    });
+
+    expect(pairs).toContainEqual({
+      fromCurrency: "GBP",
+      toCurrency: "PHP",
+    });
   });
 });

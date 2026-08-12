@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { AmountWithRatePicker } from "./AmountWithRatePicker";
 import { resolveAutoExchangeRates } from "@/services/exchangeRates/resolve-auto-rates";
-import { getCurrentRate } from "@/services/exchangeRates/queries";
+import { getCurrentRate, getRecentRates } from "@/services/exchangeRates/queries";
 
 vi.mock("@/hooks/useAuthApi", () => ({
   useAuthApi: () => ({ api: {} }),
@@ -19,6 +20,10 @@ vi.mock("@/services/exchangeRates/resolve-auto-rates", () => ({
 
 vi.mock("@/hooks/useLocalStorage", () => ({
   useLocalStorage: () => ["space-a", vi.fn()],
+}));
+
+vi.mock("@/hooks/useMediaQuery", () => ({
+  useMediaQuery: () => true,
 }));
 
 vi.mock("@/components/ui/calculator-input", () => ({
@@ -46,6 +51,7 @@ vi.mock("@/components/ui/rolling-number", () => ({
 
 const mockedResolveAutoExchangeRates = vi.mocked(resolveAutoExchangeRates);
 const mockedGetCurrentRate = vi.mocked(getCurrentRate);
+const mockedGetRecentRates = vi.mocked(getRecentRates);
 
 const defaultProps = {
   id: "amount",
@@ -120,6 +126,10 @@ describe("AmountWithRatePicker", () => {
       from_currency: "GBP",
       to_currency: "USD",
       source: "api",
+    });
+    mockedGetRecentRates.mockResolvedValue({
+      source: "recent",
+      rates: [{ rate: 82.5, usedAt: "2026-07-01T10:00:00.000Z" }],
     });
   });
 
@@ -311,5 +321,50 @@ describe("AmountWithRatePicker", () => {
         /VND per 1 PHP/,
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it("applies a manual exchange rate from the rate picker", async () => {
+    const user = userEvent.setup();
+    const onConversionChange = vi.fn();
+
+    mockedGetCurrentRate.mockResolvedValue({
+      rate: 76.4,
+      from_currency: "GBP",
+      to_currency: "PHP",
+      source: "api",
+    });
+
+    render(
+      <AmountWithRatePicker
+        {...defaultProps}
+        toCurrency="PHP"
+        onConversionChange={onConversionChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockedResolveAutoExchangeRates).toHaveBeenCalled();
+    });
+
+    onConversionChange.mockClear();
+
+    await user.click(
+      screen.getByRole("button", { name: /exchange rate options/i }),
+    );
+
+    const manualInput = await screen.findByLabelText(/manual exchange rate/i);
+    await user.clear(manualInput);
+    await user.type(manualInput, "80");
+    await user.click(screen.getByRole("button", { name: /^apply$/i }));
+
+    await waitFor(() => {
+      expect(onConversionChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalCurrency: "GBP",
+          targetCurrency: "PHP",
+          exchangeRateSource: "manual",
+        }),
+      );
+    });
   });
 });

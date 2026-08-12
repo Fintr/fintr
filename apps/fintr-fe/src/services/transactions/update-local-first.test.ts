@@ -151,6 +151,66 @@ describe("buildUpdatedIndexTransaction", () => {
     expect(next.currencyConversion?.originalAmount).toBe(1);
     expect(next.currencyConversion?.convertedAmount).toBe(1);
   });
+
+  it("recomputes converted amount and exchange rate when FX rate changes on edit", () => {
+    const previous = {
+      id: "tx-gbp",
+      date: "2026-08-12",
+      description: "EXTEST1",
+      amount: 20_000,
+      amountCurrency: "PHP",
+      bookedAmount: 200,
+      bookedAmountCurrency: "GBP",
+      categoryName: "Medicine",
+      fromAccountName: "SAMPLE BDO LONG ASS NAME",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+      currencyConversion: {
+        originalAmount: 200,
+        originalCurrency: "GBP",
+        convertedAmount: 20_000,
+        convertedCurrency: "PHP",
+        exchangeRate: 100,
+        source: "manual",
+      },
+    };
+
+    const next = buildUpdatedIndexTransaction({
+      previous,
+      data: {
+        id: "tx-gbp",
+        amount: 200,
+        description: "EXTEST1",
+        transactionType: "expense",
+        categoryName: "Medicine",
+        accountName: "SAMPLE BDO LONG ASS NAME",
+        date: "2026-08-12",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+        original_currency: "GBP",
+        exchange_rate: 1000,
+        exchange_rate_source: "manual",
+      } as UpdateTransactionType & {
+        original_currency: string;
+        exchange_rate: number;
+        exchange_rate_source: "manual";
+      },
+      amountCurrency: "PHP",
+    });
+
+    expect(next.amount).toBe(200_000);
+    expect(next.bookedAmount).toBe(200);
+    expect(next.bookedAmountCurrency).toBe("GBP");
+    expect(next.currencyConversion).toMatchObject({
+      originalAmount: 200,
+      originalCurrency: "GBP",
+      convertedAmount: 200_000,
+      convertedCurrency: "PHP",
+      exchangeRate: 1000,
+      source: "manual",
+    });
+  });
 });
 
 describe("updateTransactionLocalFirst", () => {

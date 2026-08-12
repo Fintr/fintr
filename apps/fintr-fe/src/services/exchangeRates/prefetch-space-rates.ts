@@ -1,5 +1,6 @@
 import type { AxiosInstance, AxiosRequestConfig } from "axios";
 
+import { POPULAR_CURRENCY_CODES } from "@/data/currencies";
 import { offlineBootstrapDateRange } from "@/lib/local-sync/offline-bootstrap-dates";
 import { extractAccountsFromResponse, loadCachedAccountsResponse } from "@/services/transactions/accounts/local-cache";
 import {
@@ -11,13 +12,13 @@ import { serializeFilterValues } from "@/utils/transactionFilterValues";
 import type { TransactionsPage } from "@/types/transactionTypes";
 
 import {
-  buildCurrencyPairs,
   getExchangeRatesLastRefreshDate,
   markExchangeRatesRefreshed,
 } from "./local-db";
 import {
-  fetchAndCacheCurrentRate,
+  fetchAndCacheBatchCurrentRates,
   fetchAndCacheRecentRates,
+  type BatchCurrentRateRequest,
 } from "./queries";
 
 const todayIsoDate = (): string => new Date().toISOString().slice(0, 10);
@@ -76,11 +77,29 @@ export type CollectExchangeRatePairsParams = {
   spaceCurrency?: string;
   accounts: unknown;
   transactionPages: TransactionsPage[];
+  defaultTransactionCurrency?: string | null;
+  includePopularCurrencies?: boolean;
 };
 
-export const collectExchangeRatePairs = (
+const addDirectedPair = (
+  pairs: Map<string, { fromCurrency: string; toCurrency: string }>,
+  fromCurrency: string,
+  toCurrency: string,
+): void => {
+  if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) {
+    return;
+  }
+
+  pairs.set(`${fromCurrency}:${toCurrency}`, {
+    fromCurrency,
+    toCurrency,
+  });
+};
+
+export const collectExchangeRateCurrencies = (
   params: CollectExchangeRatePairsParams,
-): Array<{ fromCurrency: string; toCurrency: string }> => {
+): string[] => {
+  const spaceCurrency = normalizeCurrency(params.spaceCurrency ?? "PHP");
   const accountCurrencies = extractAccountsFromResponse(params.accounts).map(
     (account) => account.balanceCurrency,
   );
@@ -90,14 +109,52 @@ export const collectExchangeRatePairs = (
       transaction.bookedAmountCurrency,
     ]),
   );
+  const includePopular = params.includePopularCurrencies !== false;
 
-  return buildCurrencyPairs([
-    params.spaceCurrency ?? "PHP",
+  const codes = new Set<string>([spaceCurrency]);
+
+  for (const code of [
     ...accountCurrencies,
-    ...transactionCurrencies.filter(
-      (code): code is string => typeof code === "string" && code.length > 0,
-    ),
-  ]);
+    ...transactionCurrencies,
+    params.defaultTransactionCurrency ?? "",
+    ...(includePopular ? POPULAR_CURRENCY_CODES : []),
+  ]) {
+    if (typeof code === "string" && code.trim()) {
+      codes.add(normalizeCurrency(code));
+    }
+  }
+
+  return Array.from(codes);
+};
+
+/**
+ * Pairs needed for amount pickers: each amount currency → each ledger currency.
+ * Includes popular/default currencies so new transactions are covered offline.
+ */
+export const collectExchangeRatePairs = (
+  params: CollectExchangeRatePairsParams,
+): Array<{ fromCurrency: string; toCurrency: string }> => {
+  const spaceCurrency = normalizeCurrency(params.spaceCurrency ?? "PHP");
+  const amountCurrencies = collectExchangeRateCurrencies(params);
+  const ledgerCurrencies = new Set(
+    extractAccountsFromResponse(params.accounts)
+      .map((account) => normalizeCurrency(account.balanceCurrency))
+      .filter(Boolean),
+  );
+
+  if (ledgerCurrencies.size === 0) {
+    ledgerCurrencies.add(spaceCurrency);
+  }
+
+  const pairs = new Map<string, { fromCurrency: string; toCurrency: string }>();
+
+  for (const fromCurrency of amountCurrencies) {
+    for (const toCurrency of ledgerCurrencies) {
+      addDirectedPair(pairs, fromCurrency, toCurrency);
+    }
+  }
+
+  return Array.from(pairs.values());
 };
 
 export type RefreshSpaceExchangeRatesParams = {
@@ -106,6 +163,7 @@ export type RefreshSpaceExchangeRatesParams = {
   accounts: unknown;
   transactionPages: TransactionsPage[];
   spaceCurrency?: string;
+  defaultTransactionCurrency?: string | null;
   requestConfig?: AxiosRequestConfig;
   force?: boolean;
 };
@@ -132,10 +190,15 @@ export const refreshSpaceExchangeRates = async (
   const spaceCurrency = normalizeCurrency(
     params.spaceCurrency ?? spaceContext?.currency ?? "PHP",
   );
+  const defaultTransactionCurrency =
+    params.defaultTransactionCurrency
+    ?? spaceContext?.defaultTransactionCurrency
+    ?? null;
   const pairs = collectExchangeRatePairs({
     spaceCurrency,
     accounts,
     transactionPages,
+    defaultTransactionCurrency,
   });
   const datedRequests = collectDatedExchangeRateRequests({
     spaceCurrency,
@@ -147,25 +210,15 @@ export const refreshSpaceExchangeRates = async (
     return;
   }
 
-  const recentPairsDone = new Set<string>();
+  const batchRequests = new Map<string, BatchCurrentRateRequest>();
 
   for (const request of datedRequests) {
-    try {
-      await fetchAndCacheCurrentRate(
-        api,
-        request.fromCurrency,
-        request.toCurrency,
-        request.date,
-        requestConfig,
-      );
-    } catch (rateError) {
-      console.warn(
-        "[exchange-rates] Dated refresh failed",
-        spaceCode,
-        request,
-        rateError,
-      );
-    }
+    const key = `${request.fromCurrency}:${request.toCurrency}:${request.date}`;
+    batchRequests.set(key, {
+      fromCurrency: request.fromCurrency,
+      toCurrency: request.toCurrency,
+      date: request.date,
+    });
   }
 
   const pairKeys = new Set<string>([
@@ -188,22 +241,35 @@ export const refreshSpaceExchangeRates = async (
     );
 
     if (!hasDatedRate) {
-      try {
-        await fetchAndCacheCurrentRate(
-          api,
-          fromCurrency,
-          toCurrency,
-          today,
-          requestConfig,
-        );
-      } catch (rateError) {
-        console.warn(
-          "[exchange-rates] Today refresh failed",
-          spaceCode,
-          pairKey,
-          rateError,
-        );
-      }
+      const key = `${fromCurrency}:${toCurrency}:${today}`;
+      batchRequests.set(key, {
+        fromCurrency,
+        toCurrency,
+        date: today,
+      });
+    }
+  }
+
+  try {
+    await fetchAndCacheBatchCurrentRates(
+      api,
+      [...batchRequests.values()],
+      requestConfig,
+    );
+  } catch (rateError) {
+    console.warn(
+      "[exchange-rates] Batch dated refresh failed",
+      spaceCode,
+      rateError,
+    );
+  }
+
+  const recentPairsDone = new Set<string>();
+
+  for (const pairKey of pairKeys) {
+    const [fromCurrency, toCurrency] = pairKey.split(":");
+    if (!fromCurrency || !toCurrency) {
+      continue;
     }
 
     if (recentPairsDone.has(pairKey)) {

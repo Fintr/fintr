@@ -6,9 +6,10 @@ import {
 } from "@/utils/autoFxRateSelection";
 
 import {
-  loadCachedCurrentExchangeRate,
+  loadCachedCurrentExchangeRateWithFallback,
   loadCachedRecentExchangeRates,
 } from "./local-db";
+import { canFetchExchangeRatesFromNetwork } from "./network-guard";
 import {
   getCurrentRate,
   getRecentRates,
@@ -31,6 +32,33 @@ const emptyRecent = (): RecentRatesResponse => ({
   rates: [],
   source: "recent",
 });
+
+const todayIsoDate = (): string => new Date().toISOString().slice(0, 10);
+
+const isValidCurrentRate = (payload: CurrentRateResponse | undefined): boolean =>
+  Boolean(
+    payload
+    && Number.isFinite(Number(payload.rate))
+    && Number(payload.rate) > 0,
+  );
+
+const currentFromRecent = (
+  recent: RecentRatesResponse | undefined,
+  fromCurrency: string,
+  toCurrency: string,
+): CurrentRateResponse | undefined => {
+  const rawRate = Number(recent?.rates?.[0]?.rate ?? 0);
+  if (!Number.isFinite(rawRate) || rawRate <= 0) {
+    return undefined;
+  }
+
+  return {
+    rate: rawRate,
+    from_currency: fromCurrency,
+    to_currency: toCurrency,
+    source: "recent",
+  };
+};
 
 /**
  * Resolve the auto FX rate for the amount picker.
@@ -63,10 +91,11 @@ export const resolveAutoExchangeRates = async (params: {
           toCurrency,
         })
       : Promise.resolve(undefined),
-    loadCachedCurrentExchangeRate({
+    loadCachedCurrentExchangeRateWithFallback({
       fromCurrency,
       toCurrency,
       date,
+      today: todayIsoDate(),
     }),
   ]);
 
@@ -74,12 +103,21 @@ export const resolveAutoExchangeRates = async (params: {
   let recent: RecentRatesResponse;
   let fromLocal = false;
 
-  if (
-    cachedCurrent &&
-    Number.isFinite(Number(cachedCurrent.rate)) &&
-    Number(cachedCurrent.rate) > 0
-  ) {
+  if (isValidCurrentRate(cachedCurrent)) {
     current = cachedCurrent;
+    recent = cachedRecent ?? emptyRecent();
+    fromLocal = true;
+  } else if (!canFetchExchangeRatesFromNetwork()) {
+    const recentCurrent = currentFromRecent(
+      cachedRecent,
+      fromCurrency,
+      toCurrency,
+    );
+    if (!recentCurrent) {
+      throw new Error("Exchange rate is not available offline");
+    }
+
+    current = recentCurrent;
     recent = cachedRecent ?? emptyRecent();
     fromLocal = true;
   } else {

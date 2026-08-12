@@ -180,23 +180,33 @@ export function AmountWithRatePicker({
       if (!pairReady || ledgerTargetCurrency == null) return;
       const seq = ++popoverRateFetchSeqRef.current;
       setLoadingRate("current");
-      Promise.all([
+      void Promise.allSettled([
         getCurrentRate(api, fromCurrency, ledgerTargetCurrency, rateLookupDate),
         getRecentRates(api, fromCurrency, ledgerTargetCurrency, {
           spaceId: spaceCode || undefined,
         }),
       ])
-        .then(([current, recent]) => {
+        .then((results) => {
           if (seq !== popoverRateFetchSeqRef.current) return;
-          setCurrentRateDisplay(multiplierFromApi(Number(current.rate)));
-          setDisplayedRateDate(rateLookupDate);
-          setRecentRates(recent.rates ?? []);
-        })
-        .catch(() => {
-          if (seq !== popoverRateFetchSeqRef.current) return;
-          setCurrentRateDisplay(null);
-          setDisplayedRateDate(undefined);
-          setRecentRates([]);
+
+          const currentResult = results[0];
+          const recentResult = results[1];
+
+          if (currentResult.status === "fulfilled") {
+            setCurrentRateDisplay(
+              multiplierFromApi(Number(currentResult.value.rate)),
+            );
+            setDisplayedRateDate(rateLookupDate);
+          } else {
+            setCurrentRateDisplay(null);
+            setDisplayedRateDate(undefined);
+          }
+
+          if (recentResult.status === "fulfilled") {
+            setRecentRates(recentResult.value.rates ?? []);
+          } else {
+            setRecentRates([]);
+          }
         })
         .finally(() => {
           if (seq !== popoverRateFetchSeqRef.current) return;

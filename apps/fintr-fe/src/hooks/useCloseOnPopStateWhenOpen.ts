@@ -2,6 +2,8 @@
 
 import * as React from "react"
 
+import { claimHistoryOverCalculatorKeyboard } from "@/lib/calculator-keyboard-history"
+
 /**
  * When `open` is true, pushes a history entry so browser / Android back runs
  * `onOpenChange(false)` first. When the UI closes any other way, removes the
@@ -25,7 +27,11 @@ export function useCloseOnPopStateWhenOpen(
       return
     }
 
-    window.history.pushState({ [historyKey]: true }, "")
+    // If the calculator keyboard still owns the top history entry (common when
+    // the user taps Rates/Date/Currency while the keypad is open), replace that
+    // entry instead of stacking — otherwise calculator's deferred history.back()
+    // can pop this overlay and close the parent sheet.
+    claimHistoryOverCalculatorKeyboard(historyKey)
     historyEntryActiveRef.current = true
 
     const handlePopState = (event: PopStateEvent) => {

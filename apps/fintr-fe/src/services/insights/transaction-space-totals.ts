@@ -48,6 +48,13 @@ export const amountNumericForSpaceTotal = (
   const space = normalizeCurrency(spaceCurrency || "PHP");
   const conversion = readCurrencyConversion(transaction);
   const displayAmount = toNumber(transaction.amount);
+  const amountCurrency = normalizeCurrency(transaction.amountCurrency ?? "");
+
+  // Index rows already carry space-normalized amount + ISO from API or local-first
+  // writes. Prefer that over re-converting booked legs with stale cached FX.
+  if (amountCurrency === space && displayAmount !== 0) {
+    return Number(Math.abs(displayAmount).toFixed(2));
+  }
 
   if (
     conversion?.originalCurrency
@@ -105,11 +112,29 @@ const transactionInDateRange = (
   return key >= startDate && key <= endDate;
 };
 
-const isIncome = (transaction: IndexTransaction): boolean =>
-  transaction.type === CombinedTransactionTypeEnum.INCOME;
+const isIncome = (transaction: IndexTransaction): boolean => {
+  const type = String(transaction.type ?? "").trim().toLowerCase();
+  return (
+    type === CombinedTransactionTypeEnum.INCOME
+    || type === "transactions::income"
+    || type.endsWith("::income")
+    || type === "income"
+  );
+};
 
-const isExpense = (transaction: IndexTransaction): boolean =>
-  transaction.type === CombinedTransactionTypeEnum.EXPENSE;
+const isExpense = (transaction: IndexTransaction): boolean => {
+  const type = String(transaction.type ?? "").trim().toLowerCase();
+  if (!type) {
+    return true;
+  }
+
+  return (
+    type === CombinedTransactionTypeEnum.EXPENSE
+    || type === "transactions::expense"
+    || type.endsWith("::expense")
+    || type === "expense"
+  );
+};
 
 /**
  * Mirrors MonthlyFinancialSummaries::Queries::AggregateTotalsInSpaceForRange —

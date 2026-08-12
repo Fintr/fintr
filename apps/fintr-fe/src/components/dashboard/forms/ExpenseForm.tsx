@@ -73,6 +73,7 @@ import {
   shouldUseStoredConversionForPreview,
   transactionHadStoredConversion,
 } from "@/utils/amountPickerTargetCurrency";
+import { positiveTransactionFormAmountString } from "@/utils/transactionFormAmount";
 
 // Keep Zod schemas as they are used by the adapter and nested forms
 const categorySchema = z.object({
@@ -248,7 +249,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   
   // Form state management
   const [formState, setFormState] = useState<ExpenseFormValues>({
-    amount: prefillAmount || initialData?.amount?.toString() || "",
+    amount:
+      prefillAmount
+      || (initialData?.amount != null
+        ? positiveTransactionFormAmountString(initialData.amount)
+        : ""),
     description: initialData?.description || "",
     categoryName: initialData?.categoryName || "",
     accountName: initialData?.accountName || "",
@@ -521,11 +526,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     const hasOriginal = originalAmount != null && originalCurrency != null && String(originalCurrency).trim() !== "";
 
     if (initialData && (initialData !== prevInitialDataRef.current)) {
-      const initialAmount = hasOriginal
-        ? String(originalAmount)
+      const rawInitialAmount = hasOriginal
+        ? originalAmount
         : rawConv != null
-          ? String((rawConv as any).original_amount ?? (rawConv as any).originalAmount ?? initialData.amount ?? "")
-          : (initialData.amount?.toString() ?? "");
+          ? (rawConv as any).original_amount ?? (rawConv as any).originalAmount ?? initialData.amount ?? ""
+          : (initialData.amount ?? "");
+
+      const initialAmount = positiveTransactionFormAmountString(rawInitialAmount);
 
       const displayCurrency = hasOriginal
         ? String(originalCurrency)

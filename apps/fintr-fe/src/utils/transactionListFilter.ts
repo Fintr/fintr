@@ -1,3 +1,4 @@
+import { resolveIndexTransactionTagIds } from "@/utils/resolveIndexTransactionTagIds";
 import {
   normalizeCategoryMatchKey,
   parseCategoryPickerValue,
@@ -152,8 +153,7 @@ export const transactionMatchesListFilter = (
   }
 
   if (filter.tagIds.length > 0) {
-    const transactionTagIds =
-      transaction.tagIds ?? transaction.tags?.map((tag) => tag.id) ?? [];
+    const transactionTagIds = resolveIndexTransactionTagIds(transaction);
     const allowed = new Set(filter.tagIds);
     const hasTag = transactionTagIds.some((tagId) => allowed.has(tagId));
     if (!hasTag) {
@@ -176,6 +176,50 @@ export type InsightsCategoryFilter = {
     expense: CategoryTreeOption[];
     income: CategoryTreeOption[];
   };
+};
+
+const categoryNameKeysForFilter = (
+  filter: InsightsCategoryFilter,
+): Set<string> => {
+  const keys = new Set<string>();
+  const push = (value: string | null | undefined) => {
+    const key = normalizeCategoryMatchKey(value);
+    if (key) {
+      keys.add(key);
+    }
+  };
+
+  push(filter.categoryName);
+
+  const { categoryOptions, categoryId, subcategoryId } = filter;
+  if (!categoryOptions || !categoryId) {
+    return keys;
+  }
+
+  const parents = [
+    ...categoryOptions.expense,
+    ...categoryOptions.income,
+  ];
+  const parent = parents.find((option) => option.id === categoryId);
+  if (!parent) {
+    return keys;
+  }
+
+  if (subcategoryId) {
+    const child = parent.children?.find((option) => option.id === subcategoryId);
+    push(child?.name);
+    push(child?.label);
+    return keys;
+  }
+
+  push(parent.name);
+  push(parent.label);
+  for (const child of parent.children ?? []) {
+    push(child.name);
+    push(child.label);
+  }
+
+  return keys;
 };
 
 export const transactionMatchesInsightsCategoryFilter = (
@@ -203,6 +247,22 @@ export const transactionMatchesInsightsCategoryFilter = (
     } else if (
       normalizeCategoryMatchKey(transaction.categoryName ?? "") === filterNameKey
       || normalizeCategoryMatchKey(transaction.subcategoryName ?? "") === filterNameKey
+    ) {
+      return true;
+    }
+  }
+
+  // Dexie rows often only keep categoryName after re-sync. Expand the selected
+  // tree node (parent + children labels) so offline filters still match.
+  const treeNameKeys = categoryNameKeysForFilter(filter);
+  if (treeNameKeys.size > 0) {
+    const txCategoryKey = normalizeCategoryMatchKey(transaction.categoryName ?? "");
+    const txSubcategoryKey = normalizeCategoryMatchKey(
+      transaction.subcategoryName ?? "",
+    );
+    if (
+      (txCategoryKey && treeNameKeys.has(txCategoryKey))
+      || (txSubcategoryKey && treeNameKeys.has(txSubcategoryKey))
     ) {
       return true;
     }

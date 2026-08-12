@@ -50,14 +50,6 @@ describe("dashboard local-cache", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("writes an empty array when summaries are undefined", async () => {
-    await cacheMonthlyFinancialSummaries("space-a", undefined);
-
-    await expect(
-      loadCachedMonthlyFinancialSummaries("space-a"),
-    ).resolves.toEqual([]);
-  });
-
   it("composes dashboard financial summary from monthly buckets when no exact cache", async () => {
     await cacheDashboardShell("space-a", {
       id: "dash-1",
@@ -93,5 +85,41 @@ describe("dashboard local-cache", () => {
     expect(composed?.goalDescription).toBe("Save");
     expect(composed?.financialSummary.totalIncome).toBe("100");
     expect(composed?.financialSummary.totalExpenses).toBe("40");
+  });
+
+  it("writes an empty array when summaries are undefined", async () => {
+    await cacheMonthlyFinancialSummaries("space-a", undefined);
+
+    await expect(
+      loadCachedMonthlyFinancialSummaries("space-a"),
+    ).resolves.toEqual([]);
+  });
+
+  it("falls back to the cached dashboard snapshot when monthly buckets are empty", async () => {
+    const data = sampleDashboard();
+    await cacheDashboardShell("space-a", {
+      id: data.id,
+      categoryOptions: data.categoryOptions,
+      accountOptions: data.accountOptions,
+      expenseCategoryOptions: data.expenseCategoryOptions,
+      incomeCategoryOptions: data.incomeCategoryOptions,
+      goalDescription: data.goalDescription,
+    });
+    await cacheMonthlyFinancialSummaries("space-a", []);
+    await cacheDashboardResponse(
+      "space-a",
+      data,
+      "2026-08-01",
+      "2026-08-31",
+    );
+
+    const loaded = await loadCachedDashboardResponse(
+      "space-a",
+      "2026-08-01",
+      "2026-08-31",
+    );
+
+    expect(loaded?.financialSummary.totalIncome).toBe("100");
+    expect(loaded?.financialSummary.totalExpenses).toBe("40");
   });
 });

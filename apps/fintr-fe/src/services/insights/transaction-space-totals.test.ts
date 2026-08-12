@@ -84,6 +84,21 @@ describe("transaction-space-totals", () => {
     expect(converted).toBe(580);
   });
 
+  it("prefers space-normalized amount over stale cached FX when amountCurrency is space", () => {
+    const converted = amountNumericForSpaceTotal(
+      tx({
+        bookedAmount: 200,
+        bookedAmountCurrency: "GBP",
+        amount: 200_000,
+        amountCurrency: "PHP",
+      }),
+      "PHP",
+      () => 100,
+    );
+
+    expect(converted).toBe(200_000);
+  });
+
   it("groups by currency and date like AggregateTotalsInSpaceForRange", () => {
     const rateLookup = (from: string, to: string) => {
       if (from === "USD" && to === "PHP") {

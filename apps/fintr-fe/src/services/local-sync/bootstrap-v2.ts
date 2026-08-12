@@ -308,13 +308,14 @@ const applyBootstrapTier0 = async (params: {
 };
 
 const applyBootstrapTier1 = async (params: {
+  api: AxiosInstance;
   bundle: SyncBootstrapResponse;
   spaceCode: string;
   startDate: string;
   endDate: string;
   queryClient: QueryClient;
-}): Promise<void> => {
-  const { bundle, spaceCode, startDate, endDate } = params;
+}): Promise<TransactionsPage[]> => {
+  const { api, bundle, spaceCode, startDate, endDate } = params;
   const pendingLocalCreates = await collectPendingLocalCreateTransactions(spaceCode);
   const normalizedTransactions = normalizeBootstrapTransactions(bundle.transactions);
   const transactionPages = transactionsToPages(normalizedTransactions);
@@ -346,6 +347,26 @@ const applyBootstrapTier1 = async (params: {
     );
     params.queryClient.setQueryData(queryKey, seededLocal);
   }
+
+  const spaceCurrency =
+    typeof bundle.space?.currency === "string"
+      ? bundle.space.currency
+      : "PHP";
+  const defaultTransactionCurrency =
+    bundle.space?.defaultTransactionCurrency ?? null;
+
+  await refreshSpaceExchangeRates({
+    api,
+    spaceCode,
+    accounts: bundle.accounts,
+    transactionPages,
+    spaceCurrency,
+    defaultTransactionCurrency,
+    requestConfig: spaceRequestConfig(spaceCode),
+    force: true,
+  });
+
+  return transactionPages;
 };
 
 const applyBootstrapTier2 = async (params: {
@@ -446,19 +467,6 @@ const applyBootstrapTier2 = async (params: {
     spaceId: spaceCode,
     transactions: flatTransactions,
   });
-
-  const spaceCurrency =
-    (bundle.space as { currency?: string }).currency ?? "PHP";
-
-  await refreshSpaceExchangeRates({
-    api,
-    spaceCode,
-    accounts: bundle.accounts,
-    transactionPages,
-    spaceCurrency,
-    requestConfig: spaceRequestConfig(spaceCode),
-    force: true,
-  });
 };
 
 export const bootstrapSpaceV2 = async (
@@ -508,8 +516,10 @@ export const bootstrapSpaceV2 = async (
   }
 
   options?.onStep?.("transactions");
+  let transactionPages: TransactionsPage[] = [];
   try {
-    await applyBootstrapTier1({
+    transactionPages = await applyBootstrapTier1({
+      api,
       bundle,
       spaceCode,
       startDate,
@@ -517,6 +527,7 @@ export const bootstrapSpaceV2 = async (
       queryClient,
     });
     options?.onTierReady?.(1);
+    options?.onStep?.("exchange-rates");
 
     await setSyncCursor(spaceCode, {
       lastPulledSeq: bundle.latestSeq,
@@ -546,7 +557,9 @@ export const bootstrapSpaceV2 = async (
     throw error;
   }
 
-  const transactionPages = transactionsToPages(normalizedBootstrapTransactions);
+  if (transactionPages.length === 0) {
+    transactionPages = transactionsToPages(normalizedBootstrapTransactions);
+  }
 
   options?.onStep?.("monthly-summaries");
   options?.onStep?.("dashboard");
@@ -569,7 +582,6 @@ export const bootstrapSpaceV2 = async (
 
   options?.onStep?.("loans");
   options?.onStep?.("transfers");
-  options?.onStep?.("exchange-rates");
 
   try {
     await hydrateMonthlyFinancialSummariesFromLocalTransactions(spaceCode, {

@@ -208,4 +208,38 @@ test.describe("Calculator keyboard layout", () => {
     expect(switchPositions.some((top) => top >= 0)).toBe(true)
     expect(switchJump).toBeLessThan(24)
   })
+
+  test("opening Rates while calculator is up keeps Add Transaction open", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 851 })
+    await openAddTransactionCalculator(page)
+
+    await expect(page.locator("[data-calculator-keyboard]")).toBeVisible()
+
+    const ratesButton = page.getByRole("button", { name: /rates/i }).first()
+    const ratesVisible = await ratesButton.isVisible().catch(() => false)
+
+    if (ratesVisible) {
+      await ratesButton.click()
+      await expect(page.getByRole("heading", { name: "Add Transaction" })).toBeVisible()
+      await expect(page.locator("[data-calculator-keyboard]")).toHaveCount(0)
+      return
+    }
+
+    // FX pair may be hidden in mocks — still verify another in-sheet control
+    // does not dismiss the modal while the calculator is up.
+    await page.getByRole("tab", { name: "Income" }).click()
+    await expect(page.getByRole("heading", { name: "Add Transaction" })).toBeVisible()
+    await expect(page.locator("[data-calculator-keyboard]")).toHaveCount(0)
+  })
+
+  test("switching tabs while calculator is up keeps Add Transaction open", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 851 })
+    await openAddTransactionCalculator(page)
+
+    await expect(page.locator("[data-calculator-keyboard]")).toBeVisible()
+    await page.getByRole("tab", { name: "Income" }).click()
+
+    await expect(page.getByRole("heading", { name: "Add Transaction" })).toBeVisible()
+    await expect(page.locator("[data-calculator-keyboard]")).toHaveCount(0)
+  })
 })

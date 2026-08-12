@@ -253,6 +253,87 @@ describe("offline transaction update + insights calculations", () => {
     expect(august?.totalIncome).toBeCloseTo(11_666_188 - 10_000_000 + 1);
   });
 
+  it("unfiltered August totals from IndexedDB txs when monthly buckets are empty", async () => {
+    await seedIncome(1_641_483.57);
+    await seedDineExpense();
+    await cacheMonthlyFinancialSummaries(SPACE, [
+      {
+        id: "sum-2026-08",
+        year: 2026,
+        month: 8,
+        currency: "PHP",
+        fxBased: false,
+        calculatedAt: new Date().toISOString(),
+        totalIncome: 0,
+        totalExpenses: 0,
+        netSavings: 0,
+        savingsPercentage: 0,
+        monthStartDate: "2026-08-01",
+        monthEndDate: "2026-08-31",
+      },
+    ]);
+
+    const bundle = await buildOfflineInsightsBundle({
+      spaceCode: SPACE,
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      currency: "PHP",
+      // Stale zero prefetched rows must not block hydrated IndexedDB totals.
+      prefetchedSummaries: [
+        {
+          id: "sum-2026-08",
+          year: 2026,
+          month: 8,
+          currency: "PHP",
+          fxBased: false,
+          calculatedAt: new Date().toISOString(),
+          totalIncome: 0,
+          totalExpenses: 0,
+          netSavings: 0,
+          savingsPercentage: 0,
+          monthStartDate: "2026-08-01",
+          monthEndDate: "2026-08-31",
+        },
+      ],
+    });
+
+    expect(bundle.summary.totalIncome).toBeCloseTo(1_641_483.57);
+    expect(bundle.summary.totalExpenses).toBeCloseTo(41_037.1);
+    expect(bundle.summary.netSavings).toBeCloseTo(1_641_483.57 - 41_037.1);
+    expect(bundle.expenseBreakdown.length).toBeGreaterThan(0);
+    expect(bundle.healthScores.score).toBeGreaterThan(0);
+  });
+
+  it("unfiltered August totals from IndexedDB monthly buckets when txs are missing", async () => {
+    await cacheMonthlyFinancialSummaries(SPACE, [
+      {
+        id: "sum-2026-08",
+        year: 2026,
+        month: 8,
+        currency: "PHP",
+        fxBased: false,
+        calculatedAt: new Date().toISOString(),
+        totalIncome: 1_641_483.57,
+        totalExpenses: 1_810_920.05,
+        netSavings: -169_436.48,
+        savingsPercentage: -10,
+        monthStartDate: "2026-08-01",
+        monthEndDate: "2026-08-31",
+      },
+    ]);
+
+    const bundle = await buildOfflineInsightsBundle({
+      spaceCode: SPACE,
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      currency: "PHP",
+    });
+
+    expect(bundle.summary.totalIncome).toBeCloseTo(1_641_483.57);
+    expect(bundle.summary.totalExpenses).toBeCloseTo(1_810_920.05);
+    expect(bundle.summary.netSavings).toBeCloseTo(-169_436.48);
+  });
+
   it("offline category and tag filters compute from local IndexedDB alone", async () => {
     await seedIncome(1);
     await seedDineExpense();

@@ -1,6 +1,6 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { useAtomValue } from "jotai";
-import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { currentSpaceAtom } from "@/atoms/spaceAtoms";
 import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
 import {
@@ -13,22 +13,30 @@ import { InsightsQueryParams } from "@/services/insights/fetchers";
 import { buildInsightsApiParams } from "@/services/insights/params";
 import { buildOfflineInsightsBundle } from "@/services/insights/offline-calculations";
 import { buildOfflineNarratives } from "@/services/insights/offline-narratives";
-import {
-  loadCachedDashboardShell,
-  loadCachedMonthlyFinancialSummaries,
-} from "@/services/monthly-financial-summaries/local-cache";
-import { mergeSummariesPreferNonEmpty } from "@/services/monthly-financial-summaries/hydrate-from-local-transactions";
-import type { MonthlyFinancialSummary } from "@/services/monthly-financial-summaries/types";
-import { countSpaceTransactions } from "@/lib/local-db/transactions";
+import { logInsightsDebug } from "@/services/insights/insights-debug";
+import { insightsSummaryFromMonthlyBuckets } from "@/services/insights/from-monthly-buckets";
+import { resolveMonthlySummariesForInsights } from "@/services/monthly-financial-summaries/local-cache";
 import { mapApiCategoryTree } from "@/utils/categoryTreeOptions";
 import type { CategoryTreeOption } from "@/types/categoryTreeTypes";
-import type { IndexTransaction } from "@/types/transactionTypes";
+import { loadCachedDashboardShell } from "@/services/monthly-financial-summaries/local-cache";
+import type { OfflineInsightsBundle } from "@/services/insights/offline-calculations";
 
 interface UseInsightsQueriesParams extends InsightsQueryParams {}
 
 type InsightsCategoryOptions = {
   expense: CategoryTreeOption[];
   income: CategoryTreeOption[];
+};
+
+const EMPTY_NARRATIVES = {
+  headline: { text: "", sentiment: "neutral" as const },
+  metrics: [],
+  insights: [],
+  dataQuality: {
+    transactionCount: 0,
+    categorizedPercent: "0%",
+    completenessTier: "sparse" as const,
+  },
 };
 
 const readPersistedSpaceCode = (): string => {
@@ -70,95 +78,91 @@ const resolveInsightsCategoryOptions = async (
   };
 };
 
-const buildSummariesDigest = (
-  summaries: MonthlyFinancialSummary[] | null | undefined,
-): string => {
-  if (!summaries || summaries.length === 0) {
-    return "empty";
-  }
+const insightsFiltersAreActive = (apiParams: ReturnType<typeof buildInsightsApiParams>) =>
+  Boolean(
+    apiParams.categoryId
+    || apiParams.subcategoryId
+    || apiParams.categoryName
+    || (apiParams.tagIds?.length ?? 0) > 0,
+  );
 
-  return summaries
-    .map((row) =>
-      `${row.year}:${row.month}:${row.totalIncome}:${row.totalExpenses}`,
-    )
-    .join("|");
+/** IndexedDB reads must not wait for network — default RQ mode pauses when offline. */
+const INSIGHTS_LOCAL_QUERY_OPTIONS = {
+  networkMode: "always" as const,
 };
 
-/** Pull list + dashboard RQ rows so tag/category metadata survives Dexie wipes. */
-const collectSeedTransactionsFromQueryCaches = (
-  queryClient: QueryClient,
-  spaceCode: string,
-): IndexTransaction[] => {
-  const byId = new Map<string, IndexTransaction>();
+const isLocalInsightsQueryLoading = (
+  fetchStatus: string,
+  hasData: boolean,
+): boolean =>
+  !hasData
+  && (fetchStatus === "fetching" || fetchStatus === "paused");
 
-  const dashboardEntries = queryClient.getQueriesData<{
-    transactions?: IndexTransaction[];
-  }>({
-    predicate: (query) => {
-      const key = query.queryKey;
-      return (
-        Array.isArray(key)
-        && key[0] === "dashboard"
-        && key[1] === "transactions"
-        && key[2] === spaceCode
-      );
-    },
-  });
-
-  for (const [, value] of dashboardEntries) {
-    for (const row of value?.transactions ?? []) {
-      if (row?.id) {
-        byId.set(row.id, row);
+const mergeUnfilteredInsightsBundle = (
+  bucketSummary:
+    | {
+        summary: OfflineInsightsBundle["summary"];
       }
-    }
+    | undefined,
+  bucketBundle: OfflineInsightsBundle | undefined,
+  transactionBundle: OfflineInsightsBundle | undefined,
+): OfflineInsightsBundle | undefined => {
+  const enriched = transactionBundle ?? bucketBundle;
+
+  if (!enriched && !bucketSummary) {
+    return undefined;
   }
 
-  const listEntries = queryClient.getQueriesData<{
-    pages?: Array<{ transactions?: IndexTransaction[] }>;
-  }>({
-    predicate: (query) => {
-      const key = query.queryKey;
-      if (!Array.isArray(key) || key[0] !== "transactions") {
-        return false;
-      }
-      return key[1] === spaceCode || key[2] === spaceCode;
-    },
-  });
-
-  for (const [, value] of listEntries) {
-    for (const page of value?.pages ?? []) {
-      for (const row of page.transactions ?? []) {
-        if (!row?.id) {
-          continue;
-        }
-
-        const existing = byId.get(row.id);
-        byId.set(
-          row.id,
-          existing
-            ? ({
-                ...existing,
-                ...row,
-                tags: row.tags?.length ? row.tags : existing.tags,
-                tagIds:
-                  row.tagIds?.length
-                    ? row.tagIds
-                    : existing.tagIds ?? existing.tags?.map((tag) => tag.id),
-                categoryName: row.categoryName || existing.categoryName,
-                categoryId: row.categoryId ?? existing.categoryId,
-                subcategoryId: row.subcategoryId ?? existing.subcategoryId,
-                subcategoryName:
-                  row.subcategoryName ?? existing.subcategoryName,
-              } as IndexTransaction)
-            : row,
-        );
-      }
-    }
+  if (!enriched) {
+    return {
+      summary: bucketSummary!.summary,
+      expenseBreakdown: [],
+      merchantBreakdown: [],
+      subcategoryBreakdown: [],
+      weeklySpending: [],
+      monthlySpending: [],
+      healthScores: {
+        score: 0,
+        rating: "—",
+        description: "",
+        savingsPercentage: { percentage: "0%", score: 0 },
+        debtToIncomeRatio: {
+          percentage: "0%",
+          score: 0,
+          monthlyDebt: "0",
+        },
+        budgetUsage: { percentage: "0%", score: 0 },
+      },
+      totalBudget: 0,
+      monthlyDebt: 0,
+    };
   }
 
-  return Array.from(byId.values());
+  const authoritativeSummary =
+    bucketSummary?.summary
+    ?? bucketBundle?.summary
+    ?? enriched.summary;
+
+  return {
+    ...enriched,
+    summary: authoritativeSummary,
+    healthScores: bucketBundle?.healthScores ?? enriched.healthScores,
+    monthlySpending:
+      enriched.monthlySpending.length > 0
+        ? enriched.monthlySpending
+        : (bucketBundle?.monthlySpending ?? []),
+  };
 };
 
+/**
+ * Insights are computed entirely from IndexedDB.
+ * React Query only schedules the IndexedDB read + offline calc (and
+ * invalidates after sync) — it is not a source of financial data.
+ *
+ * Unfiltered views load monthly buckets first (fast Net / In / Out), then
+ * period transactions for breakdowns. Category/tag filters still need the
+ * full transaction history in one pass.
+ */
 export const useInsightsQueries = (params: UseInsightsQueriesParams = {}) => {
   const queryClient = useQueryClient();
   const [storedSpaceCode] = useLocalStorage("spaceCode", "");
@@ -192,68 +196,295 @@ export const useInsightsQueries = (params: UseInsightsQueriesParams = {}) => {
   );
 
   const insightsQueryEnabled = Boolean(spaceCode);
-
-  const localSummariesQuery = useQuery({
-    queryKey: ["monthlyFinancialSummaries", "local", spaceCode],
-    queryFn: async () =>
-      (await loadCachedMonthlyFinancialSummaries(spaceCode)) ?? [],
-    enabled: insightsQueryEnabled,
-    staleTime: 0,
-    refetchOnMount: true,
-  });
-
-  // Observe dashboard's network summaries cache (do not fetch — dashboard owns it).
-  const dashboardSummariesQuery = useQuery({
-    queryKey: ["monthlyFinancialSummaries", spaceCode],
-    queryFn: async () =>
-      (await loadCachedMonthlyFinancialSummaries(spaceCode)) ?? [],
-    enabled: false,
-  });
-
-  // Cheap IndexedDB count only — never load full rows just to bust the cache.
-  const localTransactionCountQuery = useQuery({
-    queryKey: ["transactions", "insights-count", spaceCode],
-    queryFn: async () => countSpaceTransactions(spaceCode),
-    enabled: insightsQueryEnabled,
-    staleTime: 30_000,
-  });
-
-  const resolvedSummaries = useMemo(
-    () =>
-      mergeSummariesPreferNonEmpty(
-        dashboardSummariesQuery.data ?? [],
-        localSummariesQuery.data ?? [],
-      ),
-    [dashboardSummariesQuery.data, localSummariesQuery.data],
-  );
-
-  const summariesDigest = useMemo(
-    () => buildSummariesDigest(resolvedSummaries),
-    [resolvedSummaries],
-  );
-
-  const transactionCount = localTransactionCountQuery.data ?? 0;
+  const invalidatedForSyncRef = useRef<string | null>(null);
+  const filtersActive = insightsFiltersAreActive(apiParams);
 
   useEffect(() => {
-    if (!offlineSyncReady || !spaceCode) {
+    logInsightsDebug("hook state", {
+      spaceCode,
+      insightsQueryEnabled,
+      filtersActive,
+      startDate: apiParams.startDate,
+      endDate: apiParams.endDate,
+      categoryName: apiParams.categoryName ?? "",
+      tagIds: apiParams.tagIds ?? [],
+    });
+  }, [
+    spaceCode,
+    insightsQueryEnabled,
+    filtersActive,
+    apiParams.startDate,
+    apiParams.endDate,
+    apiParams.categoryName,
+    apiParams.tagIds,
+  ]);
+
+  const bundleQueryKey = useMemo(
+    () =>
+      [
+        "insights",
+        "local",
+        "bundle",
+        spaceCode,
+        apiParams.startDate,
+        apiParams.endDate,
+        apiParams.categoryName ?? "",
+        apiParams.categoryId ?? "",
+        apiParams.subcategoryId ?? "",
+        JSON.stringify(apiParams.tagIds ?? []),
+        currency,
+      ] as const,
+    [
+      spaceCode,
+      apiParams.startDate,
+      apiParams.endDate,
+      apiParams.categoryName,
+      apiParams.categoryId,
+      apiParams.subcategoryId,
+      apiParams.tagIds,
+      currency,
+    ],
+  );
+
+  const sharedBundleParams = useMemo(
+    () => ({
+      spaceCode,
+      startDate: apiParams.startDate,
+      endDate: apiParams.endDate,
+      currency,
+      categoryName: apiParams.categoryName,
+      categoryId: apiParams.categoryId,
+      subcategoryId: apiParams.subcategoryId,
+      tagIds: apiParams.tagIds,
+      categoryOptions,
+    }),
+    [
+      spaceCode,
+      apiParams.startDate,
+      apiParams.endDate,
+      apiParams.categoryName,
+      apiParams.categoryId,
+      apiParams.subcategoryId,
+      apiParams.tagIds,
+      currency,
+      categoryOptions,
+    ],
+  );
+
+  useEffect(() => {
+    if (!offlineSyncReady) {
+      invalidatedForSyncRef.current = null;
       return;
     }
 
-    queryClient.invalidateQueries({
-      queryKey: ["monthlyFinancialSummaries", "local", spaceCode],
-    });
-    queryClient.invalidateQueries({
-      queryKey: ["transactions", "insights-count", spaceCode],
-    });
+    if (!spaceCode) {
+      return;
+    }
+
+    const syncKey = spaceCode;
+    if (invalidatedForSyncRef.current === syncKey) {
+      return;
+    }
+
+    invalidatedForSyncRef.current = syncKey;
     queryClient.invalidateQueries({
       queryKey: ["insights", "local", spaceCode],
     });
   }, [offlineSyncReady, spaceCode, queryClient]);
 
-  const localInsightsQuery = useQuery({
+  const bucketSummaryQuery = useQuery({
+    queryKey: [...bundleQueryKey, "bucket-summary"] as const,
+    queryFn: async () => {
+      const started = performance.now();
+      logInsightsDebug("bucket-summary:start", {
+        spaceCode,
+        startDate: apiParams.startDate,
+        endDate: apiParams.endDate,
+      });
+
+      const resolved = await resolveMonthlySummariesForInsights(spaceCode);
+      const summary = insightsSummaryFromMonthlyBuckets(
+        resolved.summaries,
+        apiParams.startDate,
+        apiParams.endDate,
+      );
+
+      logInsightsDebug("bucket-summary:done", {
+        ms: Math.round(performance.now() - started),
+        requestedSpaceCode: spaceCode,
+        resolvedSpaceCode: resolved.spaceCode,
+        summaryCount: resolved.summaries.length,
+        summary,
+      });
+
+      return {
+        resolvedSpaceCode: resolved.spaceCode,
+        summaries: resolved.summaries,
+        summary,
+      };
+    },
+    enabled: insightsQueryEnabled && !filtersActive,
+    staleTime: 30_000,
+    refetchOnMount: true,
+    retry: isOnline ? 1 : 0,
+    ...INSIGHTS_LOCAL_QUERY_OPTIONS,
+  });
+
+  const bucketBundleQuery = useQuery({
+    queryKey: [...bundleQueryKey, "buckets"] as const,
+    queryFn: async () => {
+      const started = performance.now();
+      logInsightsDebug("bucket-bundle:start", { spaceCode });
+
+      const bundle = await buildOfflineInsightsBundle({
+        spaceCode: bucketSummaryQuery.data?.resolvedSpaceCode || spaceCode,
+        startDate: apiParams.startDate,
+        endDate: apiParams.endDate,
+        currency,
+        categoryName: apiParams.categoryName,
+        categoryId: apiParams.categoryId,
+        subcategoryId: apiParams.subcategoryId,
+        tagIds: apiParams.tagIds,
+        categoryOptions,
+        transactionPhase: "none",
+      });
+
+      logInsightsDebug("bucket-bundle:done", {
+        ms: Math.round(performance.now() - started),
+        summary: bundle.summary,
+      });
+
+      return bundle;
+    },
+    enabled:
+      insightsQueryEnabled
+      && !filtersActive
+      && Boolean(bucketSummaryQuery.data),
+    staleTime: 30_000,
+    refetchOnMount: true,
+    retry: isOnline ? 1 : 0,
+    ...INSIGHTS_LOCAL_QUERY_OPTIONS,
+  });
+
+  const transactionBundleQuery = useQuery({
+    queryKey: [...bundleQueryKey, "transactions"] as const,
+    queryFn: async () => {
+      const started = performance.now();
+      const resolvedSpaceCode =
+        bucketSummaryQuery.data?.resolvedSpaceCode
+        || spaceCode;
+
+      logInsightsDebug("transactions:start", { resolvedSpaceCode });
+
+      const resolvedCategoryOptions = await resolveInsightsCategoryOptions(
+        resolvedSpaceCode,
+        categoryOptions,
+      );
+
+      const bundle = await buildOfflineInsightsBundle({
+        ...sharedBundleParams,
+        spaceCode: resolvedSpaceCode,
+        categoryOptions: resolvedCategoryOptions,
+        transactionPhase: "period",
+      });
+
+      logInsightsDebug("transactions:done", {
+        ms: Math.round(performance.now() - started),
+        summary: bundle.summary,
+        expenseBreakdownCount: bundle.expenseBreakdown.length,
+      });
+
+      return bundle;
+    },
+    enabled:
+      insightsQueryEnabled
+      && !filtersActive
+      && Boolean(bucketSummaryQuery.data),
+    staleTime: 30_000,
+    refetchOnMount: true,
+    retry: isOnline ? 1 : 0,
+    ...INSIGHTS_LOCAL_QUERY_OPTIONS,
+  });
+
+  const filteredBundleQuery = useQuery({
+    queryKey: bundleQueryKey,
+    queryFn: async () => {
+      const resolvedCategoryOptions = await resolveInsightsCategoryOptions(
+        spaceCode,
+        categoryOptions,
+      );
+
+      return buildOfflineInsightsBundle({
+        ...sharedBundleParams,
+        categoryOptions: resolvedCategoryOptions,
+        transactionPhase: "all",
+      });
+    },
+    enabled: insightsQueryEnabled && filtersActive,
+    staleTime: 30_000,
+    refetchOnMount: true,
+    retry: isOnline ? 2 : 0,
+    placeholderData: (previousData) => previousData,
+    ...INSIGHTS_LOCAL_QUERY_OPTIONS,
+  });
+
+  const bucketSummary = bucketSummaryQuery.data;
+  const bucketBundle = bucketBundleQuery.data;
+
+  const bundle: OfflineInsightsBundle | undefined = filtersActive
+    ? filteredBundleQuery.data
+    : mergeUnfilteredInsightsBundle(
+        bucketSummary,
+        bucketBundle,
+        transactionBundleQuery.data,
+      );
+
+  const bundleLoading = filtersActive
+    ? insightsQueryEnabled
+      && isLocalInsightsQueryLoading(
+        filteredBundleQuery.fetchStatus,
+        Boolean(filteredBundleQuery.data),
+      )
+    : insightsQueryEnabled
+      && isLocalInsightsQueryLoading(
+        bucketSummaryQuery.fetchStatus,
+        Boolean(bucketSummary),
+      );
+
+  useEffect(() => {
+    logInsightsDebug("query-status", {
+      bundleLoading,
+      bucketSummaryStatus: bucketSummaryQuery.status,
+      bucketSummaryFetchStatus: bucketSummaryQuery.fetchStatus,
+      bucketBundleStatus: bucketBundleQuery.status,
+      transactionStatus: transactionBundleQuery.status,
+      filteredStatus: filteredBundleQuery.status,
+      summary: bundle?.summary,
+    });
+  }, [
+    bundleLoading,
+    bucketSummaryQuery.status,
+    bucketSummaryQuery.fetchStatus,
+    bucketBundleQuery.status,
+    transactionBundleQuery.status,
+    filteredBundleQuery.status,
+    bundle?.summary,
+  ]);
+
+  const transactionEnrichmentLoading =
+    !filtersActive
+    && insightsQueryEnabled
+    && Boolean(bucketSummary)
+    && isLocalInsightsQueryLoading(
+      transactionBundleQuery.fetchStatus,
+      Boolean(transactionBundleQuery.data),
+    );
+
+  const localNarrativesQuery = useQuery({
     queryKey: [
       "insights",
       "local",
+      "narratives",
       spaceCode,
       apiParams.startDate,
       apiParams.endDate,
@@ -264,51 +495,29 @@ export const useInsightsQueries = (params: UseInsightsQueriesParams = {}) => {
       categoryOptionsKey,
       isBusiness,
       currency,
-      summariesDigest,
-      transactionCount,
+      bucketSummary?.summary.totalIncome ?? 0,
+      bucketSummary?.summary.totalExpenses ?? 0,
+      bucketSummary?.summary.netSavings ?? 0,
     ],
     queryFn: async () => {
       const resolvedCategoryOptions = await resolveInsightsCategoryOptions(
         spaceCode,
         categoryOptions,
       );
+      const summary =
+        bucketSummary?.summary
+        ?? bundle?.summary;
 
-      const fromCache =
-        (await loadCachedMonthlyFinancialSummaries(spaceCode)) ?? [];
-      const prefetchedSummaries = mergeSummariesPreferNonEmpty(
-        mergeSummariesPreferNonEmpty(
-          dashboardSummariesQuery.data ?? [],
-          localSummariesQuery.data ?? [],
-        ),
-        fromCache,
-      );
+      if (!summary) {
+        return EMPTY_NARRATIVES;
+      }
 
-      const seedTransactions = collectSeedTransactionsFromQueryCaches(
-        queryClient,
-        spaceCode,
-      );
-
-      const bundle = await buildOfflineInsightsBundle({
-        spaceCode,
-        startDate: apiParams.startDate,
-        endDate: apiParams.endDate,
-        currency,
-        categoryName: apiParams.categoryName,
-        categoryId: apiParams.categoryId,
-        subcategoryId: apiParams.subcategoryId,
-        tagIds: apiParams.tagIds,
-        categoryOptions: resolvedCategoryOptions,
-        prefetchedSummaries,
-        seedTransactions,
-      });
-
-      let narratives;
       try {
-        narratives = await buildOfflineNarratives({
+        return await buildOfflineNarratives({
           spaceCode,
           startDate: apiParams.startDate,
           endDate: apiParams.endDate,
-          summary: bundle.summary,
+          summary,
           currency,
           isBusiness,
           categoryName: apiParams.categoryName,
@@ -319,59 +528,70 @@ export const useInsightsQueries = (params: UseInsightsQueriesParams = {}) => {
         });
       } catch (error) {
         console.warn("[insights] offline narratives failed", error);
-        narratives = {
-          headline: { text: "", sentiment: "neutral" as const },
-          metrics: [],
-          insights: [],
-          dataQuality: {
-            transactionCount: 0,
-            categorizedPercent: "0%",
-            completenessTier: "sparse" as const,
-          },
-        };
+        return EMPTY_NARRATIVES;
       }
-
-      return {
-        ...bundle,
-        narratives,
-      };
     },
-    // Do not wait on transaction count — that only busts the cache when Dexie
-    // row count changes. Waiting on a full-table load previously froze the UI.
-    enabled: insightsQueryEnabled && localSummariesQuery.isFetched,
+    enabled:
+      insightsQueryEnabled
+      && Boolean(bucketSummary?.summary ?? bundle?.summary),
     staleTime: 30_000,
     refetchOnMount: true,
-    retry: isOnline ? 2 : 0,
-    placeholderData: (previousData) => previousData,
+    retry: isOnline ? 1 : 0,
+    ...INSIGHTS_LOCAL_QUERY_OPTIONS,
   });
 
-  const local = localInsightsQuery.data;
+  const refetch = async () => {
+    if (filtersActive) {
+      await Promise.all([
+        filteredBundleQuery.refetch(),
+        localNarrativesQuery.refetch(),
+      ]);
+      return;
+    }
+
+    await Promise.all([
+      bucketSummaryQuery.refetch(),
+      bucketBundleQuery.refetch(),
+      transactionBundleQuery.refetch(),
+      localNarrativesQuery.refetch(),
+    ]);
+  };
 
   return {
-    summary: local?.summary,
-    narratives: local?.narratives,
-    healthScores: local?.healthScores,
-    totalBudget: local?.totalBudget ?? 0,
-    monthlyDebt: local?.monthlyDebt ?? 0,
-    expenseBreakdown: local?.expenseBreakdown ?? [],
-    merchantBreakdown: local?.merchantBreakdown ?? [],
-    subcategoryBreakdown: local?.subcategoryBreakdown ?? [],
-    monthlySpending: local?.monthlySpending ?? [],
-    weeklySpending: local?.weeklySpending ?? [],
+    summary: bundle?.summary,
+    narratives: localNarrativesQuery.data,
+    healthScores: bundle?.healthScores,
+    totalBudget: bundle?.totalBudget ?? 0,
+    monthlyDebt: bundle?.monthlyDebt ?? 0,
+    expenseBreakdown: bundle?.expenseBreakdown ?? [],
+    merchantBreakdown: bundle?.merchantBreakdown ?? [],
+    subcategoryBreakdown: bundle?.subcategoryBreakdown ?? [],
+    monthlySpending: bundle?.monthlySpending ?? [],
+    weeklySpending: bundle?.weeklySpending ?? [],
     accountBreakdown: undefined,
-    isLoading: insightsQueryEnabled && (
-      localSummariesQuery.isPending
-      || localInsightsQuery.isLoading
-    ),
-    isError: insightsQueryEnabled && localInsightsQuery.isError,
+    isLoading: bundleLoading,
+    isNarrativesLoading:
+      insightsQueryEnabled
+      && isLocalInsightsQueryLoading(
+        localNarrativesQuery.fetchStatus,
+        localNarrativesQuery.data !== undefined,
+      ),
+    isError:
+      insightsQueryEnabled
+      && (filtersActive
+        ? filteredBundleQuery.isError
+        : bucketSummaryQuery.isError
+          || bucketBundleQuery.isError
+          || transactionBundleQuery.isError),
     isAccountLoading: false,
-    isChartsLoading: insightsQueryEnabled && (
-      localSummariesQuery.isPending
-      || localInsightsQuery.isLoading
-    ),
-    refetch: () => localInsightsQuery.refetch(),
+    isChartsLoading: bundleLoading || transactionEnrichmentLoading,
+    refetch,
     queries: {
-      local: localInsightsQuery,
+      bucketSummary: bucketSummaryQuery,
+      bucketBundle: bucketBundleQuery,
+      transactionBundle: transactionBundleQuery,
+      filteredBundle: filteredBundleQuery,
+      narratives: localNarrativesQuery,
     },
   };
 };
