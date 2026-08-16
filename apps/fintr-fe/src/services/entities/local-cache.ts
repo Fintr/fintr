@@ -2,6 +2,7 @@ import {
   getLocalResponseSnapshot,
   putLocalResponseSnapshot,
 } from "@/lib/local-db/response-cache";
+import type { QueryClient } from "@tanstack/react-query";
 import { listSpaceTransactions } from "@/lib/local-db/transactions";
 import {
   loadCachedLoanPayments,
@@ -113,6 +114,63 @@ export const loadCachedEntityRecord = async (
   }
 
   return entities.find((entity) => entity.id === entityId);
+};
+
+export const loadEntities = async (
+  spaceCode: string,
+): Promise<EntityRecord[]> =>
+  (await loadCachedEntitiesResponse(spaceCode)) ?? [];
+
+export const upsertEntityInList = (
+  entities: EntityRecord[],
+  entity: EntityRecord,
+): EntityRecord[] => {
+  const index = entities.findIndex((row) => row.id === entity.id);
+
+  if (index >= 0) {
+    const next = [...entities];
+    next[index] = entity;
+    return next;
+  }
+
+  return [...entities, entity];
+};
+
+export const removeEntityFromList = (
+  entities: EntityRecord[],
+  entityId: string,
+): EntityRecord[] => entities.filter((entity) => entity.id !== entityId);
+
+export const replaceEntityIdInList = (
+  entities: EntityRecord[],
+  localId: string,
+  serverId: string,
+): EntityRecord[] =>
+  entities.map((entity) =>
+    entity.id === localId ? { ...entity, id: serverId } : entity,
+  );
+
+export const applyEntitiesToCaches = async (params: {
+  spaceCode: string;
+  entities: EntityRecord[];
+  queryClient?: QueryClient;
+}): Promise<void> => {
+  const { spaceCode, entities, queryClient } = params;
+
+  await cacheEntitiesResponse(spaceCode, entities);
+
+  if (!queryClient) {
+    return;
+  }
+
+  for (const entityType of ["loan", "transaction"] as const) {
+    queryClient.setQueryData(
+      ["entities", spaceCode, entityType, ""],
+      filterCachedEntities(entities, entityType),
+    );
+  }
+
+  queryClient.setQueryData(["entities", "local", spaceCode], entities);
 };
 
 const namesMatch = (left: string | null | undefined, right: string): boolean =>

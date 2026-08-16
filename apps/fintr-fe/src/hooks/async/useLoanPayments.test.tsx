@@ -194,7 +194,10 @@ describe("useLoanPayments", () => {
 
     expect(recorded?.pendingSync).toBe(true);
     expect(recorded?.data.id.startsWith("local:")).toBe(true);
-    expect(result.current.isCreating).toBe(false);
+
+    await waitFor(() => {
+      expect(result.current.isCreating).toBe(false);
+    });
 
     const outbox = await getLocalDb().outbox.toArray();
     expect(outbox).toHaveLength(1);

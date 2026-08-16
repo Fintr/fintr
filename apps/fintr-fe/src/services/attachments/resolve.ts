@@ -33,9 +33,6 @@ const emptyResult = (): ResolvedAttachmentsResult => ({
   revoke: () => {},
 });
 
-const isBrowserOffline = (): boolean =>
-  typeof navigator !== "undefined" && navigator.onLine === false;
-
 const recordsToResolved = (
   records: LocalAttachmentRecord[],
 ): ResolvedAttachmentsResult => {
@@ -172,7 +169,7 @@ export const resolveAttachmentsForTransaction = async (params: {
   };
 
   let remoteFiles = await loadDetailFiles(true);
-  if (remoteFiles.length === 0 && !(preferLocal && isBrowserOffline())) {
+  if (remoteFiles.length === 0 && !preferLocal) {
     remoteFiles = await loadDetailFiles(false);
   }
 
@@ -186,7 +183,7 @@ export const resolveAttachmentsForTransaction = async (params: {
     ownerIds.push(listRow.activitableId);
   }
 
-  if (!(preferLocal && isBrowserOffline())) {
+  if (!preferLocal && api) {
     const stored = await cacheRemoteFilesForOwners({
       spaceId,
       ownerType,

@@ -2,58 +2,37 @@ import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
 import { CategoryAppearancePicker } from "./category-appearance-picker";
+import { CATEGORY_ICON_OPTIONS } from "@/utils/categoryAppearance";
 
 describe("CategoryAppearancePicker", () => {
-  it("filters icons by search query", async () => {
-    const user = userEvent.setup();
-
+  it("renders all icon options", () => {
     render(
       <CategoryAppearancePicker
         icon="coffee"
-        accentColor="#E53935"
+        color="#E53935"
         onIconChange={vi.fn()}
+        onColorChange={vi.fn()}
       />,
     );
 
-    const searchInput = screen.getByTestId("category-icon-search");
-    await user.type(searchInput, "petrol");
-
-    const iconButtons = screen.getAllByRole("button", { name: /^select icon/i });
-    const labels = iconButtons.map((button) => button.getAttribute("title"));
-
-    expect(labels).toContain("Fuel");
-    expect(labels).toContain("Coffee");
-    expect(labels).not.toContain("Tag");
+    expect(
+      screen.getAllByRole("button", { name: /^select icon/i }),
+    ).toHaveLength(CATEGORY_ICON_OPTIONS.length);
   });
 
-  it("keeps the selected icon visible when it does not match the search", async () => {
-    const user = userEvent.setup();
-
+  it("highlights the selected icon", () => {
     render(
       <CategoryAppearancePicker
         icon="coffee"
-        accentColor="#E53935"
+        color="#E53935"
         onIconChange={vi.fn()}
+        onColorChange={vi.fn()}
       />,
     );
-
-    await user.type(screen.getByTestId("category-icon-search"), "petrol");
 
     expect(
       screen.getByRole("button", { name: /select icon coffee/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("shows the selected icon label", () => {
-    render(
-      <CategoryAppearancePicker
-        icon="shopping-cart"
-        accentColor="#E53935"
-        onIconChange={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText(/Selected: Shopping Cart/i)).toBeInTheDocument();
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("calls onIconChange when an icon is selected", async () => {
@@ -63,13 +42,34 @@ describe("CategoryAppearancePicker", () => {
     render(
       <CategoryAppearancePicker
         icon="coffee"
-        accentColor="#E53935"
+        color="#E53935"
         onIconChange={onIconChange}
+        onColorChange={vi.fn()}
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /select icon fuel/i }));
+    await user.click(screen.getByRole("button", { name: /select icon car/i }));
 
-    expect(onIconChange).toHaveBeenCalledWith("fuel");
+    expect(onIconChange).toHaveBeenCalledWith("car");
+  });
+
+  it("calls onColorChange when a color is selected", async () => {
+    const user = userEvent.setup();
+    const onColorChange = vi.fn();
+
+    render(
+      <CategoryAppearancePicker
+        icon="coffee"
+        color="#E53935"
+        onIconChange={vi.fn()}
+        onColorChange={onColorChange}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /select color #43A047/i }),
+    );
+
+    expect(onColorChange).toHaveBeenCalledWith("#43A047");
   });
 });

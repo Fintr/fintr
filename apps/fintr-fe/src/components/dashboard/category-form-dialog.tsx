@@ -49,6 +49,7 @@ interface CategoryFormDialogProps {
   trigger: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
 const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
@@ -62,6 +63,7 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
   trigger,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
+  hideTrigger = false,
 }) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
@@ -115,33 +117,48 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const appearance = resolveCategoryAppearance({
+    const appearance = resolveCategoryAppearance({
+      name: categoryName.trim(),
+      categoryType: resolvedCategoryType,
+      icon,
+      color,
+    });
+
+    if (category && onUpdate) {
+      const unchanged =
+        categoryName.trim() === category.name &&
+        appearance.icon === category.icon &&
+        appearance.color === category.color?.toUpperCase();
+
+      if (unchanged) {
+        setIsOpen(false);
+        return;
+      }
+
+      const updateData = {
         name: categoryName.trim(),
-        categoryType: resolvedCategoryType,
-        icon,
-        color,
-      });
+        icon: appearance.icon,
+        color: appearance.color,
+      };
 
-      if (category && onUpdate) {
-        const unchanged =
-          categoryName.trim() === category.name &&
-          appearance.icon === category.icon &&
-          appearance.color === category.color?.toUpperCase();
+      setIsOpen(false);
 
-        if (unchanged) {
-          setIsOpen(false);
-          return;
+      void (async () => {
+        try {
+          await onUpdate(category.id, updateData);
+          toast.success(`Category updated to "${categoryName.trim()}"`);
+        } catch (error) {
+          console.error("Failed to save category:", error);
         }
+      })();
 
-        await onUpdate(category.id, {
-          name: categoryName.trim(),
-          icon: appearance.icon,
-          color: appearance.color,
-        });
-        toast.success(`Category updated to "${categoryName.trim()}"`);
-      } else if (onAdd && categoryType) {
+      return;
+    }
+
+    if (onAdd && categoryType) {
+      setIsSubmitting(true);
+
+      try {
         await onAdd(
           categoryName.trim(),
           categoryType,
@@ -152,23 +169,25 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
           ? `Subcategory "${categoryName.trim()}" created`
           : `New ${categoryType} category "${categoryName.trim()}" created`;
         toast.success(label);
-      } else {
-        console.error("Invalid operation for CategoryFormDialog");
-        return;
+        setIsOpen(false);
+        setCategoryName("");
+      } catch (error) {
+        console.error("Failed to save category:", error);
+        throw error;
+      } finally {
+        setIsSubmitting(false);
       }
-      setIsOpen(false);
-      setCategoryName("");
-    } catch (error) {
-      console.error("Failed to save category:", error);
-      throw error;
-    } finally {
-      setIsSubmitting(false);
+
+      return;
     }
+
+    console.error("Invalid operation for CategoryFormDialog");
   };
 
   const handleCancel = () => {
     setCategoryName(category?.name || "");
     setIsOpen(false);
+    document.body.style.pointerEvents = "";
   };
 
   const isSubcategoryCreate = !category && Boolean(parentId);
@@ -191,7 +210,7 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {hideTrigger ? null : <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>

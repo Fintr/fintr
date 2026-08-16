@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { requestOpenTransaction } from "@/lib/open-transaction-request";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { usePreferLocalTransactionReads } from "@/hooks/useOfflineReadMode";
 import { offlineBootstrapDateRange } from "@/lib/local-sync/offline-bootstrap-dates";
 import { defaultTransactionsQueryKey } from "@/services/local-sync/bootstrap-local-data";
 import {
@@ -67,13 +67,13 @@ export const HomeRecentTransactions = ({
     staleTime: Infinity,
   });
 
-  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery);
+  const preferLocalReads = usePreferLocalTransactionReads(spaceCode);
 
   const shouldFetchFromNetwork =
     !!spaceCode &&
     !!api &&
     isAuthenticated &&
-    !skipNetworkFetch &&
+    !preferLocalReads &&
     !localCacheQuery.isPending &&
     localCacheQuery.data?.length === 0;
 

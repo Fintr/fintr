@@ -658,6 +658,7 @@ export const enrichTransactionEditDetail = async (params: {
     && params.transaction.hasImage
     && params.api
     && canDownloadRemoteAttachments()
+    && !params.preferLocal
   ) {
     try {
       const fresh = await resolveTransactionDetail({

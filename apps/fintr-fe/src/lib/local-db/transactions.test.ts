@@ -12,7 +12,7 @@ import {
   listSpaceTransactionsInDateRange,
   putSpaceTransactions,
 } from "./transactions";
-import { resetLocalDbForTests } from "./db";
+import { getLocalDb, resetLocalDbForTests } from "./db";
 
 const sampleTransaction = (
   overrides: Partial<IndexTransaction> = {},
@@ -60,6 +60,29 @@ describe("local-db transactions index", () => {
 
     expect(augustOnly).toHaveLength(1);
     expect(augustOnly[0]?.id).toBe("tx-aug");
+  });
+
+  it("hydrates payload.type from the indexed type column", async () => {
+    await putSpaceTransactions("space-a", [
+      sampleTransaction({
+        id: "tx-untyped",
+        type: CombinedTransactionTypeEnum.INCOME,
+      }),
+    ]);
+
+    const db = getLocalDb();
+    const record = await db.transactions.get("space-a:tx-untyped");
+    expect(record).toBeDefined();
+    await db.transactions.put({
+      ...record!,
+      payload: {
+        ...record!.payload,
+        type: undefined as unknown as CombinedTransactionTypeEnum,
+      },
+    });
+
+    const rows = await listSpaceTransactions("space-a");
+    expect(rows[0]?.type).toBe(CombinedTransactionTypeEnum.INCOME);
   });
 
   it("returns the earliest stored transaction date", async () => {

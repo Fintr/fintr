@@ -20,6 +20,9 @@ import {
 import { serializeFilterValues } from "@/utils/transactionFilterValues";
 import type { TransactionEntryTypeFilter } from "@/utils/transactionEntryTypeFilter";
 import {
+  resolveTransactionEntryType,
+} from "@/utils/transactionEntryTypeFilter";
+import {
   parseTransactionListFilterFromFilterKey,
   transactionMatchesListFilter,
 } from "@/utils/transactionListFilter";
@@ -337,6 +340,17 @@ const filterTransactionsForRange = (
 
   return sourcePages
     .flatMap((page) => page.transactions ?? [])
+    .map((transaction) => {
+      const resolvedType = resolveTransactionEntryType(transaction);
+      if (!resolvedType || resolvedType === transaction.type) {
+        return transaction;
+      }
+
+      return {
+        ...transaction,
+        type: resolvedType,
+      };
+    })
     .filter((transaction) => transactionMatchesListFilter(transaction, filter));
 };
 
@@ -725,16 +739,18 @@ const loadFlatTransactionRowsForFilterKey = async (
   const { startDate, endDate } = filter;
 
   if (startDate && endDate) {
-    const rows = await listSpaceTransactionsInDateRange(
+    const ranged = await listSpaceTransactionsInDateRange(
       spaceId,
       startDate,
       endDate,
     );
 
-    return rows;
+    if (ranged.length > 0) {
+      return ranged;
+    }
   }
 
-  return [];
+  return listSpaceTransactions(spaceId);
 };
 
 /**
@@ -812,10 +828,38 @@ const buildUnfilteredRangeFilterKey = (
  * over page-1 response snapshots, which go stale under space-sync pull mode
  * when the list skips the network and reloads from IndexedDB.
  */
+const mergeTransactionRowsById = (
+  rows: IndexTransaction[],
+): IndexTransaction[] => {
+  const byId = new Map<string, IndexTransaction>();
+
+  for (const row of rows) {
+    if (!row?.id) {
+      continue;
+    }
+
+    const existing = byId.get(row.id);
+    byId.set(
+      row.id,
+      existing
+        ? (mergeIndexTransactionMetadata(
+            existing as IndexTransactionWithMetadata,
+            row as IndexTransactionWithMetadata,
+          ) as IndexTransaction)
+        : row,
+    );
+  }
+
+  return Array.from(byId.values());
+};
+
 export const loadCachedTransactionsPageAt = async (
   spaceId: string,
   filterKey: string,
   pageParam: number = 1,
+  options?: {
+    fallbackRows?: IndexTransaction[];
+  },
 ): Promise<TransactionsPage | undefined> => {
   if (!spaceId || !filterKey) {
     return undefined;
@@ -825,27 +869,22 @@ export const loadCachedTransactionsPageAt = async (
     await migrateLegacyTransactionSnapshotsIfNeeded(spaceId);
 
     const flatRows = await loadFlatTransactionRowsForFilterKey(spaceId, filterKey);
-
-    if (flatRows.length > 0) {
-      const transactions = filterTransactionsForRange(
-        [{ transactions: flatRows }],
-        filterKey,
-      ).sort(compareTransactionsNewestFirst);
-      if (transactions.length === 0) {
-        return pageParam <= 1 ? emptyTransactionsPage() : undefined;
-      }
-
-      const totals = computeLocalTransactionTotals(transactions);
-      return paginateTransactions(transactions, pageParam, { totals });
-    }
-
     const resolved = await resolveSourcePagesForFilter(spaceId, filterKey);
-    if (!resolved) {
-      return undefined;
+    const snapshotRows = (resolved?.sourcePages ?? []).flatMap(
+      (page) => page.transactions ?? [],
+    );
+    const mergedRows = mergeTransactionRowsById([
+      ...snapshotRows,
+      ...flatRows,
+      ...(options?.fallbackRows ?? []),
+    ]);
+
+    if (mergedRows.length === 0) {
+      return pageParam <= 1 ? emptyTransactionsPage() : undefined;
     }
 
     const transactions = filterTransactionsForRange(
-      resolved.sourcePages,
+      [{ transactions: mergedRows }],
       filterKey,
     ).sort(compareTransactionsNewestFirst);
 
@@ -862,11 +901,32 @@ export const loadCachedTransactionsPageAt = async (
 };
 
 /**
+ * Rows for the same date/search/account filters with entry type forced to `all`.
+ * Used to seed typed entry-type pills from IndexedDB after restart (React Query
+ * cache for the All pill may still be empty).
+ */
+export const loadAllTypeCachedRowsForFilterKey = async (
+  spaceId: string,
+  filterKey: string,
+): Promise<IndexTransaction[]> => {
+  if (!spaceId || !filterKey) {
+    return [];
+  }
+
+  const allFilterKey = buildUnfilteredEntryTypeFilterKey(filterKey);
+  const page = await loadCachedTransactionsPageAt(spaceId, allFilterKey, 1);
+  return page?.transactions ?? [];
+};
+
+/**
  * Initial infinite-query seed: first local page only (not the full history).
  */
 export const loadCachedTransactionsInfiniteData = async (
   spaceId: string,
   filterKey: string,
+  options?: {
+    fallbackRows?: IndexTransaction[];
+  },
 ): Promise<
   | {
       pages: TransactionsPage[];
@@ -879,8 +939,13 @@ export const loadCachedTransactionsInfiniteData = async (
   }
 
   try {
-    const firstPage = await loadCachedTransactionsPageAt(spaceId, filterKey, 1);
-    if (!firstPage) {
+    const firstPage = await loadCachedTransactionsPageAt(
+      spaceId,
+      filterKey,
+      1,
+      options,
+    );
+    if (!firstPage?.transactions?.length) {
       return undefined;
     }
 
@@ -1146,6 +1211,18 @@ export const mergeIndexTransactionCategory = (
   }
 
   const merged = { ...incoming };
+
+  if (!merged.type && existing.type) {
+    merged.type = existing.type;
+  }
+
+  if (!merged.fromAccountName && existing.fromAccountName) {
+    merged.fromAccountName = existing.fromAccountName;
+  }
+
+  if (!merged.toAccountName && existing.toAccountName) {
+    merged.toAccountName = existing.toAccountName;
+  }
 
   if (!merged.categoryId && existing.categoryId) {
     merged.categoryId = existing.categoryId;

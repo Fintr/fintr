@@ -27,6 +27,7 @@ import {
 } from "@/services/transactions/upsert-into-query-caches";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import type { TransactionTag } from "@/types/transactionTagTypes";
+import { coerceCombinedTransactionType } from "@/utils/transactionEntryTypeFilter";
 
 type TransactionRealtimeMessage = CableInboundMessage & Record<string, unknown>;
 
@@ -75,17 +76,8 @@ export const parseRealtimeTransactionTags = (
   return tags;
 };
 
-const asType = (value: unknown): CombinedTransactionTypeEnum => {
-  const raw = asString(value);
-  if (
-    Object.values(CombinedTransactionTypeEnum).includes(
-      raw as CombinedTransactionTypeEnum,
-    )
-  ) {
-    return raw as CombinedTransactionTypeEnum;
-  }
-  return CombinedTransactionTypeEnum.EXPENSE;
-};
+const asType = (value: unknown): CombinedTransactionTypeEnum =>
+  coerceCombinedTransactionType(value) ?? CombinedTransactionTypeEnum.EXPENSE;
 
 const pickField = (
   payload: Record<string, unknown>,

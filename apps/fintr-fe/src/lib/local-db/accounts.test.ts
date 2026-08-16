@@ -38,8 +38,8 @@ describe("local-db accounts cache (IndexedDB)", () => {
     await resetLocalDbForTests();
   });
 
-  it("applies schema version 2", async () => {
-    expect(await getLocalDbSchemaVersion()).toBe(2);
+  it("applies the current local database schema version", async () => {
+    expect(await getLocalDbSchemaVersion()).toBe(3);
   });
 
   it("replaces and lists accounts for a space", async () => {

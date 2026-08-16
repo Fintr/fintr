@@ -9,6 +9,7 @@ import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
 import {
   shouldSkipCachedNetworkFetch,
   useBrowserOnline,
+  usePreferLocalTransactionReads,
   useSkipCachedNetworkFetch,
 } from "./useOfflineReadMode";
 
@@ -54,7 +55,7 @@ describe("shouldSkipCachedNetworkFetch", () => {
         spaceSyncPullEnabled: true,
         hasSyncCursor: false,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("reads IndexedDB only when offline after offline-ready", () => {
@@ -122,6 +123,18 @@ describe("useSkipCachedNetworkFetch", () => {
     });
 
     expect(result.current).toBe(false);
+  });
+
+  it("usePreferLocalTransactionReads is true after offline bootstrap", () => {
+    const store = createStore();
+    store.set(offlineSyncReadyAtom, true);
+
+    const { result } = renderHook(
+      () => usePreferLocalTransactionReads("space-a"),
+      { wrapper: wrap(store) },
+    );
+
+    expect(result.current).toBe(true);
   });
 
   it("tracks browser online state", () => {

@@ -3,6 +3,7 @@ import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { resetLocalDbForTests } from "@/lib/local-db";
+import { getLocalDb } from "@/lib/local-db/db";
 import {
   OFFLINE_BOOTSTRAP_END_DATE,
   OFFLINE_BOOTSTRAP_START_DATE,
@@ -23,6 +24,7 @@ import {
   loadCachedTransactionsInRange,
   loadCachedTransactionsPage,
   loadCachedTransactionsPageAt,
+  loadAllTypeCachedRowsForFilterKey,
   loadScatteredTransactionSnapshotsFromMeta,
   mergeFetchedTransactionsIntoAllTimeCache,
   replaceLocalIndexTransactionId,
@@ -170,6 +172,304 @@ describe("transactions local-cache", () => {
     );
     expect(loansPage?.transactions.map((row) => row.id)).toEqual([
       "loan-payment-row",
+    ]);
+  });
+
+  it("falls back to the all-types snapshot when flat index rows lack entry-type metadata", async () => {
+    const baseFilter = {
+      categoriesSerialized: "[]",
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    };
+
+    const allFilterKey = buildTransactionsFilterKey({
+      ...baseFilter,
+      entryType: "all",
+    });
+    const expenseFilterKey = buildTransactionsFilterKey({
+      ...baseFilter,
+      entryType: "expense",
+    });
+
+    await upsertLocalIndexTransaction("space-a", {
+      id: "legacy-untyped-row",
+      date: "2026-08-10",
+      description: "Legacy row without type",
+      amount: 25,
+      amountCurrency: "PHP",
+      categoryName: "Misc",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: undefined as unknown as CombinedTransactionTypeEnum,
+      inSeries: false,
+      hasImage: false,
+    });
+
+    await cacheTransactionsPage("space-a", allFilterKey, {
+      transactions: [
+        {
+          id: "typed-expense",
+          date: "2026-08-11",
+          description: "Medicine",
+          amount: 100,
+          amountCurrency: "PHP",
+          categoryName: "Medicine",
+          fromAccountName: "Cash",
+          toAccountName: "",
+          type: CombinedTransactionTypeEnum.EXPENSE,
+          inSeries: false,
+          hasImage: false,
+        },
+        {
+          id: "typed-income",
+          date: "2026-08-11",
+          description: "Salary",
+          amount: 500,
+          amountCurrency: "PHP",
+          categoryName: "Salary",
+          fromAccountName: "Cash",
+          toAccountName: "",
+          type: CombinedTransactionTypeEnum.INCOME,
+          inSeries: false,
+          hasImage: false,
+        },
+      ],
+      nextPage: null,
+      totalPages: 1,
+      totalCount: 2,
+      totals: { income: 500, expense: 100, transfer: 0 },
+    });
+
+    const allPage = await loadCachedTransactionsPageAt("space-a", allFilterKey, 1);
+    expect(allPage?.transactions.map((row) => row.id)).toEqual([
+      "typed-income",
+      "typed-expense",
+      "legacy-untyped-row",
+    ]);
+
+    const expensePage = await loadCachedTransactionsPageAt(
+      "space-a",
+      expenseFilterKey,
+      1,
+    );
+    expect(expensePage?.transactions.map((row) => row.id)).toEqual([
+      "typed-expense",
+      "legacy-untyped-row",
+    ]);
+  });
+
+  it("reads entry-type pills from the full space index when the date index misses", async () => {
+    const baseFilter = {
+      categoriesSerialized: "[]",
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    };
+
+    await getLocalDb().transactions.put({
+      key: "space-a:expense-misindexed",
+      spaceId: "space-a",
+      id: "expense-misindexed",
+      date: "not-an-iso-date",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      categoryId: "",
+      payload: {
+        id: "expense-misindexed",
+        date: "2026-08-12",
+        description: "Coffee",
+        amount: 80,
+        amountCurrency: "PHP",
+        categoryName: "Food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+      },
+      updatedAt: Date.now(),
+    });
+    await getLocalDb().transactions.put({
+      key: "space-a:income-misindexed",
+      spaceId: "space-a",
+      id: "income-misindexed",
+      date: "not-an-iso-date",
+      type: CombinedTransactionTypeEnum.INCOME,
+      categoryId: "",
+      payload: {
+        id: "income-misindexed",
+        date: "2026-08-12",
+        description: "Salary",
+        amount: 500,
+        amountCurrency: "PHP",
+        categoryName: "Salary",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.INCOME,
+        inSeries: false,
+        hasImage: false,
+      },
+      updatedAt: Date.now(),
+    });
+
+    const expensePage = await loadCachedTransactionsPageAt(
+      "space-a",
+      buildTransactionsFilterKey({ ...baseFilter, entryType: "expense" }),
+      1,
+    );
+    const incomePage = await loadCachedTransactionsPageAt(
+      "space-a",
+      buildTransactionsFilterKey({ ...baseFilter, entryType: "income" }),
+      1,
+    );
+    const categoryPage = await loadCachedTransactionsPageAt(
+      "space-a",
+      buildTransactionsFilterKey({
+        ...baseFilter,
+        categoriesSerialized: JSON.stringify(["Food"]),
+        entryType: "all",
+      }),
+      1,
+    );
+
+    expect(expensePage?.transactions.map((row) => row.id)).toEqual([
+      "expense-misindexed",
+    ]);
+    expect(incomePage?.transactions.map((row) => row.id)).toEqual([
+      "income-misindexed",
+    ]);
+    expect(categoryPage?.transactions.map((row) => row.id)).toEqual([
+      "expense-misindexed",
+    ]);
+  });
+
+  it("does not seed an empty infinite-query page when the local index has rows", async () => {
+    await upsertLocalIndexTransaction("space-a", {
+      id: "expense-row",
+      date: "2026-08-10",
+      description: "Medicine",
+      amount: 100,
+      amountCurrency: "PHP",
+      categoryName: "Medicine",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    });
+
+    const emptyFilterKey = buildTransactionsFilterKey({
+      categoriesSerialized: "[]",
+      startDate: "2025-01-01",
+      endDate: "2025-01-31",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+      entryType: "expense",
+    });
+
+    const seeded = await loadCachedTransactionsInfiniteData(
+      "space-a",
+      emptyFilterKey,
+    );
+    expect(seeded).toBeUndefined();
+  });
+
+  it("loads all-type rows for typed entry-type fallback", async () => {
+    const baseFilter = {
+      categoriesSerialized: "[]",
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    };
+
+    await upsertLocalIndexTransaction("space-a", {
+      id: "fallback-expense",
+      date: "2026-08-10",
+      description: "Coffee",
+      amount: 100,
+      amountCurrency: "PHP",
+      categoryName: "Food",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    });
+
+    const allRows = await loadAllTypeCachedRowsForFilterKey(
+      "space-a",
+      buildTransactionsFilterKey({ ...baseFilter, entryType: "expense" }),
+    );
+
+    expect(allRows.map((row) => row.id)).toEqual(["fallback-expense"]);
+  });
+
+  it("uses fallback rows from the all pill when typed filtering needs them", async () => {
+    const baseFilter = {
+      categoriesSerialized: "[]",
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    };
+
+    await upsertLocalIndexTransaction("space-a", {
+      id: "typed-expense",
+      date: "2026-08-10",
+      description: "Medicine",
+      amount: 100,
+      amountCurrency: "PHP",
+      categoryName: "Medicine",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: undefined as unknown as CombinedTransactionTypeEnum,
+      inSeries: false,
+      hasImage: false,
+    });
+
+    const expensePage = await loadCachedTransactionsPageAt(
+      "space-a",
+      buildTransactionsFilterKey({ ...baseFilter, entryType: "expense" }),
+      1,
+      {
+        fallbackRows: [
+          {
+            id: "typed-expense",
+            date: "2026-08-10",
+            description: "Medicine",
+            amount: 100,
+            amountCurrency: "PHP",
+            categoryName: "Medicine",
+            fromAccountName: "Cash",
+            toAccountName: "",
+            type: CombinedTransactionTypeEnum.EXPENSE,
+            inSeries: false,
+            hasImage: false,
+          },
+        ],
+      },
+    );
+
+    expect(expensePage?.transactions.map((row) => row.id)).toEqual([
+      "typed-expense",
     ]);
   });
 
@@ -329,8 +629,14 @@ describe("transactions local-cache", () => {
       "space-a",
       augustFilterKey,
     );
-    expect(august?.pages[0]?.transactions).toEqual([]);
-    expect(august?.pages[0]?.totalCount).toBe(0);
+    expect(august).toBeUndefined();
+    const augustPage = await loadCachedTransactionsPageAt(
+      "space-a",
+      augustFilterKey,
+      1,
+    );
+    expect(augustPage?.transactions).toEqual([]);
+    expect(augustPage?.totalCount).toBe(0);
 
     expect(allTimeFilterKey).toContain(OFFLINE_BOOTSTRAP_START_DATE);
     expect(allTimeFilterKey).toContain(OFFLINE_BOOTSTRAP_END_DATE);

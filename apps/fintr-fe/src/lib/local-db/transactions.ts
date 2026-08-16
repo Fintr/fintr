@@ -10,6 +10,20 @@ export const transactionRecordKey = (
 
 const transactionDateKey = (date: string): string => date.slice(0, 10);
 
+const payloadFromRecord = (
+  record: LocalTransactionRecord,
+): IndexTransaction => {
+  const payload = record.payload;
+  if (payload?.type || !record.type) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    type: record.type as IndexTransaction["type"],
+  };
+};
+
 const toLocalRecord = (
   spaceId: string,
   transaction: IndexTransaction,
@@ -39,7 +53,7 @@ export const listSpaceTransactions = async (
     .equals(spaceId)
     .toArray();
 
-  return records.map((record) => record.payload);
+  return records.map((record) => payloadFromRecord(record));
 };
 
 export const listSpaceTransactionsInDateRange = async (
@@ -58,7 +72,7 @@ export const listSpaceTransactionsInDateRange = async (
     )
     .toArray();
 
-  return records.map((record) => record.payload);
+  return records.map((record) => payloadFromRecord(record));
 };
 
 export const getEarliestSpaceTransactionDate = async (
@@ -92,7 +106,7 @@ export const getSpaceTransaction = async (
     .transactions
     .get(transactionRecordKey(spaceId, transactionId));
 
-  return record?.payload;
+  return record ? payloadFromRecord(record) : undefined;
 };
 
 export const putSpaceTransactions = async (

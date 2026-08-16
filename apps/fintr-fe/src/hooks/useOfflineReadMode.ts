@@ -51,7 +51,7 @@ export const shouldSkipCachedNetworkFetch = (params: {
   const spaceSyncPullEnabled = params.spaceSyncPullEnabled ?? false;
 
   if (spaceSyncPullEnabled && params.offlineSyncReady) {
-    return params.hasSyncCursor !== false;
+    return true;
   }
 
   if (!params.isOnline) {
@@ -66,6 +66,16 @@ export const shouldSkipCachedNetworkFetch = (params: {
  * - space sync pull is active with a cursor (IDB is source of truth), or
  * - the device is offline.
  */
+/**
+ * After offline bootstrap, transaction lists and detail read IndexedDB first.
+ * Matches `useInfiniteTransactions` local-read gating.
+ */
+export const usePreferLocalTransactionReads = (spaceCode?: string): boolean => {
+  const offlineSyncReady = useAtomValue(offlineSyncReadyAtom);
+  const skipNetworkFetch = useSkipCachedNetworkFetch(undefined, spaceCode);
+  return skipNetworkFetch || offlineSyncReady;
+};
+
 export const useSkipCachedNetworkFetch = (
   _localCacheQuery?: LocalCacheQueryState,
   spaceCode?: string,

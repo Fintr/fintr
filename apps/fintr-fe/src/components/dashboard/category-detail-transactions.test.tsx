@@ -38,6 +38,10 @@ vi.mock("@/hooks/async/useDashboardData", () => ({
   useDashboardData: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock("jotai", async (importOriginal) => {
   const actual = await importOriginal<typeof import("jotai")>();
   return {

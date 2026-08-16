@@ -13,6 +13,70 @@ describe("transactionMatchesEntryTypeFilter", () => {
     ).toBe(true);
   });
 
+  it("matches STI and plural type strings used in local caches", () => {
+    expect(
+      transactionMatchesEntryTypeFilter("Transactions::Expense", "expense"),
+    ).toBe(true);
+    expect(
+      transactionMatchesEntryTypeFilter("Transactions::Income", "income"),
+    ).toBe(true);
+    expect(
+      transactionMatchesEntryTypeFilter("transfers", "transfers"),
+    ).toBe(true);
+    expect(
+      transactionMatchesEntryTypeFilter("Transactions::Loan", "loans"),
+    ).toBe(true);
+    expect(
+      transactionMatchesEntryTypeFilter("Transactions::LoanPayment", "loans"),
+    ).toBe(true);
+  });
+
+  it("infers loan rows from loan activity metadata", () => {
+    expect(
+      transactionMatchesEntryTypeFilter(
+        undefined,
+        "loans",
+        {
+          isLoanActivity: true,
+          categoryName: "Loan payment",
+        },
+      ),
+    ).toBe(true);
+    expect(
+      transactionMatchesEntryTypeFilter(
+        undefined,
+        "transfers",
+        {
+          fromAccountName: "Cash",
+          toAccountName: "Savings",
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("infers expense and income from account names when type is missing", () => {
+    expect(
+      transactionMatchesEntryTypeFilter(
+        undefined,
+        "expense",
+        {
+          fromAccountName: "Cash",
+          toAccountName: "",
+        },
+      ),
+    ).toBe(true);
+    expect(
+      transactionMatchesEntryTypeFilter(
+        undefined,
+        "income",
+        {
+          fromAccountName: "",
+          toAccountName: "Cash",
+        },
+      ),
+    ).toBe(true);
+  });
+
   it("matches expense only for expense filter", () => {
     expect(
       transactionMatchesEntryTypeFilter(

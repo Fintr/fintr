@@ -13,11 +13,12 @@ import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionD
 import { TagDestinationDialog } from "@/components/dashboard/transactions/tag-destination-dialog";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { usePreferLocalTransactionReads } from "@/hooks/useOfflineReadMode";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { cn } from "@/lib/utils";
 import { resolveAttachmentsForTransaction } from "@/services/attachments/resolve";
 import { loadLocalIndexTransactionById } from "@/services/transactions/local-cache";
+import { resolveTransactionDetail } from "@/services/transactions/detail-local";
 import { fetchTransactionById } from "@/services/transactions/queries";
 import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import {
@@ -159,7 +160,7 @@ export function TransactionDetailContent({
   const { api } = useAuthApi();
   const queryClient = useQueryClient();
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const preferLocal = useSkipCachedNetworkFetch();
+  const preferLocal = usePreferLocalTransactionReads(spaceCode);
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
   const [editOpen, setEditOpen] = useState(false);
@@ -178,16 +179,41 @@ export function TransactionDetailContent({
     networkMode: "always",
   });
 
-  const skipNetworkFetch = preferLocal && Boolean(localQuery.data);
-
-  const networkQuery = useQuery({
-    queryKey: ["transactionView", spaceCode, transactionId],
+  const transactionQuery = useQuery({
+    queryKey: ["transactionView", spaceCode, transactionId, preferLocal ? "local" : "network"],
     queryFn: async () => {
       const localLatest =
         (await loadLocalIndexTransactionById(spaceCode, transactionId)) ??
         localQuery.data;
 
-      if (skipNetworkFetch || !api) {
+      if (preferLocal) {
+        if (!localLatest) {
+          return null;
+        }
+
+        try {
+          const detail = await resolveTransactionDetail({
+            api: null,
+            spaceId: spaceCode,
+            transactionId,
+            type: localLatest.type,
+            listRow: localLatest,
+            preferLocal: true,
+          });
+
+          return mergeLocalIndexRow(
+            asIndexTransaction(
+              transactionId,
+              detail as unknown as Record<string, unknown>,
+            ),
+            localLatest,
+          );
+        } catch {
+          return localLatest;
+        }
+      }
+
+      if (!api) {
         return localLatest;
       }
 
@@ -215,16 +241,15 @@ export function TransactionDetailContent({
         }
       }
     },
-    enabled: Boolean(spaceCode && transactionId && (!skipNetworkFetch || localQuery.isSuccess)),
+    enabled: Boolean(spaceCode && transactionId && (preferLocal || api)),
     placeholderData: localQuery.data ?? undefined,
     retry: false,
-    staleTime: skipNetworkFetch ? Infinity : 0,
+    staleTime: preferLocal ? Infinity : 0,
   });
 
-  const transaction = networkQuery.data ?? localQuery.data ?? null;
+  const transaction = transactionQuery.data ?? localQuery.data ?? null;
   const isLoading =
-    localQuery.isPending ||
-    (networkQuery.isPending && !transaction);
+    (localQuery.isPending || transactionQuery.isPending) && !transaction;
 
   const attachmentsQuery = useQuery({
     queryKey: ["transactionView", "attachments", spaceCode, transactionId],
@@ -238,7 +263,7 @@ export function TransactionDetailContent({
         preferLocal,
       }),
     enabled: Boolean(spaceCode && transactionId && transaction),
-    staleTime: 0,
+    staleTime: preferLocal ? Infinity : 0,
     networkMode: "always",
   });
 

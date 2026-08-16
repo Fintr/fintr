@@ -15,6 +15,24 @@ export const transactionRowTitle = ({
 };
 
 /** Merchant (or payer) on its own; category only when the title is already a description. */
+export const loanPaymentContactLine = (row: {
+  description?: string | null;
+  entityName?: string | null;
+}): string => {
+  const entity = transactionEntityLabel(row.entityName);
+  const description = row.description?.trim() ?? "";
+  const separator = " — ";
+  const purpose = description.includes(separator)
+    ? description.split(separator).slice(1).join(separator).trim()
+    : "";
+
+  if (entity && purpose && purpose !== entity) {
+    return `${entity} · ${purpose}`;
+  }
+
+  return entity;
+};
+
 export const transactionSecondaryLine = ({
   description,
   entityName,

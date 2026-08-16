@@ -23,6 +23,7 @@ vi.mock("@/hooks/useLocalStorage", () => ({
 
 vi.mock("@/hooks/useOfflineReadMode", () => ({
   useSkipCachedNetworkFetch: () => false,
+  usePreferLocalTransactionReads: () => false,
 }));
 
 vi.mock("@/hooks/useSpaceContext", () => ({

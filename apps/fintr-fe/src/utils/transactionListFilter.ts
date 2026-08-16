@@ -161,7 +161,7 @@ export const transactionMatchesListFilter = (
     }
   }
 
-  if (!transactionMatchesEntryTypeFilter(transaction.type, filter.entryType)) {
+  if (!transactionMatchesEntryTypeFilter(transaction.type, filter.entryType, transaction)) {
     return false;
   }
 

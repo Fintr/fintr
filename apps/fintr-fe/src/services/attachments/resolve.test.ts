@@ -90,7 +90,7 @@ describe("attachments resolve", () => {
     expect(resolved?.name).toBe("receipt.jpg");
   });
 
-  it("downloads remote files into IndexedDB and returns blob URLs", async () => {
+  it("downloads remote files into IndexedDB when not in local-only mode", async () => {
     vi.mocked(resolveTransactionDetail).mockResolvedValue({
       files: [
         {
@@ -110,7 +110,7 @@ describe("attachments resolve", () => {
       spaceId: "space-a",
       transactionId: "server-tx-1",
       type: CombinedTransactionTypeEnum.EXPENSE,
-      preferLocal: true,
+      preferLocal: false,
       api: api as AxiosInstance,
     });
 
@@ -127,5 +127,38 @@ describe("attachments resolve", () => {
     expect(stored).toHaveLength(1);
     expect(stored[0]?.source).toBe("remote_download");
     result.revoke();
+  });
+
+  it("does not download remote files when preferLocal is true", async () => {
+    vi.mocked(resolveTransactionDetail).mockResolvedValue({
+      files: [
+        {
+          id: "file-1",
+          url: "https://s3.ap-southeast-1.amazonaws.com/fintr-development/receipt.jpg",
+          filename: "receipt.jpg",
+          contentType: "image/jpeg",
+        },
+      ],
+    });
+    const api = {
+      get: vi.fn(async () => ({ data: new Blob() })),
+    };
+
+    const result = await resolveAttachmentsForTransaction({
+      spaceId: "space-a",
+      transactionId: "server-tx-1",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      preferLocal: true,
+      api: api as AxiosInstance,
+    });
+
+    expect(result.images).toHaveLength(1);
+    expect(result.images[0]?.url).toBe(
+      "https://s3.ap-southeast-1.amazonaws.com/fintr-development/receipt.jpg",
+    );
+    expect(api.get).not.toHaveBeenCalled();
+    expect(resolveTransactionDetail).toHaveBeenCalledWith(
+      expect.objectContaining({ preferLocal: true }),
+    );
   });
 });

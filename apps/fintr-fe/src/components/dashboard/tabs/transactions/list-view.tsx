@@ -25,7 +25,7 @@ import {
 } from "@/hooks/useAnchorTransactionsListToToday";
 import { resolveAttachmentsForTransaction } from "@/services/attachments/resolve";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { usePreferLocalTransactionReads } from "@/hooks/useOfflineReadMode";
 import { toast } from "sonner";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,7 @@ import {
   activityShowsCalculatedIndicator,
 } from "@/utils/activityDisplay";
 import {
+  loanPaymentContactLine,
   transactionEntityLabel,
   transactionRowTitle,
 } from "@/utils/transactionDescription";
@@ -151,7 +152,7 @@ export function ListView({
   const [hoveredCalculatedId, setHoveredCalculatedId] = useState<string | null>(null);
   const { api } = useAuthApi();
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const preferLocal = useSkipCachedNetworkFetch();
+  const preferLocal = usePreferLocalTransactionReads(spaceCode);
   
   // Get space context for currency
   const { currentSpace } = useSpaceContext(api);
@@ -215,6 +216,11 @@ export function ListView({
         <div className="text-red-900 text-center py-4">
           Error: {error?.message ?? "Failed to load transactions"}
         </div>
+      )}
+      {!isPending && !isError && !hasLoadedPages && (
+        <p className="text-sm text-muted-foreground py-6 text-center border rounded-lg bg-muted/20">
+          No activity for this account in the selected range.
+        </p>
       )}
       {hasLoadedPages && data && (
         <>
@@ -286,11 +292,22 @@ export function ListView({
                 activityCategoryLine(row as IndexActivity);
               const presentsAsIncome = activityPresentsAsIncome(row);
               const presentsAsTransfer = activityPresentsAsTransfer(row);
-              const rowTitle = transactionRowTitle({
-                description: row.description,
-                fallback: categoryLine,
-              });
+              const isLoanPayment =
+                row.type === CombinedTransactionTypeEnum.LOAN_PAYMENT;
+              const hasDescription = Boolean(row.description?.trim());
+              const rowTitle = isLoanPayment
+                ? categoryLine || "Loan payment"
+                : transactionRowTitle({
+                    description: row.description,
+                    fallback: categoryLine,
+                  });
               const merchantLine = transactionEntityLabel(row.entityName);
+              const loanContactLine = isLoanPayment
+                ? loanPaymentContactLine(row)
+                : "";
+              const showMerchantCategoryRow = isLoanPayment
+                ? Boolean(loanContactLine)
+                : Boolean(merchantLine);
 
               const accountLine =
                 row.fromAccountName && row.toAccountName
@@ -434,7 +451,7 @@ export function ListView({
                         </div>
                       </div>
                       
-                      {hasSubcategory && (
+                      {hasSubcategory && !hasDescription && (
                         <p
                           className="md:hidden mt-1 text-xs text-gray-600 truncate dark:text-muted-foreground"
                           title={categoryLine}
@@ -443,26 +460,54 @@ export function ListView({
                         </p>
                       )}
 
-                      <div className="flex items-center justify-between mt-1">
-                        <div className="flex items-center text-xs text-gray-600 flex-1 min-w-0 overflow-hidden dark:text-muted-foreground">
-                          <span className="flex-shrink-0 whitespace-nowrap">
-                            {formatTransactionRowDate(row.date)}
-                          </span>
-                          {merchantLine && (
+                      {showMerchantCategoryRow && (
+                        <div className="mt-0.5 flex min-w-0 items-center text-xs text-gray-600 dark:text-muted-foreground">
+                          {isLoanPayment ? (
+                            <span className="min-w-0 truncate" title={loanContactLine}>
+                              {loanContactLine}
+                            </span>
+                          ) : hasDescription ? (
+                            <>
+                              <span
+                                className="min-w-0 truncate"
+                                title={merchantLine}
+                              >
+                                {merchantLine}
+                              </span>
+                              {categoryLine && (
+                                <span
+                                  className="ml-2 min-w-0 truncate md:ml-4"
+                                  title={categoryLine}
+                                >
+                                  {categoryLine}
+                                </span>
+                              )}
+                            </>
+                          ) : (
                             <span
-                              className="ml-2 min-w-0 truncate md:ml-4"
+                              className="min-w-0 truncate"
                               title={merchantLine}
                             >
                               {merchantLine}
                             </span>
                           )}
-                          <span
-                            className="hidden md:block truncate ml-4"
-                            title={categoryLine}
-                          >
-                            {categoryLine}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between mt-1">
+                        <div className="flex items-center text-xs text-gray-600 flex-1 min-w-0 overflow-hidden dark:text-muted-foreground">
+                          <span className="flex-shrink-0 whitespace-nowrap">
+                            {formatTransactionRowDate(row.date)}
                           </span>
-                          {!hasSubcategory && (
+                          {!isLoanPayment && !hasDescription && (
+                            <span
+                              className="hidden md:block truncate ml-4"
+                              title={categoryLine}
+                            >
+                              {categoryLine}
+                            </span>
+                          )}
+                          {!hasSubcategory && !isLoanPayment && !hasDescription && (
                             <span
                               className="md:hidden truncate ml-2 min-w-0"
                               title={categoryLine}

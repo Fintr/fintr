@@ -9,6 +9,7 @@ import {
   getUpcomingLoanDeadlines,
   LoanUpcomingDeadline,
 } from "@/utils/loan-upcoming-deadlines";
+import { loanCounterparty, loanHeadline } from "@/utils/loanDisplay";
 
 type LoanUpcomingSectionsProps = {
   loans: Loan[];
@@ -57,7 +58,11 @@ const DeadlineSection = ({
         </p>
       </div>
       <div className="space-y-2">
-        {deadlines.map((deadline) => (
+        {deadlines.map((deadline) => {
+          const headline = loanHeadline(deadline.loan);
+          const counterparty = loanCounterparty(deadline.loan);
+
+          return (
           <div
             key={deadline.loan.id}
             className="flex min-h-[72px] items-stretch gap-2"
@@ -73,7 +78,7 @@ const DeadlineSection = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="truncate text-sm font-medium text-primary">
-                    {deadline.loan.entityName}
+                    {headline}
                   </h4>
                   <span className={`flex-shrink-0 text-sm font-semibold ${textClass}`}>
                     {formatCurrency(
@@ -82,6 +87,11 @@ const DeadlineSection = ({
                     )}
                   </span>
                 </div>
+                {counterparty && (
+                  <p className="mt-1 truncate text-xs text-gray-600 dark:text-muted-foreground">
+                    {counterparty}
+                  </p>
+                )}
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
                     <CalendarClock className="h-3 w-3" />
@@ -121,7 +131,8 @@ const DeadlineSection = ({
               <span className="sr-only sm:not-sr-only sm:ml-1.5">Record</span>
             </Button>
           </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

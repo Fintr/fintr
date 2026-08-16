@@ -20,7 +20,7 @@ import {
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { usePreferLocalTransactionReads } from "@/hooks/useOfflineReadMode";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ScheduleTypeEnum, UpdateScopeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
 import { toast } from "sonner";
@@ -192,7 +192,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   const { api } = useAuthApi();
   const { currentSpace } = useSpaceContext(api);
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const preferLocal = useSkipCachedNetworkFetch();
+  const preferLocal = usePreferLocalTransactionReads(spaceCode);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
   const defaultTransactionCurrency = currentSpace?.defaultTransactionCurrency ?? null;
   const presenceSpaceId = currentSpace?.id || spaceCode;

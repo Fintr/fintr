@@ -2,6 +2,7 @@ import {
   getLocalResponseSnapshot,
   putLocalResponseSnapshot,
 } from "@/lib/local-db/response-cache";
+import type { QueryClient } from "@tanstack/react-query";
 import type { TransactionTag } from "@/types/transactionTagTypes";
 
 const tagsKey = (spaceCode: string): string =>
@@ -92,4 +93,53 @@ export const loadCachedTransactionTagsResponse = async (
     console.warn("[local-db] Failed to load cached transaction tags", error);
     return undefined;
   }
+};
+
+export const loadTransactionTags = async (
+  spaceCode: string,
+): Promise<TransactionTag[]> =>
+  (await loadCachedTransactionTagsResponse(spaceCode)) ?? [];
+
+export const upsertTransactionTagInList = (
+  tags: TransactionTag[],
+  tag: TransactionTag,
+): TransactionTag[] => {
+  const index = tags.findIndex((row) => row.id === tag.id);
+
+  if (index >= 0) {
+    const next = [...tags];
+    next[index] = tag;
+    return next;
+  }
+
+  return [...tags, tag];
+};
+
+export const removeTransactionTagFromList = (
+  tags: TransactionTag[],
+  tagId: string,
+): TransactionTag[] => tags.filter((tag) => tag.id !== tagId);
+
+export const replaceTransactionTagIdInList = (
+  tags: TransactionTag[],
+  localId: string,
+  serverId: string,
+): TransactionTag[] =>
+  tags.map((tag) => (tag.id === localId ? { ...tag, id: serverId } : tag));
+
+export const applyTransactionTagsToCaches = async (params: {
+  spaceCode: string;
+  tags: TransactionTag[];
+  queryClient?: QueryClient;
+}): Promise<void> => {
+  const { spaceCode, tags, queryClient } = params;
+
+  await cacheTransactionTagsResponse(spaceCode, tags);
+
+  if (!queryClient) {
+    return;
+  }
+
+  queryClient.setQueryData(["transactionTags", spaceCode], tags);
+  queryClient.setQueryData(["transactionTags", "local", spaceCode], tags);
 };

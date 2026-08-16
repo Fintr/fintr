@@ -9,6 +9,11 @@ vi.mock("@/hooks/usePlatformDetection", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard/",
+  useRouter: () => ({ prefetch: vi.fn() }),
+}));
+
+vi.mock("@/hooks/usePrefetchDashboardNavRoutes", () => ({
+  usePrefetchDashboardNavRoutes: () => undefined,
 }));
 
 vi.mock("@/components/dashboard/add-transaction-dialog", () => ({

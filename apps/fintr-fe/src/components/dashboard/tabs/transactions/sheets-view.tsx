@@ -15,7 +15,7 @@ import {
 } from "@/hooks/useAnchorTransactionsListToToday";
 import { resolveAttachmentsForTransaction } from "@/services/attachments/resolve";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { usePreferLocalTransactionReads } from "@/hooks/useOfflineReadMode";
 import { toast } from "sonner";
 import {
   Popover,
@@ -98,7 +98,7 @@ export function SheetsView({
     const lightboxRevokeRef = useRef<(() => void) | null>(null);
     const { api } = useAuthApi();
     const [spaceCode] = useLocalStorage("spaceCode", "");
-    const preferLocal = useSkipCachedNetworkFetch();
+    const preferLocal = usePreferLocalTransactionReads(spaceCode);
     
     // Get space context for currency
     const { currentSpace } = useSpaceContext(api);

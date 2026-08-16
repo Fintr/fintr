@@ -2,6 +2,7 @@ import { fetchTransactionsPage } from "@/services/transactions/queries";
 import {
   buildTransactionsFilterKey,
   cacheTransactionsPage,
+  loadAllTypeCachedRowsForFilterKey,
   loadCachedTransactionsInfiniteData,
   loadCachedTransactionsPageAt,
   mergeFetchedTransactionsIntoAllTimeCache,
@@ -11,16 +12,30 @@ import { buildTransactionsInfiniteQueryKey, resolveTransactionsFilterKeyForQuery
 import useAuthApi from "../useAuthApi";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
-import type { TransactionsPage } from "@/types/transactionTypes";
-import { useAtomValue } from "jotai";
+import type { IndexTransaction, TransactionsPage } from "@/types/transactionTypes";
 import { useEffect, useMemo } from "react";
 
-import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
 import { useLocalStorage } from "../useLocalStorage";
 import { serializeFilterValues } from "@/utils/transactionFilterValues";
 import type { TransactionEntryTypeFilter } from "@/utils/transactionEntryTypeFilter";
-import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { usePreferLocalTransactionReads } from "@/hooks/useOfflineReadMode";
 import { shouldFetchNextInfinitePage } from "./shouldFetchNextInfinitePage";
+
+const pagesAreLoaded = (
+  pages: TransactionsPage[] | undefined,
+): boolean => Boolean(pages?.length);
+
+const loadEntryTypeFallbackRows = async (
+  spaceId: string,
+  filterKey: string,
+  entryTypeFilter: TransactionEntryTypeFilter,
+): Promise<IndexTransaction[]> => {
+  if (entryTypeFilter === "all") {
+    return [];
+  }
+
+  return loadAllTypeCachedRowsForFilterKey(spaceId, filterKey);
+};
 
 export const useInfiniteTransactions = ({
   appliedCategories,
@@ -91,21 +106,7 @@ export const useInfiniteTransactions = ({
     [spaceCode, filterKey],
   );
 
-  const localCacheQuery = useQuery({
-    queryKey: localCacheQueryKey,
-    queryFn: async () =>
-      (await loadCachedTransactionsInfiniteData(spaceCode, filterKey)) ?? null,
-    enabled: Boolean(spaceCode),
-    staleTime: Infinity,
-    initialData: () =>
-      queryClient.getQueryData(localCacheQueryKey) ?? undefined,
-  });
-
-  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery, spaceCode);
-  const offlineSyncReady = useAtomValue(offlineSyncReadyAtom);
-
-  // After bootstrap, IndexedDB is the source of truth for every filter (including All + All Time).
-  const preferLocalIndexReads = skipNetworkFetch || offlineSyncReady;
+  const preferLocalIndexReads = usePreferLocalTransactionReads(spaceCode);
 
   const infiniteQueryKey = useMemo(
     () =>
@@ -137,11 +138,29 @@ export const useInfiniteTransactions = ({
     ],
   );
 
+  const localCacheQuery = useQuery({
+    queryKey: localCacheQueryKey,
+    queryFn: async () => {
+      const fallbackRows = await loadEntryTypeFallbackRows(
+        spaceCode,
+        filterKey,
+        entryType,
+      );
+
+      return (
+        (await loadCachedTransactionsInfiniteData(spaceCode, filterKey, {
+          fallbackRows: fallbackRows.length > 0 ? fallbackRows : undefined,
+        })) ?? null
+      );
+    },
+    enabled: Boolean(spaceCode),
+    staleTime: 0,
+  });
+
   const cachedInfiniteData = useMemo((): InfiniteData<TransactionsPage, number> | undefined => {
-    // Offline / entry-type reads must come from IndexedDB for the active filter.
-    if (preferLocalIndexReads && localCacheQuery.data?.pages?.length) {
+    if (pagesAreLoaded(localCacheQuery.data?.pages)) {
       return {
-        pages: localCacheQuery.data.pages.slice(0, 1),
+        pages: localCacheQuery.data!.pages.slice(0, 1),
         pageParams: [1],
       };
     }
@@ -150,42 +169,25 @@ export const useInfiniteTransactions = ({
       infiniteQueryKey,
     );
 
-    if (seeded?.pages?.length) {
+    if (pagesAreLoaded(seeded?.pages)) {
       return {
-        pages: seeded.pages.slice(0, 1),
+        pages: seeded!.pages.slice(0, 1),
         pageParams: [1],
       };
     }
 
-    if (!localCacheQuery.data) {
-      return undefined;
-    }
-
-    // Only the first page — further pages come from local infinite scroll.
-    return {
-      pages: localCacheQuery.data.pages.slice(0, 1),
-      pageParams: [1],
-    };
+    return undefined;
   }, [
     infiniteQueryKey,
     localCacheQuery.data,
     queryClient,
-    preferLocalIndexReads,
   ]);
-
-  const hasSeededPages = Boolean(cachedInfiniteData?.pages?.length);
-
-  const waitingForLocalCache =
-    preferLocalIndexReads &&
-    !hasSeededPages &&
-    (localCacheQuery.isPending || localCacheQuery.isFetching);
 
   const queryEnabled = manualOnly
     ? false
-    : (!!enabled
-        ? enabled && !!spaceCode && isAuthenticated
-        : (enabled || !!spaceCode) && isAuthenticated) &&
-      !waitingForLocalCache;
+    : !!enabled
+      ? enabled && !!spaceCode && isAuthenticated
+      : (enabled || !!spaceCode) && isAuthenticated;
 
   const {
     data,
@@ -209,10 +211,19 @@ export const useInfiniteTransactions = ({
       );
 
       if (preferLocalIndexReads && spaceCode) {
+        const fallbackRows = await loadEntryTypeFallbackRows(
+          spaceCode,
+          activeFilterKey,
+          entryType,
+        );
+
         const localPage = await loadCachedTransactionsPageAt(
           spaceCode,
           activeFilterKey,
           pageParam,
+          fallbackRows.length > 0
+            ? { fallbackRows }
+            : undefined,
         );
 
         if (localPage) {
@@ -240,7 +251,6 @@ export const useInfiniteTransactions = ({
 
       try {
         const page = await fetchTransactionsPage(api, { pageParam, queryKey });
-        // Keep optimistic `local:` rows (income/expense/transfer/fees) across remount refetch.
         const mergedPage =
           pageParam === 1 && spaceCode
             ? await mergePendingLocalIndexRowsIntoPage(
@@ -250,12 +260,9 @@ export const useInfiniteTransactions = ({
               )
             : page;
         if (spaceCode) {
-          // Every network page upserts into the all-time store so offline insights
-          // category filters have full transaction rows, not just page 1.
           void mergeFetchedTransactionsIntoAllTimeCache(spaceCode, [mergedPage]);
 
           if (pageParam === 1) {
-            // Cache must never fail the network query (IndexedDB clone errors, etc.)
             void cacheTransactionsPage(spaceCode, activeFilterKey, mergedPage).then(
               () => {
                 queryClient.setQueryData(localCacheQueryKey, {
@@ -269,10 +276,18 @@ export const useInfiniteTransactions = ({
         return mergedPage;
       } catch (fetchError) {
         if (pageParam === 1 && spaceCode) {
+          const fallbackRows = await loadEntryTypeFallbackRows(
+            spaceCode,
+            activeFilterKey,
+            entryType,
+          );
           const cached = await loadCachedTransactionsPageAt(
             spaceCode,
             activeFilterKey,
             1,
+            fallbackRows.length > 0
+              ? { fallbackRows }
+              : undefined,
           );
           if (cached) {
             return cached;
@@ -286,10 +301,9 @@ export const useInfiniteTransactions = ({
     enabled: queryEnabled,
     retry: false,
     refetchOnWindowFocus: !preferLocalIndexReads,
-    refetchOnMount: !preferLocalIndexReads,
-    staleTime: preferLocalIndexReads ? Infinity : 30000,
+    refetchOnMount: true,
+    staleTime: preferLocalIndexReads ? 0 : 30000,
     gcTime: 300000,
-    initialData: () => cachedInfiniteData,
     placeholderData: cachedInfiniteData,
   });
 
@@ -308,7 +322,6 @@ export const useInfiniteTransactions = ({
         }
       },
       {
-        // Prefetch before the sentinel reaches the exact bottom of the viewport.
         rootMargin: "280px 0px",
         threshold: 0,
       }
@@ -334,7 +347,7 @@ export const useInfiniteTransactions = ({
     data?.pages?.length,
   ]);
 
-  const hasCachedPages = Boolean(data?.pages?.length);
+  const hasLoadedPages = pagesAreLoaded(data?.pages);
 
   return {
     data,
@@ -345,11 +358,11 @@ export const useInfiniteTransactions = ({
     isFetchingNextPage,
     status,
     isError,
-    isSuccess: isSuccess || hasCachedPages,
+    isSuccess: isSuccess || hasLoadedPages,
     refetch,
     isLoading:
-      (isLoading || isFetching || (preferLocalIndexReads && localCacheQuery.isFetching))
-      && !hasCachedPages,
+      (isLoading || isFetching || localCacheQuery.isFetching)
+      && !hasLoadedPages,
     isShowingLocalCache: Boolean(localCacheQuery.data) && !isSuccess,
   };
 };
