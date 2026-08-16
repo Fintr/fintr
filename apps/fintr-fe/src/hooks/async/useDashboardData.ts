@@ -40,7 +40,20 @@ import { filterInsightsTransactions } from "@/services/insights/filter-insights-
 import { buildTransactionTotalsContext } from "@/services/insights/transaction-space-totals";
 import { loadTransactionsForInsightsRange } from "@/services/insights/load-local-sources";
 
-export const useDashboardData = (startDate?: string, endDate?: string) => {
+export type UseDashboardDataOptions = {
+  /**
+   * Insights tab has its own local pipeline — only hydrate category/account
+   * shell atoms without range transactions or summary network refetch.
+   */
+  shellOnly?: boolean;
+};
+
+export const useDashboardData = (
+  startDate?: string,
+  endDate?: string,
+  options?: UseDashboardDataOptions,
+) => {
+  const shellOnly = options?.shellOnly ?? false;
   const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
@@ -86,7 +99,7 @@ export const useDashboardData = (startDate?: string, endDate?: string) => {
     queryFn: async () =>
       (await loadCachedDashboardResponse(spaceCode, rangeStart, rangeEnd)) ??
       null,
-    enabled: Boolean(spaceCode && rangeStart && rangeEnd),
+    enabled: Boolean(spaceCode && rangeStart && rangeEnd && !shellOnly),
     staleTime: Infinity,
   });
 
@@ -111,7 +124,7 @@ export const useDashboardData = (startDate?: string, endDate?: string) => {
         rateLookup: totalsContext.rateLookup,
       };
     },
-    enabled: Boolean(spaceCode && rangeStart && rangeEnd),
+    enabled: Boolean(spaceCode && rangeStart && rangeEnd && !shellOnly),
     staleTime: Infinity,
   });
 
@@ -140,7 +153,7 @@ export const useDashboardData = (startDate?: string, endDate?: string) => {
       );
       return summaries;
     },
-    enabled: Boolean(spaceCode && isAuthenticated && !skipSummariesNetwork),
+    enabled: Boolean(spaceCode && isAuthenticated && !skipSummariesNetwork && !shellOnly),
     placeholderData: localSummariesQuery.data ?? undefined,
     staleTime: skipSummariesNetwork ? Infinity : 5 * 60 * 1000,
     refetchOnMount: !skipSummariesNetwork,
@@ -198,6 +211,10 @@ export const useDashboardData = (startDate?: string, endDate?: string) => {
   ]);
 
   const data = useMemo((): DashboardData | undefined => {
+    if (shellOnly) {
+      return undefined;
+    }
+
     if (shell && summariesLoaded && rangeStart && rangeEnd) {
       const transactionBundle = localTransactionsQuery.data;
       const transactions = transactionBundle?.transactions ?? [];
@@ -224,6 +241,7 @@ export const useDashboardData = (startDate?: string, endDate?: string) => {
     localCacheQuery.data,
     localTransactionsQuery.data,
     spaceCurrency,
+    shellOnly,
   ]);
 
   useEffect(() => {
@@ -236,8 +254,9 @@ export const useDashboardData = (startDate?: string, endDate?: string) => {
     void cacheDashboardResponse(spaceCode, data, rangeStart, rangeEnd);
   }, [data, spaceCode, rangeStart, rangeEnd, shell, summariesLoaded]);
 
-  const isLoading =
-    (
+  const isLoading = shellOnly
+    ? localShellQuery.isPending && !shell
+    : (
       (localSummariesQuery.isPending && !summariesLoaded)
       || (localShellQuery.isPending && !shell)
       || ((summariesQuery.isLoading || shellQuery.isLoading) && !data)

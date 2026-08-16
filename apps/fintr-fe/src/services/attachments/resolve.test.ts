@@ -6,7 +6,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetLocalDbForTests } from "@/lib/local-db";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
-import { putLocalAttachment } from "./local-store";
+vi.mock("@/lib/auth-storage", () => ({
+  AuthStorage: {
+    getAccessToken: () => null,
+  },
+}));
+
+vi.mock("@/lib/public-backend-url", () => ({
+  getPublicBackendUrl: () => undefined,
+}));
+
+import { putLocalAttachment, listAttachmentsForOwner } from "./local-store";
 import {
   resolveAttachmentsForTransaction,
   resolveEditAttachmentFile,
@@ -31,6 +41,7 @@ describe("attachments resolve", () => {
   afterEach(async () => {
     await resetLocalDbForTests();
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("returns blob URLs from local attachments when offline", async () => {
@@ -79,7 +90,7 @@ describe("attachments resolve", () => {
     expect(resolved?.name).toBe("receipt.jpg");
   });
 
-  it("falls back to remote detail files when online and no local blob", async () => {
+  it("downloads remote files into IndexedDB and returns blob URLs", async () => {
     vi.mocked(resolveTransactionDetail).mockResolvedValue({
       files: [
         {
@@ -90,17 +101,31 @@ describe("attachments resolve", () => {
         },
       ],
     });
+    const blob = new Blob(["receipt-bytes"], { type: "image/jpeg" });
+    const api = {
+      get: vi.fn(async () => ({ data: blob })),
+    };
 
     const result = await resolveAttachmentsForTransaction({
       spaceId: "space-a",
       transactionId: "server-tx-1",
       type: CombinedTransactionTypeEnum.EXPENSE,
-      preferLocal: false,
-      api: {} as AxiosInstance,
+      preferLocal: true,
+      api: api as AxiosInstance,
     });
 
     expect(result.images).toHaveLength(1);
-    expect(result.images[0]?.url).toContain("fintr-development");
-    expect(resolveTransactionDetail).toHaveBeenCalledOnce();
+    expect(result.images[0]?.url).toMatch(/^blob:/);
+    expect(result.images[0]?.filename).toBe("receipt.jpg");
+    expect(resolveTransactionDetail).toHaveBeenCalled();
+
+    const stored = await listAttachmentsForOwner({
+      spaceId: "space-a",
+      ownerType: "transaction",
+      ownerId: "server-tx-1",
+    });
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.source).toBe("remote_download");
+    result.revoke();
   });
 });

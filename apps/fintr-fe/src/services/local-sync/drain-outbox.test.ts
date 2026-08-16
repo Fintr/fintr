@@ -289,6 +289,58 @@ describe("drainOutboxForSpace", () => {
     ).toBe("receipt.jpg");
   });
 
+  it("hydrates attachment blobs from IndexedDB when draining updates", async () => {
+    const file = new File(["receipt"], "receipt.jpg", {
+      type: "image/jpeg",
+    });
+    const { putLocalAttachment } = await import(
+      "@/services/attachments/local-store"
+    );
+    const attachmentKey = await putLocalAttachment({
+      spaceId: "space-a",
+      ownerType: "transaction",
+      ownerId: "server-tx-1",
+      file,
+    });
+
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_TRANSACTION_UPDATE,
+      clientMutationId: "cid-upd-file",
+      payload: {
+        id: "server-tx-1",
+        amount: 40,
+        description: "Receipt expense",
+        transactionType: "expense",
+        categoryName: "Food",
+        accountName: "Cash",
+        date: "2026-08-08",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+        attachmentLocalKeys: [attachmentKey],
+      },
+    });
+
+    vi.mocked(updateTransaction).mockResolvedValue({ success: true });
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.processed).toBe(1);
+    expect(updateTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        id: "server-tx-1",
+        file: expect.any(File),
+      }),
+    );
+    expect(
+      (vi.mocked(updateTransaction).mock.calls[0]?.[1] as { file?: File }).file
+        ?.name,
+    ).toBe("receipt.jpg");
+  });
+
   it("drains pending transaction updates", async () => {
     await enqueueOutboxRecord({
       spaceId: "space-a",

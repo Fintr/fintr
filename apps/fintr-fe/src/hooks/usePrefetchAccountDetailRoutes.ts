@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 
 import type { Account } from "@/types/accountTypes";
 
-const accountDetailPath = (accountId: string): string =>
-  `/dashboard/space_settings/accounts/detail?accountId=${encodeURIComponent(accountId)}`;
+import { buildAccountDetailHref } from "@/utils/detailHrefs";
 
 /**
  * Prefetch account detail route payloads while online so the dev service worker
@@ -23,7 +22,7 @@ export const usePrefetchAccountDetailRoutes = (
     }
 
     for (const account of accounts) {
-      router.prefetch(accountDetailPath(account.id));
+      router.prefetch(buildAccountDetailHref(account.id));
     }
   }, [accounts, router]);
 };

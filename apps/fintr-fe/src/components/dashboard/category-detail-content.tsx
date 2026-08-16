@@ -14,7 +14,7 @@ import {
   buildCategoryDetailHref,
   CategoryKind,
   categoryKindToEnum,
-  findRootCategory,
+  findCategoryInTree,
 } from "@/utils/categoryManagement";
 import CategoryActionsMenu, {
   CategoryMenuItem,
@@ -56,7 +56,7 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
 
   const tree = kind === "income" ? incomeCategories : expenseCategories;
   const parent = useMemo(
-    () => findRootCategory(tree, categoryId),
+    () => findCategoryInTree(tree, categoryId)?.root ?? null,
     [tree, categoryId],
   );
 
@@ -217,10 +217,10 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
         </div>
 
         {subcategories.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center border rounded-lg bg-muted/20">
+          <div className="rounded-lg border border-border bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
             No subcategories yet. Add one to organize transactions under{" "}
             {parent.name}.
-          </p>
+          </div>
         ) : (
           <ul className="space-y-2">
             {subcategories.map((sub) => (

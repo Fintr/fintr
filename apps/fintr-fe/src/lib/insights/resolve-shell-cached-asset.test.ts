@@ -59,4 +59,17 @@ describe("resolveShellCachedAssetObjectUrl", () => {
       "fintr-shell-1",
     ]);
   });
+
+  it("includes the dev runtime cache so localhost preview can resolve badges", async () => {
+    const keys = vi
+      .fn()
+      .mockResolvedValue(["fintr-dev-runtime-v6", "fintr-shell-1", "other"]);
+
+    vi.stubGlobal("caches", { keys });
+
+    await expect(listShellCacheNames()).resolves.toEqual([
+      "fintr-shell-1",
+      "fintr-dev-runtime-v6",
+    ]);
+  });
 });

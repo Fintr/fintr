@@ -425,6 +425,45 @@ describe("CalculatorInput", () => {
 
       expect(mockOnChange).toHaveBeenCalledWith("123");
     });
+
+    it("registers rapid sequential digit taps without dropping input", async () => {
+      await act(async () => {
+        render(
+          <CalculatorInput
+            value=""
+            onChange={mockOnChange}
+            placeholder="0.00"
+          />,
+        );
+      });
+
+      fireEvent.focus(screen.getByPlaceholderText("0.00"));
+
+      const findCalculatorButton = (label: string) => {
+        const buttons = document.body.querySelectorAll(
+          "[data-calculator-keyboard-button]",
+        );
+
+        return Array.from(buttons).find(
+          (button) => button.textContent === label,
+        ) as HTMLButtonElement;
+      };
+
+      fireEvent.pointerDown(findCalculatorButton("1"), {
+        button: 0,
+        pointerId: 1,
+      });
+      fireEvent.pointerDown(findCalculatorButton("2"), {
+        button: 0,
+        pointerId: 2,
+      });
+      fireEvent.pointerDown(findCalculatorButton("3"), {
+        button: 0,
+        pointerId: 3,
+      });
+
+      expect(mockOnChange).toHaveBeenLastCalledWith("123");
+    });
   });
 
   describe("History handoff when opening another overlay", () => {

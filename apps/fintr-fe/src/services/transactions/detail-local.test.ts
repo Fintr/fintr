@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resetLocalDbForTests } from "@/lib/local-db";
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
@@ -8,6 +8,7 @@ import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
 import { upsertLocalIndexTransaction } from "./local-cache";
 import {
+  applyListRowMoneyToDetail,
   cacheTransactionDetail,
   enrichTransactionEditDetail,
   mapIndexTransactionToEditData,
@@ -15,11 +16,25 @@ import {
   resolveTransactionDetail,
   seedTransactionEditFromListRow,
 } from "./detail-local";
-import { putLocalAttachment } from "@/services/attachments/local-store";
+import {
+  listAttachmentsForOwner,
+  putLocalAttachment,
+} from "@/services/attachments/local-store";
+
+vi.mock("@/lib/auth-storage", () => ({
+  AuthStorage: {
+    getAccessToken: () => null,
+  },
+}));
+
+vi.mock("@/lib/public-backend-url", () => ({
+  getPublicBackendUrl: () => undefined,
+}));
 
 describe("transaction detail local", () => {
   afterEach(async () => {
     await resetLocalDbForTests();
+    vi.unstubAllGlobals();
   });
 
   it("maps an IndexedDB list row into edit-form shape synchronously for modal seed", () => {
@@ -162,6 +177,75 @@ describe("transaction detail local", () => {
     expect((enriched.data.file as File).name).toBe("receipt.jpg");
   });
 
+  it("downloads a remote receipt into IndexedDB during local-first edit enrichment", async () => {
+    const blob = new Blob(["remote-receipt"], { type: "image/jpeg" });
+    const api = {
+      get: vi.fn(async () => ({ data: blob })),
+    };
+
+    await upsertLocalIndexTransaction("space-a", {
+      id: "tx-remote",
+      date: "2026-08-08",
+      description: "Remote receipt",
+      amount: 40,
+      categoryName: "Food",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: true,
+    });
+
+    await cacheTransactionDetail("space-a", "tx-remote", {
+      id: "tx-remote",
+      date: "2026-08-08",
+      description: "Remote receipt",
+      amount: 40,
+      categoryName: "Food",
+      accountName: "Cash",
+      transactionType: "expense",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      scheduleType: ScheduleTypeEnum.ONE_TIME,
+      files: [
+        {
+          id: "file-1",
+          url: "https://s3.ap-southeast-1.amazonaws.com/fintr-development/receipt.jpg",
+          filename: "receipt.jpg",
+          contentType: "image/jpeg",
+        },
+      ],
+    });
+
+    const enriched = await enrichTransactionEditDetail({
+      api: api as never,
+      spaceId: "space-a",
+      transaction: {
+        id: "tx-remote",
+        date: "2026-08-08",
+        description: "Remote receipt",
+        amount: 40,
+        categoryName: "Food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: true,
+      },
+      preferLocal: true,
+    });
+
+    expect(enriched.data.file).toBeInstanceOf(File);
+    expect((enriched.data.file as File).name).toBe("receipt.jpg");
+
+    const stored = await listAttachmentsForOwner({
+      spaceId: "space-a",
+      ownerType: "transaction",
+      ownerId: "tx-remote",
+    });
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.source).toBe("remote_download");
+  });
+
   it("preferLocal uses list-row amount over a stale detail cache after an online edit", async () => {
     await cacheTransactionDetail("space-a", "tx-income", {
       id: "tx-income",
@@ -260,6 +344,46 @@ describe("transaction detail local", () => {
     });
   });
 
+  it("seeds GBP 200 from a conversion even when booked legs are both PHP", () => {
+    const seed = seedTransactionEditFromListRow({
+      id: "tx-gbp",
+      date: "2026-08-12",
+      description: "EXTEST2",
+      amount: 20_000,
+      amountCurrency: "PHP",
+      bookedAmount: 20_000,
+      bookedAmountCurrency: "PHP",
+      categoryName: "Medicine",
+      fromAccountName: "SAMPLE BDO LONG ASS NAME",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+      currencyConversion: {
+        originalAmount: 20_000,
+        originalCurrency: "GBP",
+        convertedAmount: 20_000,
+        convertedCurrency: "PHP",
+        exchangeRate: 100,
+        source: "recent",
+      },
+    });
+
+    expect(seed.data.amount).toBeCloseTo(200);
+    expect(seed.data.amountCurrency).toBe("GBP");
+    expect(
+      (seed.data as { original_display_currency?: string }).original_display_currency,
+    ).toBe("GBP");
+    expect(seed.data.currencyConversion).toMatchObject({
+      originalAmount: 200,
+      originalCurrency: "GBP",
+      convertedAmount: 20_000,
+      convertedCurrency: "PHP",
+      exchangeRate: 100,
+      source: "recent",
+    });
+  });
+
   it("preferLocal without cached detail still exposes GBP amount for edit", async () => {
     const listRow = {
       id: "tx-gbp",
@@ -287,6 +411,109 @@ describe("transaction detail local", () => {
       listRow,
       preferLocal: true,
     });
+
+    expect(detail.amount).toBe(200);
+    expect(detail.amountCurrency).toBe("GBP");
+    expect(detail.currencyConversion).toMatchObject({
+      originalAmount: 200,
+      originalCurrency: "GBP",
+      convertedAmount: 20_000,
+      convertedCurrency: "PHP",
+      exchangeRate: 100,
+    });
+  });
+
+  it("does not replace GBP conversion with space PHP when the list row has no booked leg", () => {
+    const detail = applyListRowMoneyToDetail(
+      {
+        id: "tx-gbp",
+        date: "2026-08-12",
+        description: "EXTEST2",
+        amount: 20_000,
+        amountCurrency: "PHP",
+        categoryName: "Medicine",
+        accountName: "SAMPLE BDO LONG ASS NAME",
+        transactionType: "expense",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+        hasCurrencyConversion: true,
+        original_display_amount: 200,
+        original_display_currency: "GBP",
+        currency_conversion: {
+          original_amount: 200,
+          original_currency: "GBP",
+          converted_amount: 20_000,
+          converted_currency: "PHP",
+          exchange_rate: 100,
+          source: "manual",
+        },
+      },
+      {
+        id: "tx-gbp",
+        date: "2026-08-12",
+        description: "EXTEST2",
+        amount: 20_000,
+        amountCurrency: "PHP",
+        categoryName: "Medicine",
+        fromAccountName: "SAMPLE BDO LONG ASS NAME",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+      },
+    );
+
+    expect(detail.amount).toBe(200);
+    expect(detail.amountCurrency).toBe("GBP");
+    expect(
+      (detail as { original_display_currency?: string }).original_display_currency,
+    ).toBe("GBP");
+    expect(detail.hasCurrencyConversion).toBe(true);
+    expect(
+      (detail as { currencyConversion?: { originalCurrency?: string } })
+        .currencyConversion?.originalCurrency,
+    ).toBe("GBP");
+  });
+
+  it("keeps camelCase currencyConversion when overlaying a space-currency list row", () => {
+    const detail = applyListRowMoneyToDetail(
+      {
+        id: "tx-gbp",
+        date: "2026-08-12",
+        description: "EXTEST2",
+        amount: 20_000,
+        amountCurrency: "PHP",
+        categoryName: "Medicine",
+        accountName: "SAMPLE BDO LONG ASS NAME",
+        transactionType: "expense",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+        hasCurrencyConversion: true,
+        originalDisplayAmount: 200,
+        originalDisplayCurrency: "GBP",
+        currencyConversion: {
+          originalAmount: 200,
+          originalCurrency: "GBP",
+          convertedAmount: 20_000,
+          convertedCurrency: "PHP",
+          exchangeRate: 100,
+          source: "manual",
+        },
+      },
+      {
+        id: "tx-gbp",
+        date: "2026-08-12",
+        description: "EXTEST2",
+        amount: 20_000,
+        amountCurrency: "PHP",
+        categoryName: "Medicine",
+        fromAccountName: "SAMPLE BDO LONG ASS NAME",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+      },
+    );
 
     expect(detail.amount).toBe(200);
     expect(detail.amountCurrency).toBe("GBP");

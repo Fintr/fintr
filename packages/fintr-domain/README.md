@@ -8,6 +8,8 @@ Fintr is moving **offline-first** ([FIN-193](https://www.kiron.app/app/projects/
 
 **Rule:** same business rules on both layers. FE uses this package; BE keeps operation contracts.
 
+This package covers **validation** (what is allowed), not **aggregates**. Monthly totals, balances, and other persisted money are computed on the backend and synced into IndexedDB. The frontend must not reimplement those totals. See `docs/offline-mode/FRONTEND_SOURCE_OF_TRUTH.md`.
+
 ## What's inside
 
 | Export | Purpose |

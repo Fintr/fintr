@@ -38,7 +38,6 @@ import { TransactionTotalsDisplay } from "./transaction-totals";
 import { TransactionEntryTypePills } from "./transaction-entry-type-pills";
 import type { TransactionEntryTypeFilter } from "@/utils/transactionEntryTypeFilter";
 import { entryTypeFilterToApiParam } from "@/utils/transactionEntryTypeFilter";
-import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
 import ScopeModal, { DeleteScope, Scope } from "@/components/dashboard/forms/ScopeModal";
 import { deleteTransactionLocalFirst } from "@/services/transactions/delete-local-first";
 import { deleteTransaction } from "@/services/transactions/mutation";
@@ -49,14 +48,16 @@ import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
 import { shouldShowV2Features, formatSummaryHeaderAmount } from "@/lib/utils";
+import { periodNetLabel } from "@/utils/periodNetLabel";
 import AddTransactionDialog from "../../add-transaction-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateTransactionsCsv } from "@/services/transactions/queries";
 import { getUserFacingExportErrorMessage } from "@/lib/user-facing-export-error";
 import { toast } from "sonner";
+import { transactionViewHref } from "@/utils/detailHrefs";
 import { ScrollToTopButton } from "@/components/ui/scroll-to-top-button";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   dateFilterTypeAtom,
   dateFilterStartDateAtom,
@@ -64,12 +65,11 @@ import {
   dateFilterMonthYearAtom,
   dateRangeToMonthYear,
 } from "@/atoms/dateFilterAtoms";
-import { pendingOpenTransactionAtom } from "@/atoms/transactionEditAtoms";
 import {
   expenseCategoryOptionsAtom,
   incomeCategoryOptionsAtom,
 } from "@/atoms/dashboardAtoms";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   areFilterValuesEqual,
   hasAppliedAccountFilters,
@@ -86,9 +86,11 @@ interface TransactionsTabProps {
 const TransactionsTab = ({ }: TransactionsTabProps) => {
   const showV2Features = shouldShowV2Features();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
   const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
   const categoryFromUrl = searchParams.get("category");
+  const tagFromUrl = searchParams.get("tag");
   const [spaceCode] = useLocalStorage("spaceCode", "");
   // Get filter type and dates from shared atoms (automatically determined by date range)
   const [filterType] = useAtom(dateFilterTypeAtom);
@@ -215,6 +217,24 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     incomeCategoryOptions,
   ]);
 
+  useEffect(() => {
+    if (!tagFromUrl) {
+      return;
+    }
+
+    setAppliedFilters((previous) => {
+      if (areFilterValuesEqual(previous.appliedTags, [tagFromUrl])) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        selectedTags: [tagFromUrl],
+        appliedTags: [tagFromUrl],
+      };
+    });
+  }, [tagFromUrl]);
+
   // Check if any filters are active (beyond default date range)
   const hasActiveFilters = () => {
     const { firstDay, lastDay } = getCurrentMonthDates();
@@ -265,12 +285,6 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const deleteSuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const editFocusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const deleteCancelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Edit dialog state
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<IndexTransaction | null>(null);
-  const pendingOpenTransaction = useAtomValue(pendingOpenTransactionAtom);
-  const setPendingOpenTransaction = useSetAtom(pendingOpenTransactionAtom);
 
   // Delete scope modal state
   const [deleteScopeModalOpen, setDeleteScopeModalOpen] = useState(false);
@@ -703,60 +717,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   };
 
   const handleEditRow = (transaction: IndexTransaction) => {
-    if (transaction.hasLoanPayment) {
-      toast.error("This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.");
-      return;
-    }
-    setSelectedTransaction(transaction);
-    setEditDialogOpen(true);
-  };
-
-  useEffect(() => {
-    if (!pendingOpenTransaction) {
-      return;
-    }
-
-    handleEditRow(pendingOpenTransaction);
-    setPendingOpenTransaction(null);
-  }, [pendingOpenTransaction, setPendingOpenTransaction]);
-
-  const handleEditSuccess = (options?: {
-    skipTransactionsInvalidate?: boolean;
-  }) => {
-    // Invalidate list queries unless the editor already patched them (transfers/fees).
-    if (!options?.skipTransactionsInvalidate) {
-      queryClient.invalidateQueries({
-        queryKey: ["transactions"],
-      });
-    }
-
-    // Invalidate dashboard and accounts to refresh financial summary and balances
-    queryClient.invalidateQueries({
-      queryKey: ["dashboard", "transactions", spaceCode],
-      exact: false,
-    });
-    queryClient.invalidateQueries({
-      queryKey: ["monthlyFinancialSummaries", spaceCode],
-      exact: false,
-    });
-    queryClient.invalidateQueries({
-      queryKey: ["dashboard", spaceCode, startDate, endDate],
-    });
-    queryClient.invalidateQueries({
-      queryKey: ["accounts"],
-      refetchType: "active",
-    });
-    // Invalidate insights so Insights tab stays in sync
-    queryClient.invalidateQueries({
-      queryKey: ["insights"],
-      refetchType: "active",
-      exact: false,
-    });
-  };
-
-  const handleEditClose = () => {
-    setEditDialogOpen(false);
-    setSelectedTransaction(null);
+    router.push(transactionViewHref(transaction));
   };
 
   const handleDeleteRow = (id: string) => {
@@ -859,19 +820,28 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     <>
       {/* Mobile Financial Summary Cards */}
       <div className="mb-4 space-y-4 px-2 md:hidden md:px-0">
-        {/* Savings Card */}
+        {/* Period net card */}
         <div className="relative overflow-hidden rounded-2xl bg-primary p-6 shadow-lg dark:border-0 dark:bg-card dark:shadow-sm">
           {/* Decorative shapes */}
           <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-blue-600/20 blur-3xl dark:bg-primary/10" />
           <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-purple-600/20 blur-2xl dark:bg-primary/5" />
           
           <div className="relative z-10">
-            <p className="text-gray-400 text-md mb-2">Savings</p>
+            <p className="text-gray-400 text-md mb-2">
+              {periodNetLabel(netSavings)}
+            </p>
             <div className="flex items-center justify-between">
-              <p className="text-white text-3xl font-bold">
-                {spaceCurrency === "PHP" ? `₱${netSavings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : netSavings.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              <p className={`text-3xl font-bold ${
+                netSavings < 0
+                  ? "text-red-200"
+                  : "text-white"
+              }`}>
+                {formatSummaryHeaderAmount(netSavings, spaceCurrency)}
               </p>
-              <Link href="/dashboard/space_settings/accounts">
+              <Link
+                href="/dashboard/insights"
+                aria-label="Open dashboard for this period"
+              >
                 <button className="bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors">
                   <ArrowRight className="h-5 w-5 text-white" />
                 </button>
@@ -1078,13 +1048,6 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           contentKey={`${data?.pages?.length ?? 0}:${isFetchingNextPage ? 1 : 0}`}
         />
       )}
-      
-      <EditTransactionDialog
-        transaction={selectedTransaction}
-        isOpen={editDialogOpen}
-        onClose={handleEditClose}
-        onSuccess={handleEditSuccess}
-      />
       
       <ScopeModal
         isOpen={deleteScopeModalOpen}

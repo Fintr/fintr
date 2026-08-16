@@ -18,6 +18,7 @@ export {
   deleteSpaceTransactions,
   getSpaceTransaction,
   isSpaceTransactionIndexComplete,
+  getEarliestSpaceTransactionDate,
   listSpaceTransactions,
   listSpaceTransactionsInDateRange,
   markSpaceTransactionIndexComplete,

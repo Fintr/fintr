@@ -22,6 +22,12 @@ import {
 } from "@/services/spaces/spaces-list-cache";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import { resolveOnboardingStep } from "@/hooks/resolve-onboarding-step";
+import { isWorkspaceContextBlocking } from "@/lib/app-loading-gates";
+import {
+  isTutorialPlatformCompleted,
+  resolvePlatformTutorialCompletion,
+  writeLocalTutorialCompletion,
+} from "@/services/auth/tutorial-completion";
 
 const getPersistedSpaceCode = (): string => {
   if (typeof window === "undefined") {
@@ -44,8 +50,8 @@ type CurrentUserHandlers = {
   setSpaceCode: (value: string) => void;
   setIsAdmin: (value: boolean) => void;
   setOnboardingStep: (value: string) => void;
-  setDesktopTutorialCompleted: (value: boolean) => void;
-  setMobileTutorialCompleted: (value: boolean) => void;
+  setDesktopTutorialCompleted: (value: string | null) => void;
+  setMobileTutorialCompleted: (value: string | null) => void;
   setTutorialDataLoaded: (value: boolean) => void;
 };
 
@@ -98,9 +104,6 @@ const applyWorkspaceContext = (
   const fetchedSpaceCode = payload?.data?.spaceCode;
   const fetchedIsAdmin = payload?.data?.isAdmin;
   const fetchedOnboardingStep = payload?.data?.onboardingStep;
-  const fetchedDesktopTutorial = payload?.data?.desktopTutorial;
-  const fetchedMobileTutorial = payload?.data?.mobileTutorial;
-
   const resolvedSpaceCode =
     fetchedSpaceCode || spacePresence.spaceCode || getPersistedSpaceCode();
   const hasSpace = Boolean(resolvedSpaceCode || spacePresence.hasSpace);
@@ -116,11 +119,24 @@ const applyWorkspaceContext = (
     resolveOnboardingStep(fetchedOnboardingStep, hasSpace),
   );
 
-  if (fetchedDesktopTutorial !== undefined) {
-    handlers.setDesktopTutorialCompleted(fetchedDesktopTutorial);
+  const desktopCompletedAt = resolvePlatformTutorialCompletion("desktop", payload);
+  const mobileCompletedAt = resolvePlatformTutorialCompletion("mobile", payload);
+
+  handlers.setDesktopTutorialCompleted(desktopCompletedAt);
+  handlers.setMobileTutorialCompleted(mobileCompletedAt);
+
+  if (
+    desktopCompletedAt
+    && isTutorialPlatformCompleted(payload?.data?.desktopTutorial)
+  ) {
+    writeLocalTutorialCompletion("desktop", desktopCompletedAt);
   }
-  if (fetchedMobileTutorial !== undefined) {
-    handlers.setMobileTutorialCompleted(fetchedMobileTutorial);
+
+  if (
+    mobileCompletedAt
+    && isTutorialPlatformCompleted(payload?.data?.mobileTutorial)
+  ) {
+    writeLocalTutorialCompletion("mobile", mobileCompletedAt);
   }
 
   handlers.setTutorialDataLoaded(true);
@@ -142,6 +158,7 @@ export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = f
     queryFn: async () => (await loadCachedCurrentUserResponse()) ?? null,
     enabled: queryEnabled,
     staleTime: Infinity,
+    networkMode: "always",
   });
 
   const localSpacesQuery = useQuery({
@@ -149,6 +166,7 @@ export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = f
     queryFn: async () => (await loadCachedSpacesList()) ?? null,
     enabled: queryEnabled,
     staleTime: Infinity,
+    networkMode: "always",
   });
 
   const skipNetworkFetch = useSkipCachedNetworkFetch(localCurrentUserQuery);
@@ -299,15 +317,18 @@ export function useGetSpaceCode(api: AxiosInstance, isAuthenticated: boolean = f
     currentUserQuery.isSuccess ||
     (localCurrentUserQuery.data != null && skipNetworkFetch) ||
     (currentUserQuery.isError && onboardingStep !== null);
-  const isUserContextLoading =
-    queryEnabled &&
-    !isUserContextResolved &&
-    (currentUserQuery.isPending ||
+  const isUserContextLoading = isWorkspaceContextBlocking({
+    queryEnabled,
+    isUserContextResolved,
+    hasPersistedSpaceCode: Boolean(spaceCode || getPersistedSpaceCode()),
+    queriesBusy:
+      currentUserQuery.isPending ||
       currentUserQuery.isFetching ||
       localCurrentUserQuery.isPending ||
       localSpacesQuery.isPending ||
       isVerifyingSpaces ||
-      isResolvingSpaceFallback);
+      isResolvingSpaceFallback,
+  });
 
   return {
     spaceCode,

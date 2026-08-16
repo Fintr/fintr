@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
 
 import {
   Card,
@@ -14,6 +15,8 @@ import TagList from "@/components/dashboard/tag-list";
 import { useTransactionTags } from "@/hooks/async/useTransactionTags";
 
 export function TagsPageContent() {
+  const searchParams = useSearchParams();
+  const highlightTagId = searchParams.get("tagId") ?? undefined;
   const {
     tags,
     createTag,
@@ -37,6 +40,7 @@ export function TagsPageContent() {
         <CardTitle className="text-2xl text-primary">Tags</CardTitle>
         <CardDescription>
           Create colored tags for trips, projects, and other cross-category labels.
+          A default tag is added automatically to new expenses, income, and transfers.
         </CardDescription>
       </CardHeader>
 
@@ -59,6 +63,7 @@ export function TagsPageContent() {
         ) : (
           <TagList
             tags={tags}
+            highlightTagId={highlightTagId}
             onAdd={async (name, color) => {
               await createTag({ name, color });
               toast.success("Tag created");
@@ -78,7 +83,9 @@ export function TagsPageContent() {
             onToggleDefault={async (tagId) => {
               const updated = await toggleDefaultTag(tagId);
               toast.success(
-                updated.isDefault ? "Default tag set" : "Default tag unset",
+                updated.isDefault
+                  ? "Default tag set. New expenses, income, and transfers will include it."
+                  : "Default tag unset",
               );
             }}
             onGenerateStyleImage={generateStyleImage}

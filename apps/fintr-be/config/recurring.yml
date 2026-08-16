@@ -31,6 +31,10 @@ development:
     class: Sync::TrimChangeLogJob
     queue: default
     schedule: every day
+  sync_daily_exchange_rates:
+    class: ExchangeRates::SyncDailyRatesJob
+    queue: default
+    schedule: "0 0 * * * Asia/Manila"
 
 staging:
   check_duplicate_today:
@@ -69,6 +73,10 @@ staging:
     class: Sync::TrimChangeLogJob
     queue: default
     schedule: "0 2 * * * Asia/Manila"
+  sync_daily_exchange_rates:
+    class: ExchangeRates::SyncDailyRatesJob
+    queue: default
+    schedule: "0 0 * * * Asia/Manila"
 
 production:
   check_duplicate_today:
@@ -107,3 +115,7 @@ production:
     class: Sync::TrimChangeLogJob
     queue: default
     schedule: "0 2 * * * Asia/Manila"
+  sync_daily_exchange_rates:
+    class: ExchangeRates::SyncDailyRatesJob
+    queue: default
+    schedule: "0 0 * * * Asia/Manila"

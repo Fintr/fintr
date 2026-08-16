@@ -7,6 +7,7 @@ import {
   shouldShowAmountFxInEdit,
   shouldUseStoredConversionForPreview,
   transactionNeedsConversion,
+  withEditOriginalCurrency,
 } from "./amountPickerTargetCurrency";
 
 describe("resolveAmountPickerTargetCurrency", () => {
@@ -217,5 +218,11 @@ describe("shouldPreviewConversionOnlyInEdit", () => {
         effectiveSpaceCurrency: "PHP",
       }),
     ).toBe(false);
+  });
+});
+
+describe("withEditOriginalCurrency", () => {
+  it("prepends the original currency when no account uses it", () => {
+    expect(withEditOriginalCurrency(["PHP"], "GBP")).toEqual(["GBP", "PHP"]);
   });
 });

@@ -217,7 +217,9 @@ const drainTransactionUpdate = async (params: {
   record: LocalOutboxRecord;
 }): Promise<"ok" | "network" | "failed"> => {
   const { api, record } = params;
-  const payload = record.payload as UpdateTransactionType;
+  const payload = await hydrateCreatePayload(
+    record.payload as UpdateTransactionType & AttachmentOutboxFields,
+  );
 
   try {
     await updateTransaction(api, payload);
@@ -500,7 +502,9 @@ const drainTransferUpdate = async (params: {
   record: LocalOutboxRecord;
 }): Promise<"ok" | "network" | "failed"> => {
   const { api, record } = params;
-  const payload = record.payload as UpdateTransferType;
+  const payload = await hydrateCreatePayload(
+    record.payload as UpdateTransferType & AttachmentOutboxFields,
+  );
 
   try {
     await updateTransfer(api, payload);

@@ -1,7 +1,18 @@
 #!/usr/bin/env ruby
-# Run Solid Queue inside Puma so `bin/dev` processes jobs without a separate
-# `bin/jobs` process. Production/staging still use a dedicated jobs process
-# (see config/deploy.yml); opt out locally with SOLID_QUEUE_IN_PUMA=0.
-ENV["SOLID_QUEUE_IN_PUMA"] = "1" unless ENV.key?("SOLID_QUEUE_IN_PUMA")
+# frozen_string_literal: true
 
-exec "./bin/rails", "server", *ARGV
+require "fileutils"
+
+APP_ROOT = File.expand_path("..", __dir__)
+
+FileUtils.chdir(APP_ROOT)
+
+unless system("command -v overmind >/dev/null 2>&1")
+  warn "overmind is not installed. Install with: brew install overmind"
+  warn "Falling back to single-process dev (Solid Queue inside Puma)."
+  ENV["SOLID_QUEUE_IN_PUMA"] = "1" unless ENV.key?("SOLID_QUEUE_IN_PUMA")
+  ENV["SOLID_QUEUE_BOOT_SYNC"] = "1" unless ENV.key?("SOLID_QUEUE_BOOT_SYNC")
+  exec "./bin/rails", "server", *ARGV
+end
+
+exec "overmind", "start", "-f", "Procfile", *ARGV

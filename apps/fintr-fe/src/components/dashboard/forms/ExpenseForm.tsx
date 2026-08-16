@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -40,9 +40,9 @@ import {
   parseCategoryPickerValue,
 } from "@/types/categoryTreeTypes";
 import { UpdateTransactionType } from "@/types/transactionTypes";
-import NotesAutocomplete from "@/components/ui/notes-autocomplete";
 import FileUploadField from "./FileUploadField";
 import TransactionEntityField from "./TransactionEntityField";
+import TransactionDescriptionField from "./TransactionDescriptionField";
 import { createDisplayFileFromDraft } from "@/utils/fileUtils";
 import { useTransactionDrafts } from "@/hooks/async/useTransactionDrafts";
 import DraftItems from "./DraftItems";
@@ -53,7 +53,7 @@ import {
   AmountWithRatePicker,
   type ConversionSnapshot,
 } from "./AmountWithRatePicker";
-import { resolvePrefillAmountCurrency, isUploadableFile, buildTransactionFileUpdateFields } from "@/utils/formUtils";
+import { resolvePrefillAmountCurrency, buildTransactionFileUpdateFields } from "@/utils/formUtils";
 import {
   editLockedAccountLedgerCurrency,
   isAccountSelectOptionDisabledForEdit,
@@ -72,8 +72,18 @@ import {
   shouldShowAmountFxInEdit,
   shouldUseStoredConversionForPreview,
   transactionHadStoredConversion,
+  withEditOriginalCurrency,
 } from "@/utils/amountPickerTargetCurrency";
 import { positiveTransactionFormAmountString } from "@/utils/transactionFormAmount";
+import {
+  amountDirtySignature,
+  conversionDirtySignature,
+  dateDirtySignature,
+  fileDirtySignature,
+  isEditSnapshotDirty,
+  tagIdsDirtySignature,
+  useAttachmentDirtyBaseline,
+} from "@/utils/transactionEditDirty";
 
 // Keep Zod schemas as they are used by the adapter and nested forms
 const categorySchema = z.object({
@@ -136,6 +146,7 @@ interface ExpenseFormProps {
   onAddCustomAccount?: (accountName: string) => void;
   onSubmitSuccess?: (data: any) => void | Promise<void>; // Renamed for clarity
   onCancel?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
   formRef?: React.RefObject<HTMLFormElement | null>; // Keep if needed for external interaction
   // Edit mode props
   id?: string;
@@ -164,6 +175,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   onAddCustomAccount,
   onSubmitSuccess,
   onCancel,
+  onDirtyChange,
   formRef,
   id,
   initialData,
@@ -215,17 +227,36 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           .filter((c): c is string => Boolean(c))
       )
     );
-    const codes = fromAccounts.length > 0 ? fromAccounts : ["PHP"];
+    let codes = fromAccounts.length > 0 ? fromAccounts : ["PHP"];
     // Include space default so it can be pre-selected even if no account uses it yet
     if (
       defaultTransactionCurrency &&
       defaultTransactionCurrency.length === 3 &&
       !codes.includes(defaultTransactionCurrency)
     ) {
-      return [defaultTransactionCurrency, ...codes];
+      codes = [defaultTransactionCurrency, ...codes];
     }
-    return codes;
-  }, [accountOptions, defaultTransactionCurrency]);
+
+    if (!isEditMode || !initialData) {
+      return codes;
+    }
+
+    const data = initialData as Record<string, unknown>;
+    const conversion = (
+      data.currencyConversion ?? data.currency_conversion
+    ) as Record<string, unknown> | undefined;
+
+    return withEditOriginalCurrency(
+      codes,
+      String(
+        data.originalDisplayCurrency
+        ?? data.original_display_currency
+        ?? conversion?.originalCurrency
+        ?? conversion?.original_currency
+        ?? "",
+      ),
+    );
+  }, [accountOptions, defaultTransactionCurrency, isEditMode, initialData]);
 
   const { api } = useAuthApi();
 
@@ -773,11 +804,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         isEditMode,
         hadAttachmentOnLoad: hadAttachmentOnLoadRef.current,
         file: formState.file,
+        initialFile: initialData?.file ?? null,
       });
 
       const transactionData = {
         amount: numberFormatting.cleanForBackend(formState.amount),
-        description: formState.description || "",
+        description: formState.description?.trim() ?? "",
         transactionType: "expense" as const,
         ...categoryFields,
         accountName: formState.accountName,
@@ -1086,6 +1118,87 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
   const maxDate = endOfMonth(new Date());
   const currentYear = new Date().getFullYear();
+  const attachmentBaseline = useAttachmentDirtyBaseline(
+    initialData?.id,
+    initialData?.file,
+  );
+  const hasUnsavedEdit = isEditSnapshotDirty(
+    isEditMode && Boolean(initialData),
+    {
+      date: dateDirtySignature(date),
+      amount: amountDirtySignature(amountInput.displayValue),
+      amountCurrency,
+      description: formState.description || "",
+      categoryName: formState.categoryName || "",
+      accountName: formState.accountName || "",
+      scheduleType: formState.scheduleType,
+      repeatInterval: formState.repeatInterval || "",
+      installmentPeriod: formState.installmentPeriod || "",
+      entityName,
+      tagIds: tagIdsDirtySignature(selectedTagIds),
+      file: fileDirtySignature(formState.file),
+      conversion: conversionDirtySignature(conversionSnapshot),
+    },
+    {
+      date: dateDirtySignature(
+        initialData?.date ? new Date(initialData.date) : undefined,
+      ),
+      amount: amountDirtySignature(
+        (initialData as { originalDisplayAmount?: unknown } | undefined)
+          ?.originalDisplayAmount
+        ?? (initialData as { original_display_amount?: unknown } | undefined)
+          ?.original_display_amount
+        ?? initialData?.currencyConversion?.originalAmount
+        ?? initialData?.amount,
+      ),
+      amountCurrency:
+        String(
+          (initialData as { originalDisplayCurrency?: string } | undefined)
+            ?.originalDisplayCurrency
+          ?? (initialData as { original_display_currency?: string } | undefined)
+            ?.original_display_currency
+          ?? initialData?.currencyConversion?.originalCurrency
+          ?? (initialData as { amountCurrency?: string } | undefined)
+            ?.amountCurrency
+          ?? amountCurrency,
+        ),
+      description: initialData?.description || "",
+      categoryName:
+        categoryPickerValueFromReceiptOrTransaction(
+          {
+            categoryId: initialData?.categoryId,
+            subcategoryId: initialData?.subcategoryId,
+            categoryName: initialData?.categoryName,
+          },
+          categoryOptionsRaw,
+        ) || initialData?.categoryName || "",
+      accountName: initialData?.accountName || "",
+      scheduleType: initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME,
+      repeatInterval: initialData?.repeatInterval || "",
+      installmentPeriod: initialData?.installmentPeriod?.toString() || "",
+      entityName: initialData?.entityName || "",
+      tagIds: tagIdsDirtySignature(
+        initialData?.tags?.map((tag) => tag.id) ?? initialData?.tagIds ?? [],
+      ),
+      file: attachmentBaseline,
+      conversion: conversionDirtySignature(
+        initialData?.currencyConversion
+          ? {
+              originalCurrency: initialData.currencyConversion.originalCurrency,
+              targetCurrency: initialData.currencyConversion.convertedCurrency,
+              exchangeRate: initialData.currencyConversion.exchangeRate,
+              exchangeRateSource:
+                (initialData.currencyConversion.source as ConversionSnapshot["exchangeRateSource"])
+                || "manual",
+            }
+          : null,
+      ),
+    },
+  );
+
+  useLayoutEffect(() => {
+    onDirtyChange?.(hasUnsavedEdit);
+  }, [hasUnsavedEdit, onDirtyChange]);
 
   return (
     <form
@@ -1216,51 +1329,28 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TransactionScheduleFields
-            scheduleType={formState.scheduleType}
-            onScheduleTypeChange={(value) => handleFieldChange("scheduleType", value)}
-            scheduleTypeOptions={EXPENSE_SCHEDULE_TYPE_OPTIONS}
-            repeatInterval={formState.repeatInterval}
-            onRepeatIntervalChange={(value) => handleFieldChange("repeatInterval", value)}
-            showRepeatInterval={scheduleType === ScheduleTypeEnum.REPEAT}
-            scheduleTypeErrors={formSubmitted ? formErrors.scheduleType : undefined}
-            repeatIntervalErrors={formSubmitted ? formErrors.repeatInterval : undefined}
-          >
-            {scheduleType === ScheduleTypeEnum.INSTALLMENT && (
-              <div className="space-y-2">
-                <Label htmlFor="installmentPeriod" className="text-sm">Number of Months</Label>
-                <Input
-                  id="installmentPeriod"
-                  name="installmentPeriod"
-                  value={formState.installmentPeriod || ""}
-                  onChange={(e) => handleFieldChange("installmentPeriod", e.target.value)}
-                  type="number"
-                  placeholder="Number of months"
-                  className={`text-sm ${formSubmitted && formErrors.installmentPeriod ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                />
-                {formSubmitted && formErrors.installmentPeriod?.map((error) => (
-                  <FormError key={error}>{error}</FormError>
-                ))}
-              </div>
-            )}
-          </TransactionScheduleFields>
+        <TransactionDescriptionField
+          id="description"
+          value={formState.description || ""}
+          onChange={(value) => handleFieldChange("description", value)}
+          categoryName={formState.categoryName}
+          transactionType="expense"
+        />
 
-          <FormControlField label="Expense Category" htmlFor="category">
-            <GridPicker
-              pickerKind="category"
-              label="Expense Category"
-              hideLabel
-              value={formState.categoryName}
-              onChange={(v) => handleFieldChange("categoryName", v)}
-              categories={categoryOptions}
-              error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
-              categoryType={CategoryTypeEnum.EXPENSE}
-              onCategoryCreated={handleCategoryCreated}
-              disabled={isCategoryLockedForEdit}
-            />
-          </FormControlField>
-        </div>
+        <FormControlField label="Expense Category" htmlFor="category">
+          <GridPicker
+            pickerKind="category"
+            label="Expense Category"
+            hideLabel
+            value={formState.categoryName}
+            onChange={(v) => handleFieldChange("categoryName", v)}
+            categories={categoryOptions}
+            error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
+            categoryType={CategoryTypeEnum.EXPENSE}
+            onCategoryCreated={handleCategoryCreated}
+            disabled={isCategoryLockedForEdit}
+          />
+        </FormControlField>
         {formSubmitted && formErrors.categoryName?.map((error) => (
           <FormError key={error}>{error}</FormError>
         ))}
@@ -1306,6 +1396,35 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           onChange={setEntityName}
         />
 
+        <TransactionScheduleFields
+          scheduleType={formState.scheduleType}
+          onScheduleTypeChange={(value) => handleFieldChange("scheduleType", value)}
+          scheduleTypeOptions={EXPENSE_SCHEDULE_TYPE_OPTIONS}
+          repeatInterval={formState.repeatInterval}
+          onRepeatIntervalChange={(value) => handleFieldChange("repeatInterval", value)}
+          showRepeatInterval={scheduleType === ScheduleTypeEnum.REPEAT}
+          scheduleTypeErrors={formSubmitted ? formErrors.scheduleType : undefined}
+          repeatIntervalErrors={formSubmitted ? formErrors.repeatInterval : undefined}
+        >
+          {scheduleType === ScheduleTypeEnum.INSTALLMENT && (
+            <div className="space-y-2">
+              <Label htmlFor="installmentPeriod" className="text-sm">Number of Months</Label>
+              <Input
+                id="installmentPeriod"
+                name="installmentPeriod"
+                value={formState.installmentPeriod || ""}
+                onChange={(e) => handleFieldChange("installmentPeriod", e.target.value)}
+                type="number"
+                placeholder="Number of months"
+                className={`text-sm ${formSubmitted && formErrors.installmentPeriod ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+              />
+              {formSubmitted && formErrors.installmentPeriod?.map((error) => (
+                <FormError key={error}>{error}</FormError>
+              ))}
+            </div>
+          )}
+        </TransactionScheduleFields>
+
         <TagMultiPicker
           tags={availableTags}
           value={selectedTagIds}
@@ -1321,27 +1440,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           disabled={Boolean(editingLockedReason)}
         />
 
-        <div className="min-w-0 space-y-2">
-          <div className="flex items-baseline justify-between gap-3">
-            <Label htmlFor="description" className="text-sm font-medium text-primary">
-              Note
-            </Label>
-            <span className="text-xs text-muted-foreground">Optional</span>
-          </div>
-          <NotesAutocomplete
-            id="description"
-            value={formState.description || ""}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-              handleFieldChange("description", e.target.value)
-            }
-            categoryName={formState.categoryName}
-            transactionType="expense"
-            placeholder="Add additional details"
-            className="text-sm"
-          />
-        </div>
-
-        {/* File Upload Field */}
         <FileUploadField
           file={formState.file}
           onFileChange={handleFileChange}
@@ -1370,8 +1468,15 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           <Button 
             type="submit" 
             className="bg-primary hover:bg-primary/80 text-sm" 
-            disabled={isSubmitting || Boolean(editingLockedReason)}
-            title={editingLockedReason ?? undefined}
+            disabled={
+              isSubmitting
+              || Boolean(editingLockedReason)
+              || (isEditMode && !hasUnsavedEdit)
+            }
+            title={
+              editingLockedReason
+              ?? (isEditMode && !hasUnsavedEdit ? "No changes to save" : undefined)
+            }
             data-tutorial-target="add-expense-button"
           >
             {isSubmitting ? (isEditMode ? "Updating Expense..." : "Adding Expense...") : (isEditMode ? "Update Expense" : "Add Expense")}

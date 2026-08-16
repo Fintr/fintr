@@ -29,6 +29,10 @@ import {
 } from "@/utils/indexTransactionDisplay";
 import { formatTransactionRowDate, getLocalIsoDateKey } from "@/utils/dateUtils";
 import { activityShowsCalculatedIndicator } from "@/utils/activityDisplay";
+import {
+  transactionEntityLabel,
+  transactionRowTitle,
+} from "@/utils/transactionDescription";
 
 interface SheetsViewProps {
     isPending: boolean;
@@ -227,6 +231,13 @@ export function SheetsView({
                       const isoDay = getLocalIsoDateKey(transaction.date);
                       const isFirstRowOfDay = isoDay !== lastIsoDay;
                       lastIsoDay = isoDay;
+                      const merchantLine = transactionEntityLabel(
+                        transaction.entityName,
+                      );
+                      const descriptionLine =
+                        transactionRowTitle({
+                          description: transaction.description,
+                        }) || "—";
 
                       return (
                       <Fragment key={transaction.id}>
@@ -410,7 +421,17 @@ export function SheetsView({
                                 onKeyDown(e, transaction, "description")
                               }
                             >
-                              {transaction.description}
+                              <div className="min-w-0">
+                                <div>{descriptionLine}</div>
+                                {merchantLine ? (
+                                  <div
+                                    className="truncate text-xs text-muted-foreground"
+                                    title={merchantLine}
+                                  >
+                                    {merchantLine}
+                                  </div>
+                                ) : null}
+                              </div>
                             </div>
                           )}
                         </td>

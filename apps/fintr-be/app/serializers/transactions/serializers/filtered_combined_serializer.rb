@@ -69,6 +69,37 @@ module Transactions
         record.try(:loan_id)
       end
 
+      field :entity_id do |record|
+        transactable = record.transactable
+        next transactable.entity_id if transactable.respond_to?(:entity_id)
+        next transactable.loan.entity_id if transactable.respond_to?(:loan) && transactable.loan.present?
+
+        nil
+      end
+
+      field :account_id do |record|
+        transactable = record.transactable
+        next transactable.account_id if transactable.respond_to?(:account_id)
+
+        nil
+      end
+
+      field :from_account_id do |record|
+        transactable = record.transactable
+        next transactable.from_account_id if transactable.respond_to?(:from_account_id)
+        next transactable.account_id if record.transactable_type == "Transactions::Expense"
+
+        nil
+      end
+
+      field :to_account_id do |record|
+        transactable = record.transactable
+        next transactable.to_account_id if transactable.respond_to?(:to_account_id)
+        next transactable.account_id if record.transactable_type == "Transactions::Income"
+
+        nil
+      end
+
       field :entity_name do |record|
         record.try(:entity_name)
       end

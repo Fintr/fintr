@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthStorage } from '@/lib/auth-storage';
 import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
+import { DEFAULT_AUTHENTICATED_PATH } from '@/lib/auth-routes';
 
 // Global flag to prevent processing during auth flows
 let globalAuthLock = false;
@@ -91,7 +92,7 @@ export default function DeepLinkHandler() {
           }
           
           // Parse the URL scheme (e.g., fintrapp://dashboard, capacitor://localhost/auth-callback?code=...)
-          let path = '/dashboard';
+          let path = DEFAULT_AUTHENTICATED_PATH;
           let queryParams = '';
           
           try {
@@ -104,10 +105,10 @@ export default function DeepLinkHandler() {
                 // Split path and query params
                 if (pathAndQuery.includes('?')) {
                   const [parsedPath, query] = pathAndQuery.split('?');
-                  path = parsedPath || '/dashboard';
+                  path = parsedPath || DEFAULT_AUTHENTICATED_PATH;
                   queryParams = query || '';
                 } else {
-                  path = pathAndQuery || '/dashboard';
+                  path = pathAndQuery || DEFAULT_AUTHENTICATED_PATH;
                 }
                 
                 // Ensure leading slash
@@ -172,8 +173,8 @@ export default function DeepLinkHandler() {
             const isAuthReady = authData && AuthStorage.isAuthenticated();
             
             if (isAuthReady) {
-              console.log('✅ Auth confirmed ready, navigating to dashboard');
-              router.push('/dashboard');
+              console.log('✅ Auth confirmed ready, navigating to home');
+              router.push(DEFAULT_AUTHENTICATED_PATH);
             } else {
               console.error('❌ Auth not ready after token exchange');
               router.push('/login');

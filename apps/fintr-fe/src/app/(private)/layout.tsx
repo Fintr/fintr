@@ -25,6 +25,12 @@ import {
   calculateHeaderSpacerHeight,
 } from "@/lib/platform-detection";
 import { isDashboardShellRoute } from "@/lib/dashboard-shell-route";
+import {
+  shouldShowOfflineSyncScreen,
+  shouldShowPrivateContextLoadingScreen,
+} from "@/lib/app-loading-gates";
+import { readOfflineSyncReadyHint } from "@/lib/local-db/sync-state";
+import { markAppShellReady } from "@/lib/app-shell-state";
 import { WeeklyFeedbackPrompt } from "@/components/feedback/weekly-feedback-prompt";
 import { MaintenanceScreen } from "@/components/maintenance/maintenance-screen";
 import { isMaintenanceModeEnabled } from "@/lib/maintenance-mode";
@@ -32,6 +38,14 @@ import { OfflineSyncScreen } from "@/components/offline/offline-sync-screen";
 import { useHydrateOfflineSyncReady } from "@/hooks/useHydrateOfflineSyncReady";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { useOutboxDrain } from "@/hooks/useOutboxDrain";
+
+const PrivateShellReadyMarker = () => {
+  useEffect(() => {
+    markAppShellReady();
+  }, []);
+
+  return null;
+};
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const {
@@ -157,9 +171,12 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   ]);
 
   if (
-    !isOnOnboardingPage &&
-    !isOnAdminPage &&
-    shouldBlockOnContextLoading
+    shouldShowPrivateContextLoadingScreen({
+      isOnOnboardingPage,
+      isOnAdminPage,
+      isResolvingWorkspaceContext: shouldBlockOnContextLoading,
+      hasPersistedSpaceCode: Boolean(spaceCode),
+    })
   ) {
     return (
       <div className="min-h-screen bg-background text-primary">
@@ -191,7 +208,12 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (isOfflineSyncBlocking) {
+  if (
+    shouldShowOfflineSyncScreen({
+      isOfflineSyncBlocking,
+      hasOfflineSyncReadyHint: readOfflineSyncReadyHint(),
+    })
+  ) {
     return (
       <div className="min-h-screen bg-background text-primary">
         <OfflineSyncScreen
@@ -205,6 +227,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="min-h-screen bg-background text-primary">
+      <PrivateShellReadyMarker />
       {!isOnOnboardingPage && !isStandalonePage && !transitionState.isTransitioning && (
         <>
           <DashboardNavigation hideActionButtons={hideActionButtons} isAdmin={isAdmin} />

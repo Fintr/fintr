@@ -5,13 +5,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { verifyState, getOriginalRedirectPath } from '@/services/auth/google-signin';
+import { verifyState } from '@/services/auth/google-signin';
 import { AuthStorage, AuthStorageData, AuthTokens } from '@/lib/auth-storage';
 import { resetGlobalAuthLock } from '@/components/deep-link-handler';
 import { isNativeCapacitor } from '@/lib/capacitor';
 import { getPublicBackendUrl } from '@/lib/public-backend-url';
 import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
 import { FintrLogo } from '@/components/brand/fintr-logo';
+import {
+  DEFAULT_AUTHENTICATED_PATH,
+  getOriginalRedirectPath,
+  isAuthPage,
+} from '@/lib/auth-routes';
 
 // Helper function to detect if we're on iOS mobile
 const isIOSDevice = (): boolean => {
@@ -379,14 +384,15 @@ function AuthCallbackInner() {
         hasProcessedRef.current = true;
         setStatus('success');
 
-        // For Capacitor, always redirect to dashboard since sessionStorage doesn't work
+        // For Capacitor, always redirect to home since sessionStorage doesn't work
         // For web, use the stored redirect path (but never redirect to auth pages)
-        let redirectPath = capacitorFlow ? '/dashboard' : getOriginalRedirectPath();
+        let redirectPath = capacitorFlow
+          ? DEFAULT_AUTHENTICATED_PATH
+          : getOriginalRedirectPath();
 
         // Ensure we never redirect to auth pages after successful authentication
-        const authPages = ['/login', '/auth', '/auth-callback', '/consent'];
-        if (authPages.includes(redirectPath)) {
-          redirectPath = '/dashboard';
+        if (isAuthPage(redirectPath)) {
+          redirectPath = DEFAULT_AUTHENTICATED_PATH;
         }
 
         console.log('🔄 Determining redirect strategy...', {

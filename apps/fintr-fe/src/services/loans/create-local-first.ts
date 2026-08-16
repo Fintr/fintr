@@ -26,6 +26,16 @@ import {
   rollbackCreateAttachments,
   syncAttachmentOwnerId,
 } from "@/services/attachments/create-outbox";
+import {
+  cacheLoanPayments,
+  removeLoanFromCachedPages,
+  upsertLoanInCachedPages,
+} from "@/services/loans/local-cache";
+import {
+  removeLoanFromQueryCaches,
+  upsertLoanInQueryCaches,
+} from "@/services/loans/loans-list-cache";
+import type { Loan } from "@/services/loans/queries";
 
 export type CreateLoanLocalFirstResult = {
   data: { id: string };
@@ -46,6 +56,73 @@ const newClientMutationId = (): string => {
     return crypto.randomUUID();
   }
   return `cid-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const addMonthsToIsoDate = (isoDate: string, months: number): string => {
+  const date = new Date(`${isoDate}T00:00:00`);
+  date.setMonth(date.getMonth() + months);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+export const buildOptimisticLoan = (params: {
+  id: string;
+  data: CreateLoanType;
+  amountCurrency?: string;
+}): Loan => {
+  const { id, data, amountCurrency } = params;
+  const principal = Math.abs(Number(data.principalAmount) || 0);
+  const currency = amountCurrency ?? "PHP";
+  const isBorrowed = data.loanType === "borrowed";
+
+  return {
+    id,
+    date: data.date,
+    description: data.description?.trim() ? data.description : null,
+    loanType: data.loanType,
+    loanTermMonths: data.loanTermMonths,
+    maturityDate: addMonthsToIsoDate(data.date, data.loanTermMonths),
+    status: "active",
+    paidOffDate: null,
+    interestRate: data.interestRate,
+    adjustsAccountBalance: data.adjustsAccountBalance !== false,
+    entityName: data.entityName,
+    accountName: data.accountName,
+    principalAmount: principal,
+    principalAmountCurrency: currency,
+    outstandingBalance: principal,
+    outstandingBalanceCurrency: currency,
+    value: principal,
+    income: 0,
+    expense: isBorrowed ? principal : 0,
+    totalValue: principal,
+    files: [],
+    loanPayments: [],
+  };
+};
+
+const applyOptimisticLoanCaches = async (params: {
+  spaceId: string;
+  loan: Loan;
+  queryClient?: QueryClient;
+}): Promise<void> => {
+  const { spaceId, loan, queryClient } = params;
+
+  await upsertLoanInCachedPages(spaceId, loan, {
+    queryClient,
+    seedListWhenEmpty: true,
+  });
+  await cacheLoanPayments(spaceId, loan.id, []);
+
+  if (queryClient) {
+    upsertLoanInQueryCaches(queryClient, {
+      spaceCode: spaceId,
+      loan,
+      seedListWhenEmpty: true,
+    });
+  }
 };
 
 export const buildOptimisticLoanIndexTransaction = (params: {
@@ -103,7 +180,8 @@ const isNetworkLikeCreateError = (error: unknown): boolean => {
   if (error instanceof Error) {
     return (
       error.message === "Failed to create loan" ||
-      error.message.toLowerCase().includes("network")
+      error.message.toLowerCase().includes("network") ||
+      error.message.toLowerCase().includes("failed to fetch")
     );
   }
 
@@ -138,6 +216,17 @@ export const createLoanLocalFirst = async (
     id: localId,
     data,
     amountCurrency,
+  });
+  const localLoan = buildOptimisticLoan({
+    id: localId,
+    data,
+    amountCurrency,
+  });
+
+  await applyOptimisticLoanCaches({
+    spaceId,
+    loan: localLoan,
+    queryClient,
   });
 
   // Only optimistic-list when the loan adjusts balances (appears in Combined).
@@ -182,6 +271,15 @@ export const createLoanLocalFirst = async (
       }
 
       if (serverId !== localId) {
+        await removeLoanFromCachedPages(spaceId, localId);
+        await applyOptimisticLoanCaches({
+          spaceId,
+          loan: {
+            ...localLoan,
+            id: serverId,
+          },
+          queryClient,
+        });
         await syncAttachmentOwnerId({
           spaceId,
           ownerType: "loan",
@@ -228,6 +326,10 @@ export const createLoanLocalFirst = async (
         };
       }
 
+      await removeLoanFromCachedPages(spaceId, localId);
+      if (queryClient) {
+        removeLoanFromQueryCaches(queryClient, localId, spaceId);
+      }
       if (data.adjustsAccountBalance !== false) {
         await removeLocalIndexTransaction(spaceId, localId);
         if (queryClient) {

@@ -9,8 +9,10 @@ import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
 import { isSpaceSyncPullEnabled } from "@/lib/space-sync-feature-flag";
 import {
   getOfflineSyncMeta,
+  readOfflineSyncReadyHint,
   shouldRunFullOfflineSync,
 } from "@/lib/local-db/sync-state";
+import { hasAppShellReady } from "@/lib/app-shell-state";
 import { repairOfflineSpaceCaches } from "@/services/monthly-financial-summaries/local-cache";
 import { offlineBootstrapDateRange } from "@/lib/local-sync/offline-bootstrap-dates";
 import {
@@ -102,11 +104,17 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
 
       const needsFullScreen =
         forceFullScreen || (await shouldRunFullOfflineSync());
+      const shouldBlockUi =
+        needsFullScreen &&
+        !readOfflineSyncReadyHint() &&
+        !hasAppShellReady();
 
       if (needsFullScreen) {
-        setOfflineSyncReady(false);
-        setStatus("syncing");
-        setProgress(initialProgress());
+        if (shouldBlockUi) {
+          setOfflineSyncReady(false);
+          setStatus("syncing");
+          setProgress(initialProgress());
+        }
 
         try {
           await syncAllWorkspacesLocalData(
@@ -224,8 +232,6 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
             {
               activeSpaceCode: spaceCode || undefined,
               onProgress: (next) => {
-                setOfflineSyncReady(false);
-                setStatus("syncing");
                 setProgress(next);
               },
             },
@@ -433,7 +439,10 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
     void runSync(true);
   }, [runSync]);
 
-  const isBlocking = status === "syncing" || status === "error";
+  const isBlocking =
+    !hasAppShellReady() &&
+    !readOfflineSyncReadyHint() &&
+    (status === "syncing" || status === "error");
 
   return {
     status,

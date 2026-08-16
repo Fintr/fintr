@@ -2,59 +2,30 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useAtom, useAtomValue } from "jotai";
 import {
   ArrowLeftRight,
   Bell,
   Camera,
-  ChevronDown,
   ChevronRight,
-  MoreHorizontal,
-  PiggyBank,
-  Plus,
   User,
-  Wallet,
 } from "lucide-react";
-import {
-  dateFilterEndDateAtom,
-  dateFilterMonthYearAtom,
-  dateFilterStartDateAtom,
-  monthYearToDateRange,
-} from "@/atoms/dateFilterAtoms";
-import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useAccounts } from "@/hooks/async/useAccounts";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
-import { formatCurrency, shouldShowV2Features } from "@/lib/utils";
+import { cn, shouldShowV2Features } from "@/lib/utils";
 import {
   calculateBottomPadding,
 } from "@/lib/platform-detection";
-import {
-  getYearOptions,
-  monthNames,
-} from "@/utils/dateUtils";
+import { monthNames } from "@/utils/dateUtils";
 import { accountCategoryLabels } from "@/types/accountTypes";
 import { getAccountCategoryIcon } from "@/utils/accountCategoryIcon";
 import { AnimatedCurrency } from "@/components/ui/animated-currency";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
 import AddReceiptDialog from "@/components/dashboard/add-receipt-dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { HomeSection } from "@/components/dashboard/tabs/home/home-section";
 import { HomeRecentTransactions } from "@/components/dashboard/tabs/home/home-recent-transactions";
 import { HomeLoansSection } from "@/components/dashboard/tabs/home/home-loans-section";
@@ -93,26 +64,15 @@ const HomeTab = () => {
   );
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  const startDate = useAtomValue(dateFilterStartDateAtom);
-  const endDate = useAtomValue(dateFilterEndDateAtom);
-  const monthYear = useAtomValue(dateFilterMonthYearAtom);
-  const [, setStartDate] = useAtom(dateFilterStartDateAtom);
-  const [, setEndDate] = useAtom(dateFilterEndDateAtom);
-
-  const { data: dashboardData, isLoading: isLoadingDashboard } =
-    useDashboardData(startDate, endDate);
   const { accounts, balanceTotals, isLoading: isLoadingAccounts } =
     useAccounts();
   usePrefetchAccountDetailRoutes(accounts);
   const { defaultTag } = useTransactionTags();
 
-  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
-  const [pickerMonth, setPickerMonth] = useState(monthYear.selectedMonth);
-  const [pickerYear, setPickerYear] = useState(monthYear.selectedYear);
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
   const [addTransactionType, setAddTransactionType] = useState<
     "expense" | "transfer"
-  >("expense");
+  >("transfer");
   const [isAddReceiptOpen, setIsAddReceiptOpen] = useState(false);
   const [prefilledTransactionData, setPrefilledTransactionData] =
     useState<Record<string, unknown> | null>(null);
@@ -125,63 +85,16 @@ const HomeTab = () => {
     };
   }, []);
 
-  const monthLabel = useMemo(() => {
-    const month = monthNames.find(
-      (entry) => entry.value === monthYear.selectedMonth,
-    );
-    return `${month?.label ?? "Month"} ${monthYear.selectedYear}`;
-  }, [monthYear.selectedMonth, monthYear.selectedYear]);
+  const dashboardMonthLabel = useMemo(() => {
+    const now = new Date();
+    const month = monthNames[now.getMonth()]?.label ?? "This month";
+    return `${month} ${now.getFullYear()}`;
+  }, []);
 
   const currentBalance = balanceTotals?.total ?? 0;
   const balanceCurrency = balanceTotals?.currency ?? spaceCurrency;
-
-  const totalIncome = Number.parseFloat(
-    dashboardData?.financialSummary?.totalIncome ?? "0",
-  );
-  const totalExpenses = Number.parseFloat(
-    dashboardData?.financialSummary?.totalExpenses ?? "0",
-  );
-  const netSavings = Number.parseFloat(
-    dashboardData?.financialSummary?.netSavings ?? "0",
-  );
-
-  const balanceChangeLabel = useMemo(() => {
-    if (!Number.isFinite(netSavings) || netSavings === 0) {
-      return null;
-    }
-
-    const prefix = netSavings > 0 ? "+" : "";
-    return `${prefix}${formatCurrency(netSavings, spaceCurrency)} this month`;
-  }, [netSavings, spaceCurrency]);
-
   const previewAccounts = accounts.slice(0, 3);
   const isLoadingBalance = isLoadingAccounts && !balanceTotals;
-  const isLoadingSummary = isLoadingDashboard && !dashboardData;
-
-  const handleApplyMonthPicker = () => {
-    const { startDate: nextStart, endDate: nextEnd } = monthYearToDateRange(
-      pickerMonth,
-      pickerYear,
-      pickerMonth,
-      pickerYear,
-    );
-    setStartDate(nextStart);
-    setEndDate(nextEnd);
-    setIsMonthPickerOpen(false);
-  };
-
-  const handleOpenMonthPicker = (open: boolean) => {
-    if (open) {
-      setPickerMonth(monthYear.selectedMonth);
-      setPickerYear(monthYear.selectedYear);
-    }
-    setIsMonthPickerOpen(open);
-  };
-
-  const handleOpenAddTransaction = (type: "expense" | "transfer") => {
-    setAddTransactionType(type);
-    setIsAddTransactionOpen(true);
-  };
 
   const handleReceiptSuccess = (
     suggestedTransactionPayload: Record<string, unknown>,
@@ -241,63 +154,11 @@ const HomeTab = () => {
               )}
             </Link>
 
-            <Popover open={isMonthPickerOpen} onOpenChange={handleOpenMonthPicker}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 rounded-full bg-white/15 px-4 py-2 text-sm font-medium transition-colors hover:bg-white/25"
-                  aria-label="Change month"
-                >
-                  {monthLabel}
-                  <ChevronDown className="h-4 w-4 opacity-80" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="center" className="w-72 space-y-4 p-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-primary">Month</p>
-                  <Select value={pickerMonth} onValueChange={setPickerMonth}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select month" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {monthNames.map((month) => (
-                        <SelectItem key={month.value} value={month.value}>
-                          {month.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-primary">Year</p>
-                  <Select value={pickerYear} onValueChange={setPickerYear}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getYearOptions().map((year) => (
-                        <SelectItem key={year} value={year}>
-                          {year}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  type="button"
-                  className="w-full"
-                  onClick={handleApplyMonthPicker}
-                >
-                  Apply
-                </Button>
-              </PopoverContent>
-            </Popover>
-
             {showV2Features ? (
               <Link
                 href="/dashboard/insights"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 transition-colors hover:bg-white/25"
-                aria-label="View notifications and insights"
+                aria-label="Open dashboard"
               >
                 <Bell className="h-5 w-5" />
               </Link>
@@ -322,13 +183,15 @@ const HomeTab = () => {
                 />
               </div>
             )}
-            {balanceChangeLabel ? (
-              <div className="mt-3 flex justify-center">
-                <span className="inline-flex rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white">
-                  {balanceChangeLabel}
-                </span>
-              </div>
-            ) : null}
+            <div className="mt-3 flex justify-center">
+              <Link
+                href="/dashboard/insights"
+                className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-white/30"
+              >
+                View {dashboardMonthLabel} on Dashboard
+                <ChevronRight className="h-3.5 w-3.5 opacity-80" />
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -338,51 +201,17 @@ const HomeTab = () => {
             isMobile ? { paddingBottom: mobileBottomPadding } : undefined
           }
         >
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-500">
-                <PiggyBank className="h-5 w-5" />
-              </div>
-              <p className="text-sm text-muted-foreground">Income</p>
-              <p className="mt-1 text-lg font-semibold text-primary">
-                {isLoadingSummary || totalIncome === 0
-                  ? "—"
-                  : formatCurrency(totalIncome, spaceCurrency)}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 text-red-700 dark:text-red-500">
-                <Wallet className="h-5 w-5" />
-              </div>
-              <p className="text-sm text-muted-foreground">Expenses</p>
-              <p className="mt-1 text-lg font-semibold text-primary">
-                {isLoadingSummary || totalExpenses === 0
-                  ? "—"
-                  : formatCurrency(totalExpenses, spaceCurrency)}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4">
+          <div className="mb-6">
             <TagsTravelHintPill defaultTag={defaultTag} />
           </div>
 
-          <div className="mt-6 grid grid-cols-4 gap-3">
+          <div className="flex justify-center gap-10">
             <button
               type="button"
-              onClick={() => handleOpenAddTransaction("expense")}
-              className="flex flex-col items-center gap-2"
-            >
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Plus className="h-6 w-6" />
-              </span>
-              <span className="text-xs font-medium text-primary">Transaction</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenAddTransaction("transfer")}
+              onClick={() => {
+                setAddTransactionType("transfer");
+                setIsAddTransactionOpen(true);
+              }}
               className="flex flex-col items-center gap-2"
             >
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-500">
@@ -401,16 +230,6 @@ const HomeTab = () => {
               </span>
               <span className="text-xs font-medium text-primary">Scan Receipt</span>
             </button>
-
-            <Link
-              href="/dashboard/app_settings"
-              className="flex flex-col items-center gap-2"
-            >
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <MoreHorizontal className="h-6 w-6" />
-              </span>
-              <span className="text-xs font-medium text-primary">More</span>
-            </Link>
           </div>
 
           <HomeSection
@@ -447,7 +266,12 @@ const HomeTab = () => {
                       <AnimatedCurrency
                         amount={balanceAmount}
                         currency={account.balanceCurrency ?? spaceCurrency}
-                        className="text-sm font-semibold text-primary"
+                        className={cn(
+                          "text-sm font-semibold",
+                          balanceAmount < 0
+                            ? "text-red-800 dark:text-red-400"
+                            : "text-primary",
+                        )}
                       />
                     </Link>
                   );

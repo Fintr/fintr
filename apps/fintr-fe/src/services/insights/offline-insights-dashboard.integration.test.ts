@@ -126,6 +126,42 @@ describe("offline insights dashboard — August 2026 unfiltered", () => {
     expect(bundle.expenseBreakdown.length).toBeGreaterThan(0);
   });
 
+  it("recomputes Net / In / Out from IndexedDB transactions when buckets are stale", async () => {
+    await cacheDashboardShell(SPACE, shell);
+    await cacheMonthlyFinancialSummaries(SPACE, [
+      {
+        ...augustBucket,
+        totalIncome: 1_641_483.57,
+        totalExpenses: 2_189_334.81,
+        netSavings: -547_851.24,
+      },
+    ]);
+    await seedAugustIncome(1_641_483.57);
+    await seedAugustExpense(1_630_920.05);
+
+    const bundle = await buildOfflineInsightsBundle({
+      spaceCode: SPACE,
+      startDate: AUGUST_START,
+      endDate: AUGUST_END,
+      currency: "PHP",
+    });
+
+    expect(bundle.summary.totalIncome).toBeCloseTo(1_641_483.57);
+    expect(bundle.summary.totalExpenses).toBeCloseTo(1_630_920.05);
+    expect(bundle.summary.netSavings).toBeCloseTo(10_563.52);
+
+    const bucketOnly = await buildOfflineInsightsBundle({
+      spaceCode: SPACE,
+      startDate: AUGUST_START,
+      endDate: AUGUST_END,
+      currency: "PHP",
+      transactionPhase: "none",
+    });
+
+    expect(bucketOnly.summary.totalExpenses).toBeCloseTo(1_630_920.05);
+    expect(bucketOnly.summary.netSavings).toBeCloseTo(10_563.52);
+  });
+
   it("populates totals from IndexedDB transactions when buckets are stale zeros", async () => {
     await cacheDashboardShell(SPACE, shell);
     await cacheMonthlyFinancialSummaries(SPACE, [
@@ -222,5 +258,45 @@ describe("offline insights dashboard — August 2026 unfiltered", () => {
     expect(Number(dashboard?.financialSummary.totalIncome)).toBeCloseTo(
       bundle.summary.totalIncome,
     );
+  });
+
+  it("keeps dashboard Net / In / Out aligned with transaction list amounts including booked FX rows", async () => {
+    await cacheDashboardShell(SPACE, shell);
+    await cacheMonthlyFinancialSummaries(SPACE, [
+      {
+        ...augustBucket,
+        totalIncome: 1_641_483.57,
+        totalExpenses: 1_625_949.65,
+        netSavings: 15_533.92,
+      },
+    ]);
+    await seedAugustIncome(1_641_483.57);
+    await seedAugustExpense(1_625_949.65, { id: "tx-php-expense" });
+    await seedAugustExpense(4_970.4, {
+      id: "tx-fx-expense",
+      bookedAmount: 88,
+      bookedAmountCurrency: "USD",
+      amountCurrency: "PHP",
+    });
+
+    const bundle = await buildOfflineInsightsBundle({
+      spaceCode: SPACE,
+      startDate: AUGUST_START,
+      endDate: AUGUST_END,
+      currency: "PHP",
+    });
+    const bucketOnly = await buildOfflineInsightsBundle({
+      spaceCode: SPACE,
+      startDate: AUGUST_START,
+      endDate: AUGUST_END,
+      currency: "PHP",
+      transactionPhase: "none",
+    });
+
+    expect(bundle.summary.totalIncome).toBeCloseTo(1_641_483.57);
+    expect(bundle.summary.totalExpenses).toBeCloseTo(1_630_920.05);
+    expect(bundle.summary.netSavings).toBeCloseTo(10_563.52);
+    expect(bucketOnly.summary.totalExpenses).toBeCloseTo(1_630_920.05);
+    expect(bucketOnly.summary.netSavings).toBeCloseTo(10_563.52);
   });
 });

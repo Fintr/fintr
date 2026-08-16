@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { badgeImageForKey } from "@/lib/badges/catalog";
 import type { LevelTitle } from "@/types/badgeTypes";
+
+import { BadgeImage } from "./badge-image";
 
 interface TitleLadderProps {
   titles: LevelTitle[];
@@ -47,12 +47,10 @@ export const TitleLadder = ({
               aria-label={`${title.title}${unlocked ? "" : " (locked)"}`}
             >
               <div className="relative h-14 w-14 overflow-hidden rounded-full bg-primary/10 ring-2 ring-primary/15">
-                <Image
-                  src={badgeImageForKey(title.imageKey)}
+                <BadgeImage
+                  imageKey={title.imageKey}
                   alt={title.title}
-                  fill
-                  className={cn("object-cover", !unlocked && "grayscale")}
-                  sizes="56px"
+                  className={!unlocked ? "grayscale" : undefined}
                 />
               </div>
               <span className="text-[10px] font-semibold text-primary/70">Lv {title.level}</span>

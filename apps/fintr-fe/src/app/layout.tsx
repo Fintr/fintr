@@ -8,6 +8,11 @@ import {
   shouldEnableRackMiniProfiler,
 } from "@/lib/rack-mini-profiler-inline-bootstrap";
 import { buildServiceWorkerBootstrapScript } from "@/lib/service-worker-bootstrap-script";
+import {
+  FINTR_APPLE_WEB_APP,
+  FINTR_PWA_NAME,
+  FINTR_PWA_THEME_COLOR,
+} from "@/lib/pwa-manifest";
 
 const leagueSpartan = League_Spartan({
   variable: "--font-league-spartan",
@@ -16,8 +21,16 @@ const leagueSpartan = League_Spartan({
 });
 
 export const metadata: Metadata = {
+  applicationName: FINTR_PWA_NAME,
   title: "Fintr - Save More. Spend Smarter. Afford The Life You Want.",
   description: "Manage your finances with ease using Fintr's comprehensive dashboard and analytics.",
+  appleWebApp: FINTR_APPLE_WEB_APP,
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -28,7 +41,7 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   interactiveWidget: "resizes-content",
-  themeColor: "#151921",
+  themeColor: FINTR_PWA_THEME_COLOR,
 };
 
 /**

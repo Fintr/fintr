@@ -10,6 +10,7 @@ import {
   upsertIndexTransactionsIntoQueryCaches,
   type IndexTransactionWithCategoryIds,
 } from "@/services/transactions/upsert-into-query-caches";
+import { isUploadableFile } from "@/utils/formUtils";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
@@ -84,11 +85,18 @@ export const patchTransferAndFeeCaches = async (params: {
     previousTransfer,
   } = params;
 
-  const transferRow = buildOptimisticTransferIndexTransaction({
-    id: transferId,
-    data,
-    amountCurrency,
-  });
+  const transferRow = {
+    ...buildOptimisticTransferIndexTransaction({
+      id: transferId,
+      data,
+      amountCurrency,
+    }),
+    hasImage: isUploadableFile(data.file)
+      ? true
+      : "removeFile" in data && data.removeFile
+        ? false
+        : Boolean(previousTransfer?.hasImage),
+  };
 
   const existingFee = previousTransfer
     ? await findExistingTransferFee({

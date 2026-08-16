@@ -30,8 +30,8 @@ Task tool (general-purpose):
 
     Once you're clear on requirements:
     1. Implement exactly what the task specifies
-    2. Write tests (following TDD if task says to)
-    3. Verify implementation works
+    2. Tests: for `apps/fintr-fe`, follow skill `frontend-tdd` (run related tests first, change, update tests, re-run). That loop is required, not optional. For other code, write tests (TDD if the task says to).
+    3. Verify implementation works with a fresh test run — do not claim green from an earlier run
     4. Commit your work
     5. Self-review (see below)
     6. Report back
@@ -92,7 +92,8 @@ Task tool (general-purpose):
 
     **Testing:**
     - Do tests actually verify behavior (not just mock behavior)?
-    - Did I follow TDD if required?
+    - For `apps/fintr-fe`: did I run related tests BEFORE editing, update tests for intentional deltas only, and re-run after?
+    - Did I follow TDD if required (always required for fintr-fe production TS/TSX)?
     - Are tests comprehensive?
 
     If you find issues during self-review, fix them now before reporting.

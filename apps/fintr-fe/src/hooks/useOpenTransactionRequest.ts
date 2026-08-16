@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSetAtom } from "jotai";
 import { useRouter } from "next/navigation";
 
-import { pendingOpenTransactionAtom } from "@/atoms/transactionEditAtoms";
 import { OPEN_TRANSACTION_EVENT } from "@/lib/open-transaction-request";
 import type { IndexTransaction } from "@/types/transactionTypes";
+import { transactionViewHref } from "@/utils/detailHrefs";
 
 /**
  * Registers a global listener so realtime toasts can open a transaction
@@ -14,7 +13,6 @@ import type { IndexTransaction } from "@/types/transactionTypes";
  */
 export const useOpenTransactionRequest = (): void => {
   const router = useRouter();
-  const setPendingOpenTransaction = useSetAtom(pendingOpenTransactionAtom);
 
   useEffect(() => {
     const handleOpenTransaction = (event: Event) => {
@@ -24,12 +22,7 @@ export const useOpenTransactionRequest = (): void => {
         return;
       }
 
-      setPendingOpenTransaction(transaction);
-
-      const path = window.location.pathname.replace(/\/$/, "") || "/";
-      if (path !== "/dashboard") {
-        router.push("/dashboard/");
-      }
+      router.push(transactionViewHref(transaction));
     };
 
     window.addEventListener(
@@ -43,5 +36,5 @@ export const useOpenTransactionRequest = (): void => {
         handleOpenTransaction as EventListener,
       );
     };
-  }, [router, setPendingOpenTransaction]);
+  }, [router]);
 };

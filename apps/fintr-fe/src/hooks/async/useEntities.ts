@@ -28,6 +28,7 @@ export const useEntities = (
       (await loadCachedEntitiesResponse(spaceCode)) ?? [],
     enabled: Boolean(spaceCode),
     staleTime: Infinity,
+    networkMode: "always",
   });
 
   const skipNetworkFetch = useSkipCachedNetworkFetch(

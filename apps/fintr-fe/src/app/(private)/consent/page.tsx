@@ -2,6 +2,7 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
 
 const ConsentPage = () => {
   const { getAccessTokenWithPopup } = useAuth0();
@@ -17,7 +18,7 @@ const ConsentPage = () => {
         }
       });
       // After successful consent, navigate back to dashboard
-      router.push("/dashboard");
+      router.push(DEFAULT_AUTHENTICATED_PATH);
     } catch (error) {
       console.error(error);
     }

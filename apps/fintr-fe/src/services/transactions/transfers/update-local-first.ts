@@ -8,6 +8,8 @@ import {
   removeOutboxRecord,
   updateOutboxStatus,
 } from "@/lib/local-db";
+import { buildCreateOutboxPayload } from "@/services/attachments/create-outbox";
+import { purgeAttachmentsForOwner } from "@/services/attachments/local-store";
 import {
   loadLocalIndexTransactionById,
 } from "@/services/transactions/local-cache";
@@ -126,10 +128,26 @@ export const updateTransferLocalFirst = async (
   }
 
   const clientMutationId = newClientMutationId();
+
+  if (data.removeFile) {
+    await purgeAttachmentsForOwner({
+      spaceId,
+      ownerType: "transfer",
+      ownerId: data.id,
+    });
+  }
+
+  const payloadForOutbox = await buildCreateOutboxPayload({
+    spaceId,
+    ownerType: "transfer",
+    ownerId: data.id,
+    data,
+  });
+
   await enqueueOutboxRecord({
     spaceId,
     commandType: OUTBOX_COMMAND_TRANSFER_UPDATE,
-    payload: data,
+    payload: payloadForOutbox,
     clientMutationId,
   });
   await updateOutboxStatus({ id: clientMutationId, status: "syncing" });

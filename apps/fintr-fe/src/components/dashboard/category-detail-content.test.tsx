@@ -118,4 +118,11 @@ describe("CategoryDetailContent", () => {
 
     expect(screen.getByText(/category not found/i)).toBeInTheDocument();
   });
+
+  it("opens the parent category when given a subcategory id", () => {
+    render(<CategoryDetailContent categoryId="s1" kind="expense" />);
+
+    expect(screen.getByRole("heading", { name: "Food" })).toBeInTheDocument();
+    expect(screen.getByTestId("category-detail-transactions")).toBeInTheDocument();
+  });
 });

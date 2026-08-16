@@ -4,7 +4,7 @@ import {
 } from "./response-cache";
 import { isSpaceTransactionIndexComplete } from "./transactions";
 
-export const OFFLINE_SYNC_VERSION = 10;
+export const OFFLINE_SYNC_VERSION = 11;
 
 const OFFLINE_SYNC_META_KEY = "offlineSyncMeta";
 const OFFLINE_SYNC_READY_HINT_KEY = "fintr:offlineSyncReadyVersion";
@@ -120,11 +120,5 @@ export const shouldRunFullOfflineSync = async (): Promise<boolean> => {
     return true;
   }
 
-  for (const spaceCode of meta.spaceCodes) {
-    if (!(await isOfflineSpaceCacheComplete(spaceCode))) {
-      return true;
-    }
-  }
-
-  return false;
+  return meta.spaceCodes.length === 0;
 };

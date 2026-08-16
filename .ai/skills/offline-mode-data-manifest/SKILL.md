@@ -15,7 +15,9 @@ Read the manifest before adding features, fixing offline spinners, or extending 
 
 ## Principle
 
-> After `offlineSyncReady`, every **space-scoped** user screen must work without network.
+> After `offlineSyncReady`, every **space-scoped** user screen must work without network. **IndexedDB is the UI source of truth**; Rails bootstrap/pull/realtime write facts into it.
+
+Do not dual-process persisted money (Net, balances, monthly buckets) on FE and BE. Backend computes durable facts; FE displays synced artifacts and assembles views. See `indexeddb-source-of-truth` and [`FRONTEND_SOURCE_OF_TRUTH.md`](../../../docs/offline-mode/FRONTEND_SOURCE_OF_TRUTH.md).
 
 Bootstrap v2 does **not** automatically include new domains. Each dataset needs an explicit row in the manifest and implementation in bootstrap + IDB + RQ + (optional) sync pull + local-first writes.
 
@@ -26,7 +28,7 @@ Bootstrap v2 does **not** automatically include new domains. Each dataset needs 
 3. Trace hook → does it use `useSkipCachedNetworkFetch` and a local cache query?
 4. Trace bootstrap → is payload in `Sync::Operations::BootstrapSpace` and `bootstrapSpaceV2`?
 
-**Known gaps (2026-08):** entity detail, account activities, note suggestions, drafts, achievements. Tags/entities bootstrap + offline reads are implemented; sync pull + local-first writes still pending.
+**Known gaps (2026-08):** entity detail, account activities, note suggestions, drafts, achievements. Tags/entities bootstrap + offline reads are implemented; sync pull + local-first writes still pending. Transaction receipt **blobs** are local (FIN-202); receipt **OCR / AI scan** stays online-only.
 
 ## Bootstrap v2 touchpoints
 
@@ -73,12 +75,14 @@ Document new exceptions in the manifest **Online-only** section.
 - [ ] BootstrapSpace includes payload
 - [ ] bootstrapSpaceV2 caches + seeds RQ
 - [ ] useSkipCachedNetworkFetch on read hook
+- [ ] `networkMode: "always"` on IDB queries **and** local-first mutations (RQ default pauses offline)
 - [ ] SpaceChangeOp + apply-change (if peer sync needed)
-- [ ] local-first + outbox (if offline writes)
+- [ ] local-first + outbox (if offline writes); UI does not await `syncPromise`
 - [ ] Manual: airplane mode smoke on affected screen
 ```
 
 ## Related skills
 
+- `indexeddb-source-of-truth` — FE reads IDB; BE is sync + durable facts
 - `shared-domain-validation` — Zod/Dry parity for local-first writes
 - `gsd-graphify` — explore bootstrap/sync dependencies

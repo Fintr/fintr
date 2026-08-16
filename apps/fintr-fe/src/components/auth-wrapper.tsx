@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import LoadingScreen from '@/components/ui/loading-screen';
 import { AuthStorage } from '@/lib/auth-storage';
 import { CapacitorLoadingTimeout } from '@/components/capacitor-loading-timeout';
+import { shouldShowAuthLoadingScreen } from '@/lib/app-loading-gates';
 import { isPublicPath } from '@/lib/public-routes';
 
 interface AuthWrapperProps {
@@ -18,39 +19,34 @@ function AuthWrapper({ children }: AuthWrapperProps) {
   const pathname = usePathname();
   
   const isPublicRoute = isPublicPath(pathname);
+  const authData = AuthStorage.getAuthData();
+  const hasStoredSession = Boolean(authData);
+  const isAuthenticatedInStorage = Boolean(
+    authData && AuthStorage.isAuthenticated(),
+  );
 
   useEffect(() => {
-    // Check storage directly as a fallback to prevent brief redirect flash
-    // This is especially important right after auth callback when context might not be updated yet
-    const authData = AuthStorage.getAuthData();
-    const isAuthenticatedInStorage = authData && AuthStorage.isAuthenticated();
-
     // Only redirect if both context and storage indicate not authenticated
-    // This prevents the brief flash of login page during auth callback redirect
     if (!isLoading && !isAuthenticated && !isAuthenticatedInStorage && !isPublicRoute) {
       router.push('/login');
     }
-  }, [isLoading, isAuthenticated, isPublicRoute, router, pathname]);
-  
-  if (isLoading && !isPublicRoute) {
-    return (
-      <>
-        <LoadingScreen />
-        <CapacitorLoadingTimeout
-          isLoading={isLoading}
-          timeoutMs={15000} // 15 seconds
-          onRetry={checkAuth}
-        />
-      </>
-    );
-  }
-  
-  // Check storage directly as fallback to prevent redirect flash
-  const authData = AuthStorage.getAuthData();
-  const isAuthenticatedInStorage = authData && AuthStorage.isAuthenticated();
-  
-  // If not authenticated (in both context and storage) and not on a public route, show loading while redirecting
-  if (!isAuthenticated && !isAuthenticatedInStorage && !isPublicRoute) {
+  }, [
+    isLoading,
+    isAuthenticated,
+    isAuthenticatedInStorage,
+    isPublicRoute,
+    router,
+    pathname,
+  ]);
+
+  if (
+    shouldShowAuthLoadingScreen({
+      isPublicRoute,
+      isAuthContextLoading: isLoading,
+      isAuthenticated,
+      hasStoredSession,
+    })
+  ) {
     return (
       <>
         <LoadingScreen />

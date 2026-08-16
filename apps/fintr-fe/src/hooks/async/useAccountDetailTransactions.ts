@@ -84,16 +84,17 @@ export const useAccountDetailTransactions = ({
       const firstPage = await loadCachedAccountDetailTransactionsPage(
         spaceCode,
         accountName,
-        { ...localParams, page: 1 },
+        { ...localParams, accountId, page: 1 },
       );
 
       return firstPage ?? null;
     },
     enabled: Boolean(spaceCode && accountName),
     staleTime: Infinity,
+    networkMode: "always",
   });
 
-  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery);
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery, spaceCode);
 
   return useInfiniteQuery({
     queryKey: [
@@ -127,6 +128,7 @@ export const useAccountDetailTransactions = ({
           spaceCode,
           accountName,
           {
+            accountId,
             startDate,
             endDate,
             categoryFilter,
@@ -151,6 +153,7 @@ export const useAccountDetailTransactions = ({
           spaceCode,
           accountName,
           {
+            accountId,
             startDate,
             endDate,
             categoryFilter,
@@ -187,6 +190,7 @@ export const useAccountDetailTransactions = ({
 };
 
 type UseAccountAdjustmentHistoryParams = {
+  accountId?: string;
   accountName: string;
   startDate: string;
   endDate: string;
@@ -194,6 +198,7 @@ type UseAccountAdjustmentHistoryParams = {
 };
 
 export const useAccountAdjustmentHistory = ({
+  accountId,
   accountName,
   startDate,
   endDate,
@@ -218,6 +223,7 @@ export const useAccountAdjustmentHistory = ({
         spaceCode,
         accountName,
         {
+          accountId,
           startDate,
           endDate,
           categoryFilter: "",
@@ -230,9 +236,10 @@ export const useAccountAdjustmentHistory = ({
     },
     enabled: Boolean(spaceCode && accountName),
     staleTime: Infinity,
+    networkMode: "always",
   });
 
-  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery);
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery, spaceCode);
 
   return useInfiniteQuery({
     queryKey: [
@@ -244,6 +251,7 @@ export const useAccountAdjustmentHistory = ({
     ],
     queryFn: async ({ pageParam = 1 }) => {
       const localPageParams = {
+        accountId,
         startDate,
         endDate,
         categoryFilter: "",

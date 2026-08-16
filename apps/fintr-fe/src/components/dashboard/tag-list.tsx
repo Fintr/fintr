@@ -16,6 +16,7 @@ import type { TransactionTag } from "@/types/transactionTagTypes";
 
 type TagListProps = {
   tags: TransactionTag[];
+  highlightTagId?: string;
   onAdd: (name: string, color: string) => Promise<void>;
   onUpdate: (
     tagId: string,
@@ -33,6 +34,7 @@ type TagListProps = {
 
 const TagList: React.FC<TagListProps> = ({
   tags,
+  highlightTagId,
   onAdd,
   onUpdate,
   onDelete,
@@ -45,6 +47,7 @@ const TagList: React.FC<TagListProps> = ({
   const [editingTag, setEditingTag] = React.useState<TransactionTag | null>(null);
   const [searchInput, setSearchInput] = React.useState("");
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
+  const highlightRef = React.useRef<HTMLDivElement | null>(null);
 
   const filteredTags = React.useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
@@ -54,6 +57,30 @@ const TagList: React.FC<TagListProps> = ({
 
     return tags.filter((tag) => tag.name.toLowerCase().includes(query));
   }, [debouncedSearch, tags]);
+
+  const visibleTags = React.useMemo(() => {
+    if (!highlightTagId) {
+      return filteredTags;
+    }
+
+    if (filteredTags.some((tag) => tag.id === highlightTagId)) {
+      return filteredTags;
+    }
+
+    const highlighted = tags.find((tag) => tag.id === highlightTagId);
+    return highlighted ? [highlighted, ...filteredTags] : filteredTags;
+  }, [filteredTags, highlightTagId, tags]);
+
+  React.useEffect(() => {
+    if (!highlightTagId) {
+      return;
+    }
+
+    highlightRef.current?.scrollIntoView({
+      block: "center",
+      behavior: "smooth",
+    });
+  }, [visibleTags, highlightTagId]);
 
   const addTagDialog = (
     <TagFormDialog
@@ -86,7 +113,7 @@ const TagList: React.FC<TagListProps> = ({
             Create tags for trips, projects, or anything that cuts across categories.
           </p>
           <p className="mt-2 max-w-xs text-xs text-muted-foreground">
-            Tap a tag to set it as the default for new transactions.
+            Tap a tag to set it as the default. New expenses, income, and transfers will include it automatically.
           </p>
           <Button
             type="button"
@@ -135,7 +162,7 @@ const TagList: React.FC<TagListProps> = ({
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Tap a tag to set or unset it as the default for new transactions.
+        Tap a tag to set or unset it as the default. When set, new expenses, income, and transfers include it automatically.
       </p>
 
       <SearchField
@@ -147,7 +174,7 @@ const TagList: React.FC<TagListProps> = ({
         autoComplete="off"
       />
 
-      {filteredTags.length === 0 ? (
+      {visibleTags.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
           <p className="text-sm font-medium text-foreground">No tags match</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
@@ -156,25 +183,59 @@ const TagList: React.FC<TagListProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {filteredTags.map((tag) => (
+          {visibleTags.map((tag) => (
             <div
               key={tag.id}
+              ref={tag.id === highlightTagId ? highlightRef : undefined}
               className={cn(
                 "flex items-center justify-between gap-2 rounded-lg border bg-card px-3 py-3",
-                tag.isDefault && "border-primary/40 bg-primary/5",
+                "transition-colors duration-200",
+                tag.id === highlightTagId
+                  ? "border-primary ring-2 ring-primary/30"
+                  : tag.isDefault
+                    ? "border-primary/70 bg-primary/10 dark:border-primary-dark-mode dark:bg-primary-dark-mode/15"
+                    : "border-border",
               )}
             >
               <button
                 type="button"
-                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                className={cn(
+                  "flex min-w-0 flex-1 items-center gap-3 rounded-md text-left",
+                  "-mx-1 px-1 py-1",
+                  "transition-colors duration-200",
+                  "hover:bg-accent/60 active:bg-primary/20",
+                  "dark:hover:bg-muted/70 dark:active:bg-primary-dark-mode/25",
+                )}
                 aria-pressed={tag.isDefault}
                 aria-label={
                   tag.isDefault
-                    ? `Unset ${tag.name} as default tag`
-                    : `Set ${tag.name} as default tag`
+                    ? `Unset ${tag.name} as default. New expenses, income, and transfers will no longer include it automatically.`
+                    : `Set ${tag.name} as default. New expenses, income, and transfers will include it automatically.`
                 }
                 onClick={() => onToggleDefault(tag.id)}
               >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                    "transition-colors duration-200",
+                    tag.isDefault
+                      ? "border-transparent"
+                      : "border-muted-foreground/50 bg-transparent",
+                  )}
+                  style={
+                    tag.isDefault
+                      ? {
+                          borderColor: tag.color,
+                          backgroundColor: tag.color,
+                        }
+                      : undefined
+                  }
+                >
+                  {tag.isDefault ? (
+                    <span className="h-2 w-2 rounded-full bg-background" />
+                  ) : null}
+                </span>
                 {tag.styleImageUrl ? (
                   <TagStylePreview
                     tag={tag}

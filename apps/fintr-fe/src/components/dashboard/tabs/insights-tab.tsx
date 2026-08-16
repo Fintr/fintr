@@ -38,6 +38,7 @@ import {
 } from "recharts";
 import { formatCurrency, getColor, getColorByIndex, shouldShowV2Features } from "@/lib/utils";
 import { useMemo, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   buildTransactionCategoryFields,
   isCategoryPickerId,
@@ -84,6 +85,9 @@ import {
 } from "@/utils/transactionFilterValues";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
+import { useEntities } from "@/hooks/async/useEntities";
+import { UNASSIGNED_MERCHANT_LABEL } from "@/services/insights/offline-calculations";
+import { buildEntityDetailHref } from "@/utils/detailHrefs";
 
 interface InsightsTabProps {
   filteredTransactions?: any[];
@@ -118,6 +122,9 @@ const weeklySpendingData = [
 ];
 
 const InsightsTab = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tagFromUrl = searchParams.get("tag");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
@@ -153,7 +160,30 @@ const InsightsTab = () => {
   const [endDate, setEndDate] = useAtom(dateFilterEndDateAtom);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!tagFromUrl) {
+      return;
+    }
+
+    setSelectedTagIds((previous) => {
+      if (previous.length === 1 && previous[0] === tagFromUrl) {
+        return previous;
+      }
+
+      return [tagFromUrl];
+    });
+  }, [tagFromUrl]);
+
   const { tags: transactionTags } = useTransactionTags();
+  const { entities: merchants } = useEntities("transaction");
+  const merchantIdByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const merchant of merchants) {
+      map.set(merchant.fullName.trim().toLowerCase(), merchant.id);
+    }
+    return map;
+  }, [merchants]);
   const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
   const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
   
@@ -720,11 +750,11 @@ const InsightsTab = () => {
           />
 
           <div className="space-y-2">
-            <Label>Categories</Label>
+            <Label>Category</Label>
             <CategoryFilterComboBox
               expenseOptions={expenseCategoryOptions}
               incomeOptions={incomeCategoryOptions}
-              placeholder="Select categories"
+              placeholder="All categories"
               className="w-full"
               showAllOnFocus={true}
               value={selectedCategory === "all" ? "" : selectedCategory}
@@ -736,7 +766,7 @@ const InsightsTab = () => {
             <Label>Tags</Label>
             <TagFilterComboBox
               tags={transactionTags}
-              placeholder="Search or select tags"
+              placeholder="Select tags"
               className="w-full"
               showAllOnFocus={true}
               values={selectedTagIds}
@@ -997,6 +1027,15 @@ const InsightsTab = () => {
                 description="Assign merchants on expenses to see this split. Expenses without a merchant are grouped as Unassigned."
                 testId="merchant-expense-breakdown"
                 className="col-span-1"
+                onItemNavigate={(name) => {
+                  if (name === UNASSIGNED_MERCHANT_LABEL) {
+                    return;
+                  }
+                  const entityId = merchantIdByName.get(name.trim().toLowerCase());
+                  if (entityId) {
+                    router.push(buildEntityDetailHref(entityId));
+                  }
+                }}
               />
             </div>
           ) : (

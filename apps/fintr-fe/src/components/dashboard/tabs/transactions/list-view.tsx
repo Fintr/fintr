@@ -47,6 +47,10 @@ import {
   activityRowIsEditable,
   activityShowsCalculatedIndicator,
 } from "@/utils/activityDisplay";
+import {
+  transactionEntityLabel,
+  transactionRowTitle,
+} from "@/utils/transactionDescription";
 import { TransactionRowTypeIcon } from "@/components/dashboard/tabs/transactions/transaction-row-type-icon";
 import { TagChip } from "@/components/ui/tag-chip";
 
@@ -282,6 +286,11 @@ export function ListView({
                 activityCategoryLine(row as IndexActivity);
               const presentsAsIncome = activityPresentsAsIncome(row);
               const presentsAsTransfer = activityPresentsAsTransfer(row);
+              const rowTitle = transactionRowTitle({
+                description: row.description,
+                fallback: categoryLine,
+              });
+              const merchantLine = transactionEntityLabel(row.entityName);
 
               const accountLine =
                 row.fromAccountName && row.toAccountName
@@ -387,9 +396,9 @@ export function ListView({
                         <div className="flex min-w-0 flex-1 items-start gap-1 md:gap-2">
                           <h4
                             className="line-clamp-2 min-w-0 flex-1 break-words font-medium text-sm text-primary dark:text-primary-dark-mode"
-                            title={row.description}
+                            title={rowTitle}
                           >
-                            {row.description}
+                            {rowTitle}
                           </h4>
                           {row.hasImage && (
                             <button
@@ -439,6 +448,14 @@ export function ListView({
                           <span className="flex-shrink-0 whitespace-nowrap">
                             {formatTransactionRowDate(row.date)}
                           </span>
+                          {merchantLine && (
+                            <span
+                              className="ml-2 min-w-0 truncate md:ml-4"
+                              title={merchantLine}
+                            >
+                              {merchantLine}
+                            </span>
+                          )}
                           <span
                             className="hidden md:block truncate ml-4"
                             title={categoryLine}

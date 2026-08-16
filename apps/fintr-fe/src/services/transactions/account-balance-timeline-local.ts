@@ -1,10 +1,16 @@
 import { extractAccountsFromResponse } from "@/services/transactions/accounts/local-cache";
+import {
+  preloadExchangeRatesForTransactions,
+  toSpaceDecimal,
+  type ExchangeRateLookup,
+} from "@/services/insights/space-currency-amount";
 import { loadCachedTransactionsInRange } from "@/services/transactions/local-cache";
 import type {
   AccountBalanceTimeline,
   AccountBalanceTimelinePoint,
   FetchAccountBalanceTimelineParams,
 } from "@/services/transactions/accountBalanceTimeline";
+import type { Account } from "@/types/accountTypes";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
@@ -15,12 +21,17 @@ const parseBalance = (value: string | number | undefined): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const normalizeCurrency = (code: string | undefined): string =>
+  (code ?? "").trim().toUpperCase();
+
+const dateKey = (value: string): string => value.slice(0, 10);
+
 const compareTransactionsAscending = (
   left: IndexTransaction,
   right: IndexTransaction,
 ): number => {
-  const leftDate = left.date.slice(0, 10);
-  const rightDate = right.date.slice(0, 10);
+  const leftDate = dateKey(left.date);
+  const rightDate = dateKey(right.date);
 
   if (leftDate !== rightDate) {
     return leftDate < rightDate ? -1 : 1;
@@ -32,14 +43,117 @@ const compareTransactionsAscending = (
   return leftCreated < rightCreated ? -1 : leftCreated > rightCreated ? 1 : 0;
 };
 
-const signedBalanceEffect = (
+const namesMatch = (left: string | undefined, right: string): boolean =>
+  (left ?? "").trim().toLowerCase() === right.trim().toLowerCase();
+
+const idsMatch = (left: string | null | undefined, right: string): boolean =>
+  Boolean(left) && left === right;
+
+const isFromAccount = (
   transaction: IndexTransaction,
-  accountName: string,
+  account: Account,
+): boolean => {
+  if (idsMatch(transaction.fromAccountId, account.id)) {
+    return true;
+  }
+
+  if (transaction.fromAccountId) {
+    return false;
+  }
+
+  return namesMatch(transaction.fromAccountName, account.name);
+};
+
+const isToAccount = (
+  transaction: IndexTransaction,
+  account: Account,
+): boolean => {
+  if (idsMatch(transaction.toAccountId, account.id)) {
+    return true;
+  }
+
+  if (transaction.toAccountId) {
+    return false;
+  }
+
+  return namesMatch(transaction.toAccountName, account.name);
+};
+
+export const transactionTouchesAccount = (
+  transaction: IndexTransaction,
+  account: Account,
+): boolean => {
+  if (idsMatch(transaction.accountId, account.id)) {
+    return true;
+  }
+
+  return isFromAccount(transaction, account) || isToAccount(transaction, account);
+};
+
+const magnitudeInAccountCurrency = (
+  transaction: IndexTransaction,
+  accountCurrency: string,
+  rateLookup?: ExchangeRateLookup,
 ): number => {
-  const normalizedAccount = accountName.trim().toLowerCase();
-  const from = (transaction.fromAccountName ?? "").trim().toLowerCase();
-  const to = (transaction.toAccountName ?? "").trim().toLowerCase();
-  const amount = Math.abs(parseBalance(transaction.amount));
+  const target = normalizeCurrency(accountCurrency) || "PHP";
+  const displayAmount = Math.abs(parseBalance(transaction.amount));
+  const amountCurrency = normalizeCurrency(transaction.amountCurrency);
+  const bookedAmount = Math.abs(
+    parseBalance(transaction.bookedAmount ?? transaction.amount),
+  );
+  const bookedCurrency = normalizeCurrency(
+    transaction.bookedAmountCurrency ?? transaction.amountCurrency,
+  );
+  const spaceAmount = transaction.amountInSpaceCurrency;
+
+  if (amountCurrency === target && displayAmount !== 0) {
+    return Number(displayAmount.toFixed(2));
+  }
+
+  if (bookedCurrency === target && bookedAmount !== 0) {
+    return Number(bookedAmount.toFixed(2));
+  }
+
+  if (
+    spaceAmount &&
+    normalizeCurrency(spaceAmount.currency) === target &&
+    Number.isFinite(spaceAmount.amount)
+  ) {
+    return Number(Math.abs(spaceAmount.amount).toFixed(2));
+  }
+
+  const fromCurrency = bookedCurrency || amountCurrency || target;
+  const sourceAmount = bookedAmount || displayAmount;
+
+  return Math.abs(
+    toSpaceDecimal({
+      amount: sourceAmount,
+      fromCurrency,
+      date: dateKey(transaction.date),
+      spaceCurrency: target,
+      rateLookup,
+      strict: false,
+    }),
+  );
+};
+
+export const signedAccountBalanceEffect = (
+  transaction: IndexTransaction,
+  account: Account,
+  rateLookup?: ExchangeRateLookup,
+): number => {
+  const from = isFromAccount(transaction, account);
+  const to = isToAccount(transaction, account);
+
+  if (!from && !to && !idsMatch(transaction.accountId, account.id)) {
+    return 0;
+  }
+
+  const amount = magnitudeInAccountCurrency(
+    transaction,
+    account.balanceCurrency,
+    rateLookup,
+  );
 
   if (amount === 0) {
     return 0;
@@ -47,41 +161,46 @@ const signedBalanceEffect = (
 
   switch (transaction.type) {
     case CombinedTransactionTypeEnum.INCOME:
-      return to === normalizedAccount ? amount : 0;
+      return to ? amount : 0;
     case CombinedTransactionTypeEnum.EXPENSE:
-      return from === normalizedAccount ? -amount : 0;
+      return from ? -amount : 0;
     case CombinedTransactionTypeEnum.TRANSFER:
-      if (from === normalizedAccount && to === normalizedAccount) {
+      if (from && to) {
         return 0;
       }
 
-      if (from === normalizedAccount) {
+      if (from) {
         return -amount;
       }
 
-      if (to === normalizedAccount) {
+      if (to) {
         return amount;
       }
 
       return 0;
     case CombinedTransactionTypeEnum.LOAN_DISBURSEMENT:
-      return to === normalizedAccount ? amount : 0;
+      if (transaction.loanType === "lent") {
+        return -amount;
+      }
+
+      if (transaction.loanType === "borrowed") {
+        return amount;
+      }
+
+      return to ? amount : from ? -amount : 0;
     case CombinedTransactionTypeEnum.LOAN_PAYMENT:
-      return from === normalizedAccount ? -amount : 0;
+      if (transaction.loanType === "lent") {
+        return amount;
+      }
+
+      if (transaction.loanType === "borrowed") {
+        return -amount;
+      }
+
+      return from ? -amount : to ? amount : 0;
     default:
       return 0;
   }
-};
-
-const transactionTouchesAccount = (
-  transaction: IndexTransaction,
-  accountName: string,
-): boolean => {
-  const normalizedAccount = accountName.trim().toLowerCase();
-  const from = (transaction.fromAccountName ?? "").trim().toLowerCase();
-  const to = (transaction.toAccountName ?? "").trim().toLowerCase();
-
-  return from === normalizedAccount || to === normalizedAccount;
 };
 
 const downsamplePoints = (
@@ -126,27 +245,35 @@ export const buildAccountBalanceTimelineFromCache = async (
     return undefined;
   }
 
-  const accountName = account.name;
   const currentBalance = parseBalance(account.balance);
   const currency = account.balanceCurrency ?? "PHP";
   const maxPoints = params.maxPoints ?? DEFAULT_MAX_POINTS;
+  const startDate = dateKey(params.startDate);
+  const endDate = dateKey(params.endDate);
 
   const rows = await loadCachedTransactionsInRange(
     spaceCode,
-    params.startDate,
-    params.endDate,
+    startDate,
+    endDate,
   );
 
   const activities = rows
-    .filter((row) => transactionTouchesAccount(row, accountName))
+    .filter((row) => transactionTouchesAccount(row, account))
     .sort(compareTransactionsAscending);
+
+  const rateLookup = await preloadExchangeRatesForTransactions({
+    spaceCode,
+    spaceCurrency: currency,
+    transactions: activities,
+  });
 
   if (activities.length === 0) {
     return {
       currency,
       points: [
         {
-          date: params.startDate,
+          date: startDate,
+          occurredAt: startDate,
           balance: currentBalance,
           change: null,
         },
@@ -155,14 +282,15 @@ export const buildAccountBalanceTimelineFromCache = async (
   }
 
   const signedEffects = activities.map((activity) =>
-    signedBalanceEffect(activity, accountName),
+    signedAccountBalanceEffect(activity, account, rateLookup),
   );
   const totalEffect = signedEffects.reduce((sum, value) => sum + value, 0);
   const openingBalance = currentBalance - totalEffect;
   const points: AccountBalanceTimelinePoint[] = [];
 
   points.push({
-    date: params.startDate,
+    date: startDate,
+    occurredAt: startDate,
     balance: openingBalance,
     change: null,
   });
@@ -172,12 +300,13 @@ export const buildAccountBalanceTimelineFromCache = async (
   activities.forEach((activity, index) => {
     const signed = signedEffects[index] ?? 0;
     running += signed;
+    const activityDate = dateKey(activity.date);
 
     points.push({
-      date: activity.date.slice(0, 10),
-      occurredAt: activity.createdAt ?? activity.date,
-      balance: running,
-      change: signed,
+      date: activityDate,
+      occurredAt: activityDate,
+      balance: Number(running.toFixed(2)),
+      change: Number(signed.toFixed(2)),
     });
   });
 

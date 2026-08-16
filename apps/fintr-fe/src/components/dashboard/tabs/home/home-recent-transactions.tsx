@@ -25,6 +25,10 @@ import {
   indexTransactionDisplayMoney,
 } from "@/utils/indexTransactionDisplay";
 import { formatTransactionRowDate } from "@/utils/dateUtils";
+import {
+  transactionRowTitle,
+  transactionSecondaryLine,
+} from "@/utils/transactionDescription";
 import { cn } from "@/lib/utils";
 import { HomeSection } from "@/components/dashboard/tabs/home/home-section";
 import { TransactionRowTypeIcon } from "@/components/dashboard/tabs/transactions/transaction-row-type-icon";
@@ -136,10 +140,15 @@ export const HomeRecentTransactions = ({
             const presentsAsIncome = activityPresentsAsIncome(transaction);
             const presentsAsTransfer = activityPresentsAsTransfer(transaction);
             const categoryLine = activityCategoryLine(transaction);
-            const description =
-              transaction.description?.trim() ||
-              categoryLine ||
-              "Transaction";
+            const description = transactionRowTitle({
+              description: transaction.description,
+              fallback: categoryLine || "Transaction",
+            });
+            const secondaryLine = transactionSecondaryLine({
+              description: transaction.description,
+              entityName: transaction.entityName,
+              categoryName: categoryLine,
+            });
 
             return (
               <button
@@ -163,9 +172,12 @@ export const HomeRecentTransactions = ({
                     {description}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {categoryLine}
-                    {categoryLine ? " · " : ""}
-                    {formatTransactionRowDate(transaction.date)}
+                    {[
+                      secondaryLine,
+                      formatTransactionRowDate(transaction.date),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">

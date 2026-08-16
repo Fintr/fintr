@@ -20,9 +20,16 @@ import type {
 } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import { positiveTransactionFormAmount } from "@/utils/transactionFormAmount";
+import {
+  conversionHasFx,
+  reconcileFxConversion,
+} from "@/utils/transactionViewMoney";
 
 import { loadLocalIndexTransactionById } from "./local-cache";
 import { fetchTransactionById } from "./queries";
+import { attachmentOwnerTypeForTransaction } from "@/services/attachments/create-outbox";
+import { cacheRemoteFilesForOwners } from "@/services/attachments/download-remote";
+import { extractRemoteFiles } from "@/services/attachments/remote-files";
 import { resolveEditAttachmentFile } from "@/services/attachments/resolve";
 
 const transactionDetailKey = (
@@ -282,6 +289,31 @@ const buildListRowFxConversion = (
   };
 };
 
+const fxConversionForListRow = (
+  listRow: IndexTransaction,
+  existing?: CurrencyConversionType | null,
+): CurrencyConversionType | null => {
+  if (listRowHasCrossCurrencyBooked(listRow)) {
+    return reconcileFxConversion(
+      buildListRowFxConversion(listRow, existing),
+      {
+        amount: listRow.bookedAmount,
+        currency: listRow.bookedAmountCurrency,
+      },
+    );
+  }
+
+  const raw = listRow.currencyConversion ?? existing;
+  if (!conversionHasFx(raw)) {
+    return null;
+  }
+
+  return reconcileFxConversion(raw, {
+    amount: listRow.bookedAmount,
+    currency: listRow.bookedAmountCurrency,
+  });
+};
+
 /** Applies list-row booked/original FX legs onto edit-form detail payloads. */
 export const applyListRowFxToEditDetail = <
   T extends UpdateTransactionType | TransferUpdateTransactionType,
@@ -289,14 +321,13 @@ export const applyListRowFxToEditDetail = <
   detail: T,
   listRow: IndexTransaction,
 ): T => {
-  if (!listRowHasCrossCurrencyBooked(listRow)) {
-    return detail;
-  }
-
-  const conversion = buildListRowFxConversion(
+  const conversion = fxConversionForListRow(
     listRow,
     detail.currencyConversion,
   );
+  if (!conversion) {
+    return detail;
+  }
 
   return {
     ...detail,
@@ -311,6 +342,101 @@ export const applyListRowFxToEditDetail = <
   };
 };
 
+const nearlyEqualMoney = (left: number, right: number): boolean => {
+  if (left === right) {
+    return true;
+  }
+
+  const scale = Math.max(Math.abs(left), Math.abs(right), 1);
+  return Math.abs(left - right) < 0.05 || Math.abs(left - right) / scale < 0.002;
+};
+
+const isoCurrency = (value: unknown): string =>
+  String(value ?? "").trim().toUpperCase();
+
+const conversionFromEditDetail = (
+  detail: UpdateTransactionType | TransferUpdateTransactionType,
+): CurrencyConversionType | null => {
+  const record = detail as Record<string, unknown>;
+  const raw = (
+    record.currencyConversion
+    ?? record.currency_conversion
+  ) as Record<string, unknown> | undefined;
+
+  const originalAmount = Number(
+    record.originalDisplayAmount
+    ?? record.original_display_amount
+    ?? raw?.originalAmount
+    ?? raw?.original_amount,
+  );
+  const originalCurrency = isoCurrency(
+    record.originalDisplayCurrency
+    ?? record.original_display_currency
+    ?? raw?.originalCurrency
+    ?? raw?.original_currency,
+  );
+  const convertedAmount = Number(
+    raw?.convertedAmount ?? raw?.converted_amount,
+  );
+  const convertedCurrency = isoCurrency(
+    raw?.convertedCurrency ?? raw?.converted_currency,
+  );
+
+  if (!originalCurrency || !Number.isFinite(originalAmount)) {
+    return null;
+  }
+
+  return {
+    originalAmount,
+    originalCurrency,
+    convertedAmount: Number.isFinite(convertedAmount)
+      ? convertedAmount
+      : originalAmount,
+    convertedCurrency: convertedCurrency || originalCurrency,
+    exchangeRate: Number(raw?.exchangeRate ?? raw?.exchange_rate ?? 1),
+    source: String(raw?.source ?? "manual"),
+    rateTimestamp: (() => {
+      const timestamp = raw?.rateTimestamp ?? raw?.rate_timestamp;
+      return timestamp == null ? undefined : String(timestamp);
+    })(),
+    note: (raw?.note as string | null | undefined) ?? null,
+  };
+};
+
+const shouldPreserveDetailFx = (
+  detail: UpdateTransactionType | TransferUpdateTransactionType,
+  listRow: IndexTransaction,
+): boolean => {
+  const conversion = conversionFromEditDetail(detail);
+  if (!conversion) {
+    return false;
+  }
+
+  const originalCurrency = conversion.originalCurrency;
+  const convertedCurrency = conversion.convertedCurrency;
+  if (originalCurrency === convertedCurrency) {
+    return false;
+  }
+
+  const listAmount = Math.abs(toAmountNumber(listRow.amount));
+  const originalAmount = Math.abs(conversion.originalAmount);
+  const convertedAmount = Math.abs(conversion.convertedAmount);
+  const listCurrency = isoCurrency(listRow.amountCurrency);
+
+  if (
+    convertedAmount > 0
+    && nearlyEqualMoney(listAmount, convertedAmount)
+  ) {
+    return true;
+  }
+
+  return (
+    originalAmount > 0
+    && nearlyEqualMoney(listAmount, originalAmount)
+    && (!listCurrency || listCurrency === originalCurrency)
+  );
+};
+
 /**
  * List / IndexedDB index rows are patched immediately on local-first edits.
  * Cached full detail payloads often still carry pre-edit amounts and FX
@@ -320,14 +446,11 @@ export const applyListRowMoneyToDetail = (
   detail: UpdateTransactionType | TransferUpdateTransactionType,
   listRow: IndexTransaction,
 ): UpdateTransactionType | TransferUpdateTransactionType => {
-  const listAmount = toAmountNumber(listRow.amount);
   const next: UpdateTransactionType | TransferUpdateTransactionType = {
     ...detail,
-    amount: listAmount,
     description: listRow.description ?? detail.description,
     date: listRow.date || detail.date,
     categoryName: listRow.categoryName || detail.categoryName,
-    amountCurrency: listRow.amountCurrency ?? detail.amountCurrency,
   };
 
   if (listRow.tags?.length) {
@@ -338,8 +461,38 @@ export const applyListRowMoneyToDetail = (
   }
 
   if (listRowHasCrossCurrencyBooked(listRow)) {
+    return applyListRowFxToEditDetail(
+      {
+        ...next,
+        amount: toAmountNumber(listRow.amount),
+        amountCurrency: listRow.amountCurrency ?? detail.amountCurrency,
+      },
+      listRow,
+    );
+  }
+
+  if (conversionHasFx(listRow.currencyConversion)) {
     return applyListRowFxToEditDetail(next, listRow);
   }
+
+  if (shouldPreserveDetailFx(detail, listRow)) {
+    const conversion = conversionFromEditDetail(detail)!;
+    return {
+      ...next,
+      amount: conversion.originalAmount,
+      amountCurrency: conversion.originalCurrency,
+      hasCurrencyConversion: true,
+      original_display_amount: conversion.originalAmount,
+      original_display_currency: conversion.originalCurrency,
+      originalDisplayAmount: conversion.originalAmount,
+      originalDisplayCurrency: conversion.originalCurrency,
+      currencyConversion: conversion,
+    };
+  }
+
+  const listAmount = toAmountNumber(listRow.amount);
+  next.amount = listAmount;
+  next.amountCurrency = listRow.amountCurrency ?? detail.amountCurrency;
 
   // Same-currency (or no booked leg): drop stale conversion so Income/Expense
   // forms do not prefer an outdated original_display_amount over list amount.
@@ -401,6 +554,65 @@ export const seedTransactionEditFromListRow = (
   };
 };
 
+const canDownloadRemoteAttachments = (): boolean =>
+  typeof navigator === "undefined" || navigator.onLine !== false;
+
+const ownerIdsForTransaction = (transaction: IndexTransaction): string[] => {
+  const ownerIds = [transaction.id];
+  if (transaction.activitableId && !ownerIds.includes(transaction.activitableId)) {
+    ownerIds.push(transaction.activitableId);
+  }
+
+  return ownerIds;
+};
+
+const attachLocalFileToDetail = async (params: {
+  spaceId: string;
+  transaction: IndexTransaction;
+  data: UpdateTransactionType | TransferUpdateTransactionType;
+}): Promise<UpdateTransactionType | TransferUpdateTransactionType> => {
+  if (params.data.file) {
+    return params.data;
+  }
+
+  const localFile = await resolveEditAttachmentFile({
+    spaceId: params.spaceId,
+    transactionId: params.transaction.id,
+    type: params.transaction.type,
+    listRow: params.transaction,
+  });
+
+  if (!localFile) {
+    return params.data;
+  }
+
+  return {
+    ...params.data,
+    file: localFile,
+  };
+};
+
+const cacheRemoteFilesIntoIndexedDb = async (params: {
+  api: AxiosInstance | null | undefined;
+  spaceId: string;
+  transaction: IndexTransaction;
+  detail: unknown;
+}): Promise<void> => {
+  const remoteFiles = extractRemoteFiles(params.detail);
+  if (remoteFiles.length === 0 || !params.api || !canDownloadRemoteAttachments()) {
+    return;
+  }
+
+  const ownerType = attachmentOwnerTypeForTransaction(params.transaction.type);
+  await cacheRemoteFilesForOwners({
+    spaceId: params.spaceId,
+    ownerType,
+    ownerIds: ownerIdsForTransaction(params.transaction),
+    files: remoteFiles,
+    api: params.api,
+  });
+};
+
 /**
  * Background enrichment for the edit dialog after the seed is shown.
  */
@@ -419,20 +631,61 @@ export const enrichTransactionEditDetail = async (params: {
     preferLocal: params.preferLocal,
   });
 
-  let nextData = data;
+  let nextData = await attachLocalFileToDetail({
+    spaceId: params.spaceId,
+    transaction: params.transaction,
+    data,
+  });
 
-  if (params.preferLocal && params.transaction.hasImage && !nextData.file) {
-    const localFile = await resolveEditAttachmentFile({
+  if (!nextData.file) {
+    await cacheRemoteFilesIntoIndexedDb({
+      api: params.api,
       spaceId: params.spaceId,
-      transactionId: params.transaction.id,
-      type: params.transaction.type,
+      transaction: params.transaction,
+      detail: nextData,
     });
+    nextData = await attachLocalFileToDetail({
+      spaceId: params.spaceId,
+      transaction: params.transaction,
+      data: nextData,
+    });
+  }
 
-    if (localFile) {
+  const hasFiles = extractRemoteFiles(nextData).length > 0;
+  if (
+    !nextData.file
+    && !hasFiles
+    && params.transaction.hasImage
+    && params.api
+    && canDownloadRemoteAttachments()
+  ) {
+    try {
+      const fresh = await resolveTransactionDetail({
+        api: params.api,
+        spaceId: params.spaceId,
+        transactionId: params.transaction.id,
+        type: params.transaction.type,
+        listRow: params.transaction,
+        preferLocal: false,
+      });
       nextData = {
         ...nextData,
-        file: localFile,
+        ...fresh,
+        file: fresh.file ?? nextData.file,
       };
+      await cacheRemoteFilesIntoIndexedDb({
+        api: params.api,
+        spaceId: params.spaceId,
+        transaction: params.transaction,
+        detail: nextData,
+      });
+      nextData = await attachLocalFileToDetail({
+        spaceId: params.spaceId,
+        transaction: params.transaction,
+        data: nextData,
+      });
+    } catch {
+      // Keep the cached seed when the file URL fetch fails.
     }
   }
 

@@ -6,7 +6,11 @@ import {
   toggleDefaultTransactionTag,
   updateTransactionTag,
 } from "@/services/transactions/tags/mutation";
-import { loadCachedTransactionTagsResponse } from "@/services/transactions/tags/local-cache";
+import {
+  applyToggledDefaultTag,
+  cacheTransactionTagsResponse,
+  loadCachedTransactionTagsResponse,
+} from "@/services/transactions/tags/local-cache";
 import type { TransactionTag } from "@/types/transactionTagTypes";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import useAuthApi from "../useAuthApi";
@@ -110,9 +114,28 @@ export const useTransactionTags = () => {
 
   const toggleDefaultTagMutation = useMutation({
     mutationFn: async (tagId: string) => {
-      const result = await toggleDefaultTransactionTag(api, tagId);
-      await queryClient.invalidateQueries({ queryKey: ["transactionTags", spaceCode] });
-      return result;
+      return toggleDefaultTransactionTag(api, tagId);
+    },
+    onSuccess: async (updated) => {
+      const current =
+        queryClient.getQueryData<TransactionTag[]>([
+          "transactionTags",
+          spaceCode,
+        ]) ??
+        queryClient.getQueryData<TransactionTag[]>([
+          "transactionTags",
+          "local",
+          spaceCode,
+        ]) ??
+        [];
+      const next = applyToggledDefaultTag(current, updated);
+
+      queryClient.setQueryData(["transactionTags", spaceCode], next);
+      queryClient.setQueryData(
+        ["transactionTags", "local", spaceCode],
+        next,
+      );
+      await cacheTransactionTagsResponse(spaceCode, next);
     },
   });
 
@@ -130,7 +153,11 @@ export const useTransactionTags = () => {
     },
   });
 
-  const tags = data ?? [];
+  const tags = (
+    skipNetworkFetch
+      ? (localTagsQuery.data ?? data)
+      : (data ?? localTagsQuery.data)
+  ) ?? [];
 
   return {
     tags,

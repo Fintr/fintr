@@ -41,6 +41,22 @@ export function hasNestedOverlayContent(): boolean {
   return root instanceof HTMLElement && root.childElementCount > 0;
 }
 
+export function hasOpenNestedDismissible(): boolean {
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  if (hasNestedOverlayContent()) {
+    return true;
+  }
+
+  return Boolean(
+    document.querySelector("[data-slot='select-content']")
+    || document.querySelector("[data-filter-picker-popover]")
+    || document.querySelector("[data-radix-popper-content-wrapper]"),
+  );
+}
+
 export function isVisibleModalContentOpen(): boolean {
   const modals = document.querySelectorAll("[data-modal-content]");
 

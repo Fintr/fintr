@@ -19,13 +19,19 @@ export function hasEmbeddedHeroHeader(pathname: string): boolean {
 }
 
 /**
- * Settings routes do not need the dashboard financial summary shell.
+ * Settings and Insights routes compute their own local data pipelines.
  * Blocking the whole layout on summary fetch causes a full-screen splash offline.
  */
-export function isDashboardSettingsRoute(pathname: string): boolean {
+export function isDashboardDataLightRoute(pathname: string): boolean {
   return (
-    pathname.startsWith("/dashboard/space_settings") ||
-    pathname.startsWith("/dashboard/app_settings") ||
-    pathname.startsWith("/dashboard/settings")
+    pathname.startsWith("/dashboard/insights")
+    || pathname.startsWith("/dashboard/space_settings")
+    || pathname.startsWith("/dashboard/app_settings")
+    || pathname.startsWith("/dashboard/settings")
   );
+}
+
+/** @deprecated Use isDashboardDataLightRoute */
+export function isDashboardSettingsRoute(pathname: string): boolean {
+  return isDashboardDataLightRoute(pathname);
 }

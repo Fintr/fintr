@@ -1,5 +1,10 @@
 import { AxiosInstance, AxiosError } from 'axios';
 
+import {
+  CombinedTransactionTypeEnum,
+  type IndexTransaction,
+} from '@/types/transactionTypes';
+
 export interface EntityRecord {
   id: string;
   fullName: string;
@@ -152,19 +157,6 @@ export const fetchEntities = async (
   }
 };
 
-export interface EntityDetailTransaction {
-  id: string;
-  date: string;
-  description: string;
-  amount: number;
-  amountCurrency?: string;
-  categoryName: string;
-  subcategoryName?: string | null;
-  accountName: string;
-  entityName?: string | null;
-  type: 'income' | 'expense';
-}
-
 export interface EntityDetailLoan {
   id: string;
   date: string;
@@ -199,7 +191,7 @@ export interface EntityIdentifier {
 
 export interface EntityDetail {
   entity: EntityRecord;
-  transactions: EntityDetailTransaction[];
+  transactions: IndexTransaction[];
   loans: EntityDetailLoan[];
   loanPayments: EntityDetailLoanPayment[];
   identifiers: EntityIdentifier[];
@@ -212,27 +204,59 @@ const mapEntityDetailTransaction = (transaction: {
   amount: number;
   amountCurrency?: string;
   amount_currency?: string;
+  amountInSpaceCurrency?: { amount: number; currency: string };
+  amount_in_space_currency?: { amount: number; currency: string };
   categoryName?: string;
   category_name?: string;
   subcategoryName?: string | null;
   subcategory_name?: string | null;
   accountName?: string;
   account_name?: string;
+  accountId?: string | null;
+  account_id?: string | null;
   entityName?: string | null;
   entity_name?: string | null;
+  entityId?: string | null;
+  entity_id?: string | null;
   type: string;
-}): EntityDetailTransaction => ({
-  id: transaction.id,
-  date: transaction.date,
-  description: transaction.description,
-  amount: transaction.amount,
-  amountCurrency: transaction.amountCurrency ?? transaction.amount_currency,
-  categoryName: transaction.categoryName ?? transaction.category_name ?? '',
-  subcategoryName: transaction.subcategoryName ?? transaction.subcategory_name ?? null,
-  accountName: transaction.accountName ?? transaction.account_name ?? '',
-  entityName: transaction.entityName ?? transaction.entity_name ?? null,
-  type: transaction.type as 'income' | 'expense',
-});
+}): IndexTransaction => {
+  const accountName = transaction.accountName ?? transaction.account_name ?? "";
+  const type =
+    transaction.type === "income"
+      ? CombinedTransactionTypeEnum.INCOME
+      : CombinedTransactionTypeEnum.EXPENSE;
+  const spaceAmount =
+    transaction.amountInSpaceCurrency ?? transaction.amount_in_space_currency;
+  const amount = spaceAmount?.amount ?? transaction.amount;
+  const amountCurrency =
+    spaceAmount?.currency ??
+    transaction.amountCurrency ??
+    transaction.amount_currency;
+  const isExpense = type === CombinedTransactionTypeEnum.EXPENSE;
+  const accountId = transaction.accountId ?? transaction.account_id ?? null;
+  const entityId = transaction.entityId ?? transaction.entity_id ?? null;
+
+  return {
+    id: transaction.id,
+    date: transaction.date,
+    description: transaction.description,
+    amount,
+    amountCurrency,
+    categoryName: transaction.categoryName ?? transaction.category_name ?? "",
+    subcategoryName:
+      transaction.subcategoryName ?? transaction.subcategory_name ?? null,
+    fromAccountName: isExpense ? accountName : "",
+    toAccountName: isExpense ? "" : accountName,
+    type,
+    inSeries: false,
+    hasImage: false,
+    entityName: transaction.entityName ?? transaction.entity_name ?? undefined,
+    entityId,
+    accountId,
+    fromAccountId: isExpense ? accountId : null,
+    toAccountId: isExpense ? null : accountId,
+  };
+};
 
 const mapEntityDetailLoan = (loan: {
   id: string;

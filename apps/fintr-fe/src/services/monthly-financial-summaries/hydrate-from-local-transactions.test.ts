@@ -8,6 +8,10 @@ import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
 import {
+  cacheMonthlyFinancialSummaries,
+  resolveMonthlySummariesForInsights,
+} from "./local-cache";
+import {
   hydrateMonthlyFinancialSummariesFromLocalTransactions,
   isMonthlySummaryTotalsEmpty,
   summariesNeedLocalHydration,
@@ -120,6 +124,269 @@ describe("hydrate-from-local-transactions", () => {
       totalExpenses: 200,
       netSavings: 800,
       fxBased: true,
+    });
+  });
+
+  it("detects stale non-empty buckets that disagree with local transactions", async () => {
+    const tx: IndexTransaction = {
+      id: "tx-aug-expense",
+      date: "2026-08-12",
+      description: "Food",
+      amount: 1_630_920.05,
+      categoryName: "Food",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    };
+
+    expect(
+      await summariesNeedLocalHydration(
+        "space-a",
+        [
+          bucket({
+            year: 2026,
+            month: 8,
+            totalIncome: 1_641_483.57,
+            totalExpenses: 2_189_334.81,
+            netSavings: -547_851.24,
+            monthStartDate: "2026-08-01",
+            monthEndDate: "2026-08-31",
+          }),
+        ],
+        [
+          {
+            ...tx,
+            id: "tx-aug-income",
+            description: "Salary",
+            amount: 1_641_483.57,
+            type: CombinedTransactionTypeEnum.INCOME,
+            fromAccountName: "",
+            toAccountName: "Cash",
+          },
+          tx,
+        ],
+      ),
+    ).toBe(true);
+  });
+
+  it("overwrites stale backend buckets with indexed transaction totals", async () => {
+    await putSpaceTransactions("fintr", [
+      {
+        id: "tx-in",
+        date: "2026-08-05",
+        description: "Salary",
+        amount: 1_641_483.57,
+        categoryName: "Salary",
+        fromAccountName: "",
+        toAccountName: "Cash",
+        type: CombinedTransactionTypeEnum.INCOME,
+        inSeries: false,
+        hasImage: false,
+      },
+      {
+        id: "tx-out",
+        date: "2026-08-12",
+        description: "Food",
+        amount: 1_630_920.05,
+        categoryName: "Food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+      },
+    ]);
+
+    const hydrated = await hydrateMonthlyFinancialSummariesFromLocalTransactions(
+      "fintr",
+      {
+        currency: "PHP",
+        existingSummaries: [
+          bucket({
+            year: 2026,
+            month: 8,
+            totalIncome: 1_641_483.57,
+            totalExpenses: 2_189_334.81,
+            netSavings: -547_851.24,
+            monthStartDate: "2026-08-01",
+            monthEndDate: "2026-08-31",
+          }),
+        ],
+      },
+    );
+
+    const august = hydrated.find((row) => row.year === 2026 && row.month === 8);
+    expect(august).toMatchObject({
+      totalIncome: 1_641_483.57,
+      totalExpenses: 1_630_920.05,
+      netSavings: 10_563.52,
+    });
+  });
+
+  it("resolves insights buckets from IndexedDB transactions instead of stale cache", async () => {
+    await putSpaceTransactions("fintr", [
+      {
+        id: "tx-in",
+        date: "2026-08-05",
+        description: "Salary",
+        amount: 1_641_483.57,
+        categoryName: "Salary",
+        fromAccountName: "",
+        toAccountName: "Cash",
+        type: CombinedTransactionTypeEnum.INCOME,
+        inSeries: false,
+        hasImage: false,
+      },
+      {
+        id: "tx-out",
+        date: "2026-08-12",
+        description: "Food",
+        amount: 1_630_920.05,
+        categoryName: "Food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+      },
+    ]);
+    await cacheMonthlyFinancialSummaries("fintr", [
+      bucket({
+        year: 2026,
+        month: 8,
+        totalIncome: 1_641_483.57,
+        totalExpenses: 2_189_334.81,
+        netSavings: -547_851.24,
+        monthStartDate: "2026-08-01",
+        monthEndDate: "2026-08-31",
+      }),
+    ]);
+
+    const resolved = await resolveMonthlySummariesForInsights("fintr");
+    const august = resolved.summaries.find(
+      (row) => row.year === 2026 && row.month === 8,
+    );
+
+    expect(august).toMatchObject({
+      totalIncome: 1_641_483.57,
+      totalExpenses: 1_630_920.05,
+      netSavings: 10_563.52,
+    });
+  });
+
+  it("skips transaction hydration when selected buckets already have signal", async () => {
+    await putSpaceTransactions("fintr", [
+      {
+        id: "tx-out",
+        date: "2026-08-12",
+        description: "Food",
+        amount: 9_999_999,
+        categoryName: "Food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+      },
+    ]);
+    await cacheMonthlyFinancialSummaries("fintr", [
+      bucket({
+        year: 2026,
+        month: 8,
+        totalIncome: 1_641_483.57,
+        totalExpenses: 1_630_920.05,
+        netSavings: 10_563.52,
+        monthStartDate: "2026-08-01",
+        monthEndDate: "2026-08-31",
+      }),
+    ]);
+
+    const resolved = await resolveMonthlySummariesForInsights("fintr", {
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      skipHydrationWhenBucketsHaveSignal: true,
+    });
+    const august = resolved.summaries.find(
+      (row) => row.year === 2026 && row.month === 8,
+    );
+
+    expect(august).toMatchObject({
+      totalIncome: 1_641_483.57,
+      totalExpenses: 1_630_920.05,
+      netSavings: 10_563.52,
+    });
+  });
+
+  it("keeps IndexedDB PHP list amounts in buckets when booked FX cannot convert", async () => {
+    await putSpaceTransactions("fintr", [
+      {
+        id: "tx-in",
+        date: "2026-08-05",
+        description: "Salary",
+        amount: 1_641_483.57,
+        amountCurrency: "PHP",
+        categoryName: "Salary",
+        fromAccountName: "",
+        toAccountName: "Cash",
+        type: CombinedTransactionTypeEnum.INCOME,
+        inSeries: false,
+        hasImage: false,
+      },
+      {
+        id: "tx-php-expense",
+        date: "2026-08-12",
+        description: "Food",
+        amount: 1_625_949.65,
+        amountCurrency: "PHP",
+        categoryName: "Food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+      },
+      {
+        id: "tx-fx-expense",
+        date: "2026-08-12",
+        description: "Travel",
+        amount: 4_970.4,
+        amountCurrency: "PHP",
+        bookedAmount: 88,
+        bookedAmountCurrency: "USD",
+        categoryName: "Travel",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+      },
+    ]);
+
+    const hydrated = await hydrateMonthlyFinancialSummariesFromLocalTransactions(
+      "fintr",
+      {
+        currency: "PHP",
+        existingSummaries: [
+          bucket({
+            year: 2026,
+            month: 8,
+            totalIncome: 1_641_483.57,
+            totalExpenses: 1_625_949.65,
+            netSavings: 15_533.92,
+            monthStartDate: "2026-08-01",
+            monthEndDate: "2026-08-31",
+          }),
+        ],
+      },
+    );
+
+    const august = hydrated.find((row) => row.year === 2026 && row.month === 8);
+    expect(august).toMatchObject({
+      totalIncome: 1_641_483.57,
+      totalExpenses: 1_630_920.05,
+      netSavings: 10_563.52,
     });
   });
 });

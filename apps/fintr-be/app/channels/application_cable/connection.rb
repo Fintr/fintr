@@ -80,9 +80,5 @@ module ApplicationCable
       )
       sync_result.success? ? sync_result.value! : user
     end
-
-    def reject_unauthorized_connection
-      reject
-    end
   end
 end

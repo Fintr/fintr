@@ -31,10 +31,15 @@ export function buildTransactionFileUpdateFields(options: {
   isEditMode: boolean;
   hadAttachmentOnLoad: boolean;
   file: File | null;
+  initialFile?: File | null;
 }): { file?: File; removeFile?: boolean } {
-  const { isEditMode, hadAttachmentOnLoad, file } = options;
+  const { isEditMode, hadAttachmentOnLoad, file, initialFile } = options;
 
   if (isUploadableFile(file)) {
+    if (isEditMode && file === initialFile) {
+      return {};
+    }
+
     return { file };
   }
 

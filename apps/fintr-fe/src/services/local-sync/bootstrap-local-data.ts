@@ -94,6 +94,14 @@ import {
 } from "@/services/spaces/spaces-list-cache";
 import { spacesApi } from "@/services/spaces/api";
 import { cacheCurrentUserResponse, loadCachedCurrentUserResponse } from "@/services/auth/local-cache";
+import { achievementsApi } from "@/services/achievements/api";
+import {
+  cacheGamificationProfile,
+  GAMIFICATION_PROFILE_LOCAL_QUERY_KEY,
+  GAMIFICATION_PROFILE_QUERY_KEY,
+  loadCachedGamificationProfile,
+  normalizeGamificationProfile,
+} from "@/services/achievements/local-cache";
 import { serializeFilterValues } from "@/utils/transactionFilterValues";
 import type { DashboardData } from "@/types/spaceTypes";
 import type { Space } from "@/types/spaceTypes";
@@ -517,6 +525,19 @@ export const seedReactQueryFromLocalCache = async (
     seededAny = true;
   }
 
+  const cachedGamificationProfile = await loadCachedGamificationProfile();
+  if (cachedGamificationProfile) {
+    queryClient.setQueryData(
+      GAMIFICATION_PROFILE_LOCAL_QUERY_KEY,
+      cachedGamificationProfile,
+    );
+    queryClient.setQueryData(
+      GAMIFICATION_PROFILE_QUERY_KEY,
+      cachedGamificationProfile,
+    );
+    seededAny = true;
+  }
+
   const cachedSpaceContext = await loadCachedSpaceContext(spaceCode);
   if (cachedSpaceContext) {
     queryClient.setQueryData(
@@ -731,10 +752,6 @@ const syncLocalDataFromBackendV1 = async (
         result.transactionPages,
       );
 
-      if (isOfflineBootstrapDateRange(startDate, endDate)) {
-        await markSpaceTransactionIndexComplete(spaceCode);
-      }
-
       for (const row of pendingLocalCreates) {
         await upsertLocalIndexTransaction(spaceCode, row);
       }
@@ -751,6 +768,10 @@ const syncLocalDataFromBackendV1 = async (
         );
         queryClient.setQueryData(queryKey, seededLocal);
       }
+    }
+
+    if (isOfflineBootstrapDateRange(startDate, endDate)) {
+      await markSpaceTransactionIndexComplete(spaceCode);
     }
   } catch (error) {
     result.errors.push("transactions");
@@ -1156,6 +1177,19 @@ export const syncAllWorkspacesLocalData = async (
     console.warn("[local-sync] Current user bootstrap fetch failed", error);
   }
 
+  try {
+    const profileResponse = await achievementsApi.getProfile(api);
+    const profile = normalizeGamificationProfile(profileResponse.data.data);
+
+    if (profile) {
+      await cacheGamificationProfile(profile);
+      queryClient.setQueryData(GAMIFICATION_PROFILE_LOCAL_QUERY_KEY, profile);
+      queryClient.setQueryData(GAMIFICATION_PROFILE_QUERY_KEY, profile);
+    }
+  } catch (error) {
+    console.warn("[local-sync] Gamification profile bootstrap fetch failed", error);
+  }
+
   const spacesResponse = await spacesApi.getSpaces(api);
   const spaces = spacesResponse.data.data.spaces ?? [];
   await cacheSpacesList(spaces);
@@ -1251,6 +1285,7 @@ export const syncAllWorkspacesLocalData = async (
         failedSpaceCodes.push(space.code);
       } else {
         syncedSpaceCodes.push(space.code);
+        await markOfflineSyncComplete([space.code]);
       }
     } catch (error) {
       failedSpaceCodes.push(space.code);
@@ -1258,7 +1293,7 @@ export const syncAllWorkspacesLocalData = async (
     }
   }
 
-  // Only mark successfully synced workspaces so failed / new grants retry later.
+  // Failed / new grants retry later; successful spaces are already recorded.
   if (syncedSpaceCodes.length > 0) {
     await markOfflineSyncComplete(syncedSpaceCodes);
   }

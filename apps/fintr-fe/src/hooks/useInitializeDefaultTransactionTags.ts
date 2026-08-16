@@ -9,7 +9,7 @@ type UseInitializeDefaultTransactionTagsArgs = {
   setSelectedTagIds: (tagIds: string[]) => void;
 };
 
-/** Pre-selects the space default tag on new expense/income forms. */
+/** Pre-selects the space default tag on new expense, income, and transfer forms. */
 export function useInitializeDefaultTransactionTags({
   tags,
   isEditMode,

@@ -3,7 +3,8 @@ import type { AxiosInstance } from "axios";
 import {
   attachmentOwnerTypeForTransaction,
 } from "@/services/attachments/create-outbox";
-import { putLocalAttachment } from "@/services/attachments/local-store";
+import { extractRemoteFiles } from "@/services/attachments/remote-files";
+import { cacheRemoteFilesForOwners } from "@/services/attachments/download-remote";
 import {
   cacheTransactionDetail,
   mapIndexTransactionToEditData,
@@ -15,69 +16,6 @@ import {
 } from "@/services/transactions/queries";
 import type { IndexTransaction, TransactionsPage } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
-
-type RemoteFileAttachment = {
-  id?: string;
-  url?: string;
-  filename?: string;
-  contentType?: string;
-  byteSize?: number;
-};
-
-const extractRemoteFiles = (detail: unknown): RemoteFileAttachment[] => {
-  if (!detail || typeof detail !== "object") {
-    return [];
-  }
-
-  const files = (detail as { files?: unknown }).files;
-  if (!Array.isArray(files)) {
-    return [];
-  }
-
-  return files.filter(
-    (file): file is RemoteFileAttachment =>
-      Boolean(file) && typeof file === "object",
-  );
-};
-
-const cacheRemoteFilesForOwner = async (params: {
-  spaceId: string;
-  ownerType: ReturnType<typeof attachmentOwnerTypeForTransaction>;
-  ownerId: string;
-  files: RemoteFileAttachment[];
-}): Promise<void> => {
-  for (const file of params.files) {
-    if (!file.url) {
-      continue;
-    }
-
-    try {
-      const response = await fetch(file.url);
-      if (!response.ok) {
-        continue;
-      }
-
-      const blob = await response.blob();
-      await putLocalAttachment({
-        spaceId: params.spaceId,
-        ownerType: params.ownerType,
-        ownerId: params.ownerId,
-        file: blob,
-        filename: file.filename,
-        source: "remote_download",
-        remoteUrl: file.url,
-        serverFileId: file.id,
-      });
-    } catch (error) {
-      console.warn(
-        "[attachments] Failed to prefetch remote file",
-        params.ownerId,
-        file.url,
-        error,
-      );
-    }
-  }
-};
 
 export const cacheTransactionDetailsFromIndexPages = async (
   spaceId: string,
@@ -111,6 +49,13 @@ export const cacheTransactionDetailsFromIndexPages = async (
   }
 };
 
+const MAX_CONSECUTIVE_ATTACHMENT_FAILURES = 5;
+
+const prefetchFailedToStore = (
+  files: ReturnType<typeof extractRemoteFiles>,
+  stored: Awaited<ReturnType<typeof cacheRemoteFilesForOwners>>,
+): boolean => files.length > 0 && stored.length === 0;
+
 export const prefetchRemoteAttachmentsForTransactions = async (params: {
   api: AxiosInstance;
   spaceId: string;
@@ -118,33 +63,53 @@ export const prefetchRemoteAttachmentsForTransactions = async (params: {
 }): Promise<void> => {
   const { api, spaceId, transactions } = params;
   const withImages = transactions.filter((transaction) => transaction.hasImage);
+  let consecutiveFailures = 0;
 
   for (const transaction of withImages) {
+    if (consecutiveFailures >= MAX_CONSECUTIVE_ATTACHMENT_FAILURES) {
+      console.warn(
+        "[attachments] Stopping prefetch after consecutive download failures",
+        spaceId,
+      );
+      return;
+    }
+
     try {
       if (transaction.type === CombinedTransactionTypeEnum.TRANSFER) {
         const transferId = transaction.activitableId ?? transaction.id;
         const detail = await fetchTransferById(api, transferId);
         await cacheTransferDetail(spaceId, transferId, detail);
-
-        await cacheRemoteFilesForOwner({
+        const files = extractRemoteFiles(detail);
+        const stored = await cacheRemoteFilesForOwners({
           spaceId,
           ownerType: attachmentOwnerTypeForTransaction(transaction.type),
-          ownerId: transaction.id,
-          files: extractRemoteFiles(detail),
+          ownerIds: [transaction.id, transferId],
+          files,
+          api,
         });
+
+        consecutiveFailures = prefetchFailedToStore(files, stored)
+          ? consecutiveFailures + 1
+          : 0;
         continue;
       }
 
       const detail = await fetchTransactionById(api, transaction.id);
       await cacheTransactionDetail(spaceId, transaction.id, detail);
-
-      await cacheRemoteFilesForOwner({
+      const files = extractRemoteFiles(detail);
+      const stored = await cacheRemoteFilesForOwners({
         spaceId,
         ownerType: attachmentOwnerTypeForTransaction(transaction.type),
-        ownerId: transaction.id,
-        files: extractRemoteFiles(detail),
+        ownerIds: [transaction.id, transaction.activitableId ?? transaction.id],
+        files,
+        api,
       });
+
+      consecutiveFailures = prefetchFailedToStore(files, stored)
+        ? consecutiveFailures + 1
+        : 0;
     } catch (error) {
+      consecutiveFailures += 1;
       console.warn(
         "[attachments] Prefetch failed for transaction",
         transaction.id,

@@ -10,8 +10,8 @@ export type CachedCurrentUserResponse = {
     spaceCode?: string;
     isAdmin?: boolean;
     onboardingStep?: string;
-    desktopTutorial?: boolean;
-    mobileTutorial?: boolean;
+    desktopTutorial?: string | boolean | null;
+    mobileTutorial?: string | boolean | null;
   };
 };
 

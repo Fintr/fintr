@@ -7,6 +7,7 @@ import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
 import { backfillSyncCursorHint } from "@/lib/local-db/sync-cursor";
 import {
   backfillOfflineSyncReadyHint,
+  readOfflineSyncReadyHint,
   shouldRunFullOfflineSync,
 } from "@/lib/local-db/sync-state";
 import { isSpaceSyncPullEnabled } from "@/lib/space-sync-feature-flag";
@@ -29,6 +30,11 @@ export const useHydrateOfflineSyncReady = () => {
 
   useEffect(() => {
     void (async () => {
+      if (readOfflineSyncReadyHint()) {
+        setOfflineSyncReady(true);
+        return;
+      }
+
       const needsFullSync = await shouldRunFullOfflineSync();
       setOfflineSyncReady(!needsFullSync);
 

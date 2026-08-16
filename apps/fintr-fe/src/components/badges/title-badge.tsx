@@ -1,9 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { badgeImageForKey, FALLBACK_TITLE } from "@/lib/badges/catalog";
+import { FALLBACK_TITLE } from "@/lib/badges/catalog";
 import type { LevelTitle } from "@/types/badgeTypes";
+
+import { BadgeImage } from "./badge-image";
 
 interface TitleBadgeProps {
   title?: LevelTitle | null;
@@ -34,13 +35,7 @@ export const TitleBadge = ({
           sizeClasses[size],
         )}
       >
-        <Image
-          src={badgeImageForKey(resolved.imageKey)}
-          alt={resolved.title}
-          fill
-          className="object-cover"
-          sizes={size === "lg" ? "64px" : size === "md" ? "40px" : "24px"}
-        />
+        <BadgeImage imageKey={resolved.imageKey} alt={resolved.title} />
       </div>
       {showLabel ? (
         <span className="text-xs font-medium text-primary">{resolved.title}</span>

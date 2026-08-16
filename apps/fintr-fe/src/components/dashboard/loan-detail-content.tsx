@@ -64,7 +64,7 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const { data: loan, isLoading, isError, error, refetch } = useLoan(loanId);
+  const { data: loan, isLoading, error, refetch } = useLoan(loanId);
   const [openPaymentRequestId, setOpenPaymentRequestId] = React.useState(0);
   const [paymentPrefill, setPaymentPrefill] =
     React.useState<LoanPaymentPrefill | null>(null);
@@ -143,7 +143,7 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
     );
   }
 
-  if (isError || !loan) {
+  if (!loan) {
     return (
       <div className="mx-auto max-w-2xl space-y-4 py-8">
         <p className="text-destructive">
@@ -401,6 +401,9 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
         textColorClass={accentClass}
         openPaymentRequestId={openPaymentRequestId}
         paymentPrefill={paymentPrefill}
+        onPaymentRecorded={() => {
+          router.push("/dashboard/loans");
+        }}
       />
     </div>
   );

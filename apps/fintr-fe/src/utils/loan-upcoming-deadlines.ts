@@ -68,43 +68,30 @@ type ActualPaymentSnapshot = {
   totalPayment: number;
 };
 
-const collectRecentActualPayments = (
+const collectCoveringPayments = (
   loan: Loan,
   schedule: PaymentScheduleItem[],
 ): ActualPaymentSnapshot[] => {
-  const snapshots: ActualPaymentSnapshot[] = [];
+  const actualScheduleDays = new Set(
+    schedule
+      .filter((item) => item.isActual)
+      .map((item) => startOfDay(item.paymentDate).getTime()),
+  );
 
-  for (const item of schedule) {
-    if (item.isActual) {
-      snapshots.push({
-        date: item.paymentDate,
-        totalPayment: item.paymentAmount,
-      });
-    }
-  }
-
-  for (const payment of loan.loanPayments ?? []) {
-    snapshots.push({
+  return (loan.loanPayments ?? [])
+    .map((payment) => ({
       date: new Date(payment.date),
       totalPayment: parseLoanPaymentAmount(payment.totalPayment),
-    });
-  }
-
-  return snapshots.sort(
-    (left, right) => right.date.getTime() - left.date.getTime(),
-  );
+    }))
+    .filter(
+      (payment) => !actualScheduleDays.has(startOfDay(payment.date).getTime()),
+    )
+    .sort((left, right) => left.date.getTime() - right.date.getTime());
 };
-
-const paymentCoversInstallment = (
-  actual: ActualPaymentSnapshot,
-  installment: PaymentScheduleItem,
-): boolean =>
-  startOfDay(actual.date) >= startOfDay(installment.paymentDate) &&
-  actual.totalPayment >= installment.paymentAmount - 0.02;
 
 const findNextUnpaidInstallment = (
   schedule: PaymentScheduleItem[],
-  actualPayments: ActualPaymentSnapshot[],
+  coveringPayments: ActualPaymentSnapshot[],
 ): PaymentScheduleItem | null => {
   const unpaid = schedule
     .filter((item) => !item.isActual)
@@ -117,22 +104,22 @@ const findNextUnpaidInstallment = (
     return null;
   }
 
-  const lastActual = actualPayments[0];
-  if (!lastActual) {
-    return unpaid[0];
+  const remainingPayments = [...coveringPayments];
+
+  for (const installment of unpaid) {
+    const coveringIndex = remainingPayments.findIndex(
+      (actual) => actual.totalPayment >= installment.paymentAmount - 0.02,
+    );
+
+    if (coveringIndex >= 0) {
+      remainingPayments.splice(coveringIndex, 1);
+      continue;
+    }
+
+    return installment;
   }
 
-  const firstUnpaid = unpaid[0];
-  if (!paymentCoversInstallment(lastActual, firstUnpaid)) {
-    return firstUnpaid;
-  }
-
-  return (
-    unpaid.find(
-      (item) =>
-        startOfDay(item.paymentDate) > startOfDay(lastActual.date),
-    ) ?? null
-  );
+  return null;
 };
 
 export const getNextLoanPaymentDeadline = (
@@ -144,8 +131,8 @@ export const getNextLoanPaymentDeadline = (
 
   const today = startOfDay(new Date());
   const schedule = getAmortizationSchedule(loan);
-  const actualPayments = collectRecentActualPayments(loan, schedule);
-  const nextInstallment = findNextUnpaidInstallment(schedule, actualPayments);
+  const coveringPayments = collectCoveringPayments(loan, schedule);
+  const nextInstallment = findNextUnpaidInstallment(schedule, coveringPayments);
 
   if (nextInstallment) {
     const dueDate = startOfDay(nextInstallment.paymentDate);

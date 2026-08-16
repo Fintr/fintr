@@ -229,6 +229,12 @@ export function CalculatorInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const keyboardRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const expressionRef = useRef(expression);
+  const isExpressionModeRef = useRef(isExpressionMode);
+  const skipNextCalculatorButtonClickRef = useRef(false);
+
+  expressionRef.current = expression;
+  isExpressionModeRef.current = isExpressionMode;
 
   const collapseSelectionToEnd = useCallback(() => {
     const input = inputRef.current;
@@ -388,22 +394,39 @@ export function CalculatorInput({
     requestAnimationFrame(collapseSelectionToEnd);
   }, [expression, showKeyboard, collapseSelectionToEnd]);
 
+  const applyExpressionUpdate = useCallback(
+    (
+      nextExpression: string,
+      nextIsExpressionMode: boolean,
+      options?: { notifyChange?: boolean },
+    ) => {
+      expressionRef.current = nextExpression;
+      isExpressionModeRef.current = nextIsExpressionMode;
+      setExpression(nextExpression);
+      setIsExpressionMode(nextIsExpressionMode);
+
+      if (options?.notifyChange && !nextIsExpressionMode) {
+        onChange(nextExpression);
+      }
+    },
+    [onChange],
+  );
+
   const dismissKeyboard = useCallback(() => {
     setShowKeyboard(false);
-    if (isExpressionMode && hasOperator(expression)) {
-      const result = safeEvaluate(expression);
+    const currentExpression = expressionRef.current;
+
+    if (isExpressionModeRef.current && hasOperator(currentExpression)) {
+      const result = safeEvaluate(currentExpression);
       if (result !== null) {
         const rounded = Math.round(result * 100) / 100;
         const resultStr = rounded.toString();
-        setExpression(resultStr);
-        setIsExpressionMode(false);
-        onChange(resultStr);
+        applyExpressionUpdate(resultStr, false, { notifyChange: true });
       } else {
-        setIsExpressionMode(false);
-        setExpression(value);
+        applyExpressionUpdate(value, false);
       }
     }
-  }, [expression, isExpressionMode, onChange, value]);
+  }, [applyExpressionUpdate, value]);
 
   const dismissKeyboardRef = useRef(dismissKeyboard);
   dismissKeyboardRef.current = dismissKeyboard;
@@ -484,47 +507,41 @@ export function CalculatorInput({
       const filtered = toRawExpression(e.target.value);
 
       if (hasOperator(filtered)) {
-        setIsExpressionMode(true);
-        setExpression(filtered);
+        applyExpressionUpdate(filtered, true);
       } else {
-        setIsExpressionMode(false);
-        setExpression(filtered);
-        onChange(filtered);
+        applyExpressionUpdate(filtered, false, { notifyChange: true });
       }
     },
-    [onChange]
+    [applyExpressionUpdate],
   );
 
   const handleBackspace = useCallback(() => {
-    const newExpression = expression.slice(0, -1);
-    
+    const newExpression = expressionRef.current.slice(0, -1);
+
     if (hasOperator(newExpression)) {
-      setIsExpressionMode(true);
-      setExpression(newExpression);
+      applyExpressionUpdate(newExpression, true);
     } else {
-      setIsExpressionMode(false);
-      setExpression(newExpression);
-      onChange(newExpression);
+      applyExpressionUpdate(newExpression, false, { notifyChange: true });
     }
-  }, [expression, onChange]);
+  }, [applyExpressionUpdate]);
 
   const handleEvaluate = useCallback(() => {
-    if (!hasOperator(expression)) {
+    const currentExpression = expressionRef.current;
+
+    if (!hasOperator(currentExpression)) {
       setShowKeyboard(false);
       return;
     }
 
-    const result = safeEvaluate(expression);
+    const result = safeEvaluate(currentExpression);
     if (result !== null) {
       // Round to 2 decimal places for currency
       const rounded = Math.round(result * 100) / 100;
       const resultStr = rounded.toString();
-      setExpression(resultStr);
-      setIsExpressionMode(false);
-      onChange(resultStr);
+      applyExpressionUpdate(resultStr, false, { notifyChange: true });
       setShowKeyboard(false);
     }
-  }, [expression, onChange]);
+  }, [applyExpressionUpdate]);
 
   const handleEvaluateRef = useRef(handleEvaluate);
   handleEvaluateRef.current = handleEvaluate;
@@ -559,11 +576,11 @@ export function CalculatorInput({
 
   const handleButtonClick = useCallback(
     (btn: string) => {
+      const currentExpression = expressionRef.current;
+
       // Handle special buttons
       if (btn === "C") {
-        setExpression("");
-        setIsExpressionMode(false);
-        onChange("");
+        applyExpressionUpdate("", false, { notifyChange: true });
         return;
       }
 
@@ -579,51 +596,46 @@ export function CalculatorInput({
 
       if (btn === "%") {
         // Convert current value to percentage (divide by 100)
-        const currentValue = safeEvaluate(expression);
+        const currentValue = safeEvaluate(currentExpression);
         if (currentValue !== null) {
           const percentValue = currentValue / 100;
           const resultStr = percentValue.toString();
-          setExpression(resultStr);
-          setIsExpressionMode(false);
-          onChange(resultStr);
+          applyExpressionUpdate(resultStr, false, { notifyChange: true });
         }
         return;
       }
 
       // Handle +/- toggle
       if (btn === "±") {
-        if (expression.startsWith("-")) {
-          const newExpression = expression.slice(1);
-          setExpression(newExpression);
-          if (!hasOperator(newExpression)) {
-            setIsExpressionMode(false);
-            onChange(newExpression);
-          }
+        if (currentExpression.startsWith("-")) {
+          const newExpression = currentExpression.slice(1);
+          applyExpressionUpdate(
+            newExpression,
+            hasOperator(newExpression),
+            { notifyChange: !hasOperator(newExpression) },
+          );
         } else {
-          const newExpression = "-" + expression;
-          setExpression(newExpression);
-          if (!hasOperator(newExpression)) {
-            setIsExpressionMode(false);
-            onChange(newExpression);
-          }
+          const newExpression = "-" + currentExpression;
+          applyExpressionUpdate(
+            newExpression,
+            hasOperator(newExpression),
+            { notifyChange: !hasOperator(newExpression) },
+          );
         }
         return;
       }
 
       // Map display operators to actual operators
       const actualBtn = OPERATOR_MAP[btn] || btn;
-      const newExpression = expression + actualBtn;
-      
+      const newExpression = currentExpression + actualBtn;
+
       if (hasOperator(newExpression)) {
-        setIsExpressionMode(true);
-        setExpression(newExpression);
+        applyExpressionUpdate(newExpression, true);
       } else {
-        setIsExpressionMode(false);
-        setExpression(newExpression);
-        onChange(newExpression);
+        applyExpressionUpdate(newExpression, false, { notifyChange: true });
       }
     },
-    [expression, onChange, handleBackspace, handleEvaluate]
+    [applyExpressionUpdate, handleBackspace, handleEvaluate],
   );
 
   const handleKeyDown = useCallback(
@@ -754,13 +766,42 @@ export function CalculatorInput({
     [disabled, openKeyboard],
   );
 
-  const handleCalculatorButtonPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      inputRef.current?.focus({ preventScroll: true });
+  const activateCalculatorButton = useCallback(
+    (btn: string) => {
+      handleButtonClick(btn);
+      requestAnimationFrame(collapseSelectionToEnd);
     },
-    [],
+    [collapseSelectionToEnd, handleButtonClick],
+  );
+
+  const handleCalculatorButtonPointerDown = useCallback(
+    (btn: string) => (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      skipNextCalculatorButtonClickRef.current = true;
+      inputRef.current?.focus({ preventScroll: true });
+      activateCalculatorButton(btn);
+
+      requestAnimationFrame(() => {
+        skipNextCalculatorButtonClickRef.current = false;
+      });
+    },
+    [activateCalculatorButton],
+  );
+
+  const handleCalculatorButtonClick = useCallback(
+    (btn: string) => () => {
+      if (skipNextCalculatorButtonClickRef.current) {
+        return;
+      }
+
+      activateCalculatorButton(btn);
+    },
+    [activateCalculatorButton],
   );
 
   const isOperatorButton = (btn: string) => ["+", "−", "×", "÷", "="].includes(btn);
@@ -867,8 +908,8 @@ export function CalculatorInput({
               data-calculator-keyboard-button=""
               variant={isOperatorButton(btn) ? "secondary" : isActionButton(btn) ? "secondary" : "outline"}
               className={cn(
-                "touch-manipulation [-webkit-tap-highlight-color:transparent] font-semibold",
-                "transition-colors duration-100 ease-out",
+                "touch-manipulation select-none [-webkit-tap-highlight-color:transparent] font-semibold",
+                "transition-none active:scale-[0.97]",
                 "active:bg-primary active:text-primary-foreground active:border-primary",
                 isBottomSheetKeyboard
                   ? cn(MOBILE_CALC_BUTTON_ROW_CLASS, "text-lg")
@@ -882,12 +923,8 @@ export function CalculatorInput({
                 // Plus/minus toggle - orange accent
                 btn === "±" && "bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-400"
               )}
-              onPointerDown={handleCalculatorButtonPointerDown}
-              onMouseDown={handleCalculatorButtonPointerDown}
-              onClick={() => {
-                handleButtonClick(btn);
-                requestAnimationFrame(collapseSelectionToEnd);
-              }}
+              onPointerDown={handleCalculatorButtonPointerDown(btn)}
+              onClick={handleCalculatorButtonClick(btn)}
             >
               {btn}
             </Button>

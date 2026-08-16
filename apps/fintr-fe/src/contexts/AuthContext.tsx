@@ -19,6 +19,7 @@ import {
   isJwtToken,
   resolveApiBearerToken,
 } from '@/lib/auth-storage';
+import { createInitialAuthState } from '@/lib/create-initial-auth-state';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -39,10 +40,11 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const initialAuth = createInitialAuthState();
+  const [user, setUser] = useState<AuthUser | null>(initialAuth.user);
+  const [isLoading, setIsLoading] = useState(initialAuth.isLoading);
   const [error, setError] = useState<string | null>(null);
-  const [tokens, setTokens] = useState<LoginResponse | null>(null);
+  const [tokens, setTokens] = useState<LoginResponse | null>(initialAuth.tokens);
   const router = useRouter();
 
   const resolveUserProfile = async (
@@ -80,9 +82,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }, 10000); // 10 second timeout
     
     try {
-      setIsLoading(true);
-      
-      // Migrate from old storage format if needed
       AuthStorage.migrateFromOldFormat();
       
       // Get auth data from unified storage

@@ -2,7 +2,7 @@
 
 ## Decision
 
-**Local storage: IndexedDB via Dexie**.
+**Local storage: IndexedDB via Dexie**. After `offlineSyncReady`, IndexedDB is the **frontend source of truth** for space-scoped screens; Rails is the sync + durable-facts layer. See [FRONTEND_SOURCE_OF_TRUTH.md](../../../../docs/offline-mode/FRONTEND_SOURCE_OF_TRUTH.md).
 
 Why: one browser-native store on web + Capacitor WebView; Linear-style local-first apps commonly use IndexedDB. Native feel comes from bundled shell + UI/motion + instant local reads — not from IndexedDB vs SQLite.
 
@@ -10,7 +10,8 @@ Why: one browser-native store on web + Capacitor WebView; Linear-style local-fir
 
 | Path | Role |
 |------|------|
-| `src/lib/local-db/` | Dexie DB (`fintr-local`), accounts + response snapshots + outbox |
+| `src/lib/local-db/` | Dexie DB (`fintr-local`), accounts + transactions + **attachments** (schema v3) + response snapshots + outbox |
+| `src/services/attachments/` | Local receipt blobs: store, compress, outbox hydrate, remote download/cache, resolve for lightbox/edit |
 | `src/services/transactions/accounts/local-cache.ts` | Accounts SWR helpers |
 | `src/services/spaces/local-cache.ts` | Dashboard SWR helpers |
 | `src/services/transactions/local-cache.ts` | Transactions index cache, series delete helpers, pending-row merge |
@@ -43,15 +44,16 @@ Shared pattern (accounts, dashboard, transactions page 1):
 
 ## Offline read mode (after sync)
 
-Once the offline sync screen completes (`offlineSyncReady`):
+Once the offline sync screen completes (`offlineSyncReady`), **IndexedDB is the source of truth for space-scoped UI** — online and offline. Rails is a sync layer (bootstrap, outbox drain, change-log pull, realtime) that writes facts into IndexedDB. Architecture: [FRONTEND_SOURCE_OF_TRUTH.md](../../../../docs/offline-mode/FRONTEND_SOURCE_OF_TRUTH.md).
 
-- **Offline:** dashboard / accounts / transactions / loans / categories / budgets / monthly-summary / insights hooks **read IndexedDB only** (including empty snapshots).
-- **Online:** same hooks use IndexedDB as placeholder/cache but **refetch from the backend** on mount/focus so peer creates/deletes appear. Successful responses write through to IndexedDB.
+- **Reads:** dashboard / accounts / transactions / loans / categories / budgets / monthly-summary / insights hooks **read IndexedDB** (including empty snapshots). React Query schedules the local read; it is not a financial source.
+- **Online refresh:** refetch is allowed only to **write-through** into IndexedDB (peers, current month). Do not paint an in-flight or empty network result over a good local snapshot.
+- **Durable facts** (balances, monthly buckets) are computed on the backend at write time and stored locally. The frontend must not re-sum the same money from a different slice (e.g. partial period transactions vs monthly buckets).
 
-Insights sections are computed client-side from the same inputs the backend uses:
+Insights sections are assembled client-side from **local facts**:
 
-- **Summary / financial trends** — monthly financial summary buckets
-- **Expense breakdown / weekly spending** — local transactions
+- **Summary / Net / In / Out** — monthly financial summary buckets (authoritative)
+- **Expense breakdown / weekly spending** — local transactions (enrichment only)
 - **Financial health score** — summary + local budgets + local loans (DTI / budget usage / savings bands)
 
 A background refresh (`refreshOnlineLocalCaches`) runs on tab focus while online
@@ -90,6 +92,7 @@ API traffic still uses `NEXT_PUBLIC_BE_URL` from `.env.mobile.production`.
 |------|------|
 | Online vs offline read gate | `src/hooks/useOfflineReadMode.test.ts` |
 | Local-first create / delete / outbox drain | `create-local-first.test.ts`, `delete-local-first.test.ts`, `drain-outbox.test.ts` |
+| Local receipt attachments (FIN-202) | `attachments/local-store.test.ts`, `attachments/compress.test.ts`, `attachments/resolve.test.ts`, `attachments/download-remote.test.ts`, `drain-outbox.test.ts` (hydrate File on drain) |
 | Transfer create + fee | `transfers/create-local-first.test.ts`, `transfers/fee-description.test.ts` |
 | Series delete + fee resolution | `resolve-delete-scope.test.ts`, `delete-local-first.test.ts` (all_in_series) |
 | Pending local merge after refetch | `local-cache-merge-pending.test.ts` |
@@ -101,6 +104,7 @@ API traffic still uses `NEXT_PUBLIC_BE_URL` from `.env.mobile.production`.
 | Layer | Owns |
 |-------|------|
 | `src/lib/local-db/` | Dexie schema, outbox, raw snapshots |
+| `src/services/attachments/` | Receipt blobs — components must not import Dexie |
 | `src/services/**/local-db.ts` / `local-cache.ts` / `detail-local.ts` | Domain read/write against local DB |
 | `src/services/**/queries.ts` / `resolve-*.ts` / `*-local-first.ts` | Local-first + network fallback APIs |
 | `src/hooks/**` | React Query wiring / offline gate / realtime |
@@ -213,10 +217,22 @@ Backend: `Transactions::Broadcasts::TransactionChange` (create/update/delete, in
 
 Cable auth uses `AuthContext` / `useAuthApi.getToken`. The WebSocket URL hits Rails `/cable` via `NEXT_PUBLIC_BE_URL` (`getActionCableBackendUrl`) — Next’s `/api/v1` rewrite does not proxy ActionCable.
 
+## Local attachments (FIN-202)
+
+Receipt blobs live in the Dexie `attachments` table (schema v3). Components call `src/services/attachments/` — they do not talk to Dexie.
+
+| Path | Behavior |
+|------|----------|
+| **Create / update** | `buildCreateOutboxPayload` stores the blob and puts `attachmentLocalKeys` on the outbox row (File is not JSON-serialized). Drain hydrates the File and rekeys `local:` owner ids after the server id lands. |
+| **Pull / open** | Lazy download + cache on lightbox/edit open (`resolveAttachmentsForTransaction`). Background prefetch of `hasImage` rows after bootstrap v2 (`prefetchRemoteAttachmentsForTransactions`) — does **not** block the sync screen. |
+| **Read** | Lightbox and edit dialog serve `blob:` URLs from IndexedDB when a local row exists. List/sheets still show an image *icon* from `hasImage`; opening uses the cached blob. |
+| **Guardrails** | 10MB/file cap, 200MB/space budget + LRU eviction, JPEG downscale to 1600px longest edge. Form picker also caps uploads at 5MB. |
+
+Uncached receipts (never opened, prefetch miss, or over budget) still toast **“Image not available offline.”** That is a cache miss, not “attachments are online-only.” Receipt **OCR / AI scan** stays online-only (server processing).
+
 ## Not done yet (follow-ups outside this spike)
 
 - Full v2 sync pull API (FIN-196) — see [SPACE_SYNC_CHANGE_LOG.md](./SPACE_SYNC_CHANGE_LOG.md)
-- Local attachment blobs for receipts (FIN-202) — create outbox + pull/cache; not just `hasImage`
 - Encryption at rest (FIN-201)
 - Local-first **loan payment** create/update (loan create/delete partial coverage exists)
 - Local-first income/expense **update** writes (create/delete are covered; edits still largely online + invalidate)

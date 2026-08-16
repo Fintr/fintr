@@ -100,11 +100,11 @@ function DefaultTagPill({
     <div
       className={cn(
         "relative flex w-full overflow-hidden rounded-full",
-        "border border-border/60 bg-card shadow-sm",
+        "border border-primary/40 bg-card shadow-sm",
         className,
       )}
       style={{ height: PILL_HEIGHT }}
-      aria-label={`Default tag: ${tag.name}`}
+      aria-label={`Active tag: ${tag.name}`}
     >
       <div
         className="relative w-1/2 shrink-0 overflow-hidden bg-muted"

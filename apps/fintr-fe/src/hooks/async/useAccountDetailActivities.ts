@@ -64,11 +64,12 @@ export const useAccountDetailActivities = ({
         accountName,
         localParams,
       )) ?? null,
-    enabled: Boolean(spaceCode && accountId && accountName),
+    enabled: Boolean(spaceCode && accountId),
     staleTime: Infinity,
+    networkMode: "always",
   });
 
-  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery);
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery, spaceCode);
 
   return useInfiniteQuery({
     queryKey: [
@@ -105,7 +106,13 @@ export const useAccountDetailActivities = ({
           return cached;
         }
 
-        throw new Error("No cached account activities");
+        return {
+          activities: [],
+          nextPage: null,
+          totalPages: 1,
+          totalCount: 0,
+          totals: { income: 0, expense: 0, transfer: 0 },
+        };
       }
 
       try {
@@ -131,9 +138,8 @@ export const useAccountDetailActivities = ({
     enabled:
       enabled &&
       !!accountId &&
-      !!accountName &&
       !!spaceCode &&
-      (!skipNetworkFetch || Boolean(localCacheQuery.data)),
+      (!skipNetworkFetch || localCacheQuery.isSuccess),
     retry: false,
     refetchOnMount: !skipNetworkFetch,
     refetchOnWindowFocus: false,

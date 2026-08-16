@@ -68,9 +68,13 @@ export const useInfiniteLoans = ({
     queryFn: async () => (await loadCachedLoansInfiniteData(spaceCode)) ?? null,
     enabled: Boolean(spaceCode),
     staleTime: Infinity,
+    networkMode: "always",
   });
 
-  const skipNetworkFetch = useSkipCachedNetworkFetch(localLoansQuery);
+  const skipNetworkFetch = useSkipCachedNetworkFetch(
+    localLoansQuery,
+    spaceCode,
+  );
 
   const cachedInfiniteData = localLoansQuery.data ?? undefined;
 
@@ -144,21 +148,25 @@ export const useInfiniteLoans = ({
     loadMoreRef,
   ]);
 
-  const loans =
-    data?.pages.flatMap((page) => page?.loans ?? []) ||
-    cachedInfiniteData?.pages.flatMap((page) => page?.loans ?? []) ||
-    [];
+  const loansFromLocal =
+    cachedInfiniteData?.pages.flatMap((page) => page?.loans ?? []) ?? [];
+  const loansFromNetwork =
+    data?.pages.flatMap((page) => page?.loans ?? []) ?? [];
+  const loans = loansFromLocal.length > 0 ? loansFromLocal : loansFromNetwork;
+
+  const hasLocalLoans = Boolean(cachedInfiniteData?.pages?.length);
+  const localReady = skipNetworkFetch && localLoansQuery.isSuccess;
 
   return {
     loans,
     error,
     fetchNextPage,
     hasNextPage,
-    isFetching,
+    isFetching: skipNetworkFetch ? localLoansQuery.isPending : isFetching,
     isFetchingNextPage,
-    status,
-    isError,
-    isSuccess,
+    status: localReady || hasLocalLoans ? "success" : status,
+    isError: isError && loans.length === 0 && !localReady,
+    isSuccess: isSuccess || localReady || hasLocalLoans,
     refetch,
   };
 };

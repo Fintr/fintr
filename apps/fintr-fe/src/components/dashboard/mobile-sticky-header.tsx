@@ -52,6 +52,9 @@ const getPageTitle = (pathname: string): string => {
   if (pathname.includes("/space_settings/entities/detail")) {
     return "Entity";
   }
+  if (pathname.startsWith("/dashboard/transactions/detail")) {
+    return "Transaction";
+  }
   if (pathname.startsWith("/dashboard/space_settings/entities")) {
     return "Entities";
   }
@@ -88,6 +91,7 @@ export const shouldShowImmediateBackButton = (pathname: string): boolean => {
     "/dashboard/space_settings/accounts",
     "/dashboard/space_settings/entities/detail",
     "/dashboard/space_settings/entities",
+    "/dashboard/transactions/detail",
     "/dashboard/space_settings/import",
     "/dashboard/space_settings/subscriptions",
     "/dashboard/loans",

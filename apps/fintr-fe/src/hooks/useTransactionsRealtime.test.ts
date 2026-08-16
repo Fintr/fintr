@@ -64,6 +64,30 @@ describe("normalizeRealtimeIndexTransaction", () => {
     expect(row?.tagIds).toEqual(["tag-1"]);
   });
 
+  it("preserves account and entity ids used by offline account activity", () => {
+    const row = normalizeRealtimeIndexTransaction({
+      id: "tx-1",
+      date: "2026-08-08",
+      description: "Coffee",
+      amount: 120,
+      categoryName: "Food",
+      fromAccountName: "Old Cash",
+      toAccountName: "",
+      type: "expense",
+      inSeries: false,
+      hasImage: false,
+      accountId: "acc-cash",
+      fromAccountId: "acc-cash",
+      toAccountId: null,
+      entityId: "merchant-1",
+    });
+
+    expect(row?.accountId).toBe("acc-cash");
+    expect(row?.fromAccountId).toBe("acc-cash");
+    expect(row?.toAccountId).toBeNull();
+    expect(row?.entityId).toBe("merchant-1");
+  });
+
   it("does not attach empty tag arrays from incomplete realtime payloads", () => {
     const row = normalizeRealtimeIndexTransaction({
       id: "tx-1",

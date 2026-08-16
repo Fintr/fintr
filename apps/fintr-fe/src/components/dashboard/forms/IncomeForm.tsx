@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -45,9 +45,9 @@ import {
   parseCategoryPickerValue,
 } from "@/types/categoryTreeTypes";
 import { UpdateTransactionType } from "@/types/transactionTypes";
-import NotesAutocomplete from "@/components/ui/notes-autocomplete";
 import FileUploadField from "./FileUploadField";
 import TransactionEntityField from "./TransactionEntityField";
+import TransactionDescriptionField from "./TransactionDescriptionField";
 import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
 import { StickyFormActions, pinnedFormScrollAreaClassName } from "./StickyFormActions";
 import {
@@ -69,8 +69,18 @@ import {
   shouldUseStoredConversionForPreview,
   transactionHadStoredConversion,
   transactionNeedsConversion,
+  withEditOriginalCurrency,
 } from "@/utils/amountPickerTargetCurrency";
 import { positiveTransactionFormAmountString } from "@/utils/transactionFormAmount";
+import {
+  amountDirtySignature,
+  conversionDirtySignature,
+  dateDirtySignature,
+  fileDirtySignature,
+  isEditSnapshotDirty,
+  tagIdsDirtySignature,
+  useAttachmentDirtyBaseline,
+} from "@/utils/transactionEditDirty";
 
 // Income form schema using Zod
 const incomeFormSchema = z.object({
@@ -112,6 +122,7 @@ interface IncomeFormProps {
   onAddCustomAccount?: (accountName: string) => void;
   onSubmitSuccess?: (data: any) => void | Promise<void>;
   onCancel?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
   formRef?: React.RefObject<HTMLFormElement>;
   // Edit mode props
   initialData?: UpdateTransactionType & { draftId?: string };
@@ -135,6 +146,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   onAddCustomAccount,
   onSubmitSuccess,
   onCancel,
+  onDirtyChange,
   formRef,
   id,
   initialData,
@@ -197,16 +209,35 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           .filter((c): c is string => Boolean(c))
       )
     );
-    const codes = fromAccounts.length > 0 ? fromAccounts : ["PHP"];
+    let codes = fromAccounts.length > 0 ? fromAccounts : ["PHP"];
     if (
       defaultTransactionCurrency &&
       defaultTransactionCurrency.length === 3 &&
       !codes.includes(defaultTransactionCurrency)
     ) {
-      return [defaultTransactionCurrency, ...codes];
+      codes = [defaultTransactionCurrency, ...codes];
     }
-    return codes;
-  }, [accountOptions, defaultTransactionCurrency]);
+
+    if (!isEditMode || !initialData) {
+      return codes;
+    }
+
+    const data = initialData as Record<string, unknown>;
+    const conversion = (
+      data.currencyConversion ?? data.currency_conversion
+    ) as Record<string, unknown> | undefined;
+
+    return withEditOriginalCurrency(
+      codes,
+      String(
+        data.originalDisplayCurrency
+        ?? data.original_display_currency
+        ?? conversion?.originalCurrency
+        ?? conversion?.original_currency
+        ?? "",
+      ),
+    );
+  }, [accountOptions, defaultTransactionCurrency, isEditMode, initialData]);
 
   // Local state for UI elements and form handling
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -732,11 +763,12 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         isEditMode,
         hadAttachmentOnLoad: hadAttachmentOnLoadRef.current,
         file: formState.file,
+        initialFile: initialData?.file ?? null,
       });
 
       const transactionData = {
         amount: Number(amountToUse),
-        description: formState.description || "",
+        description: formState.description?.trim() ?? "",
         transactionType: "income" as const,
         ...categoryFields,
         accountName: formState.accountName,
@@ -876,6 +908,89 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
   const maxDate = endOfMonth(new Date());
   const currentYear = new Date().getFullYear();
+  const attachmentBaseline = useAttachmentDirtyBaseline(
+    initialData?.id,
+    initialData?.file,
+  );
+  const hasUnsavedEdit = isEditSnapshotDirty(
+    isEditMode && Boolean(initialData),
+    {
+      date: dateDirtySignature(date),
+      amount: amountDirtySignature(amountInput.displayValue),
+      amountCurrency,
+      description: formState.description || "",
+      categoryName: formState.categoryName || "",
+      accountName: formState.accountName || "",
+      scheduleType: formState.scheduleType,
+      repeatInterval: formState.repeatInterval || "",
+      entityName,
+      tagIds: tagIdsDirtySignature(selectedTagIds),
+      file: fileDirtySignature(formState.file),
+      conversion: conversionDirtySignature(conversionSnapshot),
+      deductTaxes: String(deductTaxes),
+      deductContributions: String(deductContributions),
+    },
+    {
+      date: dateDirtySignature(
+        initialData?.date ? new Date(initialData.date) : undefined,
+      ),
+      amount: amountDirtySignature(
+        (initialData as { originalDisplayAmount?: unknown } | undefined)
+          ?.originalDisplayAmount
+        ?? (initialData as { original_display_amount?: unknown } | undefined)
+          ?.original_display_amount
+        ?? initialData?.currencyConversion?.originalAmount
+        ?? initialData?.amount,
+      ),
+      amountCurrency:
+        String(
+          (initialData as { originalDisplayCurrency?: string } | undefined)
+            ?.originalDisplayCurrency
+          ?? (initialData as { original_display_currency?: string } | undefined)
+            ?.original_display_currency
+          ?? initialData?.currencyConversion?.originalCurrency
+          ?? (initialData as { amountCurrency?: string } | undefined)
+            ?.amountCurrency
+          ?? amountCurrency,
+        ),
+      description: initialData?.description || "",
+      categoryName:
+        categoryPickerValueFromReceiptOrTransaction(
+          {
+            categoryId: initialData?.categoryId,
+            subcategoryId: initialData?.subcategoryId,
+            categoryName: initialData?.categoryName,
+          },
+          categoryOptions,
+        ) || initialData?.categoryName || "",
+      accountName: initialData?.accountName || "",
+      scheduleType: getValidIncomeScheduleType(initialData?.scheduleType),
+      repeatInterval: initialData?.repeatInterval || "",
+      entityName: initialData?.entityName || "",
+      tagIds: tagIdsDirtySignature(
+        initialData?.tags?.map((tag) => tag.id) ?? initialData?.tagIds ?? [],
+      ),
+      file: attachmentBaseline,
+      conversion: conversionDirtySignature(
+        initialData?.currencyConversion
+          ? {
+              originalCurrency: initialData.currencyConversion.originalCurrency,
+              targetCurrency: initialData.currencyConversion.convertedCurrency,
+              exchangeRate: initialData.currencyConversion.exchangeRate,
+              exchangeRateSource:
+                (initialData.currencyConversion.source as ConversionSnapshot["exchangeRateSource"])
+                || "manual",
+            }
+          : null,
+      ),
+      deductTaxes: "false",
+      deductContributions: "false",
+    },
+  );
+
+  useLayoutEffect(() => {
+    onDirtyChange?.(hasUnsavedEdit);
+  }, [hasUnsavedEdit, onDirtyChange]);
 
   return (
     <form
@@ -993,31 +1108,25 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
            </div>
          )}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TransactionScheduleFields
-            scheduleType={formState.scheduleType}
-            onScheduleTypeChange={(value) => handleFieldChange("scheduleType", value)}
-            scheduleTypeOptions={BASIC_SCHEDULE_TYPE_OPTIONS}
-            repeatInterval={formState.repeatInterval}
-            onRepeatIntervalChange={(value) => handleFieldChange("repeatInterval", value)}
-            showRepeatInterval={scheduleType === ScheduleTypeEnum.REPEAT}
-            scheduleTypeErrors={formSubmitted ? formErrors.scheduleType : undefined}
-            repeatIntervalErrors={formSubmitted ? formErrors.repeatInterval : undefined}
-          />
-          
-          {/* Category Field */}
-          <GridPicker
-            pickerKind="category"
-            label="Income Category"
-            value={formState.categoryName}
-            onChange={(v) => handleFieldChange("categoryName", v)}
-            categories={categoryOptions}
-            error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
-            categoryType={CategoryTypeEnum.INCOME}
-            onCategoryCreated={handleCategoryCreated}
-            disabled={isCategoryLockedForEdit}
-          />
-        </div>
+        <TransactionDescriptionField
+          id="description"
+          value={formState.description || ""}
+          onChange={(value) => handleFieldChange("description", value)}
+          categoryName={formState.categoryName}
+          transactionType="income"
+        />
+
+        <GridPicker
+          pickerKind="category"
+          label="Income Category"
+          value={formState.categoryName}
+          onChange={(v) => handleFieldChange("categoryName", v)}
+          categories={categoryOptions}
+          error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
+          categoryType={CategoryTypeEnum.INCOME}
+          onCategoryCreated={handleCategoryCreated}
+          disabled={isCategoryLockedForEdit}
+        />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Account Field */}
@@ -1060,6 +1169,17 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           />
         </div>
 
+        <TransactionScheduleFields
+          scheduleType={formState.scheduleType}
+          onScheduleTypeChange={(value) => handleFieldChange("scheduleType", value)}
+          scheduleTypeOptions={BASIC_SCHEDULE_TYPE_OPTIONS}
+          repeatInterval={formState.repeatInterval}
+          onRepeatIntervalChange={(value) => handleFieldChange("repeatInterval", value)}
+          showRepeatInterval={scheduleType === ScheduleTypeEnum.REPEAT}
+          scheduleTypeErrors={formSubmitted ? formErrors.scheduleType : undefined}
+          repeatIntervalErrors={formSubmitted ? formErrors.repeatInterval : undefined}
+        />
+
         <TagMultiPicker
           tags={availableTags}
           value={selectedTagIds}
@@ -1075,20 +1195,6 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           disabled={Boolean(editingLockedReason)}
         />
 
-        <div className="space-y-2 min-w-0">
-            <Label htmlFor="description" className="text-sm">Note (Optional)</Label>
-            <NotesAutocomplete
-              id="description"
-              value={formState.description || ""}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange("description", e.target.value)}
-              categoryName={formState.categoryName}
-              transactionType="income"
-              placeholder="Add additional details"
-              className="text-sm"
-            />
-        </div>
-
-        {/* File Upload Field */}
         <FileUploadField
           file={formState.file}
           onFileChange={handleFileChange}
@@ -1118,8 +1224,15 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           <Button 
             type="submit" 
             className="bg-primary hover:bg-primary/80 text-sm" 
-            disabled={isSubmitting || Boolean(editingLockedReason)}
-            title={editingLockedReason ?? undefined}
+            disabled={
+              isSubmitting
+              || Boolean(editingLockedReason)
+              || (isEditMode && !hasUnsavedEdit)
+            }
+            title={
+              editingLockedReason
+              ?? (isEditMode && !hasUnsavedEdit ? "No changes to save" : undefined)
+            }
           >
             {isSubmitting ? (isEditMode ? "Updating Income..." : "Adding Income...") : (isEditMode ? "Update Income" : "Add Income")}
           </Button>

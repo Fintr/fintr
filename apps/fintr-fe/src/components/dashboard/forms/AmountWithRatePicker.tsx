@@ -138,6 +138,8 @@ export function AmountWithRatePicker({
         }
       : null
   );
+  const conversionRef = useRef(conversion);
+  conversionRef.current = conversion;
 
   const RATE_TOLERANCE = 1e-6;
 
@@ -236,7 +238,18 @@ export function AmountWithRatePicker({
         exchangeRate: rate,
         exchangeRateSource: source,
       };
-      setConversion({ exchangeRate: rate, exchangeRateSource: source });
+      const nextConversion = {
+        exchangeRate: rate,
+        exchangeRateSource: source,
+      };
+      conversionRef.current = nextConversion;
+      setConversion(nextConversion);
+      if (ledgerTargetCurrency != null) {
+        lastAutoFetchedPairRef.current = {
+          fromCurrency,
+          toCurrency: ledgerTargetCurrency,
+        };
+      }
       if (source === "manual") {
         setAppliedManualEntryMode(options?.manualEntryMode ?? "rate");
       } else {
@@ -384,15 +397,13 @@ export function AmountWithRatePicker({
     };
     const pairChanged = fxPairChanged(lastAutoFetchedPairRef.current, nextPair);
     let cancelled = false;
+    const loadingTimer = window.setTimeout(() => {
+      if (!cancelled && seq === autoRateFetchSeqRef.current && pairChanged) {
+        setLoadingRate("currency");
+      }
+    }, 80);
 
     void (async () => {
-      // Defer the loading skeleton so local-DB hits don't flash a placeholder.
-      const loadingTimer = window.setTimeout(() => {
-        if (!cancelled && seq === autoRateFetchSeqRef.current && pairChanged) {
-          setLoadingRate("currency");
-        }
-      }, 80);
-
       try {
         const resolved = await resolveAutoExchangeRates({
           api,
@@ -407,6 +418,16 @@ export function AmountWithRatePicker({
         if (cancelled || seq !== autoRateFetchSeqRef.current) return;
         window.clearTimeout(loadingTimer);
 
+        const picked = conversionRef.current;
+        if (picked && picked.exchangeRateSource !== "auto") {
+          setDisplayedRateDate(resolved.displayedRateDate);
+          setCurrentRateDisplay(multiplierFromApi(resolved.appliedRate));
+          setRecentRates(resolved.recent.rates ?? []);
+          lastAutoFetchedPairRef.current = nextPair;
+          setLoadingRate(null);
+          return;
+        }
+
         const n = applyConversion(
           resolved.appliedRate,
           resolved.appliedSource,
@@ -419,21 +440,25 @@ export function AmountWithRatePicker({
       } catch {
         if (cancelled || seq !== autoRateFetchSeqRef.current) return;
         window.clearTimeout(loadingTimer);
-        if (pairChanged) {
+        const picked = conversionRef.current;
+        if (pairChanged && picked == null) {
           setConversion(null);
           if (!previewOnly) {
             onConversionChange(null);
           }
         }
-        setCurrentRateDisplay(null);
-        setDisplayedRateDate(undefined);
-        setRecentRates([]);
+        if (picked == null) {
+          setCurrentRateDisplay(null);
+          setDisplayedRateDate(undefined);
+          setRecentRates([]);
+        }
         setLoadingRate(null);
       }
     })();
 
     return () => {
       cancelled = true;
+      window.clearTimeout(loadingTimer);
     };
   }, [
     fromCurrency,

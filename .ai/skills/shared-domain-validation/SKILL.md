@@ -17,6 +17,8 @@ description: >-
 
 The FE runs Zod from `@fintr/domain`. The BE keeps `Dry::Validation::Contract` in operations. Both must agree.
 
+This package is for **rules** (what is valid), not for **aggregates**. Persisted money (balances, monthly buckets, Net) is computed once on the backend and synced into IndexedDB. Do not add a second FE implementation of the same total. UI-only views (insights narratives, charts) stay on the frontend. See `indexeddb-source-of-truth`.
+
 ## Package location
 
 ```
@@ -105,5 +107,7 @@ cd apps/fintr-be && make mchanged-specs   # includes parity spec when touched
 ## Related docs
 
 - `packages/fintr-domain/README.md`
+- `docs/offline-mode/FRONTEND_SOURCE_OF_TRUTH.md` (IndexedDB vs Rails processing)
 - `apps/fintr-fe/docs/mobile/OFFLINE_INDEXEDDB_SPIKE.md` (offline write path)
 - Rule: `.cursor/rules/shared_domain_validation.mdc`
+- Skill: `indexeddb-source-of-truth`

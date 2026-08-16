@@ -62,26 +62,57 @@ const loadCalculatedTransactionsForSpace = async (
   return filterInsightsTransactions(Array.from(byId.values()));
 };
 
-const monthTransactionKeys = (
+const monthKeyFromDate = (date: string): string | null => {
+  const match = /^(\d{4})-(\d{2})/.exec(date.slice(0, 10));
+  if (!match) {
+    return null;
+  }
+
+  return `${match[1]}-${match[2]}`;
+};
+
+const isIncomeTransaction = (transaction: IndexTransaction): boolean => {
+  const type = String(transaction.type ?? "").trim().toLowerCase();
+  return type.includes("income");
+};
+
+const isExpenseTransaction = (transaction: IndexTransaction): boolean => {
+  const type = String(transaction.type ?? "").trim().toLowerCase();
+  return type.includes("expense");
+};
+
+const monthTotalsFromTransactions = (
   transactions: IndexTransaction[],
-): Set<string> => {
-  const keys = new Set<string>();
+): Map<string, { totalIncome: number; totalExpenses: number }> => {
+  const totals = new Map<string, { totalIncome: number; totalExpenses: number }>();
 
   for (const transaction of transactions) {
-    const match = /^(\d{4})-(\d{2})/.exec(transaction.date.slice(0, 10));
-    if (!match) {
+    const key = monthKeyFromDate(transaction.date);
+    if (!key) {
       continue;
     }
 
-    keys.add(`${match[1]}-${match[2]}`);
+    const amount = Math.abs(toSummaryNumber(transaction.amount));
+    const current = totals.get(key) ?? { totalIncome: 0, totalExpenses: 0 };
+
+    if (isIncomeTransaction(transaction)) {
+      current.totalIncome += amount;
+    } else if (isExpenseTransaction(transaction)) {
+      current.totalExpenses += amount;
+    }
+
+    totals.set(key, current);
   }
 
-  return keys;
+  return totals;
 };
 
+const totalsDisagree = (left: number, right: number): boolean =>
+  Math.abs(left - right) > 0.01;
+
 /**
- * True when cached buckets are empty for months that have local transactions —
- * mirrors backend re-hydration when `fresh?` zero rows blocked recalculation.
+ * True when cached buckets are missing, empty, or disagree with IndexedDB
+ * transactions for that month.
  */
 export const summariesNeedLocalHydration = async (
   spaceCode: string,
@@ -92,35 +123,39 @@ export const summariesNeedLocalHydration = async (
     transactions ?? await loadCalculatedTransactionsForSpace(spaceCode);
 
   if (!summaries || summaries.length === 0) {
-    return true;
+    return txSource.length > 0;
   }
 
   if (txSource.length === 0) {
     return summaries.every(isMonthlySummaryTotalsEmpty);
   }
 
-  const monthsWithTransactions = monthTransactionKeys(txSource);
+  const monthTotals = monthTotalsFromTransactions(txSource);
   const summaryByMonth = new Map<string, MonthlyFinancialSummary>();
 
   for (const summary of summaries) {
     summaryByMonth.set(yearMonthKey(summary.year, summary.month), summary);
   }
 
-  for (const monthKey of monthsWithTransactions) {
+  for (const [monthKey, totals] of monthTotals) {
     const summary = summaryByMonth.get(monthKey);
 
     if (!summary || isMonthlySummaryTotalsEmpty(summary)) {
       return true;
     }
+
+    if (
+      totalsDisagree(totals.totalIncome, toSummaryNumber(summary.totalIncome))
+      || totalsDisagree(
+        totals.totalExpenses,
+        toSummaryNumber(summary.totalExpenses),
+      )
+    ) {
+      return true;
+    }
   }
 
-  return summaries.some((summary) => {
-    if (!isMonthlySummaryTotalsEmpty(summary)) {
-      return false;
-    }
-
-    return monthsWithTransactions.has(yearMonthKey(summary.year, summary.month));
-  });
+  return false;
 };
 
 export const mergeSummariesPreferNonEmpty = (
@@ -189,6 +224,9 @@ const upsertMonthSummaryFromTransactions = (
     return summaries;
   }
 
+  const totalIncome = Number(totals.totalIncome.toFixed(2));
+  const totalExpenses = Number(totals.totalExpenses.toFixed(2));
+  const netSavings = Number((totalIncome - totalExpenses).toFixed(2));
   const nextRow: MonthlyFinancialSummary = {
     id: existing?.id ?? `local:${yearMonthKey(year, month)}`,
     year,
@@ -196,12 +234,12 @@ const upsertMonthSummaryFromTransactions = (
     currency: existing?.currency ?? currency,
     fxBased: true,
     calculatedAt: new Date().toISOString(),
-    totalIncome: totals.totalIncome,
-    totalExpenses: totals.totalExpenses,
-    netSavings: totals.netSavings,
+    totalIncome,
+    totalExpenses,
+    netSavings,
     savingsPercentage:
-      totals.totalIncome > 0
-        ? Number(((totals.netSavings / totals.totalIncome) * 100).toFixed(2))
+      totalIncome > 0
+        ? Number(((netSavings / totalIncome) * 100).toFixed(2))
         : 0,
     monthStartDate: monthStart,
     monthEndDate: monthEnd,
@@ -217,8 +255,8 @@ const upsertMonthSummaryFromTransactions = (
 };
 
 /**
- * Recompute month buckets from calculated local transactions and persist to
- * IndexedDB — used after bootstrap indexes transactions when API rows are stale zeros.
+ * Recompute month buckets from calculated IndexedDB transactions and persist.
+ * IndexedDB rows win over stale backend snapshots.
  */
 export const hydrateMonthlyFinancialSummariesFromLocalTransactions = async (
   spaceCode: string,
@@ -253,14 +291,11 @@ export const hydrateMonthlyFinancialSummariesFromLocalTransactions = async (
   const grouped = new Map<string, IndexTransaction[]>();
 
   for (const transaction of transactions) {
-    const match = /^(\d{4})-(\d{2})/.exec(transaction.date.slice(0, 10));
-    if (!match) {
+    const key = monthKeyFromDate(transaction.date);
+    if (!key) {
       continue;
     }
 
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const key = yearMonthKey(year, month);
     const bucket = grouped.get(key) ?? [];
     bucket.push(transaction);
     grouped.set(key, bucket);
@@ -270,12 +305,10 @@ export const hydrateMonthlyFinancialSummariesFromLocalTransactions = async (
 
   for (const [key, monthTransactions] of grouped) {
     const [year, month] = key.split("-").map(Number);
-    const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
-    const monthEnd = lastDayOfMonth(year, month);
-    const totals = totalsContext.aggregateTotalsInSpaceForRange(
+    // Use per-row IndexedDB list amounts (same as the Transactions tab), not
+    // booked-FX grouping which drops rows when a cached rate is missing.
+    const totals = totalsContext.summaryFromTransactions(
       monthTransactions,
-      monthStart,
-      monthEnd,
     );
     next = upsertMonthSummaryFromTransactions(
       next,

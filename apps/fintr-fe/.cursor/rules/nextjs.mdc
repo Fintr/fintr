@@ -42,7 +42,10 @@ alwaysApply: true
     - Follow performance optimization techniques, such as reducing load times and improving rendering efficiency.
 
     ### Testing and Documentation
-    - Skip writing unit tests to prioritize speed of implementation and iteration.
+    - Follow skill `frontend-tdd` and rule `frontend_tdd.mdc`. Never skip tests to move faster.
+    - Before editing production code: run related Vitest files (`cd apps/fintr-fe && pnpm test:ci <paths>`).
+    - After editing: update tests only for intentional behavior changes, then re-run the same files.
+    - Unrelated failures are unintended changes — fix the code, do not weaken tests.
     - Provide clear and concise comments for complex logic.
     - Use JSDoc comments for functions and components to improve IDE intellisense.
 
@@ -54,7 +57,9 @@ alwaysApply: true
     **Process**:
     1. **Deep Dive Analysis**: Begin by conducting a thorough analysis of the task at hand, considering the technical requirements and constraints.
     2. **Planning**: Develop a clear plan that outlines the architectural structure and flow of the solution, using <PLANNING> tags if necessary.
-    3. **Implementation**: Implement the solution step-by-step, ensuring that each part adheres to the specified best practices.
-    4. **Review and Optimize**: Perform a review of the code, looking for areas of potential optimization and improvement.
-    5. **Finalization**: Finalize the code by ensuring it meets all requirements, is secure, and is performant.
+    3. **Tests first**: Run related Vitest files and read the baseline output before any production edit.
+    4. **Implementation**: Implement the smallest change that satisfies the request.
+    5. **Update tests and re-run**: Adjust tests only for intentional behavior, then re-run the same files.
+    6. **Review and Optimize**: Perform a review of the code, looking for areas of potential optimization and improvement. Keep tests green.
+    7. **Finalization**: Finalize only after the after-run is green, the code meets requirements, and it is secure and performant.
     

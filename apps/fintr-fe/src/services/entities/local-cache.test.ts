@@ -4,9 +4,15 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { resetLocalDbForTests } from "@/lib/local-db";
 
+import { putSpaceTransactions } from "@/lib/local-db/transactions";
+import { cacheLoansAllPages } from "@/services/loans/local-cache";
+import type { Loan } from "@/services/loans/queries";
+import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+
 import {
   filterCachedEntities,
   loadCachedEntitiesResponse,
+  loadCachedEntityDetail,
   normalizeEntityRecords,
   cacheEntitiesResponse,
 } from "./local-cache";
@@ -41,5 +47,108 @@ describe("entities local cache", () => {
     expect(filterCachedEntities(cached ?? [], "transaction", "joll")).toEqual([
       expect.objectContaining({ fullName: "Jollibee" }),
     ]);
+  });
+
+  it("assembles entity detail from the cached merchant and local rows", async () => {
+    await cacheEntitiesResponse(
+      "SPACE_1",
+      normalizeEntityRecords([
+        {
+          id: "merchant-1",
+          full_name: "Jollibee",
+          entity_type: "transaction",
+        },
+      ]),
+    );
+
+    await putSpaceTransactions("SPACE_1", [
+      {
+        id: "tx-1",
+        date: "2026-08-12",
+        description: "Chickenjoy",
+        amount: 199,
+        categoryName: "Food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+        entityName: "Jollibee",
+      },
+      {
+        id: "tx-other",
+        date: "2026-08-11",
+        description: "Other",
+        amount: 50,
+        categoryName: "Food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+        entityName: "Dairy Queen",
+      },
+    ]);
+
+    const loan: Loan = {
+      id: "loan-1",
+      date: "2026-06-18",
+      description: "Lunch IOU",
+      loanType: "lent",
+      loanTermMonths: 1,
+      maturityDate: "2026-07-18",
+      status: "active",
+      paidOffDate: null,
+      interestRate: 0,
+      entityName: "Jollibee",
+      accountName: "Cash",
+      principalAmount: 500,
+      principalAmountCurrency: "PHP",
+      outstandingBalance: 500,
+      outstandingBalanceCurrency: "PHP",
+      value: 500,
+      income: 0,
+      expense: 500,
+      totalValue: 500,
+      files: [],
+    };
+
+    await cacheLoansAllPages("SPACE_1", [
+      {
+        loans: [loan],
+        nextPage: null,
+        totalPages: 1,
+        totalCount: 1,
+      },
+    ]);
+
+    const detail = await loadCachedEntityDetail("SPACE_1", "merchant-1");
+
+    expect(detail?.entity).toEqual(
+      expect.objectContaining({
+        id: "merchant-1",
+        fullName: "Jollibee",
+      }),
+    );
+    expect(detail?.transactions).toEqual([
+      expect.objectContaining({
+        id: "tx-1",
+        entityName: "Jollibee",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+      }),
+    ]);
+    expect(detail?.loans).toEqual([
+      expect.objectContaining({
+        id: "loan-1",
+        entityName: "Jollibee",
+      }),
+    ]);
+  });
+
+  it("returns undefined when the entity is not in the local cache", async () => {
+    const detail = await loadCachedEntityDetail("SPACE_1", "missing");
+    expect(detail).toBeUndefined();
   });
 });

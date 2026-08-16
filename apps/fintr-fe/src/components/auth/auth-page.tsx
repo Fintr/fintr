@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
 // import { useAuth0 } from "@auth0/auth0-react";
 
 interface AuthPageProps {
@@ -55,7 +56,7 @@ const AuthPage = ({
       await new Promise((resolve) => setTimeout(resolve, 1500));
       toast.success("Welcome back to Fintr!");
       // Redirect to dashboard
-      window.location.href = "/dashboard";
+      window.location.href = DEFAULT_AUTHENTICATED_PATH;
     } catch (error) {
       toast.error("Please check your credentials and try again.");
     } finally {
@@ -94,7 +95,7 @@ const AuthPage = ({
       await new Promise((resolve) => setTimeout(resolve, 1500));
       toast.success("You've been signed in with your Google account.");
       // Redirect to dashboard
-      window.location.href = "/dashboard";
+      window.location.href = DEFAULT_AUTHENTICATED_PATH;
     } catch (error) {
       toast.error("Google sign-in failed");
     } finally {

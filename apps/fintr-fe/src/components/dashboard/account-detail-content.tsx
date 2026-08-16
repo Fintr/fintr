@@ -44,6 +44,10 @@ import {
 } from "@/hooks/async/useAccountDetailActivities";
 import { ACCOUNT_BALANCE_TIMELINE_KEY } from "@/hooks/async/useAccountBalanceTimeline";
 import { activityRecordId } from "@/utils/activityDisplay";
+import {
+  transactionRowTitle,
+  transactionSecondaryLine,
+} from "@/utils/transactionDescription";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import AccountEditSheet from "@/components/dashboard/account-edit-sheet";
 import AccountDeleteDialog from "@/components/dashboard/account-delete-dialog";
@@ -70,6 +74,7 @@ import { getCurrentRate } from "@/services/exchangeRates/queries";
 import { getPresetDateRange } from "@/utils/dateFilterPresets";
 import { usePresetDateRangeOptions } from "@/hooks/usePresetDateRangeOptions";
 import { toast } from "sonner";
+import { transactionViewHref } from "@/utils/detailHrefs";
 
 const AccountBalanceChart = dynamic(
   () =>
@@ -207,7 +212,18 @@ const TransactionSection = ({
               textClassName="bg-card"
             />
             <div className="space-y-2">
-              {byDate[date].map((transaction) => (
+              {byDate[date].map((transaction) => {
+                const rowTitle = transactionRowTitle({
+                  description: transaction.description,
+                  fallback: transaction.categoryName ?? "",
+                });
+                const secondaryLine = transactionSecondaryLine({
+                  description: transaction.description,
+                  entityName: transaction.entityName,
+                  categoryName: transaction.categoryName,
+                });
+
+                return (
                 <div
                   key={transaction.id}
                   className="flex items-center justify-between gap-3 p-2 rounded-md bg-muted/30 min-w-0"
@@ -227,9 +243,9 @@ const TransactionSection = ({
                     <div className="min-w-0 flex-1">
                       <p
                         className="text-sm font-medium truncate"
-                        title={transaction.description}
+                        title={rowTitle}
                       >
-                        {transaction.description}
+                        {rowTitle}
                       </p>
                       {transaction.type ===
                       CombinedTransactionTypeEnum.TRANSFER ? (
@@ -244,14 +260,14 @@ const TransactionSection = ({
                               transaction.toAccountName ??
                               transaction.categoryName)}
                         </p>
-                      ) : (
+                      ) : secondaryLine ? (
                         <p
                           className="text-xs text-muted-foreground truncate"
-                          title={transaction.categoryName}
+                          title={secondaryLine}
                         >
-                          {transaction.categoryName}
+                          {secondaryLine}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
@@ -292,7 +308,8 @@ const TransactionSection = ({
                     </p>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}
@@ -466,7 +483,8 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   const minAmount = parseOptionalAmount(appliedFilters.appliedMinAmount);
   const maxAmount = parseOptionalAmount(appliedFilters.appliedMaxAmount);
 
-  const queryEnabled = Boolean(account);
+  const queryEnabled =
+    Boolean(account) && presetOptions.isAllTimeAnchorReady;
 
   const mainQuery = useAccountDetailActivities({
     accountId: account?.id ?? "",
@@ -481,6 +499,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   });
 
   const adjustmentQuery = useAccountAdjustmentHistory({
+    accountId: account?.id,
     accountName,
     startDate: appliedFilters.queryStartDate,
     endDate: appliedFilters.queryEndDate,
@@ -626,18 +645,11 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       router.push(`/dashboard/loans/detail?loanId=${activity.loanId}`);
       return;
     }
-    if (activity.hasLoanPayment) {
-      toast.error(
-        "This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.",
-      );
-      return;
-    }
-    setSelectedTransaction({
-      ...activity,
+    router.push(transactionViewHref({
       id: activityRecordId(activity),
-      type: activity.type as unknown as CombinedTransactionTypeEnum,
-    });
-    setEditDialogOpen(true);
+      isLoanActivity: activity.isLoanActivity,
+      loanId: activity.loanId,
+    }));
   };
 
   const handleEditClose = () => {
@@ -886,7 +898,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       </header>
 
       <section
-        className="w-full border-y border-border/50 bg-card px-4 py-5 shadow-sm dark:bg-muted/30 sm:px-6"
+        className="w-full px-4 py-4 sm:px-6"
         aria-label="Account overview"
       >
         <AccountBalanceChart
@@ -897,7 +909,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
           enabled={queryEnabled && !!account?.id}
         />
 
-        <div className="flex items-center justify-center gap-2">
+        <div className="mt-4 flex items-center gap-2">
           <Button
             type="button"
             variant="outline"
@@ -989,7 +1001,11 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
 
         <ListView
           variant="activities"
-          isPending={accountsLoading || (queryEnabled && mainQuery.isFetching)}
+          isPending={
+            accountsLoading ||
+            !queryEnabled ||
+            (queryEnabled && mainQuery.isFetching)
+          }
           isError={mainQuery.isError}
           error={mainQuery.error as Error | null}
           isSuccess={mainQuery.isSuccess}

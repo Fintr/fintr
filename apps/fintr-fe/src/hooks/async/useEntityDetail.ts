@@ -2,10 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthApi } from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { loadCachedEntityDetail } from "@/services/entities/local-cache";
 import {
-  loadCachedEntityDetail,
-} from "@/services/entities/local-cache";
-import { fetchEntityDetail } from "@/services/entities/mutation";
+  fetchEntityDetail,
+  type EntityDetail,
+} from "@/services/entities/mutation";
 
 export const ENTITY_DETAIL_KEY = "entityDetail" as const;
 
@@ -21,12 +22,16 @@ export const useEntityDetail = (entityId: string) => {
       (await loadCachedEntityDetail(spaceCode, entityId)) ?? null,
     enabled: Boolean(spaceCode && entityId),
     staleTime: Infinity,
+    networkMode: "always",
   });
 
-  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery);
+  const skipNetworkFetch = useSkipCachedNetworkFetch(
+    localCacheQuery,
+    spaceCode,
+  );
 
-  return useQuery({
-    queryKey: [ENTITY_DETAIL_KEY, entityId],
+  const query = useQuery<EntityDetail>({
+    queryKey: [ENTITY_DETAIL_KEY, spaceCode, entityId],
     queryFn: async () => {
       if (skipNetworkFetch) {
         const cached = await loadCachedEntityDetail(spaceCode, entityId);
@@ -53,11 +58,20 @@ export const useEntityDetail = (entityId: string) => {
     enabled:
       Boolean(entityId) &&
       Boolean(spaceCode) &&
-      (!skipNetworkFetch || Boolean(localCacheQuery.data)),
-    placeholderData: localCacheQuery.data ?? undefined,
+      (!skipNetworkFetch || localCacheQuery.isSuccess),
+    placeholderData: localCacheQuery.data || undefined,
     retry: false,
     refetchOnMount: !skipNetworkFetch,
     refetchOnWindowFocus: false,
     staleTime: skipNetworkFetch ? Infinity : 0,
+    networkMode: "always",
   });
+
+  return {
+    ...query,
+    data: query.data ?? localCacheQuery.data ?? undefined,
+    isLoading:
+      localCacheQuery.isPending ||
+      (query.isPending && !query.data && !localCacheQuery.data),
+  };
 };

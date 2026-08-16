@@ -300,6 +300,53 @@ describe("updateTransactionLocalFirst", () => {
     expect(outbox[0]?.status).toBe("pending");
   });
 
+  it("stores a new receipt in IndexedDB and keeps File out of the outbox", async () => {
+    await seedIncome();
+    vi.mocked(updateTransaction).mockRejectedValue(
+      new Error("Failed to create transaction"),
+    );
+
+    const file = new File(["receipt"], "receipt.jpg", {
+      type: "image/jpeg",
+    });
+
+    const result = await updateTransactionLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        amountCurrency: "PHP",
+        data: {
+          id: "tx-income-1",
+          amount: 10_000_000,
+          description: "Loan repayment Cash",
+          transactionType: "income",
+          categoryName: "Freelance",
+          accountName: "Cash",
+          date: "2026-08-11",
+          scheduleType: ScheduleTypeEnum.ONE_TIME,
+          file,
+        },
+      },
+      { waitForSync: true },
+    );
+
+    expect(result.pendingSync).toBe(true);
+    expect(result.localTransaction.hasImage).toBe(true);
+
+    const outbox = await getLocalDb().outbox.toArray();
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0]?.payload).not.toHaveProperty("file");
+    expect(outbox[0]?.payload).toEqual(
+      expect.objectContaining({
+        attachmentLocalKeys: expect.arrayContaining([expect.any(String)]),
+      }),
+    );
+
+    const stored = await getLocalDb().attachments.toArray();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.filename).toBe("receipt.jpg");
+  });
+
   it("rolls back local rows when the server rejects the update", async () => {
     await seedIncome();
     vi.mocked(updateTransaction).mockRejectedValue({

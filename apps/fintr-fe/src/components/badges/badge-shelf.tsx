@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { badgeImageForKey } from "@/lib/badges/catalog";
 import type { BadgeCategory, GamificationAchievement } from "@/types/badgeTypes";
+
+import { BadgeImage } from "./badge-image";
 
 const HIDDEN_BADGE_KEYS = new Set(["vision_setter"]);
 
@@ -88,12 +88,10 @@ export const BadgeShelf = ({
                   aria-label={`${achievement.title}${locked ? " (locked)" : ""}`}
                 >
                   <div className="relative h-14 w-14 overflow-hidden rounded-full bg-primary/10 ring-2 ring-primary/15">
-                    <Image
-                      src={badgeImageForKey(achievement.imageKey)}
+                    <BadgeImage
+                      imageKey={achievement.imageKey}
                       alt={achievement.title}
-                      fill
-                      className={cn("object-cover", locked && "grayscale")}
-                      sizes="56px"
+                      className={locked ? "grayscale" : undefined}
                     />
                   </div>
                   <span className="line-clamp-2 text-center text-[10px] font-medium leading-tight text-primary">

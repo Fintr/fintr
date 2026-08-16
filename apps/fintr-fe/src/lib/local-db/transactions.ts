@@ -61,6 +61,29 @@ export const listSpaceTransactionsInDateRange = async (
   return records.map((record) => record.payload);
 };
 
+export const getEarliestSpaceTransactionDate = async (
+  spaceId: string,
+): Promise<string | null> => {
+  if (!spaceId) {
+    return null;
+  }
+
+  const record = await getLocalDb()
+    .transactions
+    .where("[spaceId+date]")
+    .between(
+      [spaceId, ""],
+      [spaceId, "\uffff"],
+      true,
+      true,
+    )
+    .first();
+
+  const date = record?.date?.slice(0, 10);
+
+  return date || null;
+};
+
 export const getSpaceTransaction = async (
   spaceId: string,
   transactionId: string,

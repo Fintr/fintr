@@ -31,11 +31,14 @@ Fintr is a personal finance application with heavy integration with AI. Fintr wi
 10. Run `psql -U fintr_admin -d postgres`
 11. Run `ALTER USER fintr_rails WITH SUPERUSER;`
 12. Run `rails db:create db:migrate db:seed` in project root
-13. Run the server (Solid Queue runs inside Puma via `bin/dev`):
+13. Run the development stack (Overmind + Procfile: Rails web + Solid Queue jobs):
 ```
+brew install overmind   # once, if needed
 bin/dev
 ```
-To run jobs in a separate process instead: `SOLID_QUEUE_IN_PUMA=0 bin/dev` in one terminal and `bin/jobs start` in another.
+`bin/dev` starts `web` (Rails) and `jobs` (`bin/jobs start`) via Overmind. If Overmind is not installed, it falls back to a single process with Solid Queue inside Puma.
+
+To run jobs inside Puma instead: `SOLID_QUEUE_IN_PUMA=1 bin/rails server` in one terminal (no separate `bin/jobs` process).
 
 ## How to get included in the seed
 

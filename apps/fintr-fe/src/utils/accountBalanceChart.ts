@@ -1,3 +1,4 @@
+import { getCurrencySymbol } from "@/lib/utils";
 import { getLocalIsoDateKey } from "@/utils/dateUtils";
 
 import type { AccountBalanceTimelinePoint } from "@/services/transactions/accountBalanceTimeline";
@@ -23,6 +24,11 @@ export const formatBalanceChartDateLabel = (dateInput: string): string => {
   });
 };
 
+const dayMidpointChartX = (dateKey: string): number => {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0, 0).getTime();
+};
+
 export const parseBalanceChartTimestamp = (
   occurredAt: string,
   fallbackDate: string,
@@ -32,32 +38,22 @@ export const parseBalanceChartTimestamp = (
     return parsed;
   }
 
-  const dateKey = getLocalIsoDateKey(fallbackDate);
-  const [year, month, day] = dateKey.split("-").map(Number);
-  return new Date(year, month - 1, day).getTime();
+  return dayMidpointChartX(getLocalIsoDateKey(fallbackDate));
 };
 
 export const normalizeBalanceTimelinePoints = (
   points: AccountBalanceTimelinePoint[],
 ): NormalizedBalanceTimelinePoint[] =>
-  [...points]
-    .map((point) => {
-      const date = getLocalIsoDateKey(point.date);
-      const occurredAt = point.occurredAt ?? point.date;
+  points.map((point) => {
+    const date = getLocalIsoDateKey(point.date);
 
-      return {
-        ...point,
-        date,
-        occurredAt,
-        chartX: parseBalanceChartTimestamp(occurredAt, date),
-      };
-    })
-    .sort((left, right) => left.chartX - right.chartX);
-
-const dayMidpointChartX = (dateKey: string): number => {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  return new Date(year, month - 1, day, 12, 0, 0, 0).getTime();
-};
+    return {
+      ...point,
+      date,
+      occurredAt: date,
+      chartX: dayMidpointChartX(date),
+    };
+  });
 
 /** One end-of-day balance per calendar day — removes intra-day zigzag. */
 export const aggregateBalancePointsToDaily = (
@@ -143,6 +139,44 @@ export const isFlatBalanceSeries = (
   return points.every((point) => point.balance === firstBalance);
 };
 
+export const extendBalanceChartToRange = (
+  points: NormalizedBalanceTimelinePoint[],
+  startDate: string,
+  endDate: string,
+): NormalizedBalanceTimelinePoint[] => {
+  if (points.length === 0) {
+    return points;
+  }
+
+  const startKey = getLocalIsoDateKey(startDate);
+  const endKey = getLocalIsoDateKey(endDate);
+  const first = points[0];
+  const last = points[points.length - 1];
+  const next = [...points];
+
+  if (first.date > startKey) {
+    next.unshift({
+      ...first,
+      date: startKey,
+      occurredAt: startKey,
+      change: null,
+      chartX: dayMidpointChartX(startKey),
+    });
+  }
+
+  if (last.date < endKey) {
+    next.push({
+      ...last,
+      date: endKey,
+      occurredAt: endKey,
+      change: null,
+      chartX: dayMidpointChartX(endKey),
+    });
+  }
+
+  return next;
+};
+
 export const buildFlatChartLine = (
   balance: number,
   startDate: string,
@@ -195,4 +229,41 @@ export const formatBalancePercentChange = (percentChange: number): string => {
   }
 
   return "0.00%";
+};
+
+export const formatBalanceChartAxisAmount = (
+  amount: number,
+  currency: string,
+): string => {
+  const abs = Math.abs(amount);
+  const sign = amount < 0 ? "-" : "";
+  const symbol = getCurrencySymbol(currency);
+
+  if (abs >= 1_000_000) {
+    const millions = abs / 1_000_000;
+    const digits = millions >= 10 ? 0 : 1;
+    return `${sign}${symbol}${millions.toFixed(digits)}M`;
+  }
+
+  if (abs >= 1_000) {
+    const thousands = abs / 1_000;
+    const digits = thousands >= 10 ? 0 : 1;
+    return `${sign}${symbol}${thousands.toFixed(digits)}K`;
+  }
+
+  return `${sign}${symbol}${Math.round(abs)}`;
+};
+
+export const chartRangeTimestamps = (
+  startDate: string,
+  endDate: string,
+): [number, number] => {
+  const startX = dayMidpointChartX(getLocalIsoDateKey(startDate));
+  const endX = dayMidpointChartX(getLocalIsoDateKey(endDate));
+
+  if (endX <= startX) {
+    return [startX, startX + 1];
+  }
+
+  return [startX, endX];
 };

@@ -126,7 +126,7 @@ export const transactionMatchesListFilter = (
 
   const search = filter.searchQuery.trim().toLowerCase();
   if (search) {
-    const haystack = `${transaction.description ?? ""}`.toLowerCase();
+    const haystack = `${transaction.description ?? ""} ${transaction.entityName ?? ""}`.toLowerCase();
     if (!haystack.includes(search)) {
       return false;
     }

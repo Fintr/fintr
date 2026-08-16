@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useId } from "react";
+import React, { useState, useEffect, useRef, useMemo, useId, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatedSheetShell } from "@/components/ui/animated-sheet-shell";
 import { CustomModal } from "@/components/ui/custom-modal";
@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createDisplayFileFromAttachment } from "@/utils/fileUtils";
+import { extractRemoteFiles } from "@/services/attachments/remote-files";
 import { cn, formatWithDelimiters } from "@/lib/utils";
 import { ArrowLeftRight, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,9 +35,11 @@ import {
   TransactionEditorPresence,
   useTransactionEditingPresence,
 } from "@/hooks/useTransactionEditingPresence";
+import DiscardUnsavedChangesDialog from "./DiscardUnsavedChangesDialog";
+import { buildTransactionSheetTitle } from "@/utils/transactionSheetTitle";
 
-/** Keep form data visible through sheet/modal close animations (~400ms). */
-const EDIT_DIALOG_CLOSE_RESET_DELAY_MS = 450;
+/** Keep form data visible through sheet/modal close animations (~200ms). */
+const EDIT_DIALOG_CLOSE_RESET_DELAY_MS = 225;
 
 const getEditorInitials = (name?: string | null): string | null => {
   const trimmedName = name?.trim();
@@ -219,6 +222,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   const [deleteScope, setDeleteScope] = useState<DeleteScope>(DeleteScopeEnum.THIS_ONLY);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [formIsDirty, setFormIsDirty] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const scopeModalResolverRef = useRef<(() => void) | null>(null);
 
   // View conversion popover: close when clicking outside or elsewhere
@@ -269,6 +274,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       setIsUpdating(false);
       setIsDeleting(false);
       setIsLoading(false);
+      setFormIsDirty(false);
+      setShowDiscardConfirm(false);
       resolveScopeModal();
     }, EDIT_DIALOG_CLOSE_RESET_DELAY_MS);
 
@@ -316,19 +323,29 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
           ...enriched.data,
         } as UpdateTransactionType | TransferUpdateTransactionType;
 
-        const detailFiles = (processedData as { files?: FileAttachment[] }).files;
+        const detailFiles = extractRemoteFiles(processedData);
         if (
-          detailFiles &&
-          Array.isArray(detailFiles) &&
           detailFiles.length > 0 &&
           !processedData.file
         ) {
-          setFileAttachments(detailFiles);
+          setFileAttachments(
+            detailFiles.map((file) => ({
+              id: file.id ?? "",
+              filename: file.filename ?? "attachment",
+              contentType: file.contentType ?? "",
+              url: file.url ?? "",
+              createdAt: "",
+            })),
+          );
 
           const fileAttachment = detailFiles[0];
-          if (fileAttachment && fileAttachment.url) {
-            // Display File object is a UI concern; keep it in the component.
-            processedData.file = createDisplayFileFromAttachment(fileAttachment);
+          if (fileAttachment?.url) {
+            processedData.file = createDisplayFileFromAttachment({
+              id: fileAttachment.id ?? "",
+              url: fileAttachment.url,
+              filename: fileAttachment.filename ?? "attachment",
+              contentType: fileAttachment.contentType || "image/jpeg",
+            });
           }
         }
 
@@ -595,12 +612,9 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   };
 
   // Handle file updates from child forms
-  const handleFileUpdate = (updatedFile: File | null) => {
-    setFullTransactionData(prev => {
-      if (!prev) return null;
-      const newState = { ...prev, file: updatedFile };
-      return newState;
-    });
+  const handleFileUpdate = (_updatedFile: File | null) => {
+    // Keep attachment changes in the child form only. Writing the file onto
+    // fullTransactionData (the form's initialData) made Update look clean.
   };
 
   const handleSuccess = async (data: any) => {
@@ -679,30 +693,57 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     }
   };
 
-  const getDialogTitle = () => {
-    switch (activeTransaction?.type) {
-      case CombinedTransactionTypeEnum.EXPENSE:
-        return "Edit Expense";
-      case CombinedTransactionTypeEnum.INCOME:
-        return "Edit Income";
-      case CombinedTransactionTypeEnum.TRANSFER:
-        return "Edit Transfer";
-      default:
-        return "Edit Transaction";
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    setFormIsDirty(dirty);
+  }, []);
+
+  const requestClose = () => {
+    if (formIsDirty) {
+      setShowDiscardConfirm(true);
+      return;
     }
+
+    onClose();
   };
 
-  const getDialogDescription = () => {
-    switch (activeTransaction?.type) {
-      case CombinedTransactionTypeEnum.EXPENSE:
-        return "Update the details of your expense transaction.";
-      case CombinedTransactionTypeEnum.INCOME:
-        return "Update the details of your income transaction.";
-      case CombinedTransactionTypeEnum.TRANSFER:
-        return "Update the details of your transfer transaction.";
-      default:
-        return "Update the details of your transaction.";
-    }
+  const handleKeepEditing = () => {
+    setShowDiscardConfirm(false);
+  };
+
+  const handleDiscardChanges = () => {
+    setShowDiscardConfirm(false);
+    setFormIsDirty(false);
+    onClose();
+  };
+
+  const getDialogTitle = () => {
+    const conversion = getConversion(fullTransactionData);
+    const transferData = fullTransactionData as TransferUpdateTransactionType | null;
+
+    return buildTransactionSheetTitle({
+      type: activeTransaction?.type,
+      categoryName:
+        (fullTransactionData as UpdateTransactionType | null)?.categoryName
+        ?? activeTransaction?.categoryName,
+      description:
+        fullTransactionData?.description
+        ?? activeTransaction?.description,
+      amount:
+        conversion?.originalAmount
+        ?? fullTransactionData?.amount
+        ?? activeTransaction?.amount,
+      currency:
+        conversion?.originalCurrency
+        ?? (fullTransactionData as UpdateTransactionType | null)?.amountCurrency
+        ?? activeTransaction?.amountCurrency
+        ?? spaceCurrency,
+      fromAccountName:
+        transferData?.fromAccountName
+        ?? activeTransaction?.fromAccountName,
+      toAccountName:
+        transferData?.toAccountName
+        ?? activeTransaction?.toAccountName,
+    });
   };
 
   const transferInitialData = useMemo((): UpdateTransferType | null => {
@@ -761,7 +802,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             spaceCurrency={spaceCurrency}
             defaultTransactionCurrency={defaultTransactionCurrency}
             onSubmitSuccess={handleFormSubmit}
-            onCancel={onClose}
+            onCancel={requestClose}
+            onDirtyChange={handleDirtyChange}
             isEditMode={true}
             onFileUpdate={handleFileUpdate} // Pass the new handler
             onDelete={handleDelete} // Pass the delete handler
@@ -779,7 +821,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             spaceCurrency={spaceCurrency}
             defaultTransactionCurrency={defaultTransactionCurrency}
             onSubmitSuccess={handleFormSubmit}
-            onCancel={onClose}
+            onCancel={requestClose}
+            onDirtyChange={handleDirtyChange}
             isEditMode={true}
             onFileUpdate={handleFileUpdate} // Pass the new handler
             onDelete={handleDelete} // Pass the delete handler
@@ -802,7 +845,8 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             setDate={setDate}
             spaceCurrency={spaceCurrency}
             onSubmitSuccess={handleFormSubmit}
-            onCancel={onClose}
+            onCancel={requestClose}
+            onDirtyChange={handleDirtyChange}
             isEditMode={true}
             onFileUpdate={handleFileUpdate} // Pass the new handler
             onDelete={handleDelete} // Pass the delete handler
@@ -825,47 +869,47 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         setConversionPopoverOpen(false);
       }}
     >
-      <div className="shrink-0 space-y-4 px-6">
-        <p className="text-sm text-muted-foreground">
-          {getDialogDescription()}
-        </p>
-        {isLockedByOther && lockMessage && lockingEditor && (
-          <div
-            role="status"
-            className="flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
-          >
-            <EditorPresenceAvatar editor={lockingEditor} />
-            <p className="min-w-0 pt-1">
-              {lockMessage}. Fields are read-only until they finish.
-            </p>
-          </div>
-        )}
-        {hasConversion(fullTransactionData) && getConversion(fullTransactionData) && (
-          <div ref={conversionPopoverTriggerRef}>
-            <Popover
-              open={conversionPopoverOpen}
-              onOpenChange={setConversionPopoverOpen}
+      {(isLockedByOther && lockMessage && lockingEditor)
+        || (hasConversion(fullTransactionData) && getConversion(fullTransactionData)) ? (
+        <div className="shrink-0 space-y-4 px-6">
+          {isLockedByOther && lockMessage && lockingEditor && (
+            <div
+              role="status"
+              className="flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
             >
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <ArrowLeftRight className="h-4 w-4" />
-                  View conversion
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-80">
-                <div ref={conversionPopoverContentRef}>
-                  <ConversionInfoPopover conv={getConversion(fullTransactionData)!} />
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        )}
-      </div>
+              <EditorPresenceAvatar editor={lockingEditor} />
+              <p className="min-w-0 pt-1">
+                {lockMessage}. Fields are read-only until they finish.
+              </p>
+            </div>
+          )}
+          {hasConversion(fullTransactionData) && getConversion(fullTransactionData) && (
+            <div ref={conversionPopoverTriggerRef}>
+              <Popover
+                open={conversionPopoverOpen}
+                onOpenChange={setConversionPopoverOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <ArrowLeftRight className="h-4 w-4" />
+                    View conversion
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-80">
+                  <div ref={conversionPopoverContentRef}>
+                    <ConversionInfoPopover conv={getConversion(fullTransactionData)!} />
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+        </div>
+      ) : null}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {renderForm()}
       </div>
@@ -877,7 +921,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       {isMobile ? (
         <AnimatedSheetShell
           open={isOpen}
-          onRequestClose={onClose}
+          onRequestClose={requestClose}
           titleId={titleId}
           side="right"
           swipeToClose
@@ -887,7 +931,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
           <div className="flex shrink-0 items-center justify-between px-6 pb-2 pt-4">
             <h2
               id={titleId}
-              className="text-lg font-semibold text-primary"
+              className="min-w-0 flex-1 truncate pr-2 text-lg font-semibold text-primary"
             >
               {getDialogTitle()}
             </h2>
@@ -896,7 +940,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
               variant="ghost"
               size="icon"
               className="h-8 w-8 shrink-0"
-              onClick={onClose}
+              onClick={requestClose}
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -907,7 +951,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       ) : (
         <CustomModal
           isOpen={isOpen}
-          onClose={onClose}
+          onClose={requestClose}
           title={getDialogTitle()}
           maxWidth="2xl"
           className="p-0"
@@ -943,6 +987,12 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         transactionType={activeTransaction?.type}
         inSeries={fullTransactionData?.scheduleType === ScheduleTypeEnum.REPEAT || fullTransactionData?.scheduleType === ScheduleTypeEnum.INSTALLMENT}
         isLoading={isDeleting}
+      />
+
+      <DiscardUnsavedChangesDialog
+        isOpen={showDiscardConfirm}
+        onKeepEditing={handleKeepEditing}
+        onDiscard={handleDiscardChanges}
       />
     </>
   );

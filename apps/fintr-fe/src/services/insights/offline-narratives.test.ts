@@ -129,4 +129,89 @@ describe("buildOfflineNarratives", () => {
     expect(narratives.insights[0]?.type).toBe("savings");
     expect(narratives.dataQuality.transactionCount).toBe(2);
   });
+
+  it("uses monthly buckets for prior-period and lookback metrics without loading those ranges", async () => {
+    vi.mocked(loadCachedMonthlyFinancialSummaries).mockResolvedValue([
+      {
+        id: "sum-2026-07",
+        year: 2026,
+        month: 7,
+        currency: "PHP",
+        fxBased: true,
+        calculatedAt: "2026-07-31T00:00:00.000Z",
+        totalIncome: 0,
+        totalExpenses: 32,
+        netSavings: -32,
+        savingsPercentage: 0,
+        monthStartDate: "2026-07-01",
+        monthEndDate: "2026-07-31",
+      },
+      {
+        id: "sum-2026-08",
+        year: 2026,
+        month: 8,
+        currency: "PHP",
+        fxBased: true,
+        calculatedAt: "2026-08-31T00:00:00.000Z",
+        totalIncome: 1_000,
+        totalExpenses: 600,
+        netSavings: 400,
+        savingsPercentage: 40,
+        monthStartDate: "2026-08-01",
+        monthEndDate: "2026-08-31",
+      },
+    ]);
+
+    vi.mocked(loadCachedTransactionsInRange).mockImplementation(
+      async (_space, start, end) => {
+        if (start === "2026-08-01" && end === "2026-08-31") {
+          return [
+            tx({
+              id: "i1",
+              type: CombinedTransactionTypeEnum.INCOME,
+              amount: 1000,
+              categoryName: "Salary",
+            }),
+            tx({
+              id: "e1",
+              type: CombinedTransactionTypeEnum.EXPENSE,
+              amount: 600,
+              categoryName: "Food",
+            }),
+          ];
+        }
+
+        return [];
+      },
+    );
+
+    const narratives = await buildOfflineNarratives({
+      spaceCode: "space-1",
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      summary: {
+        totalIncome: 1000,
+        totalExpenses: 600,
+        netSavings: 400,
+      },
+      currency: "PHP",
+      isBusiness: false,
+    });
+
+    const expenseChange = narratives.metrics.find(
+      (metric) => metric.key === "expense_change",
+    );
+
+    expect(expenseChange?.value).toBe("1775.00% more");
+    expect(
+      vi.mocked(loadCachedTransactionsInRange).mock.calls.some(
+        ([, start, end]) => start === "2026-07-01" && end === "2026-07-31",
+      ),
+    ).toBe(false);
+    expect(
+      vi.mocked(loadCachedTransactionsInRange).mock.calls.some(
+        ([, start]) => start !== "2026-08-01",
+      ),
+    ).toBe(false);
+  });
 });

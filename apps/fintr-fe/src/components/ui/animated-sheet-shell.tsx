@@ -6,6 +6,7 @@ import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 
 import { cn } from "@/lib/utils"
+import { hasOpenNestedDismissible } from "@/lib/nested-overlay-portal"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 import { useCloseOnPopStateWhenOpen } from "@/hooks/useCloseOnPopStateWhenOpen"
 import { usePlatformDetection } from "@/hooks/usePlatformDetection"
@@ -17,11 +18,11 @@ const DEFAULT_HISTORY_KEY = "__fintrAnimatedSheet"
 /** Matches {@link MobileStickyHeader} Android status-bar clearance. */
 const ANDROID_SHEET_TOP_PADDING_PX = 24
 
-const SHEET_BACKDROP_DURATION = 0.22
-const SHEET_PANEL_DURATION = 0.4
+const SHEET_BACKDROP_DURATION = 0.11
+const SHEET_PANEL_DURATION = 0.2
 const SHEET_PANEL_EASE_IN = "power3.in"
 const SHEET_PANEL_EASE_OUT = "power3.out"
-const SHEET_SNAP_BACK_DURATION = 0.25
+const SHEET_SNAP_BACK_DURATION = 0.125
 
 const SWIPE_LOCK_MIN_PX = 28
 const SWIPE_HORIZONTAL_RATIO = 1.25
@@ -208,7 +209,7 @@ export function AnimatedSheetShell({
         ? 0
         : Math.min(
             SHEET_PANEL_DURATION,
-            Math.max(0.16, (remaining / width) * SHEET_PANEL_DURATION),
+            Math.max(0.08, (remaining / width) * SHEET_PANEL_DURATION),
           )
 
       gsap.to(panel, {
@@ -247,6 +248,7 @@ export function AnimatedSheetShell({
         || target.closest("[data-grid-picker-modal]")
         || target.closest("[data-calculator-keyboard]")
         || target.closest("[data-slot='select-content']")
+        || target.closest("[data-filter-picker-popover]")
         || target.closest("[data-radix-popper-content-wrapper]")
         || target.closest("[role='dialog']")
       ) {
@@ -304,10 +306,16 @@ export function AnimatedSheetShell({
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault()
-        onRequestClose()
+      if (e.key !== "Escape") {
+        return
       }
+
+      if (e.defaultPrevented || hasOpenNestedDismissible()) {
+        return
+      }
+
+      e.preventDefault()
+      onRequestClose()
     }
 
     window.addEventListener("keydown", handleKeyDown)

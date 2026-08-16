@@ -27,7 +27,7 @@ Settings → Tags / Entities should load from cache after sync. Peer changes and
 
 ## Architecture (three layers)
 
-Every offline-ready domain needs all applicable layers:
+Every offline-ready domain needs all applicable layers. After `offlineSyncReady`, **IndexedDB is the frontend source of truth**; Rails is the sync + durable-facts layer. See [FRONTEND_SOURCE_OF_TRUTH.md](./FRONTEND_SOURCE_OF_TRUTH.md).
 
 ```mermaid
 flowchart LR
@@ -41,10 +41,11 @@ flowchart LR
 |-------|----------------|
 | **Bootstrap** | `Sync::Operations::BootstrapSpace` includes payload; `bootstrapSpaceV2` writes IDB + seeds RQ |
 | **Incremental sync** | `SpaceChangeOp` in change log; `apply-change.ts` updates IDB + RQ |
-| **Reads** | Hook uses `useSkipCachedNetworkFetch` + local cache query; network is write-through only when online |
+| **Reads** | Hook reads IndexedDB (`useSkipCachedNetworkFetch` + local cache / offline calc). Online GET is write-through into IDB only — never the live UI source |
 | **Writes** | `*-local-first.ts` + outbox command (where mutations exist offline) |
+| **Durable facts** | Backend still computes balances, monthly buckets, series; FE displays the **synced artifact**, and must not re-sum the same money from a different slice |
 
-**Rule:** Adding a new list/detail API is not enough. If it is not in this manifest with status ✅, offline mode is incomplete.
+**Rule:** Adding a new list/detail API is not enough. If it is not in this manifest with status ✅, offline mode is incomplete. Do not dual-process persisted totals on FE and BE.
 
 ---
 
@@ -76,6 +77,7 @@ Legend: **Bootstrap** = in `BootstrapSpace` today · **IDB** = persisted locally
 | Accounts | bootstrap `accounts` | `accounts`, `accounts/local` | ✅ | ✅ | ✅ | via txn sync | create/update² | ✅ |
 | Categories | bootstrap `categories` | `transactionCategories` | ✅ | ✅ | ✅ | — | create/update² | ✅ |
 | Transactions (index) | bootstrap `transactions` | `transactions` | ✅ | ✅ | ✅ | `transaction.*` | create/update/delete | ✅ |
+| Transaction receipts (blobs) | IndexedDB `attachments` + `GET /attachments/download` | resolved in-service (not RQ) | prefetch⁵ | ✅ Dexie v3 | n/a | n/a | create/update outbox | ✅ |
 | Transaction detail | index + `GET /transactions/:id` | `transactionDetail` | partial³ | partial³ | partial | `transaction.updated` | update | ✅ |
 | Transfers (detail) | `GET /transactions/transfers/:id` | transfer caches | tier 2 fetch | ✅ | partial | `transaction.*` | create/update/delete | ✅ |
 | Monthly financial summaries | bootstrap | `monthlyFinancialSummaries` | ✅ | ✅ | ✅ | via summaries | — | ✅ |
@@ -90,6 +92,8 @@ Legend: **Bootstrap** = in `BootstrapSpace` today · **IDB** = persisted locally
 ² Account/category/budget **updates** may still require network unless local-first exists for that mutation.
 
 ³ Index row is offline; full detail fields may need explicit detail cache.
+
+⁵ Receipt blobs are **not** in the bootstrap JSON (too large). After tier 1, `prefetchRemoteAttachmentsForTransactions` downloads `hasImage` files in the background. Create/update keep the local blob via outbox keys. Lightbox/edit resolve local blobs first. Uncached receipts toast “Image not available offline.” List UI still uses the `hasImage` icon, not a thumbnail bitmap.
 
 ### Tags & entities — required offline (currently missing)
 
@@ -117,7 +121,7 @@ Legend: **Bootstrap** = in `BootstrapSpace` today · **IDB** = persisted locally
 
 | Domain | Source | Status |
 |--------|--------|--------|
-| Summary / trends | monthly summaries + local txns | ✅ `offline-calculations.ts` |
+| Summary / Net / In / Out | monthly summary buckets in IDB (authoritative) | ✅ `offline-calculations.ts` — do not re-sum period txs as hero |
 | Expense breakdown / weekly | local transactions | ✅ |
 | Financial health score | summaries + budgets + loans | ✅ |
 | Narratives / profiles | local inputs + bundled profiles | ✅ |
@@ -128,15 +132,15 @@ Legend: **Bootstrap** = in `BootstrapSpace` today · **IDB** = persisted locally
 
 | Domain | API | Status |
 |--------|-----|--------|
-| Account detail activities | `GET /transactions/accounts/:id/activities` | ❌ |
-| Account balance timeline | account balance timeline endpoint | ❌ |
+| Account detail activities | IndexedDB transactions + loans that touch the account | ✅ `account-activities-local.ts` |
+| Account balance timeline | local transactions + account balance | ✅ `account-balance-timeline-local.ts` |
 
 ### Settings & metadata — required offline
 
 | Domain | API | Status |
 |--------|-----|--------|
 | Space users | space members endpoint | ❌ |
-| Gamification / achievements | achievements API | ❌ planned PR 7 |
+| Gamification / achievements | `GET /achievements/profile` | ✅ bootstrap-local-data + IDB + Settings hook. Images via Cache Storage `/badges/*.png`. |
 | Subscriptions (billing) | finance subscriptions | 🟡 optional online-only⁴ |
 
 ⁴ Billing may stay online-only by product choice — document explicitly if so.
@@ -162,7 +166,7 @@ Legend: **Bootstrap** = in `BootstrapSpace` today · **IDB** = persisted locally
 | AI chat / RAG / conversations | Server LLM |
 | CRM tickets | Support workflow |
 | Admin panels | Staff-only |
-| Receipt OCR upload | Server processing |
+| Receipt OCR / AI scan | Server LLM / vision — **viewing** an already-attached receipt is local (FIN-202) |
 
 ---
 
@@ -181,16 +185,19 @@ Today (`apps/fintr-fe/src/types/syncTypes.ts`):
 
 ## IndexedDB stores (today)
 
-`apps/fintr-fe/src/lib/local-db/db.ts` — schema v2:
+`apps/fintr-fe/src/lib/local-db/db.ts` — schema v3:
 
 | Store | Purpose |
 |-------|---------|
 | `accounts` | Account rows |
 | `transactions` | Transaction index |
+| `attachments` | Receipt blobs (owner key, LRU `lastAccessedAt`, space budget) |
 | `outbox` | Pending local-first commands |
 | `meta` | Response snapshots (`putLocalResponseSnapshot`), sync cursor, bootstrap timestamps |
 
 Most caches (categories, budgets, loans, dashboard, rates) use **`meta` response snapshots** via domain `local-cache.ts` modules — not dedicated Dexie tables.
+
+Access attachments only through `src/services/attachments/` (SRP).
 
 **Planned:** `tags` and `entities` stores or snapshot keys — follow existing `categories/local-cache.ts` pattern unless query volume warrants a table.
 
@@ -230,6 +237,7 @@ cd apps/fintr-be && bundle exec rspec spec/operations/sync/operations/bootstrap_
 
 ## Related docs
 
+- [FRONTEND_SOURCE_OF_TRUTH.md](./FRONTEND_SOURCE_OF_TRUTH.md) — IndexedDB vs Rails processing split
 - [PR stack](PR-STACK.md) — integration branch and PR slices
 - [OFFLINE_INDEXEDDB_SPIKE.md](../../apps/fintr-fe/docs/mobile/OFFLINE_INDEXEDDB_SPIKE.md) — Dexie architecture
 - [SPACE_SYNC_CHANGE_LOG.md](../../apps/fintr-fe/docs/mobile/SPACE_SYNC_CHANGE_LOG.md) — sync protocol design

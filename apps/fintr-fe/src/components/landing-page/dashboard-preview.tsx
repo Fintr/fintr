@@ -23,6 +23,7 @@ import {
   Plus,
 } from "lucide-react";
 import { Progress } from "../ui/progress";
+import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
 
 interface DashboardPreviewProps {
   title?: string;
@@ -53,7 +54,7 @@ const DashboardPreview = ({
           </p>
           <Button
             className="bg-primary hover:bg-primary/80 text-white px-6 py-2"
-            onClick={() => (window.location.href = "/dashboard")}
+            onClick={() => (window.location.href = DEFAULT_AUTHENTICATED_PATH)}
           >
             Try Dashboard
           </Button>
@@ -363,7 +364,7 @@ const DashboardPreview = ({
                   <Button
                     variant="outline"
                     className="px-6 py-2"
-                    onClick={() => (window.location.href = "/dashboard")}
+                    onClick={() => (window.location.href = DEFAULT_AUTHENTICATED_PATH)}
                   >
                     View Live Demo <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>

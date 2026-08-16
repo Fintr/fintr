@@ -51,11 +51,11 @@ describe("offline sync state — new spaces", () => {
     ).resolves.toEqual(["C"]);
   });
 
-  it("requires a full sync when monthly summaries are missing for a synced space", async () => {
+  it("does not block on a full import after IndexedDB records a completed sync", async () => {
     await markOfflineSyncComplete(["fintr"]);
     await markSpaceTransactionIndexComplete("fintr");
 
-    await expect(shouldRunFullOfflineSync()).resolves.toBe(true);
+    await expect(shouldRunFullOfflineSync()).resolves.toBe(false);
   });
 
   it("does not require a full sync when summaries and transaction index exist", async () => {

@@ -4,6 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, Filter } from "lucide-react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { cn } from "@/lib/utils";
 import { InsightsSummary } from "@/services/insights/types";
+import { periodNetLabel } from "@/utils/periodNetLabel";
 import {
   dashboardLedgerHeroClassName,
   dashboardStampChipClassName,
@@ -46,7 +47,7 @@ export const DashboardSummarySection = ({
       ? `${((netTotal / totalIncome) * 100).toFixed(0)}% saved`
       : null;
 
-  const netLabel = netTotal < 0 ? "Net Deficit" : "Net Income";
+  const netLabel = periodNetLabel(netTotal);
 
   const netAmountClassName =
     netTotal < 0
@@ -143,12 +144,12 @@ export const DashboardSummarySection = ({
               <>
                 <div className="px-4 py-5">
                   <div className="flex items-center gap-1.5">
-                    <ArrowDownLeft
+                    <ArrowUpRight
                       className="h-4 w-4 text-teal-700 dark:text-teal-400"
                       aria-hidden
                     />
                     <span className="text-xs font-semibold uppercase tracking-wide text-foreground">
-                      In
+                      Income
                     </span>
                   </div>
                   <p
@@ -162,12 +163,12 @@ export const DashboardSummarySection = ({
 
                 <div className="px-4 py-5">
                   <div className="flex items-center gap-1.5">
-                    <ArrowUpRight
+                    <ArrowDownLeft
                       className="h-4 w-4 text-red-800 dark:text-red-400"
                       aria-hidden
                     />
                     <span className="text-xs font-semibold uppercase tracking-wide text-foreground">
-                      Out
+                      Expense
                     </span>
                   </div>
                   <p

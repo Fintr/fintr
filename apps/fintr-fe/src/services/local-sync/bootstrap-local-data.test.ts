@@ -30,6 +30,7 @@ import {
 } from "@/lib/local-sync/offline-bootstrap-dates";
 import { loadCachedBudgetsResponse } from "@/services/budgets/local-cache";
 import { loadCachedDashboardResponse } from "@/services/spaces/local-cache";
+import { loadCachedGamificationProfile } from "@/services/achievements/local-cache";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 
 const sampleDashboard = (): DashboardData => ({
@@ -120,6 +121,40 @@ const createApiMock = () => {
 
     if (url === "/auth/private") {
       return { data: { data: { spaceCode: "SPACE1" } } };
+    }
+
+    if (url === "/achievements/profile") {
+      return {
+        data: {
+          success: true,
+          message: "Success",
+          data: {
+            xp: 50,
+            level: 1,
+            xpIntoLevel: 50,
+            xpPerLevel: 100,
+            title: {
+              level: 1,
+              key: "rookie_tracker",
+              title: "Rookie Tracker",
+              description: "You opened the books. Every legend starts here.",
+              imageKey: "rookie_tracker",
+              unlocked: true,
+            },
+            titles: [],
+            featured: [],
+            achievements: [],
+          },
+        },
+      };
+    }
+
+    if (url === "/transactions/tags") {
+      return { data: { data: [] } };
+    }
+
+    if (typeof url === "string" && url.startsWith("/entities")) {
+      return { data: { data: [] } };
     }
 
     throw new Error(`Unexpected url ${url}`);
@@ -300,6 +335,10 @@ describe("bootstrap-local-data", () => {
     expect(progressSnapshots.at(-1)).toBe(100);
     expect(api.get).toHaveBeenCalled();
     expect(fetchTransactionsPage).toHaveBeenCalledTimes(2);
+    await expect(loadCachedGamificationProfile()).resolves.toMatchObject({
+      level: 1,
+      title: { key: "rookie_tracker" },
+    });
   });
 
   it("syncNewlyAccessibleWorkspaces only pulls workspaces missing from sync meta", async () => {

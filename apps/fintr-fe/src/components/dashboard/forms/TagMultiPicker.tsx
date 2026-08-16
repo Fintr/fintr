@@ -71,7 +71,7 @@ export const TagMultiPicker: React.FC<TagMultiPickerProps> = ({
         values={value}
         onValuesChange={onChange}
         disabled={disabled || isCreating}
-        placeholder="Search or select tags"
+        placeholder="Select tags"
         chipVariant="banner"
       />
       {onCreateTag && (

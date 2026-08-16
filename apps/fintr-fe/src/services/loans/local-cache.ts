@@ -12,6 +12,7 @@ import {
   upsertLoanInQueryCaches,
   type UpsertLoanListOptions,
 } from "@/services/loans/loans-list-cache";
+import { normalizeLoanPayments } from "@/utils/loan-payment-amounts";
 import { patchLoanFromPayments } from "@/utils/patch-loan-from-payments";
 
 const loansAllPagesKey = (spaceCode: string): string =>
@@ -123,6 +124,38 @@ export const loadCachedLoanSnapshot = async (
     .find((loan) => loan.id === loanId);
 };
 
+export const paymentsFromCachedLoan = (
+  loanId: string,
+  loan?: Loan | null,
+): LoanPayment[] | undefined => {
+  if (!loan?.loanPayments?.length) {
+    return undefined;
+  }
+
+  return normalizeLoanPayments(
+    loan.loanPayments.map((payment) => ({
+      ...payment,
+      loanId,
+    })),
+  );
+};
+
+/**
+ * Payments snapshot: dedicated cache first, then payments embedded on the loan.
+ */
+export const loadCachedLoanPaymentsSnapshot = async (
+  spaceCode: string,
+  loanId: string,
+): Promise<LoanPayment[] | undefined> => {
+  const cached = await loadCachedLoanPayments(spaceCode, loanId);
+  if (cached) {
+    return cached;
+  }
+
+  const loan = await loadCachedLoanSnapshot(spaceCode, loanId);
+  return paymentsFromCachedLoan(loanId, loan);
+};
+
 /**
  * Recomputes loan balance + embedded payments in IndexedDB after payments change.
  * React Query mirrors are updated only after the IDB write succeeds.
@@ -139,7 +172,18 @@ export const refreshLoanSnapshotInIndexedDb = async (params: {
     return;
   }
 
-  const loan = await loadCachedLoanSnapshot(spaceCode, loanId);
+  const loan =
+    (await loadCachedLoanSnapshot(spaceCode, loanId)) ??
+    queryClient?.getQueryData<Loan>(["loanDetail", loanId]) ??
+    queryClient
+      ?.getQueryData<InfiniteData<LoansPage>>(["loans", "local", spaceCode])
+      ?.pages.flatMap((page) => page.loans ?? [])
+      .find((row) => row.id === loanId) ??
+    queryClient
+      ?.getQueryData<InfiniteData<LoansPage>>(["loans"])
+      ?.pages.flatMap((page) => page.loans ?? [])
+      .find((row) => row.id === loanId);
+
   if (!loan) {
     return;
   }

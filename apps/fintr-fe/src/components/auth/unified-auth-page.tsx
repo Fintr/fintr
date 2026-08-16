@@ -9,12 +9,19 @@ import { ArrowLeft, Loader2, Eye, EyeOff } from "lucide-react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { FintrLogo } from "@/components/brand/fintr-logo";
 import { useAuth } from "@/contexts/AuthContext";
+import { AuthStorage } from "@/lib/auth-storage";
 import { useRouter } from "next/navigation";
 import { smartInAppBrowserGoogleSignIn } from "@/services/auth/modal-google-signin";
 import { smartAppleSignIn } from "@/services/auth/in-app-apple-signin";
 import { isNativeCapacitor } from "@/lib/capacitor";
 import { initCapacitorBridgeIfNeeded } from "@/lib/capacitor-bridge-init";
 import { cn } from "@/lib/utils";
+import {
+  AUTH_REDIRECT_FALLBACK_MS,
+  DEFAULT_AUTHENTICATED_PATH,
+  isAuthPage,
+  navigateAfterAuthentication,
+} from "@/lib/auth-routes";
 
 const authInputClassName =
   "border-0 shadow-none focus-visible:border-transparent focus-visible:ring-1 focus-visible:ring-ring/40";
@@ -69,10 +76,26 @@ const UnifiedAuthPage = ({
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/dashboard");
+    if (!isAuthenticated || authLoading) {
+      return;
     }
-  }, [isAuthenticated, router]);
+
+    if (!AuthStorage.isAuthenticated()) {
+      return;
+    }
+
+    router.replace(DEFAULT_AUTHENTICATED_PATH);
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (isAuthPage(window.location.pathname)) {
+        navigateAfterAuthentication(DEFAULT_AUTHENTICATED_PATH);
+      }
+    }, AUTH_REDIRECT_FALLBACK_MS);
+
+    return () => {
+      window.clearTimeout(fallbackTimer);
+    };
+  }, [authLoading, isAuthenticated, router]);
 
   // Reset loading state when page becomes visible again
   // (e.g., user cancels auth flow or hits back button)
@@ -239,7 +262,10 @@ const UnifiedAuthPage = ({
     }
   };
 
-  if (isAuthenticated) {
+  const hasValidStoredSession =
+    isAuthenticated && AuthStorage.isAuthenticated();
+
+  if (hasValidStoredSession) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">

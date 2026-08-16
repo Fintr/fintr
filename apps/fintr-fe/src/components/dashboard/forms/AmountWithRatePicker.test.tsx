@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, cleanup, within } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, within, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AmountWithRatePicker } from "./AmountWithRatePicker";
 import { resolveAutoExchangeRates } from "@/services/exchangeRates/resolve-auto-rates";
@@ -366,5 +366,60 @@ describe("AmountWithRatePicker", () => {
         }),
       );
     });
+  });
+
+  it("keeps a picked rate visible when auto-fetch later fails", async () => {
+    const user = userEvent.setup();
+    const onConversionChange = vi.fn();
+    let rejectAutoFetch: (error: Error) => void = () => undefined;
+
+    mockedResolveAutoExchangeRates.mockImplementation(
+      () =>
+        new Promise((_, reject) => {
+          rejectAutoFetch = reject;
+        }),
+    );
+    mockedGetCurrentRate.mockRejectedValue(new Error("offline"));
+
+    render(
+      <AmountWithRatePicker
+        {...defaultProps}
+        fromCurrency="PLN"
+        toCurrency="PHP"
+        amountDisplayValue="12.25"
+        amountCurrencyOptions={["PLN", "PHP"]}
+        onConversionChange={onConversionChange}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /exchange rate options/i }),
+    );
+
+    const manualInput = await screen.findByLabelText(/manual exchange rate/i);
+    await user.clear(manualInput);
+    await user.type(manualInput, "16.333");
+    await user.click(screen.getByRole("button", { name: /^apply$/i }));
+
+    await waitFor(() => {
+      expect(onConversionChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalCurrency: "PLN",
+          targetCurrency: "PHP",
+          exchangeRateSource: "manual",
+        }),
+      );
+    });
+    expect(screen.getByText(/manual rate/i)).toBeInTheDocument();
+
+    await act(async () => {
+      rejectAutoFetch(new Error("offline"));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/manual rate/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/enter amount and choose a rate/i),
+    ).not.toBeInTheDocument();
   });
 });

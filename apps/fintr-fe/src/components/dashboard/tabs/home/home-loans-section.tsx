@@ -25,6 +25,7 @@ export const HomeLoansSection = () => {
       (await loadCachedLoansInfiniteData(spaceCode)) ?? null,
     enabled: !!spaceCode,
     staleTime: Infinity,
+    networkMode: "always",
   });
 
   const loans = useMemo(

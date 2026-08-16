@@ -25,20 +25,11 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
 
       def initialize(request_stub)
         @request_stub = request_stub
-        @reject_called = false
         # Don't call super - we're testing in isolation
       end
 
       def request
         @request_stub
-      end
-
-      def reject
-        @reject_called = true
-      end
-
-      def reject_called?
-        @reject_called
       end
     end
   end
@@ -245,9 +236,11 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
   end
 
   describe "#reject_unauthorized_connection" do
-    it "calls reject" do
-      connection.reject_unauthorized_connection
-      expect(connection.reject_called?).to be true
+    it "raises UnauthorizedError" do
+      allow(connection).to receive(:logger).and_return(Rails.logger)
+
+      expect { connection.reject_unauthorized_connection }
+        .to raise_error(ActionCable::Connection::Authorization::UnauthorizedError)
     end
   end
 

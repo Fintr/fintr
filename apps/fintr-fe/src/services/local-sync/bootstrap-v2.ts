@@ -329,10 +329,6 @@ const applyBootstrapTier1 = async (params: {
     await cacheTransactionsAllPages(spaceCode, filterKey, transactionPages);
     await mergeFetchedTransactionsIntoAllTimeCache(spaceCode, transactionPages);
 
-    if (isOfflineBootstrapDateRange(startDate, endDate)) {
-      await markSpaceTransactionIndexComplete(spaceCode);
-    }
-
     for (const row of pendingLocalCreates) {
       await upsertLocalIndexTransaction(spaceCode, row);
     }
@@ -346,6 +342,10 @@ const applyBootstrapTier1 = async (params: {
       seededLocal,
     );
     params.queryClient.setQueryData(queryKey, seededLocal);
+  }
+
+  if (isOfflineBootstrapDateRange(startDate, endDate)) {
+    await markSpaceTransactionIndexComplete(spaceCode);
   }
 
   const spaceCurrency =
@@ -462,10 +462,16 @@ const applyBootstrapTier2 = async (params: {
   }
 
   const flatTransactions = transactionPages.flatMap((page) => page.transactions);
-  await prefetchRemoteAttachmentsForTransactions({
+  void prefetchRemoteAttachmentsForTransactions({
     api,
     spaceId: spaceCode,
     transactions: flatTransactions,
+  }).catch((error) => {
+    console.warn(
+      "[attachments] Background prefetch failed",
+      spaceCode,
+      error,
+    );
   });
 };
 

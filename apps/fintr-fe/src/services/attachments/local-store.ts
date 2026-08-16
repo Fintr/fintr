@@ -1,5 +1,6 @@
 import { getLocalDb } from "@/lib/local-db/db";
 
+import { maybeCompressAttachmentBlob } from "./compress";
 import {
   DEFAULT_ATTACHMENT_ID,
   MAX_ATTACHMENT_BYTE_SIZE,
@@ -123,7 +124,8 @@ export const putLocalAttachment = async (params: {
     throw new Error("spaceId and ownerId are required to store an attachment");
   }
 
-  const byteSize = file.size;
+  const storedFile = await maybeCompressAttachmentBlob(file, filename);
+  const byteSize = storedFile.size;
   assertAttachmentSize(byteSize);
   await enforceSpaceAttachmentBudget(spaceId, byteSize);
 
@@ -136,11 +138,12 @@ export const putLocalAttachment = async (params: {
     ownerId,
     attachmentId,
     filename:
-      filename ??
-      (file instanceof File ? file.name : "attachment"),
-    contentType: file.type || "application/octet-stream",
+      storedFile instanceof File
+        ? storedFile.name
+        : filename ?? (file instanceof File ? file.name : "attachment"),
+    contentType: storedFile.type || "application/octet-stream",
     byteSize,
-    blob: file,
+    blob: storedFile,
     remoteUrl,
     serverFileId,
     source,

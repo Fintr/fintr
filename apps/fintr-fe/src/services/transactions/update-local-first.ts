@@ -2,11 +2,10 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { AxiosInstance } from "axios";
 
 import {
-  enqueueOutboxRecord,
-  OUTBOX_COMMAND_TRANSACTION_UPDATE,
-  removeOutboxRecord,
-  updateOutboxStatus,
-} from "@/lib/local-db";
+  buildCreateOutboxPayload,
+  attachmentOwnerTypeForTransaction,
+} from "@/services/attachments/create-outbox";
+import { purgeAttachmentsForOwner } from "@/services/attachments/local-store";
 import {
   applyLocalTransactionToMonthlySummaries,
   setMonthlyFinancialSummariesQueryData,
@@ -15,6 +14,13 @@ import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { isTransactionCalculatedForDate } from "@/utils/transactionCalculated";
 import { invalidateLocalInsightsQueries } from "@/utils/invalidateSpaceQueries";
+import { isUploadableFile } from "@/utils/formUtils";
+import {
+  enqueueOutboxRecord,
+  OUTBOX_COMMAND_TRANSACTION_UPDATE,
+  removeOutboxRecord,
+  updateOutboxStatus,
+} from "@/lib/local-db";
 
 import {
   loadLocalIndexTransactionById,
@@ -193,6 +199,11 @@ export const buildUpdatedIndexTransaction = (params: {
     toAccountName:
       transactionType === "income" ? accountName : previous.toAccountName,
     calculated: isTransactionCalculatedForDate(data.date || previous.date),
+    hasImage: isUploadableFile(data.file)
+      ? true
+      : data.removeFile
+        ? false
+        : Boolean(previous.hasImage),
     tagIds: data.tagIds ?? previous.tagIds,
     tags: data.tags ?? previous.tags,
     // Always refresh booked legs — spreading `previous` would leave a stale
@@ -376,11 +387,28 @@ export const updateTransactionLocalFirst = async (
   }
 
   const clientMutationId = newClientMutationId();
+  const ownerType = attachmentOwnerTypeForTransaction(localTransaction.type);
+
+  if (data.removeFile) {
+    await purgeAttachmentsForOwner({
+      spaceId,
+      ownerType,
+      ownerId: previous.id,
+    });
+  }
+
+  const payloadForOutbox = await buildCreateOutboxPayload({
+    spaceId,
+    ownerType,
+    ownerId: previous.id,
+    data,
+  });
+
   await enqueueOutboxRecord({
     spaceId,
     commandType: OUTBOX_COMMAND_TRANSACTION_UPDATE,
     payload: {
-      ...data,
+      ...payloadForOutbox,
       id: previous.id,
     },
     clientMutationId,

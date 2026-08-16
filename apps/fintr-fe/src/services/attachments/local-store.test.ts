@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getLocalDb, resetLocalDbForTests } from "@/lib/local-db";
 
@@ -16,6 +16,7 @@ import {
 
 describe("attachments local-store", () => {
   afterEach(async () => {
+    vi.unstubAllGlobals();
     await resetLocalDbForTests();
   });
 
@@ -104,5 +105,42 @@ describe("attachments local-store", () => {
 
     expect(await getLocalAttachment(key)).toBeUndefined();
     expect(await getLocalDb().attachments.count()).toBe(0);
+  });
+
+  it("stores a compressed JPEG when the source image is larger than the max edge", async () => {
+    const file = new File(["raw-photo"], "receipt.png", { type: "image/png" });
+    const compressedBytes = new Uint8Array([0xff, 0xd8, 0xff]);
+
+    globalThis.createImageBitmap = vi.fn(async () => ({
+      width: 3200,
+      height: 2400,
+      close: vi.fn(),
+    })) as unknown as typeof createImageBitmap;
+
+    vi.stubGlobal(
+      "document",
+      {
+        createElement: vi.fn(() => ({
+          width: 0,
+          height: 0,
+          getContext: () => ({ drawImage: vi.fn() }),
+          toBlob: (callback: BlobCallback) => {
+            callback(new Blob([compressedBytes], { type: "image/jpeg" }));
+          },
+        })),
+      } as unknown as Document,
+    );
+
+    const key = await putLocalAttachment({
+      spaceId: "space-a",
+      ownerType: "transaction",
+      ownerId: "tx-1",
+      file,
+    });
+
+    const record = await getLocalAttachment(key);
+    expect(record?.filename).toBe("receipt.jpg");
+    expect(record?.contentType).toBe("image/jpeg");
+    expect(record?.byteSize).toBe(compressedBytes.byteLength);
   });
 });

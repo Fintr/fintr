@@ -51,3 +51,5 @@ createTransactionClientSchema.safeParse(payload); // forms
 - Insights offline mirrors (`offline-narratives`, `offline-profiles`) — domain rules, not request contracts
 
 See `packages/fintr-domain/README.md` and skill `shared-domain-validation`.
+
+**Processing split:** `@fintr/domain` is for validation parity, not for duplicating monthly totals / balances. After sync, the frontend reads IndexedDB; the backend remains the durable-facts calculator. See `docs/offline-mode/FRONTEND_SOURCE_OF_TRUTH.md` and skill `indexeddb-source-of-truth`.

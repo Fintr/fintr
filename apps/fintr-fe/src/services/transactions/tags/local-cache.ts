@@ -50,6 +50,28 @@ export const cacheTransactionTagsResponse = async (
   }
 };
 
+export const applyToggledDefaultTag = (
+  tags: TransactionTag[],
+  updated: TransactionTag,
+): TransactionTag[] =>
+  tags.map((tag) => {
+    if (tag.id === updated.id) {
+      return {
+        ...tag,
+        ...updated,
+      };
+    }
+
+    if (updated.isDefault) {
+      return {
+        ...tag,
+        isDefault: false,
+      };
+    }
+
+    return tag;
+  });
+
 export const loadCachedTransactionTagsResponse = async (
   spaceCode: string,
 ): Promise<TransactionTag[] | undefined> => {

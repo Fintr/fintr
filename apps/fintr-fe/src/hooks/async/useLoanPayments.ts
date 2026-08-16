@@ -21,28 +21,12 @@ import {
 } from "@/services/loans/loan-payments-cache";
 import { loanPaymentToIndexRow } from "@/services/loans/loan-payment-index-row";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
-import { loadCachedLoanPayments } from "@/services/loans/local-cache";
+import {
+  loadCachedLoanPaymentsSnapshot,
+  paymentsFromCachedLoan,
+} from "@/services/loans/local-cache";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import type { Loan } from "@/services/loans/queries";
-import {
-  normalizeLoanPayments,
-} from "@/utils/loan-payment-amounts";
-
-const seedPaymentsFromLoanDetail = (
-  loanId: string,
-  loan?: Loan | null,
-): LoanPayment[] | undefined => {
-  if (!loan?.loanPayments?.length) {
-    return undefined;
-  }
-
-  return normalizeLoanPayments(
-    loan.loanPayments.map((payment) => ({
-      ...payment,
-      loanId,
-    })),
-  );
-};
 
 export const useLoanPayments = (loanId: string) => {
   const { api } = useAuthApi({
@@ -72,23 +56,27 @@ export const useLoanPayments = (loanId: string) => {
   const localPaymentsQuery = useQuery({
     queryKey: ["loanPayments", "local", spaceCode, loanId],
     queryFn: async () =>
-      (await loadCachedLoanPayments(spaceCode, loanId)) ?? null,
+      (await loadCachedLoanPaymentsSnapshot(spaceCode, loanId)) ?? null,
     enabled: Boolean(spaceCode && loanId),
     staleTime: Infinity,
+    networkMode: "always",
   });
 
   const loanDetailFromCache = queryClient.getQueryData<Loan>([
     LOAN_DETAIL_KEY,
     loanId,
   ]);
-  const seedFromLoanDetail = seedPaymentsFromLoanDetail(
+  const seedFromLoanDetail = paymentsFromCachedLoan(
     loanId,
     loanDetailFromCache,
   );
   const placeholderPayments =
     localPaymentsQuery.data ?? seedFromLoanDetail ?? undefined;
 
-  const skipNetworkFetch = useSkipCachedNetworkFetch(localPaymentsQuery);
+  const skipNetworkFetch = useSkipCachedNetworkFetch(
+    localPaymentsQuery,
+    spaceCode,
+  );
 
   const {
     data,
@@ -99,18 +87,39 @@ export const useLoanPayments = (loanId: string) => {
   } = useQuery<LoanPayment[]>({
     queryKey: ["loanPayments", loanId],
     queryFn: async () => {
-      const payments = await fetchLoanPayments(api, loanId);
-      await syncLoanPaymentsToLocalStores({
-        spaceCode,
-        loanId,
-        payments,
-        queryClient,
-      });
-      return payments;
+      if (skipNetworkFetch) {
+        return (
+          (await loadCachedLoanPaymentsSnapshot(spaceCode, loanId)) ??
+          placeholderPayments ??
+          []
+        );
+      }
+
+      try {
+        const payments = await fetchLoanPayments(api, loanId);
+        await syncLoanPaymentsToLocalStores({
+          spaceCode,
+          loanId,
+          payments,
+          queryClient,
+        });
+        return payments;
+      } catch (fetchError) {
+        if (placeholderPayments) {
+          return placeholderPayments;
+        }
+
+        throw fetchError;
+      }
     },
-    enabled: Boolean(loanId && api && !skipNetworkFetch),
+    enabled:
+      Boolean(loanId) &&
+      Boolean(spaceCode) &&
+      (!skipNetworkFetch || localPaymentsQuery.isSuccess),
     placeholderData: placeholderPayments,
+    retry: false,
     refetchOnMount: !skipNetworkFetch,
+    refetchOnWindowFocus: false,
     staleTime: skipNetworkFetch ? Infinity : 30000,
     gcTime: 300000,
   });
@@ -152,6 +161,7 @@ export const useLoanPayments = (loanId: string) => {
 
       return result;
     },
+    networkMode: "always",
   });
 
   const updateMutation = useMutation({
@@ -195,6 +205,7 @@ export const useLoanPayments = (loanId: string) => {
 
       return result;
     },
+    networkMode: "always",
   });
 
   const deleteMutation = useMutation({
@@ -262,6 +273,7 @@ export const useLoanPayments = (loanId: string) => {
 
       return result;
     },
+    networkMode: "always",
     onError: (_error, _paymentId, context) => {
       if (context?.previousPayments) {
         void syncLoanPaymentsToLocalStores({
@@ -277,7 +289,7 @@ export const useLoanPayments = (loanId: string) => {
   return {
     payments,
     isLoading: isLoading && payments.length === 0,
-    isError,
+    isError: payments.length > 0 ? false : isError,
     error,
     refetch,
     createPayment: createMutation.mutateAsync,

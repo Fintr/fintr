@@ -1,6 +1,7 @@
 "use client";
-import dynamic from "next/dynamic";
 import { TabsWrapper } from "@/components/tabs-wrapper";
+import MobileStickyHeader from "@/components/dashboard/mobile-sticky-header";
+import BottomNavigation from "@/components/dashboard/bottom-navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
@@ -11,7 +12,9 @@ import { useSpaceSettingsRealtime } from "@/hooks/useSpaceSettingsRealtime";
 import { useOpenTransactionRequest } from "@/hooks/useOpenTransactionRequest";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { cn, shouldShowV2Features, formatCurrency } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { periodNetLabel } from "@/utils/periodNetLabel";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useScrollToTopOnNavigate } from "@/hooks/scroll-to-top-on-navigate";
 import { useAtomValue, useSetAtom } from "jotai";
 import { dashboardShellReadyAtom } from "@/atoms/dashboardAtoms";
 import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
@@ -28,27 +31,26 @@ import {
   UpdateFinancialFreedomDescriptionType,
 } from "@/services/goals/mutations";
 import { toast } from "sonner";
-import LoadingScreen from "@/components/ui/loading-screen";
-import { useBootstrapLoadingTimeout } from "@/hooks/useBootstrapLoadingTimeout";
 import { usePrefetchDashboardNavRoutes } from "@/hooks/usePrefetchDashboardNavRoutes";
 import { useBrowserOnline } from "@/hooks/useOfflineReadMode";
+import { warmBadgeImages } from "@/lib/badges/warm-badge-images";
+import { warmInsightProfileImages } from "@/lib/insights/warm-insight-profile-images";
 import { usePathname } from "next/navigation";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import {
   calculateBottomPadding,
   calculateHeaderSpacerHeight,
 } from "@/lib/platform-detection";
-import { hasEmbeddedHeroHeader, isDashboardSettingsRoute } from "@/lib/dashboard-shell-route";
+import { hasEmbeddedHeroHeader, isDashboardDataLightRoute } from "@/lib/dashboard-shell-route";
 
-// Dynamic imports for heavier components to reduce initial compile time
-const MobileStickyHeader = dynamic(
-  () => import("@/components/dashboard/mobile-sticky-header"),
-  { ssr: false }
-);
-const BottomNavigation = dynamic(
-  () => import("@/components/dashboard/bottom-navigation"),
-  { ssr: false }
-);
+const DashboardScrollToTop = ({
+  scrollContainerRef,
+}: {
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
+}) => {
+  useScrollToTopOnNavigate(scrollContainerRef);
+  return null;
+};
 
 export default function Layout({
   children,
@@ -56,6 +58,7 @@ export default function Layout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const mainScrollContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     isAndroidNative,
@@ -81,6 +84,7 @@ export default function Layout({
   // Skip dashboard layout elements for standalone subscription create page
   const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
   const usesEmbeddedHeroHeader = hasEmbeddedHeroHeader(pathname);
+  const isLightDashboardRoute = isDashboardDataLightRoute(pathname);
   const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
@@ -91,25 +95,11 @@ export default function Layout({
   useOpenTransactionRequest();
   const startDate = useAtomValue(dateFilterStartDateAtom);
   const endDate = useAtomValue(dateFilterEndDateAtom);
-  const { data, isLoading: isLoadingDashboardData, isError } =
-    useDashboardData(startDate, endDate);
+  const { data, isLoading: isLoadingDashboardData } =
+    useDashboardData(startDate, endDate, { shellOnly: isLightDashboardRoute });
   const offlineSyncReady = useAtomValue(offlineSyncReadyAtom);
   const isOnline = useBrowserOnline();
   usePrefetchDashboardNavRoutes();
-  const needsDashboardSummaryForShell = !isDashboardSettingsRoute(pathname);
-  const isWaitingForDashboardShell =
-    !spaceCode ||
-    (
-      isOnline &&
-      needsDashboardSummaryForShell &&
-      !offlineSyncReady &&
-      isLoadingDashboardData &&
-      !isError &&
-      !data
-    );
-  const { shouldBlock: shouldBlockOnDashboardLoading } = useBootstrapLoadingTimeout(
-    isWaitingForDashboardShell,
-  );
   const setDashboardShellReady = useSetAtom(dashboardShellReadyAtom);
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
@@ -129,10 +119,16 @@ export default function Layout({
   }, [data?.goalDescription]);
 
   useEffect(() => {
+    void warmInsightProfileImages();
+    void warmBadgeImages();
+  }, []);
+
+  useEffect(() => {
     const ready =
       !isStandalonePage &&
       Boolean(spaceCode) &&
       (
+        isLightDashboardRoute ||
         !isLoadingDashboardData ||
         !isOnline ||
         offlineSyncReady
@@ -146,6 +142,7 @@ export default function Layout({
   }, [
     isStandalonePage,
     spaceCode,
+    isLightDashboardRoute,
     isLoadingDashboardData,
     isOnline,
     offlineSyncReady,
@@ -170,10 +167,6 @@ export default function Layout({
   // For standalone pages, just return children without dashboard layout
   if (isStandalonePage) {
     return <>{children}</>;
-  }
-
-  if (shouldBlockOnDashboardLoading) {
-    return <LoadingScreen />;
   }
 
   return (
@@ -256,10 +249,11 @@ export default function Layout({
                   )}
                 </div>
                 
-                {/* Current Savings Display */}
                 {data?.financialSummary && (
                   <div className="mt-2">
-                    <span className="text-md text-primary/70">Savings: </span>
+                    <span className="text-md text-primary/70">
+                      {periodNetLabel(parseFloat(data.financialSummary.netSavings))}:{" "}
+                    </span>
                     <span className={`text-md font-bold ${
                       parseFloat(data.financialSummary.netSavings) >= 0
                         ? "text-teal-600 dark:text-teal-500"
@@ -317,6 +311,7 @@ export default function Layout({
                 </TabsList>
               </div>
               <div
+                ref={mainScrollContainerRef}
                 className={cn(
                   "pt-0 md:pt-2 flex-1 overflow-y-auto md:pb-0",
                   usesEmbeddedHeroHeader &&
@@ -326,7 +321,12 @@ export default function Layout({
                   paddingBottom: usesEmbeddedHeroHeader ? undefined : bottomPadding,
                 }}
               >
-                {children}
+                <Suspense fallback={null}>
+                  <DashboardScrollToTop
+                    scrollContainerRef={mainScrollContainerRef}
+                  />
+                  {children}
+                </Suspense>
               </div>
             </TabsWrapper>
           </div>

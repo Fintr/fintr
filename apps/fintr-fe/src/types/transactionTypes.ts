@@ -42,7 +42,13 @@ export interface IndexTransaction {
   loanType?: "borrowed" | "lent";
   loanId?: string;
   entityName?: string;
+  entityId?: string | null;
+  accountId?: string | null;
+  fromAccountId?: string | null;
+  toAccountId?: string | null;
+  amountInSpaceCurrency?: { amount: number; currency: string };
   tags?: TransactionTag[];
+  currencyConversion?: CurrencyConversionType;
 }
 
 export interface IndexActivity {
@@ -68,6 +74,10 @@ export interface IndexActivity {
   loanType?: "borrowed" | "lent";
   loanId?: string;
   entityName?: string;
+  entityId?: string | null;
+  accountId?: string | null;
+  fromAccountId?: string | null;
+  toAccountId?: string | null;
   tags?: TransactionTag[];
 }
 

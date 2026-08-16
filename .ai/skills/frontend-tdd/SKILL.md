@@ -1,445 +1,181 @@
 ---
 name: frontend-tdd
-description: Test Driven Development (TDD) for React/Next.js frontend. Guides through writing tests first, then implementing features. Use when adding new features, fixing bugs, refactoring, or when tests are failing. Follows Red-Green-Refactor cycle with specific patterns for mobile/Capacitor apps.
+description: Use when changing any file under apps/fintr-fe — components, hooks, services, utils, pages, or tests — including features, bugfixes, refactors, and when tempted to skip tests to ship faster.
 ---
 
-# Frontend Test Driven Development (TDD)
+# Frontend tests-first changes
 
-Guides through TDD workflow for the Next.js + Capacitor mobile app (`fintr-fe`).
+Every production change in `apps/fintr-fe` is guarded by tests so behavior does not drift.
 
-## TDD Cycle: Red → Green → Refactor
+**Iron law:** No frontend production edit without a test run **before** and a test run **after**.
 
-1. **Red**: Write a failing test that defines expected behavior
-2. **Green**: Write minimal code to make the test pass
-3. **Refactor**: Optimize code without changing behavior
+**Violating the letter of this loop is violating the spirit of this loop.**
 
-## When to Use This Skill
+**REQUIRED SUB-SKILL:** Use test-driven-development for new or changed behavior. Use verification-before-completion before claiming tests pass.
 
-- Adding new features or components
-- Fixing bugs (write regression test first)
-- Refactoring existing code
-- Tests are failing and need fixing
-- Writing tests for platform-specific behavior (Android/iOS)
+## When to Use
 
-## Quick Start: TDD Workflow
+Always for `apps/fintr-fe` TypeScript/React (components, hooks, services, utils, pages).
 
-### Step 1: Write the Test First (Red)
+**Exceptions (ask first):** throwaway prototypes, generated files, comment-only edits.
 
-```typescript
-// src/lib/myFeature.test.ts
-import { describe, it, expect } from "vitest"
-import { myFeature } from "./myFeature"
+Thinking "skip tests just this once"? Stop. That is how unintended changes ship.
 
-describe("myFeature", () => {
-  it("does what the user expects", () => {
-    // Arrange
-    const input = { test: "data" }
+## The loop (mandatory)
 
-    // Act
-    const result = myFeature(input)
-
-    // Assert - this will fail initially (RED)
-    expect(result).toEqual({ expected: "output" })
-  })
-})
+```
+1. Tests first   → run related tests (baseline)
+2. Make changes  → smallest production edit
+3. Update tests  → only for intentional behavior
+4. Tests again   → same files + new tests must match intent
 ```
 
-Run test to confirm it fails:
-```bash
-pnpm test src/lib/myFeature.test.ts
-# Expected: FAIL - function doesn't exist or returns wrong value
-```
+Do not start step 2 until step 1 has a fresh command output. Do not claim done until step 4 has a fresh command output.
 
-### Step 2: Implement Minimal Code (Green)
+### 1. Tests first
 
-```typescript
-// src/lib/myFeature.ts
-export const myFeature = (input: { test: string }) => {
-  // Minimal implementation to make test pass
-  return { expected: "output" }
-}
-```
+Identify related Vitest files, then run them **before editing production code**:
 
-Run test to confirm it passes:
-```bash
-pnpm test src/lib/myFeature.test.ts
-# Expected: PASS
-```
-
-### Step 3: Refactor
-
-Improve the code while keeping tests green:
-```typescript
-// src/lib/myFeature.ts
-export const myFeature = (input: { test: string }) => {
-  // Better variable names, comments, optimization
-  const processed = input.test.toUpperCase()
-  return { expected: processed.toLowerCase() }
-}
-```
-
-Verify tests still pass after refactoring.
-
-## Testing Patterns by Type
-
-### Pattern 1: Pure Functions/Utilities
-
-```typescript
-// src/lib/calculatePadding.ts
-export const calculatePadding = (
-  isAndroid: boolean,
-  safeArea: number
-): string => {
-  if (isAndroid) {
-    return `calc(64px + ${Math.max(safeArea, 48)}px)`
-  }
-  return "80px"
-}
-
-// src/lib/calculatePadding.test.ts
-describe("calculatePadding", () => {
-  it("calculates Android padding with 3-button nav", () => {
-    expect(calculatePadding(true, 48)).toBe("calc(64px + 48px)")
-  })
-
-  it("calculates Android padding with gesture nav", () => {
-    expect(calculatePadding(true, 16)).toBe("calc(64px + 48px)")
-  })
-
-  it("returns default for non-Android", () => {
-    expect(calculatePadding(false, 0)).toBe("80px")
-  })
-})
-```
-
-### Pattern 2: React Hooks
-
-```typescript
-// src/hooks/usePlatformDetection.ts
-export const usePlatformDetection = () => {
-  const [platform, setPlatform] = useState<Platform>(defaultPlatform)
-
-  useEffect(() => {
-    const detect = () => {
-      // detection logic
-      setPlatform(detected)
-    }
-
-    detect()
-    window.addEventListener("resize", detect)
-    return () => window.removeEventListener("resize", detect)
-  }, [])
-
-  return platform
-}
-
-// src/hooks/usePlatformDetection.test.tsx
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { renderHook, act } from "@testing-library/react"
-
-describe("usePlatformDetection", () => {
-  // CRITICAL: Don't use fake timers with waitFor - causes timeout
-  beforeEach(() => {
-    vi.useRealTimers()
-  })
-
-  it("returns initial SSR-safe values", () => {
-    const { result } = renderHook(() => usePlatformDetection())
-    expect(result.current.isAndroidNative).toBe(false)
-  })
-
-  it("detects Android from user agent", async () => {
-    Object.defineProperty(navigator, "userAgent", {
-      value: "...Android...FintrNativeApp",
-      configurable: true,
-    })
-
-    const { result } = renderHook(() => usePlatformDetection())
-
-    // Use act() instead of waitFor() - avoid fake timers
-    await act(async () => {
-      window.dispatchEvent(new Event("resize"))
-      await Promise.resolve()
-    })
-
-    expect(result.current.isAndroidNative).toBe(true)
-  })
-})
-```
-
-### Pattern 3: Components (User Perspective)
-
-```tsx
-// Component test - test what user sees/does, not implementation
-import { render, screen } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
-
-describe("BottomNavigation", () => {
-  it("shows all navigation items", () => {
-    render(<BottomNavigation />)
-
-    // Use getByRole for accessibility + testing
-    expect(screen.getByRole("link", { name: /transactions/i })).toBeVisible()
-    expect(screen.getByRole("link", { name: /budget/i })).toBeVisible()
-  })
-
-  it("navigates when clicking items", async () => {
-    const user = userEvent.setup()
-    render(<BottomNavigation />)
-
-    await user.click(screen.getByRole("link", { name: /transactions/i }))
-
-    expect(window.location.pathname).toBe("/dashboard/")
-  })
-})
-```
-
-## Bugs We Encountered (Lessons Learned)
-
-### Bug #1: Fake Timers + waitFor = Timeout
-
-**Problem**: Hook tests timing out with `waitFor`
-
-```typescript
-// ❌ BAD - causes timeout
-beforeEach(() => {
-  vi.useFakeTimers()
-})
-
-it("detects something", async () => {
-  await waitFor(() => {  // Times out!
-    expect(result.current.isAndroid).toBe(true)
-  })
-})
-```
-
-**Root Cause**: `waitFor` uses real timers internally. Fake timers break its polling.
-
-**Solution**: Use `act()` instead
-
-```typescript
-// ✅ GOOD
-beforeEach(() => {
-  vi.useRealTimers()  // or just remove fake timers
-})
-
-it("detects something", async () => {
-  await act(async () => {
-    window.dispatchEvent(new Event("resize"))
-    await Promise.resolve()
-  })
-
-  expect(result.current.isAndroid).toBe(true)
-})
-```
-
-### Bug #2: Platform Detection Not Triggering
-
-**Problem**: Hook doesn't detect platform changes
-
-**Root Cause**: Platform detection runs once on mount but doesn't re-run on resize/orientation change.
-
-**Solution**: Test that event listeners trigger updates
-
-```typescript
-it("updates on window resize", async () => {
-  const { result } = renderHook(() => usePlatformDetection())
-
-  // Change user agent (simulate platform switch)
-  Object.defineProperty(navigator, "userAgent", {
-    value: "...new platform...",
-    configurable: true,
-  })
-
-  // Trigger resize
-  await act(async () => {
-    window.dispatchEvent(new Event("resize"))
-    await Promise.resolve()
-  })
-
-  expect(result.current.platform).toBe("new")
-})
-```
-
-### Bug #3: CSS Variable Mocking
-
-**Problem**: `getComputedStyle` for safe area insets returns empty
-
-**Solution**: Properly mock `getComputedStyle`
-
-```typescript
-beforeEach(() => {
-  window.getComputedStyle = vi.fn(() => ({
-    getPropertyValue: (property: string) => {
-      const values: Record<string, string> = {
-        "--safe-area-inset-bottom": "48px",
-        "--safe-area-inset-top": "47px",
-      }
-      return values[property] || ""
-    },
-  })) as any
-})
-```
-
-## Testing Mobile-Specific Behavior
-
-### Safe Area Insets
-
-```typescript
-describe("Mobile Layout", () => {
-  it("applies correct padding for Android 3-button nav", () => {
-    const insets = { bottom: 48, top: 0 }
-    const padding = calculateBottomPadding(true, false, insets.bottom)
-
-    expect(padding).toBe("calc(64px + 48px)")
-  })
-
-  it("never applies excessive padding", () => {
-    const extremeInsets = [0, 16, 48, 100, 200]
-
-    extremeInsets.forEach((inset) => {
-      const padding = calculateBottomPadding(true, false, inset)
-      const paddingValue = parseFloat(padding.replace(/[^0-9.]/g, ""))
-
-      // Critical: padding should never exceed 300px
-      expect(paddingValue).toBeLessThan(300)
-    })
-  })
-})
-```
-
-### Platform Detection
-
-```typescript
-describe("Platform Detection", () => {
-  const userAgents = {
-    androidNative: "...Android...FintrNativeApp",
-    iosNative: "...iPhone...FintrNativeApp",
-    androidBrowser: "...Android...Chrome...",
-    desktop: "...Macintosh...",
-  }
-
-  it.each([
-    [userAgents.androidNative, true, false],
-    [userAgents.iosNative, false, true],
-    [userAgents.androidBrowser, false, false],
-  ])("detects platform from user agent", (ua, isAndroid, isIOS) => {
-    const result = detectPlatform(ua)
-    expect(result.isAndroidNative).toBe(isAndroid)
-    expect(result.isIOSNative).toBe(isIOS)
-  })
-})
-```
-
-## Common Mistakes to Avoid
-
-1. **Testing implementation details**
-   ```typescript
-   // ❌ Don't test internal state
-   expect(component.state.isOpen).toBe(true)
-
-   // ✅ Test what user sees
-   expect(screen.getByText("Open")).toBeVisible()
-   ```
-
-2. **Using test IDs excessively**
-   ```typescript
-   // ❌ Avoid when possible
-   screen.getByTestId("submit-button")
-
-   // ✅ Prefer role-based queries
-   screen.getByRole("button", { name: /submit/i })
-   ```
-
-3. **Over-using act()**
-   ```typescript
-   // ❌ RTL helpers already wrap in act()
-   await act(async () => {
-     await user.click(button)
-   })
-
-   // ✅ Just use userEvent
-   await user.click(button)
-   ```
-
-4. **Not testing error cases**
-   ```typescript
-   // Always test failure paths
-   it("handles errors gracefully", () => {
-     const result = calculatePadding(null, null)
-     expect(result).toBe("80px")  // Default fallback
-   })
-   ```
-
-## E2E Testing with Playwright
-
-For mobile viewport testing:
-
-```typescript
-// e2e/mobile-layout.spec.ts
-import { test, expect } from "@playwright/test"
-
-test.describe("Mobile Layout", () => {
-  test("bottom nav is visible on Android", async ({ page }) => {
-    // Set Android user agent
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator, "userAgent", {
-        value: "...Android...FintrNativeApp",
-      })
-    })
-
-    await page.goto("/dashboard/")
-    await page.setViewportSize({ width: 393, height: 851 })
-
-    const bottomNav = page.locator("nav.fixed")
-    await expect(bottomNav).toBeVisible()
-
-    // Verify position
-    const box = await bottomNav.boundingBox()
-    expect(box?.y).toBeGreaterThan(700)  // Near bottom
-  })
-})
-```
-
-## Running Tests
+- Colocated `foo.test.ts` / `foo.test.tsx` next to the file you will change
+- Tests that import the module (grep the symbol / path)
+- Sibling tests in the same folder when the change is shared
 
 ```bash
-# Unit tests (fast feedback)
-pnpm test --run
+cd apps/fintr-fe && pnpm test:ci src/path/to/file.test.ts
+```
 
-# Watch mode (during development)
-pnpm test
+Use `pnpm test:ci` (`vitest run`). Do not use `pnpm test` — that is watch mode and will hang.
 
-# UI mode (debugging)
-pnpm test:ui
+**Read the output.** Note what is green. That is the baseline.
 
-# Coverage
+- **No tests exist** for the behavior you are changing: write them now, against *current* behavior (they should pass) *or* against *intended* new behavior (they should fail for the right reason). Either way, tests exist before the production edit.
+- **New feature / bugfix:** write the failing assertion first. Watch it fail because the behavior is missing, not because of a typo.
+- **Refactor (behavior must not change):** baseline must be green. Do not skip the run because "I am only renaming."
+
+### 2. Make the changes
+
+Smallest production change that implements the request. Do not "improve" adjacent behavior while you are here.
+
+### 3. Update tests
+
+Update tests **only** for intentional behavior changes.
+
+- New assertions for new behavior
+- Adjust fixtures/names when the public API changed on purpose
+- **Do not** weaken, delete, or skip assertions to make red tests green
+- **Do not** leave stale assertions that encode the old unwanted behavior
+
+### 4. Tests again
+
+Re-run the **same** files from step 1, plus any new tests:
+
+```bash
+cd apps/fintr-fe && pnpm test:ci src/path/to/file.test.ts
+```
+
+| Result | Meaning | Action |
+|--------|---------|--------|
+| All pass, and new behavior is asserted | Intended change only | Done (for this slice) |
+| Related test fails | You broke something | Fix production code, not the test |
+| Unrelated assertion fails | Unintended change | Revert or isolate; do not "fix" the test to match the accident |
+| New tests pass but you never saw them fail | Tests may not test the change | Prove they fail without the production edit |
+
+If the touched module is widely imported, expand the re-run (callers' tests, folder, or `pnpm test:ci` on the relevant tree). Do not claim the frontend change is complete on a previous run, a guessed result, or "should still pass."
+
+## Mapping to TDD
+
+| Situation | Step 1 | Step 3 |
+|-----------|--------|--------|
+| New behavior | Failing test for the desired outcome | Keep that test; add edges if needed |
+| Bugfix | Failing regression test that reproduces the bug | Keep it; it is the lock |
+| Refactor | Existing tests, green baseline | Usually no test edits |
+| Intentional behavior change | Existing tests (may go red after step 2) | Update assertions to the new contract |
+
+Tests-after that pass immediately prove nothing. Tests-first prove the test can catch the change.
+
+## Data source (space-scoped screens)
+
+After `offlineSyncReady`, tests and implementation treat **IndexedDB** as the UI source of truth. Do not write a hook whose happy path is a live Rails `GET`. Network is write-through into IDB. Persisted totals come from synced artifacts — do not re-sum a different FE slice.
+
+**React Query gate:** default `networkMode: "online"` pauses queries **and mutations** while offline. Any IDB read or `*-local-first` / outbox write must use `networkMode: "always"`, and the UI must not await Rails. See skill `indexeddb-source-of-truth`.
+
+## Finding related tests
+
+Prefer colocated files. This repo uses `*.test.ts` / `*.test.tsx` next to source (see `src/utils/`, `src/services/`, `src/components/`).
+
+```bash
+# from repo root
+rg -l "from \"./transactionViewMoney\"|from \"@/utils/transactionViewMoney\"" apps/fintr-fe
+```
+
+E2E (`pnpm test:e2e`) is extra coverage for flows, not a substitute for the Vitest loop on unit/hook/component behavior.
+
+## Patterns
+
+**Pure functions** — assert input → output. One behavior per `it`.
+
+**Hooks** — `renderHook` + `act`. Do not combine `vi.useFakeTimers()` with `waitFor` (waitFor uses real timers; fake timers make it hang). Prefer `act` + `Promise.resolve()`.
+
+**Components** — test what the user sees (`getByRole`), not internal state. Avoid `getByTestId` when a role/name exists. Do not wrap `userEvent` in extra `act()`.
+
+**IndexedDB / local-first** — exercise the local cache path; do not mock away the module under test and then assert on the mock.
+
+## Commands
+
+```bash
+cd apps/fintr-fe
+pnpm test:ci src/lib/myFeature.test.ts   # required loop (non-watch)
+pnpm test:ui                             # debug
 pnpm test:coverage
-
-# E2E tests
-pnpm test:e2e
-
-# Specific test file
-pnpm test src/lib/myFeature.test.ts
+pnpm test:e2e                            # Playwright; not the default loop
 ```
 
-## Verification Checklist
+## Common mistakes
 
-After writing tests, verify:
+1. Editing production code before any test run
+2. Using watch-mode `pnpm test` and never reading a finished run
+3. Updating tests to match an accidental behavior change
+4. Testing implementation details (`component.state`) instead of user-visible behavior
+5. Claiming green from an earlier session's output
 
-- [ ] Tests fail before implementation (Red)
-- [ ] Tests pass after implementation (Green)
-- [ ] Code is refactored and clean
-- [ ] All edge cases covered
-- [ ] Error cases tested
-- [ ] No fake timers with `waitFor`
-- [ ] Using `act()` for state changes
-- [ ] Tests run in under 1 second each
-- [ ] No `allow_any_instance_of` equivalent
+## Rationalizations
 
-## Related Files
+| Excuse | Reality |
+|--------|---------|
+| "Too small to test" | Small edits cause the surprising regressions. The baseline run is the point. |
+| "I'll test after" | After-only tests pass immediately and miss drift. Run before **and** after. |
+| "nextjs rule says skip unit tests" | That instruction is wrong. This skill and `frontend_tdd.mdc` win. |
+| "It's just UI / styling" | If TS/TSX behavior can change, the loop applies. No tests? Write them in step 1. |
+| "GSD Skip TDD list includes UI" | Does not apply to `apps/fintr-fe` production code. |
+| "TDD if the task says so" | For fintr-fe the loop is always on, not optional. |
+| "Existing tests cover it" | Then run them. Coverage you did not execute is not a baseline. |
+| "Watching it fail is ritual" | A test that never failed may not test the change. |
 
-- Testing docs: `fintr-fe/TESTING.md`
-- Vitest config: `fintr-fe/vitest.config.ts`
-- Playwright config: `fintr-fe/playwright.config.ts`
-- Test setup: `fintr-fe/src/test/setup.ts`
+## Red flags — STOP
+
+- Production edit with no prior `pnpm test:ci` output in this session
+- "Should still pass" / "tests are probably fine"
+- Weakening or deleting a failing test to go green
+- Task marked done before the after-run
+- "I'll add tests in a follow-up"
+
+**All of these mean: stop. Run the loop. Do not continue the production edit.**
+
+## Verification checklist
+
+- [ ] Related tests identified
+- [ ] Step 1 run completed and output read (baseline)
+- [ ] New/changed behavior has a test that failed for the right reason (or refactor with unchanged tests)
+- [ ] Production change is the smallest that satisfies the request
+- [ ] Tests updated only for intentional deltas
+- [ ] Step 4 re-run of the same files is green
+- [ ] No skipped/weakened assertions to hide failures
+
+Can't check every box? The loop was skipped. Go back to step 1.
+
+## Related
+
+- `apps/fintr-fe/TESTING.md`
+- Rule: `.ai/rules/frontend_tdd.mdc`
+- Vitest: `apps/fintr-fe/vitest.config.ts`
+- Setup: `apps/fintr-fe/src/test/setup.ts`

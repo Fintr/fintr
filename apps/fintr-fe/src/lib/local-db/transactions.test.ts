@@ -7,6 +7,7 @@ import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
 import {
   countSpaceTransactions,
+  getEarliestSpaceTransactionDate,
   listSpaceTransactions,
   listSpaceTransactionsInDateRange,
   putSpaceTransactions,
@@ -59,5 +60,14 @@ describe("local-db transactions index", () => {
 
     expect(augustOnly).toHaveLength(1);
     expect(augustOnly[0]?.id).toBe("tx-aug");
+  });
+
+  it("returns the earliest stored transaction date", async () => {
+    await putSpaceTransactions("space-a", [
+      sampleTransaction({ id: "tx-aug", date: "2026-08-12" }),
+      sampleTransaction({ id: "tx-jan", date: "2025-01-10" }),
+    ]);
+
+    expect(await getEarliestSpaceTransactionDate("space-a")).toBe("2025-01-10");
   });
 });

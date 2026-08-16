@@ -127,6 +127,16 @@ export default function AppSettingsPage() {
           href: "/dashboard/loans",
         },
         {
+          title: "Categories",
+          icon: Folder,
+          href: "/dashboard/space_settings/categories",
+        },
+        {
+          title: "Accounts",
+          icon: Users,
+          href: "/dashboard/space_settings/accounts",
+        },
+        {
           title: "Entities",
           icon: Contact,
           href: "/dashboard/space_settings/entities",
@@ -141,16 +151,6 @@ export default function AppSettingsPage() {
     {
       title: "Settings",
       cards: [
-        {
-          title: "Categories",
-          icon: Folder,
-          href: "/dashboard/space_settings/categories",
-        },
-        {
-          title: "Accounts",
-          icon: Users,
-          href: "/dashboard/space_settings/accounts",
-        },
         {
           title: "Import",
           icon: Download,

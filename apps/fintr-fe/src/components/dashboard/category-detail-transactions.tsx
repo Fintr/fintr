@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Filter, Eye, EyeOff } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -33,6 +34,7 @@ import ScopeModal, {
 import { deleteTransactionLocalFirst } from "@/services/transactions/delete-local-first";
 import { deleteTransaction } from "@/services/transactions/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
+import { transactionViewHref } from "@/utils/detailHrefs";
 import {
   CombinedTransactionTypeEnum,
   IndexTransaction,
@@ -70,6 +72,7 @@ export function CategoryDetailTransactions({
   subcategories = [],
 }: CategoryDetailTransactionsProps) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
@@ -377,15 +380,7 @@ export function CategoryDetailTransactions({
   });
 
   const handleEditRow = (transaction: IndexTransaction) => {
-    if (transaction.hasLoanPayment) {
-      toast.error(
-        "This transaction is linked to a loan payment and cannot be edited.",
-      );
-      return;
-    }
-
-    setSelectedTransaction(transaction);
-    setEditDialogOpen(true);
+    router.push(transactionViewHref(transaction));
   };
 
   const handleEditSuccess = (options?: {

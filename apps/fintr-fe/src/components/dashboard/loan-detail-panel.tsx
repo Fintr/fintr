@@ -18,14 +18,8 @@ import {
 import type { ConversionSnapshot } from "@/components/dashboard/forms/AmountWithRatePicker";
 import type { AccountOptionWithCurrency } from "@/types/generalTypes";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import GridPicker from "@/components/dashboard/forms/GridPicker";
 import { AdjustAccountBalanceSwitchRow } from "@/components/dashboard/forms/adjust-account-balance-switch-row";
 import { useLoanPayments } from "@/hooks/async/useLoanPayments";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -42,6 +36,7 @@ import { useNumberInput } from "@/hooks/useNumberInput";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { numberFormatting } from "@/lib/utils";
 import { handleMultilineNotesKeyDown } from "@/lib/multiline-notes-keydown";
 import { Calendar } from "@/components/ui/calendar";
@@ -77,6 +72,7 @@ interface LoanDetailPanelProps {
   textColorClass: string;
   openPaymentRequestId?: number;
   paymentPrefill?: LoanPaymentPrefill | null;
+  onPaymentRecorded?: () => void;
 }
 
 const LOAN_TABLE_WRAPPER_CLASS =
@@ -119,6 +115,43 @@ const LOAN_TABLE_PAID_LABEL_CLASS =
 
 const LOAN_TABLE_EMPTY_MESSAGE_CLASS =
   "text-sm text-muted-foreground";
+
+const LoanPaymentAccountPicker = ({
+  triggerId,
+  accountName,
+  accountOptions,
+  formSubmitted,
+  accountError,
+  onChange,
+}: {
+  triggerId: string;
+  accountName: string;
+  accountOptions: AccountOptionWithCurrency[];
+  formSubmitted: boolean;
+  accountError?: string;
+  onChange: (accountName: string) => void;
+}) => {
+  const queryClient = useQueryClient();
+
+  return (
+    <GridPicker
+      pickerKind="account"
+      label="Account"
+      triggerId={triggerId}
+      value={accountName}
+      onChange={onChange}
+      accounts={accountOptions}
+      error={
+        formSubmitted && accountError
+          ? [accountError]
+          : undefined
+      }
+      onAccountCreated={() => {
+        queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      }}
+    />
+  );
+};
 
 type PaymentRow = ReturnType<typeof useLoanPayments>["payments"][number];
 
@@ -316,6 +349,7 @@ export function LoanDetailPanel({
   textColorClass,
   openPaymentRequestId = 0,
   paymentPrefill = null,
+  onPaymentRecorded,
 }: LoanDetailPanelProps) {
   // Use backend schedule which incorporates actual payments and adjusts accordingly
   const schedule = React.useMemo(() => getAmortizationSchedule(loan), [loan]);
@@ -345,6 +379,13 @@ export function LoanDetailPanel({
   const [editPaymentDatePickerOpen, setEditPaymentDatePickerOpen] = React.useState(false);
   const [adjustsAccountBalance, setAdjustsAccountBalance] = React.useState(true);
   const [isScheduleOpen, setIsScheduleOpen] = React.useState(false);
+
+  const handlePaymentAccountChange = (value: string) => {
+    setAccountName(value);
+    if (formSubmitted && validationErrors.accountName) {
+      setValidationErrors({ ...validationErrors, accountName: "" });
+    }
+  };
 
   const totalPaymentInput = useNumberInput({
     initialValue: "",
@@ -555,6 +596,7 @@ export function LoanDetailPanel({
       });
 
       closeRecordPaymentModal();
+      onPaymentRecorded?.();
 
       if (crossedMilestone) {
         toast.success(
@@ -1007,35 +1049,14 @@ export function LoanDetailPanel({
                 )}
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="payment-account" className="text-sm">Account</Label>
-                <Select
-                  value={accountName}
-                  onValueChange={(value) => {
-                    setAccountName(value);
-                    if (formSubmitted && validationErrors.accountName) {
-                      setValidationErrors({ ...validationErrors, accountName: "" });
-                    }
-                  }}
-                >
-                  <SelectTrigger 
-                    id="payment-account"
-                    className={`text-sm ${formSubmitted && validationErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                  >
-                    <SelectValue placeholder="Select Account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accountOptions.map((account) => (
-                      <SelectItem key={account.value} value={account.value} className="text-sm">
-                        {account.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formSubmitted && validationErrors.accountName && (
-                  <FormError message={validationErrors.accountName} />
-                )}
-              </div>
+              <LoanPaymentAccountPicker
+                triggerId="payment-account"
+                accountName={accountName}
+                accountOptions={accountOptions}
+                formSubmitted={formSubmitted}
+                accountError={validationErrors.accountName}
+                onChange={handlePaymentAccountChange}
+              />
 
               <LoanPaymentAmountField
                 id="payment-amount"
@@ -1168,35 +1189,14 @@ export function LoanDetailPanel({
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit-payment-account" className="text-sm">Account</Label>
-                <Select
-                  value={accountName}
-                  onValueChange={(value) => {
-                    setAccountName(value);
-                    if (formSubmitted && validationErrors.accountName) {
-                      setValidationErrors({ ...validationErrors, accountName: "" });
-                    }
-                  }}
-                >
-                  <SelectTrigger
-                    id="edit-payment-account"
-                    className={`text-sm ${formSubmitted && validationErrors.accountName ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                  >
-                    <SelectValue placeholder="Select Account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accountOptions.map((account) => (
-                      <SelectItem key={account.value} value={account.value} className="text-sm">
-                        {account.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formSubmitted && validationErrors.accountName && (
-                  <FormError message={validationErrors.accountName} />
-                )}
-              </div>
+              <LoanPaymentAccountPicker
+                triggerId="edit-payment-account"
+                accountName={accountName}
+                accountOptions={accountOptions}
+                formSubmitted={formSubmitted}
+                accountError={validationErrors.accountName}
+                onChange={handlePaymentAccountChange}
+              />
 
               <LoanPaymentAmountField
                 id="edit-payment-amount"

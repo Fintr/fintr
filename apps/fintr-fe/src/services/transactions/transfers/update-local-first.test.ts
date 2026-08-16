@@ -114,6 +114,52 @@ describe("updateTransferLocalFirst", () => {
     expect(outbox[0]?.status).toBe("pending");
   });
 
+  it("stores a new receipt in IndexedDB and keeps File out of the outbox", async () => {
+    await seedTransfer();
+    vi.mocked(updateTransfer).mockRejectedValue(
+      new Error("Failed to update transfer"),
+    );
+
+    const file = new File(["receipt"], "receipt.jpg", {
+      type: "image/jpeg",
+    });
+    const queryClient = new QueryClient();
+    const result = await updateTransferLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        amountCurrency: "PHP",
+        data: {
+          id: "xfer-1",
+          amount: 750,
+          transactionCost: 0,
+          fromAccountName: "Cash",
+          toAccountName: "Bank",
+          description: "Moved more",
+          date: "2026-08-11",
+          scheduleType: ScheduleTypeEnum.ONE_TIME,
+          file,
+        },
+      },
+      { queryClient, waitForSync: true },
+    );
+
+    expect(result.pendingSync).toBe(true);
+
+    const outbox = await getLocalDb().outbox.toArray();
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0]?.payload).not.toHaveProperty("file");
+    expect(outbox[0]?.payload).toEqual(
+      expect.objectContaining({
+        attachmentLocalKeys: expect.arrayContaining([expect.any(String)]),
+      }),
+    );
+
+    const stored = await getLocalDb().attachments.toArray();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.filename).toBe("receipt.jpg");
+  });
+
   it("rolls back local rows when the server rejects the update", async () => {
     await seedTransfer();
     vi.mocked(updateTransfer).mockRejectedValue({

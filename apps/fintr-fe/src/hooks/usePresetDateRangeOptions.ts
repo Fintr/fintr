@@ -6,10 +6,27 @@ import { useMemo } from "react";
 
 import { currentSpaceAtom } from "@/atoms/spaceAtoms";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { getEarliestSpaceTransactionDate } from "@/lib/local-db/transactions";
 import { loadCachedDashboardShell } from "@/services/monthly-financial-summaries/local-cache";
 import { type PresetDateRangeOptions } from "@/utils/dateFilterPresets";
 
-export const usePresetDateRangeOptions = (): PresetDateRangeOptions => {
+const minDateString = (
+  ...values: Array<string | null | undefined>
+): string | null => {
+  const dates = values.filter((value): value is string => Boolean(value));
+
+  if (dates.length === 0) {
+    return null;
+  }
+
+  return dates.reduce((earliest, value) =>
+    value < earliest ? value : earliest,
+  );
+};
+
+export const usePresetDateRangeOptions = (): PresetDateRangeOptions & {
+  isAllTimeAnchorReady: boolean;
+} => {
   const spaceCreatedAt = useAtomValue(currentSpaceAtom)?.createdAt ?? null;
   const [spaceCode] = useLocalStorage("spaceCode", "");
 
@@ -20,11 +37,28 @@ export const usePresetDateRangeOptions = (): PresetDateRangeOptions => {
     staleTime: Infinity,
   });
 
+  const { data: earliestFromIndex, isFetched: earliestIndexFetched } = useQuery({
+    queryKey: ["earliestTransactionDate", spaceCode],
+    queryFn: () => getEarliestSpaceTransactionDate(spaceCode),
+    enabled: Boolean(spaceCode),
+    staleTime: Infinity,
+  });
+
   return useMemo(
     () => ({
-      earliestTransactionDate: shell?.earliestTransactionDate ?? null,
+      earliestTransactionDate: minDateString(
+        shell?.earliestTransactionDate,
+        earliestFromIndex,
+      ),
       spaceCreatedAt,
+      isAllTimeAnchorReady: !spaceCode || earliestIndexFetched,
     }),
-    [shell?.earliestTransactionDate, spaceCreatedAt],
+    [
+      earliestFromIndex,
+      earliestIndexFetched,
+      shell?.earliestTransactionDate,
+      spaceCode,
+      spaceCreatedAt,
+    ],
   );
 };

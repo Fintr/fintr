@@ -7,6 +7,7 @@ import { getPublicBackendUrl } from '@/lib/public-backend-url';
 import { triggerSessionExpiration } from './session-expiration-handler';
 import { AuthStorage } from '@/lib/auth-storage';
 import { isPublicPath } from '@/lib/public-routes';
+import { respondToUnauthorizedApiError } from '@/lib/unauthorized-session';
 
 const AUTH_BOOTSTRAP_PATHS = ["/auth/private"];
 
@@ -92,15 +93,10 @@ const handleResponseError = (error: AxiosError) => {
       return Promise.reject(error);
     }
 
-    // Clear auth and redirect to login
+    // Attachment proxy and similar endpoints return 401 without a dead session.
+    // Do not show the session-expired modal or redirect to /login.
     if (typeof window !== 'undefined') {
-      const currentPath = window.location.pathname;
-      if (!isPublicPath(currentPath)) {
-        console.log('🔒 401: Redirecting to login...');
-        localStorage.removeItem('fintr_auth_data');
-        sessionStorage.clear();
-        window.location.href = '/login';
-      }
+      respondToUnauthorizedApiError(url);
     }
   } else if (status === 403) {
     console.error('Authorization error: Forbidden - Access denied');

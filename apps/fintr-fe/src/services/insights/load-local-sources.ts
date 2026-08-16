@@ -160,11 +160,9 @@ export const loadTransactionsForInsightsRange = async (
     return fromMeta;
   }
 
-  return filterTransactionsToRange(
-    await loadAllTransactionsForInsights(spaceCode),
-    startDate,
-    endDate,
-  );
+  // Avoid scanning the full transaction index when the date-range index is empty.
+  // Bucket totals and partial indexes still power the dashboard header offline.
+  return [];
 };
 
 const loadBudgetsForInsightsRange = async (
@@ -315,6 +313,22 @@ export const loadInsightsLocalSources = async (params: {
 
     allCalculatedTransactions = filterInsightsTransactions(periodRaw);
     transactionsInRange = allCalculatedTransactions;
+
+    if (
+      await summariesNeedLocalHydration(
+        transactionLoadSpaceCode,
+        summaries,
+        allCalculatedTransactions,
+      )
+    ) {
+      summaries = await hydrateMonthlyFinancialSummariesFromLocalTransactions(
+        transactionLoadSpaceCode,
+        {
+          existingSummaries: summaries,
+          transactions: allCalculatedTransactions,
+        },
+      );
+    }
   }
 
   return {

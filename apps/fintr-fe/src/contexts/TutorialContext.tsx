@@ -14,9 +14,10 @@ import { useAuth } from './AuthContext';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
 import { completeTutorial } from '@/services/auth/user/tutorial';
+import { markTutorialCompletedLocally } from '@/services/auth/tutorial-completion';
 import { performanceUtils } from '@/lib/utils';
 import { getTutorialConfig as getTutorialConfigFromSteps } from '@/config/tutorialSteps';
-import { useAtomValue } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { desktopTutorialCompletedAtom, mobileTutorialCompletedAtom, tutorialDataLoadedAtom } from '@/atoms/tutorialAtoms';
 import { currentSpaceAtom } from '@/atoms/spaceAtoms';
 import { dashboardShellReadyAtom } from '@/atoms/dashboardAtoms';
@@ -75,6 +76,8 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
   
   const desktopTutorialCompleted = useAtomValue(desktopTutorialCompletedAtom);
   const mobileTutorialCompleted = useAtomValue(mobileTutorialCompletedAtom);
+  const setDesktopTutorialCompleted = useSetAtom(desktopTutorialCompletedAtom);
+  const setMobileTutorialCompleted = useSetAtom(mobileTutorialCompletedAtom);
   const tutorialDataLoaded = useAtomValue(tutorialDataLoadedAtom);
   const currentSpace = useAtomValue(currentSpaceAtom);
   const onboardingStep = useAtomValue(onboardingStepAtom);
@@ -102,25 +105,49 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
 
   // Complete tutorial handler - defined early to avoid initialization issues
   const completeTutorialHandlerRef = useCallback(async (currentPlatform: TutorialPlatform | null) => {
-    if (!currentPlatform || !api) return;
-    
+    if (!currentPlatform) {
+      return;
+    }
+
     try {
       setIsCompletingTutorial(true);
-      await completeTutorial({ api, platform: currentPlatform });
+
+      const completedAt = await markTutorialCompletedLocally(currentPlatform);
+
+      if (currentPlatform === "desktop") {
+        setDesktopTutorialCompleted(completedAt);
+      } else {
+        setMobileTutorialCompleted(completedAt);
+      }
+
       setIsActive(false);
       setPlatform(null);
-      // Refetch the currentUser query to get updated tutorial completion status
-      // Wait for it to complete to prevent race condition where tutorial restarts
-      await queryClient.refetchQueries({ queryKey: ["currentUser"] });
-      // Small delay to ensure atoms are updated before allowing tutorial to start again
+
+      if (api) {
+        try {
+          await completeTutorial({ api, platform: currentPlatform });
+          await queryClient.refetchQueries({ queryKey: ["currentUser"] });
+        } catch (error) {
+          console.warn(
+            "Tutorial completion API failed; local completion was saved for offline use",
+            error,
+          );
+        }
+      }
+
       setTimeout(() => {
         setIsCompletingTutorial(false);
       }, 100);
     } catch (error) {
-      console.error('Error completing tutorial:', error);
+      console.error("Error completing tutorial:", error);
       setIsCompletingTutorial(false);
     }
-  }, [api, queryClient]);
+  }, [
+    api,
+    queryClient,
+    setDesktopTutorialCompleted,
+    setMobileTutorialCompleted,
+  ]);
 
   const completeTutorialHandler = useCallback(async () => {
     await completeTutorialHandlerRef(platform);

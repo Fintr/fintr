@@ -58,9 +58,10 @@ export const useAccountBalanceTimeline = ({
     },
     enabled: Boolean(spaceCode && accountId),
     staleTime: Infinity,
+    networkMode: "always",
   });
 
-  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery);
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery, spaceCode);
 
   return useQuery({
     queryKey: [

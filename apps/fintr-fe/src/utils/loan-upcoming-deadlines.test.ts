@@ -83,6 +83,50 @@ describe("loan-upcoming-deadlines", () => {
     expect(deadline?.paymentAmount).toBe(1_060);
   });
 
+  it("advances past a future installment after an early payment of that amount", () => {
+    const loan = createLoan({
+      entityName: "Bdo",
+      outstandingBalance: 908.5,
+      principalAmount: 920.91,
+      amortizationSchedule: [
+        {
+          paymentDate: "2026-09-11",
+          beginningBalance: 908.5,
+          paymentAmount: 12.25,
+          principalPayment: 10.41,
+          interestPayment: 1.84,
+          endingBalance: 898.09,
+          isActual: false,
+        },
+        {
+          paymentDate: "2026-10-11",
+          beginningBalance: 898.09,
+          paymentAmount: 12.25,
+          principalPayment: 10.5,
+          interestPayment: 1.75,
+          endingBalance: 887.59,
+          isActual: false,
+        },
+      ],
+      loanPayments: [
+        {
+          id: "payment-1",
+          date: "2026-08-14",
+          principalPayment: 10.41,
+          interestPayment: 1.84,
+          totalPayment: 12.25,
+          currency: "PLN",
+        },
+      ],
+    });
+
+    const deadline = getNextLoanPaymentDeadline(loan);
+
+    expect(deadline).not.toBeNull();
+    expect(toLocalDateString(deadline!.dueDate)).toBe("2026-10-11");
+    expect(deadline?.paymentAmount).toBe(12.25);
+  });
+
   it("advances past overdue projected installments after a catch-up payment", () => {
     const loan = createLoan({
       entityName: "Jerry Oquendo",

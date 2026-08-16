@@ -8,6 +8,15 @@ const emptyListResponse = {
   body: JSON.stringify({ success: true, data: [] }),
 };
 
+const MOCK_MERCHANT = {
+  id: "entity-e2e-1",
+  fullName: "Jollibee E2E",
+  entityType: "transaction" as const,
+  photoUrl: null,
+};
+
+export const OFFLINE_NAV_MOCK_MERCHANT_NAME = MOCK_MERCHANT.fullName;
+
 const minimalBootstrapPayload = (spaceCode: string) => ({
   spaceId: spaceCode,
   latestSeq: 1,
@@ -28,7 +37,7 @@ const minimalBootstrapPayload = (spaceCode: string) => ({
   accounts: [],
   categories: [],
   tags: [],
-  entities: [],
+  entities: [MOCK_MERCHANT],
   transactions: [],
   monthlyFinancialSummaries: [],
   loans: [],
@@ -103,19 +112,38 @@ export async function mockOfflineNavigationApi(
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        spaces: [
-          {
+        success: true,
+        data: {
+          spaces: [
+            {
+              id: "space-1",
+              name: "Test Space",
+              code: spaceCode,
+              is_organization: false,
+            },
+          ],
+          current_space: {
             id: "space-1",
             name: "Test Space",
             code: spaceCode,
-            is_organization: false,
           },
-        ],
-        current_space: {
-          id: "space-1",
-          name: "Test Space",
-          code: spaceCode,
         },
+      }),
+    });
+  });
+
+  await page.route("**/api/v1/entities**", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue();
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        data: [MOCK_MERCHANT],
       }),
     });
   });

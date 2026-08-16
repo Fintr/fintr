@@ -36,6 +36,23 @@ function canOfferCameraCapture(): boolean {
   return isNativeCapacitor() || window.innerWidth < 768;
 }
 
+const fileLooksLikeImage = (file: File | null): boolean => {
+  if (!file) {
+    return false;
+  }
+
+  if (file.type === "application/pdf") {
+    return false;
+  }
+
+  const remote = file as File & { isRemoteFile?: boolean; url?: string };
+  if (remote.isRemoteFile && remote.url) {
+    return !/\.pdf($|\?)/i.test(remote.url) && !/\.pdf$/i.test(file.name);
+  }
+
+  return isReceiptImageFile(file) || Boolean(file.type?.startsWith("image/"));
+};
+
 const FileUploadField: React.FC<FileUploadFieldProps> = ({
   file,
   onFileChange,
@@ -125,37 +142,46 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
   }, []);
 
   useEffect(() => {
-    if (file && file.type?.startsWith('image/')) {
-      if ((file as any).isRemoteFile) {
-        const remoteUrl = (file as any).url;
-        setImageUrl(remoteUrl && typeof remoteUrl === 'string' ? remoteUrl : '');
-      } else {
-        try {
-          const url = URL.createObjectURL(file);
-          setImageUrl(url);
-          return () => {
-            URL.revokeObjectURL(url);
-          };
-        } catch (error) {
-          console.error('Error creating object URL:', error);
-          setImageUrl('');
-        }
-      }
-    } else {
-      setImageUrl('');
+    if (!file) {
+      setImageUrl("");
+      return;
     }
+
+    const remote = file as File & { isRemoteFile?: boolean; url?: string };
+    if (remote.isRemoteFile && typeof remote.url === "string" && remote.url) {
+      setImageUrl(remote.url);
+      return;
+    }
+
+    if (isReceiptImageFile(file) || file.type?.startsWith("image/")) {
+      try {
+        const url = URL.createObjectURL(file);
+        setImageUrl(url);
+        return () => {
+          URL.revokeObjectURL(url);
+        };
+      } catch (error) {
+        console.error("Error creating object URL:", error);
+        setImageUrl("");
+      }
+      return;
+    }
+
+    setImageUrl("");
   }, [file]);
 
   const handleImageClick = () => {
-    if (file && file.type?.startsWith('image/') && imageUrl) {
+    if (fileLooksLikeImage(file) && imageUrl) {
       setLightboxOpen(true);
     }
   };
 
+  const showImagePreview = fileLooksLikeImage(file);
+
   return (
     <div className="space-y-2">
       <Label className="text-sm">{label}</Label>
-      {file && file.type?.startsWith('image/') ? (
+      {showImagePreview ? (
         <div className="space-y-2">
           <div className="border border-gray-300 rounded-lg p-4">
             {imageUrl ? (
@@ -271,7 +297,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
         </div>
       )}
 
-      {file && file.type?.startsWith('image/') && imageUrl && (
+      {showImagePreview && imageUrl && (
         <ImageLightbox
           images={[{
             url: imageUrl,

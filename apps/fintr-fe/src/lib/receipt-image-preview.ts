@@ -3,7 +3,7 @@ const IMAGE_EXTENSION_PATTERN = /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i;
 const HEIC_TYPE_PATTERN = /^image\/hei[cf]$/i;
 
 export function isReceiptImageFile(file: File): boolean {
-  if (file.type.startsWith("image/")) {
+  if (file.type?.startsWith("image/")) {
     return true;
   }
 

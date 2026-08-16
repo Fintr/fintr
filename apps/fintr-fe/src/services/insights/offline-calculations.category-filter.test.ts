@@ -66,6 +66,10 @@ vi.mock("@/services/monthly-financial-summaries/hydrate-from-local-transactions"
 
 vi.mock("@/services/monthly-financial-summaries/local-cache", () => ({
   loadCachedMonthlyFinancialSummaries: vi.fn(async () => []),
+  resolveMonthlySummariesForInsights: vi.fn(async (spaceCode: string) => ({
+    spaceCode,
+    summaries: [],
+  })),
 }));
 
 vi.mock("@/services/budgets/local-cache", () => ({

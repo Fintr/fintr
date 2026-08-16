@@ -202,7 +202,11 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       :to_account_name,
       :from_account_name,
       :category_name,
+      :category_id,
+      :subcategory_id,
       :subcategory_name,
+      :created_at,
+      :tags,
       :amount,
       :amount_currency,
       :booked_amount,
@@ -211,6 +215,10 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       :calculated,
       :type,
       :loan_id,
+      :entity_id,
+      :account_id,
+      :from_account_id,
+      :to_account_id,
       :entity_name,
       :loan_type,
       :is_loan_activity,
@@ -509,6 +517,125 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       it 'returns true' do
         expect(serialized_hash[:calculated]).to be(true)
       end
+    end
+  end
+
+  describe "relationship ids" do
+    let(:entity_id) { SecureRandom.uuid }
+    let(:account_id) { SecureRandom.uuid }
+
+    it "includes entity_id and account_id from the transactable" do
+      transactable_with_ids = OpenStruct.new(
+        files: files,
+        loan_payment: loan_payment,
+        entity_id: entity_id,
+        account_id: account_id,
+      )
+      record_with_ids = OpenStruct.new(
+        record.to_h.merge(
+          transactable: transactable_with_ids,
+          transactable_type: "Transactions::Expense",
+        ),
+      )
+
+      serialized = described_class.render_as_hash(record_with_ids)
+
+      expect(serialized[:entity_id]).to eq(entity_id)
+    end
+
+    it "includes account_id from the transactable" do
+      transactable_with_ids = OpenStruct.new(
+        files: files,
+        loan_payment: loan_payment,
+        entity_id: entity_id,
+        account_id: account_id,
+      )
+      record_with_ids = OpenStruct.new(
+        record.to_h.merge(
+          transactable: transactable_with_ids,
+          transactable_type: "Transactions::Expense",
+        ),
+      )
+
+      serialized = described_class.render_as_hash(record_with_ids)
+
+      expect(serialized[:account_id]).to eq(account_id)
+    end
+
+    it "uses expense account_id as from_account_id" do
+      transactable_with_ids = OpenStruct.new(
+        files: files,
+        loan_payment: loan_payment,
+        account_id: account_id,
+      )
+      record_with_ids = OpenStruct.new(
+        record.to_h.merge(
+          transactable: transactable_with_ids,
+          transactable_type: "Transactions::Expense",
+        ),
+      )
+
+      serialized = described_class.render_as_hash(record_with_ids)
+
+      expect(serialized[:from_account_id]).to eq(account_id)
+    end
+
+    it "uses income account_id as to_account_id" do
+      transactable_with_ids = OpenStruct.new(
+        files: files,
+        loan_payment: loan_payment,
+        account_id: account_id,
+      )
+      record_with_ids = OpenStruct.new(
+        record.to_h.merge(
+          transactable: transactable_with_ids,
+          transactable_type: "Transactions::Income",
+        ),
+      )
+
+      serialized = described_class.render_as_hash(record_with_ids)
+
+      expect(serialized[:to_account_id]).to eq(account_id)
+    end
+
+    it "includes transfer from_account_id and to_account_id" do
+      from_id = SecureRandom.uuid
+      to_id = SecureRandom.uuid
+      transfer = OpenStruct.new(
+        files: files,
+        from_account_id: from_id,
+        to_account_id: to_id,
+      )
+      record_with_ids = OpenStruct.new(
+        record.to_h.merge(
+          transactable: transfer,
+          transactable_type: "Transactions::Transfer",
+        ),
+      )
+
+      serialized = described_class.render_as_hash(record_with_ids)
+
+      expect(serialized[:from_account_id]).to eq(from_id)
+    end
+
+    it "includes transfer to_account_id" do
+      from_id = SecureRandom.uuid
+      to_id = SecureRandom.uuid
+      transfer = OpenStruct.new(
+        files: files,
+        from_account_id: from_id,
+        to_account_id: to_id,
+      )
+      record_with_ids = OpenStruct.new(
+        record.to_h.merge(
+          transactable: transfer,
+          transactable_type: "Transactions::Transfer",
+        ),
+      )
+
+      serialized = described_class.render_as_hash(record_with_ids)
+
+      expect(serialized[:to_account_id]).to eq(to_id)
     end
   end
 end

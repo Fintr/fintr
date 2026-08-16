@@ -26,9 +26,11 @@ TDD is about design quality, not coverage metrics. The red-green-refactor cycle 
 - Simple CRUD with no business logic
 - Exploratory prototyping
 
+**Fintr frontend exception:** Do not skip the test loop for `apps/fintr-fe`. Even UI/component work follows skill `frontend-tdd`: run related tests first, change, update tests, re-run. The Skip TDD list above does not waive Vitest for fintr-fe production TypeScript.
+
 **Heuristic:** Can you write `expect(fn(input)).toBe(output)` before writing `fn`?
 → Yes: Create a TDD plan
-→ No: Use standard plan, add tests after if needed
+→ No: Use standard plan. For `apps/fintr-fe`, still follow skill `frontend-tdd` (tests first → change → update tests → re-run). Do not skip Vitest.
 </when_to_use_tdd>
 
 <tdd_plan_structure>

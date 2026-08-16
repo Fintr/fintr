@@ -12,6 +12,7 @@ import {
   replaceLoanPaymentIdInLocalStores,
   syncLoanPaymentsToLocalStores,
 } from "@/services/loans/loan-payments-cache";
+import { loadCachedLoanPaymentsSnapshot } from "@/services/loans/local-cache";
 import {
   removeLocalIndexTransaction,
   replaceLocalIndexTransactionId,
@@ -224,9 +225,22 @@ export const createLoanPaymentLocalFirst = async (
     createData: data,
   });
 
+  const cachedPayments = queryClient?.getQueryData<LoanPayment[]>([
+    "loanPayments",
+    loanId,
+  ]);
   const previousPayments =
-    queryClient?.getQueryData<LoanPayment[]>(["loanPayments", loanId]) ?? [];
-  const nextPayments = [...previousPayments, localPayment];
+    cachedPayments && cachedPayments.length > 0
+      ? cachedPayments
+      : (await loadCachedLoanPaymentsSnapshot(spaceId, loanId)) ??
+        cachedPayments ??
+        [];
+  const alreadyPresent = previousPayments.some(
+    (payment) => payment.id === localPayment.id,
+  );
+  const nextPayments = alreadyPresent
+    ? previousPayments
+    : [...previousPayments, localPayment];
 
   if (queryClient) {
     await syncLoanPaymentsToLocalStores({

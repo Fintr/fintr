@@ -11,6 +11,8 @@ import { fetchMonthlyFinancialSummaries } from "./queries";
 import type { DashboardData } from "@/types/spaceTypes";
 import type { ExchangeRateLookup } from "@/services/insights/space-currency-amount";
 
+import { insightsRangeBucketsHaveSignal } from "@/services/insights/from-monthly-buckets";
+
 import { combineMonthlyFinancialSummaries, financialSummaryForDateRange } from "./combine";
 import {
   hydrateMonthlyFinancialSummariesFromLocalTransactions,
@@ -185,12 +187,23 @@ export const loadCachedMonthlyFinancialSummaries = async (
   }
 };
 
+export type ResolveMonthlySummariesForInsightsOptions = {
+  startDate?: string;
+  endDate?: string;
+  /**
+   * When the selected range already has non-zero bucket totals, skip scanning
+   * IndexedDB transactions to validate or rebuild every month bucket.
+   */
+  skipHydrationWhenBucketsHaveSignal?: boolean;
+};
+
 /**
  * Prefer `preferredSpaceCode`, but fall back to any IndexedDB bucket cache that
  * has rows (localStorage spaceCode can lag behind bootstrap keys).
  */
 export const resolveMonthlySummariesForInsights = async (
   preferredSpaceCode: string,
+  options?: ResolveMonthlySummariesForInsightsOptions,
 ): Promise<{
   spaceCode: string;
   summaries: MonthlyFinancialSummary[];
@@ -198,6 +211,29 @@ export const resolveMonthlySummariesForInsights = async (
   if (preferredSpaceCode) {
     const summaries =
       (await loadCachedMonthlyFinancialSummaries(preferredSpaceCode)) ?? [];
+
+    const rangeStart = options?.startDate;
+    const rangeEnd = options?.endDate;
+    const bucketsCoverSelectedRange =
+      Boolean(options?.skipHydrationWhenBucketsHaveSignal)
+      && Boolean(rangeStart)
+      && Boolean(rangeEnd)
+      && insightsRangeBucketsHaveSignal(summaries, rangeStart, rangeEnd);
+
+    if (
+      !bucketsCoverSelectedRange
+      && await summariesNeedLocalHydration(preferredSpaceCode, summaries)
+    ) {
+      const hydrated = await hydrateMonthlyFinancialSummariesFromLocalTransactions(
+        preferredSpaceCode,
+        { existingSummaries: summaries },
+      );
+
+      return {
+        spaceCode: preferredSpaceCode,
+        summaries: hydrated,
+      };
+    }
 
     if (summaries.length > 0) {
       return { spaceCode: preferredSpaceCode, summaries };

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, Check } from "lucide-react";
+import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
 
 // Custom SVG component for the completion icon
 const CompletionIcon = () => (
@@ -141,7 +142,7 @@ export default function OnboardingCompleted() {
   const router = useRouter();
 
   const handleGoToDashboard = () => {
-    router.push('/dashboard');
+    router.push(DEFAULT_AUTHENTICATED_PATH);
   };
 
   return (

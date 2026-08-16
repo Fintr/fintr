@@ -5,11 +5,16 @@ import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
 import { attachmentOwnerTypeForTransaction } from "./create-outbox";
+import { cacheRemoteFilesForOwners } from "./download-remote";
 import {
   listAttachmentsForOwner,
   loadLocalAttachmentFile,
 } from "./local-store";
-import type { LocalAttachmentRecord } from "./types";
+import {
+  extractRemoteFiles,
+  type RemoteFileAttachment,
+} from "./remote-files";
+import { markExistingLocalAttachment } from "@/utils/fileUtils";
 
 export type ResolvedAttachmentView = {
   url: string;
@@ -23,18 +28,13 @@ export type ResolvedAttachmentsResult = {
   revoke: () => void;
 };
 
-type RemoteFileAttachment = {
-  id?: string;
-  url?: string;
-  filename?: string;
-  contentType?: string;
-  byteSize?: number;
-};
-
 const emptyResult = (): ResolvedAttachmentsResult => ({
   images: [],
   revoke: () => {},
 });
+
+const isBrowserOffline = (): boolean =>
+  typeof navigator !== "undefined" && navigator.onLine === false;
 
 const recordsToResolved = (
   records: LocalAttachmentRecord[],
@@ -76,20 +76,33 @@ const remoteFilesToResolved = (
   revoke: () => {},
 });
 
-const extractRemoteFiles = (detail: unknown): RemoteFileAttachment[] => {
-  if (!detail || typeof detail !== "object") {
-    return [];
+const listLocalAttachmentRows = async (params: {
+  spaceId: string;
+  type: CombinedTransactionTypeEnum;
+  transactionId: string;
+  listRow?: IndexTransaction | null;
+}): Promise<LocalAttachmentRecord[]> => {
+  const ownerType = attachmentOwnerTypeForTransaction(params.type);
+  const ownerIds = [params.transactionId];
+  const activitableId = params.listRow?.activitableId;
+
+  if (activitableId && !ownerIds.includes(activitableId)) {
+    ownerIds.push(activitableId);
   }
 
-  const files = (detail as { files?: unknown }).files;
-  if (!Array.isArray(files)) {
-    return [];
+  for (const ownerId of ownerIds) {
+    const rows = await listAttachmentsForOwner({
+      spaceId: params.spaceId,
+      ownerType,
+      ownerId,
+    });
+
+    if (rows.length > 0) {
+      return rows;
+    }
   }
 
-  return files.filter(
-    (file): file is RemoteFileAttachment =>
-      Boolean(file) && typeof file === "object",
-  );
+  return [];
 };
 
 export const resolveAttachmentsForTransaction = async (params: {
@@ -113,62 +126,110 @@ export const resolveAttachmentsForTransaction = async (params: {
     return emptyResult();
   }
 
-  const ownerType = attachmentOwnerTypeForTransaction(type);
-  const localRows = await listAttachmentsForOwner({
+  const localRows = await listLocalAttachmentRows({
     spaceId,
-    ownerType,
-    ownerId: transactionId,
+    type,
+    transactionId,
+    listRow,
   });
 
   if (localRows.length > 0) {
     return recordsToResolved(localRows);
   }
 
-  if (preferLocal) {
+  const loadDetailFiles = async (useLocalOnly: boolean) => {
+    if (useLocalOnly) {
+      try {
+        return extractRemoteFiles(
+          await resolveTransactionDetail({
+            api: null,
+            spaceId,
+            transactionId,
+            type,
+            listRow,
+            preferLocal: true,
+          }),
+        );
+      } catch {
+        return [];
+      }
+    }
+
+    if (!api) {
+      return [];
+    }
+
+    return extractRemoteFiles(
+      await resolveTransactionDetail({
+        api,
+        spaceId,
+        transactionId,
+        type,
+        listRow,
+        preferLocal: false,
+      }),
+    );
+  };
+
+  let remoteFiles = await loadDetailFiles(true);
+  if (remoteFiles.length === 0 && !(preferLocal && isBrowserOffline())) {
+    remoteFiles = await loadDetailFiles(false);
+  }
+
+  if (remoteFiles.length === 0) {
     return emptyResult();
   }
 
-  if (!api) {
-    return emptyResult();
+  const ownerType = attachmentOwnerTypeForTransaction(type);
+  const ownerIds = [transactionId];
+  if (listRow?.activitableId && !ownerIds.includes(listRow.activitableId)) {
+    ownerIds.push(listRow.activitableId);
   }
 
-  const detail = await resolveTransactionDetail({
-    api,
-    spaceId,
-    transactionId,
-    type,
-    listRow,
-    preferLocal: false,
-  });
+  if (!(preferLocal && isBrowserOffline())) {
+    const stored = await cacheRemoteFilesForOwners({
+      spaceId,
+      ownerType,
+      ownerIds,
+      files: remoteFiles,
+      api,
+    });
 
-  const remoteFiles = extractRemoteFiles(detail);
-  if (remoteFiles.length > 0) {
-    return remoteFilesToResolved(remoteFiles);
+    if (stored.length > 0) {
+      return recordsToResolved(stored);
+    }
   }
 
-  return emptyResult();
+  return remoteFilesToResolved(remoteFiles);
 };
 
 export const resolveEditAttachmentFile = async (params: {
   spaceId: string;
   transactionId: string;
   type: CombinedTransactionTypeEnum;
+  listRow?: IndexTransaction | null;
 }): Promise<File | undefined> => {
-  const { spaceId, transactionId, type } = params;
+  const { spaceId, transactionId, type, listRow } = params;
 
   if (!spaceId || !transactionId) {
     return undefined;
   }
 
-  const rows = await listAttachmentsForOwner({
+  const rows = await listLocalAttachmentRows({
     spaceId,
-    ownerType: attachmentOwnerTypeForTransaction(type),
-    ownerId: transactionId,
+    type,
+    transactionId,
+    listRow,
   });
 
   if (rows.length === 0) {
     return undefined;
   }
 
-  return loadLocalAttachmentFile(rows[0]!.key);
+  const file = await loadLocalAttachmentFile(rows[0]!.key);
+  if (!file) {
+    return undefined;
+  }
+
+  return markExistingLocalAttachment(file);
 };

@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useGetSpaceCode } from "@/hooks/useGetSpaceCode";
+import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
 
 export default function OnboardingIndex() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function OnboardingIndex() {
     if (!isApiLoading && onboardingStep !== null) {
       // Check if user has completed onboarding
       if (onboardingStep === "completed") {
-        router.replace("/dashboard");
+        router.replace(DEFAULT_AUTHENTICATED_PATH);
       } else {
         // Map API step to route; unknown or missing step always starts at step1
         const stepRoutes: Record<string, string> = {

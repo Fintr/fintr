@@ -302,7 +302,11 @@ export const useInsightsQueries = (params: UseInsightsQueriesParams = {}) => {
         endDate: apiParams.endDate,
       });
 
-      const resolved = await resolveMonthlySummariesForInsights(spaceCode);
+      const resolved = await resolveMonthlySummariesForInsights(spaceCode, {
+        startDate: apiParams.startDate,
+        endDate: apiParams.endDate,
+        skipHydrationWhenBucketsHaveSignal: true,
+      });
       const summary = insightsSummaryFromMonthlyBuckets(
         resolved.summaries,
         apiParams.startDate,

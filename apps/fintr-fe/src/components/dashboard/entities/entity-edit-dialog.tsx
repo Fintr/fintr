@@ -20,7 +20,8 @@ import { MerchantAvatar } from "@/components/ui/merchant-avatar";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { ENTITY_DETAIL_KEY } from "@/hooks/async/useEntityDetail";
-import { EntityRecord, updateEntity } from "@/services/entities/mutation";
+import { EntityRecord, type EntityIdentifier, updateEntity } from "@/services/entities/mutation";
+import { EntityIdentifiersEditor } from "@/components/dashboard/entities/entity-identifiers-editor";
 import { extractFieldErrors, formatApiErrorMessage } from "@/utils/errorUtils";
 
 type EntityEditDialogProps = {
@@ -29,6 +30,7 @@ type EntityEditDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  identifiers?: EntityIdentifier[];
 };
 
 export function EntityEditDialog({
@@ -37,6 +39,7 @@ export function EntityEditDialog({
   open,
   onOpenChange,
   onSuccess,
+  identifiers = [],
 }: EntityEditDialogProps) {
   const { api } = useAuthApi();
   const queryClient = useQueryClient();
@@ -147,7 +150,7 @@ export function EntityEditDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-primary">
               Edit {entityLabel.toLowerCase()}
@@ -219,6 +222,17 @@ export function EntityEditDialog({
                 onChange={handlePhotoSelected}
               />
             </div>
+
+            {entity.entityType === "transaction" ? (
+              <div className="space-y-2">
+                <Label>Identifiers</Label>
+                <EntityIdentifiersEditor
+                  entityId={entity.id}
+                  entityName={entity.fullName}
+                  identifiers={identifiers}
+                />
+              </div>
+            ) : null}
 
             <Button
               type="button"

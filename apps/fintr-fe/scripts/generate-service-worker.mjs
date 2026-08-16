@@ -54,7 +54,19 @@ function collectPrecacheUrls(rootDir, relativeDir = "") {
       continue;
     }
 
-    urls.push(`/${relativePath.split(path.sep).join("/")}`);
+    let url = `/${relativePath.split(path.sep).join("/")}`;
+
+    // `serve` cleanUrls redirects *.html → 301. cache.add() rejects redirects, so
+    // precache the clean path that actually returns 200.
+    if (url.endsWith(".html")) {
+      url = url.slice(0, -".html".length);
+
+      if (url.endsWith("/index")) {
+        url = url.slice(0, -"/index".length) || "/";
+      }
+    }
+
+    urls.push(url);
   }
 
   return urls;
@@ -105,9 +117,15 @@ function buildServiceWorkerSource(cacheName, precacheUrls) {
 const CACHE_NAME = "${cacheName}";
 const PRECACHE_URLS = ${manifestJson};
 const PRECACHE_BATCH_SIZE = ${PRECACHE_BATCH_SIZE};
-const CACHE_MATCH_OPTIONS = { ignoreVary: true };
+const CACHE_MATCH_OPTIONS = { ignoreVary: true, ignoreSearch: true };
 
-const CRITICAL_PRECACHE_PREFIXES = ["/profiles/", "/badges/"];
+const SHELL_CRITICAL_PREFIXES = ["/_next/static/"];
+const OPTIONAL_PRECACHE_PREFIXES = ["/profiles/", "/badges/"];
+const SHELL_PRECACHE_RETRIES = 2;
+
+function isShellPrecacheUrl(url) {
+  return SHELL_CRITICAL_PREFIXES.some((prefix) => url.startsWith(prefix));
+}
 
 async function precacheInBatches(cache, urls) {
   for (let index = 0; index < urls.length; index += PRECACHE_BATCH_SIZE) {
@@ -116,25 +134,54 @@ async function precacheInBatches(cache, urls) {
   }
 }
 
-async function criticalPrecacheReady(cache) {
+async function listCachedPaths(cache) {
   const requests = await cache.keys();
-  const cachedPaths = new Set(
+  return new Set(
     requests.map((request) => {
       const url = new URL(request.url);
       return url.pathname;
     }),
   );
+}
 
-  return PRECACHE_URLS.filter((url) =>
-    CRITICAL_PRECACHE_PREFIXES.some((prefix) => url.startsWith(prefix)),
-  ).every((url) => cachedPaths.has(url));
+async function missingShellUrls(cache) {
+  const cachedPaths = await listCachedPaths(cache);
+  return PRECACHE_URLS.filter(
+    (url) => isShellPrecacheUrl(url) && !cachedPaths.has(url),
+  );
+}
+
+async function shellPrecacheReady(cache) {
+  const missing = await missingShellUrls(cache);
+  return missing.length === 0;
+}
+
+async function retryFailedShellPrecache(cache) {
+  for (let attempt = 0; attempt < SHELL_PRECACHE_RETRIES; attempt += 1) {
+    const missing = await missingShellUrls(cache);
+
+    if (missing.length === 0) {
+      return;
+    }
+
+    await precacheInBatches(cache, missing);
+  }
 }
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => precacheInBatches(cache, PRECACHE_URLS)),
-  );
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await precacheInBatches(cache, PRECACHE_URLS);
+    await retryFailedShellPrecache(cache);
+
+    if (await shellPrecacheReady(cache)) {
+      await self.skipWaiting();
+    } else {
+      console.warn(
+        "[fintr-sw] Shell JS precache incomplete — keeping the previous worker until the next load.",
+      );
+    }
+  })());
 });
 
 self.addEventListener("activate", (event) => {
@@ -142,11 +189,11 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const newCache = await caches.open(CACHE_NAME);
       await seedCriticalFromLegacyCaches(newCache);
-      const ready = await criticalPrecacheReady(newCache);
+      const ready = await shellPrecacheReady(newCache);
 
       if (!ready) {
         console.warn(
-          "[fintr-sw] Keeping previous shell caches — profile/badge precache incomplete (stay online and reload once).",
+          "[fintr-sw] Keeping previous shell caches — /_next/static/ precache incomplete (stay online and reload once).",
         );
         await self.clients.claim();
         return;
@@ -166,7 +213,7 @@ self.addEventListener("activate", (event) => {
 });
 
 function shouldHandleRequest(request) {
-  if (request.method !== "GET") {
+  if (request.method !== "GET" && request.method !== "HEAD") {
     return false;
   }
 
@@ -209,6 +256,15 @@ async function listShellCacheNames() {
     .reverse();
 }
 
+function pagePathMatches(candidate, target) {
+  return (
+    candidate === target
+    || candidate === target + ".html"
+    || candidate === target + ".txt"
+    || candidate === target + "/index.html"
+  );
+}
+
 async function resolveCachedByPathname(pathname) {
   const target = normalizePathname(pathname);
   const shellKeys = await listShellCacheNames();
@@ -221,7 +277,7 @@ async function resolveCachedByPathname(pathname) {
       const url = new URL(request.url);
       const candidate = normalizePathname(url.pathname);
 
-      if (candidate === target) {
+      if (pagePathMatches(candidate, target)) {
         const response = await cache.match(request, CACHE_MATCH_OPTIONS);
 
         if (response) {
@@ -233,7 +289,9 @@ async function resolveCachedByPathname(pathname) {
     const absoluteUrl = new URL(target, self.location.origin).href;
     const direct =
       (await cache.match(target, CACHE_MATCH_OPTIONS))
-      ?? (await cache.match(absoluteUrl, CACHE_MATCH_OPTIONS));
+      ?? (await cache.match(absoluteUrl, CACHE_MATCH_OPTIONS))
+      ?? (await cache.match(target + ".html", CACHE_MATCH_OPTIONS))
+      ?? (await cache.match(target + ".txt", CACHE_MATCH_OPTIONS));
 
     if (direct) {
       return direct;
@@ -252,7 +310,7 @@ async function seedCriticalFromLegacyCaches(newCache) {
   }
 
   const criticalUrls = PRECACHE_URLS.filter((url) =>
-    CRITICAL_PRECACHE_PREFIXES.some((prefix) => url.startsWith(prefix)),
+    OPTIONAL_PRECACHE_PREFIXES.some((prefix) => url.startsWith(prefix)),
   );
 
   for (const legacyKey of legacyKeys) {
@@ -286,15 +344,19 @@ function navigationCandidates(pathname) {
     candidates.push(pathname + "index.html");
     if (pathname.length > 1) {
       candidates.push(pathname.slice(0, -1) + ".html");
+      candidates.push(pathname.slice(0, -1));
     }
   } else if (pathname.endsWith(".html")) {
     candidates.push(pathname);
+    candidates.push(pathname.slice(0, -5));
   } else {
+    candidates.push(pathname);
     candidates.push(pathname + ".html");
     candidates.push(pathname + "/index.html");
   }
 
   candidates.push("/index.html");
+  candidates.push("/");
 
   return candidates;
 }
@@ -376,6 +438,22 @@ function isBrowserOffline() {
   return typeof self.navigator !== "undefined" && self.navigator.onLine === false;
 }
 
+function isStaticAssetRequest(request) {
+  const destination = request.destination;
+
+  if (
+    destination === "script"
+    || destination === "style"
+    || destination === "worker"
+    || destination === "font"
+  ) {
+    return true;
+  }
+
+  const pathname = new URL(request.url).pathname;
+  return pathname.startsWith("/_next/static/");
+}
+
 function offlineResponse() {
   return new Response(null, {
     status: 503,
@@ -392,6 +470,15 @@ async function resolveOfflineFallback(request) {
   }
 
   const url = new URL(request.url);
+  const byPath = await resolveCachedByPathname(url.pathname);
+
+  if (byPath) {
+    return byPath;
+  }
+
+  if (isStaticAssetRequest(request)) {
+    return offlineResponse();
+  }
 
   if (request.mode === "navigate") {
     const navigationResponse = await resolveNavigation(request);
@@ -409,10 +496,10 @@ async function resolveOfflineFallback(request) {
     return offlineResponse();
   }
 
-  const byPath = await resolveCachedByPathname(url.pathname);
+  const navigationResponse = await resolveNavigation(request);
 
-  if (byPath) {
-    return byPath;
+  if (navigationResponse) {
+    return navigationResponse;
   }
 
   return offlineResponse();
@@ -431,6 +518,21 @@ async function cacheResponse(request, response) {
 async function handleRequest(request) {
   const cache = await openCurrentCache();
   const url = new URL(request.url);
+
+  // While online, prefer the network for navigations so a stale precache cannot
+  // brick the tab after preview:local rebuilds (ERR_FAILED / blank shell).
+  if (request.mode === "navigate" && !isBrowserOffline()) {
+    try {
+      const networkResponse = await fetch(request);
+
+      if (networkResponse.ok) {
+        await cacheResponse(request, networkResponse);
+        return networkResponse;
+      }
+    } catch {
+      // Fall through to cached shell below.
+    }
+  }
 
   // Static export routes are stored as *.html — resolve before exact URL cache hits.
   if (request.mode === "navigate") {
@@ -493,8 +595,8 @@ self.addEventListener("fetch", (event) => {
       try {
         return await handleRequest(event.request);
       } catch (error) {
-        console.error("[fintr-sw] handler failed; using network", error);
-        return fetch(event.request);
+        console.error("[fintr-sw] handler failed; using cached shell", error);
+        return resolveOfflineFallback(event.request);
       }
     })(),
   );

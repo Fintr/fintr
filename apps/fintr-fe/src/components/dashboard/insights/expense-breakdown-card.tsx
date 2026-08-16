@@ -46,6 +46,7 @@ interface ExpenseBreakdownCardProps {
   description?: string;
   testId?: string;
   className?: string;
+  onItemNavigate?: (name: string) => void;
 }
 
 const MIN_LEGEND_PERCENT = 1;
@@ -111,6 +112,7 @@ export const ExpenseBreakdownCard = ({
   description = "How your expenses are distributed",
   testId = "expense-breakdown",
   className,
+  onItemNavigate,
 }: ExpenseBreakdownCardProps) => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [expandedName, setExpandedName] = useState<string | null>(null);
@@ -244,6 +246,7 @@ export const ExpenseBreakdownCard = ({
     }
 
     setExpandedName(null);
+    onItemNavigate?.(item.name);
   };
 
   const centerHeading = selectedItem?.name ?? "Total Expenses";

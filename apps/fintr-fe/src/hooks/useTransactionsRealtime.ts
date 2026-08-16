@@ -93,6 +93,29 @@ const pickField = (
   snake: string,
 ): unknown => payload[camel] ?? payload[snake];
 
+const optionalIndexId = (
+  payload: Record<string, unknown>,
+  camel: string,
+  snake: string,
+): Record<string, string | null> => {
+  const value =
+    Object.prototype.hasOwnProperty.call(payload, camel)
+      ? payload[camel]
+      : Object.prototype.hasOwnProperty.call(payload, snake)
+        ? payload[snake]
+        : undefined;
+
+  if (value === undefined) {
+    return {};
+  }
+
+  if (value === null || value === "") {
+    return { [camel]: null };
+  }
+
+  return { [camel]: asString(value) };
+};
+
 export const normalizeRealtimeIndexTransaction = (
   payload: Record<string, unknown>,
 ): IndexTransactionWithCategoryIds | null => {
@@ -183,6 +206,10 @@ export const normalizeRealtimeIndexTransaction = (
           tagIds: tags.map((tag) => tag.id),
         }
       : {}),
+    ...optionalIndexId(payload, "accountId", "account_id"),
+    ...optionalIndexId(payload, "fromAccountId", "from_account_id"),
+    ...optionalIndexId(payload, "toAccountId", "to_account_id"),
+    ...optionalIndexId(payload, "entityId", "entity_id"),
   };
 };
 

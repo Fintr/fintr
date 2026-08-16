@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   AmountWithRatePicker,
@@ -108,10 +108,13 @@ export const LoanPaymentAmountField = ({
     onConversionChange,
   ]);
 
-  const handleConversionChange = (conversion: ConversionSnapshot | null) => {
-    setConversionSnapshot(conversion);
-    onConversionChange?.(conversion);
-  };
+  const handleConversionChange = useCallback(
+    (conversion: ConversionSnapshot | null) => {
+      setConversionSnapshot(conversion);
+      onConversionChange?.(conversion);
+    },
+    [onConversionChange],
+  );
 
   const needsConversion =
     adjustsAccountBalance &&

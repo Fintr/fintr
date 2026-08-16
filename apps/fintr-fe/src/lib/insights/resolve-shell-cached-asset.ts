@@ -14,9 +14,47 @@ export const listShellCacheNames = async (): Promise<string[]> => {
   const keys = await caches.keys();
 
   return keys
-    .filter((key) => key.startsWith("fintr-shell-"))
+    .filter(
+      (key) => key.startsWith("fintr-shell-") || key.startsWith("fintr-dev-"),
+    )
     .sort()
     .reverse();
+};
+
+export const warmShellCachedImageUrls = async (
+  urls: string[],
+): Promise<void> => {
+  if (typeof window === "undefined" || !navigator.onLine || urls.length === 0) {
+    return;
+  }
+
+  const shellKeys = await listShellCacheNames();
+  const cacheName = shellKeys[0];
+
+  if (!cacheName) {
+    await Promise.allSettled(
+      urls.map((url) => fetch(url, { cache: "force-cache" })),
+    );
+    return;
+  }
+
+  const cache = await caches.open(cacheName);
+
+  await Promise.allSettled(
+    urls.map(async (url) => {
+      const existing = await cache.match(url, { ignoreVary: true });
+
+      if (existing) {
+        return;
+      }
+
+      const response = await fetch(url);
+
+      if (response.ok) {
+        await cache.put(url, response);
+      }
+    }),
+  );
 };
 
 /**

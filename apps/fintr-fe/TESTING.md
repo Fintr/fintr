@@ -1,6 +1,30 @@
-# Testing Guide for Fintr Mobile Layouts
+# Testing Guide for Fintr Frontend
 
-This document describes the testing setup for ensuring consistent safe area padding and system navigation handling across Android, iOS, and browser mobile.
+## Change workflow (required)
+
+Any production change under `apps/fintr-fe` uses this loop so unintended behavior does not ship. See skill `frontend-tdd` and rule `frontend_tdd.mdc`.
+
+1. **Tests first** — Run related Vitest files *before* editing production code.
+2. **Make the changes** — Smallest production edit.
+3. **Update tests** — Only for intentional behavior. Do not weaken failing assertions.
+4. **Tests again** — Re-run the same files plus any new tests.
+
+```bash
+# Non-watch (required). Do not use `pnpm test` — that is watch mode.
+cd apps/fintr-fe && pnpm test:ci src/path/to/file.test.ts
+```
+
+- Colocated tests live next to source as `*.test.ts` / `*.test.tsx`.
+- If the behavior has no test, write one before the production edit.
+- New behavior and bugfixes: write the failing assertion first and confirm it fails for the right reason.
+- Unrelated failures after the change are unintended — fix the code, not the test.
+
+---
+
+# Mobile layout tests
+
+This section describes the testing setup for consistent safe area padding and system navigation handling across Android, iOS, and browser mobile.
+
 
 ## Overview
 

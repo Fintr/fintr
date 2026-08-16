@@ -1,5 +1,8 @@
 import { loadCachedAccountsResponse } from "@/services/transactions/accounts/local-cache";
-import { insightsSummaryHybrid, summaryFromTransactions } from "@/services/insights/from-monthly-buckets";
+import {
+  insightsSummaryFromMonthlyBuckets,
+  summaryFromTransactions,
+} from "@/services/insights/from-monthly-buckets";
 import {
   estimateMonthlyLoanPayment,
   loadLocalBudgetsForRange,
@@ -230,9 +233,16 @@ export const buildOfflineNarratives = async (params: {
   const priorStart = shiftDateByDays(priorEnd, -(periodDays - 1));
   const lookbackStart = emergencyFundLookbackStart(endDate);
 
+  const useFilteredSummary =
+    Boolean(categoryId || subcategoryId || categoryName?.trim())
+    || tagIds.length > 0;
+
+  const needsTransactionHistory =
+    useFilteredSummary || isBusiness;
+
   const [
     summaries,
-    transactions,
+    currentTransactions,
     priorTransactions,
     lookbackTransactions,
     budgets,
@@ -241,8 +251,12 @@ export const buildOfflineNarratives = async (params: {
   ] = await Promise.all([
     loadCachedMonthlyFinancialSummaries(spaceCode),
     loadCachedTransactionsInRange(spaceCode, startDate, endDate),
-    loadCachedTransactionsInRange(spaceCode, priorStart, priorEnd),
-    loadCachedTransactionsInRange(spaceCode, lookbackStart, endDate),
+    needsTransactionHistory
+      ? loadCachedTransactionsInRange(spaceCode, priorStart, priorEnd)
+      : Promise.resolve([] as IndexTransaction[]),
+    needsTransactionHistory
+      ? loadCachedTransactionsInRange(spaceCode, lookbackStart, endDate)
+      : Promise.resolve([] as IndexTransaction[]),
     loadLocalBudgetsForRange(spaceCode, startDate, endDate),
     loadCachedLoansInfiniteData(spaceCode),
     loadCachedAccountsResponse(spaceCode),
@@ -269,21 +283,16 @@ export const buildOfflineNarratives = async (params: {
     return next;
   };
 
-  const currentTx = applyTransactionFilters(transactions);
+  const currentTx = applyTransactionFilters(currentTransactions);
   const priorTx = applyTransactionFilters(priorTransactions);
-
-  const useFilteredSummary =
-    Boolean(categoryId || subcategoryId || categoryName?.trim())
-    || tagIds.length > 0;
 
   const priorSummary = useFilteredSummary
     ? summaryFromTransactions(priorTx)
-    : insightsSummaryHybrid({
-        summaries: summaries ?? [],
-        transactions: priorTransactions,
-        startDate: priorStart,
-        endDate: priorEnd,
-      });
+    : insightsSummaryFromMonthlyBuckets(
+        summaries ?? [],
+        priorStart,
+        priorEnd,
+      );
 
   const income = summary.totalIncome;
   const expenses = summary.totalExpenses;
@@ -296,9 +305,15 @@ export const buildOfflineNarratives = async (params: {
   const priorSavingsRate =
     priorIncome === 0 ? 0 : (priorNet / priorIncome) * 100;
 
-  const trailingExpenses = applyTransactionFilters(lookbackTransactions)
-    .filter((tx) => tx.type === CombinedTransactionTypeEnum.EXPENSE)
-    .reduce((sum, tx) => sum + Math.abs(toAmount(tx.amount)), 0);
+  const trailingExpenses = useFilteredSummary
+    ? applyTransactionFilters(lookbackTransactions)
+      .filter((tx) => tx.type === CombinedTransactionTypeEnum.EXPENSE)
+      .reduce((sum, tx) => sum + Math.abs(toAmount(tx.amount)), 0)
+    : insightsSummaryFromMonthlyBuckets(
+        summaries ?? [],
+        lookbackStart,
+        endDate,
+      ).totalExpenses;
   const liquid = extractCashTotal(accountsResponse);
   const monthlyExpenses = trailingExpenses / EMERGENCY_FUND_LOOKBACK_MONTHS;
   let emergencyDisplay = "—";

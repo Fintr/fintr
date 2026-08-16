@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useMemo } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import { CalculatorInput } from "../../ui/calculator-input";
@@ -48,6 +48,14 @@ import {
   shouldIncludeTransferExchangeRate,
   transferInitialDataSignature,
 } from "./transfer-form-initial-data";
+import {
+  amountDirtySignature,
+  conversionDirtySignature,
+  dateDirtySignature,
+  fileDirtySignature,
+  isEditSnapshotDirty,
+  useAttachmentDirtyBaseline,
+} from "@/utils/transactionEditDirty";
 
 // Transfer form schema using Zod
 const transferFormSchema = z.object({
@@ -85,6 +93,7 @@ interface TransferFormProps {
   spaceCurrency?: string;
   onSubmitSuccess?: (data: any) => void | Promise<void>;
   onCancel?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
   // Edit mode props
   initialData?: UpdateTransferType & { draftId?: string };
   isEditMode?: boolean;
@@ -103,6 +112,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
   spaceCurrency,
   onSubmitSuccess = () => {},
   onCancel = () => {},
+  onDirtyChange,
   id,
   initialData,
   isEditMode = false,
@@ -347,6 +357,7 @@ const TransferForm: React.FC<TransferFormProps> = ({
         isEditMode,
         hadAttachmentOnLoad: hadAttachmentOnLoadRef.current,
         file: formState.file,
+        initialFile: initialData?.file ?? null,
       });
 
       const transferData = {
@@ -473,6 +484,48 @@ const TransferForm: React.FC<TransferFormProps> = ({
       handleFieldChange("toAccountName", accountName);
     }
   };
+
+  const attachmentBaseline = useAttachmentDirtyBaseline(
+    initialData?.id,
+    initialData?.file,
+  );
+  const hasUnsavedEdit = isEditSnapshotDirty(
+    isEditMode && Boolean(initialData),
+    {
+      date: dateDirtySignature(date),
+      amount: amountDirtySignature(amountInput.displayValue),
+      transactionCost: amountDirtySignature(transactionCostInput.displayValue),
+      description: formState.description || "",
+      fromAccountName: formState.fromAccountName || "",
+      toAccountName: formState.toAccountName || "",
+      scheduleType: formState.scheduleType,
+      repeatInterval: formState.repeatInterval || "",
+      file: fileDirtySignature(formState.file),
+      conversion: conversionDirtySignature(conversionSnapshot),
+    },
+    {
+      date: dateDirtySignature(
+        initialData?.date ? new Date(initialData.date) : undefined,
+      ),
+      amount: amountDirtySignature(initialData?.amount),
+      transactionCost: amountDirtySignature(initialData?.transactionCost),
+      description: initialData?.description || "",
+      fromAccountName: initialData?.fromAccountName || "",
+      toAccountName: initialData?.toAccountName || "",
+      scheduleType: initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME,
+      repeatInterval: initialData?.repeatInterval || "",
+      file: attachmentBaseline,
+      conversion: conversionDirtySignature(
+        initialData
+          ? conversionSnapshotFromTransferInitialData(initialData)
+          : null,
+      ),
+    },
+  );
+
+  useLayoutEffect(() => {
+    onDirtyChange?.(hasUnsavedEdit);
+  }, [hasUnsavedEdit, onDirtyChange]);
 
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -691,8 +744,15 @@ const TransferForm: React.FC<TransferFormProps> = ({
           <Button
             type="submit"
             className="bg-primary hover:bg-primary/80 text-sm"
-            disabled={isSubmitting || Boolean(editingLockedReason)}
-            title={editingLockedReason ?? undefined}
+            disabled={
+              isSubmitting
+              || Boolean(editingLockedReason)
+              || (isEditMode && !hasUnsavedEdit)
+            }
+            title={
+              editingLockedReason
+              ?? (isEditMode && !hasUnsavedEdit ? "No changes to save" : undefined)
+            }
           >
             {isSubmitting ? (
               <>

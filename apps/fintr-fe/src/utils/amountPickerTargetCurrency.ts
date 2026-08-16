@@ -163,3 +163,15 @@ export function shouldShowAmountFxInEdit({
 
   return targetCurrency != null && amountCurrency !== targetCurrency;
 }
+
+export function withEditOriginalCurrency(
+  codes: string[],
+  originalCurrency?: string | null,
+): string[] {
+  const code = originalCurrency?.trim().toUpperCase() ?? "";
+  if (code.length !== 3 || codes.includes(code)) {
+    return codes;
+  }
+
+  return [code, ...codes];
+}

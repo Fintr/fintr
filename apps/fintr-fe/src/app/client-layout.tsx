@@ -7,10 +7,12 @@ import { PerformanceMonitor } from "@/components/performance-monitor";
 import CapacitorLoader from "@/components/capacitor-loader";
 import CacheVersionChecker from "@/components/cache-version-checker";
 import ChunkLoadRecovery from "@/components/chunk-load-recovery";
+import { OfflineStatusBanner } from "@/components/offline/offline-status-banner";
 import ErudaDevTools from "@/components/eruda-devtools";
 import RackMiniProfilerPendingFlush from "@/components/rack-mini-profiler-pending-flush";
 import RackMiniProfilerSpa from "@/components/rack-mini-profiler-spa";
 import {
+  canRecoverOfflineChunkNavigation,
   isChunkLoadError,
   recoverFromChunkLoadError,
 } from "@/utils/chunkLoadError";
@@ -54,9 +56,17 @@ class GlobalErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       const error = this.state.error;
+      const isOffline =
+        typeof navigator !== "undefined" && navigator.onLine === false;
+      const isChunkError = isChunkLoadError(error);
+
+      if (isChunkError && (isOffline || canRecoverOfflineChunkNavigation())) {
+        return null;
+      }
+
       const errorMsg = error?.message || "Unknown error";
       const errorStack = error?.stack || "";
-      const isStaleChunkError = isChunkLoadError(error);
+      const isStaleChunkError = isChunkError;
 
       return (
         <div style={{
@@ -125,6 +135,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     <GlobalErrorBoundary>
       <CapacitorLoader />
       <ChunkLoadRecovery />
+      <OfflineStatusBanner />
       <CacheVersionChecker />
       <ErudaDevTools />
       <RackMiniProfilerPendingFlush />
