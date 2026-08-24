@@ -54,6 +54,7 @@ module Api
 
         def create_params
           params.permit(
+            :id,
             :account_name,
             :date,
             :total_payment,

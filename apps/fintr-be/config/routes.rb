@@ -139,6 +139,10 @@ Rails.application.routes.draw do
           get :generate_csv
           get :note_suggestions
         end
+
+        member do
+          post :materialize_series
+        end
       end
 
       resources :exchange_rates, only: [] do

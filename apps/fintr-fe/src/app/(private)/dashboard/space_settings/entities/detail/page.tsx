@@ -6,10 +6,11 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { EntityDetailContent } from "@/components/dashboard/entities/entity-detail-content";
+import { resolveDetailSearchParam } from "@/utils/detailSearchParam";
 
 const EntityDetailInner = () => {
   const searchParams = useSearchParams();
-  const entityId = searchParams.get("entityId") ?? "";
+  const entityId = resolveDetailSearchParam("entityId", searchParams);
 
   if (!entityId) {
     return (

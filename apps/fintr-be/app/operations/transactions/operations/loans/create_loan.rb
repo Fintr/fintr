@@ -19,6 +19,7 @@ module Transactions
             required(:entity_name).value(:string)
             required(:account_name).value(:string)
             required(:loan_term_months).value(:integer, gt?: 0)
+            optional(:id).maybe(:string)
             optional(:description).value(:string)
             optional(:adjusts_account_balance).maybe(:bool)
             optional(:file)

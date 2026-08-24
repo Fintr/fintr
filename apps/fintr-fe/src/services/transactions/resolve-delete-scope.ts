@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { differenceInCalendarDays, parseISO } from "date-fns";
 
-import { DeleteScopeEnum } from "@/constants/transactionConstants";
+import { DeleteScopeEnum, ScheduleTypeEnum } from "@/constants/transactionConstants";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
@@ -41,6 +42,257 @@ export const sameSeriesFingerprint = (
   a: IndexTransaction,
   b: IndexTransaction,
 ): boolean => seriesFingerprintKey(a) === seriesFingerprintKey(b);
+
+export const isRecurringScheduleType = (
+  scheduleType?: string | null,
+): boolean =>
+  scheduleType === ScheduleTypeEnum.REPEAT
+  || scheduleType === ScheduleTypeEnum.INSTALLMENT
+  || scheduleType === "repeat"
+  || scheduleType === "installment";
+
+/**
+ * Whether delete/update scope modals should offer series-wide options.
+ */
+export const transactionAllowsSeriesDeleteScope = (
+  row: Pick<IndexTransaction, "inSeries" | "parentId" | "scheduleType"> | null | undefined,
+): boolean => {
+  if (!row) {
+    return false;
+  }
+
+  if (row.inSeries) {
+    return true;
+  }
+
+  if (row.parentId) {
+    return true;
+  }
+
+  return isRecurringScheduleType(row.scheduleType);
+};
+
+const hasRecurringFingerprintCluster = (
+  row: IndexTransaction,
+  rows: IndexTransaction[],
+  minDistinctDates = 3,
+): boolean => {
+  const siblings = rows.filter(
+    (other) => other.id !== row.id && sameSeriesFingerprint(row, other),
+  );
+
+  if (siblings.length === 0) {
+    return false;
+  }
+
+  if (siblings.some((other) => transactionAllowsSeriesDeleteScope(other))) {
+    return true;
+  }
+
+  const distinctDates = new Set(
+    [row, ...siblings].map((entry) => transactionDateKey(entry.date)),
+  );
+
+  return distinctDates.size >= minDistinctDates;
+};
+
+const resolveTransactionInSeriesWithMinDates = (
+  row: IndexTransaction,
+  rows: IndexTransaction[],
+  minDistinctDates: number,
+): boolean => {
+  if (transactionAllowsSeriesDeleteScope(row)) {
+    return true;
+  }
+
+  if (hasRecurringFingerprintCluster(row, rows, minDistinctDates)) {
+    return true;
+  }
+
+  return rows.some(
+    (other) =>
+      other.id !== row.id
+      && sameSeriesFingerprint(row, other)
+      && transactionAllowsSeriesDeleteScope(other),
+  );
+};
+
+/**
+ * True when the row is part of a repeat/installment series. Siblings may have
+ * a stale `inSeries: false` (e.g. series parent); match by fingerprint or parentId.
+ */
+export const resolveTransactionInSeries = (
+  row: IndexTransaction,
+  rows: IndexTransaction[],
+): boolean => resolveTransactionInSeriesWithMinDates(row, rows, 3);
+
+const hasSpacedFingerprintPairForDisplay = (
+  row: IndexTransaction,
+  rows: IndexTransaction[],
+): boolean => {
+  const siblings = rows.filter(
+    (other) => other.id !== row.id && sameSeriesFingerprint(row, other),
+  );
+
+  if (siblings.length === 0) {
+    return false;
+  }
+
+  if (siblings.some((other) => transactionAllowsSeriesDeleteScope(other))) {
+    return true;
+  }
+
+  const distinctDateKeys = [...new Set(
+    [row, ...siblings].map((entry) => transactionDateKey(entry.date)),
+  )].sort();
+
+  if (distinctDateKeys.length < 2) {
+    return false;
+  }
+
+  const earliest = parseISO(distinctDateKeys[0]!);
+  const latest = parseISO(distinctDateKeys[distinctDateKeys.length - 1]!);
+  const spanDays = differenceInCalendarDays(latest, earliest);
+
+  // Weekly+ spacing catches legacy pairs; daily series need 3+ dates (handled above).
+  return spanDays >= 6;
+};
+
+/** Display-only: spaced fingerprint pairs (e.g. legacy weekly) without series metadata. */
+export const resolveTransactionInSeriesForDisplay = (
+  row: IndexTransaction,
+  rows: IndexTransaction[],
+): boolean =>
+  resolveTransactionInSeriesWithMinDates(row, rows, 3)
+  || hasSpacedFingerprintPairForDisplay(row, rows);
+
+export const withResolvedInSeries = (
+  row: IndexTransaction,
+  rows: IndexTransaction[],
+): IndexTransaction => {
+  if (!resolveTransactionInSeries(row, rows)) {
+    return row;
+  }
+
+  return row.inSeries ? row : { ...row, inSeries: true };
+};
+
+const enrichRowScheduleFromSeriesContext = (
+  row: IndexTransaction,
+  rows: IndexTransaction[],
+): IndexTransaction => {
+  if (!resolveTransactionInSeriesForDisplay(row, rows)) {
+    return row;
+  }
+
+  let next: IndexTransaction = { ...row };
+
+  const parent = next.parentId
+    ? rows.find((entry) => entry.id === next.parentId)
+    : undefined;
+  if (parent) {
+    next = {
+      ...next,
+      scheduleType: next.scheduleType ?? parent.scheduleType,
+      repeatInterval: next.repeatInterval ?? parent.repeatInterval,
+      rootParentId: next.rootParentId ?? parent.rootParentId ?? parent.id,
+    };
+  }
+
+  const childWithSchedule = rows.find(
+    (entry) =>
+      entry.parentId === next.id
+      && (
+        entry.repeatInterval
+        || isRecurringScheduleType(entry.scheduleType)
+      ),
+  );
+  if (childWithSchedule) {
+    next = {
+      ...next,
+      scheduleType: next.scheduleType ?? childWithSchedule.scheduleType,
+      repeatInterval: next.repeatInterval ?? childWithSchedule.repeatInterval,
+    };
+  }
+
+  const siblingDonor = rows.find(
+    (other) =>
+      other.id !== next.id
+      && sameSeriesFingerprint(next, other)
+      && (
+        other.repeatInterval
+        || isRecurringScheduleType(other.scheduleType)
+      ),
+  );
+  if (siblingDonor) {
+    next = {
+      ...next,
+      scheduleType: next.scheduleType ?? siblingDonor.scheduleType,
+      repeatInterval: next.repeatInterval ?? siblingDonor.repeatInterval,
+      rootParentId:
+        next.rootParentId
+        ?? siblingDonor.rootParentId
+        ?? siblingDonor.parentId
+        ?? siblingDonor.id,
+    };
+  }
+
+  if (!isRecurringScheduleType(next.scheduleType) && !next.repeatInterval) {
+    next = {
+      ...next,
+      scheduleType: ScheduleTypeEnum.REPEAT,
+    };
+  }
+
+  if (!next.rootParentId) {
+    if (next.parentId) {
+      next = { ...next, rootParentId: next.parentId };
+    } else if (isRecurringScheduleType(next.scheduleType)) {
+      next = { ...next, rootParentId: next.id };
+    }
+  }
+
+  return next;
+};
+
+/**
+ * Resolve stale series flags and schedule metadata for ledger display.
+ * Legacy rows may lack inSeries / schedule fields even when they belong to a series.
+ */
+export const enrichLedgerTransactionsForDisplay = (
+  rows: IndexTransaction[],
+): IndexTransaction[] => {
+  const withSeriesFlag = rows.map((row) => {
+    if (!resolveTransactionInSeriesForDisplay(row, rows)) {
+      return row;
+    }
+
+    return row.inSeries ? row : { ...row, inSeries: true };
+  });
+
+  return withSeriesFlag.map((row) =>
+    enrichRowScheduleFromSeriesContext(row, withSeriesFlag),
+  );
+};
+
+export const flattenTransactionsFromPages = (
+  pages: Array<{ transactions?: IndexTransaction[] }> | undefined,
+): IndexTransaction[] => {
+  if (!pages?.length) {
+    return [];
+  }
+
+  const byId = new Map<string, IndexTransaction>();
+  for (const page of pages) {
+    for (const row of page.transactions ?? []) {
+      if (row?.id) {
+        byId.set(row.id, row);
+      }
+    }
+  }
+
+  return Array.from(byId.values());
+};
 
 const inDeleteDateScope = (
   rowDate: string,
@@ -114,7 +366,7 @@ export const resolveSeriesRowsForDeleteScope = (params: {
 
   const byId = new Map<string, IndexTransaction>();
   byId.set(target.id, target);
-  const targetLooksLikeSeries = Boolean(target.inSeries);
+  const targetLooksLikeSeries = resolveTransactionInSeries(target, rows);
 
   for (const row of rows) {
     if (!row?.id || row.id === target.id) continue;
@@ -122,7 +374,9 @@ export const resolveSeriesRowsForDeleteScope = (params: {
     if (!inDeleteDateScope(row.date, target.date, deleteScope)) continue;
     // One-time clones share fingerprints often; require series signal on at
     // least one side before treating them as the same recurring series.
-    if (!targetLooksLikeSeries && !row.inSeries) continue;
+    if (!targetLooksLikeSeries && !resolveTransactionInSeries(row, rows)) {
+      continue;
+    }
     byId.set(row.id, row);
   }
 

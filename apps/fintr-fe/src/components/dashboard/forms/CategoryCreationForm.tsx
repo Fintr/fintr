@@ -3,14 +3,11 @@ import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
 import { FormError } from "@/components/ui/form-error";
-import { useAuthApi } from "@/hooks/useAuthApi";
-import { useAtom, useSetAtom } from "jotai";
-import { createCategoryAtom, categoryValidationErrorsAtom } from "@/atoms/transactionCategoryAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { toast } from "sonner";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface CategoryCreationFormProps {
   onSuccess: (value: string, createdId?: string) => void;
@@ -23,13 +20,13 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
   onSuccess,
   categoryType,
   parentId,
-  horizontal = false
+  horizontal = false,
 }) => {
-  const { api } = useAuthApi();
-  const queryClient = useQueryClient();
-  const addCategory = useSetAtom(createCategoryAtom);
-  const [categoryValidationErrors, setCategoryValidationErrors] = useAtom(categoryValidationErrorsAtom);
-  const [categoryName, setCategoryName] = useState('');
+  const { createCategoryMutation } = useTransactionCategories();
+  const [categoryValidationErrors, setCategoryValidationErrors] = useState<
+    Record<string, string[]>
+  >({});
+  const [categoryName, setCategoryName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [localErrors, setLocalErrors] = useState<{ name?: string }>({});
 
@@ -38,42 +35,30 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
       setLocalErrors({ name: "Category name is required" });
       return;
     }
-    setLocalErrors({}); 
+    setLocalErrors({});
     setIsLoading(true);
-    setCategoryValidationErrors({}); 
+    setCategoryValidationErrors({});
 
     try {
-      const createdCategory = await addCategory({
-        api,
-        categoryData: {
-          name: categoryName,
-          categoryType: categoryType,
-          parentId: parentId ?? null,
-        }
+      const result = await createCategoryMutation.mutateAsync({
+        name: categoryName,
+        categoryType,
+        parentId: parentId ?? null,
       });
+
       toast.success(`"${categoryName}" has been added.`);
 
-      // Invalidate dashboard query if expense category is created
-      if (categoryType === CategoryTypeEnum.EXPENSE) {
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      }
-
-      // Ensure we call onSuccess with the correct category name
-      const createdId =
-        createdCategory?.data?.id ??
-        createdCategory?.id ??
-        createdCategory?.record?.id;
-      setCategoryName('');
-
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      const createdId = result.data?.id ?? result.localCategory?.id;
+      const createdName = categoryName;
+      setCategoryName("");
 
       setTimeout(() => {
-        onSuccess(categoryName, createdId);
+        onSuccess(createdName, createdId);
       }, 100);
     } catch (error) {
       console.error("Failed to create category:", error);
       const fieldErrors = extractFieldErrors(error);
-      setCategoryValidationErrors(fieldErrors); 
+      setCategoryValidationErrors(fieldErrors);
       if (!fieldErrors.name) {
         toast.error("Failed to create category.");
       }
@@ -81,11 +66,12 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
       setIsLoading(false);
     }
   };
-  
-  const placeholderText = categoryType === CategoryTypeEnum.INCOME 
-    ? "Enter new income category" 
-    : "Enter new expense category";
-  
+
+  const placeholderText =
+    categoryType === CategoryTypeEnum.INCOME
+      ? "Enter new income category"
+      : "Enter new expense category";
+
   return (
     <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-0 dark:bg-muted">
       <div className={horizontal ? "flex gap-4 items-end" : ""}>
@@ -97,7 +83,7 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
             value={categoryName}
             onChange={(e) => {
               setCategoryName(e.target.value);
-              if (localErrors.name) setLocalErrors({}); 
+              if (localErrors.name) setLocalErrors({});
             }}
             className={
               localErrors.name || categoryValidationErrors.name
@@ -109,35 +95,39 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
           {localErrors.name && <FormError>{localErrors.name}</FormError>}
           {!localErrors.name && categoryValidationErrors.name && (
             <FormError>
-              {Array.isArray(categoryValidationErrors.name) 
-                ? categoryValidationErrors.name[0] 
+              {Array.isArray(categoryValidationErrors.name)
+                ? categoryValidationErrors.name[0]
                 : String(categoryValidationErrors.name)}
             </FormError>
           )}
         </div>
-        
+
         {horizontal && (
           <div className="flex">
-            <Button 
-              type="button" 
-              size="sm" 
-              disabled={isLoading} 
-              className="bg-primary hover:bg-primary/80 h-10" 
+            <Button
+              type="button"
+              size="sm"
+              disabled={isLoading}
+              className="bg-primary hover:bg-primary/80 h-10"
               onClick={handleAddCategory}
             >
-              {isLoading ? <LoadingSpinner size="small" className="mr-2" /> : "Add"}
+              {isLoading ? (
+                <LoadingSpinner size="small" className="mr-2" />
+              ) : (
+                "Add"
+              )}
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               size="sm"
-              className="ml-2 h-10" 
-              onClick={() => { 
-                setCategoryName(''); 
-                setLocalErrors({}); 
-                setCategoryValidationErrors({}); 
-                onSuccess(""); 
-              }} 
+              className="ml-2 h-10"
+              onClick={() => {
+                setCategoryName("");
+                setLocalErrors({});
+                setCategoryValidationErrors({});
+                onSuccess("");
+              }}
               disabled={isLoading}
             >
               Cancel
@@ -145,31 +135,35 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
           </div>
         )}
       </div>
-      
+
       {!horizontal && (
         <div className="flex gap-2 mt-3">
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm" 
-            onClick={() => { 
-              setCategoryName(''); 
-              setLocalErrors({}); 
-              setCategoryValidationErrors({}); 
-              onSuccess(""); 
-            }} 
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setCategoryName("");
+              setLocalErrors({});
+              setCategoryValidationErrors({});
+              onSuccess("");
+            }}
             disabled={isLoading}
           >
             Cancel
           </Button>
-          <Button 
-            type="button" 
-            size="sm" 
-            disabled={isLoading} 
-            className="bg-primary hover:bg-primary/80" 
+          <Button
+            type="button"
+            size="sm"
+            disabled={isLoading}
+            className="bg-primary hover:bg-primary/80"
             onClick={handleAddCategory}
           >
-            {isLoading ? <LoadingSpinner size="small" className="mr-2" /> : "Add"}
+            {isLoading ? (
+              <LoadingSpinner size="small" className="mr-2" />
+            ) : (
+              "Add"
+            )}
           </Button>
         </div>
       )}
@@ -177,4 +171,4 @@ const CategoryCreationForm: React.FC<CategoryCreationFormProps> = ({
   );
 };
 
-export default CategoryCreationForm; 
+export default CategoryCreationForm;

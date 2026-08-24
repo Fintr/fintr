@@ -6,10 +6,11 @@ import AccountDetailContent from "@/components/dashboard/account-detail-content"
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { resolveDetailSearchParam } from "@/utils/detailSearchParam";
 
 const AccountDetailInner = () => {
   const searchParams = useSearchParams();
-  const accountId = searchParams.get("accountId") ?? "";
+  const accountId = resolveDetailSearchParam("accountId", searchParams);
 
   if (!accountId) {
     return (

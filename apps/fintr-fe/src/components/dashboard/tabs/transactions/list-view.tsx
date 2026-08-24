@@ -9,7 +9,7 @@ import {
   TransactionsPage,
 } from "@/types/transactionTypes";
 import { formatCurrency, truncateText } from "@/lib/utils";
-import { Image } from "lucide-react";
+import { Image, Repeat } from "lucide-react";
 import { InfiniteData } from "@tanstack/react-query";
 import {
   Popover,
@@ -24,6 +24,7 @@ import {
   useAnchorTransactionsListToToday,
 } from "@/hooks/useAnchorTransactionsListToToday";
 import { resolveAttachmentsForTransaction } from "@/services/attachments/resolve";
+import { enrichLedgerTransactionsForDisplay } from "@/services/transactions/resolve-delete-scope";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePreferLocalTransactionReads } from "@/hooks/useOfflineReadMode";
 import { toast } from "sonner";
@@ -54,6 +55,14 @@ import {
 } from "@/utils/transactionDescription";
 import { TransactionRowTypeIcon } from "@/components/dashboard/tabs/transactions/transaction-row-type-icon";
 import { TagChip } from "@/components/ui/tag-chip";
+import { buildLoanDetailHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
+import {
+  isRecurringRow,
+  repeatIntervalLabel,
+  resolveRowRepeatInterval,
+  filterRowsToSeriesRepresentatives,
+} from "@/utils/recurringSchedule";
 
 interface ListViewProps {
   variant?: "transactions" | "activities";
@@ -74,6 +83,8 @@ interface ListViewProps {
   queryStartDate?: string;
   queryEndDate?: string;
   fetchNextPage?: () => void;
+  /** When true, collapse recurring/installment occurrences to one row per series. */
+  collapseToRecurringRules?: boolean;
   anchorResetKey?: string;
 }
 
@@ -116,6 +127,7 @@ export function ListView({
   queryStartDate = "",
   queryEndDate = "",
   fetchNextPage,
+  collapseToRecurringRules = false,
   anchorResetKey = "",
 }: ListViewProps) {
   const router = useRouter();
@@ -232,6 +244,10 @@ export function ListView({
             const uniqueRows = allRows.filter((row, index, array) =>
               array.findIndex((r) => r.id === row.id) === index,
             );
+            const enrichedRows = enrichLedgerTransactionsForDisplay(uniqueRows);
+            const displayRows = collapseToRecurringRules
+              ? filterRowsToSeriesRepresentatives(enrichedRows)
+              : enrichedRows;
 
             if (uniqueRows.length === 0) {
               return (
@@ -241,7 +257,6 @@ export function ListView({
               );
             }
 
-            // Daily net (income - expense) in space-normalized amounts for a consistent subtotal bar.
             const dailyTotals: Record<string, number> = {};
             const dailyCurrencies: Record<string, Set<string>> = {};
             uniqueRows.forEach((row) => {
@@ -261,7 +276,10 @@ export function ListView({
               }
             });
 
-            return uniqueRows.map((row: IndexTransaction | IndexActivity, idx: number) => {
+            const renderTransactionRow = (
+              row: IndexTransaction | IndexActivity,
+              idx: number,
+            ) => {
               const transactionDate = new Date(row.date);
               const currentDate = getTransactionDayGroupKey(transactionDate);
               const currentIsoDay = getLocalIsoDateKey(row.date);
@@ -285,6 +303,7 @@ export function ListView({
                   spaceCurrency,
                   showBookedCurrencies,
                 );
+              const amountToShow = rowAmount;
 
               const subcategoryName = row.subcategoryName?.trim();
               const hasSubcategory = Boolean(subcategoryName);
@@ -308,6 +327,16 @@ export function ListView({
               const showMerchantCategoryRow = isLoanPayment
                 ? Boolean(loanContactLine)
                 : Boolean(merchantLine);
+              const showCategoryOnDateRow =
+                !isLoanPayment &&
+                Boolean(categoryLine) &&
+                !(showMerchantCategoryRow && hasDescription);
+              const showMobileCategoryOnDateRow =
+                showCategoryOnDateRow && !(hasSubcategory && !hasDescription);
+              const repeatInterval = resolveRowRepeatInterval(row);
+              const recurringLabel =
+                repeatIntervalLabel(repeatInterval) || "Recurring";
+              const showRecurringIndicator = isRecurringRow(row);
 
               const accountLine =
                 row.fromAccountName && row.toAccountName
@@ -315,7 +344,7 @@ export function ListView({
                   : row.fromAccountName || row.toAccountName || "";
 
               return (
-                <React.Fragment key={row.id}>
+                <React.Fragment key={`${row.id}-${idx}`}>
                   {showDivider && (
                     <div
                       key={`divider-${currentDate}-${idx}`}
@@ -336,7 +365,7 @@ export function ListView({
                       <div className="border-t border-gray-300 dark:border-border" style={{width: '2rem'}} />
                     </div>
                   )}
-                  <div 
+                  <div
                     className={cn(
                       "transaction-item relative flex items-center gap-3 p-3 bg-white rounded hover:bg-gray-100 transition-colors cursor-pointer dark:bg-card dark:hover:bg-accent/50",
                       hasSubcategory
@@ -349,22 +378,18 @@ export function ListView({
                         row.isLoanActivity &&
                         row.loanId
                       ) {
-                        router.push(
-                          `/dashboard/loans/detail?loanId=${row.loanId}`,
+                        pushDashboardDetail(
+                          router,
+                          buildLoanDetailHref(row.loanId),
                         );
                         return;
                       }
 
-                      if (
-                        variant === "activities"
-                          ? activityRowIsEditable(row as IndexActivity)
-                          : activityRowIsEditable(row as IndexActivity)
-                      ) {
+                      if (activityRowIsEditable(row as IndexActivity)) {
                         onRowEdit(row);
                       }
                     }}
                   >
-                    {/* Calculated indicator - triangle in upper right corner */}
                     {activityShowsCalculatedIndicator(row) && (
                       <Popover
                         open={hoveredCalculatedId === row.id}
@@ -407,9 +432,8 @@ export function ListView({
                       )}
                     />
 
-                    {/* Main content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-3 md:gap-4 min-w-0">
                         <div className="flex min-w-0 flex-1 items-start gap-1 md:gap-2">
                           <h4
                             className="line-clamp-2 min-w-0 flex-1 break-words font-medium text-sm text-primary dark:text-primary-dark-mode"
@@ -431,6 +455,15 @@ export function ListView({
                             </button>
                           )}
                         </div>
+                        {showRecurringIndicator && (
+                          <span
+                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center self-center rounded text-primary dark:text-primary-dark-mode"
+                            title={recurringLabel}
+                            aria-label={`Repeats ${recurringLabel}`}
+                          >
+                            <Repeat className="h-3 w-3" aria-hidden />
+                          </span>
+                        )}
                         <div className="flex shrink-0 items-center gap-1.5">
                           <div
                             className={`font-semibold text-sm ${
@@ -442,7 +475,7 @@ export function ListView({
                             }`}
                           >
                             {formatIndexTransactionListAmount(
-                              rowAmount,
+                              amountToShow,
                               rowCurrencyCode,
                               showBookedCurrencies,
                             )}
@@ -450,7 +483,7 @@ export function ListView({
                           <TransactionRowTypeIcon row={row} size="sm" />
                         </div>
                       </div>
-                      
+
                       {hasSubcategory && !hasDescription && (
                         <p
                           className="md:hidden mt-1 text-xs text-gray-600 truncate dark:text-muted-foreground"
@@ -499,7 +532,7 @@ export function ListView({
                           <span className="flex-shrink-0 whitespace-nowrap">
                             {formatTransactionRowDate(row.date)}
                           </span>
-                          {!isLoanPayment && !hasDescription && (
+                          {showCategoryOnDateRow && (
                             <span
                               className="hidden md:block truncate ml-4"
                               title={categoryLine}
@@ -507,7 +540,7 @@ export function ListView({
                               {categoryLine}
                             </span>
                           )}
-                          {!hasSubcategory && !isLoanPayment && !hasDescription && (
+                          {showMobileCategoryOnDateRow && (
                             <span
                               className="md:hidden truncate ml-2 min-w-0"
                               title={categoryLine}
@@ -550,7 +583,9 @@ export function ListView({
                   </div>
                 </React.Fragment>
               );
-            });
+            };
+
+            return displayRows.map((row, idx) => renderTransactionRow(row, idx));
           })()}
           {hasNextPage && (
             <div

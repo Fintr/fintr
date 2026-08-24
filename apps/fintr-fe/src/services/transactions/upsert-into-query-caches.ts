@@ -278,6 +278,67 @@ export const upsertIndexTransactionsIntoQueryCaches = (
     spaceId,
     transactions,
   });
+  patchRecurringSeriesQueryCaches(queryClient, {
+    spaceId,
+    transactions,
+  });
+};
+
+export const patchRecurringSeriesQueryCaches = (
+  queryClient: QueryClient,
+  params: {
+    spaceId: string;
+    transactions?: IndexTransaction[];
+    removedIds?: string[];
+  },
+): void => {
+  const { spaceId, transactions = [], removedIds = [] } = params;
+  if (!spaceId) {
+    return;
+  }
+
+  const entries = queryClient.getQueriesData<unknown>({
+    predicate: (query) => {
+      const key = query.queryKey;
+      return (
+        Array.isArray(key)
+        && key[0] === "recurringSeries"
+        && key[1] === spaceId
+      );
+    },
+  });
+
+  if (entries.length === 0) {
+    return;
+  }
+
+  const removed = new Set(removedIds);
+
+  for (const [queryKey, old] of entries) {
+    if (old !== undefined && !Array.isArray(old)) {
+      continue;
+    }
+
+    const byId = new Map<string, IndexTransaction>();
+    for (const row of (old as IndexTransaction[] | undefined) ?? []) {
+      if (!removed.has(row.id)) {
+        byId.set(row.id, row);
+      }
+    }
+
+    for (const row of transactions) {
+      if (removed.has(row.id)) {
+        continue;
+      }
+
+      byId.set(row.id, {
+        ...(byId.get(row.id) ?? {}),
+        ...row,
+      });
+    }
+
+    queryClient.setQueryData(queryKey, Array.from(byId.values()));
+  }
 };
 
 const patchDashboardTransactionCaches = (

@@ -35,6 +35,13 @@ vi.mock("@/hooks/useAnchorTransactionsListToToday", () => ({
   useAnchorTransactionsListToToday: () => undefined,
 }));
 
+vi.mock("@/hooks/async/useTransactionCategories", () => ({
+  useTransactionCategories: () => ({
+    expenseCategoryOptions: [],
+    incomeCategoryOptions: [],
+  }),
+}));
+
 const buildTransaction = (
   overrides: Partial<IndexTransaction> = {},
 ): IndexTransaction => ({
@@ -92,6 +99,38 @@ describe("ListView merchant layout", () => {
     expect(merchant).toBeInTheDocument();
     expect(date).toBeInTheDocument();
     expect(merchant.parentElement).not.toBe(date.parentElement);
+  });
+
+  it("shows category between date and account when there is no merchant", () => {
+    const transaction = buildTransaction({
+      description: "T44",
+      categoryName: "SSS Contributions",
+      fromAccountName: "Grab",
+      entityName: "",
+    });
+
+    render(
+      <ListView
+        isPending={false}
+        isError={false}
+        error={null}
+        isSuccess={true}
+        data={buildData([transaction])}
+        isFetchingNextPage={false}
+        hasNextPage={false}
+        onRowEdit={vi.fn()}
+        onRowDelete={vi.fn()}
+        loadMoreRef={{ current: null }}
+      />,
+    );
+
+    const metadataRow = screen.getByText("8/11/2026").parentElement;
+    expect(metadataRow).toHaveTextContent("8/11/2026");
+    expect(metadataRow).toHaveTextContent("SSS Contributions");
+    expect(metadataRow).toHaveTextContent("Grab");
+    expect(metadataRow?.textContent).toMatch(
+      /8\/11\/2026.*SSS Contributions.*Grab/,
+    );
   });
 
   it("shows merchant and subcategory category on the same row", () => {

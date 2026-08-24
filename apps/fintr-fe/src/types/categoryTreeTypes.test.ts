@@ -51,6 +51,41 @@ describe("categoryTreeTypes", () => {
     expect(isCategoryPickerId("Dine Out & Entertainment")).toBe(false);
   });
 
+  it("recognizes offline local-first category picker ids", () => {
+    const localId = "local:cid-cat-1234567890-abc123";
+    const localSubId = "local:cid-cat-9876543210-def456";
+
+    expect(isCategoryPickerId(localId)).toBe(true);
+    expect(parseCategoryPickerValue(localId)).toEqual({
+      categoryId: localId,
+      subcategoryId: null,
+    });
+    expect(parseCategoryPickerValue(`${localId}:${localSubId}`)).toEqual({
+      categoryId: localId,
+      subcategoryId: localSubId,
+    });
+  });
+
+  it("shows labels for offline local category picker values", () => {
+    const localId = "local:cid-cat-1234567890-abc123";
+    const localTree = [
+      {
+        id: localId,
+        label: "a2",
+        value: localId,
+        name: "a2",
+        parentId: null,
+        children: [],
+      },
+    ];
+
+    expect(getCategoryDisplayLabel(localId, localTree)).toBe("a2");
+    expect(getCategoryTriggerDisplay(localId, localTree)).toEqual({
+      primary: "a2",
+      secondary: null,
+    });
+  });
+
   it("formats and parses parent-only values", () => {
     const encoded = formatCategoryPickerValue({
       categoryId: PARENT_ID,

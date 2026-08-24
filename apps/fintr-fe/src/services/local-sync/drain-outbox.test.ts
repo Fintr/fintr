@@ -9,6 +9,11 @@ import {
 import {
   enqueueOutboxRecord,
   getLocalDb,
+  OUTBOX_COMMAND_BUDGET_CREATE,
+  OUTBOX_COMMAND_BUDGET_DELETE,
+  OUTBOX_COMMAND_BUDGET_UPDATE,
+  OUTBOX_COMMAND_CATEGORY_CONVERT,
+  OUTBOX_COMMAND_CATEGORY_CREATE,
   OUTBOX_COMMAND_TRANSACTION_CREATE,
   OUTBOX_COMMAND_TRANSACTION_DELETE,
   OUTBOX_COMMAND_TRANSACTION_UPDATE,
@@ -23,11 +28,30 @@ vi.mock("@/services/transactions/mutation", () => ({
   updateTransaction: vi.fn(),
 }));
 
+vi.mock("@/services/budgets/mutations", () => ({
+  createBudget: vi.fn(),
+  updateBudget: vi.fn(),
+  deleteBudget: vi.fn(),
+}));
+
+vi.mock("@/services/transactions/categories/mutation", () => ({
+  convertCategoryHierarchy: vi.fn(),
+  createTransactionCategory: vi.fn(),
+}));
+
 import {
   createTransaction,
   deleteTransaction,
   updateTransaction,
 } from "@/services/transactions/mutation";
+import {
+  createBudget,
+  deleteBudget,
+  updateBudget,
+} from "@/services/budgets/mutations";
+import { convertCategoryHierarchy, createTransactionCategory } from "@/services/transactions/categories/mutation";
+import { cacheTransactionCategoriesResponse } from "@/services/transactions/categories/local-cache";
+import { CategoryTypeEnum } from "@/types/categoryTypes";
 import { drainOutboxForSpace } from "./drain-outbox";
 
 describe("drainOutboxForSpace", () => {
@@ -372,6 +396,185 @@ describe("drainOutboxForSpace", () => {
         id: "server-tx-1",
         amount: 10_000_000,
       }),
+    );
+    expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("drains pending budget create, update, and delete commands", async () => {
+    vi.mocked(createBudget).mockResolvedValue({
+      data: { id: "server-budget-1" },
+    });
+    vi.mocked(updateBudget).mockResolvedValue({ success: true });
+    vi.mocked(deleteBudget).mockResolvedValue({ success: true });
+
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_BUDGET_CREATE,
+      clientMutationId: "cid-budget-create",
+      payload: {
+        localId: "local-budget-1",
+        startDate: "2026-08-01",
+        endDate: "2026-08-31",
+        amount: 8000,
+        date: "2026-08-01",
+        categoryId: "cat-transport",
+        categoryName: "Transportation",
+      },
+    });
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_BUDGET_UPDATE,
+      clientMutationId: "cid-budget-update",
+      payload: {
+        budgetId: "server-budget-1",
+        amount: 9000,
+        startDate: "2026-08-01",
+        endDate: "2026-08-31",
+      },
+    });
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_BUDGET_DELETE,
+      clientMutationId: "cid-budget-delete",
+      payload: {
+        budgetId: "server-budget-2",
+        startDate: "2026-08-01",
+        endDate: "2026-08-31",
+      },
+    });
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.processed).toBe(3);
+    expect(result.failed).toBe(0);
+    expect(createBudget).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        amount: 8000,
+        categoryId: "cat-transport",
+        categoryName: "Transportation",
+      }),
+    );
+    expect(updateBudget).toHaveBeenCalledWith(
+      expect.anything(),
+      "server-budget-1",
+      { amount: 9000 },
+    );
+    expect(deleteBudget).toHaveBeenCalledWith(
+      expect.anything(),
+      "server-budget-2",
+    );
+    expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("drains pending category create commands", async () => {
+    await cacheTransactionCategoriesResponse("space-a", {
+      data: { expenseCategories: [], incomeCategories: [] },
+    });
+    vi.mocked(createTransactionCategory).mockResolvedValue({
+      success: true,
+      data: { id: "cat-a2" },
+    });
+
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_CATEGORY_CREATE,
+      clientMutationId: "cid-cat-create",
+      payload: {
+        id: "cat-a2",
+        name: "A2",
+        categoryType: CategoryTypeEnum.EXPENSE,
+        parentId: null,
+      },
+    });
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.processed).toBe(1);
+    expect(result.failed).toBe(0);
+    expect(createTransactionCategory).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        id: "cat-a2",
+        name: "A2",
+        categoryType: CategoryTypeEnum.EXPENSE,
+      }),
+    );
+    expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("drains legacy category create payloads with local-prefixed ids", async () => {
+    vi.mocked(createTransactionCategory).mockResolvedValue({
+      success: true,
+      data: { id: "legacy-uuid" },
+    });
+
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_CATEGORY_CREATE,
+      clientMutationId: "cid-legacy-cat",
+      payload: {
+        localId: "local:legacy-uuid",
+        name: "A3",
+        categoryType: CategoryTypeEnum.EXPENSE,
+        parentId: null,
+      },
+    });
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.processed).toBe(1);
+    expect(createTransactionCategory).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        id: "legacy-uuid",
+        name: "A3",
+      }),
+    );
+  });
+
+  it("drains pending category convert commands", async () => {
+    vi.mocked(convertCategoryHierarchy).mockResolvedValue({
+      id: "cat-taxi",
+      name: "Taxi",
+      parentId: null,
+      redirectParentId: "cat-taxi",
+    });
+
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_CATEGORY_CONVERT,
+      clientMutationId: "cid-cat-convert",
+      payload: {
+        categoryId: "cat-taxi",
+        conversionType: "to_parent",
+        newParentId: null,
+      },
+    });
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.processed).toBe(1);
+    expect(result.failed).toBe(0);
+    expect(convertCategoryHierarchy).toHaveBeenCalledWith(
+      expect.anything(),
+      "cat-taxi",
+      {
+        conversionType: "to_parent",
+        newParentId: null,
+      },
     );
     expect(await getLocalDb().outbox.count()).toBe(0);
   });

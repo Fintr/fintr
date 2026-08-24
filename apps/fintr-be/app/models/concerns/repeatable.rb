@@ -78,4 +78,34 @@ module Repeatable
   def series_transfers
     series_records
   end
+
+  class_methods do
+    def records_in_series_tree(root_id:, extra_ids: [])
+      seed_ids = [
+        root_id,
+        *Array(extra_ids),
+      ].compact.uniq
+      return none if seed_ids.empty?
+
+      quoted_ids = seed_ids.map { |id| connection.quote(id) }.join(", ")
+      sql = <<~SQL.squish
+        WITH RECURSIVE series_tree AS (
+          SELECT id, parent_id, effective_parent_id
+          FROM #{quoted_table_name}
+          WHERE id IN (#{quoted_ids})
+             OR parent_id IN (#{quoted_ids})
+             OR effective_parent_id IN (#{quoted_ids})
+          UNION
+          SELECT child.id, child.parent_id, child.effective_parent_id
+          FROM #{quoted_table_name} child
+          INNER JOIN series_tree parent
+            ON child.parent_id = parent.id
+            OR child.effective_parent_id = parent.id
+        )
+        SELECT id FROM series_tree
+      SQL
+
+      where("#{quoted_table_name}.id IN (#{sql})")
+    end
+  end
 end

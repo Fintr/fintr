@@ -1,11 +1,11 @@
 import {
   createTransactionTag,
-  deleteTransactionTag,
   fetchTransactionTags,
   generateTransactionTagStyleImage,
   toggleDefaultTransactionTag,
-  updateTransactionTag,
 } from "@/services/transactions/tags/mutation";
+import { deleteTagLocalFirst } from "@/services/transactions/tags/delete-local-first";
+import { updateTagLocalFirst } from "@/services/transactions/tags/update-local-first";
 import {
   applyToggledDefaultTag,
   cacheTransactionTagsResponse,
@@ -98,18 +98,45 @@ export const useTransactionTags = () => {
       tagId: string;
       updateData: { name: string; color?: string };
     }) => {
-      const result = await updateTransactionTag(api, tagId, updateData);
-      await queryClient.invalidateQueries({ queryKey: ["transactionTags", spaceCode] });
-      return result;
+      return updateTagLocalFirst(
+        api,
+        {
+          spaceCode,
+          tagId,
+          updateData,
+        },
+        { queryClient, waitForSync: false },
+      );
     },
+    networkMode: "always",
   });
 
   const deleteTagMutation = useMutation({
     mutationFn: async (tagId: string) => {
-      const result = await deleteTransactionTag(api, tagId);
-      await queryClient.invalidateQueries({ queryKey: ["transactionTags", spaceCode] });
-      return result;
+      const result = await deleteTagLocalFirst(
+        api,
+        {
+          spaceCode,
+          tagId,
+        },
+        { queryClient, waitForSync: false },
+      );
+
+      void result.syncPromise.then((synced) => {
+        if (
+          synced.serverResponse
+          && typeof synced.serverResponse === "object"
+          && "success" in synced.serverResponse
+        ) {
+          return synced.serverResponse;
+        }
+
+        return { success: true };
+      });
+
+      return { success: true, pendingSync: result.pendingSync };
     },
+    networkMode: "always",
   });
 
   const toggleDefaultTagMutation = useMutation({

@@ -12,7 +12,7 @@ import {
   replaceLoanPaymentIdInLocalStores,
   syncLoanPaymentsToLocalStores,
 } from "@/services/loans/loan-payments-cache";
-import { loadCachedLoanPaymentsSnapshot } from "@/services/loans/local-cache";
+import { loadCachedLoanPaymentsSnapshot, loadCachedLoanSnapshot } from "@/services/loans/local-cache";
 import {
   removeLocalIndexTransaction,
   replaceLocalIndexTransactionId,
@@ -209,6 +209,13 @@ export const createLoanPaymentLocalFirst = async (
   }
 
   validateCreateLoanPaymentForOptimistic(data);
+
+  const cachedLoan = await loadCachedLoanSnapshot(spaceId, loanId);
+  if (cachedLoan && cachedLoan.status === "defaulted") {
+    throw clientValidationFailure({
+      loanId: ["cannot record payments on a retired loan"],
+    });
+  }
 
   const clientMutationId = newClientMutationId();
   const localId = `local:${clientMutationId}`;

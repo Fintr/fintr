@@ -6,10 +6,11 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { TransactionDetailContent } from "@/components/dashboard/transactions/transaction-detail-content";
+import { resolveDetailSearchParam } from "@/utils/detailSearchParam";
 
 const TransactionDetailInner = () => {
   const searchParams = useSearchParams();
-  const transactionId = searchParams.get("transactionId") ?? "";
+  const transactionId = resolveDetailSearchParam("transactionId", searchParams);
 
   if (!transactionId) {
     return (

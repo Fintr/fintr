@@ -15,6 +15,7 @@ This package covers **validation** (what is allowed), not **aggregates**. Monthl
 | Export | Purpose |
 |--------|---------|
 | `src/primitives.ts` | `SCHEDULE_TYPES`, `REPEAT_INTERVALS`, `DELETE_SCOPES`, … |
+| `src/installment-plan.ts` | Shared installment split / revision math (see **[docs/installment_plans.md](../../docs/installment_plans.md)**) |
 | `src/schemas/*.ts` | Zod schemas mirroring `Dry::Operation` contracts |
 | `fixtures/*.parity.json` | Examples validated by Vitest **and** RSpec parity spec |
 | `assert*ForOptimistic()` | Throw structured failures before local-first writes |

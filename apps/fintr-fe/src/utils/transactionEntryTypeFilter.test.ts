@@ -122,6 +122,59 @@ describe("transactionMatchesEntryTypeFilter", () => {
     ).toBe(false);
   });
 
+  it("matches recurring rows when inSeries is true on the series root", () => {
+    expect(
+      transactionMatchesEntryTypeFilter(
+        CombinedTransactionTypeEnum.EXPENSE,
+        "recurring",
+        {
+          id: "root-1",
+          inSeries: true,
+          scheduleType: "repeat",
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("matches recurring root rows for recurring filter", () => {
+    expect(
+      transactionMatchesEntryTypeFilter(
+        CombinedTransactionTypeEnum.EXPENSE,
+        "recurring",
+        {
+          id: "root-1",
+          inSeries: true,
+          scheduleType: "repeat",
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("includes recurring child rows for recurring filter", () => {
+    expect(
+      transactionMatchesEntryTypeFilter(
+        CombinedTransactionTypeEnum.EXPENSE,
+        "recurring",
+        {
+          id: "child-1",
+          inSeries: true,
+          parentId: "root-1",
+          scheduleType: "installment",
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("excludes one-time rows from recurring filter", () => {
+    expect(
+      transactionMatchesEntryTypeFilter(
+        CombinedTransactionTypeEnum.EXPENSE,
+        "recurring",
+        { inSeries: false },
+      ),
+    ).toBe(false);
+  });
+
   it("matches loan disbursements and payments for loans filter", () => {
     expect(
       transactionMatchesEntryTypeFilter(

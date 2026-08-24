@@ -75,7 +75,7 @@ module Api
         private
 
         def create_params
-          params.permit(:name, :balance, :account_category, :balance_currency)
+          params.permit(:id, :name, :balance, :account_category, :balance_currency)
         end
 
         def adjust_balance_params

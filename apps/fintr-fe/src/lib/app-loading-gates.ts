@@ -56,18 +56,14 @@ export function shouldShowDashboardShellLoadingScreen(_params?: {
 }
 
 export function shouldShowOfflineSyncScreen(params: {
-  isOfflineSyncBlocking: boolean;
-  hasOfflineSyncReadyHint: boolean;
+  requiresOfflineReimport: boolean;
+  offlineSyncStatus: "idle" | "checking" | "syncing" | "complete" | "error";
 }): boolean {
-  if (hasAppShellReady()) {
+  if (!params.requiresOfflineReimport) {
     return false;
   }
 
-  if (params.hasOfflineSyncReadyHint) {
-    return false;
-  }
-
-  return params.isOfflineSyncBlocking;
+  return params.offlineSyncStatus !== "complete";
 }
 
 export function isWorkspaceContextBlocking(params: {

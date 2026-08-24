@@ -12,6 +12,12 @@ import {
 } from "@/services/monthly-financial-summaries/local-cache";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import type { IndexTransaction } from "@/types/transactionTypes";
+import { ScheduleTypeEnum, UpdateScopeEnum } from "@/constants/transactionConstants";
+import { applyInstallmentThisOnlyTotalDeltaCents } from "@fintr/domain";
+import {
+  indexRowLedgerAmountCents,
+  resolvePlanTotalLedgerCents,
+} from "@/utils/installmentRevisionLedger";
 import { isTransactionCalculatedForDate } from "@/utils/transactionCalculated";
 import { invalidateLocalInsightsQueries } from "@/utils/invalidateSpaceQueries";
 import { isUploadableFile } from "@/utils/formUtils";
@@ -23,12 +29,13 @@ import {
 } from "@/lib/local-db";
 
 import {
+  loadAllTransactionsFromLocalIndex,
   loadLocalIndexTransactionById,
   upsertLocalIndexTransaction,
 } from "./local-cache";
 import {
   updateTransaction,
-  type UpdateTransactionType,
+  type UpdateTransactionType as MutationUpdateType,
 } from "./mutation";
 import {
   optimisticIndexMoneyFromCreate,
@@ -37,6 +44,8 @@ import {
   upsertIndexTransactionsIntoQueryCaches,
   type IndexTransactionWithCategoryIds,
 } from "./upsert-into-query-caches";
+import { attachUpdateTransactionRelationIds } from "./relation-ids-local";
+import { applyInstallmentPlanRevisionLocal } from "./apply-installment-revision-local";
 
 export type UpdateTransactionLocalFirstResult = {
   data: { id: string };
@@ -114,6 +123,31 @@ const isNetworkLikeUpdateError = (error: unknown): boolean => {
   return false;
 };
 
+const resolveSubmittedInstallmentPlanTotalInSpaceCurrency = ({
+  installmentTotal,
+  originalCurrency,
+  exchangeRate,
+  spaceCurrency,
+}: {
+  installmentTotal?: number | null;
+  originalCurrency?: string | null;
+  exchangeRate?: number | null;
+  spaceCurrency?: string | null;
+}): number | null => {
+  const ledgerCents = resolvePlanTotalLedgerCents({
+    planTotal: Number(installmentTotal),
+    originalCurrency,
+    exchangeRate,
+    spaceCurrency,
+  });
+
+  if (ledgerCents <= 0) {
+    return null;
+  }
+
+  return ledgerCents / 100;
+};
+
 export const buildUpdatedIndexTransaction = (params: {
   previous: IndexTransaction;
   data: UpdateTransactionType;
@@ -121,6 +155,22 @@ export const buildUpdatedIndexTransaction = (params: {
 }): IndexTransactionWithCategoryIds => {
   const { previous, data, amountCurrency } = params;
   const transactionType = data.transactionType ?? toIncomeExpenseType(previous.type);
+  const updateData = data as UpdateTransactionType & {
+    original_currency?: string;
+    exchange_rate?: number;
+    exchange_rate_source?: "auto" | "manual" | "recent";
+  };
+  const entryCurrency =
+    updateData.original_currency?.trim()
+    || previous.currencyConversion?.originalCurrency
+    || previous.bookedAmountCurrency
+    || amountCurrency
+    || previous.amountCurrency;
+  const spaceCurrency =
+    amountCurrency
+    || previous.amountCurrency
+    || previous.currencyConversion?.convertedCurrency
+    || entryCurrency;
   const money = optimisticIndexMoneyFromCreate({
     occurrenceAmount: Math.abs(Number(data.amount) || 0),
     data: {
@@ -136,7 +186,8 @@ export const buildUpdatedIndexTransaction = (params: {
       date: data.date || previous.date,
       scheduleType: data.scheduleType,
     },
-    amountCurrency: amountCurrency ?? previous.amountCurrency,
+    entryCurrency,
+    spaceCurrency,
   });
 
   const nextType =
@@ -158,12 +209,6 @@ export const buildUpdatedIndexTransaction = (params: {
     money.bookedAmountCurrency
     ?? money.amountCurrency
     ?? previous.amountCurrency;
-
-  const updateData = data as UpdateTransactionType & {
-    original_currency?: string;
-    exchange_rate?: number;
-    exchange_rate_source?: "auto" | "manual" | "recent";
-  };
 
   const previousConversion = (
     previous as IndexTransaction & {
@@ -198,6 +243,21 @@ export const buildUpdatedIndexTransaction = (params: {
       transactionType === "expense" ? accountName : previous.fromAccountName,
     toAccountName:
       transactionType === "income" ? accountName : previous.toAccountName,
+    accountId:
+      data.accountId
+      ?? (transactionType === "income" ? previous.toAccountId : previous.fromAccountId)
+      ?? previous.accountId
+      ?? null,
+    fromAccountId:
+      transactionType === "expense"
+        ? (data.accountId ?? previous.fromAccountId ?? previous.accountId ?? null)
+        : previous.fromAccountId ?? null,
+    toAccountId:
+      transactionType === "income"
+        ? (data.accountId ?? previous.toAccountId ?? previous.accountId ?? null)
+        : previous.toAccountId ?? null,
+    entityName: data.entityName ?? previous.entityName,
+    entityId: data.entityId ?? previous.entityId ?? null,
     calculated: isTransactionCalculatedForDate(data.date || previous.date),
     hasImage: isUploadableFile(data.file)
       ? true
@@ -255,6 +315,47 @@ export const buildUpdatedIndexTransaction = (params: {
   if (data.tagIds && data.tagIds.length === 0) {
     next.tagIds = [];
     next.tags = [];
+  }
+
+  const isThisOnlyInstallment =
+    data.updateScope === UpdateScopeEnum.THIS_ONLY
+    && (
+      previous.scheduleType === ScheduleTypeEnum.INSTALLMENT
+      || data.scheduleType === ScheduleTypeEnum.INSTALLMENT
+    );
+
+  if (isThisOnlyInstallment) {
+    const submittedPlanTotal = resolveSubmittedInstallmentPlanTotalInSpaceCurrency({
+      installmentTotal: data.installmentTotal,
+      originalCurrency: updateData.original_currency,
+      exchangeRate: updateData.exchange_rate,
+      spaceCurrency: money.amountCurrency ?? spaceCurrency,
+    });
+    const previousPlanTotal = previous.installmentTotal;
+
+    if (
+      submittedPlanTotal != null
+      && (
+        previousPlanTotal == null
+        || Math.abs(submittedPlanTotal - previousPlanTotal) > 0.005
+      )
+    ) {
+      next.installmentTotal = submittedPlanTotal;
+    } else {
+      next.installmentTotal =
+        applyInstallmentThisOnlyTotalDeltaCents({
+          storedTotalCents:
+            previous.installmentTotal != null
+              ? Math.round(previous.installmentTotal * 100)
+              : null,
+          period:
+            data.installmentPeriod
+            ?? previous.installmentPeriod
+            ?? 0,
+          previousAmountCents: indexRowLedgerAmountCents(previous),
+          nextAmountCents: Math.round(Math.abs(Number(money.amount) || 0) * 100),
+        }) / 100;
+    }
   }
 
   return next;
@@ -331,20 +432,144 @@ export const updateTransactionLocalFirst = async (
   }
 
   const previous = stored as IndexTransactionWithCategoryIds;
+  const dataWithRelations = await attachUpdateTransactionRelationIds(
+    spaceId,
+    data,
+    previous,
+  );
+  const allIndexRows = await loadAllTransactionsFromLocalIndex(spaceId);
+  const seriesRootId =
+    previous.rootParentId
+    || previous.parentId
+    || previous.id;
+  const seriesIds = new Set<string>();
+  allIndexRows.forEach((row) => {
+    const rowRoot =
+      row.rootParentId
+      || row.parentId
+      || row.id;
+    if (rowRoot === seriesRootId || row.id === seriesRootId) {
+      seriesIds.add(row.id);
+    }
+  });
+  let addedChild = true;
+  while (addedChild) {
+    addedChild = false;
+    allIndexRows.forEach((row) => {
+      const parentId = row.parentId?.trim();
+      if (
+        !seriesIds.has(row.id)
+        && parentId
+        && seriesIds.has(parentId)
+      ) {
+        seriesIds.add(row.id);
+        addedChild = true;
+      }
+    });
+  }
+  const seriesRows = allIndexRows.filter((row) => seriesIds.has(row.id));
+  const revisionData = {
+    ...dataWithRelations,
+    updateScope: dataWithRelations.updateScope ?? UpdateScopeEnum.THIS_ONLY,
+  };
   const localTransaction = buildUpdatedIndexTransaction({
     previous,
-    data,
+    data: revisionData,
     amountCurrency,
   });
 
-  if (queryClient) {
-    upsertIndexTransactionsIntoQueryCaches(queryClient, {
-      spaceId,
-      transactions: [localTransaction],
-    });
+  const isInstallmentPlanRevision =
+    (
+      revisionData.updateScope === UpdateScopeEnum.THIS_AND_FUTURE
+      || revisionData.updateScope === UpdateScopeEnum.ALL_IN_SERIES
+    )
+    && (
+      previous.scheduleType === ScheduleTypeEnum.INSTALLMENT
+      || revisionData.scheduleType === ScheduleTypeEnum.INSTALLMENT
+    )
+    && revisionData.installmentTotal != null;
+
+  if (!isInstallmentPlanRevision) {
+    if (queryClient) {
+      upsertIndexTransactionsIntoQueryCaches(queryClient, {
+        spaceId,
+        transactions: [localTransaction],
+      });
+    }
+
+    await upsertLocalIndexTransaction(spaceId, localTransaction);
   }
 
-  await upsertLocalIndexTransaction(spaceId, localTransaction);
+  const seriesSnapshot = isInstallmentPlanRevision
+    ? seriesRows.map((row) => ({ ...row }))
+    : [];
+
+  if (isInstallmentPlanRevision) {
+    const revisedRows = await applyInstallmentPlanRevisionLocal({
+      spaceId,
+      target: previous,
+      data: revisionData as MutationUpdateType & {
+        original_currency?: string;
+        exchange_rate?: number;
+        exchange_rate_source?: "auto" | "manual" | "recent";
+        installmentRevisionAnchor?: string;
+      },
+      spaceCurrency: amountCurrency ?? localTransaction.amountCurrency ?? "PHP",
+      queryClient,
+    });
+    const anchorRow = revisedRows.find((row) => row.id === localTransaction.id);
+    if (anchorRow) {
+      Object.assign(localTransaction, anchorRow);
+    }
+
+    if (queryClient) {
+      upsertIndexTransactionsIntoQueryCaches(queryClient, {
+        spaceId,
+        transactions: [localTransaction],
+      });
+    }
+
+    await upsertLocalIndexTransaction(spaceId, localTransaction);
+  }
+
+  if (
+    localTransaction.installmentTotal != null
+    && revisionData.updateScope === UpdateScopeEnum.THIS_ONLY
+    && (
+      previous.scheduleType === ScheduleTypeEnum.INSTALLMENT
+      || dataWithRelations.scheduleType === ScheduleTypeEnum.INSTALLMENT
+    )
+  ) {
+    const seriesRootId =
+      previous.rootParentId
+      || previous.parentId
+      || previous.id;
+    const { loadAllTransactionsFromLocalIndex } = await import("./local-cache");
+    const allRows = await loadAllTransactionsFromLocalIndex(spaceId);
+    const seriesUpdates = allRows
+      .filter((row) => {
+        const rowRoot =
+          row.rootParentId
+          || row.parentId
+          || row.id;
+        return rowRoot === seriesRootId || row.id === seriesRootId;
+      })
+      .map((row) => ({
+        ...row,
+        installmentTotal: localTransaction.installmentTotal,
+      }));
+
+    for (const row of seriesUpdates) {
+      await upsertLocalIndexTransaction(spaceId, row);
+    }
+
+    if (queryClient && seriesUpdates.length > 0) {
+      upsertIndexTransactionsIntoQueryCaches(queryClient, {
+        spaceId,
+        transactions: seriesUpdates,
+      });
+    }
+  }
   await applySummaryDelta({
     spaceId,
     previous,
@@ -356,15 +581,8 @@ export const updateTransactionLocalFirst = async (
   // Keep edit-dialog detail cache aligned with the list amount (preferLocal
   // reads this even while online when space sync pull is enabled).
   try {
-    const {
-      cacheTransactionDetail,
-      mapIndexTransactionToEditDataSync,
-    } = await import("./detail-local");
-    await cacheTransactionDetail(
-      spaceId,
-      localTransaction.id,
-      mapIndexTransactionToEditDataSync(localTransaction),
-    );
+    const { cacheEditDetailFromIndexRow } = await import("./detail-local");
+    await cacheEditDetailFromIndexRow(spaceId, localTransaction);
   } catch (error) {
     console.warn(
       "[transactions] Failed to refresh transaction detail cache after update",
@@ -381,6 +599,13 @@ export const updateTransactionLocalFirst = async (
     });
     void queryClient.invalidateQueries({
       queryKey: ["dashboard", "local", spaceId],
+      exact: false,
+      refetchType: "active",
+    });
+    // Installment / recurring series detail reads IndexedDB via this key.
+    // Without invalidation the page keeps stale totals and occurrence amounts.
+    void queryClient.invalidateQueries({
+      queryKey: ["recurringSeries", spaceId],
       exact: false,
       refetchType: "active",
     });
@@ -401,7 +626,10 @@ export const updateTransactionLocalFirst = async (
     spaceId,
     ownerType,
     ownerId: previous.id,
-    data,
+    data: {
+      ...data,
+      updateScope: revisionData.updateScope,
+    },
   });
 
   await enqueueOutboxRecord({
@@ -429,6 +657,7 @@ export const updateTransactionLocalFirst = async (
       const serverResponse = await updateTransaction(api, {
         ...data,
         id: previous.id,
+        updateScope: revisionData.updateScope,
       });
       await removeOutboxRecord(clientMutationId);
 
@@ -459,7 +688,25 @@ export const updateTransactionLocalFirst = async (
         return;
       }
 
-      await upsertLocalIndexTransaction(spaceId, previous);
+      if (seriesSnapshot.length > 0) {
+        for (const row of seriesSnapshot) {
+          await upsertLocalIndexTransaction(spaceId, row);
+        }
+        if (queryClient) {
+          upsertIndexTransactionsIntoQueryCaches(queryClient, {
+            spaceId,
+            transactions: seriesSnapshot,
+          });
+        }
+      } else {
+        await upsertLocalIndexTransaction(spaceId, previous);
+        if (queryClient) {
+          upsertIndexTransactionsIntoQueryCaches(queryClient, {
+            spaceId,
+            transactions: [previous],
+          });
+        }
+      }
       await applySummaryDelta({
         spaceId,
         previous: localTransaction,
@@ -468,10 +715,6 @@ export const updateTransactionLocalFirst = async (
         queryClient,
       });
       if (queryClient) {
-        upsertIndexTransactionsIntoQueryCaches(queryClient, {
-          spaceId,
-          transactions: [previous],
-        });
         invalidateLocalInsightsQueries(queryClient);
       }
       await removeOutboxRecord(clientMutationId);

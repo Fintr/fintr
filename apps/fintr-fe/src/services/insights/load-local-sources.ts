@@ -9,6 +9,7 @@ import {
   loadScatteredTransactionSnapshotsFromMeta,
   mergeIndexTransactionMetadata,
 } from "@/services/transactions/local-cache";
+import { ensureSpaceTransactionRelationIds } from "@/services/transactions/relation-ids-local";
 import type { MonthlyFinancialSummary } from "@/services/monthly-financial-summaries/types";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import type { Loan } from "@/services/loans/queries";
@@ -117,6 +118,8 @@ export const loadAllTransactionsForInsights = async (
   if (!spaceCode) {
     return [];
   }
+
+  await ensureSpaceTransactionRelationIds(spaceCode);
 
   const merged = await loadAllCachedTransactionsForInsights(spaceCode);
 

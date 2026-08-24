@@ -33,6 +33,11 @@ export type CreateCategoryLocalFirstResult = {
   syncPromise: Promise<CreateCategoryLocalFirstResult>;
 };
 
+export type CategoryCreateOutboxPayload = CreateTransactionCategoryType & {
+  /** @deprecated Legacy offline ids — prefer `id`. */
+  localId?: string;
+};
+
 export type CreateCategoryLocalFirstOptions = {
   queryClient?: QueryClient;
   waitForSync?: boolean;
@@ -123,8 +128,12 @@ export const createCategoryLocalFirst = async (
   }
 
   const clientMutationId = newClientMutationId();
-  const localId = `local:${clientMutationId}`;
-  const localCategory = buildOptimisticCategory({ id: localId, data });
+  const categoryId = clientMutationId;
+  const localCategory = buildOptimisticCategory({ id: categoryId, data });
+  const createPayload: CreateTransactionCategoryType = {
+    ...data,
+    id: categoryId,
+  };
 
   const trees = await loadCategoryTrees(spaceCode);
   const nextTrees = addCategoryToTrees(trees, localCategory);
@@ -137,7 +146,7 @@ export const createCategoryLocalFirst = async (
   await enqueueOutboxRecord({
     spaceId: spaceCode,
     commandType: OUTBOX_COMMAND_CATEGORY_CREATE,
-    payload: { ...data, localId },
+    payload: createPayload,
     clientMutationId,
   });
   await updateOutboxStatus({ id: clientMutationId, status: "syncing" });
@@ -160,7 +169,7 @@ export const createCategoryLocalFirst = async (
       });
 
       resolveSync({
-        data: { id: localId },
+        data: { id: categoryId },
         pendingSync: true,
         localCategory,
         syncPromise,
@@ -169,19 +178,19 @@ export const createCategoryLocalFirst = async (
     }
 
     try {
-      const serverResponse = await createTransactionCategory(api, data);
+      const serverResponse = await createTransactionCategory(api, createPayload);
       const created = extractCreatedCategory(serverResponse);
 
-      if (created && created.id !== localId) {
+      if (created && created.id !== categoryId) {
         const currentTrees = await loadCategoryTrees(spaceCode);
         const withReplacedId = replaceCategoryIdInTrees(
           currentTrees,
-          localId,
+          categoryId,
           created.id,
         );
-        const finalTrees = updateCategoryInTrees(withReplacedId, created.id, {
-          ...created,
-        });
+        const finalTrees = created.name
+          ? updateCategoryInTrees(withReplacedId, created.id, created)
+          : withReplacedId;
         await applyCategoryTreesToCaches({
           spaceCode,
           trees: finalTrees,
@@ -192,7 +201,7 @@ export const createCategoryLocalFirst = async (
       await removeOutboxRecord(clientMutationId);
 
       resolveSync({
-        data: { id: created?.id ?? localId },
+        data: { id: created?.id ?? categoryId },
         pendingSync: false,
         localCategory: created ?? localCategory,
         serverResponse,
@@ -208,7 +217,7 @@ export const createCategoryLocalFirst = async (
         });
 
         resolveSync({
-          data: { id: localId },
+          data: { id: categoryId },
           pendingSync: true,
           localCategory,
           syncPromise,
@@ -218,7 +227,7 @@ export const createCategoryLocalFirst = async (
 
       const rollbackTrees = removeCategoryFromTrees(
         await loadCategoryTrees(spaceCode),
-        localId,
+        categoryId,
       );
       await applyCategoryTreesToCaches({
         spaceCode,
@@ -233,7 +242,7 @@ export const createCategoryLocalFirst = async (
   void runSync();
 
   const pendingResult: CreateCategoryLocalFirstResult = {
-    data: { id: localId },
+    data: { id: categoryId },
     pendingSync: true,
     localCategory,
     syncPromise,

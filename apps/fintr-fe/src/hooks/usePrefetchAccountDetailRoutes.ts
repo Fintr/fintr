@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-
 import type { Account } from "@/types/accountTypes";
 
+import { usePrefetchDetailHrefs } from "@/hooks/usePrefetchDetailHrefs";
 import { buildAccountDetailHref } from "@/utils/detailHrefs";
 
 /**
@@ -14,15 +12,9 @@ import { buildAccountDetailHref } from "@/utils/detailHrefs";
 export const usePrefetchAccountDetailRoutes = (
   accounts: Account[] | undefined,
 ): void => {
-  const router = useRouter();
+  const hrefs = (accounts ?? []).map((account) =>
+    buildAccountDetailHref(account.id),
+  );
 
-  useEffect(() => {
-    if (!accounts?.length) {
-      return;
-    }
-
-    for (const account of accounts) {
-      router.prefetch(buildAccountDetailHref(account.id));
-    }
-  }, [accounts, router]);
+  usePrefetchDetailHrefs(hrefs);
 };

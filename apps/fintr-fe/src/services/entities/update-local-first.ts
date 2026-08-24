@@ -10,6 +10,7 @@ import {
 import {
   applyEntitiesToCaches,
   loadEntities,
+  patchEntityDetailInCaches,
   upsertEntityInList,
 } from "@/services/entities/local-cache";
 import {
@@ -104,6 +105,11 @@ export const updateEntityLocalFirst = async (
     entities: nextEntities,
     queryClient,
   });
+  patchEntityDetailInCaches({
+    spaceCode,
+    entity: localEntity,
+    queryClient,
+  });
 
   const clientMutationId = newClientMutationId();
   await enqueueOutboxRecord({
@@ -168,6 +174,11 @@ export const updateEntityLocalFirst = async (
       await applyEntitiesToCaches({
         spaceCode,
         entities: rollbackEntities,
+        queryClient,
+      });
+      patchEntityDetailInCaches({
+        spaceCode,
+        entity: previousEntity,
         queryClient,
       });
       await removeOutboxRecord(clientMutationId);

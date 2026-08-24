@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getPresetDateRange,
+  inferDateFilterTypeSelector,
   resolveAllTimeStartDate,
 } from "@/utils/dateFilterPresets";
 
@@ -51,5 +52,21 @@ describe("getPresetDateRange all_time", () => {
     expect(range.endDate).toBe("2026-08-08");
     expect(range.startDate).not.toBe("2025-01-20");
     expect(range.startDate).not.toBe("2000-01-01");
+  });
+});
+
+describe("inferDateFilterTypeSelector", () => {
+  it("treats the current month through today as a single-month filter", () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    expect(
+      inferDateFilterTypeSelector(
+        `${year}-${month}-01`,
+        `${year}-${month}-${day}`,
+      ),
+    ).toBe("single");
   });
 });

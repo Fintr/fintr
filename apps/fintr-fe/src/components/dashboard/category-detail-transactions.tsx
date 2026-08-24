@@ -24,7 +24,7 @@ import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
-import { CategoryTreeOption } from "@/types/categoryTreeTypes";
+import { CategoryTreeOption, formatCategoryPickerValue } from "@/types/categoryTreeTypes";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
 import ScopeModal, {
@@ -32,14 +32,18 @@ import ScopeModal, {
   Scope,
 } from "@/components/dashboard/forms/ScopeModal";
 import { deleteTransactionLocalFirst } from "@/services/transactions/delete-local-first";
+import { collectDeleteScopeContextRows } from "@/services/transactions/local-cache";
+import { flattenTransactionsFromPages, transactionAllowsSeriesDeleteScope } from "@/services/transactions/resolve-delete-scope";
 import { deleteTransaction } from "@/services/transactions/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import { transactionViewHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
 import {
   CombinedTransactionTypeEnum,
   IndexTransaction,
 } from "@/types/transactionTypes";
 import {
+  areFilterValuesEqual,
   hasAppliedAccountFilters,
   hasAppliedCategoryFilters,
 } from "@/utils/transactionFilterValues";
@@ -61,7 +65,29 @@ type CategoryDetailTransactionsProps = {
   categoryName: string;
   categoryKind: "expense" | "income";
   spaceCurrency: string;
+  selectedSubcategoryId?: string | null;
   subcategories?: SubcategoryFilterOption[];
+};
+
+const categoryFiltersForSelection = (
+  categoryId: string,
+  selectedSubcategoryId?: string | null,
+  subcategories: Array<{ id: string }> = [],
+): string[] => {
+  if (!selectedSubcategoryId) {
+    return [
+      categoryId,
+      ...subcategories.map((subcategory) => subcategory.id),
+    ];
+  }
+
+  return [
+    formatCategoryPickerValue({
+      categoryId,
+      subcategoryId: selectedSubcategoryId,
+    }),
+    selectedSubcategoryId,
+  ];
 };
 
 export function CategoryDetailTransactions({
@@ -69,6 +95,7 @@ export function CategoryDetailTransactions({
   categoryName,
   categoryKind,
   spaceCurrency,
+  selectedSubcategoryId = null,
   subcategories = [],
 }: CategoryDetailTransactionsProps) {
   const queryClient = useQueryClient();
@@ -85,8 +112,13 @@ export function CategoryDetailTransactions({
   const [endDate] = useAtom(dateFilterEndDateAtom);
 
   const defaultCategoryFilters = useMemo(
-    () => [categoryId],
-    [categoryId],
+    () =>
+      categoryFiltersForSelection(
+        categoryId,
+        selectedSubcategoryId,
+        subcategories,
+      ),
+    [categoryId, selectedSubcategoryId, subcategories],
   );
 
   const [appliedFilters, setAppliedFilters] = useState<FilterTypes>(() => {
@@ -104,14 +136,16 @@ export function CategoryDetailTransactions({
       startYear: monthYearFromDates.startYear,
       endMonth: monthYearFromDates.endMonth,
       endYear: monthYearFromDates.endYear,
-      selectedCategories: [categoryId],
-      appliedCategories: [categoryId],
+      selectedCategories: defaultCategoryFilters,
+      appliedCategories: defaultCategoryFilters,
       queryStartDate,
       queryEndDate,
       appliedMinAmount: "",
       appliedMaxAmount: "",
       searchQuery: "",
       appliedAccounts: [],
+      selectedTags: [],
+      appliedTags: [],
     };
   });
 
@@ -149,6 +183,23 @@ export function CategoryDetailTransactions({
       };
     });
   }, [startDate, endDate]);
+
+  useEffect(() => {
+    setAppliedFilters((previous) => {
+      if (
+        areFilterValuesEqual(previous.appliedCategories, defaultCategoryFilters)
+        && areFilterValuesEqual(previous.selectedCategories, defaultCategoryFilters)
+      ) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        selectedCategories: defaultCategoryFilters,
+        appliedCategories: defaultCategoryFilters,
+      };
+    });
+  }, [defaultCategoryFilters]);
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
@@ -380,7 +431,7 @@ export function CategoryDetailTransactions({
   });
 
   const handleEditRow = (transaction: IndexTransaction) => {
-    router.push(transactionViewHref(transaction));
+    pushDashboardDetail(router, transactionViewHref(transaction));
   };
 
   const handleEditSuccess = (options?: {
@@ -400,7 +451,8 @@ export function CategoryDetailTransactions({
     setSelectedTransaction(null);
   };
 
-  const handleDeleteRow = (id: string) => {
+  const handleDeleteRow = async (id: string) => {
+    const allListRows = flattenTransactionsFromPages(data?.pages);
     let transaction: IndexTransaction | null = null;
 
     if (data?.pages) {
@@ -420,7 +472,18 @@ export function CategoryDetailTransactions({
       return;
     }
 
-    setTransactionToDelete(transaction);
+    const { target: resolvedTransaction } = await collectDeleteScopeContextRows({
+      spaceId: spaceCode,
+      queryClient,
+      listRows: allListRows,
+      targetId: id,
+    });
+
+    if (!resolvedTransaction) {
+      return;
+    }
+
+    setTransactionToDelete(resolvedTransaction);
     setSelectedDeleteScope(DeleteScopeEnum.THIS_ONLY);
     setDeleteScopeModalOpen(true);
   };
@@ -551,7 +614,7 @@ export function CategoryDetailTransactions({
         onScopeChange={(scope) => setSelectedDeleteScope(scope as DeleteScope)}
         operationType="delete"
         transactionType={transactionToDelete?.type}
-        inSeries={Boolean(transactionToDelete?.inSeries)}
+        inSeries={transactionAllowsSeriesDeleteScope(transactionToDelete)}
       />
     </section>
   );

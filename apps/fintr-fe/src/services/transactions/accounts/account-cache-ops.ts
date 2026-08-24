@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 import { listSpaceAccounts, replaceSpaceAccounts } from "@/lib/local-db";
+import { appendAccountPreviousName } from "@/lib/local-db/account-name-resolver";
 import type { Account } from "@/types/accountTypes";
 
 import {
@@ -288,6 +289,10 @@ export const updateAccountInCaches = async (params: {
   );
 
   await replaceSpaceAccounts(spaceId, nextAccounts);
+
+  if (updates.name && updates.name !== previous.name) {
+    await appendAccountPreviousName(spaceId, accountId, previous.name);
+  }
 
   const existing = await loadCachedAccountsResponse(spaceId);
   const baseResponse = existing ?? {

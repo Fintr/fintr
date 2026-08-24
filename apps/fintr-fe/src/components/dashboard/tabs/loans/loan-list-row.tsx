@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Ban } from "lucide-react";
 
 import EditLoanModal from "@/components/dashboard/forms/EditLoanModal";
 import DeleteLoanModal from "@/components/dashboard/forms/DeleteLoanModal";
@@ -13,6 +13,7 @@ import {
   parseLoanPrincipalAmount,
   parseLoanOutstandingBalance,
 } from "@/utils/loan-paydown";
+import { formatLoanStatusLabel } from "@/utils/loan-status";
 
 type LoanListRowProps = {
   loan: Loan;
@@ -47,13 +48,18 @@ export function LoanListRow({
   onDelete,
 }: LoanListRowProps) {
   const isCompleted = variant === "completed";
+  const isRetired = loan.status === "defaulted";
   const isBorrowed = loan.loanType === "borrowed";
-  const colorClass = isCompleted
+  const colorClass = isRetired
+    ? "bg-red-800"
+    : isCompleted
     ? "bg-green-600"
     : isBorrowed
       ? "bg-red-900"
       : "bg-teal-600";
-  const textColorClass = isCompleted
+  const textColorClass = isRetired
+    ? "text-foreground"
+    : isCompleted
     ? "text-muted-foreground"
     : isBorrowed
       ? "text-red-900 dark:text-red-700"
@@ -84,7 +90,12 @@ export function LoanListRow({
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            {isCompleted ? (
+            {isRetired ? (
+              <Ban
+                className="h-4 w-4 shrink-0 text-destructive"
+                aria-hidden
+              />
+            ) : isCompleted ? (
               <CheckCircle2
                 className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400"
                 aria-hidden
@@ -104,7 +115,7 @@ export function LoanListRow({
                 statusColorClass,
               )}
             >
-              {loan.status.replace("_", " ")}
+              {formatLoanStatusLabel(loan.status)}
             </span>
           </div>
           <div
@@ -113,7 +124,7 @@ export function LoanListRow({
               textColorClass,
             )}
           >
-            {isCompleted
+            {isCompleted && !isRetired
               ? "Paid off"
               : formatCurrency(
                   loan.outstandingBalance,

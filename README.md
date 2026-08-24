@@ -12,7 +12,7 @@ Fintr’s **live** dashboard experience does **not** currently ship dedicated **
 ├── apps/
 │   ├── fintr-be/    # Ruby on Rails backend API
 │   └── fintr-fe/    # Next.js frontend application
-├── docs/            # Contributor docs (see docs/API_REQUEST_PARAMETERS.md, CURRENT_PRODUCT_SCOPE.md)
+├── docs/            # Contributor docs (see docs/API_REQUEST_PARAMETERS.md, CURRENT_PRODUCT_SCOPE.md, installment_plans.md)
 └── .github/
     └── workflows/   # Unified CI/CD
 ```

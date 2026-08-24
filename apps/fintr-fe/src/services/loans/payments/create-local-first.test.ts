@@ -8,7 +8,7 @@ import {
   OUTBOX_COMMAND_LOAN_PAYMENT_CREATE,
   resetLocalDbForTests,
 } from "@/lib/local-db";
-import { loadCachedLoanPayments, loadCachedLoanSnapshot, cacheLoansAllPages } from "@/services/loans/local-cache";
+import { cacheLoanDetail, loadCachedLoanPayments, loadCachedLoanSnapshot, cacheLoansAllPages } from "@/services/loans/local-cache";
 import { loadCachedTransactionsInRange } from "@/services/transactions/local-cache";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import { getNextLoanPaymentDeadline } from "@/utils/loan-upcoming-deadlines";
@@ -111,45 +111,25 @@ describe("createLoanPaymentLocalFirst", () => {
 
     const loan: Loan = {
       id: "loan-1",
-      date: "2025-09-11",
+      date: "2026-08-11",
       description: null,
       loanType: "borrowed",
       loanTermMonths: 12,
-      maturityDate: "2026-09-11",
+      maturityDate: "2027-08-11",
       status: "active",
       paidOffDate: null,
-      interestRate: 12,
+      interestRate: 0,
       entityName: "Bdo",
       accountName: "SAMPLE BDO LONG ASS NAME",
-      principalAmount: 920.91,
+      principalAmount: 147,
       principalAmountCurrency: "PLN",
-      outstandingBalance: 908.5,
+      outstandingBalance: 147,
       outstandingBalanceCurrency: "PLN",
       value: -920.91,
       income: 0,
       expense: 0,
-      totalValue: 920.91,
+      totalValue: 147,
       files: [],
-      amortizationSchedule: [
-        {
-          paymentDate: "2026-09-11",
-          beginningBalance: 908.5,
-          paymentAmount: 12.25,
-          principalPayment: 10.41,
-          interestPayment: 1.84,
-          endingBalance: 898.09,
-          isActual: false,
-        },
-        {
-          paymentDate: "2026-10-11",
-          beginningBalance: 898.09,
-          paymentAmount: 12.25,
-          principalPayment: 10.5,
-          interestPayment: 1.75,
-          endingBalance: 887.59,
-          isActual: false,
-        },
-      ],
     };
 
     await cacheLoansAllPages("space-a", [
@@ -194,5 +174,55 @@ describe("createLoanPaymentLocalFirst", () => {
     const deadline = getNextLoanPaymentDeadline(patched!);
     expect(deadline).not.toBeNull();
     expect(toLocalDateString(deadline!.dueDate)).toBe("2026-10-11");
+  });
+
+  it("rejects payments on a retired loan without writing outbox", async () => {
+    const loan: Loan = {
+      id: "loan-1",
+      date: "2026-01-01",
+      description: null,
+      loanType: "lent",
+      loanTermMonths: 12,
+      maturityDate: "2027-01-01",
+      status: "defaulted",
+      paidOffDate: null,
+      interestRate: 0,
+      entityName: "Ada",
+      accountName: "Cash",
+      principalAmount: 1000,
+      principalAmountCurrency: "PHP",
+      outstandingBalance: 800,
+      outstandingBalanceCurrency: "PHP",
+      value: 800,
+      income: 0,
+      expense: 0,
+      totalValue: 1000,
+      files: [],
+    };
+
+    await cacheLoanDetail("space-a", "loan-1", loan);
+
+    await expect(
+      createLoanPaymentLocalFirst(
+        {} as never,
+        {
+          spaceId: "space-a",
+          loanId: "loan-1",
+          data: {
+            accountName: "Cash",
+            date: "2026-08-08",
+            totalPayment: 100,
+          },
+        },
+        { waitForSync: false, currency: "PHP" },
+      ),
+    ).rejects.toMatchObject({
+      details: {
+        loanId: ["cannot record payments on a retired loan"],
+      },
+    });
+
+    expect(createLoanPayment).not.toHaveBeenCalled();
+    expect(await getLocalDb().outbox.count()).toBe(0);
   });
 });

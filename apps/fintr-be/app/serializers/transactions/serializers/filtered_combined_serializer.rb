@@ -120,6 +120,54 @@ module Transactions
         record.in_series?
       end
 
+      field :parent_id do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:parent_id)
+
+        transactable.parent_id&.to_s
+      end
+
+      field :schedule_type do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:schedule_type)
+
+        transactable.schedule_type
+      end
+
+      field :repeat_interval do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:repeat_interval)
+
+        transactable.repeat_interval
+      end
+
+      field :installment_period do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:installment_period)
+
+        transactable.installment_period
+      end
+
+      field :installment_total do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:installment_total_cents)
+
+        Utils::InstallmentPlan.series_installment_total_amount(transaction: transactable)
+      end
+
+      field :root_parent_id do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:parent_id)
+
+        if transactable.parent_id.present?
+          transactable.parent_id.to_s
+        elsif transactable.respond_to?(:repeat?) && transactable.repeat?
+          record.transactable_id.to_s
+        elsif transactable.respond_to?(:installment?) && transactable.installment?
+          record.transactable_id.to_s
+        end
+      end
+
       field :has_image do |record|
         record.transactable.respond_to?(:files) && record.transactable.files.attached?
       end

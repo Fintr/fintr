@@ -22,6 +22,7 @@ export interface UpdateLoanType {
   id: string;
   entityName?: string;
   description?: string;
+  status?: 'active' | 'defaulted';
 }
 
 /**
@@ -103,6 +104,10 @@ export const updateLoan = async (
 
     if (loanData.description !== undefined) {
       backendData.description = loanData.description;
+    }
+
+    if (loanData.status !== undefined) {
+      backendData.status = loanData.status;
     }
 
     const response = await api.put(

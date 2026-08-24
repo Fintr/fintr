@@ -73,24 +73,31 @@ RSpec.describe Transactions::Operations::CreateTransaction do
             "transactions:#{space.id}",
           ).with(
             hash_including(
-              transaction: hash_including(
-                entityName: 'Acme Corp',
+              type: "sync_change",
+              op: "transaction.created",
+              payload: hash_including(
+                transaction: hash_including(
+                  entityName: 'Acme Corp',
+                ),
               ),
             ),
           )
         end
       end
 
-      it "broadcasts transaction_created on the space transactions channel" do
+      it "broadcasts sync_change on the space transactions channel" do
         expect { call_operation }.to have_broadcasted_to(
           "transactions:#{space.id}",
         ).with(
           hash_including(
-            type: "transaction_created",
+            type: "sync_change",
+            op: "transaction.created",
             spaceId: space.id.to_s,
-            transaction: hash_including(
-              description: "Salary payment",
-              type: "income",
+            payload: hash_including(
+              transaction: hash_including(
+                description: "Salary payment",
+                type: "income",
+              ),
             ),
           ),
         )
@@ -518,16 +525,54 @@ RSpec.describe Transactions::Operations::CreateTransaction do
       it { is_expected.to be_success }
 
       it 'creates an installment expense transaction' do
-        expect { call_operation }.to change(Transactions::Expense, :count).by(2)
+        expect { call_operation }.to change(Transactions::Expense, :count).by(12)
       end
 
       it 'sets the installment transaction attributes correctly' do
         result = call_operation.value!
         expect(result).to be_a(Transactions::Expense)
         expect(result.amount.amount).to eq(150.0 / 12)
+        expect(result.installment_total.amount).to eq(150.0)
         expect(result.schedule_type).to eq('installment')
         expect(result.installment_period).to eq(12)
         expect(result.installment_count).to eq(1)
+      end
+    end
+
+    context 'with foreign-currency installment expense' do
+      let(:installment_gbp_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 24_000.0,
+          date: Date.current,
+          description: "INSTALL5",
+          transaction_type: "expense",
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: "installment",
+          installment_period: 24,
+          original_currency: "GBP",
+          exchange_rate: 70.0,
+          exchange_rate_source: "manual",
+        }
+      end
+
+      it "stores per-payment conversion metadata, not the plan total" do
+        result = operation.call(installment_gbp_params)
+        expect(result).to be_success
+
+        parent = result.value!
+        expect(parent.amount.amount).to eq(70_000.0)
+        expect(parent.installment_total.amount).to eq(1_680_000.0)
+        expect(parent.currency_conversion).to be_present
+        expect(parent.currency_conversion.original_money.amount).to eq(1_000.0)
+        expect(parent.currency_conversion.original_currency).to eq("GBP")
+
+        child = parent.children.first
+        expect(child.currency_conversion).to be_present
+        expect(child.currency_conversion.original_money.amount).to eq(1_000.0)
+        expect(child.currency_conversion.original_currency).to eq("GBP")
       end
     end
 

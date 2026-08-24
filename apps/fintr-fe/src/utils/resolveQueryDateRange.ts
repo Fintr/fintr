@@ -5,7 +5,7 @@ import {
   getPresetDateRange,
   type PresetDateRangeOptions,
 } from "@/utils/dateFilterPresets";
-import { getCurrentMonthDates } from "@/utils/dateUtils";
+import { clampEndDateToToday, getCurrentMonthDates } from "@/utils/dateUtils";
 import { format } from "date-fns";
 
 export const resolveQueryDateRange = ({
@@ -23,6 +23,20 @@ export const resolveQueryDateRange = ({
   dateRange?: { from?: Date; to?: Date };
   presetOptions?: PresetDateRangeOptions;
 }): { queryStartDate: string; queryEndDate: string } => {
+  const referenceDate = new Date();
+
+  const withEndCappedAtToday = (
+    queryStartDate: string,
+    queryEndDate: string,
+  ) => ({
+    queryStartDate,
+    queryEndDate: clampEndDateToToday(
+      queryStartDate,
+      queryEndDate,
+      referenceDate,
+    ),
+  });
+
   if (filterTypeSelector === "single") {
     const { startDate, endDate } = monthYearToDateRange(
       selectedMonth,
@@ -31,45 +45,33 @@ export const resolveQueryDateRange = ({
       selectedYear,
     );
 
-    return {
-      queryStartDate: startDate,
-      queryEndDate: endDate,
-    };
+    return withEndCappedAtToday(startDate, endDate);
   }
 
   if (filterTypeSelector === "predefined") {
     const { startDate, endDate } = getPresetDateRange(
       selectedPreset,
-      new Date(),
+      referenceDate,
       presetOptions,
     );
 
-    return {
-      queryStartDate: startDate,
-      queryEndDate: endDate,
-    };
+    return withEndCappedAtToday(startDate, endDate);
   }
 
   if (dateRange?.from && dateRange?.to) {
-    return {
-      queryStartDate: format(dateRange.from, "yyyy-MM-dd"),
-      queryEndDate: format(dateRange.to, "yyyy-MM-dd"),
-    };
+    return withEndCappedAtToday(
+      format(dateRange.from, "yyyy-MM-dd"),
+      format(dateRange.to, "yyyy-MM-dd"),
+    );
   }
 
   if (dateRange?.from) {
     const singleDate = format(dateRange.from, "yyyy-MM-dd");
 
-    return {
-      queryStartDate: singleDate,
-      queryEndDate: singleDate,
-    };
+    return withEndCappedAtToday(singleDate, singleDate);
   }
 
   const { firstDay, lastDay } = getCurrentMonthDates();
 
-  return {
-    queryStartDate: firstDay,
-    queryEndDate: lastDay,
-  };
+  return withEndCappedAtToday(firstDay, lastDay);
 };

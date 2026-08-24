@@ -553,6 +553,18 @@ RSpec.describe Transactions::Operations::Loans::CreateLoanPayment do
         expect(result.failure).to have_key(:loan_id)
       end
 
+      it 'fails when the loan is retired' do
+        loan.update!(status: :defaulted)
+        result = operation.call(valid_params)
+        expect(result).to be_failure
+      end
+
+      it 'returns a retired loan error' do
+        loan.update!(status: :defaulted)
+        result = operation.call(valid_params)
+        expect(result.failure[:loan_id]).to eq("cannot record payments on a retired loan")
+      end
+
       it 'fails when account is not found' do
         params = valid_params.merge(account_name: 'Non-existent Account')
         result = operation.call(params)

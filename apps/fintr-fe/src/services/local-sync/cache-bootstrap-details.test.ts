@@ -16,8 +16,10 @@ vi.mock("@/services/attachments/download-remote", () => ({
 }));
 
 vi.mock("@/services/transactions/detail-local", () => ({
+  cacheEditDetailFromIndexRow: vi.fn(async () => undefined),
   cacheTransactionDetail: vi.fn(async () => undefined),
-  mapIndexTransactionToEditData: vi.fn(),
+  mapIndexTransactionToEditDataSync: vi.fn(),
+  normalizeTransactionEditDetail: vi.fn((payload) => payload),
 }));
 
 import { prefetchRemoteAttachmentsForTransactions } from "./cache-bootstrap-details";

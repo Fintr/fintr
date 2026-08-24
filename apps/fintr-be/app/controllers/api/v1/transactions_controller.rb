@@ -53,6 +53,24 @@ module Api
         render_success(data: operation.value!)
       end
 
+      def materialize_series
+        operation = ::Transactions::Operations::MaterializeSeriesChildren.new.call(
+          transaction_id: params[:id],
+        )
+
+        return render_internal_server_error(details: operation.failure) unless operation.success?
+
+        records = Array(operation.value!)
+        render_success(
+          data: {
+            materialized_count: records.length,
+            transactions: ::Transactions::Broadcasts::TransactionChange.serialize_index_rows(
+              transactions: records,
+            ),
+          },
+        )
+      end
+
       def generate_csv
         query = ::Transactions::Queries::FilteredCombined.call(params: filter_params.merge(paginate: false))
         operation = ::Transactions::Operations::Reports::DownloadCsv.new.call(combined_transactions: query.value!)
@@ -98,6 +116,7 @@ module Api
 
       def create_params
         params.permit(
+          :id,
           :amount,
           :date,
           :description,
@@ -111,6 +130,8 @@ module Api
           :repeat_count,
           :installment_period,
           :installment_count,
+          :installment_total,
+          :installment_revision_anchor,
           :draft_id,
           :file,
           :file_id,
@@ -140,6 +161,8 @@ module Api
           :repeat_count,
           :installment_period,
           :installment_count,
+          :installment_total,
+          :installment_revision_anchor,
           :file,
           :remove_file,
           :update_scope,

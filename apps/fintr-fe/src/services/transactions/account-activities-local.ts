@@ -1,3 +1,4 @@
+import { buildAccountNameResolvers, fuzzyResolveAccountIdForName, resolveAccountIdForName } from "@/lib/local-db/account-name-resolver";
 import { listSpaceAccounts } from "@/lib/local-db/accounts";
 import { listSpaceTransactionsInDateRange } from "@/lib/local-db/transactions";
 import { loanPaymentToIndexRow } from "@/services/loans/loan-payment-index-row";
@@ -100,8 +101,22 @@ const flattenCachedLoans = async (spaceId: string): Promise<Loan[]> => {
   return cached.pages.flatMap((page) => page.loans ?? []);
 };
 
-const loanTouchesAccount = (loan: Loan, account: Account): boolean =>
-  namesMatch(loan.accountName, account.name);
+const loanTouchesAccount = async (
+  loan: Loan,
+  account: Account,
+  spaceId: string,
+): Promise<boolean> => {
+  if (namesMatch(loan.accountName, account.name)) {
+    return true;
+  }
+
+  const resolvers = await buildAccountNameResolvers(spaceId);
+  const resolvedId =
+    resolveAccountIdForName(resolvers, loan.accountName)
+    ?? fuzzyResolveAccountIdForName([account], loan.accountName);
+
+  return resolvedId === account.id;
+};
 
 const paymentTouchesAccount = (
   payment: LoanPayment,
@@ -155,7 +170,7 @@ const mergeLoanRowsForAccount = async (
   const byId = new Map(existing.map((row) => [row.id, row]));
 
   for (const loan of loans) {
-    if (!loanTouchesAccount(loan, account)) {
+    if (!(await loanTouchesAccount(loan, account, spaceId))) {
       continue;
     }
 

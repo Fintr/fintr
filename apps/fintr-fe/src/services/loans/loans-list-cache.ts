@@ -120,6 +120,13 @@ export const upsertLoanInQueryCaches = (
   }
 
   queryClient.setQueryData([LOAN_DETAIL_KEY, loan.id], loan);
+
+  if (spaceCode) {
+    queryClient.setQueryData(
+      [LOAN_DETAIL_KEY, "local", spaceCode, loan.id],
+      loan,
+    );
+  }
 };
 
 export const removeLoanFromQueryCaches = (

@@ -4,15 +4,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resetLocalDbForTests } from "@/lib/local-db";
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
-import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { CombinedTransactionTypeEnum, type IndexTransaction } from "@/types/transactionTypes";
 
 import { upsertLocalIndexTransaction } from "./local-cache";
 import {
   applyListRowMoneyToDetail,
+  cacheEditDetailFromIndexRow,
   cacheTransactionDetail,
   enrichTransactionEditDetail,
+  loadCachedTransactionDetail,
   mapIndexTransactionToEditData,
   mapIndexTransactionToEditDataSync,
+  normalizeTransactionEditDetail,
   resolveTransactionDetail,
   seedTransactionEditFromListRow,
 } from "./detail-local";
@@ -49,14 +52,95 @@ describe("transaction detail local", () => {
       type: CombinedTransactionTypeEnum.EXPENSE,
       inSeries: false,
       hasImage: false,
+      accountId: "acc-cash",
+      fromAccountId: "acc-cash",
+      entityId: "ent-jollibee",
+      entityName: "Jollibee",
     });
 
     expect(mapped).toMatchObject({
       id: "tx-1",
       amount: 120,
       accountName: "Cash",
+      accountId: "acc-cash",
+      entityId: "ent-jollibee",
+      entityName: "Jollibee",
       transactionType: "expense",
       scheduleType: ScheduleTypeEnum.ONE_TIME,
+    });
+  });
+
+  it("maps a this-only GBP bump onto edit-form seed without shrinking to 2 GBP", () => {
+    const mapped = mapIndexTransactionToEditDataSync({
+      id: "tx-install8-nov",
+      date: "2027-11-01",
+      description: "INSTALL8",
+      amount: 200,
+      amountCurrency: "PHP",
+      bookedAmount: 200,
+      bookedAmountCurrency: "GBP",
+      categoryName: "Home",
+      fromAccountName: "SAMPLE BDO LONG ASS NAME",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      hasImage: false,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 250_000,
+      parentId: "tx-install8-root",
+      rootParentId: "tx-install8-root",
+      currencyConversion: {
+        originalAmount: 200,
+        originalCurrency: "GBP",
+        convertedAmount: 200,
+        convertedCurrency: "PHP",
+        exchangeRate: 100,
+        source: "manual",
+      },
+    });
+
+    expect(mapped).toMatchObject({
+      amount: 200,
+      amountCurrency: "GBP",
+      installmentTotal: 250_000,
+    });
+    expect(mapped.currencyConversion).toMatchObject({
+      originalAmount: 200,
+      originalCurrency: "GBP",
+      convertedAmount: 20_000,
+      convertedCurrency: "PHP",
+      exchangeRate: 100,
+    });
+  });
+
+  it("maps installment plan total onto edit-form seed", () => {
+    const mapped = mapIndexTransactionToEditDataSync({
+      id: "tx-install-nov",
+      date: "2027-11-01",
+      description: "INSTALL6",
+      amount: 20_000,
+      amountCurrency: "PHP",
+      bookedAmount: 200,
+      bookedAmountCurrency: "GBP",
+      categoryName: "Home",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      hasImage: false,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 250_000,
+      parentId: "tx-install-root",
+      rootParentId: "tx-install-root",
+    });
+
+    expect(mapped).toMatchObject({
+      amount: 200,
+      amountCurrency: "GBP",
+      installmentPeriod: 24,
+      installmentTotal: 250_000,
     });
   });
 
@@ -475,53 +559,408 @@ describe("transaction detail local", () => {
     ).toBe("GBP");
   });
 
-  it("keeps camelCase currencyConversion when overlaying a space-currency list row", () => {
-    const detail = applyListRowMoneyToDetail(
-      {
-        id: "tx-gbp",
-        date: "2026-08-12",
-        description: "EXTEST2",
-        amount: 20_000,
-        amountCurrency: "PHP",
-        categoryName: "Medicine",
-        accountName: "SAMPLE BDO LONG ASS NAME",
-        transactionType: "expense",
-        type: CombinedTransactionTypeEnum.EXPENSE,
-        scheduleType: ScheduleTypeEnum.ONE_TIME,
-        hasCurrencyConversion: true,
-        originalDisplayAmount: 200,
-        originalDisplayCurrency: "GBP",
-        currencyConversion: {
-          originalAmount: 200,
-          originalCurrency: "GBP",
-          convertedAmount: 20_000,
-          convertedCurrency: "PHP",
-          exchangeRate: 100,
-          source: "manual",
-        },
+  it("parses persisted currency_conversion from cached API detail payloads", () => {
+    const normalized = normalizeTransactionEditDetail({
+      id: "tx-install7",
+      date: "2026-08-01",
+      description: "INSTALL7",
+      amount: 10_000,
+      amount_currency: "PHP",
+      booked_amount: 100,
+      booked_amount_currency: "GBP",
+      original_display_amount: 100,
+      original_display_currency: "GBP",
+      currency_conversion: {
+        original_amount: 100,
+        original_currency: "GBP",
+        converted_amount: 10_000,
+        converted_currency: "PHP",
+        exchange_rate: 100,
+        source: "recent",
       },
-      {
-        id: "tx-gbp",
-        date: "2026-08-12",
-        description: "EXTEST2",
-        amount: 20_000,
-        amountCurrency: "PHP",
-        categoryName: "Medicine",
-        fromAccountName: "SAMPLE BDO LONG ASS NAME",
-        toAccountName: "",
-        type: CombinedTransactionTypeEnum.EXPENSE,
-        inSeries: false,
-        hasImage: false,
-      },
-    );
+      installment_total: 240_000,
+      installment_period: 24,
+      schedule_type: "installment",
+    });
 
-    expect(detail.amount).toBe(200);
-    expect(detail.amountCurrency).toBe("GBP");
-    expect(detail.currencyConversion).toMatchObject({
-      originalAmount: 200,
+    expect(normalized).toMatchObject({
+      amount: 100,
+      amountCurrency: "GBP",
+      installmentTotal: 240_000,
+      currencyConversion: {
+        originalAmount: 100,
+        originalCurrency: "GBP",
+        convertedAmount: 10_000,
+        convertedCurrency: "PHP",
+        exchangeRate: 100,
+        source: "recent",
+      },
+    });
+  });
+
+  it("normalizes snake_case schedule fields from cached detail payloads", () => {
+    const normalized = normalizeTransactionEditDetail({
+      id: "tx-repeat",
+      schedule_type: "repeat",
+      repeat_interval: "every_month",
+      installment_period: 0,
+    });
+
+    expect(normalized).toMatchObject({
+      scheduleType: ScheduleTypeEnum.REPEAT,
+      repeatInterval: "every_month",
+      installmentPeriod: 0,
+    });
+  });
+
+  it("inherits repeat interval from the parent when resolving a series child", async () => {
+    await cacheTransactionDetail("space-a", "tx-parent", {
+      id: "tx-parent",
+      scheduleType: ScheduleTypeEnum.REPEAT,
+      repeatInterval: "every_week",
+    });
+
+    const listRow: Parameters<typeof resolveTransactionDetail>[0]["listRow"] = {
+      id: "tx-child",
+      date: "2026-08-31",
+      description: "Recurring2",
+      amount: 82.07,
+      categoryName: "Food & Groceries",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      parentId: "tx-parent",
+      scheduleType: ScheduleTypeEnum.ONE_TIME,
+      hasImage: false,
+    };
+
+    await upsertLocalIndexTransaction("space-a", listRow);
+
+    await cacheTransactionDetail("space-a", "tx-child", {
+      id: "tx-child",
+      schedule_type: "one_time",
+      repeat_interval: "",
+    });
+
+    const detail = await resolveTransactionDetail({
+      api: null,
+      spaceId: "space-a",
+      transactionId: "tx-child",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      listRow,
+      preferLocal: true,
+    });
+
+    expect(detail).toMatchObject({
+      scheduleType: ScheduleTypeEnum.REPEAT,
+      repeatInterval: "every_week",
+    });
+  });
+
+  it("inherits installment term from the parent when resolving a series child", async () => {
+    await cacheTransactionDetail("space-a", "tx-install-parent", {
+      id: "tx-install-parent",
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 12,
+    });
+
+    const listRow: Parameters<typeof resolveTransactionDetail>[0]["listRow"] = {
+      id: "tx-install-child",
+      date: "2026-09-18",
+      description: "INSTALL1",
+      amount: 82.07,
+      categoryName: "Food & Groceries",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      parentId: "tx-install-parent",
+      rootParentId: "tx-install-parent",
+      scheduleType: ScheduleTypeEnum.ONE_TIME,
+      hasImage: false,
+    };
+
+    await upsertLocalIndexTransaction("space-a", listRow);
+
+    await cacheTransactionDetail("space-a", "tx-install-child", {
+      id: "tx-install-child",
+      schedule_type: "one_time",
+      installment_period: 0,
+    });
+
+    const detail = await resolveTransactionDetail({
+      api: null,
+      spaceId: "space-a",
+      transactionId: "tx-install-child",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      listRow,
+      preferLocal: true,
+    });
+
+    expect(detail).toMatchObject({
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 12,
+    });
+  });
+
+  it("prefers the root plan total over a stale child copy when opening edit", async () => {
+    await upsertLocalIndexTransaction("space-a", {
+      id: "tx-install-root",
+      date: "2026-01-01",
+      description: "INSTALL6",
+      amount: 10_000,
+      amountCurrency: "PHP",
+      categoryName: "Home",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      hasImage: false,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 250_000,
+    });
+
+    const listRow: Parameters<typeof resolveTransactionDetail>[0]["listRow"] = {
+      id: "tx-install-dec",
+      date: "2027-12-01",
+      description: "INSTALL6",
+      amount: 10_000,
+      amountCurrency: "PHP",
+      bookedAmount: 100,
+      bookedAmountCurrency: "GBP",
+      categoryName: "Home",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      parentId: "tx-install-root",
+      rootParentId: "tx-install-root",
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 240_000,
+      hasImage: false,
+    };
+
+    await upsertLocalIndexTransaction("space-a", listRow);
+
+    // Cached child detail with a stale total must not win over the root.
+    await cacheTransactionDetail("space-a", "tx-install-dec", {
+      id: "tx-install-dec",
+      description: "INSTALL6",
+      date: "2027-12-01",
+      amount: 10_000,
+      amountCurrency: "PHP",
+      categoryName: "Home",
+      accountName: "Cash",
+      transactionType: "expense",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      repeatInterval: "P1M",
+      installmentPeriod: 24,
+      installmentTotal: 240_000,
+      file: null,
+      entityName: "",
+      hasCurrencyConversion: true,
+      bookedAmount: 100,
+      bookedAmountCurrency: "GBP",
+    });
+
+    const detail = await resolveTransactionDetail({
+      api: null,
+      spaceId: "space-a",
+      transactionId: "tx-install-dec",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      listRow,
+      preferLocal: true,
+    });
+
+    expect(detail).toMatchObject({
+      installmentTotal: 250_000,
+      installmentPeriod: 24,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+    });
+  });
+
+  it("prefers a fresh root index total over a stale cached root detail", async () => {
+    await upsertLocalIndexTransaction("space-a", {
+      id: "tx-install-root",
+      date: "2026-01-01",
+      description: "INSTALL8",
+      amount: 10_000,
+      amountCurrency: "PHP",
+      categoryName: "Home",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      hasImage: false,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 250_000,
+    });
+
+    await cacheTransactionDetail("space-a", "tx-install-root", {
+      id: "tx-install-root",
+      description: "INSTALL8",
+      date: "2026-01-01",
+      amount: 10_000,
+      amountCurrency: "PHP",
+      categoryName: "Home",
+      accountName: "Cash",
+      transactionType: "expense",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      repeatInterval: "P1M",
+      installmentPeriod: 24,
+      installmentTotal: 240_000,
+      file: null,
+      entityName: "",
+    });
+
+    const listRow: Parameters<typeof resolveTransactionDetail>[0]["listRow"] = {
+      id: "tx-install-nov",
+      date: "2027-11-01",
+      description: "INSTALL8",
+      amount: 20_000,
+      amountCurrency: "PHP",
+      bookedAmount: 200,
+      bookedAmountCurrency: "GBP",
+      categoryName: "Home",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      parentId: "tx-install-root",
+      rootParentId: "tx-install-root",
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 250_000,
+      hasImage: false,
+    };
+
+    await upsertLocalIndexTransaction("space-a", listRow);
+
+    await cacheTransactionDetail("space-a", "tx-install-nov", {
+      id: "tx-install-nov",
+      description: "INSTALL8",
+      date: "2027-11-01",
+      amount: 20_000,
+      amountCurrency: "PHP",
+      categoryName: "Home",
+      accountName: "Cash",
+      transactionType: "expense",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      repeatInterval: "P1M",
+      installmentPeriod: 24,
+      installmentTotal: 240_000,
+      file: null,
+      entityName: "",
+      hasCurrencyConversion: true,
+      bookedAmount: 200,
+      bookedAmountCurrency: "GBP",
+    });
+
+    const detail = await resolveTransactionDetail({
+      api: null,
+      spaceId: "space-a",
+      transactionId: "tx-install-nov",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      listRow,
+      preferLocal: true,
+    });
+
+    expect(detail).toMatchObject({
+      installmentTotal: 250_000,
+    });
+  });
+
+  it("caches currency_conversion in IndexedDB from an index row with booked legs", async () => {
+    const listRow: IndexTransaction = {
+      id: "tx-install8",
+      date: "2027-12-01",
+      description: "INSTALL8",
+      amount: 10_000,
+      amountCurrency: "PHP",
+      bookedAmount: 100,
+      bookedAmountCurrency: "GBP",
+      categoryName: "Home",
+      fromAccountName: "GCash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      parentId: "tx-install8-root",
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 240_000,
+      hasImage: false,
+    };
+
+    await cacheEditDetailFromIndexRow("space-a", listRow);
+    const cached = await loadCachedTransactionDetail("space-a", "tx-install8");
+
+    expect(
+      (cached as { currencyConversion?: { exchangeRate?: number } })
+        .currencyConversion,
+    ).toMatchObject({
       originalCurrency: "GBP",
-      convertedAmount: 20_000,
       convertedCurrency: "PHP",
+      exchangeRate: 100,
+    });
+  });
+
+  it("prefers index-row FX over stale cached detail without conversion when preferLocal", async () => {
+    await cacheTransactionDetail("space-a", "tx-stale-fx", {
+      id: "tx-stale-fx",
+      date: "2027-12-01",
+      description: "INSTALL8",
+      amount: 10_000,
+      amountCurrency: "PHP",
+      categoryName: "Home",
+      accountName: "GCash",
+      transactionType: "expense",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 240_000,
+      file: null,
+      entityName: "",
+      hasCurrencyConversion: false,
+    });
+
+    const listRow: IndexTransaction = {
+      id: "tx-stale-fx",
+      date: "2027-12-01",
+      description: "INSTALL8",
+      amount: 10_000,
+      amountCurrency: "PHP",
+      bookedAmount: 100,
+      bookedAmountCurrency: "GBP",
+      categoryName: "Home",
+      fromAccountName: "GCash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      parentId: "tx-install8-root",
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 240_000,
+      hasImage: false,
+    };
+
+    const detail = await resolveTransactionDetail({
+      api: null,
+      spaceId: "space-a",
+      transactionId: "tx-stale-fx",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      listRow,
+      preferLocal: true,
+    });
+
+    expect(detail.currencyConversion).toMatchObject({
+      originalCurrency: "GBP",
       exchangeRate: 100,
     });
   });

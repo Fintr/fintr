@@ -9,6 +9,7 @@ module Budgets
           optional(:category_name).maybe(:string)
           optional(:category_id).maybe(:string)
           optional(:subcategory_id).maybe(:string)
+          optional(:id).maybe(:string)
           required(:space_id).value(:string)
           required(:amount).value(:integer)
           required(:date).value(:date)
@@ -91,7 +92,7 @@ module Budgets
       def create_budget(params:)
         budget = Budget.new
         budget.assign_attributes(
-          **params.slice(:space_id, :category_id, :subcategory_id, :amount_cents, :amount_currency, :date)
+          **params.slice(:space_id, :category_id, :subcategory_id, :amount_cents, :amount_currency, :date, :id)
         )
         budget.save!
         Success(budget)

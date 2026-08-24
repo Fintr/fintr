@@ -12,6 +12,7 @@ type LoanSummaryStatsProps = {
   loan: Loan;
   isBorrowed: boolean;
   textColorClass: string;
+  payments?: Loan["loanPayments"];
 };
 
 type StatItemProps = {
@@ -49,8 +50,12 @@ export function LoanSummaryStats({
   loan,
   isBorrowed,
   textColorClass,
+  payments,
 }: LoanSummaryStatsProps) {
-  const schedule = React.useMemo(() => getAmortizationSchedule(loan), [loan]);
+  const schedule = React.useMemo(
+    () => getAmortizationSchedule(loan, payments),
+    [loan, payments],
+  );
 
   const totalInterest = React.useMemo(() => {
     const sum = schedule.reduce(
@@ -145,7 +150,7 @@ export function LoanSummaryStats({
           }
         />
         <StatItem
-          label={isBorrowed ? "Net cost" : "Net gain"}
+          label={isBorrowed ? "Payable" : "Receivable"}
           value={
             isBorrowed
               ? `-${formatCurrency(loan.totalValue, loan.outstandingBalanceCurrency)}`

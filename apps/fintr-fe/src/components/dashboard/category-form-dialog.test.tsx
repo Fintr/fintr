@@ -144,5 +144,57 @@ describe("CategoryFormDialog", () => {
     expect(
       screen.queryByRole("button", { name: /updating/i }),
     ).not.toBeInTheDocument();
+    expect(document.body.style.pointerEvents).not.toBe("none");
+  });
+
+  it("clears a leftover pointer lock after update", () => {
+    const onUpdate = vi.fn();
+    const onOpenChange = vi.fn();
+
+    render(
+      <CategoryFormDialog
+        category={{
+          id: "c1",
+          name: "Transportation",
+          icon: "car",
+          categoryType: CategoryTypeEnum.EXPENSE,
+        }}
+        onUpdate={onUpdate}
+        open
+        onOpenChange={onOpenChange}
+        hideTrigger
+      />,
+    );
+
+    document.body.style.pointerEvents = "none";
+    fireEvent.change(
+      screen.getByLabelText(/^name$/i),
+      { target: { value: "Transportation updated" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^update$/i }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(document.body.style.pointerEvents).not.toBe("none");
+  });
+
+  it("clears a leftover pointer lock when the editor unmounts", () => {
+    const { unmount } = render(
+      <CategoryFormDialog
+        category={{
+          id: "c1",
+          name: "Church",
+          categoryType: CategoryTypeEnum.EXPENSE,
+        }}
+        onUpdate={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
+        hideTrigger
+      />,
+    );
+
+    document.body.style.pointerEvents = "none";
+    unmount();
+
+    expect(document.body.style.pointerEvents).not.toBe("none");
   });
 });

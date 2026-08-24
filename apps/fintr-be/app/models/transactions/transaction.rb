@@ -32,6 +32,7 @@ module Transactions
 
     monetize :amount_cents, allow_nil: false
     monetize :balance_cents, allow_nil: true
+    monetize :installment_total_cents, allow_nil: true
 
     enum :balance_state, {
       pending: "pending",

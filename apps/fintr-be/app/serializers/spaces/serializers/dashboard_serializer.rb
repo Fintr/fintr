@@ -54,13 +54,17 @@ module Spaces
             value: parent.id,
             name: parent.name,
             parent_id: nil,
+            icon: parent.icon,
+            color: parent.color,
             children: parent.children.order(:name).map do |child|
               {
                 id: child.id,
                 label: child.name,
                 value: child.id,
                 name: child.name,
-                parent_id: parent.id
+                parent_id: parent.id,
+                icon: child.icon,
+                color: child.color
               }
             end
           }

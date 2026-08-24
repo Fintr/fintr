@@ -37,6 +37,7 @@ const parseEntryTypeFilter = (raw: unknown): TransactionEntryTypeFilter => {
     || raw === "income"
     || raw === "transfers"
     || raw === "loans"
+    || raw === "recurring"
   ) {
     return raw;
   }

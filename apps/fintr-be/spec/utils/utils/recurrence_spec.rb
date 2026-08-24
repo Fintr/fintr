@@ -288,6 +288,41 @@ RSpec.describe Utils::Recurrence do
     end
   end
 
+  describe '.future_series_end_date' do
+    let(:reference_date) { Date.new(2026, 8, 18) }
+
+    it 'returns one month ahead for repeat schedules' do
+      transaction = instance_double(
+        Transactions::Transaction,
+        installment?: false,
+      )
+
+      result = described_class.future_series_end_date(
+        record: transaction,
+        reference_date:,
+      )
+
+      expect(result).to eq(reference_date + 1.month)
+    end
+
+    it 'returns the final installment date for installment schedules' do
+      transaction = instance_double(
+        Transactions::Transaction,
+        installment?: true,
+        installment_period: 12,
+        date: Date.new(2026, 7, 1),
+      )
+      allow(transaction).to receive(:root_parent).and_return(transaction)
+
+      result = described_class.future_series_end_date(
+        record: transaction,
+        reference_date:,
+      )
+
+      expect(result).to eq(Date.new(2027, 6, 1))
+    end
+  end
+
   describe '.usage_period_string' do
     let(:period) { Date.new(2025, 9, 20)..Date.new(2025, 10, 19).end_of_day }
 

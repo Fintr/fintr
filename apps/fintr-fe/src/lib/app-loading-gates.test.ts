@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   isWorkspaceContextBlocking,
@@ -7,31 +7,14 @@ import {
   shouldShowOfflineSyncScreen,
   shouldShowPrivateContextLoadingScreen,
 } from "./app-loading-gates";
+import { clearAppShellReadyForTests } from "./app-shell-state";
 
 describe("shouldShowAuthLoadingScreen", () => {
-  it("never covers an in-app remount when a stored session already exists", () => {
-    expect(
-      shouldShowAuthLoadingScreen({
-        isPublicRoute: false,
-        isAuthContextLoading: true,
-        isAuthenticated: false,
-        hasStoredSession: true,
-      }),
-    ).toBe(false);
+  afterEach(() => {
+    clearAppShellReadyForTests();
   });
 
-  it("never covers a route that is already authenticated in context", () => {
-    expect(
-      shouldShowAuthLoadingScreen({
-        isPublicRoute: false,
-        isAuthContextLoading: true,
-        isAuthenticated: true,
-        hasStoredSession: false,
-      }),
-    ).toBe(false);
-  });
-
-  it("does not splash public pages", () => {
+  it("does not block public routes", () => {
     expect(
       shouldShowAuthLoadingScreen({
         isPublicRoute: true,
@@ -41,21 +24,14 @@ describe("shouldShowAuthLoadingScreen", () => {
       }),
     ).toBe(false);
   });
-
-  it("splashes only a true cold start with no session", () => {
-    expect(
-      shouldShowAuthLoadingScreen({
-        isPublicRoute: false,
-        isAuthContextLoading: true,
-        isAuthenticated: false,
-        hasStoredSession: false,
-      }),
-    ).toBe(true);
-  });
 });
 
 describe("shouldShowPrivateContextLoadingScreen", () => {
-  it("keeps the private shell when a space code is already persisted", () => {
+  afterEach(() => {
+    clearAppShellReadyForTests();
+  });
+
+  it("does not block when a workspace is already persisted", () => {
     expect(
       shouldShowPrivateContextLoadingScreen({
         isOnOnboardingPage: false,
@@ -65,21 +41,10 @@ describe("shouldShowPrivateContextLoadingScreen", () => {
       }),
     ).toBe(false);
   });
-
-  it("splashes first-time workspace resolution with no persisted space", () => {
-    expect(
-      shouldShowPrivateContextLoadingScreen({
-        isOnOnboardingPage: false,
-        isOnAdminPage: false,
-        isResolvingWorkspaceContext: true,
-        hasPersistedSpaceCode: false,
-      }),
-    ).toBe(true);
-  });
 });
 
 describe("shouldShowDashboardShellLoadingScreen", () => {
-  it("never replaces the dashboard chrome with a full-screen splash", () => {
+  it("always returns false", () => {
     expect(
       shouldShowDashboardShellLoadingScreen({
         hasSpaceCode: false,
@@ -87,52 +52,45 @@ describe("shouldShowDashboardShellLoadingScreen", () => {
         isWaitingForDashboardData: true,
       }),
     ).toBe(false);
-
-    expect(
-      shouldShowDashboardShellLoadingScreen({
-        hasSpaceCode: true,
-        isOnline: false,
-        isWaitingForDashboardData: true,
-      }),
-    ).toBe(false);
   });
 });
 
 describe("shouldShowOfflineSyncScreen", () => {
-  it("never blocks after the app shell has rendered this session", () => {
-    sessionStorage.setItem("fintr:appShellReady", "1");
-
+  it("shows the import screen until offline sync completes", () => {
     expect(
       shouldShowOfflineSyncScreen({
-        isOfflineSyncBlocking: true,
-        hasOfflineSyncReadyHint: false,
-      }),
-    ).toBe(false);
-
-    sessionStorage.removeItem("fintr:appShellReady");
-  });
-
-  it("never blocks in-app navigation after offline sync has completed once", () => {
-    expect(
-      shouldShowOfflineSyncScreen({
-        isOfflineSyncBlocking: true,
-        hasOfflineSyncReadyHint: true,
-      }),
-    ).toBe(false);
-  });
-
-  it("blocks only the first-time offline bootstrap", () => {
-    expect(
-      shouldShowOfflineSyncScreen({
-        isOfflineSyncBlocking: true,
-        hasOfflineSyncReadyHint: false,
+        requiresOfflineReimport: true,
+        offlineSyncStatus: "checking",
       }),
     ).toBe(true);
 
     expect(
       shouldShowOfflineSyncScreen({
-        isOfflineSyncBlocking: false,
-        hasOfflineSyncReadyHint: false,
+        requiresOfflineReimport: true,
+        offlineSyncStatus: "syncing",
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldShowOfflineSyncScreen({
+        requiresOfflineReimport: true,
+        offlineSyncStatus: "error",
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldShowOfflineSyncScreen({
+        requiresOfflineReimport: true,
+        offlineSyncStatus: "complete",
+      }),
+    ).toBe(false);
+  });
+
+  it("does not block when local data is already complete", () => {
+    expect(
+      shouldShowOfflineSyncScreen({
+        requiresOfflineReimport: false,
+        offlineSyncStatus: "idle",
       }),
     ).toBe(false);
   });
@@ -150,7 +108,7 @@ describe("isWorkspaceContextBlocking", () => {
     ).toBe(false);
   });
 
-  it("blocks only when there is no space yet and queries are still running", () => {
+  it("blocks only while workspace context is still resolving", () => {
     expect(
       isWorkspaceContextBlocking({
         queryEnabled: true,

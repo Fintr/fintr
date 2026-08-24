@@ -8,6 +8,7 @@ module Entities
           required(:space_id).filled(:string)
           required(:full_name).filled(:string)
           required(:entity_type).filled(:string)
+          optional(:id).maybe(:string)
           optional(:photo)
         end
 
@@ -35,7 +36,7 @@ module Entities
       end
 
       def create_entity(params:)
-        entity = Entities::Entity.new(params.slice(:space_id, :full_name, :entity_type))
+        entity = Entities::Entity.new(params.slice(:space_id, :full_name, :entity_type, :id))
         entity.save!
         Success(entity)
       rescue ActiveRecord::RecordInvalid => e

@@ -31,6 +31,9 @@ import {
   getFeaturedUpcomingLoanIds,
   partitionAndSortLoans,
 } from "@/utils/loan-upcoming-deadlines";
+import { buildLoanDetailHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
+import { usePrefetchDetailHrefs } from "@/hooks/usePrefetchDetailHrefs";
 
 interface LoansTabProps {}
 
@@ -42,15 +45,17 @@ const filterLoansForInsights = (
     return [];
   }
 
+  const activeLoans = loans.filter((loan) => loan.status === "active");
+
   if (filter === "borrowed") {
-    return loans.filter((loan) => loan.loanType === "borrowed");
+    return activeLoans.filter((loan) => loan.loanType === "borrowed");
   }
 
   if (filter === "lent") {
-    return loans.filter((loan) => loan.loanType === "lent");
+    return activeLoans.filter((loan) => loan.loanType === "lent");
   }
 
-  return loans;
+  return activeLoans;
 };
 
 const LoansTab = ({}: LoansTabProps) => {
@@ -67,6 +72,13 @@ const LoansTab = ({}: LoansTabProps) => {
     isFetchingNextPage,
     hasNextPage,
   } = useInfiniteLoans({ loadMoreRef });
+
+  const detailPrefetchHrefs = React.useMemo(
+    () => loans.map((loan) => buildLoanDetailHref(loan.id)),
+    [loans],
+  );
+
+  usePrefetchDetailHrefs(detailPrefetchHrefs);
 
   const isLoading = isFetching && loans.length === 0;
   const queryClient = useQueryClient();
@@ -115,7 +127,7 @@ const LoansTab = ({}: LoansTabProps) => {
   const { activeLoans, completedLoans } = React.useMemo(() => {
     if (loanFilter === "paid_off") {
       const completed = loans
-        .filter((loan) => loan.status === "paid_off")
+        .filter((loan) => loan.status === "paid_off" || loan.status === "defaulted")
         .sort((left, right) => {
           const leftDate = left.paidOffDate
             ? new Date(left.paidOffDate).getTime()
@@ -178,7 +190,7 @@ const LoansTab = ({}: LoansTabProps) => {
   );
 
   const openLoan = (loanId: string) => {
-    router.push(`/dashboard/loans/detail?loanId=${loanId}`);
+    pushDashboardDetail(router, buildLoanDetailHref(loanId));
   };
 
   const hasVisibleLoans =
@@ -294,7 +306,7 @@ const LoansTab = ({}: LoansTabProps) => {
                       Completed
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Loans you have fully paid off
+                      Loans you have fully paid off or retired
                     </p>
                   </div>
                 ) : null}

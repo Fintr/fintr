@@ -10,10 +10,9 @@ import { useState, useEffect } from "react";
 import { useAtom } from "jotai";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import { useAtomValue } from "jotai";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import {
   accountOptionsAtom,
-  expenseCategoryOptionsAtom,
-  incomeCategoryOptionsAtom,
 } from "@/atoms/dashboardAtoms";
 import { CategoryTreeOption } from "@/types/categoryTreeTypes";
 import {
@@ -91,14 +90,16 @@ export function TransactionFiltersSheet({
   defaultPresetId,
 }: TransactionFiltersSheetProps) {
   const presetOptions = usePresetDateRangeOptions();
-  const expenseCategoryOptionsFromAtom = useAtomValue(expenseCategoryOptionsAtom);
-  const incomeCategoryOptionsFromAtom = useAtomValue(incomeCategoryOptionsAtom);
+  const {
+    expenseCategoryOptions: expenseCategoryOptionsFromCategories,
+    incomeCategoryOptions: incomeCategoryOptionsFromCategories,
+  } = useTransactionCategories();
   const accountOptions = useAtomValue(accountOptionsAtom);
   const { tags: transactionTags } = useTransactionTags();
   const expenseCategoryOptions =
-    expenseCategoryOptionsOverride ?? expenseCategoryOptionsFromAtom;
+    expenseCategoryOptionsOverride ?? expenseCategoryOptionsFromCategories;
   const incomeCategoryOptions =
-    incomeCategoryOptionsOverride ?? incomeCategoryOptionsFromAtom;
+    incomeCategoryOptionsOverride ?? incomeCategoryOptionsFromCategories;
   const currentYear = new Date().getFullYear().toString();
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })

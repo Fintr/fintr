@@ -544,4 +544,39 @@ describe("upsertIndexTransactionsIntoQueryCaches", () => {
 
     expect(next?.transactions[0]?.amount).toBe(1);
   });
+
+  it("patches the recurring series IndexedDB query cache by id", () => {
+    const queryClient = new QueryClient();
+    const spaceId = "space-a";
+    const recurringKey = ["recurringSeries", spaceId] as const;
+
+    queryClient.setQueryData(recurringKey, [
+      {
+        ...baseRow,
+        id: "install-1",
+        date: "2026-09-01",
+        amount: 10_000,
+        installmentTotal: 240_000,
+      },
+    ]);
+
+    upsertIndexTransactionsIntoQueryCaches(queryClient, {
+      spaceId,
+      transactions: [
+        {
+          ...baseRow,
+          id: "install-1",
+          date: "2026-09-01",
+          amount: 12_500,
+          installmentTotal: 300_000,
+        },
+      ],
+    });
+
+    const next = queryClient.getQueryData<Array<{ amount: number; installmentTotal?: number }>>(
+      recurringKey,
+    );
+    expect(next?.[0]?.amount).toBe(12_500);
+    expect(next?.[0]?.installmentTotal).toBe(300_000);
+  });
 });

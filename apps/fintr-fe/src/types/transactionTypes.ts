@@ -1,4 +1,7 @@
-import { UpdateScopeEnum } from "@/constants/transactionConstants";
+import {
+  ScheduleTypeEnum,
+  UpdateScopeEnum,
+} from "@/constants/transactionConstants";
 import type { TransactionTag } from "@/types/transactionTagTypes";
 
 /** Currency conversion details when a transaction used a different currency. */
@@ -34,6 +37,18 @@ export interface IndexTransaction {
   toAccountName: string;
   type: CombinedTransactionTypeEnum;
   inSeries: boolean;
+  /** Set on repeat/installment children; parent row may omit this. */
+  parentId?: string | null;
+  scheduleType?: ScheduleTypeEnum | string;
+  repeatInterval?: string | null;
+  /** Total months for installment schedules (always stored as months). */
+  installmentPeriod?: number | null;
+  /** Full installment obligation stored on the series parent. */
+  installmentTotal?: number | null;
+  /** Root installment start date (client-resolved for plan revision previews). */
+  seriesParentDate?: string | null;
+  /** Root of the recurring/installment series (parent id for children). */
+  rootParentId?: string | null;
   hasImage: boolean;
   hasLoanPayment?: boolean;
   calculated?: boolean;
@@ -65,6 +80,10 @@ export interface IndexActivity {
   toAccountName: string;
   type: ActivitiesTypeEnum;
   inSeries: boolean;
+  parentId?: string | null;
+  scheduleType?: ScheduleTypeEnum | string;
+  repeatInterval?: string | null;
+  rootParentId?: string | null;
   hasImage: boolean;
   hasLoanPayment?: boolean;
   calculated?: boolean;
@@ -112,14 +131,17 @@ export interface UpdateTransactionType {
   subcategoryId?: string | null;
   subcategoryName?: string | null;
   accountName: string;
+  accountId?: string;
   /** Explicit form type sent to API: "income" or "expense" */
   transactionType: "income" | "expense";
   type: CombinedTransactionTypeEnum;
   scheduleType: ScheduleTypeEnum;
   repeatInterval: string;
   installmentPeriod: number;
+  installmentTotal?: number | null;
   file: File | null;
   entityName?: string;
+  entityId?: string;
   tagIds?: string[];
   updateScope?: UpdateScopeEnum;
   hasCurrencyConversion?: boolean;
@@ -129,6 +151,8 @@ export interface UpdateTransactionType {
 export interface TransferUpdateTransactionType extends UpdateTransactionType {
   fromAccountName: string;
   toAccountName: string;
+  fromAccountId?: string;
+  toAccountId?: string;
   transactionCost: number;
   hasCurrencyConversion?: boolean;
   currencyConversion?: CurrencyConversionType;

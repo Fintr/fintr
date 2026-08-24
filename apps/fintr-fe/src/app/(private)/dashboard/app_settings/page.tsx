@@ -13,6 +13,7 @@ import {
   Wallet,
   Contact,
   Tags,
+  Repeat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -125,6 +126,11 @@ export default function AppSettingsPage() {
           title: "Loans",
           icon: FileText,
           href: "/dashboard/loans",
+        },
+        {
+          title: "Recurring",
+          icon: Repeat,
+          href: "/dashboard/recurring",
         },
         {
           title: "Categories",

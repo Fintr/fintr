@@ -12,8 +12,10 @@ function getDefaultValue(path: string) {
 
   if (path.includes("/dashboard/home")) {
     defaultValue = "home";
-  } else if (path.includes("/dashboard/budgets")) {
+  } else   if (path.includes("/dashboard/budgets")) {
     defaultValue = "budgets";
+  } else if (path.includes("/dashboard/recurring")) {
+    defaultValue = "recurring";
   } else if (path.includes("/dashboard/loans")) {
     defaultValue = "loans";
   } else if (path.includes("/dashboard/goals")) {

@@ -612,6 +612,47 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
 
         expect(result.map(&:transactable)).to contain_exactly(transfer_s1_feb10)
       end
+
+      it 'returns only recurring transactions when entry_type is recurring' do
+        recurring_expense = create(
+          :expense_transaction,
+          :repeat,
+          space: space1,
+          account: account1_s1,
+          category: category1_s1,
+          date: Date.new(2024, 1, 10),
+          amount_cents: 1200,
+        )
+        one_time_expense = create(
+          :expense_transaction,
+          :one_time,
+          space: space1,
+          account: account1_s1,
+          category: category1_s1,
+          date: Date.new(2024, 1, 11),
+          amount_cents: 900,
+        )
+        recurring_transfer = create(
+          :transfer,
+          space: space1,
+          from_account: account1_s1,
+          to_account: account2_s1,
+          date: Date.new(2024, 2, 11),
+          amount_cents: 300,
+          schedule_type: 'repeat',
+          repeat_interval: 'every_month',
+          repeat_count: 2,
+        )
+
+        params = default_params.merge(entry_type: 'recurring')
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(
+          recurring_expense,
+          recurring_transfer,
+        )
+        expect(result.map(&:transactable)).not_to include(one_time_expense)
+      end
     end
   end
 end

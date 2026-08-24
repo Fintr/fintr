@@ -15,7 +15,8 @@ import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { PhilippinesTaxCalculator } from "../../ui/philippines-tax-calculator";
 import { format, endOfMonth } from "date-fns";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { incomeCategoryOptionsAtom, accountOptionsAtom } from "@/atoms/dashboardAtoms";
+import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import * as z from "zod"; 
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
@@ -157,7 +158,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   prefillAmount,
   onPrefillAmountChange,
 }) => {
-  const categoryOptionsRaw = useAtomValue(incomeCategoryOptionsAtom);
+  const { incomeCategoryOptions: categoryOptionsRaw } = useTransactionCategories();
   const { tags: availableTags, createTag } = useTransactionTags();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     () => initialData?.tags?.map((tag) => tag.id) ?? initialData?.tagIds ?? [],
@@ -811,7 +812,8 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           {
             spaceId: spaceCode,
             data: transactionData,
-            amountCurrency: effectiveSpaceCurrency,
+            entryCurrency: amountCurrency,
+            spaceCurrency: effectiveSpaceCurrency,
           },
           {
             queryClient,

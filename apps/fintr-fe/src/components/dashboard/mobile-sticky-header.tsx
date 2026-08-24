@@ -10,6 +10,10 @@ import {
   CategoryKind,
   findRootCategory,
 } from "@/utils/categoryManagement";
+import { shouldShowImmediateBackButton } from "@/lib/dashboard-back-button-routes";
+import { useDetailPushExit } from "@/components/dashboard/detail-push-transition";
+
+export { shouldShowImmediateBackButton };
 
 interface MobileStickyHeaderProps {
   title?: string;
@@ -82,24 +86,6 @@ const getPageTitle = (pathname: string): string => {
   return "Dashboard";
 };
 
-/** Nested settings routes show back immediately (no scroll required). */
-export const shouldShowImmediateBackButton = (pathname: string): boolean => {
-  const immediateBackPrefixes = [
-    "/dashboard/space_settings/accounts/detail",
-    "/dashboard/space_settings/categories",
-    "/dashboard/space_settings/tags",
-    "/dashboard/space_settings/accounts",
-    "/dashboard/space_settings/entities/detail",
-    "/dashboard/space_settings/entities",
-    "/dashboard/transactions/detail",
-    "/dashboard/space_settings/import",
-    "/dashboard/space_settings/subscriptions",
-    "/dashboard/loans",
-  ];
-
-  return immediateBackPrefixes.some((prefix) => pathname.startsWith(prefix));
-};
-
 function MobileStickyHeaderContent({ title }: MobileStickyHeaderProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -154,8 +140,12 @@ function MobileStickyHeaderContent({ title }: MobileStickyHeaderProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const { requestExit } = useDetailPushExit();
+
   const handleBack = () => {
-    router.back();
+    requestExit(() => {
+      router.back();
+    });
   };
 
   // Android native: padding-top comes from globals.css (android-sticky-header-inset-top) so it

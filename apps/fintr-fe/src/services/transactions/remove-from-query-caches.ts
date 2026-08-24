@@ -4,6 +4,7 @@ import { ACCOUNT_DETAIL_ACTIVITIES_KEY } from "@/hooks/async/useAccountDetailAct
 import { computeLocalTransactionTotals } from "@/services/transactions/local-cache";
 import {
   parseTransactionListFilterFromQueryKey,
+  patchRecurringSeriesQueryCaches,
   transactionMatchesListFilter,
   type IndexTransactionWithCategoryIds,
 } from "@/services/transactions/upsert-into-query-caches";
@@ -280,6 +281,10 @@ export const removeIndexTransactionsFromQueryCaches = (
   );
 
   removeFromDashboardTransactionCaches(queryClient, {
+    spaceId,
+    removedIds: Array.from(idSet),
+  });
+  patchRecurringSeriesQueryCaches(queryClient, {
     spaceId,
     removedIds: Array.from(idSet),
   });

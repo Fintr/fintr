@@ -160,3 +160,13 @@ export const markSpaceTransactionIndexComplete = async (
     value: true,
   });
 };
+
+export const resetSpaceTransactionIndexComplete = async (
+  spaceId: string,
+): Promise<void> => {
+  if (!spaceId) {
+    return;
+  }
+
+  await getLocalDb().meta.delete(`transactionsIndexComplete:${spaceId}`);
+};

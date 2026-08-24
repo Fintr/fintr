@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { useSetAtom } from "jotai";
 
-import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
+import {
+  offlineReimportRequiredAtom,
+  offlineSyncReadyAtom,
+} from "@/atoms/offlineSyncAtoms";
 import { backfillSyncCursorHint } from "@/lib/local-db/sync-cursor";
 import {
   backfillOfflineSyncReadyHint,
-  readOfflineSyncReadyHint,
-  shouldRunFullOfflineSync,
+  resolveOfflineSyncBootstrapState,
 } from "@/lib/local-db/sync-state";
 import { isSpaceSyncPullEnabled } from "@/lib/space-sync-feature-flag";
 
@@ -27,27 +29,28 @@ const getPersistedSpaceCode = (): string => {
 /** Hydrate offline-read mode from IndexedDB before hooks mount. */
 export const useHydrateOfflineSyncReady = () => {
   const setOfflineSyncReady = useSetAtom(offlineSyncReadyAtom);
+  const setOfflineReimportRequired = useSetAtom(offlineReimportRequiredAtom);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     void (async () => {
-      if (readOfflineSyncReadyHint()) {
-        setOfflineSyncReady(true);
+      const spaceCode = getPersistedSpaceCode();
+      const bootstrapState = await resolveOfflineSyncBootstrapState(
+        spaceCode || undefined,
+      );
+
+      setOfflineReimportRequired(bootstrapState.requiresReimport);
+
+      if (bootstrapState.requiresReimport) {
+        setOfflineSyncReady(false);
         return;
       }
 
-      const needsFullSync = await shouldRunFullOfflineSync();
-      setOfflineSyncReady(!needsFullSync);
+      setOfflineSyncReady(true);
+      await backfillOfflineSyncReadyHint(spaceCode || undefined);
 
-      if (!needsFullSync) {
-        await backfillOfflineSyncReadyHint();
-
-        if (isSpaceSyncPullEnabled()) {
-          const spaceCode = getPersistedSpaceCode();
-          if (spaceCode) {
-            await backfillSyncCursorHint(spaceCode);
-          }
-        }
+      if (isSpaceSyncPullEnabled() && spaceCode) {
+        await backfillSyncCursorHint(spaceCode);
       }
     })();
-  }, [setOfflineSyncReady]);
+  }, [setOfflineReimportRequired, setOfflineSyncReady]);
 };

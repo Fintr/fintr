@@ -84,7 +84,7 @@ module Api
         private
 
         def create_params
-          params.permit(:name, :color)
+          params.permit(:id, :name, :color)
         end
 
         def update_params

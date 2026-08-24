@@ -2,9 +2,13 @@ import {
   getLocalResponseSnapshot,
   putLocalResponseSnapshot,
 } from "./response-cache";
-import { isSpaceTransactionIndexComplete } from "./transactions";
+import type { MonthlyFinancialSummary } from "@/services/monthly-financial-summaries/types";
+import {
+  countSpaceTransactions,
+  isSpaceTransactionIndexComplete,
+} from "./transactions";
 
-export const OFFLINE_SYNC_VERSION = 11;
+export const OFFLINE_SYNC_VERSION = 12;
 
 const OFFLINE_SYNC_META_KEY = "offlineSyncMeta";
 const OFFLINE_SYNC_READY_HINT_KEY = "fintr:offlineSyncReadyVersion";
@@ -21,6 +25,18 @@ export const readOfflineSyncReadyHint = (): boolean => {
     );
   } catch {
     return false;
+  }
+};
+
+export const clearOfflineSyncReadyHint = (): void => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(OFFLINE_SYNC_READY_HINT_KEY);
+  } catch {
+    // Ignore quota / private mode errors.
   }
 };
 
@@ -82,14 +98,52 @@ export const getUnsyncedSpaceCodes = async (
   return spaceCodes.filter((code) => code && !synced.has(code));
 };
 
-export const backfillOfflineSyncReadyHint = async (): Promise<void> => {
+export const backfillOfflineSyncReadyHint = async (
+  spaceCode?: string,
+): Promise<void> => {
   if (readOfflineSyncReadyHint()) {
     return;
   }
 
-  if (!(await shouldRunFullOfflineSync())) {
-    writeOfflineSyncReadyHint();
+  if (await shouldRunFullOfflineSync()) {
+    return;
   }
+
+  if (spaceCode && !(await isOfflineSpaceCacheComplete(spaceCode))) {
+    return;
+  }
+
+  writeOfflineSyncReadyHint();
+};
+
+export type OfflineSyncBootstrapState = {
+  needsFullSync: boolean;
+  spaceCacheComplete: boolean;
+  requiresReimport: boolean;
+};
+
+/**
+ * Decide whether the user must see the full offline import screen.
+ * Clears a stale localStorage ready-hint when IndexedDB was wiped manually.
+ */
+export const resolveOfflineSyncBootstrapState = async (
+  spaceCode?: string,
+): Promise<OfflineSyncBootstrapState> => {
+  const needsFullSync = await shouldRunFullOfflineSync();
+  const spaceCacheComplete = spaceCode
+    ? await isOfflineSpaceCacheComplete(spaceCode)
+    : !needsFullSync;
+  const requiresReimport = needsFullSync || !spaceCacheComplete;
+
+  if (requiresReimport && readOfflineSyncReadyHint()) {
+    clearOfflineSyncReadyHint();
+  }
+
+  return {
+    needsFullSync,
+    spaceCacheComplete,
+    requiresReimport,
+  };
 };
 
 export const isOfflineSpaceCacheComplete = async (
@@ -99,7 +153,7 @@ export const isOfflineSpaceCacheComplete = async (
     return false;
   }
 
-  const summaries = await getLocalResponseSnapshot<unknown[]>(
+  const summaries = await getLocalResponseSnapshot<MonthlyFinancialSummary[]>(
     `monthlyFinancialSummaries:${spaceCode}`,
   );
   if (summaries === undefined) {
@@ -110,7 +164,24 @@ export const isOfflineSpaceCacheComplete = async (
     return false;
   }
 
-  return true;
+  const transactionCount = await countSpaceTransactions(spaceCode);
+  if (transactionCount > 0) {
+    return true;
+  }
+
+  const hasFinancialActivity = summaries.some((row) => {
+    const income = Number(row.totalIncome) || 0;
+    const expenses = Number(row.totalExpenses) || 0;
+
+    return income !== 0 || expenses !== 0;
+  });
+
+  if (!hasFinancialActivity) {
+    return true;
+  }
+
+  // Summaries imply activity but the transaction index is empty (partial wipe).
+  return false;
 };
 
 export const shouldRunFullOfflineSync = async (): Promise<boolean> => {

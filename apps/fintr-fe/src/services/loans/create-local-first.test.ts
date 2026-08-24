@@ -77,4 +77,48 @@ describe("createLoanLocalFirst", () => {
     resolveCreate({ data: { id: "loan-server-1" } });
     await result.syncPromise;
   });
+
+  it("replaces the optimistic local loan with the server id without duplicating list rows", async () => {
+    vi.mocked(createLoan).mockResolvedValue({ data: { id: "loan-server-1" } });
+
+    const queryClient = new QueryClient();
+    const result = await createLoanLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        data: {
+          principalAmount: 1500,
+          interestRate: 4,
+          date: "2026-03-01",
+          loanType: "borrowed",
+          entityName: "Mina",
+          accountName: "Cash",
+          loanTermMonths: 12,
+          description: "New bike",
+        },
+      },
+      { queryClient, waitForSync: false, amountCurrency: "PHP" },
+    );
+
+    const localId = result.data.id;
+    expect(localId.startsWith("local:")).toBe(true);
+
+    await result.syncPromise;
+
+    const readLoanIds = (
+      key: readonly unknown[],
+    ): string[] | undefined =>
+      queryClient
+        .getQueryData<{ pages: Array<{ loans: Array<{ id: string }> }> }>(key)
+        ?.pages.flatMap((page) => page.loans.map((loan) => loan.id));
+
+    expect(readLoanIds(["loans"])).toEqual(["loan-server-1"]);
+    expect(readLoanIds(["loans", "local", "space-a"])).toEqual([
+      "loan-server-1",
+    ]);
+
+    const stored = await loadCachedLoanSnapshot("space-a", "loan-server-1");
+    expect(stored?.entityName).toBe("Mina");
+    expect(await loadCachedLoanSnapshot("space-a", localId)).toBeUndefined();
+  });
 });

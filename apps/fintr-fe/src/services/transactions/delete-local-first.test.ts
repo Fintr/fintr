@@ -657,6 +657,54 @@ describe("deleteTransactionLocalFirst", () => {
     expect(rows.map((row) => row.id)).toEqual(["tx-past"]);
   });
 
+  it("expands this_and_future when the clicked child has stale inSeries false", async () => {
+    await seedExpense({
+      id: "tx-past",
+      date: "2026-07-01",
+      inSeries: false,
+    });
+    await seedExpense({
+      id: "tx-current",
+      date: "2026-08-08",
+      inSeries: false,
+    });
+    await seedExpense({
+      id: "tx-future",
+      date: "2026-09-08",
+      inSeries: true,
+    });
+    vi.mocked(deleteTransaction).mockResolvedValue({ success: true });
+
+    const listRow = {
+      id: "tx-current",
+      date: "2026-08-08",
+      description: "Lunch",
+      amount: 50,
+      amountCurrency: "PHP",
+      categoryName: "Food",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    };
+
+    const result = await deleteTransactionLocalFirst({} as never, {
+      spaceId: "space-a",
+      transactionId: "tx-current",
+      deleteScope: DeleteScopeEnum.THIS_AND_FUTURE,
+      listRow,
+    });
+
+    expect(result.removedIds.sort()).toEqual(["tx-current", "tx-future"]);
+    const rows = await loadCachedTransactionsInRange(
+      "space-a",
+      "2026-07-01",
+      "2026-09-30",
+    );
+    expect(rows.map((row) => row.id)).toEqual(["tx-past"]);
+  });
+
   it("optimistically removes loan payments before the network finishes", async () => {
     const payment = {
       id: "loan-pay-1",

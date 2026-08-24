@@ -42,7 +42,7 @@ export const loanListFilterEmptyMessage = (
     case "lent":
       return "No lent loans";
     case "paid_off":
-      return "No completed loans";
+      return "No completed or retired loans";
     default:
       return "No loans yet";
   }

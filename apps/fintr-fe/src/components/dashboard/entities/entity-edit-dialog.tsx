@@ -19,8 +19,10 @@ import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
 import { MerchantAvatar } from "@/components/ui/merchant-avatar";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { ENTITY_DETAIL_KEY } from "@/hooks/async/useEntityDetail";
 import { EntityRecord, type EntityIdentifier, updateEntity } from "@/services/entities/mutation";
+import { updateEntityLocalFirst } from "@/services/entities/update-local-first";
 import { EntityIdentifiersEditor } from "@/components/dashboard/entities/entity-identifiers-editor";
 import { extractFieldErrors, formatApiErrorMessage } from "@/utils/errorUtils";
 
@@ -43,6 +45,7 @@ export function EntityEditDialog({
 }: EntityEditDialogProps) {
   const { api } = useAuthApi();
   const queryClient = useQueryClient();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState(entity.fullName);
@@ -120,14 +123,32 @@ export function EntityEditDialog({
     setValidationErrors({});
 
     try {
-      await updateEntity(api, {
-        id: entity.id,
-        fullName: trimmedName,
-        photo: photoFile,
-        removePhoto,
-      });
+      const nameChanged = trimmedName !== entity.fullName;
+      const photoChanged = Boolean(photoFile) || removePhoto;
 
-      refreshEntityQueries();
+      if (nameChanged && !photoChanged) {
+        await updateEntityLocalFirst(
+          api,
+          {
+            spaceCode,
+            entityId: entity.id,
+            fullName: trimmedName,
+          },
+          {
+            queryClient,
+            waitForSync: false,
+          },
+        );
+      } else {
+        await updateEntity(api, {
+          id: entity.id,
+          fullName: trimmedName,
+          photo: photoFile,
+          removePhoto,
+        });
+        refreshEntityQueries();
+      }
+
       toast.success(`${entityLabel} updated`);
       onOpenChange(false);
       onSuccess?.();

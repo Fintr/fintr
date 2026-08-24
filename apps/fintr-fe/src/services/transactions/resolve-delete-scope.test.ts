@@ -6,8 +6,11 @@ import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
 import {
   collectIndexTransactionsFromQueryCaches,
+  enrichLedgerTransactionsForDisplay,
   resolveLinkedTransferFeeRows,
   resolveSeriesRowsForDeleteScope,
+  resolveTransactionInSeries,
+  resolveTransactionInSeriesForDisplay,
 } from "./resolve-delete-scope";
 
 const transfer = (params: {
@@ -40,6 +43,157 @@ const fee = (params: { id: string; date: string }) => ({
   type: CombinedTransactionTypeEnum.EXPENSE,
   inSeries: true,
   hasImage: false,
+});
+
+describe("resolveTransactionInSeries", () => {
+  it("returns true when the row has a parentId (series child)", () => {
+    const child = {
+      id: "child",
+      date: "2026-08-08",
+      description: "Recurring2",
+      amount: 100,
+      amountCurrency: "PHP",
+      categoryName: "Food",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      parentId: "parent-id",
+      hasImage: false,
+    };
+
+    expect(resolveTransactionInSeries(child, [child])).toBe(true);
+  });
+
+  it("returns true when a sibling with the same fingerprint is marked inSeries", () => {
+    const child = transfer({
+      id: "t-child",
+      date: "2026-08-08",
+      inSeries: false,
+    });
+    const parent = transfer({
+      id: "t-parent",
+      date: "2026-08-01",
+      inSeries: true,
+    });
+
+    expect(resolveTransactionInSeries(child, [child, parent])).toBe(true);
+  });
+
+  it("returns true when three rows share the fingerprint on different dates", () => {
+    const base = {
+      date: "2026-08-08",
+      description: "Recurring2",
+      amount: 100,
+      amountCurrency: "PHP",
+      categoryName: "Food",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    };
+
+    expect(
+      resolveTransactionInSeries(
+        { ...base, id: "aug" },
+        [
+          { ...base, id: "aug" },
+          { ...base, id: "sep", date: "2026-09-08" },
+          { ...base, id: "oct", date: "2026-10-08" },
+        ],
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false for unrelated one-time rows", () => {
+    const row = {
+      id: "one-a",
+      date: "2026-08-10",
+      description: "Starbucks",
+      amount: 200,
+      amountCurrency: "PHP",
+      categoryName: "Coffee",
+      fromAccountName: "BDO",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    };
+
+    expect(
+      resolveTransactionInSeries(row, [{ ...row, id: "one-b", date: "2026-08-09" }]),
+    ).toBe(false);
+  });
+
+  it("marks legacy fingerprint pairs as recurring for display only", () => {
+    const base = {
+      description: "Every week 1",
+      amount: 328.3,
+      amountCurrency: "PHP",
+      categoryName: "Church",
+      fromAccountName: "SAMPLE BDO LONG ASS NAME",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    };
+
+    const rows = [
+      { ...base, id: "aug-18", date: "2026-08-18" },
+      { ...base, id: "aug-25", date: "2026-08-25" },
+    ];
+
+    expect(resolveTransactionInSeries(rows[0]!, rows)).toBe(false);
+    expect(resolveTransactionInSeriesForDisplay(rows[0]!, rows)).toBe(true);
+  });
+
+  it("does not tag adjacent duplicate one-time rows for display", () => {
+    const row = {
+      id: "one-a",
+      date: "2026-08-10",
+      description: "Starbucks",
+      amount: 200,
+      amountCurrency: "PHP",
+      categoryName: "Coffee",
+      fromAccountName: "BDO",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    };
+
+    expect(
+      resolveTransactionInSeriesForDisplay(row, [{ ...row, id: "one-b", date: "2026-08-09" }]),
+    ).toBe(false);
+  });
+});
+
+describe("enrichLedgerTransactionsForDisplay", () => {
+  it("tags stale recurring rows and infers inSeries for the ledger", () => {
+    const base = {
+      description: "Recurring2",
+      amount: 82.07,
+      amountCurrency: "PHP",
+      categoryName: "Food",
+      fromAccountName: "SAMPLE BDO LONG ASS NAME",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    };
+
+    const rows = [
+      { ...base, id: "aug-18", date: "2026-08-18" },
+      { ...base, id: "aug-19", date: "2026-08-19" },
+      { ...base, id: "aug-20", date: "2026-08-20" },
+    ];
+
+    const enriched = enrichLedgerTransactionsForDisplay(rows);
+
+    expect(enriched.every((row) => row.inSeries)).toBe(true);
+    expect(enriched[0]?.scheduleType).toBe("repeat");
+  });
 });
 
 describe("resolveSeriesRowsForDeleteScope", () => {

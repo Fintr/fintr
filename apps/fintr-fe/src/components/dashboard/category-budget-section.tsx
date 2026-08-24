@@ -2,18 +2,18 @@
 
 import React, { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Button } from "@/components/ui/button";
+import { CustomModal } from "@/components/ui/custom-modal";
 import { BudgetProgress } from "@/components/dashboard/insights/budget-usage-bar";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import { useAtomValue } from "jotai";
-import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
 import {
   enrichCategoriesWithSubcategoryTree,
+  findBudgetCategoryForParent,
   transformBudgetsToCategories,
 } from "@/services/budgets/queries";
 import { BudgetCategory } from "@/types/budgetTypes";
-import { formatCurrency, getProgressColor } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import { EditBudgetForm } from "@/components/dashboard/tabs/budgets/edit-budget-form";
 import { CategoryTreeOption } from "@/types/categoryTreeTypes";
@@ -68,7 +68,6 @@ export function CategoryBudgetSection({
   spaceCurrency,
 }: CategoryBudgetSectionProps) {
   const { firstDay, lastDay } = getCurrentMonthDates();
-  const monthLabel = format(new Date(firstDay), "MMMM yyyy");
 
   const {
     data: budgetsData,
@@ -78,8 +77,8 @@ export function CategoryBudgetSection({
     createBudgetMutation,
   } = useBudgetsData(firstDay, lastDay);
 
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  const [isEditing, setIsEditing] = useState(false);
+  const { expenseCategoryOptions } = useTransactionCategories();
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const budgetCategory = useMemo(() => {
     if (!budgetsData?.budgets) {
@@ -95,7 +94,11 @@ export function CategoryBudgetSection({
       transformed,
       expenseCategoryOptions,
     );
-    const found = enriched.find((row) => row.categoryId === categoryId);
+    const found = findBudgetCategoryForParent(
+      enriched,
+      categoryId,
+      categoryName,
+    );
 
     return buildBudgetCategoryFromParent(
       categoryId,
@@ -124,141 +127,85 @@ export function CategoryBudgetSection({
     isItemOverBudget = true;
   }
 
-  const formattedItemPercentage = budgetPercentage.toFixed(1);
-
   const handleSaveSuccess = () => {
-    setIsEditing(false);
+    setEditorOpen(false);
   };
 
-  return (
-    <section className="space-y-3 rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Budget
-          </h2>
-          <p className="text-xs text-muted-foreground">{monthLabel}</p>
-        </div>
-        {!isEditing && hasBudget ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8"
-            onClick={() => setIsEditing(true)}
-          >
-            Edit
-          </Button>
-        ) : null}
-      </div>
+  const compactLabel = `${format(new Date(firstDay), "MMMM")} budget`;
 
+  return (
+    <section>
       {isLoading ? (
-        <div className="flex justify-center py-6">
+        <div className="flex justify-center py-4">
           <LoadingSpinner size="small" />
         </div>
       ) : isError ? (
         <p className="text-sm text-red-900 dark:text-red-400">
           Could not load budget for this month.
         </p>
-      ) : isEditing || !hasBudget ? (
-        <EditBudgetForm
-          budget={budgetCategory}
-          budgetsData={budgetsData}
-          updateBudgetMutation={updateBudgetMutation}
-          createBudgetMutation={createBudgetMutation}
-          budgetMonthDate={firstDay}
-          spaceCurrency={spaceCurrency}
-          hideCategory
-          onCancel={hasBudget ? () => setIsEditing(false) : undefined}
-          onSuccess={handleSaveSuccess}
-        />
       ) : (
-        <div className="space-y-3">
-          <div>
-            <div className="flex items-center justify-between text-sm font-medium mb-2">
-              <span className="text-primary">Total</span>
-              <span>
-                <span
-                  className={
-                    isItemOverBudget
-                      ? "text-[oklch(39.6%_0.141_25.723)]"
-                      : "text-primary"
-                  }
-                >
-                  {formatCurrency(budgetCategory.spent, spaceCurrency)}
-                </span>
-                <span className="text-primary/70">
-                  {" "}
-                  / {formatCurrency(budgetCategory.budget, spaceCurrency)}
-                </span>
-                <span
-                  className={`ml-2 ${getProgressColor(budgetPercentage, "font")}`}
-                >
-                  ({formattedItemPercentage}%)
-                </span>
-              </span>
-            </div>
+        <button
+          type="button"
+          className="w-full rounded-lg border border-border bg-card px-4 py-3 text-left"
+          aria-label={compactLabel}
+          onClick={() => setEditorOpen(true)}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm text-muted-foreground">{compactLabel}</span>
+            <span className="text-sm font-medium text-primary">
+              {hasBudget ? (
+                <>
+                  <span
+                    className={
+                      isItemOverBudget
+                        ? "text-[oklch(39.6%_0.141_25.723)]"
+                        : "text-primary"
+                    }
+                  >
+                    {formatCurrency(budgetCategory.spent, spaceCurrency)}
+                  </span>
+                  <span className="text-primary/70">
+                    {" "}
+                    / {formatCurrency(budgetCategory.budget, spaceCurrency)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-primary">Set budget</span>
+              )}
+            </span>
+          </div>
+          {hasBudget ? (
             <BudgetProgress
               usagePercentage={budgetPercentage}
-              className="h-2 bg-muted"
+              className="mt-2 h-1.5 bg-muted"
             />
-          </div>
-
-          {budgetCategory.subcategories.length > 0 && (
-            <div className="space-y-2 border-t pt-3">
-              {(budgetCategory.parentOnlySpent ?? 0) > 0 && (
-                <div className="flex items-center justify-between text-sm pl-3">
-                  <span className="font-medium text-primary/80">Parent only</span>
-                  <span className="text-primary/70">
-                    {formatCurrency(
-                      budgetCategory.parentOnlySpent ?? 0,
-                      spaceCurrency,
-                    )}
-                  </span>
-                </div>
-              )}
-              {budgetCategory.subcategories.map((sub) => {
-                const subPercentage =
-                  sub.budget > 0
-                    ? (sub.spent / sub.budget) * 100
-                    : sub.spent > 0
-                      ? 100
-                      : 0;
-
-                return (
-                  <div key={sub.subcategoryId ?? sub.name} className="space-y-1 pl-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-primary/80">
-                        {sub.subcategoryName ?? sub.name}
-                      </span>
-                      <span className="text-primary/70">
-                        {formatCurrency(sub.spent, spaceCurrency)}
-                        {sub.id ? (
-                          <>
-                            {" / "}
-                            {formatCurrency(sub.budget, spaceCurrency)}
-                          </>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            {" "}
-                            · No budget set
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    {sub.id || sub.spent > 0 ? (
-                      <BudgetProgress
-                        usagePercentage={subPercentage}
-                        className="h-1.5 bg-muted/60"
-                      />
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+          ) : null}
+        </button>
       )}
+
+      <CustomModal
+        isOpen={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        title="Edit Budget"
+        maxWidth="lg"
+        className="p-0"
+      >
+        <div className="px-6 pb-6">
+          {editorOpen ? (
+            <EditBudgetForm
+              budget={budgetCategory}
+              budgetsData={budgetsData}
+              updateBudgetMutation={updateBudgetMutation}
+              createBudgetMutation={createBudgetMutation}
+              budgetMonthDate={firstDay}
+              spaceCurrency={spaceCurrency}
+              hideCategory
+              onCancel={() => setEditorOpen(false)}
+              onSuccess={handleSaveSuccess}
+            />
+          ) : null}
+        </div>
+      </CustomModal>
     </section>
   );
 }

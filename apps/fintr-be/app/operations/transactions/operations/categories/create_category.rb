@@ -9,6 +9,7 @@ module Transactions
             required(:space_id).filled(:string)
             required(:name).filled(:string)
             required(:category_type).filled(:string)
+            optional(:id).maybe(:string)
             optional(:parent_id).maybe(:string)
             optional(:icon).maybe(:string)
             optional(:color).maybe(:string)
@@ -41,6 +42,8 @@ module Transactions
           category = Transactions::Category.find_or_initialize_by(attrs)
 
           if category.new_record?
+            category.id = params[:id] if params[:id].present?
+
             appearance = Transactions::CategoryAppearance.resolve(
               name: params[:name],
               category_type: params[:category_type],

@@ -231,6 +231,22 @@ export const fetchTransactionById = async (
   }
 };
 
+export const materializeTransactionSeries = async (
+  api: AxiosInstance,
+  transactionId: string,
+): Promise<unknown[]> => {
+  const response = await api.post(`/transactions/${transactionId}/materialize_series`);
+  const payload = response.data?.data;
+  if (Array.isArray(payload?.transactions)) {
+    return payload.transactions;
+  }
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  return [];
+};
+
 /**
  * Generates and downloads a CSV file of transactions based on provided filters.
  *

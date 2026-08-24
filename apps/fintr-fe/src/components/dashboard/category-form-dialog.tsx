@@ -68,9 +68,28 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
-  const setIsOpen = isControlled
-    ? (open: boolean) => controlledOnOpenChange?.(open)
-    : setInternalOpen;
+
+  const releaseBodyPointerLock = () => {
+    document.body.style.pointerEvents = "";
+  };
+
+  const setIsOpen = (open: boolean) => {
+    if (isControlled) {
+      controlledOnOpenChange?.(open);
+    } else {
+      setInternalOpen(open);
+    }
+
+    if (!open) {
+      releaseBodyPointerLock();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      releaseBodyPointerLock();
+    };
+  }, []);
 
   const resolvedCategoryType =
     category?.categoryType ?? categoryType ?? CategoryTypeEnum.EXPENSE;
@@ -187,7 +206,6 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
   const handleCancel = () => {
     setCategoryName(category?.name || "");
     setIsOpen(false);
-    document.body.style.pointerEvents = "";
   };
 
   const isSubcategoryCreate = !category && Boolean(parentId);

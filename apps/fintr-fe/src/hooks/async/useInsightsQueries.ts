@@ -3,10 +3,7 @@ import { useAtomValue } from "jotai";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { currentSpaceAtom } from "@/atoms/spaceAtoms";
 import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
-import {
-  expenseCategoryOptionsAtom,
-  incomeCategoryOptionsAtom,
-} from "@/atoms/dashboardAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { useBrowserOnline } from "@/hooks/useOfflineReadMode";
 import { useLocalStorage } from "../useLocalStorage";
 import { InsightsQueryParams } from "@/services/insights/fetchers";
@@ -18,7 +15,8 @@ import { insightsSummaryFromMonthlyBuckets } from "@/services/insights/from-mont
 import { resolveMonthlySummariesForInsights } from "@/services/monthly-financial-summaries/local-cache";
 import { mapApiCategoryTree } from "@/utils/categoryTreeOptions";
 import type { CategoryTreeOption } from "@/types/categoryTreeTypes";
-import { loadCachedDashboardShell } from "@/services/monthly-financial-summaries/local-cache";
+import { loadCachedTransactionCategoriesResponse } from "@/services/transactions/categories/local-cache";
+import { extractCategoryTrees } from "@/services/transactions/categories/category-cache-ops";
 import type { OfflineInsightsBundle } from "@/services/insights/offline-calculations";
 
 interface UseInsightsQueriesParams extends InsightsQueryParams {}
@@ -63,18 +61,16 @@ const resolveInsightsCategoryOptions = async (
     return categoryOptions;
   }
 
-  const shell = await loadCachedDashboardShell(spaceCode);
+  const shell = await loadCachedTransactionCategoriesResponse(spaceCode);
   if (!shell) {
     return categoryOptions;
   }
 
+  const trees = extractCategoryTrees(shell);
+
   return {
-    expense: mapApiCategoryTree(
-      shell.expenseCategoryOptions as Array<Record<string, unknown>>,
-    ),
-    income: mapApiCategoryTree(
-      shell.incomeCategoryOptions as Array<Record<string, unknown>>,
-    ),
+    expense: mapApiCategoryTree(trees.expenseCategories),
+    income: mapApiCategoryTree(trees.incomeCategories),
   };
 };
 
@@ -174,8 +170,10 @@ export const useInsightsQueries = (params: UseInsightsQueriesParams = {}) => {
     || "";
   const isOnline = useBrowserOnline();
   const offlineSyncReady = useAtomValue(offlineSyncReadyAtom);
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
+  const {
+    expenseCategoryOptions,
+    incomeCategoryOptions,
+  } = useTransactionCategories();
   const apiParams = useMemo(() => buildInsightsApiParams(params), [params]);
   const isBusiness = currentSpace?.isOrganization ?? false;
   const currency = currentSpace?.currency ?? "PHP";

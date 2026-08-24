@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
 import { getLocalDb, resetLocalDbForTests } from "@/lib/local-db";
+import { replaceSpaceAccounts } from "@/lib/local-db/accounts";
+import { cacheEntitiesResponse } from "@/services/entities/local-cache";
 import { loadCachedTransactionsInRange } from "@/services/transactions/local-cache";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
@@ -122,6 +124,54 @@ describe("createTransactionLocalFirst", () => {
       .equals("pending")
       .count();
     expect(pending).toBe(1);
+  });
+
+  it("resolves account and merchant ids from local caches when creating offline", async () => {
+    vi.mocked(createTransaction).mockRejectedValue(
+      new Error("Failed to create transaction"),
+    );
+    await replaceSpaceAccounts("space-a", [
+      {
+        id: "acc-cash",
+        name: "Cash",
+        balance: "0",
+        balanceCurrency: "PHP",
+        accountCategory: "cash",
+      },
+    ]);
+    await cacheEntitiesResponse("space-a", [
+      {
+        id: "ent-jollibee",
+        fullName: "Jollibee",
+        entityType: "transaction",
+      },
+    ]);
+
+    const result = await createTransactionLocalFirst({} as never, {
+      spaceId: "space-a",
+      data: {
+        amount: 1,
+        description: "Make subcat",
+        transactionType: "expense",
+        categoryName: "A1",
+        accountName: "Cash",
+        entityName: "Jollibee",
+        date: "2026-08-17",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+      },
+    });
+
+    expect(result.localTransaction.accountId).toBe("acc-cash");
+    expect(result.localTransaction.fromAccountId).toBe("acc-cash");
+    expect(result.localTransaction.entityId).toBe("ent-jollibee");
+
+    const rows = await loadCachedTransactionsInRange(
+      "space-a",
+      "2026-08-01",
+      "2026-08-31",
+    );
+    expect(rows[0]?.accountId).toBe("acc-cash");
+    expect(rows[0]?.entityId).toBe("ent-jollibee");
   });
 
   it("writes local repeat children offline and keeps them pending sync", async () => {
@@ -470,7 +520,8 @@ describe("createTransactionLocalFirst", () => {
   it("converts optimistic FX amount into space currency for list display", () => {
     const row = buildOptimisticIndexTransaction({
       id: "local:fx",
-      amountCurrency: "PHP",
+      entryCurrency: "GBP",
+      spaceCurrency: "PHP",
       data: {
         amount: 200,
         description: "Starbucks",
@@ -494,7 +545,8 @@ describe("createTransactionLocalFirst", () => {
   it("leaves same-currency creates unconverted", () => {
     const row = buildOptimisticIndexTransaction({
       id: "local:same",
-      amountCurrency: "PHP",
+      entryCurrency: "PHP",
+      spaceCurrency: "PHP",
       data: {
         amount: 200,
         description: "Local coffee",
@@ -510,6 +562,28 @@ describe("createTransactionLocalFirst", () => {
     expect(row.amountCurrency).toBe("PHP");
     expect(row.bookedAmount).toBeUndefined();
     expect(row.bookedAmountCurrency).toBeUndefined();
+  });
+
+  it("keeps installment entry currency on optimistic rows when not converting", () => {
+    const rows = buildOptimisticSeriesTransactions({
+      clientMutationId: "cid-install-gbp",
+      entryCurrency: "GBP",
+      spaceCurrency: "PHP",
+      data: {
+        amount: 24000,
+        description: "INSTALL5",
+        transactionType: "expense",
+        categoryName: "Home",
+        accountName: "SAMPLE BDO LONG ASS NAME",
+        date: "2026-08-01",
+        scheduleType: ScheduleTypeEnum.INSTALLMENT,
+        installmentPeriod: 24,
+      },
+    });
+
+    expect(rows[0]?.amount).toBe(1000);
+    expect(rows[0]?.amountCurrency).toBe("GBP");
+    expect(rows[1]?.amountCurrency).toBe("GBP");
   });
 
   it("marks optimistic rows calculated when date is on or before today", () => {
@@ -582,5 +656,47 @@ describe("createTransactionLocalFirst", () => {
     expect(calculatedByDate["2026-08-01"]).toBe(true);
     expect(calculatedByDate["2026-08-08"]).toBe(true);
     expect(calculatedByDate["2026-08-15"]).toBe(false);
+  });
+
+  it("stamps account and merchant ids from the create payload onto optimistic rows", () => {
+    const expense = buildOptimisticIndexTransaction({
+      id: "local:ids",
+      data: {
+        amount: 1,
+        description: "Make subcat",
+        transactionType: "expense",
+        categoryName: "A1",
+        accountName: "Cash",
+        accountId: "acc-cash",
+        entityName: "Jollibee",
+        entityId: "ent-jollibee",
+        date: "2026-08-17",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+      },
+    });
+
+    expect(expense.accountId).toBe("acc-cash");
+    expect(expense.fromAccountId).toBe("acc-cash");
+    expect(expense.toAccountId).toBeNull();
+    expect(expense.entityId).toBe("ent-jollibee");
+    expect(expense.entityName).toBe("Jollibee");
+
+    const income = buildOptimisticIndexTransaction({
+      id: "local:income-ids",
+      data: {
+        amount: 50,
+        description: "Payday",
+        transactionType: "income",
+        categoryName: "Salary",
+        accountName: "Cash",
+        accountId: "acc-cash",
+        date: "2026-08-17",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+      },
+    });
+
+    expect(income.accountId).toBe("acc-cash");
+    expect(income.toAccountId).toBe("acc-cash");
+    expect(income.fromAccountId).toBeNull();
   });
 });

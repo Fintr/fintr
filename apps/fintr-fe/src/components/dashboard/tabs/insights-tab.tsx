@@ -45,10 +45,7 @@ import {
   parseCategoryPickerValue,
 } from "@/types/categoryTreeTypes";
 import { useAtom, useAtomValue } from "jotai";
-import {
-  expenseCategoryOptionsAtom,
-  incomeCategoryOptionsAtom,
-} from "@/atoms/dashboardAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { CategoryFilterComboBox } from "@/components/ui/category-filter-combobox";
 import { DateFilterFields } from "@/components/ui/date-filter-fields";
 import { FilterSheet } from "@/components/ui/filter-sheet";
@@ -184,8 +181,10 @@ const InsightsTab = () => {
     }
     return map;
   }, [merchants]);
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
+  const {
+    expenseCategoryOptions,
+    incomeCategoryOptions,
+  } = useTransactionCategories();
   
   // Local state for filter type selector (single month vs predefined vs custom)
   const [filterTypeSelector, setFilterTypeSelector] =

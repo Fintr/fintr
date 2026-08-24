@@ -1,5 +1,10 @@
 import { atom } from 'jotai';
-import { getCurrentMonthDates, getMonthNumber, getMonthDateRange } from '@/utils/dateUtils';
+import {
+  clampEndDateToToday,
+  getCurrentMonthDates,
+  getMonthNumber,
+  getMonthDateRange,
+} from '@/utils/dateUtils';
 
 // Helper function to check if date range spans more than 1 month
 export function isMultiMonthRange(startDate: string, endDate: string): boolean {
@@ -76,7 +81,10 @@ export function monthYearToDateRange(
   
   return {
     startDate: startDateRange.startDate,
-    endDate: endDateRange.endDate,
+    endDate: clampEndDateToToday(
+      startDateRange.startDate,
+      endDateRange.endDate,
+    ),
   };
 }
 

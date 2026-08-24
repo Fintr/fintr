@@ -9,7 +9,6 @@ import {
 } from "@/types/transactionTypes";
 import {
   accountOptionsAtom,
-  incomeCategoryOptionsAtom,
 } from "@/atoms/dashboardAtoms";
 import IncomeForm from "./IncomeForm";
 
@@ -30,6 +29,26 @@ vi.mock("@/hooks/async/useTransactionTags", () => ({
 
 vi.mock("@/hooks/useInitializeDefaultTransactionTags", () => ({
   useInitializeDefaultTransactionTags: () => undefined,
+}));
+
+const { mockIncomeCategoryOptions } = vi.hoisted(() => ({
+  mockIncomeCategoryOptions: vi.fn(() => [] as Array<{
+    id: string;
+    label: string;
+    value: string;
+    name: string;
+    parentId: string | null;
+  }>),
+}));
+
+vi.mock("@/hooks/async/useTransactionCategories", () => ({
+  useTransactionCategories: () => ({
+    expenseCategoryOptions: [],
+    incomeCategoryOptions: mockIncomeCategoryOptions(),
+    expenseCategories: [],
+    incomeCategories: [],
+    createCategoryMutation: { mutateAsync: vi.fn(), isPending: false },
+  }),
 }));
 
 vi.mock("@/services/exchangeRates/resolve-auto-rates", () => ({
@@ -53,12 +72,19 @@ vi.mock("./GridPicker", () => ({
   default: ({
     label,
     value,
+    categories,
   }: {
     label: string;
     value: string;
+    categories?: { name?: string; label?: string }[];
   }) => (
     <div>
       {label}: {value}
+      {categories?.length ? (
+        <span data-testid={`${label}-options`}>
+          {categories.map((category) => category.name ?? category.label).join(",")}
+        </span>
+      ) : null}
     </div>
   ),
 }));
@@ -168,6 +194,15 @@ const gbpConvertedIncome = {
 describe("IncomeForm converted edit", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIncomeCategoryOptions.mockReturnValue([
+      {
+        id: "cat-salary",
+        label: "Salary",
+        value: "cat-salary",
+        name: "Salary",
+        parentId: null,
+      },
+    ]);
   });
 
   it("shows the original GBP amount and exchange rate, not space PHP", async () => {
@@ -182,18 +217,6 @@ describe("IncomeForm converted edit", () => {
         <JotaiProvider
           initialValues={[
             [accountOptionsAtom, phpOnlyAccounts],
-            [
-              incomeCategoryOptionsAtom,
-              [
-                {
-                  id: "cat-salary",
-                  label: "Salary",
-                  value: "cat-salary",
-                  name: "Salary",
-                  parentId: null,
-                },
-              ],
-            ],
           ]}
         >
           <IncomeForm
@@ -221,5 +244,59 @@ describe("IncomeForm converted edit", () => {
       "GBP",
     );
     expect(screen.getByTestId("edit-exchange-rate")).toHaveTextContent("100");
+  });
+});
+
+describe("IncomeForm category options", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIncomeCategoryOptions.mockReturnValue([
+      {
+        id: "cat-bonus",
+        label: "Bonus",
+        value: "cat-bonus",
+        name: "Bonus",
+        parentId: null,
+      },
+    ]);
+  });
+
+  it("uses the transaction categories list, not dashboard shell atoms", () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <JotaiProvider
+          initialValues={[
+            [accountOptionsAtom, phpOnlyAccounts],
+          ]}
+        >
+          <IncomeForm
+            id={gbpConvertedIncome.id}
+            initialData={{
+              ...gbpConvertedIncome,
+              categoryName: "Bonus",
+            }}
+            date={new Date("2026-08-12T00:00:00")}
+            setDate={vi.fn()}
+            spaceCurrency="PHP"
+            isEditMode
+            onSubmitSuccess={vi.fn()}
+            onCancel={vi.fn()}
+          />
+        </JotaiProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByTestId("Income Category-options")).toHaveTextContent(
+      "Bonus",
+    );
+    expect(
+      screen.getByTestId("Income Category-options"),
+    ).not.toHaveTextContent("Salary");
   });
 });

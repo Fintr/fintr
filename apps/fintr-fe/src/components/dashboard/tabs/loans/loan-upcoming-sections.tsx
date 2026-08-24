@@ -10,6 +10,8 @@ import {
   LoanUpcomingDeadline,
 } from "@/utils/loan-upcoming-deadlines";
 import { loanCounterparty, loanHeadline } from "@/utils/loanDisplay";
+import { buildLoanDetailHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
 
 type LoanUpcomingSectionsProps = {
   loans: Loan[];
@@ -156,7 +158,7 @@ export const LoanUpcomingSections = ({ loans }: LoanUpcomingSectionsProps) => {
   }
 
   const openLoan = (loanId: string) => {
-    router.push(`/dashboard/loans/detail?loanId=${loanId}`);
+    pushDashboardDetail(router, buildLoanDetailHref(loanId));
   };
 
   const recordPayment = (
@@ -164,7 +166,8 @@ export const LoanUpcomingSections = ({ loans }: LoanUpcomingSectionsProps) => {
     deadline: LoanUpcomingDeadline,
   ) => {
     event.stopPropagation();
-    router.push(
+    pushDashboardDetail(
+      router,
       `/dashboard/loans/detail?loanId=${deadline.loan.id}&recordPayment=1&prefillAmount=${deadline.paymentAmount}`,
     );
   };

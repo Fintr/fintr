@@ -40,6 +40,7 @@ module Api
 
       def create_params
         params.permit(
+          :id,
           :category_name,
           :category_id,
           :subcategory_id,

@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import CategoryDetailContent from "@/components/dashboard/category-detail-content";
 import { CategoryKind } from "@/utils/categoryManagement";
+import { resolveDetailSearchParam } from "@/utils/detailSearchParam";
 
 const CategoryDetailInner = () => {
   const searchParams = useSearchParams();
-  const categoryId = searchParams.get("categoryId") ?? "";
-  const kindParam = searchParams.get("kind");
+  const categoryId = resolveDetailSearchParam("categoryId", searchParams);
+  const kindParam = resolveDetailSearchParam("kind", searchParams);
   const kind: CategoryKind | null =
     kindParam === "income" || kindParam === "expense" ? kindParam : null;
 
@@ -30,7 +31,11 @@ const CategoryDetailInner = () => {
 
   return (
     <div className="min-h-screen bg-background px-2 pt-4 pb-24 md:pb-4">
-      <CategoryDetailContent categoryId={categoryId} kind={kind} />
+      <CategoryDetailContent
+        key={`${kind}-${categoryId}`}
+        categoryId={categoryId}
+        kind={kind}
+      />
     </div>
   );
 };

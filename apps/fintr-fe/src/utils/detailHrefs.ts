@@ -7,6 +7,11 @@ export const buildAccountDetailHref = (accountId: string) =>
 export const buildTransactionDetailHref = (transactionId: string) =>
   `/dashboard/transactions/detail?transactionId=${encodeURIComponent(transactionId)}`;
 
+export const buildRecurringSeriesDetailHref = (seriesId: string) =>
+  `/dashboard/recurring/detail?seriesId=${encodeURIComponent(seriesId)}`;
+
+export const buildRecurringHubHref = () => "/dashboard/recurring";
+
 export const buildLoanDetailHref = (loanId: string) =>
   `/dashboard/loans/detail?loanId=${encodeURIComponent(loanId)}`;
 

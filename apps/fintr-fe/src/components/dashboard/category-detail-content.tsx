@@ -3,7 +3,6 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,6 +26,8 @@ import { CategoryConversionType } from "@/types/categoryConversionTypes";
 import { CategoryBudgetSection } from "@/components/dashboard/category-budget-section";
 import { CategoryDetailTransactions } from "@/components/dashboard/category-detail-transactions";
 import { CategoryIconBadge } from "@/components/dashboard/category-icon-badge";
+import { CategorySubcategoryChips } from "@/components/dashboard/category-subcategory-chips";
+import { CategoryManageSubcategoriesSheet } from "@/components/dashboard/category-manage-subcategories-sheet";
 
 type CategoryDetailContentProps = {
   categoryId: string;
@@ -52,6 +53,7 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
     createCategoryMutation,
     updateCategoryMutation,
     deleteCategoryMutation,
+    convertCategoryMutation,
   } = useTransactionCategories();
 
   const tree = kind === "income" ? incomeCategories : expenseCategories;
@@ -65,6 +67,10 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
     null,
   );
   const [addSubcategoryOpen, setAddSubcategoryOpen] = useState(false);
+  const [manageSubcategoriesOpen, setManageSubcategoriesOpen] = useState(false);
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<
+    string | null
+  >(null);
   const [convertTarget, setConvertTarget] = useState<CategoryMenuItem | null>(
     null,
   );
@@ -108,12 +114,21 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
       categoryId: id,
       updateData,
     });
-    invalidateCategories();
   };
 
   const handleDelete = async (id: string) => {
     const response = await deleteCategoryMutation.mutateAsync(id);
-    invalidateCategories();
+    const deletedParentCategory = id === parent?.id;
+
+    if (deletedParentCategory) {
+      router.push("/dashboard/space_settings/categories");
+      return response;
+    }
+
+    if (selectedSubcategoryId === id) {
+      setSelectedSubcategoryId(null);
+    }
+
     return response;
   };
 
@@ -126,8 +141,20 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
   };
 
   const handleConverted = (redirectParentId: string) => {
-    invalidateCategories();
     router.push(buildCategoryDetailHref(redirectParentId, kind));
+  };
+
+  const handleConfirmConvert = async (input: {
+    conversionType: CategoryConversionType;
+    newParentId: string | null;
+  }) => {
+    const result = await convertCategoryMutation.mutateAsync({
+      categoryId: convertTarget?.id ?? categoryId,
+      conversionType: input.conversionType,
+      newParentId: input.newParentId,
+    });
+
+    return { redirectParentId: result.redirectParentId };
   };
 
   if (isLoading && !parent) {
@@ -167,6 +194,12 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
   const subcategories = parent.children ?? [];
   const kindLabel = kind === "income" ? "Income" : "Expense";
 
+  const visibleSubcategoryId =
+    selectedSubcategoryId
+    && subcategories.some((sub) => sub.id === selectedSubcategoryId)
+      ? selectedSubcategoryId
+      : null;
+
   return (
     <div className="max-w-2xl mx-auto px-2 pb-24 md:pb-8 space-y-6">
       <div className="flex items-start justify-between gap-3">
@@ -193,71 +226,25 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
           onEdit={(item) => setEditTarget(item)}
           onDelete={(item) => setDeleteTarget(item)}
           onAddSubcategory={() => setAddSubcategoryOpen(true)}
+          onManageSubcategories={
+            subcategories.length > 0
+              ? () => setManageSubcategoriesOpen(true)
+              : undefined
+          }
           onConvertToSubcategory={(item) =>
             openConversion(item, "to_subcategory")
           }
         />
       </div>
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Subcategories
-          </h2>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8"
-            onClick={() => setAddSubcategoryOpen(true)}
-          >
-            <Plus className="h-3.5 w-3.5 mr-1" />
-            Add
-          </Button>
-        </div>
-
-        {subcategories.length === 0 ? (
-          <div className="rounded-lg border border-border bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
-            No subcategories yet. Add one to organize transactions under{" "}
-            {parent.name}.
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {subcategories.map((sub) => (
-              <li
-                key={sub.id}
-                className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-muted/30 px-3 py-2"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <CategoryIconBadge
-                    icon={sub.icon}
-                    color={sub.color}
-                    size="sm"
-                  />
-                  <span className="text-sm text-foreground truncate">
-                    {sub.name}
-                  </span>
-                </div>
-                <CategoryActionsMenu
-                  item={{
-                    id: sub.id,
-                    name: sub.name,
-                    icon: sub.icon,
-                    color: sub.color,
-                  }}
-                  variant="subcategory"
-                  onEdit={(item) => setEditTarget(item)}
-                  onDelete={(item) => setDeleteTarget(item)}
-                  onConvertToParent={(item) =>
-                    openConversion(item, "to_parent")
-                  }
-                  triggerClassName="h-7 w-7"
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <CategorySubcategoryChips
+        subcategories={subcategories.map((sub) => ({
+          id: sub.id,
+          name: sub.name,
+        }))}
+        selectedSubcategoryId={visibleSubcategoryId}
+        onSelect={setSelectedSubcategoryId}
+      />
 
       {kind === "expense" ? (
         <CategoryBudgetSection
@@ -281,26 +268,45 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
         categoryName={parent.name}
         categoryKind={kind}
         spaceCurrency={currencyCode}
+        selectedSubcategoryId={visibleSubcategoryId}
         subcategories={subcategories.map((sub) => ({
           id: sub.id,
           name: sub.name,
         }))}
       />
 
-      {editTarget ? (
-        <CategoryFormDialog
-          category={editTarget}
-          onUpdate={handleUpdate}
-          isLoading={updateCategoryMutation.isPending}
-          trigger={<span className="hidden" />}
-          open={Boolean(editTarget)}
-          onOpenChange={(open) => {
-            if (!open) {
-              setEditTarget(null);
-            }
-          }}
-        />
-      ) : null}
+      <CategoryManageSubcategoriesSheet
+        open={manageSubcategoriesOpen}
+        onOpenChange={setManageSubcategoriesOpen}
+        parentName={parent.name}
+        subcategories={subcategories}
+        onEdit={(item) => {
+          setManageSubcategoriesOpen(false);
+          setEditTarget(item);
+        }}
+        onDelete={(item) => {
+          setManageSubcategoriesOpen(false);
+          setDeleteTarget(item);
+        }}
+        onConvertToParent={(item) => {
+          setManageSubcategoriesOpen(false);
+          openConversion(item, "to_parent");
+        }}
+      />
+
+      <CategoryFormDialog
+        category={editTarget ?? undefined}
+        onUpdate={handleUpdate}
+        isLoading={updateCategoryMutation.isPending}
+        trigger={<span className="hidden" />}
+        hideTrigger
+        open={Boolean(editTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditTarget(null);
+          }
+        }}
+      />
 
       {deleteTarget ? (
         <DeleteCategoryDialog
@@ -343,6 +349,7 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
           rootCategories={tree}
           currencyCode={currencyCode}
           onConverted={handleConverted}
+          onConfirmConvert={handleConfirmConvert}
         />
       ) : null}
     </div>

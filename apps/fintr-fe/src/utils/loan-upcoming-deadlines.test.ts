@@ -27,7 +27,7 @@ const createLoan = (overrides: Partial<Loan> = {}): Loan => ({
   maturityDate: "2025-01-01",
   status: "active",
   paidOffDate: null,
-  interestRate: 12,
+  interestRate: 0,
   entityName: "Bank",
   accountName: "Checking",
   principalAmount: 12_000,
@@ -45,33 +45,14 @@ const createLoan = (overrides: Partial<Loan> = {}): Loan => ({
 describe("loan-upcoming-deadlines", () => {
   it("returns the earliest unpaid installment from the amortization schedule", () => {
     const loan = createLoan({
-      amortizationSchedule: [
+      loanPayments: [
         {
-          paymentDate: "2024-02-01",
-          beginningBalance: 12_000,
-          paymentAmount: 1_060,
-          principalPayment: 940,
-          interestPayment: 120,
-          endingBalance: 11_060,
-          isActual: true,
-        },
-        {
-          paymentDate: "2024-03-01",
-          beginningBalance: 11_060,
-          paymentAmount: 1_060,
-          principalPayment: 949,
-          interestPayment: 111,
-          endingBalance: 10_111,
-          isActual: false,
-        },
-        {
-          paymentDate: "2024-04-01",
-          beginningBalance: 10_111,
-          paymentAmount: 1_060,
-          principalPayment: 958,
-          interestPayment: 102,
-          endingBalance: 9_153,
-          isActual: false,
+          id: "payment-1",
+          date: "2024-02-01",
+          principalPayment: 1_000,
+          interestPayment: 0,
+          totalPayment: 1_000,
+          currency: "PHP",
         },
       ],
     });
@@ -80,40 +61,24 @@ describe("loan-upcoming-deadlines", () => {
 
     expect(deadline).not.toBeNull();
     expect(toLocalDateString(deadline!.dueDate)).toBe("2024-03-01");
-    expect(deadline?.paymentAmount).toBe(1_060);
+    expect(deadline?.paymentAmount).toBe(1_000);
+    expect(deadline?.interestPayment).toBe(0);
+    expect(deadline?.principalPayment).toBe(1_000);
   });
 
   it("advances past a future installment after an early payment of that amount", () => {
     const loan = createLoan({
       entityName: "Bdo",
-      outstandingBalance: 908.5,
-      principalAmount: 920.91,
-      amortizationSchedule: [
-        {
-          paymentDate: "2026-09-11",
-          beginningBalance: 908.5,
-          paymentAmount: 12.25,
-          principalPayment: 10.41,
-          interestPayment: 1.84,
-          endingBalance: 898.09,
-          isActual: false,
-        },
-        {
-          paymentDate: "2026-10-11",
-          beginningBalance: 898.09,
-          paymentAmount: 12.25,
-          principalPayment: 10.5,
-          interestPayment: 1.75,
-          endingBalance: 887.59,
-          isActual: false,
-        },
-      ],
+      date: "2026-08-11",
+      maturityDate: "2027-08-11",
+      outstandingBalance: 134.75,
+      principalAmount: 147,
       loanPayments: [
         {
           id: "payment-1",
           date: "2026-08-14",
-          principalPayment: 10.41,
-          interestPayment: 1.84,
+          principalPayment: 12.25,
+          interestPayment: 0,
           totalPayment: 12.25,
           currency: "PLN",
         },
@@ -130,33 +95,15 @@ describe("loan-upcoming-deadlines", () => {
   it("advances past overdue projected installments after a catch-up payment", () => {
     const loan = createLoan({
       entityName: "Jerry Oquendo",
-      amortizationSchedule: [
-        {
-          paymentDate: "2026-07-18",
-          beginningBalance: 151_744.07,
-          paymentAmount: 16_847.77,
-          principalPayment: 15_000,
-          interestPayment: 1_847.77,
-          endingBalance: 136_744.07,
-          isActual: false,
-        },
-        {
-          paymentDate: "2026-08-18",
-          beginningBalance: 136_744.07,
-          paymentAmount: 16_847.77,
-          principalPayment: 15_100,
-          interestPayment: 1_747.77,
-          endingBalance: 121_644.07,
-          isActual: false,
-        },
-      ],
+      date: "2026-06-18",
+      maturityDate: "2027-06-18",
       loanPayments: [
         {
           id: "payment-1",
           date: "2026-08-11",
-          principalPayment: 15_000,
-          interestPayment: 1_847.77,
-          totalPayment: 16_847.77,
+          principalPayment: 1_000,
+          interestPayment: 0,
+          totalPayment: 1_000,
           currency: "PHP",
         },
       ],
@@ -166,38 +113,20 @@ describe("loan-upcoming-deadlines", () => {
 
     expect(deadline).not.toBeNull();
     expect(toLocalDateString(deadline!.dueDate)).toBe("2026-08-18");
-    expect(deadline?.paymentAmount).toBe(16_847.77);
+    expect(deadline?.paymentAmount).toBe(1_000);
   });
 
   it("keeps overdue installment visible when catch-up payment is partial", () => {
     const loan = createLoan({
-      amortizationSchedule: [
-        {
-          paymentDate: "2026-07-18",
-          beginningBalance: 151_744.07,
-          paymentAmount: 16_847.77,
-          principalPayment: 15_000,
-          interestPayment: 1_847.77,
-          endingBalance: 136_744.07,
-          isActual: false,
-        },
-        {
-          paymentDate: "2026-08-18",
-          beginningBalance: 136_744.07,
-          paymentAmount: 16_847.77,
-          principalPayment: 15_100,
-          interestPayment: 1_747.77,
-          endingBalance: 121_644.07,
-          isActual: false,
-        },
-      ],
+      date: "2026-06-18",
+      maturityDate: "2027-06-18",
       loanPayments: [
         {
           id: "payment-1",
           date: "2026-08-11",
-          principalPayment: 1_000,
-          interestPayment: 200,
-          totalPayment: 1_200,
+          principalPayment: 200,
+          interestPayment: 0,
+          totalPayment: 200,
           currency: "PHP",
         },
       ],
@@ -243,49 +172,22 @@ describe("loan-upcoming-deadlines", () => {
         id: "borrowed-overdue",
         loanType: "borrowed",
         entityName: "Overdue lender",
-        amortizationSchedule: [
-          {
-            paymentDate: "2024-01-01",
-            beginningBalance: 10_000,
-            paymentAmount: 500,
-            principalPayment: 400,
-            interestPayment: 100,
-            endingBalance: 9_600,
-            isActual: false,
-          },
-        ],
+        date: "2023-12-01",
+        maturityDate: "2024-12-01",
       }),
       createLoan({
         id: "borrowed-future",
         loanType: "borrowed",
         entityName: "Future lender",
-        amortizationSchedule: [
-          {
-            paymentDate: "2030-01-01",
-            beginningBalance: 10_000,
-            paymentAmount: 500,
-            principalPayment: 400,
-            interestPayment: 100,
-            endingBalance: 9_600,
-            isActual: false,
-          },
-        ],
+        date: "2029-12-01",
+        maturityDate: "2030-12-01",
       }),
       createLoan({
         id: "lent-future",
         loanType: "lent",
         entityName: "Borrower",
-        amortizationSchedule: [
-          {
-            paymentDate: "2026-06-01",
-            beginningBalance: 5_000,
-            paymentAmount: 250,
-            principalPayment: 200,
-            interestPayment: 50,
-            endingBalance: 4_800,
-            isActual: false,
-          },
-        ],
+        date: "2026-05-01",
+        maturityDate: "2027-05-01",
       }),
     ];
 
@@ -319,32 +221,14 @@ describe("loan-upcoming-deadlines", () => {
       createLoan({
         id: "future-loan",
         entityName: "Future lender",
-        amortizationSchedule: [
-          {
-            paymentDate: "2030-01-01",
-            beginningBalance: 10_000,
-            paymentAmount: 500,
-            principalPayment: 400,
-            interestPayment: 100,
-            endingBalance: 9_600,
-            isActual: false,
-          },
-        ],
+        date: "2029-12-01",
+        maturityDate: "2030-12-01",
       }),
       createLoan({
         id: "overdue-loan",
         entityName: "Overdue lender",
-        amortizationSchedule: [
-          {
-            paymentDate: "2024-01-01",
-            beginningBalance: 10_000,
-            paymentAmount: 500,
-            principalPayment: 400,
-            interestPayment: 100,
-            endingBalance: 9_600,
-            isActual: false,
-          },
-        ],
+        date: "2023-12-01",
+        maturityDate: "2024-12-01",
       }),
     ];
 
@@ -365,17 +249,6 @@ describe("loan-upcoming-deadlines", () => {
       }),
       createLoan({
         id: "active-loan",
-        amortizationSchedule: [
-          {
-            paymentDate: "2026-01-01",
-            beginningBalance: 10_000,
-            paymentAmount: 500,
-            principalPayment: 400,
-            interestPayment: 100,
-            endingBalance: 9_600,
-            isActual: false,
-          },
-        ],
       }),
     ];
 
@@ -385,22 +258,27 @@ describe("loan-upcoming-deadlines", () => {
     expect(completedLoans.map((loan) => loan.id)).toEqual(["completed-loan"]);
   });
 
+  it("groups retired loans with completed loans", () => {
+    const loans: Loan[] = [
+      createLoan({ id: "active-loan", status: "active" }),
+      createLoan({
+        id: "retired-loan",
+        status: "defaulted",
+        outstandingBalance: 4_000,
+      }),
+    ];
+
+    const { activeLoans, completedLoans } = partitionAndSortLoans(loans);
+
+    expect(activeLoans.map((loan) => loan.id)).toEqual(["active-loan"]);
+    expect(completedLoans.map((loan) => loan.id)).toEqual(["retired-loan"]);
+  });
+
   it("collects loan ids shown in featured upcoming sections", () => {
     const loans: Loan[] = [
       createLoan({
         id: "borrowed-upcoming",
         loanType: "borrowed",
-        amortizationSchedule: [
-          {
-            paymentDate: "2024-01-01",
-            beginningBalance: 10_000,
-            paymentAmount: 500,
-            principalPayment: 400,
-            interestPayment: 100,
-            endingBalance: 9_600,
-            isActual: false,
-          },
-        ],
       }),
     ];
 

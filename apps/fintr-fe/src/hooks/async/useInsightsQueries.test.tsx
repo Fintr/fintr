@@ -24,6 +24,13 @@ vi.mock("@/hooks/useOfflineReadMode", () => ({
   useBrowserOnline: () => true,
 }));
 
+vi.mock("@/hooks/async/useTransactionCategories", () => ({
+  useTransactionCategories: () => ({
+    expenseCategoryOptions: [],
+    incomeCategoryOptions: [],
+  }),
+}));
+
 vi.mock("@/services/insights/offline-narratives", () => ({
   buildOfflineNarratives: vi.fn().mockResolvedValue({
     headline: { text: "", sentiment: "neutral" },

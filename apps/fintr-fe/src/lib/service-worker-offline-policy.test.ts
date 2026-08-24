@@ -18,6 +18,15 @@ describe("service worker offline policy", () => {
     expect(devWorkerSource).toContain("ignoreSearch: true");
   });
 
+  it("does not ignoreSearch for detail ids so empty prefetched shells cannot win", () => {
+    expect(generatorSource).toContain("function hasAppDetailSearch");
+    expect(generatorSource).toContain("transactionId");
+    expect(generatorSource).toContain("loanId");
+    expect(devWorkerSource).toContain("function hasAppDetailSearch");
+    expect(devWorkerSource).toContain("function matchCachedRequest");
+    expect(generatorSource).toContain("function matchCachedRequest");
+  });
+
   it("does not fall back to offline.html when a cached app shell exists", () => {
     expect(generatorSource).not.toContain("resolveOfflineHtml");
     expect(generatorSource).not.toMatch(/cache\.match\("\/offline\.html"/);

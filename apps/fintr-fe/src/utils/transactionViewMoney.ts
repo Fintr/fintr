@@ -67,6 +67,8 @@ export function reconcileFxConversion(
     booked?.amount != null ? Math.abs(Number(booked.amount)) : null;
   const bookedCurrency = booked?.currency?.trim() || null;
 
+  let trustedBookedOriginal = false;
+
   if (
     bookedAmount != null
     && Number.isFinite(bookedAmount)
@@ -75,13 +77,7 @@ export function reconcileFxConversion(
     && !sameCurrency(bookedCurrency, convertedCurrency)
   ) {
     originalAmount = bookedAmount;
-    if (
-      rate > 0
-      && Number.isFinite(rate)
-      && (!Number.isFinite(convertedAmount) || convertedAmount === 0)
-    ) {
-      convertedAmount = originalAmount * rate;
-    }
+    trustedBookedOriginal = true;
   }
 
   if (
@@ -90,11 +86,32 @@ export function reconcileFxConversion(
     && Number.isFinite(rate)
     && Math.abs(rate - 1) > 0.001
     && Number.isFinite(originalAmount)
-    && Number.isFinite(convertedAmount)
-    && convertedAmount !== 0
-    && nearlyEqualMoney(originalAmount, convertedAmount)
   ) {
-    originalAmount = convertedAmount / rate;
+    const expectedConverted = originalAmount * rate;
+
+    if (
+      trustedBookedOriginal
+      && (
+        !Number.isFinite(convertedAmount)
+        || convertedAmount === 0
+        || nearlyEqualMoney(convertedAmount, originalAmount)
+      )
+    ) {
+      convertedAmount = expectedConverted;
+    } else if (
+      !trustedBookedOriginal
+      && Number.isFinite(convertedAmount)
+      && convertedAmount !== 0
+      && nearlyEqualMoney(originalAmount, convertedAmount)
+    ) {
+      // Original leg stored as converted magnitude (e.g. GBP 20,000 at 100 PHP/GBP).
+      originalAmount = convertedAmount / rate;
+    } else if (
+      !Number.isFinite(convertedAmount)
+      || convertedAmount === 0
+    ) {
+      convertedAmount = expectedConverted;
+    }
   }
 
   return {

@@ -1,3 +1,5 @@
+import { format, parseISO, subDays } from "date-fns";
+
 import { extractAccountsFromResponse } from "@/services/transactions/accounts/local-cache";
 import {
   preloadExchangeRatesForTransactions,
@@ -228,6 +230,32 @@ const downsamplePoints = (
     .map((index) => points[index]);
 };
 
+const dayBefore = (date: string): string =>
+  format(subDays(parseISO(date), 1), "yyyy-MM-dd");
+
+const accountHasPriorActivity = async (
+  spaceCode: string,
+  account: Account,
+  startDate: string,
+): Promise<boolean> => {
+  const priorEndDate = dayBefore(startDate);
+
+  if (priorEndDate >= startDate) {
+    return false;
+  }
+
+  const priorRows = await loadCachedTransactionsInRange(
+    spaceCode,
+    "0000-01-01",
+    priorEndDate,
+  );
+
+  return priorRows.some(
+    (row) =>
+      dateKey(row.date) < startDate && transactionTouchesAccount(row, account),
+  );
+};
+
 export const buildAccountBalanceTimelineFromCache = async (
   spaceCode: string,
   accountsResponse: unknown,
@@ -286,14 +314,21 @@ export const buildAccountBalanceTimelineFromCache = async (
   );
   const totalEffect = signedEffects.reduce((sum, value) => sum + value, 0);
   const openingBalance = currentBalance - totalEffect;
+  const hasPriorActivity = await accountHasPriorActivity(
+    spaceCode,
+    account,
+    startDate,
+  );
   const points: AccountBalanceTimelinePoint[] = [];
 
-  points.push({
-    date: startDate,
-    occurredAt: startDate,
-    balance: openingBalance,
-    change: null,
-  });
+  if (hasPriorActivity) {
+    points.push({
+      date: startDate,
+      occurredAt: startDate,
+      balance: openingBalance,
+      change: null,
+    });
+  }
 
   let running = openingBalance;
 

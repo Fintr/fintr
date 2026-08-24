@@ -22,6 +22,7 @@ module Transactions
             optional(:original_currency).value(:string)
             optional(:exchange_rate).value(:decimal)
             optional(:exchange_rate_source).value(:string)
+            optional(:id).maybe(:string)
           end
         end
 
@@ -83,6 +84,9 @@ module Transactions
         def find_loan(params:)
           loan = Transactions::Loan.find_by(id: params[:loan_id], space_id: params[:space_id])
           return Failure(loan_id: "not found") unless loan
+          if loan.defaulted?
+            return Failure(loan_id: "cannot record payments on a retired loan")
+          end
 
           Success(loan)
         end

@@ -272,6 +272,9 @@ export const createLoanLocalFirst = async (
 
       if (serverId !== localId) {
         await removeLoanFromCachedPages(spaceId, localId);
+        if (queryClient) {
+          removeLoanFromQueryCaches(queryClient, localId, spaceId);
+        }
         await applyOptimisticLoanCaches({
           spaceId,
           loan: {

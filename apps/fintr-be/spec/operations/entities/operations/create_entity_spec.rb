@@ -44,6 +44,30 @@ RSpec.describe Entities::Operations::CreateEntity do
       end
     end
 
+    context 'when a client id is provided' do
+      let(:client_id) { SecureRandom.uuid }
+      let(:params_with_id) { valid_params.merge(id: client_id) }
+
+      it 'returns a successful result' do
+        result = operation.call(params_with_id)
+        expect(result).to be_success
+      end
+
+      it 'persists the client-provided id' do
+        result = operation.call(params_with_id)
+        expect(result.value!.id).to eq(client_id)
+      end
+    end
+
+    context 'when an invalid client id is provided' do
+      let(:params_with_invalid_id) { valid_params.merge(id: "local:offline-entity") }
+
+      it 'returns a failure result' do
+        result = operation.call(params_with_invalid_id)
+        expect(result).to be_failure
+      end
+    end
+
     context 'when validation fails' do
       let(:invalid_params) do
         {

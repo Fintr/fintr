@@ -16,6 +16,8 @@ Fintr is a personal finance application with heavy integration with AI. Fintr wi
 - Deployment: Kamal
 - Github Actions for CI/CD
 
+**Installment plans:** Flat split of a fixed total (not loans). See **[docs/installment_plans.md](../../docs/installment_plans.md)**.
+
 **Realtime transactions:** ActionCable `TransactionsChannel` + `Transactions::Broadcasts::TransactionChange` (including transfer fees). See **[docs/transactions_realtime.md](docs/transactions_realtime.md)**. Frontend offline/local-first pairing: `apps/fintr-fe/docs/mobile/OFFLINE_INDEXEDDB_SPIKE.md`.
 
 ## Installation

@@ -78,6 +78,7 @@ module Transactions
         elsif result.failure?
           result
         else
+          transaction.association(:currency_conversion).reset
           Success(transaction)
         end
       end

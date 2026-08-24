@@ -229,11 +229,19 @@ export const inferDateFilterTypeSelector = (
 
   const start = new Date(startDate);
   const end = new Date(endDate);
-  const isFullMonth =
+  const referenceDate = new Date();
+  const isCalendarFullMonth =
     start.getDate() === 1 &&
     end.getDate() === new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate() &&
     start.getFullYear() === end.getFullYear() &&
     start.getMonth() === end.getMonth();
+  const isCurrentMonthThroughToday =
+    start.getDate() === 1 &&
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getFullYear() === referenceDate.getFullYear() &&
+    start.getMonth() === referenceDate.getMonth() &&
+    end.getDate() === referenceDate.getDate();
 
-  return isFullMonth ? "single" : "custom";
+  return isCalendarFullMonth || isCurrentMonthThroughToday ? "single" : "custom";
 };

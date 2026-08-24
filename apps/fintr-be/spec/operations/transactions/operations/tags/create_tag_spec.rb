@@ -27,6 +27,20 @@ RSpec.describe Transactions::Operations::Tags::CreateTag do
       end
     end
 
+    context "with a client-provided id" do
+      let(:client_id) { SecureRandom.uuid }
+
+      subject(:call_operation) do
+        operation.call(space_id: space.id, name: "Offline Tag", id: client_id)
+      end
+
+      it { is_expected.to be_success }
+
+      it "persists the client-provided id" do
+        expect(call_operation.value!.id).to eq(client_id)
+      end
+    end
+
     context "with invalid color" do
       subject(:call_operation) do
         operation.call(space_id: space.id, name: "Invalid", color: "red")

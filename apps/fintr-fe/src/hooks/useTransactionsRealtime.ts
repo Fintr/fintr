@@ -85,6 +85,82 @@ const pickField = (
   snake: string,
 ): unknown => payload[camel] ?? payload[snake];
 
+const resolveIndexAccountNames = (
+  payload: Record<string, unknown>,
+  type: CombinedTransactionTypeEnum,
+): { fromAccountName: string; toAccountName: string } => {
+  const accountName = asString(
+    pickField(payload, "accountName", "account_name") ?? "",
+  );
+  let fromAccountName = asString(
+    pickField(payload, "fromAccountName", "from_account_name"),
+  );
+  let toAccountName = asString(
+    pickField(payload, "toAccountName", "to_account_name"),
+  );
+
+  if (
+    type === CombinedTransactionTypeEnum.EXPENSE
+    && !fromAccountName
+    && accountName
+  ) {
+    fromAccountName = accountName;
+  }
+
+  if (
+    type === CombinedTransactionTypeEnum.INCOME
+    && !toAccountName
+    && accountName
+  ) {
+    toAccountName = accountName;
+  }
+
+  return { fromAccountName, toAccountName };
+};
+
+const resolveIndexAccountIds = (
+  payload: Record<string, unknown>,
+  type: CombinedTransactionTypeEnum,
+): {
+  accountId: string | null;
+  fromAccountId: string | null;
+  toAccountId: string | null;
+} => {
+  const accountId = pickField(payload, "accountId", "account_id");
+  const fromAccountId = pickField(payload, "fromAccountId", "from_account_id");
+  const toAccountId = pickField(payload, "toAccountId", "to_account_id");
+  const accountIdString =
+    accountId == null || accountId === "" ? null : asString(accountId);
+  const fromAccountIdString =
+    fromAccountId == null || fromAccountId === ""
+      ? null
+      : asString(fromAccountId);
+  const toAccountIdString =
+    toAccountId == null || toAccountId === "" ? null : asString(toAccountId);
+
+  if (type === CombinedTransactionTypeEnum.EXPENSE) {
+    return {
+      accountId: accountIdString,
+      fromAccountId: fromAccountIdString ?? accountIdString,
+      toAccountId: toAccountIdString,
+    };
+  }
+
+  if (type === CombinedTransactionTypeEnum.INCOME) {
+    return {
+      accountId: accountIdString,
+      fromAccountId: fromAccountIdString,
+      toAccountId: toAccountIdString ?? accountIdString,
+    };
+  }
+
+  return {
+    accountId: accountIdString,
+    fromAccountId: fromAccountIdString,
+    toAccountId: toAccountIdString,
+  };
+};
+
 const optionalIndexId = (
   payload: Record<string, unknown>,
   camel: string,
@@ -115,6 +191,9 @@ export const normalizeRealtimeIndexTransaction = (
   if (!id) return null;
 
   const tags = parseRealtimeTransactionTags(payload);
+  const type = asType(pickField(payload, "type", "type"));
+  const { fromAccountName, toAccountName } = resolveIndexAccountNames(payload, type);
+  const accountIds = resolveIndexAccountIds(payload, type);
 
   return {
     id,
@@ -149,16 +228,47 @@ export const normalizeRealtimeIndexTransaction = (
         : asString(
             pickField(payload, "subcategoryName", "subcategory_name"),
           ),
-    fromAccountName: asString(
-      pickField(payload, "fromAccountName", "from_account_name"),
-    ),
-    toAccountName: asString(
-      pickField(payload, "toAccountName", "to_account_name"),
-    ),
-    type: asType(pickField(payload, "type", "type")),
-    inSeries: Boolean(
-      pickField(payload, "inSeries", "in_series") ?? false,
-    ),
+    fromAccountName,
+    toAccountName,
+    type,
+    parentId:
+      pickField(payload, "parentId", "parent_id") == null
+        ? null
+        : asString(pickField(payload, "parentId", "parent_id")),
+    scheduleType: pickField(payload, "scheduleType", "schedule_type")
+      ? asString(pickField(payload, "scheduleType", "schedule_type"))
+      : undefined,
+    repeatInterval:
+      pickField(payload, "repeatInterval", "repeat_interval") == null
+        ? undefined
+        : asString(
+            pickField(payload, "repeatInterval", "repeat_interval"),
+          ),
+    installmentPeriod:
+      pickField(payload, "installmentPeriod", "installment_period") == null
+        ? undefined
+        : asNumber(
+            pickField(payload, "installmentPeriod", "installment_period"),
+          ),
+    installmentTotal:
+      pickField(payload, "installmentTotal", "installment_total") == null
+        ? undefined
+        : asNumber(
+            pickField(payload, "installmentTotal", "installment_total"),
+          ),
+    rootParentId:
+      pickField(payload, "rootParentId", "root_parent_id") == null
+        ? null
+        : asString(pickField(payload, "rootParentId", "root_parent_id")),
+    inSeries:
+      Boolean(pickField(payload, "inSeries", "in_series") ?? false)
+      || Boolean(pickField(payload, "parentId", "parent_id"))
+      || (() => {
+        const scheduleType = asString(
+          pickField(payload, "scheduleType", "schedule_type") ?? "",
+        );
+        return scheduleType === "repeat" || scheduleType === "installment";
+      })(),
     hasImage: Boolean(
       pickField(payload, "hasImage", "has_image") ?? false,
     ),
@@ -198,9 +308,9 @@ export const normalizeRealtimeIndexTransaction = (
           tagIds: tags.map((tag) => tag.id),
         }
       : {}),
-    ...optionalIndexId(payload, "accountId", "account_id"),
-    ...optionalIndexId(payload, "fromAccountId", "from_account_id"),
-    ...optionalIndexId(payload, "toAccountId", "to_account_id"),
+    accountId: accountIds.accountId,
+    fromAccountId: accountIds.fromAccountId,
+    toAccountId: accountIds.toAccountId,
     ...optionalIndexId(payload, "entityId", "entity_id"),
   };
 };

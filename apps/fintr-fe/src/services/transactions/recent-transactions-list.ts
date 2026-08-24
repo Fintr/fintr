@@ -4,7 +4,7 @@ import type { IndexTransaction } from "@/types/transactionTypes";
 
 import { compareTransactionsNewestFirst } from "./local-cache";
 import {
-  sameSeriesFingerprint,
+  resolveTransactionInSeries,
   seriesFingerprintKey,
 } from "./resolve-delete-scope";
 
@@ -12,23 +12,6 @@ const transactionDateKey = (date: string): string => date.slice(0, 10);
 
 const todayDateKey = (today: Date = new Date()): string =>
   format(today, "yyyy-MM-dd");
-
-/**
- * True when the row is part of a repeat/installment series. Siblings may have
- * a stale `inSeries: false` (e.g. series parent); match by fingerprint.
- */
-const isSeriesMember = (
-  row: IndexTransaction,
-  rows: IndexTransaction[],
-): boolean => {
-  if (row.inSeries) {
-    return true;
-  }
-
-  return rows.some(
-    (other) => other.inSeries && sameSeriesFingerprint(row, other),
-  );
-};
 
 const pickNewestOnOrBeforeToday = (
   members: IndexTransaction[],
@@ -64,7 +47,7 @@ export const buildRecentTransactionsList = (
   const standalone: IndexTransaction[] = [];
 
   for (const row of transactions) {
-    if (!isSeriesMember(row, transactions)) {
+    if (!resolveTransactionInSeries(row, transactions)) {
       if (transactionDateKey(row.date) <= todayKey) {
         standalone.push(row);
       }

@@ -22,6 +22,8 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
       value: category.id,
       name: category.name,
       parent_id: nil,
+      icon: category.icon,
+      color: category.color,
       children: []
     }
   end
@@ -51,6 +53,24 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
     it 'includes only expense categories as hierarchical options' do
       actual_options = serialized_hash[:expense_category_options].sort_by { |h| h[:label] }
       expect(actual_options).to match_array(expected_options)
+    end
+
+    it 'includes the stored icon on expense category options' do
+      expense_cat1.update!(icon: "church")
+
+      expect(
+        described_class.render_as_hash(space)[:expense_category_options]
+          .find { |option| option[:id] == expense_cat1.id }[:icon]
+      ).to eq("church")
+    end
+
+    it 'includes the stored color on expense category options' do
+      expense_cat1.update!(color: "#1E88E5")
+
+      expect(
+        described_class.render_as_hash(space)[:expense_category_options]
+          .find { |option| option[:id] == expense_cat1.id }[:color]
+      ).to eq("#1E88E5")
     end
   end
 

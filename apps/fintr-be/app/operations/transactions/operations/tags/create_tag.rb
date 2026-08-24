@@ -8,6 +8,7 @@ module Transactions
           params do
             required(:space_id).filled(:string)
             required(:name).filled(:string)
+            optional(:id).maybe(:string)
             optional(:color).maybe(:string)
           end
         end
@@ -38,6 +39,7 @@ module Transactions
             space_id: params[:space_id],
             name: params[:name],
             color: color,
+            id: params[:id],
           )
           tag.save!
           Success(tag)

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { OPEN_TRANSACTION_EVENT } from "@/lib/open-transaction-request";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { transactionViewHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
 
 /**
  * Registers a global listener so realtime toasts can open a transaction
@@ -22,7 +23,7 @@ export const useOpenTransactionRequest = (): void => {
         return;
       }
 
-      router.push(transactionViewHref(transaction));
+      pushDashboardDetail(router, transactionViewHref(transaction));
     };
 
     window.addEventListener(

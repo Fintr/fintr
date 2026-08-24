@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { shouldShowImmediateBackButton } from "./mobile-sticky-header";
+
+const mockRequestExit = vi.fn((then: () => void) => then());
+const mockRouterBack = vi.fn();
+
+vi.mock("./detail-push-transition", () => ({
+  useDetailPushExit: () => ({ requestExit: mockRequestExit }),
+}));
 
 const mockUsePlatformDetection = vi.fn();
 
@@ -14,7 +22,7 @@ const mockUseSearchParams = vi.fn(() => new URLSearchParams());
 vi.mock("next/navigation", () => ({
   usePathname: () => mockUsePathname(),
   useSearchParams: () => mockUseSearchParams(),
-  useRouter: () => ({ back: vi.fn() }),
+  useRouter: () => ({ back: mockRouterBack }),
 }));
 
 vi.mock("@/hooks/async/useTransactionCategories", () => ({
@@ -118,6 +126,37 @@ describe("MobileStickyHeader — back button on category pages", () => {
     expect(
       screen.getByRole("heading", { name: "Category: Travel & Vacations" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("MobileStickyHeader — detail push back", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mockRequestExit.mockClear();
+    mockRouterBack.mockClear();
+    mockRequestExit.mockImplementation((then: () => void) => then());
+    mockUsePlatformDetection.mockReturnValue({
+      isAndroidNative: false,
+      isIOSNative: false,
+      isNative: false,
+      safeAreaInsetTop: 0,
+      safeAreaInsetBottom: 0,
+    });
+    mockUsePathname.mockReturnValue("/dashboard/transactions/detail");
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams("transactionId=tx-1"),
+    );
+  });
+
+  it("requests a detail push exit before navigating back", async () => {
+    const user = userEvent.setup();
+    const MobileStickyHeader = (await import("./mobile-sticky-header")).default;
+    render(<MobileStickyHeader />);
+
+    await user.click(screen.getByRole("button", { name: /go back/i }));
+
+    expect(mockRequestExit).toHaveBeenCalledTimes(1);
+    expect(mockRouterBack).toHaveBeenCalledTimes(1);
   });
 });
 

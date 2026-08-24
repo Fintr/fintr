@@ -11,8 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { useUpdateImportRecord, useImportSingleRecord } from '@/hooks/async/useImport';
 import { Loader2, X, Check, CalendarIcon } from 'lucide-react';
 import { useNumberInput } from '@/hooks/useNumberInput';
-import { useAtomValue } from 'jotai';
-import { expenseCategoryOptionsAtom, incomeCategoryOptionsAtom } from '@/atoms/dashboardAtoms';
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { numberFormatting } from '@/lib/utils';
 import { format } from 'date-fns';
 import GridPicker from '@/components/dashboard/forms/GridPicker';
@@ -45,8 +44,10 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
   const importMutation = useImportSingleRecord();
 
   // Get category options based on type
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
+  const {
+    expenseCategoryOptions,
+    incomeCategoryOptions,
+  } = useTransactionCategories();
 
   // Parse initial date string to Date object
   const parseInitialDate = (dateString?: string): Date | undefined => {

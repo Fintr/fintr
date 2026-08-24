@@ -376,4 +376,22 @@ describe("removeIndexTransactionsFromQueryCaches", () => {
 
     expect(next?.pages[0]?.activities.map((row) => row.id)).toEqual(["act-1"]);
   });
+
+  it("removes matching rows from the recurring series query cache", () => {
+    const queryClient = new QueryClient();
+    const recurringKey = ["recurringSeries", "space-a"] as const;
+
+    queryClient.setQueryData(recurringKey, [
+      { ...baseExpense, id: "keep-1", date: "2026-08-01" },
+      { ...baseExpense, id: "remove-1", date: "2026-09-01" },
+    ]);
+
+    removeIndexTransactionsFromQueryCaches(queryClient, {
+      spaceId: "space-a",
+      removedIds: ["remove-1"],
+    });
+
+    const next = queryClient.getQueryData<Array<{ id: string }>>(recurringKey);
+    expect(next?.map((row) => row.id)).toEqual(["keep-1"]);
+  });
 });

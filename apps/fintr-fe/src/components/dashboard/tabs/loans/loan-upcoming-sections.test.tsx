@@ -29,17 +29,6 @@ const createLoan = (overrides: Partial<Loan> = {}): Loan => ({
   expense: 0,
   totalValue: 201_394.25,
   files: [],
-  amortizationSchedule: [
-    {
-      paymentDate: "2026-07-18",
-      beginningBalance: 134_918.47,
-      paymentAmount: 16_847.77,
-      principalPayment: 16_000,
-      interestPayment: 847.77,
-      endingBalance: 118_070.7,
-      isActual: false,
-    },
-  ],
   ...overrides,
 });
 

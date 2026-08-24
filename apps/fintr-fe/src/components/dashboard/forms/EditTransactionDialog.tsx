@@ -6,6 +6,13 @@ import ExpenseForm from "./ExpenseForm";
 import IncomeForm from "./IncomeForm";
 import TransferForm from "./TransferForm";
 import ScopeModal, { UpdateScope, Scope, DeleteScope } from "./ScopeModal";
+import {
+  type InstallmentRevisionSeriesContext,
+  computeInstallmentRevisionSeriesContext,
+  resolveInstallmentRevisionDisplayCurrency,
+  resolveInstallmentCommittedRowAmount,
+  withInstallmentPlanRevisionSubmit,
+} from "@/utils/installmentPlanRevision";
 import { IndexTransaction, CombinedTransactionTypeEnum, TransferUpdateTransactionType, UpdateTransactionType, CurrencyConversionType } from "@/types/transactionTypes";
 import { UpdateTransferType } from "@/services/transactions/transfers/mutation";
 import { buildTransferInitialData } from "./transfer-form-initial-data";
@@ -13,9 +20,14 @@ import { updateTransferLocalFirst } from "@/services/transactions/transfers/upda
 import { deleteTransaction } from "@/services/transactions/mutation";
 import { updateTransactionLocalFirst } from "@/services/transactions/update-local-first";
 import { deleteTransactionLocalFirst } from "@/services/transactions/delete-local-first";
+import { collectDeleteScopeContextRows } from "@/services/transactions/local-cache";
+import {
+  transactionAllowsSeriesDeleteScope,
+} from "@/services/transactions/resolve-delete-scope";
 import {
   enrichTransactionEditDetail,
   seedTransactionEditFromListRow,
+  storedFxFingerprint,
 } from "@/services/transactions/detail-local";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
@@ -168,6 +180,9 @@ function ConversionInfoPopover({ conv }: { conv: CurrencyConversionType }) {
 export type EditTransactionSuccessOptions = {
   /** Transfer (+ fee) lists are patched locally; skip refetch races. */
   skipTransactionsInvalidate?: boolean;
+  /** Set when the dialog completed a delete (not an update). */
+  deleted?: boolean;
+  deleteScope?: DeleteScopeEnum;
 };
 
 interface EditTransactionDialogProps {
@@ -215,6 +230,11 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   const [scheduleTypeChange, setScheduleTypeChange] = useState<{from: string; to: string} | null>(null);
   const [pendingFormData, setPendingFormData] = useState<any>(null);
   const [hasScheduleChanges, setHasScheduleChanges] = useState(false);
+  const [installmentRevisionSeriesContext, setInstallmentRevisionSeriesContext] =
+    useState<InstallmentRevisionSeriesContext | null>(null);
+  const [installmentUpdateScope, setInstallmentUpdateScope] = useState<UpdateScope>(
+    UpdateScopeEnum.THIS_ONLY,
+  );
   const [dataKey, setDataKey] = useState<number>(0); // Add a key to force re-render
   
   // Delete scope modal state
@@ -276,6 +296,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       setIsLoading(false);
       setFormIsDirty(false);
       setShowDiscardConfirm(false);
+      setInstallmentUpdateScope(UpdateScopeEnum.THIS_ONLY);
       resolveScopeModal();
     }, EDIT_DIALOG_CLOSE_RESET_DELAY_MS);
 
@@ -300,14 +321,28 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
 
     let cancelled = false;
 
-    // Service owns seed/enrich; component only binds result to UI state.
     const seed = seedTransactionEditFromListRow(activeTransaction);
-    setFullTransactionData(seed.data);
-    setDataKey((prev) => prev + 1);
+    const seedPeriod =
+      (seed.data as UpdateTransactionType).installmentPeriod ?? 0;
+    const waitForFreshDetail = Boolean(api);
+
+    if (seed.data.scheduleType === ScheduleTypeEnum.INSTALLMENT) {
+      setInstallmentUpdateScope(UpdateScopeEnum.THIS_ONLY);
+    }
     if (seed.date) {
       setDate(seed.date);
     }
-    setIsLoading(false);
+
+    // Online: never mount the form from the list-row seed alone. IndexedDB rows
+    // often omit currency_conversion; mounting early lets the rate picker
+    // auto-fetch today's market rate before the API detail arrives.
+    setIsLoading(waitForFreshDetail);
+
+    if (!waitForFreshDetail) {
+      setFullTransactionData(seed.data);
+      setDataKey((prev) => prev + 1);
+      setIsLoading(false);
+    }
 
     void (async () => {
       try {
@@ -350,12 +385,31 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         }
 
         setFullTransactionData(processedData);
+        const enrichedPeriod =
+          (processedData as UpdateTransactionType).installmentPeriod ?? 0;
+        const seedFx = storedFxFingerprint(seed.data);
+        const enrichedFx = storedFxFingerprint(processedData);
+        const shouldRemountForStoredFx =
+          enrichedFx != null && enrichedFx !== seedFx;
+        if (
+          waitForFreshDetail
+          || (seedPeriod <= 0 && enrichedPeriod > 0)
+          || shouldRemountForStoredFx
+        ) {
+          setDataKey((prev) => prev + 1);
+        }
         if (enriched.date) {
           setDate(enriched.date);
         }
+        setIsLoading(false);
       } catch (error) {
         if (cancelled) return;
         console.error(error);
+        if (waitForFreshDetail) {
+          setFullTransactionData(seed.data);
+          setDataKey((prev) => prev + 1);
+          setIsLoading(false);
+        }
         toast.error(
           preferLocal
             ? "Could not load full details from local DB."
@@ -368,6 +422,74 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       cancelled = true;
     };
   }, [activeTransaction?.id, isOpen, api, preferLocal, spaceCode]);
+
+  useEffect(() => {
+    if (!isOpen || !activeTransaction?.id || !spaceCode) {
+      setInstallmentRevisionSeriesContext(null);
+      return;
+    }
+
+    if (fullTransactionData?.scheduleType !== ScheduleTypeEnum.INSTALLMENT) {
+      setInstallmentRevisionSeriesContext(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const { target, contextRows } = await collectDeleteScopeContextRows({
+        spaceId: spaceCode,
+        queryClient,
+        listRows: activeTransaction ? [activeTransaction] : [],
+        targetId: activeTransaction.id,
+      });
+
+      if (cancelled || !target) {
+        return;
+      }
+
+      const displayCurrency = resolveInstallmentRevisionDisplayCurrency(
+        {
+          amountCurrency:
+            fullTransactionData?.amountCurrency
+            ?? activeTransaction.amountCurrency,
+          currencyConversion:
+            fullTransactionData?.currencyConversion
+            ?? activeTransaction.currencyConversion,
+          originalDisplayCurrency:
+            (fullTransactionData as { originalDisplayCurrency?: string })
+              ?.originalDisplayCurrency
+            ?? (fullTransactionData as { original_display_currency?: string })
+              ?.original_display_currency,
+        },
+        spaceCurrency,
+      );
+      const fallbackPerPayment = resolveInstallmentCommittedRowAmount(
+        target,
+        displayCurrency,
+      );
+
+      setInstallmentRevisionSeriesContext(
+        computeInstallmentRevisionSeriesContext(target, contextRows, {
+          displayCurrency,
+          fallbackPerPayment,
+        }),
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isOpen,
+    activeTransaction,
+    spaceCode,
+    queryClient,
+    fullTransactionData?.scheduleType,
+    fullTransactionData?.amountCurrency,
+    fullTransactionData?.currencyConversion,
+    spaceCurrency,
+  ]);
 
   const validateScheduleTypeChange = (originalScheduleType: ScheduleTypeEnum, newScheduleType: ScheduleTypeEnum) => {
     // Rule 2: Cannot change from one_time or repeat to installment
@@ -458,10 +580,18 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
       return;
     }
 
-    // Check if this is an installment transaction - show modal for any changes
+    // Installment edits choose scope up front in the form.
     if (originalScheduleType === ScheduleTypeEnum.INSTALLMENT) {
-      openUpdateScopeModal(formData, { from: "installment", to: "installment" });
-      await waitForScopeModal();
+      const finalFormData = withInstallmentPlanRevisionSubmit(
+        fullTransactionData,
+        {
+          ...formData,
+          updateScope: formData.updateScope ?? installmentUpdateScope,
+        },
+        (formData.updateScope ?? installmentUpdateScope) as UpdateScope,
+      );
+
+      await handleSuccess(finalFormData);
       return;
     }
 
@@ -470,12 +600,16 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   };
 
   const handleUpdateScopeConfirm = async (scope: Scope) => {
-    if (!pendingFormData) {
+    if (!pendingFormData || !fullTransactionData) {
       handleUpdateScopeCancel();
       return;
     }
 
-    const finalFormData = { ...pendingFormData, updateScope: scope as UpdateScope };
+    const finalFormData = withInstallmentPlanRevisionSubmit(
+      fullTransactionData,
+      { ...pendingFormData, updateScope: scope as UpdateScope },
+      scope,
+    );
 
     try {
       await handleSuccess(finalFormData);
@@ -501,8 +635,20 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
   };
 
   // Handle delete action
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!activeTransaction) return;
+
+    const { target } = await collectDeleteScopeContextRows({
+      spaceId: spaceCode,
+      queryClient,
+      listRows: activeTransaction ? [activeTransaction] : [],
+      targetId: activeTransaction.id,
+    });
+
+    if (target) {
+      setActiveTransaction(target);
+    }
+
     setShowDeleteScopeModal(true);
     setDeleteScope(DeleteScopeEnum.THIS_ONLY);
   };
@@ -549,7 +695,11 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
           onClose();
           // Local-first already patched list + dashboard caches. Refresh
           // secondary queries immediately; do not wait for network sync.
-          onSuccess({ skipTransactionsInvalidate: true });
+          onSuccess({
+            skipTransactionsInvalidate: true,
+            deleted: true,
+            deleteScope: scope as DeleteScopeEnum,
+          });
           void Promise.resolve(result.syncPromise)
             .then((synced) => {
               if (synced.pendingSync) {
@@ -592,7 +742,10 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         toast.success("Transaction deleted successfully");
       }
 
-      onSuccess();
+      onSuccess({
+        deleted: true,
+        deleteScope: scope as DeleteScopeEnum,
+      });
       onClose();
     } catch (error) {
       console.error("Error deleting transaction:", error);
@@ -776,6 +929,17 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
     dataKey,
   ]);
 
+  const deleteInSeries = useMemo(
+    () =>
+      transactionAllowsSeriesDeleteScope(activeTransaction)
+      || fullTransactionData?.scheduleType === ScheduleTypeEnum.REPEAT
+      || fullTransactionData?.scheduleType === ScheduleTypeEnum.INSTALLMENT,
+    [
+      activeTransaction,
+      fullTransactionData?.scheduleType,
+    ],
+  );
+
   const renderForm = () => {
     if (isLoading) {
       return (
@@ -808,6 +972,12 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
             onFileUpdate={handleFileUpdate} // Pass the new handler
             onDelete={handleDelete} // Pass the delete handler
             editingLockedReason={editingLockedReason}
+            installmentSeriesContext={installmentRevisionSeriesContext}
+            showInstallmentScopeSelector={
+              fullTransactionData.scheduleType === ScheduleTypeEnum.INSTALLMENT
+            }
+            installmentUpdateScope={installmentUpdateScope}
+            onInstallmentUpdateScopeChange={setInstallmentUpdateScope}
           />
         );
       case CombinedTransactionTypeEnum.INCOME:
@@ -985,7 +1155,7 @@ const EditTransactionDialog: React.FC<EditTransactionDialogProps> = ({
         selectedScope={deleteScope}
         onScopeChange={handleDeleteScopeChange}
         transactionType={activeTransaction?.type}
-        inSeries={fullTransactionData?.scheduleType === ScheduleTypeEnum.REPEAT || fullTransactionData?.scheduleType === ScheduleTypeEnum.INSTALLMENT}
+        inSeries={deleteInSeries}
         isLoading={isDeleting}
       />
 

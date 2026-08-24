@@ -225,7 +225,13 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       :activitable_id,
       :in_series,
       :has_image,
-      :has_loan_payment
+      :has_loan_payment,
+      :schedule_type,
+      :repeat_interval,
+      :installment_period,
+      :installment_total,
+      :parent_id,
+      :root_parent_id,
     ]
     # Re-initialize record for this specific test to ensure all fields are present
     # This is because the :type field tests redefine 'record' with only transactable_type

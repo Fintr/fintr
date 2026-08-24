@@ -411,6 +411,43 @@ describe("CalculatorInput", () => {
       expect(mockOnChange).toHaveBeenCalledWith("15");
     });
 
+    it("does not click through to a submit button under equals when the keypad closes", async () => {
+      const onSubmit = vi.fn((event: SubmitEvent) => {
+        event.preventDefault();
+      });
+
+      await act(async () => {
+        render(
+          <form
+            onSubmit={(event) => {
+              onSubmit(event.nativeEvent);
+            }}
+          >
+            <CalculatorInput
+              value="100"
+              onChange={mockOnChange}
+              placeholder="0.00"
+            />
+            <button type="submit">Update Expense</button>
+          </form>,
+        );
+      });
+
+      fireEvent.focus(screen.getByPlaceholderText("0.00"));
+
+      const equals = screen.getByRole("button", { name: "=" });
+      fireEvent.pointerDown(equals, { button: 0 });
+
+      const submit = screen.getByRole("button", { name: "Update Expense" });
+      fireEvent.pointerUp(submit);
+      fireEvent.click(submit);
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(
+        document.body.querySelector("[data-calculator-click-guard]"),
+      ).toBeTruthy();
+    });
+
     it("calls onChange when typing numbers", () => {
       render(
         <CalculatorInput
@@ -424,6 +461,37 @@ describe("CalculatorInput", () => {
       fireEvent.change(input, { target: { value: "123" } });
 
       expect(mockOnChange).toHaveBeenCalledWith("123");
+    });
+
+    it("does not double-enter digits on a single mouse click", async () => {
+      const user = userEvent.setup();
+
+      await act(async () => {
+        render(
+          <CalculatorInput
+            value=""
+            onChange={mockOnChange}
+            placeholder="0.00"
+          />,
+        );
+      });
+
+      await user.click(screen.getByPlaceholderText("0.00"));
+
+      const findCalculatorButton = (label: string) => {
+        const buttons = document.body.querySelectorAll(
+          "[data-calculator-keyboard-button]",
+        );
+
+        return Array.from(buttons).find(
+          (button) => button.textContent === label,
+        ) as HTMLButtonElement;
+      };
+
+      await user.click(findCalculatorButton("7"));
+
+      expect(mockOnChange).toHaveBeenCalledTimes(1);
+      expect(mockOnChange).toHaveBeenCalledWith("7");
     });
 
     it("registers rapid sequential digit taps without dropping input", async () => {

@@ -76,7 +76,7 @@ module Api
         private
 
         def create_params
-          params.permit(:name, :category_type, :parent_id, :icon, :color)
+          params.permit(:id, :name, :category_type, :parent_id, :icon, :color)
         end
 
         def update_params

@@ -42,6 +42,8 @@ import {
   calculateHeaderSpacerHeight,
 } from "@/lib/platform-detection";
 import { hasEmbeddedHeroHeader, isDashboardDataLightRoute } from "@/lib/dashboard-shell-route";
+import { DetailPushNavigationProvider, DashboardPushChildren } from "@/components/dashboard/detail-push-transition";
+import { shouldShowImmediateBackButton } from "@/lib/dashboard-back-button-routes";
 
 const DashboardScrollToTop = ({
   scrollContainerRef,
@@ -170,6 +172,7 @@ export default function Layout({
   }
 
   return (
+    <DetailPushNavigationProvider>
     <div
       className={cn(
         "flex min-h-screen flex-col",
@@ -285,6 +288,9 @@ export default function Layout({
                   <TabsTrigger asChild value="transactions">
                     <Link href="/dashboard/">Transactions</Link>
                   </TabsTrigger>
+                  <TabsTrigger asChild value="recurring">
+                    <Link href="/dashboard/recurring">Recurring</Link>
+                  </TabsTrigger>
                   <TabsTrigger asChild value="budgets">
                     <Link href="/dashboard/budgets">Budgets</Link>
                   </TabsTrigger>
@@ -314,6 +320,7 @@ export default function Layout({
                 ref={mainScrollContainerRef}
                 className={cn(
                   "pt-0 md:pt-2 flex-1 overflow-y-auto md:pb-0",
+                  shouldShowImmediateBackButton(pathname) && "overflow-x-hidden",
                   usesEmbeddedHeroHeader &&
                     "max-md:min-h-0 max-md:bg-background max-md:overscroll-y-auto md:bg-transparent",
                 )}
@@ -325,7 +332,9 @@ export default function Layout({
                   <DashboardScrollToTop
                     scrollContainerRef={mainScrollContainerRef}
                   />
-                  {children}
+                  <DashboardPushChildren pathname={pathname}>
+                    {children}
+                  </DashboardPushChildren>
                 </Suspense>
               </div>
             </TabsWrapper>
@@ -333,5 +342,6 @@ export default function Layout({
       {/* Bottom Navigation for Mobile */}
       <BottomNavigation />
     </div>
+    </DetailPushNavigationProvider>
   );
 }

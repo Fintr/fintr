@@ -27,7 +27,7 @@ export const useEntitiesMutations = () => {
         spaceCode,
         data: entityData,
       },
-      { queryClient },
+      { queryClient, waitForSync: false },
     );
 
     return { data: result.data };
@@ -50,7 +50,7 @@ export const useEntitiesMutations = () => {
         entityId: entityData.id,
         fullName: trimmedName,
       },
-      { queryClient },
+      { queryClient, waitForSync: false },
     );
 
     return { data: result.data };

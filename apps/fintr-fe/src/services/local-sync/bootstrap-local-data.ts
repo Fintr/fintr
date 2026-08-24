@@ -18,7 +18,13 @@ import {
 import {
   isSpaceTransactionIndexComplete,
   markSpaceTransactionIndexComplete,
+  resetSpaceTransactionIndexComplete,
 } from "@/lib/local-db/transactions";
+import {
+  markTransactionRelationIdsResyncComplete,
+  shouldResyncTransactionRelationIds,
+} from "@/lib/local-db/transaction-relation-resync";
+import { ensureSpaceTransactionRelationIds } from "@/services/transactions/relation-ids-local";
 import { drainAllOutboxes } from "@/services/local-sync/drain-outbox";
 import { putLocalResponseSnapshot } from "@/lib/local-db/response-cache";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
@@ -420,6 +426,9 @@ const fetchAllTransactionPagesForSpace = async (
 export const ensureSpaceTransactionIndex = async (
   api: AxiosInstance,
   spaceCode: string,
+  options?: {
+    force?: boolean;
+  },
 ): Promise<void> => {
   if (!spaceCode) {
     return;
@@ -431,7 +440,7 @@ export const ensureSpaceTransactionIndex = async (
 
   await migrateLegacyTransactionSnapshotsIfNeeded(spaceCode);
 
-  if (await isSpaceTransactionIndexComplete(spaceCode)) {
+  if (!options?.force && await isSpaceTransactionIndexComplete(spaceCode)) {
     return;
   }
 
@@ -457,6 +466,55 @@ export const ensureSpaceTransactionIndex = async (
   }
 
   await markSpaceTransactionIndexComplete(spaceCode);
+};
+
+/**
+ * One-time migration: re-pull full transaction history so IndexedDB rows get
+ * stable account/category/entity ids from the API (and local backfill).
+ */
+export const resyncTransactionRelationIdsIfNeeded = async (
+  api: AxiosInstance,
+  queryClient: QueryClient,
+  spaceCodes: string[],
+): Promise<void> => {
+  if (isSpaceSyncPullEnabled()) {
+    return;
+  }
+
+  if (!(await shouldResyncTransactionRelationIds())) {
+    return;
+  }
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return;
+  }
+
+  const uniqueSpaceCodes = Array.from(
+    new Set(spaceCodes.filter((code) => Boolean(code?.trim()))),
+  );
+
+  if (uniqueSpaceCodes.length === 0) {
+    return;
+  }
+
+  const bootstrapRange = offlineBootstrapDateRange();
+
+  for (const spaceCode of uniqueSpaceCodes) {
+    try {
+      await resetSpaceTransactionIndexComplete(spaceCode);
+      await ensureSpaceTransactionIndex(api, spaceCode, { force: true });
+      await ensureSpaceTransactionRelationIds(spaceCode);
+      invalidateOfflineReadQueries(queryClient, spaceCode);
+    } catch (error) {
+      console.warn(
+        "[local-sync] Transaction relation-id resync failed",
+        spaceCode,
+        error,
+      );
+    }
+  }
+
+  await markTransactionRelationIdsResyncComplete();
 };
 
 export const seedReactQueryFromLocalCache = async (

@@ -40,6 +40,7 @@ import {
   TRANSFER_FEE_CATEGORY_NAME,
 } from "./fee-description";
 import { assertCreateTransferForOptimistic } from "@fintr/domain";
+import { attachCreateTransferRelationIds } from "../relation-ids-local";
 
 import {
   buildCreateOutboxPayload,
@@ -104,6 +105,9 @@ export const buildOptimisticTransferIndexTransaction = (params: {
     type: CombinedTransactionTypeEnum.TRANSFER,
     inSeries: data.scheduleType !== ScheduleTypeEnum.ONE_TIME,
     hasImage: Boolean(data.file),
+    accountId: data.fromAccountId ?? null,
+    fromAccountId: data.fromAccountId ?? null,
+    toAccountId: data.toAccountId ?? null,
   };
 };
 
@@ -141,6 +145,9 @@ export const buildOptimisticTransferFeeIndexTransaction = (params: {
     type: CombinedTransactionTypeEnum.EXPENSE,
     inSeries: data.scheduleType !== ScheduleTypeEnum.ONE_TIME,
     hasImage: false,
+    accountId: data.fromAccountId ?? null,
+    fromAccountId: data.fromAccountId ?? null,
+    toAccountId: null,
   };
 };
 
@@ -356,12 +363,14 @@ export const createTransferLocalFirst = async (
   },
   options: CreateTransferLocalFirstOptions = {},
 ): Promise<CreateTransferLocalFirstResult> => {
-  const { spaceId, data, amountCurrency } = params;
+  const { spaceId, amountCurrency } = params;
   const { queryClient, waitForSync = true, today } = options;
 
   if (!spaceId) {
     throw new Error("spaceId is required to create a local transfer");
   }
+
+  const data = await attachCreateTransferRelationIds(spaceId, params.data);
 
   assertCreateTransferForOptimistic(data);
 

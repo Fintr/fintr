@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { AxiosInstance } from "axios";
 
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
+import { cacheEditDetailFromIndexRow } from "@/services/transactions/detail-local";
 import {
   enqueueOutboxRecord,
   OUTBOX_COMMAND_TRANSACTION_CREATE,
@@ -38,6 +39,7 @@ import {
 } from "./upsert-into-query-caches";
 import { invalidateLocalInsightsQueries } from "@/utils/invalidateSpaceQueries";
 import { assertCreateTransactionForOptimistic } from "@fintr/domain";
+import { attachCreateTransactionRelationIds } from "./relation-ids-local";
 
 import {
   buildCreateOutboxPayload,
@@ -98,54 +100,86 @@ const roundMoney = (value: number): number =>
 export const optimisticIndexMoneyFromCreate = (params: {
   occurrenceAmount: number;
   data: CreateTransactionType;
-  amountCurrency?: string;
+  /** Currency the user entered in the amount picker (e.g. GBP). */
+  entryCurrency?: string;
+  /** Space / ledger currency used for converted list amounts (e.g. PHP). */
+  spaceCurrency?: string;
 }): Pick<
   IndexTransactionWithCategoryIds,
   "amount" | "amountCurrency" | "bookedAmount" | "bookedAmountCurrency"
 > => {
-  const { occurrenceAmount: originalAmount, data, amountCurrency } = params;
-  const originalCurrency = data.original_currency?.trim();
+  const {
+    occurrenceAmount: originalAmount,
+    data,
+    entryCurrency,
+    spaceCurrency,
+  } = params;
+  const originalCurrency = data.original_currency?.trim() || entryCurrency?.trim();
   const rate = Number(data.exchange_rate);
+  const ledgerCurrency = spaceCurrency?.trim() || entryCurrency?.trim();
 
   if (
     originalCurrency &&
+    ledgerCurrency &&
     Number.isFinite(rate) &&
     rate > 0 &&
-    (!amountCurrency ||
-      originalCurrency.toUpperCase() !== amountCurrency.toUpperCase())
+    originalCurrency.toUpperCase() !== ledgerCurrency.toUpperCase()
   ) {
     return {
       amount: roundMoney(originalAmount * rate),
-      amountCurrency,
+      amountCurrency: ledgerCurrency,
       bookedAmount: originalAmount,
       bookedAmountCurrency: originalCurrency,
     };
   }
 
+  const displayCurrency = originalCurrency || ledgerCurrency;
+
   return {
     amount: originalAmount,
-    amountCurrency,
+    amountCurrency: displayCurrency,
   };
 };
 
 export const buildOptimisticIndexTransaction = (params: {
   id: string;
   data: CreateTransactionType;
-  amountCurrency?: string;
+  entryCurrency?: string;
+  spaceCurrency?: string;
   date?: string;
   amount?: number;
+  parentId?: string | null;
   /** Override "today" for deterministic calculated state in tests. */
   today?: string;
 }): IndexTransactionWithCategoryIds => {
-  const { id, data, amountCurrency } = params;
+  const { id, data, entryCurrency, spaceCurrency } = params;
   const isIncome = data.transactionType === "income";
   const rawAmount = params.amount ?? occurrenceAmount(data);
+  const date = params.date ?? data.date;
+
   const money = optimisticIndexMoneyFromCreate({
     occurrenceAmount: rawAmount,
     data,
-    amountCurrency,
+    entryCurrency,
+    spaceCurrency,
   });
-  const date = params.date ?? data.date;
+  const rate = Number(data.exchange_rate);
+  const currencyConversion =
+    money.bookedAmount != null
+    && money.bookedAmountCurrency
+    && money.amountCurrency
+    && money.bookedAmountCurrency !== money.amountCurrency
+    && Number.isFinite(rate)
+    && rate > 0
+      ? {
+          originalAmount: money.bookedAmount,
+          originalCurrency: money.bookedAmountCurrency,
+          convertedAmount: money.amount,
+          convertedCurrency: money.amountCurrency,
+          exchangeRate: rate,
+          source: data.exchange_rate_source ?? "manual",
+        }
+      : undefined;
 
   return {
     id,
@@ -154,6 +188,7 @@ export const buildOptimisticIndexTransaction = (params: {
     createdAt: new Date().toISOString(),
     description: data.description ?? "",
     ...money,
+    ...(currencyConversion ? { currencyConversion } : {}),
     categoryName: data.categoryName,
     fromAccountName: isIncome ? "" : data.accountName,
     toAccountName: isIncome ? data.accountName : "",
@@ -161,10 +196,28 @@ export const buildOptimisticIndexTransaction = (params: {
       ? CombinedTransactionTypeEnum.INCOME
       : CombinedTransactionTypeEnum.EXPENSE,
     inSeries: data.scheduleType !== ScheduleTypeEnum.ONE_TIME,
+    parentId: params.parentId ?? null,
+    scheduleType: data.scheduleType,
+    repeatInterval:
+      data.scheduleType === ScheduleTypeEnum.REPEAT
+        ? (data.repeatInterval ?? "")
+        : undefined,
+    installmentPeriod:
+      data.scheduleType === ScheduleTypeEnum.INSTALLMENT
+        ? (data.installmentPeriod ?? null)
+        : undefined,
+    rootParentId:
+      data.scheduleType !== ScheduleTypeEnum.ONE_TIME
+        ? (params.parentId ?? id)
+        : null,
     hasImage: Boolean(data.file || data.fileId),
     categoryId: data.categoryId ?? null,
     subcategoryId: data.subcategoryId ?? null,
     entityName: data.entityName || undefined,
+    entityId: data.entityId ?? null,
+    accountId: data.accountId ?? null,
+    fromAccountId: isIncome ? null : (data.accountId ?? null),
+    toAccountId: isIncome ? (data.accountId ?? null) : null,
     tagIds: data.tagIds,
     tags: data.tags,
   };
@@ -173,7 +226,8 @@ export const buildOptimisticIndexTransaction = (params: {
 export const buildOptimisticSeriesTransactions = (params: {
   clientMutationId: string;
   data: CreateTransactionType;
-  amountCurrency?: string;
+  entryCurrency?: string;
+  spaceCurrency?: string;
   /** Override "today" for deterministic series expansion in tests. */
   today?: string;
 }): IndexTransactionWithCategoryIds[] => {
@@ -181,7 +235,8 @@ export const buildOptimisticSeriesTransactions = (params: {
   const parent = buildOptimisticIndexTransaction({
     id: `local:${params.clientMutationId}`,
     data: params.data,
-    amountCurrency: params.amountCurrency,
+    entryCurrency: params.entryCurrency,
+    spaceCurrency: params.spaceCurrency,
     amount,
     today: params.today,
   });
@@ -198,9 +253,11 @@ export const buildOptimisticSeriesTransactions = (params: {
     buildOptimisticIndexTransaction({
       id: localSeriesChildId(params.clientMutationId, index),
       data: params.data,
-      amountCurrency: params.amountCurrency,
+      entryCurrency: params.entryCurrency,
+      spaceCurrency: params.spaceCurrency,
       date,
       amount,
+      parentId: parent.id,
       today: params.today,
     }),
   );
@@ -254,7 +311,7 @@ const applySummariesForRows = async (params: {
   rows: IndexTransactionWithCategoryIds[];
   transactionType: "income" | "expense";
   mode: "add" | "remove";
-  amountCurrency?: string;
+  summaryCurrency?: string;
   queryClient?: QueryClient;
 }): Promise<void> => {
   let nextSummaries = null;
@@ -265,7 +322,7 @@ const applySummariesForRows = async (params: {
       amount: row.amount,
       type: params.transactionType,
       mode: params.mode,
-      currency: params.amountCurrency,
+      currency: row.amountCurrency ?? params.summaryCurrency,
     });
   }
 
@@ -311,7 +368,7 @@ const removeOptimisticSeriesChildren = async (params: {
   clientMutationId: string;
   childRows: IndexTransactionWithCategoryIds[];
   transactionType: "income" | "expense";
-  amountCurrency?: string;
+  summaryCurrency?: string;
   queryClient?: QueryClient;
 }): Promise<void> => {
   const { childRows } = params;
@@ -328,7 +385,7 @@ const removeOptimisticSeriesChildren = async (params: {
     rows: childRows,
     transactionType: params.transactionType,
     mode: "remove",
-    amountCurrency: params.amountCurrency,
+    summaryCurrency: params.summaryCurrency,
     queryClient: params.queryClient,
   });
   rollbackQueryCachesForCreate({
@@ -340,8 +397,8 @@ const removeOptimisticSeriesChildren = async (params: {
 
 /**
  * Local-first create: React Query first (instant UI), then IndexedDB + outbox,
- * then POST. Repeat/installment schedules also write the same near-term child
- * rows the server creates (past through today + future through +1 month).
+ * then POST. Repeat/installment schedules also write optimistic child rows.
+ * Installments expand the full term; repeats use past through today + future +1 month.
  * On network failure the local series stays and an outbox entry remains pending.
  * On API validation errors the local write is rolled back and the error is rethrown.
  *
@@ -352,16 +409,25 @@ export const createTransactionLocalFirst = async (
   params: {
     spaceId: string;
     data: CreateTransactionType;
+    /** Currency shown in the amount picker (e.g. GBP). */
+    entryCurrency?: string;
+    /** Space / ledger currency for converted optimistic rows (e.g. PHP). */
+    spaceCurrency?: string;
+    /** @deprecated Prefer entryCurrency + spaceCurrency. */
     amountCurrency?: string;
   },
   options: CreateTransactionLocalFirstOptions = {},
 ): Promise<CreateTransactionLocalFirstResult> => {
-  const { spaceId, data, amountCurrency } = params;
+  const { spaceId } = params;
+  const entryCurrency = params.entryCurrency ?? params.amountCurrency;
+  const spaceCurrency = params.spaceCurrency ?? params.amountCurrency;
   const { queryClient, waitForSync = true, today } = options;
 
   if (!spaceId) {
     throw new Error("spaceId is required to create a local transaction");
   }
+
+  const data = await attachCreateTransactionRelationIds(spaceId, params.data);
 
   assertCreateTransactionForOptimistic(data);
 
@@ -369,7 +435,8 @@ export const createTransactionLocalFirst = async (
   const seriesRows = buildOptimisticSeriesTransactions({
     clientMutationId,
     data,
-    amountCurrency,
+    entryCurrency,
+    spaceCurrency,
     today,
   });
   const localTransaction = seriesRows[0]!;
@@ -385,18 +452,24 @@ export const createTransactionLocalFirst = async (
   // 2) Persist IndexedDB + monthly summaries + outbox.
   for (const row of seriesRows) {
     await upsertLocalIndexTransaction(spaceId, row);
+    await cacheEditDetailFromIndexRow(spaceId, row);
   }
   await applySummariesForRows({
     spaceId,
     rows: seriesRows,
     transactionType: data.transactionType,
     mode: "add",
-    amountCurrency,
+    summaryCurrency: spaceCurrency ?? entryCurrency,
     queryClient,
   });
 
   if (queryClient) {
     invalidateLocalInsightsQueries(queryClient);
+    queryClient.invalidateQueries({
+      queryKey: ["recurringSeries", spaceId],
+      exact: false,
+      refetchType: "active",
+    });
   }
 
   // Persist attachment blob + JSON-safe outbox payload (file stripped).
@@ -443,16 +516,18 @@ export const createTransactionLocalFirst = async (
         }
       }
 
-      // Server expands the series; drop optimistic children so realtime/server
-      // rows do not duplicate local placeholders.
-      await removeOptimisticSeriesChildren({
-        spaceId,
-        clientMutationId,
-        childRows,
-        transactionType: data.transactionType,
-        amountCurrency,
-        queryClient,
-      });
+      // Server expands the series. For installments, keep optimistic children
+      // until realtime rows arrive (reconciled by date in apply-transaction-change).
+      if (data.scheduleType !== ScheduleTypeEnum.INSTALLMENT) {
+        await removeOptimisticSeriesChildren({
+          spaceId,
+          clientMutationId,
+          childRows,
+          transactionType: data.transactionType,
+          summaryCurrency: spaceCurrency ?? entryCurrency,
+          queryClient,
+        });
+      }
 
       // Prefer the IndexedDB row after id replace — realtime may have already
       // written the server-converted amount under serverId.
@@ -523,7 +598,7 @@ export const createTransactionLocalFirst = async (
         rows: seriesRows,
         transactionType: data.transactionType,
         mode: "remove",
-        amountCurrency,
+        summaryCurrency: spaceCurrency ?? entryCurrency,
         queryClient,
       });
       await removeOutboxRecord(clientMutationId);

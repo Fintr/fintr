@@ -1,12 +1,16 @@
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import type { IndexTransaction } from "@/types/transactionTypes";
+import {
+  isRecurringRow,
+} from "@/utils/recurringSchedule";
 
 export type TransactionEntryTypeFilter =
   | "all"
   | "expense"
   | "income"
   | "transfers"
-  | "loans";
+  | "loans"
+  | "recurring";
 
 export const TRANSACTION_ENTRY_TYPE_FILTER_OPTIONS: Array<{
   value: TransactionEntryTypeFilter;
@@ -17,6 +21,7 @@ export const TRANSACTION_ENTRY_TYPE_FILTER_OPTIONS: Array<{
   { value: "income", label: "Income" },
   { value: "transfers", label: "Transfers" },
   { value: "loans", label: "Loans" },
+  { value: "recurring", label: "Recurring" },
 ];
 
 export const coerceCombinedTransactionType = (
@@ -123,10 +128,17 @@ export const transactionMatchesEntryTypeFilter = (
     | "fromAccountName"
     | "toAccountName"
     | "categoryName"
+    | "inSeries"
+    | "parentId"
+    | "scheduleType"
   >,
 ): boolean => {
   if (entryType === "all") {
     return true;
+  }
+
+  if (entryType === "recurring") {
+    return Boolean(transaction && isRecurringRow(transaction));
   }
 
   const coerced = transaction

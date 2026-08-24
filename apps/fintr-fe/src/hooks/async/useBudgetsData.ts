@@ -11,13 +11,16 @@ import {
 import useAuthApi from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
-import { updateBudget, createBudget, deleteBudget } from "@/services/budgets/mutations";
+import { createBudgetLocalFirst } from "@/services/budgets/create-local-first";
+import { updateBudgetLocalFirst } from "@/services/budgets/update-local-first";
+import { deleteBudgetLocalFirst } from "@/services/budgets/delete-local-first";
 import { UpdateBudgetPayload } from "@/services/budgets/mutations";
 import { CreateBudgetPayload } from "@/types/budgetTypes";
+
 export const useBudgetsData = (startDate: string, endDate: string) => {
   const queryClient = useQueryClient();
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const { api, isAuthenticated } = useAuthApi({
+  const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:budgets",
   });
 
@@ -27,13 +30,28 @@ export const useBudgetsData = (startDate: string, endDate: string) => {
       (await loadCachedBudgetsResponse(spaceCode, startDate, endDate)) ?? null,
     enabled: Boolean(spaceCode && startDate && endDate),
     staleTime: Infinity,
+    networkMode: "always",
   });
 
-  const skipNetworkFetch = useSkipCachedNetworkFetch(localBudgetsQuery);
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localBudgetsQuery, spaceCode);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["budgets", spaceCode, startDate, endDate],
     queryFn: async () => {
+      if (skipNetworkFetch) {
+        return (
+          (await loadCachedBudgetsResponse(spaceCode, startDate, endDate))
+          ?? localBudgetsQuery.data
+          ?? {
+            budgets: [],
+            summary: null,
+            nextPage: null,
+            totalPages: null,
+            totalCount: null,
+          }
+        );
+      }
+
       const page = await fetchBudgetsPage(api, {
         queryKey: ["budgets", spaceCode, startDate, endDate],
       });
@@ -45,63 +63,73 @@ export const useBudgetsData = (startDate: string, endDate: string) => {
       });
       return page;
     },
-    enabled: !!spaceCode && !!startDate && !!endDate && !skipNetworkFetch,
+    enabled: !!spaceCode && !!startDate && !!endDate,
     placeholderData: localBudgetsQuery.data ?? undefined,
     refetchOnMount: !skipNetworkFetch,
     staleTime: skipNetworkFetch ? Infinity : 30000,
+    networkMode: "always",
   });
 
-  const invalidateBudgets = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: ["budgets", spaceCode, startDate, endDate],
-      refetchType: "active",
-    });
-  };
+  const budgetsPage = data ?? localBudgetsQuery.data ?? undefined;
 
-  const updateBudgetMutation = useMutation(
-    {
-      mutationFn: async ({ budgetId, data }: { budgetId: string; data: UpdateBudgetPayload }) => {
-        try {
-          const result = await updateBudget(api, budgetId, data);
-          await invalidateBudgets();
-          return result;
-        } catch (error) {
-          console.error("Error updating budget:", error);
-          throw error;
-        }
-      },
-    }
-  );
+  const updateBudgetMutation = useMutation({
+    mutationFn: async ({
+      budgetId,
+      data: payload,
+    }: {
+      budgetId: string;
+      data: UpdateBudgetPayload;
+    }) => {
+      return updateBudgetLocalFirst(
+        api,
+        {
+          spaceCode,
+          startDate,
+          endDate,
+          budgetId,
+          data: payload,
+        },
+        { queryClient, waitForSync: false },
+      );
+    },
+    networkMode: "always",
+  });
 
   const createBudgetMutation = useMutation({
     mutationFn: async (payload: CreateBudgetPayload) => {
-      try {
-        const result = await createBudget(api, payload);
-        await invalidateBudgets();
-        return result;
-      } catch (error) {
-        console.error("Error creating budget:", error);
-        throw error;
-      }
+      return createBudgetLocalFirst(
+        api,
+        {
+          spaceCode,
+          startDate,
+          endDate,
+          data: payload,
+        },
+        { queryClient, waitForSync: false },
+      );
     },
+    networkMode: "always",
   });
 
   const deleteBudgetMutation = useMutation({
     mutationFn: async (budgetId: string) => {
-      try {
-        const result = await deleteBudget(api, budgetId);
-        await invalidateBudgets();
-        return result;
-      } catch (error) {
-        console.error("Error deleting budget:", error);
-        throw error;
-      }
+      return deleteBudgetLocalFirst(
+        api,
+        {
+          spaceCode,
+          startDate,
+          endDate,
+          budgetId,
+        },
+        { queryClient, waitForSync: false },
+      );
     },
+    networkMode: "always",
   });
 
   return {
-    data,
-    isLoading,
+    data: budgetsPage,
+    isLoading: isLoading && !budgetsPage,
     isError,
     refetch,
     updateBudgetMutation,

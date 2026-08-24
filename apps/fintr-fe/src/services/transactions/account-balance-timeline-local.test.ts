@@ -162,18 +162,64 @@ describe("buildAccountBalanceTimelineFromCache", () => {
     );
 
     expect(timeline?.points.map((point) => point.date)).toEqual([
-      "2025-01-01",
       "2025-01-10",
       "2025-01-15",
     ]);
     expect(timeline?.points.map((point) => point.occurredAt)).toEqual([
-      "2025-01-01",
       "2025-01-10",
       "2025-01-15",
     ]);
     expect(timeline?.points.map((point) => point.balance)).toEqual([
-      700,
       1200,
+      1000,
+    ]);
+  });
+
+  it("keeps a window opening when this account already had activity", async () => {
+    vi.mocked(loadCachedTransactionsInRange).mockImplementation(
+      async (_space, startDate, endDate) => {
+        const prior = makeTx({
+          id: "prior",
+          date: "2024-12-01",
+          amount: 800,
+          type: CombinedTransactionTypeEnum.INCOME,
+          toAccountId: "acc-cash",
+          toAccountName: "Cash",
+        });
+        const inRange = makeTx({
+          id: "income",
+          date: "2025-01-10",
+          amount: 200,
+          type: CombinedTransactionTypeEnum.INCOME,
+          toAccountId: "acc-cash",
+          toAccountName: "Cash",
+        });
+
+        if (endDate < "2025-01-01") {
+          return startDate <= prior.date ? [prior] : [];
+        }
+
+        return [inRange];
+      },
+    );
+
+    const timeline = await buildAccountBalanceTimelineFromCache(
+      "space-1",
+      {},
+      "acc-cash",
+      {
+        accountId: "acc-cash",
+        startDate: "2025-01-01",
+        endDate: "2025-01-31",
+      },
+    );
+
+    expect(timeline?.points.map((point) => point.date)).toEqual([
+      "2025-01-01",
+      "2025-01-10",
+    ]);
+    expect(timeline?.points.map((point) => point.balance)).toEqual([
+      800,
       1000,
     ]);
   });

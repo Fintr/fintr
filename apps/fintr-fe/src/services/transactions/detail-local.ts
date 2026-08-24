@@ -22,6 +22,7 @@ import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import { positiveTransactionFormAmount } from "@/utils/transactionFormAmount";
 import {
   conversionHasFx,
+  moneyFieldsFromDetailPayload,
   reconcileFxConversion,
 } from "@/utils/transactionViewMoney";
 
@@ -31,11 +32,51 @@ import { attachmentOwnerTypeForTransaction } from "@/services/attachments/create
 import { cacheRemoteFilesForOwners } from "@/services/attachments/download-remote";
 import { extractRemoteFiles } from "@/services/attachments/remote-files";
 import { resolveEditAttachmentFile } from "@/services/attachments/resolve";
+import {
+  backfillIndexRowForOffline,
+  indexRowHasStoredFx,
+  listRowHasCrossCurrencyBooked,
+} from "@/services/transactions/offline-fx-backfill";
 
 const transactionDetailKey = (
   spaceId: string,
   transactionId: string,
 ): string => `transactionDetail:${spaceId}:${transactionId}`;
+
+const positiveInstallmentPlanTotal = (
+  value: number | null | undefined,
+): number | null =>
+  value != null && Number.isFinite(value) && value > 0 ? value : null;
+
+/**
+ * IndexedDB index rows are patched immediately on local-first edits; cached
+ * detail snapshots (child or root) often still carry the pre-edit plan total.
+ */
+export const resolveInstallmentPlanTotal = ({
+  listRowTotal,
+  parentRowTotal,
+  detailTotal,
+  parentCachedTotal,
+}: {
+  listRowTotal?: number | null;
+  parentRowTotal?: number | null;
+  detailTotal?: number | null;
+  parentCachedTotal?: number | null;
+}): number | null => {
+  const indexTotals = [
+    positiveInstallmentPlanTotal(parentRowTotal),
+    positiveInstallmentPlanTotal(listRowTotal),
+  ].filter((value): value is number => value != null);
+
+  if (indexTotals.length > 0) {
+    return Math.max(...indexTotals);
+  }
+
+  return (
+    positiveInstallmentPlanTotal(detailTotal)
+    ?? positiveInstallmentPlanTotal(parentCachedTotal)
+  );
+};
 
 export const cacheTransactionDetail = async (
   spaceId: string,
@@ -47,9 +88,10 @@ export const cacheTransactionDetail = async (
   }
 
   try {
+    const normalized = normalizeTransactionEditDetail(payload) ?? payload;
     await putLocalResponseSnapshot(
       transactionDetailKey(spaceId, transactionId),
-      payload,
+      normalized,
     );
   } catch (error) {
     console.warn("[local-db] Failed to cache transaction detail", error);
@@ -182,15 +224,22 @@ export const mapIndexTransactionToEditDataSync = (
     subcategoryId: categoryIds?.subcategoryId,
     subcategoryName: row.subcategoryName ?? null,
     accountName,
+    accountId:
+      row.accountId
+      ?? (isIncome ? row.toAccountId : row.fromAccountId)
+      ?? undefined,
     transactionType: isIncome ? "income" : "expense",
     type: row.type,
-    scheduleType: row.inSeries
-      ? ScheduleTypeEnum.REPEAT
-      : ScheduleTypeEnum.ONE_TIME,
-    repeatInterval: "",
-    installmentPeriod: 0,
+    scheduleType: resolveScheduleTypeFromRow(row),
+    repeatInterval: row.repeatInterval ?? "",
+    installmentPeriod: row.installmentPeriod ?? 0,
+    installmentTotal:
+      row.installmentTotal != null && row.installmentTotal > 0
+        ? row.installmentTotal
+        : null,
     file: null,
     entityName: row.entityName ?? "",
+    entityId: row.entityId ?? undefined,
     hasCurrencyConversion: Boolean(
       row.bookedAmountCurrency &&
         row.amountCurrency &&
@@ -212,6 +261,8 @@ export const mapIndexTransactionToEditDataSync = (
         ...base,
         fromAccountName: row.fromAccountName ?? "",
         toAccountName: row.toAccountName ?? "",
+        fromAccountId: row.fromAccountId ?? undefined,
+        toAccountId: row.toAccountId ?? undefined,
         transactionCost: 0,
       },
       row,
@@ -232,17 +283,255 @@ export const mapIndexTransactionToEditData = async (
     type: row.type,
   });
 
-  return mapIndexTransactionToEditDataSync(row, categoryIds);
+  const sync = mapIndexTransactionToEditDataSync(row, categoryIds);
+  return resolveSeriesScheduleFields(spaceId, row, sync);
 };
 
-const normalizeDetailPayload = (
+const pickDetailField = (
+  record: Record<string, unknown>,
+  camel: string,
+  snake: string,
+): unknown => {
+  if (record[camel] !== undefined && record[camel] !== null) {
+    return record[camel];
+  }
+  if (record[snake] !== undefined && record[snake] !== null) {
+    return record[snake];
+  }
+  return undefined;
+};
+
+const isRecurringScheduleType = (
+  scheduleType?: ScheduleTypeEnum | string | null,
+): boolean =>
+  scheduleType === ScheduleTypeEnum.REPEAT
+  || scheduleType === ScheduleTypeEnum.INSTALLMENT;
+
+const resolveScheduleTypeFromRow = (row: IndexTransaction): ScheduleTypeEnum => {
+  if (
+    row.scheduleType === ScheduleTypeEnum.INSTALLMENT
+    || row.scheduleType === "installment"
+    || (row.installmentPeriod ?? 0) > 0
+  ) {
+    return ScheduleTypeEnum.INSTALLMENT;
+  }
+
+  if (row.scheduleType && row.scheduleType !== ScheduleTypeEnum.ONE_TIME) {
+    return row.scheduleType as ScheduleTypeEnum;
+  }
+
+  if (row.parentId || row.inSeries) {
+    return ScheduleTypeEnum.REPEAT;
+  }
+
+  return ScheduleTypeEnum.ONE_TIME;
+};
+
+const resolveSeriesRootId = (
+  listRow?: IndexTransaction | null,
+): string | null =>
+  listRow?.rootParentId?.trim()
+  ?? listRow?.parentId?.trim()
+  ?? null;
+
+export const normalizeTransactionEditDetail = (
   payload: unknown,
 ): UpdateTransactionType | TransferUpdateTransactionType | null => {
   if (!payload || typeof payload !== "object") {
     return null;
   }
-  return payload as UpdateTransactionType | TransferUpdateTransactionType;
+
+  const record = payload as Record<string, unknown>;
+  const existing = payload as UpdateTransactionType | TransferUpdateTransactionType;
+  const money = moneyFieldsFromDetailPayload(record);
+
+  const scheduleTypeRaw = pickDetailField(record, "scheduleType", "schedule_type");
+  const repeatIntervalRaw = pickDetailField(
+    record,
+    "repeatInterval",
+    "repeat_interval",
+  );
+  const installmentPeriodRaw = pickDetailField(
+    record,
+    "installmentPeriod",
+    "installment_period",
+  );
+  const installmentTotalRaw = pickDetailField(
+    record,
+    "installmentTotal",
+    "installment_total",
+  );
+
+  const scheduleType = scheduleTypeRaw != null
+    ? String(scheduleTypeRaw) as ScheduleTypeEnum
+    : existing.scheduleType;
+
+  const repeatInterval = repeatIntervalRaw != null
+    ? String(repeatIntervalRaw)
+    : existing.repeatInterval ?? "";
+
+  const installmentPeriod = installmentPeriodRaw != null
+    ? Number(installmentPeriodRaw)
+    : existing.installmentPeriod ?? 0;
+
+  const installmentTotal = installmentTotalRaw != null
+    ? Number(installmentTotalRaw)
+    : existing.installmentTotal ?? null;
+
+  const conversion = money.currencyConversion;
+  const hasFx = conversionHasFx(conversion);
+
+  let next: UpdateTransactionType | TransferUpdateTransactionType = {
+    ...existing,
+    scheduleType,
+    repeatInterval,
+    installmentPeriod,
+    installmentTotal,
+    hasCurrencyConversion: hasFx,
+    ...(hasFx && conversion
+      ? {
+          currencyConversion: conversion,
+          originalDisplayAmount: conversion.originalAmount,
+          originalDisplayCurrency: conversion.originalCurrency,
+          original_display_amount: conversion.originalAmount,
+          original_display_currency: conversion.originalCurrency,
+        }
+      : {}),
+  };
+
+  if (hasFx && conversion) {
+    next = applyListRowFxToEditDetail(next, {
+      id: String(record.id ?? existing.id ?? ""),
+      date: String(record.date ?? existing.date ?? ""),
+      description: String(record.description ?? existing.description ?? ""),
+      amount: money.amount,
+      amountCurrency: money.amountCurrency,
+      bookedAmount: money.bookedAmount,
+      bookedAmountCurrency: money.bookedAmountCurrency,
+      currencyConversion: conversion,
+      categoryName: String(record.categoryName ?? record.category_name ?? ""),
+      fromAccountName: String(
+        record.fromAccountName
+        ?? record.from_account_name
+        ?? record.accountName
+        ?? record.account_name
+        ?? "",
+      ),
+      toAccountName: String(record.toAccountName ?? record.to_account_name ?? ""),
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    });
+  }
+
+  return next;
 };
+
+const resolveSeriesScheduleFields = async (
+  spaceId: string,
+  listRow: IndexTransaction | null | undefined,
+  detail: UpdateTransactionType | TransferUpdateTransactionType,
+): Promise<UpdateTransactionType | TransferUpdateTransactionType> => {
+  const inSeries =
+    Boolean(listRow?.parentId)
+    || Boolean(listRow?.inSeries)
+    || isRecurringScheduleType(listRow?.scheduleType)
+    || isRecurringScheduleType(detail.scheduleType);
+
+  if (!inSeries) {
+    return detail;
+  }
+
+  let repeatInterval = detail.repeatInterval?.trim() ?? "";
+  let scheduleType = detail.scheduleType;
+  let seriesParentDate = detail.seriesParentDate ?? detail.date;
+  let installmentPeriod =
+    detail.installmentPeriod && detail.installmentPeriod > 0
+      ? detail.installmentPeriod
+      : listRow?.installmentPeriod && listRow.installmentPeriod > 0
+        ? listRow.installmentPeriod
+        : 0;
+  let installmentTotal = resolveInstallmentPlanTotal({
+    listRowTotal: listRow?.installmentTotal,
+    detailTotal: detail.installmentTotal,
+  });
+
+  const rootId = resolveSeriesRootId(listRow);
+  const parentId = rootId;
+
+  const needsSeriesScheduleLookup =
+    !repeatInterval
+    || scheduleType === ScheduleTypeEnum.ONE_TIME
+    || installmentPeriod <= 0
+    || installmentTotal == null
+    || installmentTotal <= 0;
+
+  if (needsSeriesScheduleLookup || parentId) {
+    if (parentId) {
+      const parentCached = await loadCachedTransactionDetail(spaceId, parentId);
+      const parentNorm = normalizeTransactionEditDetail(parentCached);
+      if (!repeatInterval && parentNorm?.repeatInterval?.trim()) {
+        repeatInterval = parentNorm.repeatInterval.trim();
+      }
+      if (
+        parentNorm?.scheduleType
+        && parentNorm.scheduleType !== ScheduleTypeEnum.ONE_TIME
+      ) {
+        scheduleType = parentNorm.scheduleType;
+      }
+      if (installmentPeriod <= 0 && (parentNorm?.installmentPeriod ?? 0) > 0) {
+        installmentPeriod = parentNorm.installmentPeriod;
+      }
+
+      const parentRow = await loadLocalIndexTransactionById(spaceId, parentId);
+      if (!repeatInterval && parentRow?.repeatInterval?.trim()) {
+        repeatInterval = parentRow.repeatInterval.trim();
+      }
+      if (
+        parentRow?.scheduleType
+        && parentRow.scheduleType !== ScheduleTypeEnum.ONE_TIME
+      ) {
+        scheduleType = parentRow.scheduleType as ScheduleTypeEnum;
+      }
+      if (installmentPeriod <= 0 && (parentRow?.installmentPeriod ?? 0) > 0) {
+        installmentPeriod = parentRow.installmentPeriod ?? 0;
+      }
+      // Root plan total is source of truth — prefer live index rows over cached detail.
+      installmentTotal = resolveInstallmentPlanTotal({
+        listRowTotal: listRow?.installmentTotal,
+        parentRowTotal: parentRow?.installmentTotal,
+        detailTotal: installmentTotal,
+        parentCachedTotal: parentNorm?.installmentTotal,
+      });
+      if (parentRow?.date) {
+        seriesParentDate = parentRow.date;
+      }
+    } else if (listRow?.date) {
+      seriesParentDate = listRow.date;
+    }
+  }
+
+  if (!scheduleType || scheduleType === ScheduleTypeEnum.ONE_TIME) {
+    scheduleType =
+      installmentPeriod > 0
+        ? ScheduleTypeEnum.INSTALLMENT
+        : ScheduleTypeEnum.REPEAT;
+  }
+
+  return {
+    ...detail,
+    scheduleType,
+    repeatInterval,
+    installmentPeriod,
+    installmentTotal,
+    seriesParentDate,
+  };
+};
+
+const normalizeDetailPayload = (
+  payload: unknown,
+): UpdateTransactionType | TransferUpdateTransactionType | null =>
+  normalizeTransactionEditDetail(payload);
 
 const toAmountNumber = (amount: unknown): number => {
   if (typeof amount === "number") {
@@ -255,16 +544,10 @@ const toAmountNumber = (amount: unknown): number => {
   return 0;
 };
 
-const listRowHasCrossCurrencyBooked = (listRow: IndexTransaction): boolean => {
-  const bookedCurrency = listRow.bookedAmountCurrency?.trim().toUpperCase();
-  const amountCurrency = listRow.amountCurrency?.trim().toUpperCase();
-  return Boolean(
-    listRow.bookedAmount != null
-    && bookedCurrency
-    && amountCurrency
-    && bookedCurrency !== amountCurrency,
-  );
-};
+export {
+  indexRowHasStoredFx,
+  listRowHasCrossCurrencyBooked,
+} from "@/services/transactions/offline-fx-backfill";
 
 const buildListRowFxConversion = (
   listRow: IndexTransaction,
@@ -274,6 +557,11 @@ const buildListRowFxConversion = (
   const bookedCurrency = listRow.bookedAmountCurrency!;
   const listAmount = positiveTransactionFormAmount(listRow.amount);
   const convertedCurrency = listRow.amountCurrency ?? "PHP";
+  const inferredRate =
+    bookedAmount !== 0
+    && !nearlyEqualMoney(listAmount, bookedAmount)
+      ? listAmount / bookedAmount
+      : null;
 
   return {
     originalAmount: bookedAmount,
@@ -282,20 +570,47 @@ const buildListRowFxConversion = (
     convertedCurrency,
     exchangeRate:
       existing?.exchangeRate
-      ?? (bookedAmount !== 0 ? listAmount / bookedAmount : 1),
+      ?? inferredRate
+      ?? 1,
     source: existing?.source ?? "manual",
     rateTimestamp: existing?.rateTimestamp,
     note: existing?.note ?? null,
   };
 };
 
+/** Persist `currency_conversion` on index rows that only carry booked/original legs. */
+export const ensureIndexRowCurrencyConversion = (
+  row: IndexTransaction,
+): IndexTransaction => backfillIndexRowForOffline(row);
+
+/** Write edit-ready detail (with FX metadata) into IndexedDB from an index row. */
+export const cacheEditDetailFromIndexRow = async (
+  spaceId: string,
+  row: IndexTransaction,
+): Promise<void> => {
+  if (!spaceId || !row.id) {
+    return;
+  }
+
+  const editData = mapIndexTransactionToEditDataSync(
+    ensureIndexRowCurrencyConversion(row),
+  );
+  await cacheTransactionDetail(spaceId, row.id, editData);
+};
+
+const cachedDetailHasStoredFx = (
+  detail: UpdateTransactionType | TransferUpdateTransactionType | null | undefined,
+): boolean => conversionHasFx(conversionFromEditDetail(detail ?? ({} as UpdateTransactionType)));
+
 const fxConversionForListRow = (
   listRow: IndexTransaction,
   existing?: CurrencyConversionType | null,
 ): CurrencyConversionType | null => {
+  const storedConversion = listRow.currencyConversion ?? existing;
+
   if (listRowHasCrossCurrencyBooked(listRow)) {
     return reconcileFxConversion(
-      buildListRowFxConversion(listRow, existing),
+      buildListRowFxConversion(listRow, storedConversion),
       {
         amount: listRow.bookedAmount,
         currency: listRow.bookedAmountCurrency,
@@ -303,7 +618,7 @@ const fxConversionForListRow = (
     );
   }
 
-  const raw = listRow.currencyConversion ?? existing;
+  const raw = storedConversion;
   if (!conversionHasFx(raw)) {
     return null;
   }
@@ -392,7 +707,14 @@ const conversionFromEditDetail = (
     convertedAmount: Number.isFinite(convertedAmount)
       ? convertedAmount
       : originalAmount,
-    convertedCurrency: convertedCurrency || originalCurrency,
+    // Prefer a real ledger currency; never collapse to originalCurrency or FX
+    // target matching treats GBP→GBP as "no conversion" and clears the snapshot.
+    convertedCurrency:
+      convertedCurrency
+      || isoCurrency(
+        (detail as { amountCurrency?: string }).amountCurrency,
+      )
+      || originalCurrency,
     exchangeRate: Number(raw?.exchangeRate ?? raw?.exchange_rate ?? 1),
     source: String(raw?.source ?? "manual"),
     rateTimestamp: (() => {
@@ -401,6 +723,21 @@ const conversionFromEditDetail = (
     })(),
     note: (raw?.note as string | null | undefined) ?? null,
   };
+};
+
+export const storedFxFingerprint = (
+  detail: UpdateTransactionType | TransferUpdateTransactionType | null | undefined,
+): string | null => {
+  const conversion = detail ? conversionFromEditDetail(detail) : null;
+  if (!conversionHasFx(conversion)) {
+    return null;
+  }
+
+  return [
+    conversion!.originalCurrency,
+    conversion!.exchangeRate,
+    conversion!.source ?? "",
+  ].join(":");
 };
 
 const shouldPreserveDetailFx = (
@@ -451,6 +788,18 @@ export const applyListRowMoneyToDetail = (
     description: listRow.description ?? detail.description,
     date: listRow.date || detail.date,
     categoryName: listRow.categoryName || detail.categoryName,
+    installmentPeriod:
+      listRow.installmentPeriod && listRow.installmentPeriod > 0
+        ? listRow.installmentPeriod
+        : detail.installmentPeriod,
+    // resolveSeriesScheduleFields already merged root/index totals — do not
+    // downgrade to a stale child copy from the list row.
+    installmentTotal:
+      detail.installmentTotal != null && detail.installmentTotal > 0
+        ? detail.installmentTotal
+        : resolveInstallmentPlanTotal({
+            listRowTotal: listRow.installmentTotal,
+          }) ?? detail.installmentTotal,
   };
 
   if (listRow.tags?.length) {
@@ -490,12 +839,47 @@ export const applyListRowMoneyToDetail = (
     };
   }
 
+  const detailConversion = conversionFromEditDetail(detail);
+  if (conversionHasFx(detailConversion)) {
+    return applyListRowFxToEditDetail(next, {
+      ...listRow,
+      bookedAmount:
+        listRow.bookedAmount
+        ?? detailConversion!.originalAmount,
+      bookedAmountCurrency:
+        listRow.bookedAmountCurrency
+        ?? detailConversion!.originalCurrency,
+      amount:
+        listRow.amount != null
+          ? listRow.amount
+          : detailConversion!.convertedAmount,
+      amountCurrency:
+        listRow.amountCurrency
+        ?? detailConversion!.convertedCurrency,
+      currencyConversion: detailConversion!,
+    });
+  }
+
+  const detailRecord = detail as Record<string, unknown>;
+  const originalDisplayCurrency = isoCurrency(
+    detailRecord.originalDisplayCurrency
+    ?? detailRecord.original_display_currency,
+  );
+  const listAmountCurrency = isoCurrency(listRow.amountCurrency);
+  const hasCrossCurrencyOriginalDisplay =
+    originalDisplayCurrency !== ""
+    && listAmountCurrency !== ""
+    && originalDisplayCurrency !== listAmountCurrency;
+
+  if (hasCrossCurrencyOriginalDisplay) {
+    return next;
+  }
+
   const listAmount = toAmountNumber(listRow.amount);
   next.amount = listAmount;
   next.amountCurrency = listRow.amountCurrency ?? detail.amountCurrency;
 
-  // Same-currency (or no booked leg): drop stale conversion so Income/Expense
-  // forms do not prefer an outdated original_display_amount over list amount.
+  // Same-currency rows with no persisted conversion: drop stale FX metadata.
   delete (next as { currencyConversion?: unknown }).currencyConversion;
   delete (next as { currency_conversion?: unknown }).currency_conversion;
   delete (next as { original_display_amount?: unknown }).original_display_amount;
@@ -622,13 +1006,33 @@ export const enrichTransactionEditDetail = async (params: {
   transaction: IndexTransaction;
   preferLocal: boolean;
 }): Promise<TransactionEditSeed> => {
+  const cached = await loadCachedTransactionDetail(
+    params.spaceId,
+    params.transaction.id,
+  );
+  const normalizedCached = normalizeDetailPayload(cached);
+  const localHasFx =
+    indexRowHasStoredFx(params.transaction)
+    || cachedDetailHasStoredFx(normalizedCached ?? undefined);
+  const needsNetworkFxBackfill =
+    params.api != null
+    && !localHasFx
+    && (
+      params.transaction.scheduleType === ScheduleTypeEnum.INSTALLMENT
+      || Boolean(params.transaction.inSeries)
+      || Boolean(params.transaction.parentId)
+    );
+  const usePreferLocal =
+    params.preferLocal
+    && !needsNetworkFxBackfill;
+
   const data = await resolveTransactionDetail({
     api: params.api,
     spaceId: params.spaceId,
     transactionId: params.transaction.id,
     type: params.transaction.type,
     listRow: params.transaction,
-    preferLocal: params.preferLocal,
+    preferLocal: usePreferLocal,
   });
 
   let nextData = await attachLocalFileToDetail({
@@ -736,9 +1140,26 @@ export const resolveTransactionDetail = async (params: {
       const cached = await loadCachedTransactionDetail(spaceId, transactionId);
       const normalized = normalizeDetailPayload(cached);
       if (normalized) {
-        return listRow
-          ? applyListRowMoneyToDetail(normalized, listRow)
-          : normalized;
+        const withSchedule = await resolveSeriesScheduleFields(
+          spaceId,
+          listRow,
+          normalized,
+        );
+        if (listRow) {
+          if (
+            indexRowHasStoredFx(listRow)
+            && !cachedDetailHasStoredFx(withSchedule)
+          ) {
+            return applyListRowMoneyToDetail(
+              applyListRowFxToEditDetail(withSchedule, listRow),
+              listRow,
+            );
+          }
+
+          return applyListRowMoneyToDetail(withSchedule, listRow);
+        }
+
+        return withSchedule;
       }
     }
 
@@ -763,6 +1184,14 @@ export const resolveTransactionDetail = async (params: {
   }
 
   const data = await fetchTransactionById(api, transactionId);
-  void cacheTransactionDetail(spaceId, transactionId, data);
-  return listRow ? applyListRowMoneyToDetail(data, listRow) : data;
+  const normalized = normalizeTransactionEditDetail(data) ?? data;
+  void cacheTransactionDetail(spaceId, transactionId, normalized);
+  const withSchedule = await resolveSeriesScheduleFields(
+    spaceId,
+    listRow,
+    normalized,
+  );
+  return listRow
+    ? applyListRowMoneyToDetail(withSchedule, listRow)
+    : withSchedule;
 };

@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ScheduleTypeEnum } from "@/constants/transactionConstants";
+import { ScheduleTypeEnum, UpdateScopeEnum } from "@/constants/transactionConstants";
 import {
   getLocalDb,
   OUTBOX_COMMAND_TRANSACTION_UPDATE,
@@ -103,6 +103,219 @@ describe("buildUpdatedIndexTransaction", () => {
     expect(next.type).toBe(CombinedTransactionTypeEnum.INCOME);
     expect(next.tagIds).toEqual(["tag-japan"]);
     expect(next.tags?.[0]?.name).toBe("Japan 2026");
+  });
+
+  it("raises installment plan total when this payment only changes", () => {
+    const previous = {
+      id: "install5-nov",
+      date: "2027-11-01",
+      description: "INSTALL5",
+      amount: 10000,
+      amountCurrency: "PHP",
+      categoryName: "Home",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      hasImage: false,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 240000,
+      parentId: "install5-root",
+      rootParentId: "install5-root",
+    };
+
+    const next = buildUpdatedIndexTransaction({
+      previous,
+      data: {
+        id: "install5-nov",
+        amount: 20000,
+        description: "INSTALL5",
+        transactionType: "expense",
+        categoryName: "Home",
+        accountName: "Cash",
+        date: "2027-11-01",
+        scheduleType: ScheduleTypeEnum.INSTALLMENT,
+        installmentPeriod: 24,
+        installmentTotal: 240000,
+        updateScope: UpdateScopeEnum.THIS_ONLY,
+      },
+      amountCurrency: "PHP",
+    });
+
+    expect(next.amount).toBe(20000);
+    expect(next.installmentTotal).toBe(250000);
+  });
+
+  it("stores converted PHP and GBP booked legs for a this-only FX installment bump", () => {
+    const previous = {
+      id: "install8-nov",
+      date: "2027-11-01",
+      description: "INSTALL8",
+      amount: 10_000,
+      amountCurrency: "PHP",
+      bookedAmount: 100,
+      bookedAmountCurrency: "GBP",
+      categoryName: "Home",
+      fromAccountName: "SAMPLE BDO LONG ASS NAME",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      hasImage: false,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 240_000,
+      parentId: "install8-root",
+      rootParentId: "install8-root",
+      currencyConversion: {
+        originalAmount: 100,
+        originalCurrency: "GBP",
+        convertedAmount: 10_000,
+        convertedCurrency: "PHP",
+        exchangeRate: 100,
+        source: "manual",
+      },
+    };
+
+    const next = buildUpdatedIndexTransaction({
+      previous,
+      data: {
+        id: "install8-nov",
+        amount: 200,
+        description: "INSTALL8",
+        transactionType: "expense",
+        categoryName: "Home",
+        accountName: "SAMPLE BDO LONG ASS NAME",
+        date: "2027-11-01",
+        scheduleType: ScheduleTypeEnum.INSTALLMENT,
+        installmentPeriod: 24,
+        installmentTotal: 2500,
+        updateScope: UpdateScopeEnum.THIS_ONLY,
+        original_currency: "GBP",
+        exchange_rate: 100,
+        exchange_rate_source: "manual",
+      } as UpdateTransactionType & {
+        original_currency: string;
+        exchange_rate: number;
+        exchange_rate_source: "manual";
+      },
+      amountCurrency: "PHP",
+    });
+
+    expect(next.amount).toBe(20_000);
+    expect(next.bookedAmount).toBe(200);
+    expect(next.bookedAmountCurrency).toBe("GBP");
+    expect(next.installmentTotal).toBe(250_000);
+    expect(next.currencyConversion).toMatchObject({
+      originalAmount: 200,
+      originalCurrency: "GBP",
+      convertedAmount: 20_000,
+      convertedCurrency: "PHP",
+      exchangeRate: 100,
+      source: "manual",
+    });
+  });
+
+  it("stores 250000 PHP plan total when prior index amount leaked GBP magnitudes", () => {
+    const previous = {
+      id: "install8-jun",
+      date: "2028-06-22",
+      description: "INSTALL8",
+      amount: 100,
+      amountCurrency: "PHP",
+      bookedAmount: 100,
+      bookedAmountCurrency: "GBP",
+      categoryName: "Home",
+      fromAccountName: "SAMPLE BDO LONG ASS NAME",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      hasImage: false,
+      scheduleType: ScheduleTypeEnum.INSTALLMENT,
+      installmentPeriod: 24,
+      installmentTotal: 240_000,
+      parentId: "install8-root",
+      rootParentId: "install8-root",
+      currencyConversion: {
+        originalAmount: 100,
+        originalCurrency: "GBP",
+        convertedAmount: 100,
+        convertedCurrency: "PHP",
+        exchangeRate: 100,
+        source: "manual",
+      },
+    };
+
+    const next = buildUpdatedIndexTransaction({
+      previous,
+      data: {
+        id: "install8-jun",
+        amount: 200,
+        description: "INSTALL8",
+        transactionType: "expense",
+        categoryName: "Home",
+        accountName: "SAMPLE BDO LONG ASS NAME",
+        date: "2028-06-22",
+        scheduleType: ScheduleTypeEnum.INSTALLMENT,
+        installmentPeriod: 24,
+        installmentTotal: 2500,
+        updateScope: UpdateScopeEnum.THIS_ONLY,
+        original_currency: "GBP",
+        exchange_rate: 100,
+        exchange_rate_source: "manual",
+      } as UpdateTransactionType & {
+        original_currency: string;
+        exchange_rate: number;
+        exchange_rate_source: "manual";
+      },
+      amountCurrency: "PHP",
+    });
+
+    expect(next.amount).toBe(20_000);
+    expect(next.installmentTotal).toBe(250_000);
+  });
+
+  it("stamps account and merchant ids onto the updated local row", () => {
+    const previous = {
+      id: "tx-1",
+      date: "2026-08-11",
+      description: "Old",
+      amount: 20,
+      amountCurrency: "PHP",
+      categoryName: "Food",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+      accountId: "acc-cash",
+      fromAccountId: "acc-cash",
+      entityId: "ent-old",
+      entityName: "Old merchant",
+    };
+
+    const next = buildUpdatedIndexTransaction({
+      previous,
+      data: {
+        id: "tx-1",
+        amount: 20,
+        description: "Lunch",
+        transactionType: "expense",
+        categoryName: "Food",
+        accountName: "Bank",
+        accountId: "acc-bank",
+        entityName: "Jollibee",
+        entityId: "ent-jollibee",
+        date: "2026-08-11",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+      },
+      amountCurrency: "PHP",
+    });
+
+    expect(next.accountId).toBe("acc-bank");
+    expect(next.fromAccountId).toBe("acc-bank");
+    expect(next.entityId).toBe("ent-jollibee");
+    expect(next.entityName).toBe("Jollibee");
   });
 
   it("refreshes bookedAmount so offline dashboard totals use the edited value", () => {
@@ -383,5 +596,294 @@ describe("updateTransactionLocalFirst", () => {
     expect(august?.totalIncome).toBeCloseTo(24900);
 
     expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("invalidates the recurring series query so the installment detail page refreshes", async () => {
+    await seedIncome();
+    vi.mocked(updateTransaction).mockResolvedValue({ success: true });
+
+    const queryClient = new QueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    await updateTransactionLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        previous: (await loadLocalIndexTransactionById(
+          "space-a",
+          "tx-income-1",
+        ))!,
+        amountCurrency: "PHP",
+        data: {
+          id: "tx-income-1",
+          amount: 500,
+          description: "Loan repayment Cash",
+          transactionType: "income",
+          categoryName: "Freelance",
+          accountName: "Cash",
+          date: "2026-08-11",
+          scheduleType: ScheduleTypeEnum.ONE_TIME,
+        },
+      },
+      { queryClient, waitForSync: false },
+    );
+
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["recurringSeries", "space-a"],
+        refetchType: "active",
+      }),
+    );
+  });
+
+  it("rewrites the opened GBP balloon to PHP 12500 on apply-all", async () => {
+    const rootId = "install9-root";
+    const rows = Array.from({ length: 24 }, (_, index) => {
+      const date = new Date(Date.UTC(2026, index, 1));
+      const dateKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01`;
+      const isLast = index === 23;
+
+      return {
+        id: index === 0 ? rootId : `install9-${index}`,
+        date: dateKey,
+        seriesParentDate: "2026-01-01",
+        description: "INSTALL9",
+        amount: isLast ? 300 : 10_000,
+        amountCurrency: isLast ? "GBP" : "PHP",
+        bookedAmount: isLast ? 300 : 100,
+        bookedAmountCurrency: "GBP",
+        categoryName: "Home",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: true,
+        hasImage: false,
+        calculated: false,
+        scheduleType: ScheduleTypeEnum.INSTALLMENT,
+        installmentPeriod: 24,
+        installmentTotal: 260_000,
+        parentId: index === 0 ? undefined : rootId,
+        rootParentId: rootId,
+        currencyConversion: {
+          originalAmount: isLast ? 300 : 100,
+          originalCurrency: "GBP",
+          convertedAmount: isLast ? 300 : 10_000,
+          convertedCurrency: "PHP",
+          exchangeRate: 100,
+          source: "manual",
+        },
+      };
+    });
+
+    for (const row of rows) {
+      await upsertLocalIndexTransaction("space-a", row);
+    }
+
+    const balloon = rows[23]!;
+    await upsertLocalIndexTransaction("space-a", {
+      ...balloon,
+      id: "install9-dec-php-twin",
+      amount: 30_000,
+      amountCurrency: "PHP",
+      bookedAmount: 300,
+      bookedAmountCurrency: "GBP",
+      currencyConversion: {
+        originalAmount: 300,
+        originalCurrency: "GBP",
+        convertedAmount: 30_000,
+        convertedCurrency: "PHP",
+        exchangeRate: 100,
+        source: "manual",
+      },
+    });
+
+    vi.mocked(updateTransaction).mockResolvedValue({ success: true });
+
+    const result = await updateTransactionLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        previous: balloon,
+        amountCurrency: "GBP",
+        data: {
+          id: balloon.id,
+          amount: 300,
+          description: "INSTALL9",
+          transactionType: "expense",
+          categoryName: "Home",
+          accountName: "Cash",
+          date: balloon.date,
+          scheduleType: ScheduleTypeEnum.INSTALLMENT,
+          installmentPeriod: 24,
+          installmentTotal: 3000,
+          updateScope: UpdateScopeEnum.ALL_IN_SERIES,
+          installmentRevisionAnchor: "explicit",
+          original_currency: "GBP",
+          exchange_rate: 100,
+          exchange_rate_source: "manual",
+        } as never,
+      },
+      { waitForSync: false },
+    );
+
+    expect(result.localTransaction.amount).toBe(12_500);
+    expect(result.localTransaction.bookedAmount).toBe(125);
+    expect(result.localTransaction.amountCurrency).toBe("PHP");
+
+    const stored = await loadLocalIndexTransactionById("space-a", balloon.id);
+    expect(stored?.amount).toBe(12_500);
+    expect(stored?.bookedAmount).toBe(125);
+    expect(stored?.amountCurrency).toBe("PHP");
+  });
+
+  it("sends all-in-series when apply-all is used after payments are recorded", async () => {
+    const rootId = "install9-root";
+    const rows = Array.from({ length: 24 }, (_, index) => {
+      const date = new Date(Date.UTC(2026, index, 1));
+      const dateKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01`;
+
+      return {
+        id: index === 0 ? rootId : `install9-${index}`,
+        date: dateKey,
+        seriesParentDate: "2026-01-01",
+        description: "INSTALL9",
+        amount: 10_000,
+        amountCurrency: "PHP",
+        bookedAmount: 100,
+        bookedAmountCurrency: "GBP",
+        categoryName: "Home",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: true,
+        hasImage: false,
+        calculated: index < 9,
+        scheduleType: ScheduleTypeEnum.INSTALLMENT,
+        installmentPeriod: 24,
+        installmentTotal: 260_000,
+        parentId: index === 0 ? undefined : rootId,
+        rootParentId: rootId,
+      };
+    });
+
+    for (const row of rows) {
+      await upsertLocalIndexTransaction("space-a", row);
+    }
+
+    vi.mocked(updateTransaction).mockResolvedValue({ success: true });
+
+    await updateTransactionLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        previous: rows[23]!,
+        amountCurrency: "GBP",
+        data: {
+          id: rows[23]!.id,
+          amount: 300,
+          description: "INSTALL9",
+          transactionType: "expense",
+          categoryName: "Home",
+          accountName: "Cash",
+          date: rows[23]!.date,
+          scheduleType: ScheduleTypeEnum.INSTALLMENT,
+          installmentPeriod: 24,
+          installmentTotal: 3000,
+          updateScope: UpdateScopeEnum.ALL_IN_SERIES,
+          installmentRevisionAnchor: "explicit",
+          original_currency: "GBP",
+          exchange_rate: 100,
+          exchange_rate_source: "manual",
+        } as never,
+      },
+      { waitForSync: true },
+    );
+
+    expect(updateTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        updateScope: UpdateScopeEnum.ALL_IN_SERIES,
+      }),
+    );
+  });
+
+  it("restores every series row when the server rejects an installment revision", async () => {
+    const rootId = "install9-root";
+    const rows = Array.from({ length: 24 }, (_, index) => {
+      const date = new Date(Date.UTC(2026, index, 1));
+      const dateKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01`;
+      const isLast = index === 23;
+
+      return {
+        id: index === 0 ? rootId : `install9-${index}`,
+        date: dateKey,
+        seriesParentDate: "2026-01-01",
+        description: "INSTALL9",
+        amount: isLast ? 300 : 10_000,
+        amountCurrency: isLast ? "GBP" : "PHP",
+        bookedAmount: isLast ? 300 : 100,
+        bookedAmountCurrency: "GBP",
+        categoryName: "Home",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: true,
+        hasImage: false,
+        calculated: index < 9,
+        scheduleType: ScheduleTypeEnum.INSTALLMENT,
+        installmentPeriod: 24,
+        installmentTotal: 260_000,
+        parentId: index === 0 ? undefined : rootId,
+        rootParentId: rootId,
+      };
+    });
+
+    for (const row of rows) {
+      await upsertLocalIndexTransaction("space-a", row);
+    }
+
+    vi.mocked(updateTransaction).mockRejectedValue({
+      success: false,
+      details: {
+        installment_total: "could not be resolved",
+      },
+    });
+
+    await expect(
+      updateTransactionLocalFirst(
+        {} as never,
+        {
+          spaceId: "space-a",
+          previous: rows[9]!,
+          amountCurrency: "GBP",
+          data: {
+            id: rows[9]!.id,
+            amount: 100,
+            description: "INSTALL9",
+            transactionType: "expense",
+            categoryName: "Home",
+            accountName: "Cash",
+            date: rows[9]!.date,
+            scheduleType: ScheduleTypeEnum.INSTALLMENT,
+            installmentPeriod: 24,
+            installmentTotal: 3000,
+            updateScope: UpdateScopeEnum.ALL_IN_SERIES,
+            installmentRevisionAnchor: "explicit",
+            original_currency: "GBP",
+            exchange_rate: 100,
+            exchange_rate_source: "manual",
+          } as never,
+        },
+        { waitForSync: true },
+      ),
+    ).rejects.toMatchObject({ success: false });
+
+    const january = await loadLocalIndexTransactionById("space-a", "install9-12");
+    expect(january?.amount).toBe(10_000);
+    expect(january?.amountCurrency).toBe("PHP");
+
+    const balloon = await loadLocalIndexTransactionById("space-a", rows[23]!.id);
+    expect(balloon?.amount).toBe(300);
+    expect(balloon?.amountCurrency).toBe("GBP");
   });
 });

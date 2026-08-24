@@ -2,23 +2,37 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useDetailPushExit } from "@/components/dashboard/detail-push-transition";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, FileText, Pencil } from "lucide-react";
 
+import { AccountIconBadge } from "@/components/dashboard/account-icon-badge";
+import { CategoryIconBadge } from "@/components/dashboard/category-icon-badge";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ImageLightbox from "@/components/ui/ImageLightbox";
+import { MerchantAvatar } from "@/components/ui/merchant-avatar";
 import { TagChip } from "@/components/ui/tag-chip";
-import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
+import EditTransactionDialog, {
+  type EditTransactionSuccessOptions,
+} from "@/components/dashboard/forms/EditTransactionDialog";
+import { normalizeRealtimeIndexTransaction } from "@/hooks/useTransactionsRealtime";
 import { TagDestinationDialog } from "@/components/dashboard/transactions/tag-destination-dialog";
+import { useAccounts } from "@/hooks/async/useAccounts";
+import { useEntities } from "@/hooks/async/useEntities";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePreferLocalTransactionReads } from "@/hooks/useOfflineReadMode";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { cn } from "@/lib/utils";
+import type { Account } from "@/types/accountTypes";
+import { findCategoryTreeOptionForTransaction } from "@/types/categoryTreeTypes";
 import { resolveAttachmentsForTransaction } from "@/services/attachments/resolve";
 import { loadLocalIndexTransactionById } from "@/services/transactions/local-cache";
 import { resolveTransactionDetail } from "@/services/transactions/detail-local";
+import { coalesceIndexRelationIds } from "@/services/transactions/relation-ids-local";
 import { fetchTransactionById } from "@/services/transactions/queries";
 import { fetchTransferById } from "@/services/transactions/transfers/queries";
 import {
@@ -29,6 +43,7 @@ import { formatIndexTransactionListAmount } from "@/utils/indexTransactionDispla
 import {
   buildAccountDetailHref,
   buildEntityDetailHref,
+  buildRecurringSeriesDetailHref,
 } from "@/utils/detailHrefs";
 import { buildCategoryDetailHref } from "@/utils/categoryManagement";
 import { formatTransactionRowDate } from "@/utils/dateUtils";
@@ -37,12 +52,21 @@ import {
   activityPresentsAsTransfer,
 } from "@/utils/activityDisplay";
 import { transactionRowTitle } from "@/utils/transactionDescription";
+import { ScheduleTypeEnum } from "@/constants/transactionConstants";
+import {
+  isRecurringRow,
+  repeatIntervalLabel,
+  resolveRootParentId,
+  resolveRowRepeatInterval,
+} from "@/utils/recurringSchedule";
+import { RecurringScheduleBadge } from "@/components/dashboard/recurring/recurring-schedule-badge";
 import { formatWithDelimiters } from "@/lib/utils";
 import { formatFxQuoteLabel, humanFxQuote } from "@/utils/fxQuoteDisplay";
 import {
   moneyFieldsFromDetailPayload,
   transactionViewMoney,
 } from "@/utils/transactionViewMoney";
+import { resolveCategoryAppearance } from "@/utils/categoryAppearance";
 
 type TransactionDetailContentProps = {
   transactionId: string;
@@ -99,6 +123,11 @@ const asIndexTransaction = (
   transactionId: string,
   payload: Record<string, unknown>,
 ): IndexTransaction => {
+  const normalized = normalizeRealtimeIndexTransaction(payload);
+  if (normalized) {
+    return normalized;
+  }
+
   const typeRaw = String(payload.type ?? "expense");
   const type =
     typeRaw === "income"
@@ -157,12 +186,20 @@ const asIndexTransaction = (
 export function TransactionDetailContent({
   transactionId,
 }: TransactionDetailContentProps) {
+  const router = useRouter();
+  const { requestExit } = useDetailPushExit();
   const { api } = useAuthApi();
   const queryClient = useQueryClient();
   const [spaceCode] = useLocalStorage("spaceCode", "");
   const preferLocal = usePreferLocalTransactionReads(spaceCode);
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
+  const { entities = [] } = useEntities("transaction");
+  const { accounts = [] } = useAccounts();
+  const {
+    expenseCategoryOptions = [],
+    incomeCategoryOptions = [],
+  } = useTransactionCategories();
   const [editOpen, setEditOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [tagForDestination, setTagForDestination] = useState<{
@@ -243,6 +280,7 @@ export function TransactionDetailContent({
     },
     enabled: Boolean(spaceCode && transactionId && (preferLocal || api)),
     placeholderData: localQuery.data ?? undefined,
+    networkMode: "always",
     retry: false,
     staleTime: preferLocal ? Infinity : 0,
   });
@@ -327,21 +365,57 @@ export function TransactionDetailContent({
     description: transaction.description,
     fallback: transaction.categoryName || typeLabel(transaction.type),
   });
-  const accountName = presentsAsIncome
-    ? transaction.toAccountName
-    : transaction.fromAccountName;
   const accountId =
     transaction.accountId ??
     (presentsAsIncome ? transaction.toAccountId : transaction.fromAccountId);
   const entityId = transaction.entityId;
   const categoryHrefId = transaction.categoryId || transaction.subcategoryId;
   const categoryKind = presentsAsIncome ? "income" : "expense";
+  const merchant = entities.find((entity) => entity.id === entityId);
+  const fromAccount = findAccount(
+    accounts,
+    transaction.fromAccountId ?? (presentsAsIncome ? null : accountId),
+    transaction.fromAccountName,
+  );
+  const toAccount = findAccount(
+    accounts,
+    transaction.toAccountId ?? (presentsAsIncome ? accountId : null),
+    transaction.toAccountName,
+  );
+  const displayFromAccountName =
+    fromAccount?.name ?? transaction.fromAccountName;
+  const displayToAccountName = toAccount?.name ?? transaction.toAccountName;
+  const displayAccountName = presentsAsIncome
+    ? displayToAccountName
+    : displayFromAccountName;
+  const account = findAccount(accounts, accountId, displayAccountName);
+  const matchedCategory = findCategoryTreeOptionForTransaction(
+    {
+      categoryName: transaction.categoryName,
+      subcategoryName: transaction.subcategoryName,
+    },
+    expenseCategoryOptions,
+    incomeCategoryOptions,
+  );
+  const categoryAppearance = resolveCategoryAppearance({
+    name: transaction.categoryName,
+    categoryType: categoryKind,
+    icon: matchedCategory?.icon,
+    color: matchedCategory?.color,
+  });
   const canEdit =
     !transaction.hasLoanPayment &&
     !transaction.isLoanActivity &&
     (transaction.type === CombinedTransactionTypeEnum.EXPENSE ||
       transaction.type === CombinedTransactionTypeEnum.INCOME ||
       transaction.type === CombinedTransactionTypeEnum.TRANSFER);
+  const seriesRootId = resolveRootParentId(transaction);
+  const repeatInterval = resolveRowRepeatInterval(transaction);
+  const showsRecurringContext = isRecurringRow(transaction) && seriesRootId;
+  const isInstallment =
+    transaction.scheduleType === ScheduleTypeEnum.INSTALLMENT
+    || transaction.scheduleType === "installment"
+    || (transaction.installmentPeriod ?? 0) > 0;
 
   return (
     <>
@@ -357,6 +431,17 @@ export function TransactionDetailContent({
             <p className="text-sm text-muted-foreground">
               {formatTransactionRowDate(transaction.date)}
             </p>
+            {showsRecurringContext ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <RecurringScheduleBadge repeatInterval={repeatInterval} size="md" />
+                <Link
+                  href={buildRecurringSeriesDetailHref(seriesRootId!)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {isInstallment ? "View installment" : "View recurring series"}
+                </Link>
+              </div>
+            ) : null}
           </div>
           {canEdit ? (
             <Button
@@ -449,35 +534,60 @@ export function TransactionDetailContent({
               label="Merchant"
               value={transaction.entityName}
               href={entityId ? buildEntityDetailHref(entityId) : undefined}
+              leading={
+                <MerchantAvatar
+                  name={transaction.entityName}
+                  photoUrl={merchant?.photoUrl}
+                  size={32}
+                />
+              }
             />
           ) : null}
           {presentsAsTransfer ? (
             <>
               <ViewRow
                 label="From"
-                value={transaction.fromAccountName}
+                value={displayFromAccountName}
                 href={
                   transaction.fromAccountId
                     ? buildAccountDetailHref(transaction.fromAccountId)
                     : undefined
                 }
+                leading={
+                  <AccountIconBadge
+                    accountCategory={fromAccount?.accountCategory}
+                    size="sm"
+                  />
+                }
               />
               <ViewRow
                 label="To"
-                value={transaction.toAccountName}
+                value={displayToAccountName}
                 href={
                   transaction.toAccountId
                     ? buildAccountDetailHref(transaction.toAccountId)
                     : undefined
+                }
+                leading={
+                  <AccountIconBadge
+                    accountCategory={toAccount?.accountCategory}
+                    size="sm"
+                  />
                 }
               />
             </>
           ) : (
             <ViewRow
               label="Account"
-              value={accountName}
+              value={displayAccountName}
               href={
                 accountId ? buildAccountDetailHref(accountId) : undefined
+              }
+              leading={
+                <AccountIconBadge
+                  accountCategory={account?.accountCategory}
+                  size="sm"
+                />
               }
             />
           )}
@@ -494,6 +604,19 @@ export function TransactionDetailContent({
                   ? buildCategoryDetailHref(categoryHrefId, categoryKind)
                   : undefined
               }
+              leading={
+                <CategoryIconBadge
+                  icon={categoryAppearance.icon}
+                  color={categoryAppearance.color}
+                  size="sm"
+                />
+              }
+            />
+          ) : null}
+          {showsRecurringContext ? (
+            <ViewRow
+              label="Schedule"
+              value={repeatIntervalLabel(repeatInterval)}
             />
           ) : null}
         </dl>
@@ -533,9 +656,17 @@ export function TransactionDetailContent({
         transaction={transaction}
         isOpen={editOpen}
         onClose={() => setEditOpen(false)}
-        onSuccess={() => {
+        onSuccess={(options?: EditTransactionSuccessOptions) => {
           setEditOpen(false);
           setLightboxOpen(false);
+
+          if (options?.deleted) {
+            requestExit(() => {
+              router.back();
+            });
+            return;
+          }
+
           void refreshTransactionView();
         }}
       />
@@ -572,6 +703,22 @@ const mergeLocalIndexRow = (
     tags: mapped.tags ?? local.tags,
     categoryId: mapped.categoryId || local.categoryId,
     subcategoryId: mapped.subcategoryId || local.subcategoryId,
+    parentId: mapped.parentId ?? local.parentId ?? null,
+    scheduleType: mapped.scheduleType ?? local.scheduleType,
+    repeatInterval: mapped.repeatInterval ?? local.repeatInterval,
+    rootParentId: mapped.rootParentId ?? local.rootParentId,
+    installmentPeriod: mapped.installmentPeriod ?? local.installmentPeriod,
+    fromAccountName: mapped.fromAccountName?.trim() || local.fromAccountName,
+    toAccountName: mapped.toAccountName?.trim() || local.toAccountName,
+    inSeries:
+      mapped.inSeries
+      || local.inSeries
+      || Boolean(mapped.parentId ?? local.parentId)
+      || (
+        (mapped.scheduleType ?? local.scheduleType) === "repeat"
+        || (mapped.scheduleType ?? local.scheduleType) === "installment"
+      ),
+    ...coalesceIndexRelationIds({ mapped, local }),
     currencyConversion: mapped.currencyConversion ?? local.currencyConversion,
     bookedAmount: mappedHasFx
       ? mapped.bookedAmount
@@ -594,14 +741,24 @@ const fxSourceHint = (source: string | null): string => {
   return "";
 };
 
+const findAccount = (
+  accounts: Account[],
+  id?: string | null,
+  name?: string,
+) =>
+  accounts.find((account) => account.id === id)
+  ?? accounts.find((account) => Boolean(name) && account.name === name);
+
 const ViewRow = ({
   label,
   value,
   href,
+  leading,
 }: {
   label: string;
   value?: string;
   href?: string;
+  leading?: React.ReactNode;
 }) => {
   if (!value) {
     return null;
@@ -609,9 +766,12 @@ const ViewRow = ({
 
   const content = (
     <div className="flex w-full items-center justify-between gap-3 px-4 py-3">
-      <div className="min-w-0">
-        <dt className="text-xs text-muted-foreground">{label}</dt>
-        <dd className="truncate text-sm font-medium text-foreground">{value}</dd>
+      <div className="flex min-w-0 items-center gap-3">
+        {leading}
+        <div className="min-w-0">
+          <dt className="text-xs text-muted-foreground">{label}</dt>
+          <dd className="truncate text-sm font-medium text-foreground">{value}</dd>
+        </div>
       </div>
       {href ? (
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />

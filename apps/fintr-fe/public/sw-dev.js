@@ -1,6 +1,24 @@
 /* Fintr dev service worker — runtime cache for offline dev on localhost */
-const CACHE_NAME = "fintr-dev-runtime-v7";
+const CACHE_NAME = "fintr-dev-runtime-v8";
 const CACHE_MATCH_OPTIONS = { ignoreVary: true, ignoreSearch: true };
+const CACHE_MATCH_STRICT = { ignoreVary: true };
+
+function hasAppDetailSearch(url) {
+  return (
+    url.searchParams.has("transactionId")
+    || url.searchParams.has("loanId")
+    || url.searchParams.has("accountId")
+    || url.searchParams.has("entityId")
+    || url.searchParams.has("categoryId")
+  );
+}
+
+async function matchCachedRequest(cache, request) {
+  const url = new URL(request.url);
+  const options = hasAppDetailSearch(url) ? CACHE_MATCH_STRICT : CACHE_MATCH_OPTIONS;
+
+  return cache.match(request, options);
+}
 
 const PRECACHE_PATHS = [
   "/",
@@ -182,6 +200,15 @@ function navigationCandidates(pathname) {
 
 async function resolveNavigation(request) {
   const url = new URL(request.url);
+  const cache = await caches.open(CACHE_NAME);
+
+  if (hasAppDetailSearch(url)) {
+    const exact = await matchCachedRequest(cache, request);
+
+    if (exact) {
+      return exact;
+    }
+  }
 
   for (const candidate of navigationCandidates(url.pathname)) {
     const cached = await caches.match(candidate, CACHE_MATCH_OPTIONS);
@@ -232,7 +259,8 @@ function offlineResponse() {
 }
 
 async function resolveOfflineFallback(request) {
-  const cached = await caches.match(request, CACHE_MATCH_OPTIONS);
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await matchCachedRequest(cache, request);
 
   if (cached) {
     return cached;
@@ -285,7 +313,8 @@ async function cacheResponse(request, response) {
 }
 
 async function handleRequest(request) {
-  const cached = await caches.match(request, CACHE_MATCH_OPTIONS);
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await matchCachedRequest(cache, request);
 
   if (cached) {
     return cached;

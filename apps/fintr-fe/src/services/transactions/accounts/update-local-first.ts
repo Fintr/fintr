@@ -1,10 +1,19 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AxiosInstance } from "axios";
 
-import { listSpaceAccounts } from "@/lib/local-db";
+import {
+  enqueueOutboxRecord,
+  listSpaceAccounts,
+  OUTBOX_COMMAND_ACCOUNT_UPDATE,
+  removeOutboxRecord,
+  updateOutboxStatus,
+} from "@/lib/local-db";
 import type { Account } from "@/types/accountTypes";
 
 import { updateAccountInCaches } from "./account-cache-ops";
+import {
+  patchLinkedDataForAccountUpdate,
+} from "../relation-ids-local";
 import {
   updateAccount,
   type UpdateAccountType,
@@ -95,6 +104,13 @@ export const updateAccountLocalFirst = async (
     accountId,
     updates: data,
     queryClient,
+  });
+
+  await patchLinkedDataForAccountUpdate({
+    spaceId,
+    accountId,
+    previousAccount,
+    nextAccount: localAccount,
   });
 
   const clientMutationId = newClientMutationId();

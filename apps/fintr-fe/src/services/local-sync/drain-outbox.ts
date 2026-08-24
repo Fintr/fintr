@@ -2,6 +2,7 @@ import type { AxiosInstance } from "axios";
 
 import {
   claimOutboxRecord,
+  getLocalDb,
   listDistinctOutboxSpaceIds,
   listPendingOutboxOrdered,
   OUTBOX_COMMAND_LOAN_CREATE,
@@ -18,6 +19,11 @@ import {
   OUTBOX_COMMAND_TRANSFER_DELETE,
   OUTBOX_COMMAND_TRANSFER_UPDATE,
   OUTBOX_COMMAND_USER_SETTINGS_UPDATE,
+  OUTBOX_COMMAND_BUDGET_CREATE,
+  OUTBOX_COMMAND_BUDGET_UPDATE,
+  OUTBOX_COMMAND_BUDGET_DELETE,
+  OUTBOX_COMMAND_CATEGORY_CREATE,
+  OUTBOX_COMMAND_CATEGORY_CONVERT,
   removeOutboxRecord,
   updateOutboxStatus,
   type LocalOutboxRecord,
@@ -28,6 +34,33 @@ import {
 } from "@/services/attachments/create-outbox";
 import type { AttachmentOutboxFields } from "@/services/attachments/types";
 import { updateUser } from "@/services/auth/user/mutations";
+import {
+  applyBudgetsPageToCaches,
+  loadBudgetsPage,
+  replaceBudgetIdInPage,
+} from "@/services/budgets/budget-cache-ops";
+import type { BudgetCreateOutboxPayload } from "@/services/budgets/create-local-first";
+import type { BudgetDeleteOutboxPayload } from "@/services/budgets/delete-local-first";
+import {
+  createBudget,
+  deleteBudget,
+  updateBudget,
+} from "@/services/budgets/mutations";
+import type { BudgetUpdateOutboxPayload } from "@/services/budgets/update-local-first";
+import type { CategoryConvertOutboxPayload } from "@/services/transactions/categories/convert-local-first";
+import type { CategoryCreateOutboxPayload } from "@/services/transactions/categories/create-local-first";
+import { buildOptimisticCategory } from "@/services/transactions/categories/create-local-first";
+import {
+  addCategoryToTrees,
+  applyCategoryTreesToCaches,
+  findCategoryInTrees,
+  loadCategoryTrees,
+  replaceCategoryIdInTrees,
+} from "@/services/transactions/categories/category-cache-ops";
+import {
+  convertCategoryHierarchy,
+  createTransactionCategory,
+} from "@/services/transactions/categories/mutation";
 import type { UserSettingsUpdateOutboxPayload } from "@/services/auth/user/update-settings-local-first";
 import {
   createLoan,
@@ -682,6 +715,291 @@ const drainUserSettingsUpdate = async (params: {
   }
 };
 
+const drainBudgetCreate = async (params: {
+  api: AxiosInstance;
+  record: LocalOutboxRecord;
+}): Promise<"ok" | "network" | "failed"> => {
+  const { api, record } = params;
+  const payload = record.payload as BudgetCreateOutboxPayload;
+  const { localId, startDate, endDate, ...data } = payload;
+
+  try {
+    const serverResponse = await createBudget(api, data);
+    const serverId = extractCreatedId(serverResponse);
+
+    if (serverId && localId && serverId !== localId) {
+      const currentPage = await loadBudgetsPage(
+        record.spaceId,
+        startDate,
+        endDate,
+      );
+
+      if (currentPage) {
+        await applyBudgetsPageToCaches({
+          spaceCode: record.spaceId,
+          startDate,
+          endDate,
+          page: replaceBudgetIdInPage(currentPage, localId, serverId),
+        });
+      }
+    }
+
+    await removeOutboxRecord(record.id);
+    return "ok";
+  } catch (error) {
+    if (isNetworkLikeError(error)) {
+      await updateOutboxStatus({
+        id: record.id,
+        status: "pending",
+        lastError:
+          error instanceof Error ? error.message : "Network error draining outbox",
+      });
+      return "network";
+    }
+
+    await updateOutboxStatus({
+      id: record.id,
+      status: "failed",
+      lastError:
+        error instanceof Error
+          ? error.message
+          : "Validation error draining outbox",
+    });
+    return "failed";
+  }
+};
+
+const drainBudgetUpdate = async (params: {
+  api: AxiosInstance;
+  record: LocalOutboxRecord;
+}): Promise<"ok" | "network" | "failed"> => {
+  const { api, record } = params;
+  const payload = record.payload as BudgetUpdateOutboxPayload;
+  const { budgetId, amount } = payload;
+
+  try {
+    await updateBudget(api, budgetId, { amount });
+    await removeOutboxRecord(record.id);
+    return "ok";
+  } catch (error) {
+    if (isNetworkLikeError(error)) {
+      await updateOutboxStatus({
+        id: record.id,
+        status: "pending",
+        lastError:
+          error instanceof Error ? error.message : "Network error draining outbox",
+      });
+      return "network";
+    }
+
+    await updateOutboxStatus({
+      id: record.id,
+      status: "failed",
+      lastError:
+        error instanceof Error
+          ? error.message
+          : "Validation error draining outbox",
+    });
+    return "failed";
+  }
+};
+
+const drainBudgetDelete = async (params: {
+  api: AxiosInstance;
+  record: LocalOutboxRecord;
+}): Promise<"ok" | "network" | "failed"> => {
+  const { api, record } = params;
+  const payload = record.payload as BudgetDeleteOutboxPayload;
+
+  try {
+    await deleteBudget(api, payload.budgetId);
+    await removeOutboxRecord(record.id);
+    return "ok";
+  } catch (error) {
+    if (isNetworkLikeError(error)) {
+      await updateOutboxStatus({
+        id: record.id,
+        status: "pending",
+        lastError:
+          error instanceof Error ? error.message : "Network error draining outbox",
+      });
+      return "network";
+    }
+
+    await removeOutboxRecord(record.id);
+    return "ok";
+  }
+};
+
+const resolveCategoryCreatePayload = (
+  payload: CategoryCreateOutboxPayload,
+): CategoryCreateOutboxPayload => {
+  const { localId, ...rest } = payload;
+  const optimisticId = rest.id ?? localId;
+
+  if (!optimisticId) {
+    return rest;
+  }
+
+  if (optimisticId.startsWith("local:")) {
+    return {
+      ...rest,
+      id: optimisticId.slice("local:".length),
+    };
+  }
+
+  return {
+    ...rest,
+    id: optimisticId,
+  };
+};
+
+const extractCreatedCategoryId = (response: unknown): string | undefined => {
+  if (!response || typeof response !== "object") {
+    return undefined;
+  }
+
+  const root = response as Record<string, unknown>;
+  const data =
+    root.data && typeof root.data === "object"
+      ? (root.data as Record<string, unknown>)
+      : root;
+
+  return typeof data.id === "string" && data.id ? data.id : undefined;
+};
+
+const drainCategoryCreate = async (params: {
+  api: AxiosInstance;
+  record: LocalOutboxRecord;
+}): Promise<"ok" | "network" | "failed"> => {
+  const { api, record } = params;
+  const payload = resolveCategoryCreatePayload(
+    record.payload as CategoryCreateOutboxPayload,
+  );
+  const optimisticId = payload.id;
+
+  try {
+    let currentTrees = await loadCategoryTrees(record.spaceId);
+    if (
+      optimisticId
+      && !findCategoryInTrees(currentTrees, optimisticId)
+    ) {
+      currentTrees = addCategoryToTrees(
+        currentTrees,
+        buildOptimisticCategory({
+          id: optimisticId,
+          data: payload,
+        }),
+      );
+      await applyCategoryTreesToCaches({
+        spaceCode: record.spaceId,
+        trees: currentTrees,
+      });
+    }
+
+    const serverResponse = await createTransactionCategory(api, payload);
+    const serverId = extractCreatedCategoryId(serverResponse);
+
+    if (serverId && optimisticId && serverId !== optimisticId) {
+      const currentTrees = await loadCategoryTrees(record.spaceId);
+      const withReplacedId = replaceCategoryIdInTrees(
+        currentTrees,
+        optimisticId,
+        serverId,
+      );
+      await applyCategoryTreesToCaches({
+        spaceCode: record.spaceId,
+        trees: withReplacedId,
+      });
+    }
+
+    await removeOutboxRecord(record.id);
+    return "ok";
+  } catch (error) {
+    if (isNetworkLikeError(error)) {
+      await updateOutboxStatus({
+        id: record.id,
+        status: "pending",
+        lastError:
+          error instanceof Error ? error.message : "Network error draining outbox",
+      });
+      return "network";
+    }
+
+    await updateOutboxStatus({
+      id: record.id,
+      status: "failed",
+      lastError:
+        error instanceof Error
+          ? error.message
+          : "Validation error draining outbox",
+    });
+    return "failed";
+  }
+};
+
+const drainCategoryConvert = async (params: {
+  api: AxiosInstance;
+  record: LocalOutboxRecord;
+}): Promise<"ok" | "network" | "failed"> => {
+  const { api, record } = params;
+  const payload = record.payload as CategoryConvertOutboxPayload;
+
+  try {
+    await convertCategoryHierarchy(api, payload.categoryId, {
+      conversionType: payload.conversionType,
+      newParentId: payload.newParentId,
+    });
+    await removeOutboxRecord(record.id);
+    return "ok";
+  } catch (error) {
+    if (isNetworkLikeError(error)) {
+      await updateOutboxStatus({
+        id: record.id,
+        status: "pending",
+        lastError:
+          error instanceof Error ? error.message : "Network error draining outbox",
+      });
+      return "network";
+    }
+
+    await updateOutboxStatus({
+      id: record.id,
+      status: "failed",
+      lastError:
+        error instanceof Error
+          ? error.message
+          : "Validation error draining outbox",
+    });
+    return "failed";
+  }
+};
+
+const requeueUnsupportedCategoryCreates = async (
+  spaceId: string,
+): Promise<void> => {
+  const rows = await getLocalDb().outbox.where("spaceId").equals(spaceId).toArray();
+
+  for (const row of rows) {
+    if (
+      row.status !== "failed"
+      || row.commandType !== OUTBOX_COMMAND_CATEGORY_CREATE
+    ) {
+      continue;
+    }
+
+    if (!row.lastError?.includes("Unsupported outbox command")) {
+      continue;
+    }
+
+    await updateOutboxStatus({
+      id: row.id,
+      status: "pending",
+      lastError: undefined,
+    });
+  }
+};
+
 export const drainOutboxForSpace = async (params: {
   api: AxiosInstance;
   spaceId: string;
@@ -701,6 +1019,7 @@ export const drainOutboxForSpace = async (params: {
   let stoppedEarly = false;
 
   try {
+    await requeueUnsupportedCategoryCreates(spaceId);
     const pending = await listPendingOutboxOrdered({ spaceId });
 
     for (const record of pending) {
@@ -889,6 +1208,71 @@ export const drainOutboxForSpace = async (params: {
         continue;
       }
 
+      if (record.commandType === OUTBOX_COMMAND_BUDGET_CREATE) {
+        const outcome = await drainBudgetCreate({ api, record });
+        if (outcome === "ok") {
+          processed += 1;
+        } else if (outcome === "failed") {
+          failed += 1;
+        } else {
+          stoppedEarly = true;
+          break;
+        }
+        continue;
+      }
+
+      if (record.commandType === OUTBOX_COMMAND_BUDGET_UPDATE) {
+        const outcome = await drainBudgetUpdate({ api, record });
+        if (outcome === "ok") {
+          processed += 1;
+        } else if (outcome === "failed") {
+          failed += 1;
+        } else {
+          stoppedEarly = true;
+          break;
+        }
+        continue;
+      }
+
+      if (record.commandType === OUTBOX_COMMAND_BUDGET_DELETE) {
+        const outcome = await drainBudgetDelete({ api, record });
+        if (outcome === "ok") {
+          processed += 1;
+        } else if (outcome === "failed") {
+          failed += 1;
+        } else {
+          stoppedEarly = true;
+          break;
+        }
+        continue;
+      }
+
+      if (record.commandType === OUTBOX_COMMAND_CATEGORY_CREATE) {
+        const outcome = await drainCategoryCreate({ api, record });
+        if (outcome === "ok") {
+          processed += 1;
+        } else if (outcome === "failed") {
+          failed += 1;
+        } else {
+          stoppedEarly = true;
+          break;
+        }
+        continue;
+      }
+
+      if (record.commandType === OUTBOX_COMMAND_CATEGORY_CONVERT) {
+        const outcome = await drainCategoryConvert({ api, record });
+        if (outcome === "ok") {
+          processed += 1;
+        } else if (outcome === "failed") {
+          failed += 1;
+        } else {
+          stoppedEarly = true;
+          break;
+        }
+        continue;
+      }
+
       await updateOutboxStatus({
         id: record.id,
         status: "failed",
@@ -942,4 +1326,11 @@ export const drainAllOutboxes = async (params: {
   } finally {
     globalDrainPromise = null;
   }
+};
+
+/**
+ * Fire-and-forget outbox drain after a local-first mutation enqueues work.
+ */
+export const scheduleOutboxDrain = (api: AxiosInstance): void => {
+  void drainAllOutboxes({ api });
 };

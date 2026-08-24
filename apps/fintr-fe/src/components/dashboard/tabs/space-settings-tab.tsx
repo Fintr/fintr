@@ -47,6 +47,8 @@ import { getColor, shouldShowV2Features, formatCurrency } from "@/lib/utils";
 import { shouldShowSimulatePaymentButton } from "@/lib/capacitor";
 import { TransactionCategory } from "@/types/transactionCategoryTypes";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { openCreatedRootCategoryPage } from "@/utils/categoryManagement";
 import {
   Dialog,
   DialogContent,
@@ -78,6 +80,7 @@ interface SpaceSettingsTabProps {
 }
 
 const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: SpaceSettingsTabProps) => {
+  const router = useRouter();
   const [activeMainTab, setActiveMainTab] = useState(initialTab);
   const [activeSubTab, setActiveSubTab] = useState("expense");
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -464,12 +467,20 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
     },
   ) => {
     try {
-      await createCategoryMutation.mutateAsync({
+      const result = await createCategoryMutation.mutateAsync({
         name,
         categoryType,
         parentId: parentId ?? null,
         icon: appearance?.icon,
         color: appearance?.color,
+      });
+      openCreatedRootCategoryPage({
+        parentId,
+        categoryType,
+        categoryId: result.data.id,
+        syncPromise: result.syncPromise,
+        push: (href) => router.push(href),
+        replace: (href) => router.replace(href),
       });
     } catch (error) {
       console.error("Failed to create category:", error);

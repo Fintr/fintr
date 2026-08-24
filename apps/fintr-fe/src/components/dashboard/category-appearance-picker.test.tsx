@@ -48,9 +48,31 @@ describe("CategoryAppearancePicker", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /select icon car/i }));
+    await user.click(screen.getByRole("button", { name: /^select icon car$/i }));
 
     expect(onIconChange).toHaveBeenCalledWith("car");
+  });
+
+  it("filters icons with the search field", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <CategoryAppearancePicker
+        icon="coffee"
+        color="#E53935"
+        onIconChange={vi.fn()}
+        onColorChange={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByRole("searchbox", { name: /search icons/i }), "fuel");
+
+    expect(
+      screen.getByRole("button", { name: /select icon fuel/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /select icon car$/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("calls onColorChange when a color is selected", async () => {

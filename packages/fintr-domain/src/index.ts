@@ -52,6 +52,21 @@ export {
   type DeleteTransactionParams,
 } from "./schemas/delete-transaction";
 
+export {
+  INSTALLMENT_REVISION_ANCHORS,
+  computeInstallmentPlanRevision,
+  computeInstallmentCommitmentTotalCents,
+  applyInstallmentThisOnlyTotalDeltaCents,
+  installmentFrozenOccurrenceDates,
+  installmentOccurrenceDates,
+  installmentRemainingOccurrenceDates,
+  resolveInstallmentTotalCents,
+  toLedgerCents,
+  type InstallmentPlanRevisionInput,
+  type InstallmentPlanRevisionResult,
+  type InstallmentRevisionAnchor,
+} from "./installment-plan";
+
 import type { ZodError } from "zod";
 
 import { DomainValidationError, zodErrorToFieldMap } from "./errors";

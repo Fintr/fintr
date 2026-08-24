@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
 import { getLocalDb, resetLocalDbForTests } from "@/lib/local-db";
+import { replaceSpaceAccounts } from "@/lib/local-db/accounts";
 import { loadCachedTransactionsInRange } from "@/services/transactions/local-cache";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
@@ -117,6 +118,45 @@ describe("createTransferLocalFirst", () => {
     resolveCreate({ data: { id: "server-xfer-1" } });
     await result.syncPromise;
     expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("resolves from and to account ids from local caches when creating offline", async () => {
+    vi.mocked(createTransfer).mockRejectedValue(
+      new Error("Failed to create transfer"),
+    );
+    await replaceSpaceAccounts("space-a", [
+      {
+        id: "acc-cash",
+        name: "Cash",
+        balance: "0",
+        balanceCurrency: "PHP",
+        accountCategory: "cash",
+      },
+      {
+        id: "acc-bank",
+        name: "Bank",
+        balance: "0",
+        balanceCurrency: "PHP",
+        accountCategory: "savings",
+      },
+    ]);
+
+    const result = await createTransferLocalFirst({} as never, {
+      spaceId: "space-a",
+      data: {
+        amount: 1000,
+        transactionCost: 0,
+        date: "2026-08-08",
+        description: "Move to savings",
+        fromAccountName: "Cash",
+        toAccountName: "Bank",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+      },
+    });
+
+    expect(result.localTransaction.fromAccountId).toBe("acc-cash");
+    expect(result.localTransaction.toAccountId).toBe("acc-bank");
+    expect(result.localTransaction.accountId).toBe("acc-cash");
   });
 
   it("omits a fee row when transactionCost is zero", async () => {

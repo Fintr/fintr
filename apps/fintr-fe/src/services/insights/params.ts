@@ -1,5 +1,7 @@
 import { AxiosInstance } from "axios";
 
+import { clampEndDateToToday } from "@/utils/dateUtils";
+
 export interface InsightsQueryParams {
   filterType?: string;
   selectedMonth?: string;
@@ -95,7 +97,7 @@ export const buildInsightsApiParams = (params?: InsightsQueryParams) => {
 
   return {
     startDate,
-    endDate,
+    endDate: clampEndDateToToday(startDate, endDate),
     categoryName,
     categoryId,
     subcategoryId,

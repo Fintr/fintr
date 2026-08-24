@@ -46,6 +46,8 @@ import {
   collectIndexTransactionsFromQueryCaches,
   resolveLinkedTransferFeeRows,
   resolveSeriesRowsForDeleteScope,
+  resolveTransactionInSeries,
+  withResolvedInSeries,
 } from "./resolve-delete-scope";
 import { deleteTransfer } from "./transfers/mutation";
 
@@ -252,21 +254,24 @@ const deleteIndexRowsOptimistic = async (params: {
     spaceId,
     transactionId,
     deleteScope: requestedDeleteScope,
-    target,
+    target: rawTarget,
     queryClient,
     waitForSync,
     kind,
   } = params;
 
-  // One-time rows must never expand by fingerprint, even if a stale series
-  // scope is passed from the UI.
-  const deleteScope = target.inSeries
-    ? requestedDeleteScope
-    : DeleteScopeEnum.THIS_ONLY;
-
   const rqRows = queryClient
     ? collectIndexTransactionsFromQueryCaches(queryClient, spaceId)
     : [];
+  const idbRows = await loadIdbRowsForDelete(spaceId);
+  const contextRows = mergeRowsById(rqRows, idbRows, [rawTarget]);
+  const target = withResolvedInSeries(rawTarget, contextRows);
+
+  // One-time rows must never expand by fingerprint, even if a stale series
+  // scope is passed from the UI.
+  const deleteScope = resolveTransactionInSeries(target, contextRows)
+    ? requestedDeleteScope
+    : DeleteScopeEnum.THIS_ONLY;
 
   // Resolve series from RQ first so the UI can drop siblings instantly.
   const seriesFromRq = resolveSeriesRowsForDeleteScope({
@@ -292,7 +297,6 @@ const deleteIndexRowsOptimistic = async (params: {
     removedTransactions: instantPreview,
   });
 
-  const idbRows = await loadIdbRowsForDelete(spaceId);
   const idsToRemove = await loadAllTimeTransactionsForDeleteScope({
     spaceId,
     target,
@@ -369,6 +373,11 @@ const deleteIndexRowsOptimistic = async (params: {
     queryClient.invalidateQueries({
       queryKey: ["dashboard", "transactions", spaceId],
       exact: false,
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["recurringSeries", spaceId],
+      exact: false,
+      refetchType: "active",
     });
   }
 
@@ -503,24 +512,25 @@ export const deleteTransactionLocalFirst = async (
       queryClient,
       spaceId,
     );
-    const effectiveDeleteScope = listRow.inSeries
+    const resolvedListRow = withResolvedInSeries(listRow, rqRows);
+    const effectiveDeleteScope = resolvedListRow.inSeries
       ? deleteScope
       : DeleteScopeEnum.THIS_ONLY;
     const seriesRows = resolveSeriesRowsForDeleteScope({
       rows: rqRows,
-      target: listRow,
+      target: resolvedListRow,
       deleteScope: effectiveDeleteScope,
     });
     const feeRows =
-      listRow.type === CombinedTransactionTypeEnum.TRANSFER
+      resolvedListRow.type === CombinedTransactionTypeEnum.TRANSFER
         ? resolveLinkedTransferFeeRows({
             rows: rqRows,
             transfers: seriesRows,
             deleteScope: effectiveDeleteScope,
-            targetDate: listRow.date,
+            targetDate: resolvedListRow.date,
           })
         : [];
-    const instantRows = mergeRowsById(seriesRows, feeRows, [listRow]);
+    const instantRows = mergeRowsById(seriesRows, feeRows, [resolvedListRow]);
     patchQueryCachesForDelete({
       queryClient,
       spaceId,
@@ -537,21 +547,24 @@ export const deleteTransactionLocalFirst = async (
   }
 
   const cached = await loadLocalIndexTransactionById(spaceId, transactionId);
-  const target = listRow
+  const rqRows = queryClient
+    ? collectIndexTransactionsFromQueryCaches(queryClient, spaceId)
+    : [];
+  const idbRows = await loadIdbRowsForDelete(spaceId);
+  const baseTarget = listRow
     ? {
         ...(cached ?? listRow),
         ...listRow,
-        // Prefer the clicked list row's series flag. Do not invent inSeries
-        // from deleteScope — a stale all_in_series scope on a one-time row
-        // would otherwise fingerprint-match unrelated identical expenses.
-        inSeries: Boolean(listRow.inSeries || cached?.inSeries),
       }
     : cached
-      ? {
-          ...cached,
-          inSeries: Boolean(cached.inSeries),
-        }
+      ? { ...cached }
       : null;
+  const target = baseTarget
+    ? withResolvedInSeries(
+        baseTarget,
+        mergeRowsById(rqRows, idbRows, [baseTarget]),
+      )
+    : null;
 
   if (!target) {
     // Still attempt server delete when we have a real id (cache miss).

@@ -33,10 +33,16 @@ import type {
   TransactionsPage,
 } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { backfillIndexRowForOffline } from "@/services/transactions/offline-fx-backfill";
+
+import type { QueryClient } from "@tanstack/react-query";
 
 import {
+  collectIndexTransactionsFromQueryCaches,
   resolveSeriesRowsForDeleteScope,
+  resolveTransactionInSeries,
   sameSeriesFingerprint,
+  withResolvedInSeries,
 } from "./resolve-delete-scope";
 
 /** UI page size when reading from IndexedDB (keeps the list snappy). */
@@ -472,7 +478,7 @@ const normalizeCachedIndexTransaction = (
     delete (merged as IndexTransactionWithTagIds).tagIds;
   }
 
-  return merged;
+  return backfillIndexRowForOffline(merged);
 };
 
 const mergeTransactionRowsIntoMap = (
@@ -659,6 +665,10 @@ export const migrateLegacyTransactionSnapshotsIfNeeded = async (
     }
 
     await putSpaceTransactions(spaceId, Array.from(byId.values()));
+    const { backfillSpaceTransactionRelationIds } = await import(
+      "@/services/transactions/relation-ids-local"
+    );
+    await backfillSpaceTransactionRelationIds(spaceId);
   })();
 
   legacyMigrationPromises.set(spaceId, migration);
@@ -676,7 +686,9 @@ const loadAllTimeTransactionsFlat = async (
   try {
     await migrateLegacyTransactionSnapshotsIfNeeded(spaceId);
     const rows = await listSpaceTransactions(spaceId);
-    return [...rows].sort(compareTransactionsNewestFirst);
+    return [...rows]
+      .map((row) => normalizeCachedIndexTransaction(row))
+      .sort(compareTransactionsNewestFirst);
   } catch (error) {
     console.warn("[local-db] Failed to load all-time transactions", error);
     return [];
@@ -735,6 +747,11 @@ const loadFlatTransactionRowsForFilterKey = async (
   spaceId: string,
   filterKey: string,
 ): Promise<IndexTransaction[]> => {
+  const { ensureSpaceTransactionRelationIds } = await import(
+    "@/services/transactions/relation-ids-local"
+  );
+  await ensureSpaceTransactionRelationIds(spaceId);
+
   const filter = parseTransactionListFilterFromFilterKey(filterKey);
   const { startDate, endDate } = filter;
 
@@ -1097,6 +1114,61 @@ export const loadLocalIndexTransactionById = async (
 };
 
 /**
+ * Rows to resolve recurring-series delete scope (list + React Query + IndexedDB).
+ */
+export const collectDeleteScopeContextRows = async (params: {
+  spaceId: string;
+  queryClient: QueryClient;
+  listRows: IndexTransaction[];
+  targetId: string;
+}): Promise<{ target: IndexTransaction | null; contextRows: IndexTransaction[] }> => {
+  const { spaceId, queryClient, listRows, targetId } = params;
+  const byId = new Map<string, IndexTransaction>();
+
+  const addRow = (row?: IndexTransaction | null) => {
+    if (row?.id) {
+      byId.set(row.id, row);
+    }
+  };
+
+  for (const row of listRows) {
+    addRow(row);
+  }
+
+  for (const row of collectIndexTransactionsFromQueryCaches(queryClient, spaceId)) {
+    addRow(row);
+  }
+
+  let target = byId.get(targetId) ?? null;
+  if (!target && spaceId) {
+    target = (await loadLocalIndexTransactionById(spaceId, targetId)) ?? null;
+    addRow(target);
+  }
+
+  let contextRows = Array.from(byId.values());
+  if (spaceId) {
+    const idbRows = await loadAllTransactionsFromLocalIndex(spaceId);
+    for (const row of idbRows) {
+      addRow(row);
+    }
+    contextRows = Array.from(byId.values());
+  }
+
+  if (!target && spaceId) {
+    target = byId.get(targetId) ?? null;
+  }
+
+  if (!target) {
+    return { target: null, contextRows };
+  }
+
+  return {
+    target: withResolvedInSeries(target, contextRows),
+    contextRows,
+  };
+};
+
+/**
  * Resolve which local index ids to remove for a delete scope.
  * Index rows do not carry seriesId, so series scopes use a fingerprint heuristic
  * (type/description/category/accounts/amount). Sibling `inSeries` flags may be
@@ -1146,8 +1218,8 @@ type IndexTransactionWithTagIds = IndexTransaction & { tagIds?: string[] };
 
 type IndexTransactionWithMetadata = IndexTransactionWithTagIds & {
   categoryId?: string;
-  subcategoryId?: string;
-  subcategoryName?: string;
+  subcategoryId?: string | null;
+  subcategoryName?: string | null;
 };
 
 const resolveTransactionTagIds = resolveIndexTransactionTagIds;
@@ -1228,7 +1300,15 @@ export const mergeIndexTransactionCategory = (
     merged.categoryId = existing.categoryId;
   }
 
-  if (!merged.subcategoryId && existing.subcategoryId) {
+  const incomingClearedSubcategory =
+    Object.prototype.hasOwnProperty.call(incoming, "subcategoryId")
+    && incoming.subcategoryId == null;
+
+  if (
+    !merged.subcategoryId
+    && existing.subcategoryId
+    && !incomingClearedSubcategory
+  ) {
     merged.subcategoryId = existing.subcategoryId;
   }
 
@@ -1236,8 +1316,32 @@ export const mergeIndexTransactionCategory = (
     merged.categoryName = existing.categoryName;
   }
 
-  if (!merged.subcategoryName && existing.subcategoryName) {
+  const incomingClearedSubcategoryName =
+    Object.prototype.hasOwnProperty.call(incoming, "subcategoryName")
+    && incoming.subcategoryName == null;
+
+  if ((!merged.subcategoryName || !merged.subcategoryName.trim()) && existing.subcategoryName) {
     merged.subcategoryName = existing.subcategoryName;
+  }
+
+  if (!merged.entityId && existing.entityId) {
+    merged.entityId = existing.entityId;
+  }
+
+  if (!merged.accountId && existing.accountId) {
+    merged.accountId = existing.accountId;
+  }
+
+  if (!merged.fromAccountId && existing.fromAccountId) {
+    merged.fromAccountId = existing.fromAccountId;
+  }
+
+  if (!merged.toAccountId && existing.toAccountId) {
+    merged.toAccountId = existing.toAccountId;
+  }
+
+  if ((!merged.entityName || !merged.entityName.trim()) && existing.entityName) {
+    merged.entityName = existing.entityName;
   }
 
   return merged;
@@ -1246,11 +1350,28 @@ export const mergeIndexTransactionCategory = (
 export const mergeIndexTransactionMetadata = (
   existing: IndexTransactionWithMetadata | undefined,
   incoming: IndexTransactionWithMetadata,
-): IndexTransactionWithMetadata =>
-  mergeIndexTransactionCategory(
+): IndexTransactionWithMetadata => {
+  const merged = mergeIndexTransactionCategory(
     existing,
     mergeIndexTransactionTags(existing, incoming),
   );
+
+  const withParent = merged.parentId
+    ? { ...merged, inSeries: true }
+    : incoming.parentId
+      ? { ...merged, parentId: incoming.parentId, inSeries: true }
+      : merged;
+
+  if (existing?.inSeries && !withParent.inSeries) {
+    return { ...withParent, inSeries: true };
+  }
+
+  if (existing?.parentId && !withParent.parentId) {
+    return { ...withParent, parentId: existing.parentId, inSeries: true };
+  }
+
+  return withParent;
+};
 
 /**
  * Merge server-fetched transaction pages into the all-time IndexedDB store.
@@ -1276,10 +1397,18 @@ export const mergeFetchedTransactionsIntoAllTimeCache = async (
 
     for (const row of incoming) {
       const current = byId.get(row.id);
-      byId.set(row.id, mergeIndexTransactionMetadata(current, row));
+      const normalized = normalizeCachedIndexTransaction(row);
+      byId.set(
+        row.id,
+        mergeIndexTransactionMetadata(current, normalized as IndexTransactionWithMetadata),
+      );
     }
 
     await putSpaceTransactions(spaceId, Array.from(byId.values()));
+    const { backfillSpaceTransactionRelationIds } = await import(
+      "@/services/transactions/relation-ids-local"
+    );
+    await backfillSpaceTransactionRelationIds(spaceId);
   } catch (error) {
     console.warn(
       "[local-db] Failed to merge fetched transactions into all-time cache",
@@ -1305,7 +1434,9 @@ export const upsertLocalIndexTransaction = async (
       current,
       transaction as IndexTransactionWithMetadata,
     );
-    await putSpaceTransactions(spaceId, [merged]);
+    await putSpaceTransactions(spaceId, [
+      backfillIndexRowForOffline(merged),
+    ]);
   } catch (error) {
     console.warn("[local-db] Failed to upsert local transaction", error);
   }

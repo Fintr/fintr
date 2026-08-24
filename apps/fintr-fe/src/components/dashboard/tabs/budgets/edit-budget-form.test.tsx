@@ -13,11 +13,9 @@ const mockCreateBudgetMutation = {
   isPending: false,
 };
 
-vi.mock("jotai", async () => {
-  const actual = await vi.importActual("jotai");
-  return {
-    ...actual,
-    useAtomValue: () => [
+vi.mock("@/hooks/async/useTransactionCategories", () => ({
+  useTransactionCategories: () => ({
+    expenseCategoryOptions: [
       {
         id: "cat-1",
         label: "Travel",
@@ -35,8 +33,9 @@ vi.mock("jotai", async () => {
         ],
       },
     ],
-  };
-});
+    incomeCategoryOptions: [],
+  }),
+}));
 
 vi.mock("@/hooks/useNumberInput", () => ({
   useNumberInput: ({ initialValue }: { initialValue: number }) => ({

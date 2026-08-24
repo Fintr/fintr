@@ -80,20 +80,6 @@ module Loans
           }
         end
       end
-
-      field :amortization_schedule do |record|
-        record.generate_amortization_schedule.map do |entry|
-          {
-            payment_date: entry[:payment_date].iso8601,
-            beginning_balance: entry[:beginning_balance],
-            payment_amount: entry[:payment_amount],
-            principal_payment: entry[:principal_payment],
-            interest_payment: entry[:interest_payment],
-            ending_balance: entry[:ending_balance],
-            is_actual: entry[:is_actual] || false
-          }
-        end
-      end
     end
   end
 end

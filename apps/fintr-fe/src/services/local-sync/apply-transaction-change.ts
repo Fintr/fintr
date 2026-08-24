@@ -19,6 +19,7 @@ import { notifyRealtimeTransactionActor } from "@/services/transactions/realtime
 import { removeIndexTransactionsFromQueryCaches } from "@/services/transactions/remove-from-query-caches";
 import { TRANSFER_FEE_CATEGORY_NAME } from "@/services/transactions/transfers/fee-description";
 import { removeMatchingLocalTransferFeePlaceholders } from "@/services/transactions/transfers/reconcile-local-fees";
+import { removeMatchingLocalSeriesChildPlaceholders } from "@/services/transactions/reconcile-local-series-children";
 import {
   replaceIndexTransactionIdInQueryCaches,
   upsertIndexTransactionsIntoQueryCaches,
@@ -161,14 +162,20 @@ export const applyTransactionCreated = async (params: {
 
   let replacedLocalFeePlaceholder = false;
   for (const row of rows) {
-    const replaced = await removeMatchingLocalTransferFeePlaceholders({
+    const replacedFee = await removeMatchingLocalTransferFeePlaceholders({
       spaceId,
       serverFee: row,
       queryClient,
     });
-    if (replaced) {
+    if (replacedFee) {
       replacedLocalFeePlaceholder = true;
     }
+
+    await removeMatchingLocalSeriesChildPlaceholders({
+      spaceId,
+      serverRow: row,
+      queryClient,
+    });
   }
 
   const reconciledOwnOptimistic = await reconcileOptimisticCreateIds({
@@ -200,6 +207,17 @@ export const applyTransactionCreated = async (params: {
         row.categoryName.trim().toLowerCase() ===
           TRANSFER_FEE_CATEGORY_NAME.toLowerCase();
       await upsertLocalIndexTransaction(spaceId, row);
+      void import("@/services/transactions/detail-local")
+        .then(({ cacheEditDetailFromIndexRow }) =>
+          cacheEditDetailFromIndexRow(spaceId, row),
+        )
+        .catch((error) => {
+          console.warn(
+            "[sync] Failed to cache transaction detail after realtime upsert",
+            row.id,
+            error,
+          );
+        });
       if (
         alreadyLocal ||
         feeAlreadyCountedOptimistically ||

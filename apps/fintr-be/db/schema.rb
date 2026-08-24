@@ -10,7 +10,8 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_120000) do
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -718,6 +719,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.uuid "entity_id"
     t.integer "installment_count"
     t.integer "installment_period"
+    t.bigint "installment_total_cents"
     t.uuid "parent_id"
     t.integer "repeat_count"
     t.enum "repeat_interval", enum_type: "repeat_interval"
@@ -1070,7 +1072,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
       (loans.date)::timestamp without time zone AS date,
       loans.principal_amount_cents AS amount_cents,
       loans.currency AS amount_currency,
-      COALESCE(loans.description, ('Loan — '::text || (entities.full_name)::text)) AS description,
+      COALESCE(NULLIF(btrim(loans.description), ''::text), ('Loan — '::text || (entities.full_name)::text)) AS description,
           CASE
               WHEN ((loans.loan_type)::text = 'borrowed'::text) THEN accounts.name
               ELSE NULL::character varying
@@ -1105,7 +1107,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
       (loan_payments.date)::timestamp without time zone AS date,
       loan_payments.total_payment_cents AS amount_cents,
       loan_payments.currency AS amount_currency,
-      COALESCE(loan_payments.notes, ('Loan payment — '::text || (entities.full_name)::text)) AS description,
+      COALESCE(NULLIF(btrim(loan_payments.notes), ''::text), ('Loan payment — '::text || COALESCE(NULLIF(btrim(loans.description), ''::text), (entities.full_name)::text))) AS description,
           CASE
               WHEN ((loans.loan_type)::text = 'lent'::text) THEN accounts.name
               ELSE NULL::character varying
@@ -1199,7 +1201,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
       loans.date,
       loans.principal_amount_cents AS amount_cents,
       loans.currency AS amount_currency,
-      COALESCE(loans.description, ('Loan — '::text || (entities.full_name)::text)) AS description,
+      COALESCE(NULLIF(btrim(loans.description), ''::text), ('Loan — '::text || (entities.full_name)::text)) AS description,
           CASE
               WHEN ((loans.loan_type)::text = 'borrowed'::text) THEN accounts.name
               ELSE NULL::character varying
@@ -1231,7 +1233,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
       loan_payments.date,
       loan_payments.total_payment_cents AS amount_cents,
       loan_payments.currency AS amount_currency,
-      COALESCE(loan_payments.notes, ('Loan payment — '::text || (entities.full_name)::text)) AS description,
+      COALESCE(NULLIF(btrim(loan_payments.notes), ''::text), ('Loan payment — '::text || COALESCE(NULLIF(btrim(loans.description), ''::text), (entities.full_name)::text))) AS description,
           CASE
               WHEN ((loans.loan_type)::text = 'lent'::text) THEN accounts.name
               ELSE NULL::character varying

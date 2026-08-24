@@ -27,12 +27,12 @@ import {
   balanceChartYDomain,
   buildBalanceChartSeries,
   buildFlatChartLine,
-  chartRangeTimestamps,
   extendBalanceChartToRange,
   formatBalanceChartAxisAmount,
   formatBalanceChartDateLabel,
   formatBalancePercentChange,
   isFlatBalanceSeries,
+  resolveBalanceChartXDomain,
   type NormalizedBalanceTimelinePoint,
 } from "@/utils/accountBalanceChart";
 
@@ -68,23 +68,6 @@ export const AccountBalanceChart = ({
     [chartRange, presetOptions],
   );
 
-  const xDomain = useMemo(
-    () => chartRangeTimestamps(startDate, endDate),
-    [endDate, startDate],
-  );
-
-  const formatAxisTick = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    const startYear = new Date(xDomain[0]).getFullYear();
-    const endYear = new Date(xDomain[1]).getFullYear();
-
-    return date.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      ...(startYear !== endYear ? { year: "numeric" } : {}),
-    });
-  };
-
   const timelineQuery = useAccountBalanceTimeline({
     accountId,
     startDate,
@@ -108,13 +91,14 @@ export const AccountBalanceChart = ({
     }
 
     let series = chartPoints;
+    const seriesStartDate = series[0]?.date ?? startDate;
 
     if (series.length >= 2) {
       if (isFlatBalanceSeries(series)) {
-        series = buildFlatChartLine(series[0].balance, startDate, endDate);
+        series = buildFlatChartLine(series[0].balance, seriesStartDate, endDate);
       }
     } else if (series.length === 1) {
-      series = buildFlatChartLine(series[0].balance, startDate, endDate);
+      series = buildFlatChartLine(series[0].balance, seriesStartDate, endDate);
     } else {
       series = buildFlatChartLine(displayAmount, startDate, endDate);
     }
@@ -128,6 +112,29 @@ export const AccountBalanceChart = ({
     isChartLoading,
     startDate,
   ]);
+
+  const xDomain = useMemo(
+    () =>
+      resolveBalanceChartXDomain({
+        rangeId: chartRange,
+        startDate,
+        endDate,
+        firstPointDate: displayChartPoints[0]?.date,
+      }),
+    [chartRange, displayChartPoints, endDate, startDate],
+  );
+
+  const formatAxisTick = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const startYear = new Date(xDomain[0]).getFullYear();
+    const endYear = new Date(xDomain[1]).getFullYear();
+
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      ...(startYear !== endYear ? { year: "numeric" } : {}),
+    });
+  };
 
   const yDomain = useMemo(
     () => balanceChartYDomain(displayChartPoints),

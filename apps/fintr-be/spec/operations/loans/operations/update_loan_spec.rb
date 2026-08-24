@@ -122,5 +122,71 @@ RSpec.describe Loans::Operations::UpdateLoan do
         expect(result).to be_failure
       end
     end
+
+    context "when retiring an active loan" do
+      let(:params) { base_params.merge(status: "defaulted") }
+
+      it "returns success" do
+        result = operation.call(params)
+        expect(result).to be_success
+      end
+
+      it "sets status to defaulted" do
+        operation.call(params)
+        expect(loan.reload.status).to eq("defaulted")
+      end
+
+      it "does not change outstanding balance" do
+        outstanding = loan.outstanding_balance_cents
+        operation.call(params)
+        expect(loan.reload.outstanding_balance_cents).to eq(outstanding)
+      end
+
+      it "does not change the account balance" do
+        balance = account.reload.balance_cents
+        operation.call(params)
+        expect(account.reload.balance_cents).to eq(balance)
+      end
+    end
+
+    context "when restoring a retired loan" do
+      let(:params) { base_params.merge(status: "active") }
+
+      before { loan.update!(status: :defaulted) }
+
+      it "sets status back to active" do
+        operation.call(params)
+        expect(loan.reload.status).to eq("active")
+      end
+    end
+
+    context "when retiring a paid off loan" do
+      let(:params) { base_params.merge(status: "defaulted") }
+
+      before { loan.update!(status: :paid_off, outstanding_balance_cents: 0) }
+
+      it "returns failure" do
+        result = operation.call(params)
+        expect(result).to be_failure
+      end
+    end
+
+    context "when restoring a loan that is not retired" do
+      let(:params) { base_params.merge(status: "active") }
+
+      it "returns failure" do
+        result = operation.call(params)
+        expect(result).to be_failure
+      end
+    end
+
+    context "when status is invalid" do
+      let(:params) { base_params.merge(status: "paid_off") }
+
+      it "returns failure" do
+        result = operation.call(params)
+        expect(result).to be_failure
+      end
+    end
   end
 end

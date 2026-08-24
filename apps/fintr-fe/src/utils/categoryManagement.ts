@@ -17,6 +17,28 @@ export const buildCategoryDetailHref = (
 ): string =>
   `/dashboard/space_settings/categories/detail?categoryId=${encodeURIComponent(categoryId)}&kind=${kind}`;
 
+export const openCreatedRootCategoryPage = (params: {
+  parentId?: string | null;
+  categoryType: CategoryTypeEnum;
+  categoryId: string;
+  syncPromise?: Promise<{ data: { id: string } }>;
+  push: (href: string) => void;
+  replace: (href: string) => void;
+}): void => {
+  if (params.parentId || !params.categoryId) {
+    return;
+  }
+
+  const kind = categoryEnumToKind(params.categoryType);
+  params.push(buildCategoryDetailHref(params.categoryId, kind));
+
+  void params.syncPromise?.then((synced) => {
+    if (synced.data.id && synced.data.id !== params.categoryId) {
+      params.replace(buildCategoryDetailHref(synced.data.id, kind));
+    }
+  });
+};
+
 export const findRootCategory = (
   trees: TransactionCategory[],
   categoryId: string,

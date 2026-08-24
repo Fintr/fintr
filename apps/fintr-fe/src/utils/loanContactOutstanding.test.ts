@@ -88,4 +88,20 @@ describe("loanContactOutstanding", () => {
       theyOwe: [],
     });
   });
+
+  it("skips retired loans even when outstanding remains", () => {
+    expect(
+      loanContactOutstanding([
+        {
+          loanType: "lent",
+          outstandingBalance: 8000,
+          currency: "PHP",
+          status: "defaulted",
+        },
+      ]),
+    ).toEqual({
+      youOwe: [],
+      theyOwe: [],
+    });
+  });
 });

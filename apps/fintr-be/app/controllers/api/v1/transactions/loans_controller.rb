@@ -61,6 +61,7 @@ module Api
 
         def create_params
           params.permit(
+            :id,
             :principal_amount,
             :interest_rate,
             :date,
@@ -79,7 +80,8 @@ module Api
           params.permit(
             :id,
             :entity_name,
-            :description
+            :description,
+            :status
           )
         end
       end

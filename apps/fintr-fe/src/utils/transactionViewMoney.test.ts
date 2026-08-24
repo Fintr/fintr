@@ -49,6 +49,33 @@ describe("transactionViewMoney", () => {
     expect(result.source).toBe("manual");
   });
 
+  it("keeps GBP 200 when booked leg is correct but converted leg matches the original", () => {
+    const result = transactionViewMoney(
+      {
+        amount: 200,
+        amountCurrency: "PHP",
+        bookedAmount: 200,
+        bookedAmountCurrency: "GBP",
+        currencyConversion: {
+          originalAmount: 200,
+          originalCurrency: "GBP",
+          convertedAmount: 200,
+          convertedCurrency: "PHP",
+          exchangeRate: 100,
+          source: "manual",
+        },
+      },
+      "PHP",
+    );
+
+    expect(result.hasConversion).toBe(true);
+    expect(result.originalAmount).toBe(200);
+    expect(result.originalCurrency).toBe("GBP");
+    expect(result.convertedAmount).toBe(20_000);
+    expect(result.convertedCurrency).toBe("PHP");
+    expect(result.exchangeRate).toBe(100);
+  });
+
   it("recovers GBP 200 when conversion stored the PHP magnitude as the original", () => {
     const result = transactionViewMoney(
       {

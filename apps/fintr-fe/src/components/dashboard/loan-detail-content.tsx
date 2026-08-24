@@ -16,11 +16,13 @@ import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useLoan, LOAN_DETAIL_KEY } from "@/hooks/async/useLoan";
+import { useLoanPayments } from "@/hooks/async/useLoanPayments";
 import { LoanDetailPanel } from "@/components/dashboard/loan-detail-panel";
 import { LoanSummaryStats } from "@/components/dashboard/loan-summary-stats";
 import { LoanPaydownProgress } from "@/components/dashboard/loan-paydown-progress";
 import EditLoanModal from "@/components/dashboard/forms/EditLoanModal";
 import DeleteLoanModal from "@/components/dashboard/forms/DeleteLoanModal";
+import RetireLoanModal from "@/components/dashboard/forms/RetireLoanModal";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { deleteLoanLocalFirst } from "@/services/loans/delete-local-first";
@@ -32,6 +34,7 @@ import {
   getNextLoanPaymentDeadline,
 } from "@/utils/loan-upcoming-deadlines";
 import type { LoanPaymentPrefill } from "@/types/loanPaymentTypes";
+import { formatLoanStatusLabel } from "@/utils/loan-status";
 
 type LoanDetailContentProps = {
   loanId: string;
@@ -65,6 +68,7 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
   const queryClient = useQueryClient();
   const [spaceCode] = useLocalStorage("spaceCode", "");
   const { data: loan, isLoading, error, refetch } = useLoan(loanId);
+  const { payments } = useLoanPayments(loanId);
   const [openPaymentRequestId, setOpenPaymentRequestId] = React.useState(0);
   const [paymentPrefill, setPaymentPrefill] =
     React.useState<LoanPaymentPrefill | null>(null);
@@ -120,6 +124,12 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
     }
 
     if (searchParams.get("recordPayment") !== "1") {
+      return;
+    }
+
+    if (loan.status !== "active") {
+      handledRecordPaymentParam.current = true;
+      router.replace(`/dashboard/loans/detail?loanId=${loanId}`, { scroll: false });
       return;
     }
 
@@ -183,25 +193,30 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
       ? parseFloat(loan.principalAmount)
       : loan.principalAmount;
   const nextPaymentDeadline =
-    loan.status === "active" ? getNextLoanPaymentDeadline(loan) : null;
+    loan.status === "active"
+      ? getNextLoanPaymentDeadline(loan, payments)
+      : null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 pb-24 md:pb-8">
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="border-b border-border px-4 py-4 md:px-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-lg font-bold text-primary md:text-xl">
-                {loanTitle}
-              </h1>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <div>
+            <h1 className="truncate text-lg font-bold text-primary md:text-xl">
+              {loanTitle}
+            </h1>
+            <div
+              className="mt-2 flex items-center justify-between gap-3"
+              data-testid="loan-detail-status-row"
+            >
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                 <span
                   className={cn(
                     "rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize",
                     statusColorClass,
                   )}
                 >
-                  {loan.status.replace("_", " ")}
+                  {formatLoanStatusLabel(loan.status)}
                 </span>
                 <span
                   className={cn(
@@ -217,15 +232,16 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
                   </span>
                 ) : null}
               </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5">
-              <EditLoanModal loan={loan} triggerVariant="toolbar" />
-              <DeleteLoanModal
-                loan={loan}
-                onDelete={handleDeleteLoan}
-                triggerVariant="toolbar"
-                triggerAccentClassName={accentClass}
-              />
+              <div className="flex shrink-0 items-center gap-1.5">
+                <EditLoanModal loan={loan} triggerVariant="toolbar" />
+                <RetireLoanModal loan={loan} />
+                <DeleteLoanModal
+                  loan={loan}
+                  onDelete={handleDeleteLoan}
+                  triggerVariant="toolbar"
+                  triggerAccentClassName={accentClass}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -248,7 +264,11 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
                 loan.outstandingBalanceCurrency,
               )}
             </p>
-            {loan.status !== "paid_off" ? (
+            {loan.status === "defaulted" ? (
+              <p className="mt-1 text-sm font-medium text-destructive">
+                Retired · outstanding still shown
+              </p>
+            ) : loan.status !== "paid_off" ? (
               <p className={cn("mt-1 text-sm font-medium", accentClass)}>
                 {isBorrowed ? "You owe" : "Owed to you"}
               </p>
@@ -261,6 +281,20 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
             isBorrowed={isBorrowed}
             status={loan.status}
           />
+
+          {loan.status === "defaulted" ? (
+            <div className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-3">
+              <div>
+                <p className="text-sm font-semibold text-destructive">
+                  Loan retired
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  This loan is out of the active book. Outstanding is unchanged.
+                  Payments are frozen until you un-retire it.
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {loan.status === "paid_off" ? (
             <div className="flex items-start gap-2.5 rounded-xl border border-green-500/20 bg-green-500/10 px-3 py-3">
@@ -307,6 +341,19 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
                     })}
                   </span>
                 </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Principal{" "}
+                  {formatCurrency(
+                    nextPaymentDeadline.principalPayment,
+                    loan.outstandingBalanceCurrency,
+                  )}
+                  {" · "}
+                  Interest{" "}
+                  {formatCurrency(
+                    nextPaymentDeadline.interestPayment,
+                    loan.outstandingBalanceCurrency,
+                  )}
+                </p>
                 <p
                   className={cn(
                     "mt-0.5 text-xs font-medium",
@@ -345,6 +392,7 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
         loan={loan}
         isBorrowed={isBorrowed}
         textColorClass={accentClass}
+        payments={payments}
       />
 
       <section>

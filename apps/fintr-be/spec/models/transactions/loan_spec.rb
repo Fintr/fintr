@@ -213,6 +213,19 @@ RSpec.describe Transactions::Loan, type: :model do
       loan.recalculate_outstanding_balance!
       expect(loan.outstanding_balance_cents).to eq(50_000_00)
     end
+
+    it 'does not change status when the loan is defaulted' do
+      loan.update!(status: :defaulted)
+      create(
+        :loan_payment,
+        loan: loan,
+        principal_payment_cents: 100_000_00
+      )
+
+      loan.recalculate_outstanding_balance!
+      expect(loan.outstanding_balance_cents).to eq(0)
+      expect(loan.status).to eq("defaulted")
+    end
   end
 
   describe '#value' do
@@ -471,6 +484,58 @@ RSpec.describe Transactions::Loan, type: :model do
         projected_payments = schedule.select { |entry| entry[:is_actual] == false }
 
         expect(projected_payments.length).to be > 0
+      end
+    end
+
+    context 'when a payment is recorded after the first due date' do
+      let(:loan) do
+        create(
+          :loan,
+          principal_amount_cents: 12_000_00,
+          outstanding_balance_cents: 11_000_00,
+          interest_rate: 0.0,
+          loan_term_months: 12,
+          date: Date.new(2026, 7, 8),
+          maturity_date: Date.new(2027, 7, 8),
+          currency: "PHP"
+        )
+      end
+
+      before do
+        create(
+          :loan_payment,
+          loan: loan,
+          account: loan.account,
+          date: Date.new(2026, 8, 10),
+          principal_payment_cents: 1_000_00,
+          interest_payment_cents: 0,
+          total_payment_cents: 1_000_00,
+          currency: "PHP"
+        )
+      end
+
+      it 'keeps the first contractual due date as paid' do
+        schedule = loan.generate_amortization_schedule
+
+        expect(schedule.first[:payment_date]).to eq(Date.new(2026, 8, 8))
+      end
+
+      it 'marks the late payment against that due date' do
+        schedule = loan.generate_amortization_schedule
+
+        expect(schedule.first[:is_actual]).to eq(true)
+      end
+
+      it 'does not move the next due date to one month after the cash date' do
+        schedule = loan.generate_amortization_schedule
+
+        expect(schedule.second[:payment_date]).to eq(Date.new(2026, 9, 8))
+      end
+
+      it 'keeps the original installment on the next due date' do
+        schedule = loan.generate_amortization_schedule
+
+        expect(schedule.second[:payment_amount]).to eq(1_000)
       end
     end
 

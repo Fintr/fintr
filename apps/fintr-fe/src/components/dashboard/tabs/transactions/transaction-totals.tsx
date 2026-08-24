@@ -143,16 +143,16 @@ export function TransactionTotalsDisplay({
 
   if (isLoading) {
     return (
-      <fieldset className="border border-gray-300 dark:border-border rounded-lg px-4 py-3 mb-4 w-full md:w-fit">
-        <legend className="text-xs font-medium text-muted-foreground px-1">
-          Totals (including future transactions)
-        </legend>
-        <div className="flex flex-wrap gap-2 md:gap-3">
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-muted rounded-lg animate-pulse">
-            <div className="w-20 h-4 bg-gray-200 dark:bg-muted-foreground/20 rounded"></div>
-          </div>
+      <div className="mb-4 w-full md:w-fit">
+        <div
+          className={cn(
+            totalChipClassName,
+            "bg-gray-100 dark:bg-muted animate-pulse w-full md:w-auto",
+          )}
+        >
+          <div className="h-4 w-24 bg-gray-200 dark:bg-muted-foreground/20 rounded" />
         </div>
-      </fieldset>
+      </div>
     );
   }
 
@@ -160,49 +160,20 @@ export function TransactionTotalsDisplay({
     return null;
   }
 
-  const hasIncome = totals.income > 0;
-  // API may send expense totals as positive magnitudes; treat any non-zero as present.
-  const hasExpense = Math.abs(totals.expense) > 0;
   const hasTransfer = Math.abs(totals.transfer) > 0;
 
-  // Don't show if there are no totals
-  if (!hasIncome && !hasExpense && !hasTransfer) {
+  if (!hasTransfer) {
     return null;
   }
 
   return (
-    <fieldset className="border border-gray-300 dark:border-border rounded-lg px-4 py-3 mb-4 w-full md:w-fit">
-      <legend className="text-xs font-medium text-muted-foreground px-1">
-        Totals (including future transactions)
-      </legend>
-      <div className="flex flex-wrap gap-2 md:gap-3">
-        {hasIncome && (
-          <div className={cn(totalChipClassName, "bg-teal-50 dark:bg-teal-950/40")}>
-            <ArrowUpRight className="h-4 w-4 text-teal-600" />
-            <span className="text-sm font-medium text-teal-600">
-              {formatCurrency(totals.income, spaceCurrency)}
-            </span>
-          </div>
-        )}
-        
-        {hasExpense && (
-          <div className={cn(totalChipClassName, "bg-red-50 dark:bg-red-950/40")}>
-            <ArrowDownLeft className="h-4 w-4 text-red-900 dark:text-red-700" />
-            <span className="text-sm font-medium text-red-900 dark:text-red-700">
-              {formatCurrency(Math.abs(totals.expense), spaceCurrency)}
-            </span>
-          </div>
-        )}
-        
-        {hasTransfer && (
-          <div className={cn(totalChipClassName, "bg-blue-100/50 dark:bg-blue-950/40")}>
-            <ArrowLeftRight className="h-4 w-4 text-blue-900 dark:text-blue-400" />
-            <span className="text-sm font-medium text-blue-900 dark:text-blue-400">
-              {formatCurrency(Math.abs(totals.transfer), spaceCurrency)}
-            </span>
-          </div>
-        )}
+    <div className="mb-4 w-full md:w-fit">
+      <div className={cn(totalChipClassName, "bg-blue-100/50 dark:bg-blue-950/40 w-full md:w-auto")}>
+        <ArrowLeftRight className="h-4 w-4 text-blue-900 dark:text-blue-400" />
+        <span className="text-sm font-medium text-blue-900 dark:text-blue-400">
+          Transfers: {formatCurrency(Math.abs(totals.transfer), spaceCurrency)}
+        </span>
       </div>
-    </fieldset>
+    </div>
   );
 }

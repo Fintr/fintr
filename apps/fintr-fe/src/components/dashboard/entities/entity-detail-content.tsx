@@ -24,7 +24,8 @@ import {
   loanContactOutstanding,
   type CurrencyAmount,
 } from "@/utils/loanContactOutstanding";
-import { transactionViewHref } from "@/utils/detailHrefs";
+import { buildLoanDetailHref, transactionViewHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
 import {
   activityPresentsAsIncome,
   activityPresentsAsTransfer,
@@ -171,7 +172,7 @@ export function EntityDetailContent({ entityId }: EntityDetailContentProps) {
             totalCount={transactions.length}
             spaceCurrency={spaceCurrency}
             onOpenTransaction={(transaction) =>
-              router.push(transactionViewHref(transaction))
+              pushDashboardDetail(router, transactionViewHref(transaction))
             }
           />
         ) : (
@@ -182,12 +183,13 @@ export function EntityDetailContent({ entityId }: EntityDetailContentProps) {
             transactions={recentTransactions}
             spaceCurrency={spaceCurrency}
             onOpenLoan={(loanId) =>
-              router.push(
-                `/dashboard/loans/detail?loanId=${encodeURIComponent(loanId)}`,
+              pushDashboardDetail(
+                router,
+                buildLoanDetailHref(loanId),
               )
             }
             onOpenTransaction={(transaction) =>
-              router.push(transactionViewHref(transaction))
+              pushDashboardDetail(router, transactionViewHref(transaction))
             }
           />
         )}

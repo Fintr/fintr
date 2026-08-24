@@ -40,6 +40,8 @@ import type { TransactionEntryTypeFilter } from "@/utils/transactionEntryTypeFil
 import { entryTypeFilterToApiParam } from "@/utils/transactionEntryTypeFilter";
 import ScopeModal, { DeleteScope, Scope } from "@/components/dashboard/forms/ScopeModal";
 import { deleteTransactionLocalFirst } from "@/services/transactions/delete-local-first";
+import { collectDeleteScopeContextRows } from "@/services/transactions/local-cache";
+import { flattenTransactionsFromPages, transactionAllowsSeriesDeleteScope } from "@/services/transactions/resolve-delete-scope";
 import { deleteTransaction } from "@/services/transactions/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
@@ -56,6 +58,8 @@ import { generateTransactionsCsv } from "@/services/transactions/queries";
 import { getUserFacingExportErrorMessage } from "@/lib/user-facing-export-error";
 import { toast } from "sonner";
 import { transactionViewHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
+import { usePrefetchDetailHrefs } from "@/hooks/usePrefetchDetailHrefs";
 import { ScrollToTopButton } from "@/components/ui/scroll-to-top-button";
 import { useAtom, useAtomValue } from "jotai";
 import {
@@ -65,10 +69,7 @@ import {
   dateFilterMonthYearAtom,
   dateRangeToMonthYear,
 } from "@/atoms/dateFilterAtoms";
-import {
-  expenseCategoryOptionsAtom,
-  incomeCategoryOptionsAtom,
-} from "@/atoms/dashboardAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   areFilterValuesEqual,
@@ -87,8 +88,10 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const showV2Features = shouldShowV2Features();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
+  const {
+    expenseCategoryOptions,
+    incomeCategoryOptions,
+  } = useTransactionCategories();
   const categoryFromUrl = searchParams.get("category");
   const tagFromUrl = searchParams.get("tag");
   const [spaceCode] = useLocalStorage("spaceCode", "");
@@ -318,6 +321,14 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     manualOnly: false,
     loadMoreRef,
   });
+
+  const detailPrefetchHrefs = useMemo(() => {
+    const rows = data?.pages?.flatMap((page) => page.transactions ?? []) ?? [];
+
+    return rows.map((row) => transactionViewHref(row));
+  }, [data?.pages]);
+
+  usePrefetchDetailHrefs(detailPrefetchHrefs);
 
   // Cleanup timeouts on component unmount
   useEffect(() => {
@@ -717,10 +728,12 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   };
 
   const handleEditRow = (transaction: IndexTransaction) => {
-    router.push(transactionViewHref(transaction));
+    pushDashboardDetail(router, transactionViewHref(transaction));
   };
 
-  const handleDeleteRow = (id: string) => {
+  const handleDeleteRow = async (id: string) => {
+    const allListRows = flattenTransactionsFromPages(data?.pages);
+
     // Find the transaction to get its inSeries status
     let transaction: IndexTransaction | null = null;
     if (data?.pages) {
@@ -738,7 +751,18 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       return;
     }
 
-    setTransactionToDelete(transaction);
+    const { target: resolvedTransaction } = await collectDeleteScopeContextRows({
+      spaceId: spaceCode,
+      queryClient,
+      listRows: allListRows,
+      targetId: id,
+    });
+
+    if (!resolvedTransaction) {
+      return;
+    }
+
+    setTransactionToDelete(resolvedTransaction);
     
     // Always show modal to prevent accidental deletion
     // For non-series transactions, modal will only show "this_only" option
@@ -1008,6 +1032,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
                 onRowDelete={handleDeleteRow}
                 loadMoreRef={loadMoreRef as React.RefObject<HTMLDivElement>}
                 showBookedCurrencies={showBookedCurrencies}
+                collapseToRecurringRules={entryTypeFilter === "recurring"}
               />
             </div>
           ) : spaceCode && viewMode === "sheets" ? (
@@ -1056,7 +1081,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         selectedScope={selectedDeleteScope}
         onScopeChange={handleDeleteScopeChange}
         operationType="delete"
-        inSeries={Boolean(transactionToDelete?.inSeries)}
+        inSeries={transactionAllowsSeriesDeleteScope(transactionToDelete)}
         transactionType={transactionToDelete?.type}
       />
     </>

@@ -34,6 +34,8 @@ module Transactions
           optional(:repeat_count).value(:integer)
           optional(:installment_period).value(:integer)
           optional(:installment_count).value(:integer)
+          optional(:installment_revision_anchor).maybe(:string)
+          optional(:installment_total).maybe(:decimal)
 
           optional(:file)
           optional(:file_id).maybe(:string)
@@ -56,6 +58,7 @@ module Transactions
 
           # Client-generated UUID for idempotent offline / retry creates (FIN-195).
           optional(:client_mutation_id).value(:string)
+          optional(:id).maybe(:string)
           optional(:tag_ids).array(:string)
         end
 
@@ -181,6 +184,10 @@ module Transactions
                                       conversion_data:,
                                       )
             params             = step adjust_amount(params: params)
+            conversion_data    = step scale_installment_conversion_to_per_payment(
+                                      conversion_data:,
+                                      params:,
+                                    )
             tx                 = step create_transaction_record(params:)
             _                  = step create_conversion_record(
                                       transaction: tx,
@@ -353,9 +360,29 @@ module Transactions
       def adjust_amount(params:)
         return Success(params) unless params[:schedule_type] == "installment"
 
-        params[:amount] = (BigDecimal(params[:amount].to_s) / params[:installment_period])
-                          .round(2, BigDecimal::ROUND_HALF_UP)
+        total = BigDecimal(params[:amount].to_s)
+        period = params[:installment_period]
+        params[:installment_total_cents] = (total * 100).round
+        params[:amount] = (total / period).round(2, BigDecimal::ROUND_HALF_UP)
         Success(params)
+      end
+
+      def scale_installment_conversion_to_per_payment(conversion_data:, params:)
+        return Success(conversion_data) unless params[:schedule_type] == "installment"
+        return Success(conversion_data) unless conversion_data[:needs_conversion]
+
+        period = params[:installment_period]
+        return Success(conversion_data) if period.blank? || period.to_i <= 0
+
+        period_bd = BigDecimal(period.to_s)
+        scaled = conversion_data.dup
+        scaled[:original_amount] = (
+          BigDecimal(conversion_data[:original_amount].to_s) / period_bd
+        ).round(2, BigDecimal::ROUND_HALF_UP).to_f
+        scaled[:converted_amount] = (
+          BigDecimal(conversion_data[:converted_amount].to_s) / period_bd
+        ).round(2, BigDecimal::ROUND_HALF_UP).to_f
+        Success(scaled)
       end
 
       def create_transaction_record(params:)
@@ -409,7 +436,7 @@ module Transactions
         )
       end
 
-      # Note: Creates repeat transactions until + 1.month
+      # Note: Creates repeat transactions until + 1.month; installments through term end.
       def create_future_transactions(transaction:)
         return Success() if transaction.schedule_type == "one_time"
 
@@ -417,7 +444,10 @@ module Transactions
           transaction_id: transaction.id,
           balance_state: "pending",
           date_start: Time.zone.tomorrow,
-          date_end: Time.zone.today + 1.month,
+          date_end: Utils::Recurrence.future_series_end_date(
+            record: transaction,
+            reference_date: Time.zone.today,
+          ),
           suppress_actor_toast: true,
         )
       end

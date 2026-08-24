@@ -10,11 +10,14 @@ import {
   isOfflineSpaceCacheComplete,
   markOfflineSyncComplete,
   OFFLINE_SYNC_VERSION,
+  readOfflineSyncReadyHint,
+  resolveOfflineSyncBootstrapState,
   shouldRunFullOfflineSync,
 } from "./sync-state";
 
 describe("offline sync state — new spaces", () => {
   afterEach(async () => {
+    window.localStorage.removeItem("fintr:offlineSyncReadyVersion");
     await resetLocalDbForTests();
   });
 
@@ -73,5 +76,78 @@ describe("offline sync state — new spaces", () => {
     await markSpaceTransactionIndexComplete("A");
     expect(OFFLINE_SYNC_VERSION).toBeTypeOf("number");
     await expect(shouldRunFullOfflineSync()).resolves.toBe(false);
+  });
+
+  it("requires reimport when localStorage hint exists but IndexedDB was cleared", async () => {
+    window.localStorage.setItem(
+      "fintr:offlineSyncReadyVersion",
+      String(OFFLINE_SYNC_VERSION),
+    );
+
+    await expect(
+      resolveOfflineSyncBootstrapState("fintr"),
+    ).resolves.toEqual({
+      needsFullSync: true,
+      spaceCacheComplete: false,
+      requiresReimport: true,
+    });
+    expect(readOfflineSyncReadyHint()).toBe(false);
+  });
+
+  it("clears a stale ready hint when the active space cache is incomplete", async () => {
+    window.localStorage.setItem(
+      "fintr:offlineSyncReadyVersion",
+      String(OFFLINE_SYNC_VERSION),
+    );
+    await markOfflineSyncComplete(["fintr"]);
+
+    await expect(
+      resolveOfflineSyncBootstrapState("fintr"),
+    ).resolves.toMatchObject({
+      requiresReimport: true,
+    });
+    expect(readOfflineSyncReadyHint()).toBe(false);
+  });
+
+  it("does not require reimport when meta, summaries, and index exist", async () => {
+    await markOfflineSyncComplete(["fintr"]);
+    await putLocalResponseSnapshot("monthlyFinancialSummaries:fintr", []);
+    await markSpaceTransactionIndexComplete("fintr");
+
+    await expect(
+      resolveOfflineSyncBootstrapState("fintr"),
+    ).resolves.toEqual({
+      needsFullSync: false,
+      spaceCacheComplete: true,
+      requiresReimport: false,
+    });
+  });
+
+  it("requires reimport when summaries show activity but transactions were wiped", async () => {
+    await markOfflineSyncComplete(["fintr"]);
+    await putLocalResponseSnapshot("monthlyFinancialSummaries:fintr", [
+      {
+        id: "1",
+        year: 2026,
+        month: 8,
+        currency: "PHP",
+        fxBased: false,
+        calculatedAt: "2026-08-01T00:00:00.000Z",
+        totalIncome: 1000,
+        totalExpenses: 500,
+        netSavings: 500,
+        savingsPercentage: 50,
+        monthStartDate: "2026-08-01",
+        monthEndDate: "2026-08-31",
+      },
+    ]);
+    await markSpaceTransactionIndexComplete("fintr");
+
+    await expect(isOfflineSpaceCacheComplete("fintr")).resolves.toBe(false);
+    await expect(
+      resolveOfflineSyncBootstrapState("fintr"),
+    ).resolves.toMatchObject({
+      requiresReimport: true,
+    });
   });
 });

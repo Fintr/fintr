@@ -241,6 +241,14 @@ module Transactions
           to_account_name: to_name.to_s,
           type:,
           in_series: transaction.respond_to?(:in_series?) ? transaction.in_series? : false,
+          parent_id:
+            if transaction.respond_to?(:parent_id)
+              transaction.parent_id&.to_s
+            end,
+          schedule_type:
+            if transaction.respond_to?(:schedule_type)
+              transaction.schedule_type
+            end,
           has_image: transaction.respond_to?(:files) && transaction.files.attached?,
           has_loan_payment: false,
           calculated: transaction_calculated_for_index?(transaction:),

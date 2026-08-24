@@ -89,17 +89,11 @@ export const expandLocalSeriesOccurrenceDates = (params: {
       return [];
     }
 
-    // Parent is occurrence 1; generate the remaining period - 1 months.
+    // Parent is occurrence 1; generate all remaining installments through term end.
     for (let index = 1; index < period; index += 1) {
       const cursor = addMonths(parentDate, index);
-      if (
-        dateKey(cursor) !== dateKey(parentDate) &&
-        isWithinInclusiveRange(cursor, rangeStart, rangeEnd)
-      ) {
+      if (dateKey(cursor) !== dateKey(parentDate)) {
         dates.push(toIsoDate(cursor));
-      }
-      if (dateKey(cursor) > dateKey(rangeEnd)) {
-        break;
       }
     }
 
@@ -128,6 +122,91 @@ export const expandLocalSeriesOccurrenceDates = (params: {
     ) {
       dates.push(toIsoDate(cursor));
     }
+  }
+
+  return dates;
+};
+
+/**
+ * Projects the next N occurrence dates for a recurring rule, anchored on the
+ * series parent date and advancing by repeat interval (not limited to rows
+ * already stored in the ledger).
+ */
+export const computeUpcomingSeriesDates = (params: {
+  parentDate: string;
+  repeatInterval: string;
+  scheduleType?: ScheduleTypeEnum | string;
+  installmentPeriod?: number | null;
+  today?: string;
+  count?: number;
+  /** Skip dates on or before this day (e.g. today when already recorded). */
+  exclusiveThroughDate?: string;
+}): string[] => {
+  const count = params.count ?? 5;
+  const todayKey = dateKey(parseIsoDate(params.today ?? toIsoDate(new Date())));
+  const parentDate = parseIsoDate(params.parentDate);
+
+  if (params.scheduleType === ScheduleTypeEnum.INSTALLMENT) {
+    const period = Number(params.installmentPeriod);
+    if (!Number.isFinite(period) || period <= 1) {
+      return [];
+    }
+
+    const exclusiveThroughKey = params.exclusiveThroughDate
+      ? dateKey(parseIsoDate(params.exclusiveThroughDate))
+      : null;
+    const dates: string[] = [];
+    for (let index = 0; index < period; index += 1) {
+      const cursor = addMonths(parentDate, index);
+      const key = dateKey(cursor);
+      if (key >= todayKey) {
+        if (exclusiveThroughKey && key <= exclusiveThroughKey) {
+          continue;
+        }
+        dates.push(toIsoDate(cursor));
+      }
+      if (dates.length >= count) {
+        break;
+      }
+    }
+
+    return dates.slice(0, count);
+  }
+
+  const interval = params.repeatInterval.trim();
+  if (!interval) {
+    return [];
+  }
+
+  let cursor = parentDate;
+  while (dateKey(cursor) < todayKey) {
+    const next = advanceByRepeatInterval(cursor, interval);
+    if (!next) {
+      return [];
+    }
+    cursor = next;
+  }
+
+  if (params.exclusiveThroughDate) {
+    const exclusiveThroughKey = dateKey(parseIsoDate(params.exclusiveThroughDate));
+    while (dateKey(cursor) <= exclusiveThroughKey) {
+      const next = advanceByRepeatInterval(cursor, interval);
+      if (!next) {
+        return [];
+      }
+      cursor = next;
+    }
+  }
+
+  const dates: string[] = [];
+  let current = cursor;
+  for (let step = 0; step < count; step += 1) {
+    dates.push(toIsoDate(current));
+    const next = advanceByRepeatInterval(current, interval);
+    if (!next) {
+      break;
+    }
+    current = next;
   }
 
   return dates;

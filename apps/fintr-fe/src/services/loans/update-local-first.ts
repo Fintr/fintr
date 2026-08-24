@@ -79,6 +79,7 @@ export const buildUpdatedLoan = (params: {
       data.description !== undefined
         ? data.description
         : previous.description,
+    status: data.status !== undefined ? data.status : previous.status,
   };
 };
 

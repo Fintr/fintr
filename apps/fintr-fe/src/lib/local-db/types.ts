@@ -17,6 +17,8 @@ export type LocalAccountRecord = {
   accountCategory: string;
   createdAt?: string;
   updatedAt?: string;
+  /** Prior display names — used to resolve legacy transaction rows after renames. */
+  previousNames?: string[];
   cachedAt: number;
 };
 

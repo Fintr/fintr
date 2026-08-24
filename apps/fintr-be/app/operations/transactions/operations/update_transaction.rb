@@ -55,16 +55,37 @@ module Transactions
                                   conversion_data:,
                                 )
           changed_transaction = step initialize_update_transaction(transaction:, params:)
+          changed_transaction = step sync_installment_total_for_this_only(
+                                  transaction: changed_transaction,
+                                  params:,
+                                )
           _                   = step validate_installment_not_changed(transaction: changed_transaction)
+          changed_transaction = step revise_installment_plan_if_needed(
+                                  transaction: changed_transaction,
+                                  params:,
+                                )
+          conversion_data     = step sync_conversion_to_revised_amount(
+                                  transaction: changed_transaction,
+                                  conversion_data:,
+                                )
           changed_transaction = step update_schedule(transaction: changed_transaction, params:)
           changed_transaction = step update_balance_state(transaction: changed_transaction)
           _                   = step adjust_balance(transaction: changed_transaction)
+          _                   = step persist_currency_conversion(
+                                  transaction: changed_transaction,
+                                  conversion_data:,
+                                )
           new_transaction     = step update_repeat_transactions(transaction: changed_transaction, params:)
           saved_transaction   = step save_transaction(transaction: new_transaction)
           _                   = step sync_transaction_tags(transaction: saved_transaction, params:)
           _                   = step persist_currency_conversion(
                                   transaction: saved_transaction,
                                   conversion_data:,
+                                )
+          _                   = step persist_series_currency_conversions(
+                                  transaction: saved_transaction,
+                                  conversion_data:,
+                                  params:,
                                 )
           _                   = step update_transfer_transaction_cost(transaction: saved_transaction) if saved_transaction.transfer
           saved_transaction
@@ -153,6 +174,16 @@ module Transactions
         params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
         params[:repeat_count] ||= 1 if params[:schedule_type] == "repeat"
         params[:installment_count] ||= 1 if params[:schedule_type] == "installment"
+        if conversion_data[:needs_conversion] && params[:installment_total].present?
+          params[:installment_total] = Utils::InstallmentPlan.to_ledger_amount(
+            amount: params[:installment_total],
+            from_currency:
+              params[:original_currency] ||
+              conversion_data[:original_currency],
+            ledger_currency: params[:amount_currency],
+            exchange_rate: conversion_data[:exchange_rate],
+          )
+        end
         params.delete(:category_name)
         params.delete(:account_name)
         params.delete(:transaction_type)
@@ -171,6 +202,48 @@ module Transactions
         )
       end
 
+      def persist_series_currency_conversions(transaction:, conversion_data:, params:)
+        return Success(transaction) unless conversion_data[:needs_conversion]
+
+        update_scope = params[:update_scope]
+        return Success(transaction) if update_scope.blank? || update_scope == "this_only"
+
+        root = transaction.root_parent
+        effective_date =
+          update_scope == "all_in_series" ? root.date : transaction.date
+        remaining = Transactions::Transaction.records_in_series_tree(
+          root_id: root.id,
+          extra_ids: [transaction.id],
+        ).where(date: effective_date..).where.not(id: transaction.id)
+
+        remaining.find_each do |row|
+          result = ::Transactions::Operations::PersistCurrencyConversion.new.call(
+            transaction: row,
+            conversion_data:,
+          )
+          return result if result.failure?
+        end
+
+        Success(transaction)
+      end
+
+      def sync_conversion_to_revised_amount(transaction:, conversion_data:)
+        return Success(conversion_data) unless conversion_data[:needs_conversion]
+
+        rate = BigDecimal(conversion_data[:exchange_rate].to_s)
+        return Success(conversion_data) unless rate.positive?
+
+        converted_amount = transaction.amount.amount
+        original_amount = (converted_amount / rate).round(2)
+
+        Success(
+          conversion_data.merge(
+            converted_amount: converted_amount.to_f,
+            original_amount: original_amount.to_f,
+          ),
+        )
+      end
+
       def initialize_update_transaction(transaction:, params:)
         assignable = params.except(
           :id,
@@ -178,10 +251,56 @@ module Transactions
           :file,
           :remove_file,
           :tag_ids,
+          :installment_revision_anchor,
+          :installment_total,
           *CONVERSION_PARAMS,
         )
         transaction.assign_attributes(**assignable)
         Success(transaction)
+      end
+
+      def sync_installment_total_for_this_only(transaction:, params:)
+        return Success(transaction) unless transaction.installment?
+        return Success(transaction) unless params[:update_scope] == "this_only"
+        return Success(transaction) unless transaction.amount_cents_changed?
+
+        root = transaction.root_parent
+        new_total_cents = Utils::InstallmentPlan.apply_this_only_amount_delta_cents(
+          stored_total_cents: root.installment_total_cents,
+          period: root.installment_period,
+          previous_amount_cents: transaction.amount_cents_was,
+          next_amount_cents: transaction.amount_cents,
+        )
+
+        series = root.series_records
+        series.update_all(installment_total_cents: new_total_cents)
+        transaction.installment_total_cents = new_total_cents
+        Success(transaction)
+      rescue ActiveRecord::ActiveRecordError => e
+        Failure(error: e)
+      end
+
+      def revise_installment_plan_if_needed(transaction:, params:)
+        update_scope = params[:update_scope]
+        return Success(transaction) unless transaction.installment?
+        return Success(transaction) if update_scope.blank? || update_scope == "this_only"
+        return Success(transaction) unless installment_plan_changed?(transaction:)
+
+        anchor = params[:installment_revision_anchor]
+        if anchor.blank?
+          return Failure(installment_revision_anchor: "is required for installment plan changes")
+        end
+
+        Transactions::Operations::ReviseInstallmentPlan.new.call(
+          transaction:,
+          update_scope:,
+          anchor:,
+          installment_total: params[:installment_total],
+        )
+      end
+
+      def installment_plan_changed?(transaction:)
+        transaction.installment_period_changed? || transaction.amount_cents_changed?
       end
 
       def validate_installment_not_changed(transaction:)

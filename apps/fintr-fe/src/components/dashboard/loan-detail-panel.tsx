@@ -80,8 +80,8 @@ const LOAN_TABLE_WRAPPER_CLASS =
 
 const LOAN_TABLE_CONTAINER_CLASS = "overflow-visible w-full";
 
-const LOAN_SCHEDULE_DATE_COL_CLASS = "min-w-[100px] md:min-w-[140px]";
-const LOAN_SCHEDULE_AMOUNT_COL_CLASS = "w-[90px] md:w-[120px]";
+const LOAN_SCHEDULE_DATE_COL_CLASS = "w-[8.25rem] md:w-[10.5rem]";
+const LOAN_SCHEDULE_AMOUNT_COL_CLASS = "w-[5.75rem] md:w-[7.5rem]";
 
 const LOAN_PAYMENTS_DATE_COL_CLASS = "w-[96px] md:w-[120px]";
 const LOAN_PAYMENTS_ACCOUNT_COL_CLASS = "w-[84px] md:w-[100px]";
@@ -90,7 +90,7 @@ const LOAN_PAYMENTS_NOTES_COL_CLASS = "min-w-[100px] md:min-w-[150px]";
 const LOAN_PAYMENTS_ACTIONS_COL_CLASS = "w-[72px] md:w-[100px]";
 
 const LOAN_SCHEDULE_TABLE_CLASS =
-  "w-full table-fixed min-w-[34.375rem] md:min-w-[47rem]";
+  "w-full table-fixed min-w-[36.5rem] md:min-w-[47rem]";
 
 const LOAN_PAYMENTS_TABLE_CLASS =
   "w-full table-fixed min-w-[39.25rem] md:min-w-[50rem]";
@@ -102,16 +102,19 @@ const LOAN_TABLE_ROW_CLASS =
   "bg-card hover:bg-accent/40";
 
 const LOAN_TABLE_CELL_CLASS =
-  "px-2 py-2 text-xs whitespace-nowrap text-foreground md:px-3";
+  "overflow-hidden px-2 py-2 text-xs whitespace-nowrap text-foreground md:px-3";
 
 const LOAN_TABLE_CELL_MUTED_CLASS =
-  "px-2 py-2 text-xs whitespace-nowrap text-muted-foreground md:px-3";
+  "overflow-hidden px-2 py-2 text-xs whitespace-nowrap text-muted-foreground md:px-3";
+
+const LOAN_SCHEDULE_DATE_CELL_CLASS =
+  "overflow-hidden px-2 py-2 align-top text-xs text-foreground md:px-3";
 
 const LOAN_TABLE_PAID_ROW_CLASS =
   "bg-primary/5";
 
 const LOAN_TABLE_PAID_LABEL_CLASS =
-  "ml-1 text-xs font-medium text-primary dark:text-primary-dark-mode";
+  "block whitespace-normal text-[10px] font-medium leading-tight text-primary dark:text-primary-dark-mode";
 
 const LOAN_TABLE_EMPTY_MESSAGE_CLASS =
   "text-sm text-muted-foreground";
@@ -351,9 +354,11 @@ export function LoanDetailPanel({
   paymentPrefill = null,
   onPaymentRecorded,
 }: LoanDetailPanelProps) {
-  // Use backend schedule which incorporates actual payments and adjusts accordingly
-  const schedule = React.useMemo(() => getAmortizationSchedule(loan), [loan]);
   const { createPayment, isCreating, payments, isLoading: isLoadingPayments, updatePayment, deletePayment, isUpdating, isDeleting } = useLoanPayments(loan.id);
+  const schedule = React.useMemo(
+    () => getAmortizationSchedule(loan, payments),
+    [loan, payments],
+  );
   const accountOptions = useAtomValue(accountOptionsAtom);
   const currentSpace = useAtomValue(currentSpaceAtom);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
@@ -470,7 +475,7 @@ export function LoanDetailPanel({
   };
 
   React.useEffect(() => {
-    if (openPaymentRequestId <= 0 || loan.status === "paid_off") {
+    if (openPaymentRequestId <= 0 || loan.status !== "active") {
       return;
     }
 
@@ -722,7 +727,7 @@ export function LoanDetailPanel({
           <h2 className="text-sm font-semibold text-primary">
             Payments made
           </h2>
-          {loan.status !== "paid_off" ? (
+          {loan.status === "active" ? (
             <Button
               size="sm"
               variant="default"
@@ -745,9 +750,11 @@ export function LoanDetailPanel({
             <p className={LOAN_TABLE_EMPTY_MESSAGE_CLASS}>
               {loan.status === "paid_off"
                 ? "No payments were recorded for this loan"
-                : "No payments recorded yet"}
+                : loan.status === "defaulted"
+                  ? "Payments are frozen while this loan is retired"
+                  : "No payments recorded yet"}
             </p>
-            {loan.status !== "paid_off" ? (
+            {loan.status === "active" ? (
               <Button
                 size="sm"
                 variant="outline"
@@ -948,17 +955,23 @@ export function LoanDetailPanel({
                         payment.isActual && LOAN_TABLE_PAID_ROW_CLASS,
                       )}
                     >
-                      <TableCell className={LOAN_TABLE_CELL_CLASS}>
-                        <span>
-                          {payment.paymentDate.toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </span>
-                        {payment.isActual && (
-                          <span className={LOAN_TABLE_PAID_LABEL_CLASS}>(Paid)</span>
-                        )}
+                      <TableCell className={LOAN_SCHEDULE_DATE_CELL_CLASS}>
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                          <span className="truncate">
+                            {payment.paymentDate.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                          {payment.isActual ? (
+                            <span className={LOAN_TABLE_PAID_LABEL_CLASS}>
+                              {payment.paidOnDate
+                                ? `Paid on ${format(payment.paidOnDate, "MMM d, yyyy")}`
+                                : "Paid"}
+                            </span>
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell className={`${LOAN_TABLE_CELL_CLASS} text-right`}>
                         {formatCurrency(

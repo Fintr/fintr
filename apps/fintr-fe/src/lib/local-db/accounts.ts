@@ -9,7 +9,8 @@ export const accountCacheKey = (spaceId: string, accountId: string): string =>
 const toLocalRecord = (
   spaceId: string,
   account: Account,
-  cachedAt: number
+  cachedAt: number,
+  previousNames?: string[],
 ): LocalAccountRecord => ({
   key: accountCacheKey(spaceId, account.id),
   spaceId,
@@ -20,6 +21,7 @@ const toLocalRecord = (
   accountCategory: account.accountCategory,
   createdAt: account.createdAt,
   updatedAt: account.updatedAt,
+  previousNames,
   cachedAt,
 });
 
@@ -39,8 +41,20 @@ export const replaceSpaceAccounts = async (
 ): Promise<void> => {
   const db = getLocalDb();
   const cachedAt = Date.now();
+  const existingRecords = await db.accounts
+    .where("spaceId")
+    .equals(spaceId)
+    .toArray();
+  const previousNamesById = new Map(
+    existingRecords.map((record) => [record.id, record.previousNames]),
+  );
   const records = accounts.map((account) =>
-    toLocalRecord(spaceId, account, cachedAt)
+    toLocalRecord(
+      spaceId,
+      account,
+      cachedAt,
+      previousNamesById.get(account.id),
+    ),
   );
 
   await db.transaction("rw", db.accounts, db.meta, async () => {

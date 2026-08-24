@@ -182,6 +182,23 @@ export const replaceCategoryIdInTrees = (
   ),
 });
 
+export const moveCategoryInTrees = (
+  trees: CategoryTrees,
+  categoryId: string,
+  newParentId: string | null,
+): CategoryTrees => {
+  const category = findCategoryInTrees(trees, categoryId);
+  if (!category) {
+    return trees;
+  }
+
+  const without = removeCategoryFromTrees(trees, categoryId);
+  return addCategoryToTrees(without, {
+    ...category,
+    parentId: newParentId,
+  });
+};
+
 export const findCategoryInTrees = (
   trees: CategoryTrees,
   categoryId: string,

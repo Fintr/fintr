@@ -31,6 +31,7 @@ module Transactions
             # Exchange rate / conversion (optional)
             optional(:exchange_rate).value(:decimal, gt?: 0)
             optional(:exchange_rate_source).value(:string, included_in?: %w[auto manual recent])
+            optional(:id).maybe(:string)
           end
 
           # Validate that schedule_type is valid

@@ -90,8 +90,9 @@ module Transactions
         account_balance = parent_transaction.account.balance.amount
 
         # NOTE: We don't want to create transactions for dates that already exist
-        existing_dates = parent_transaction.children.pluck(:date).map(&:to_date)
-        dates = dates.reject { |date| existing_dates.include?(date) }
+        existing_dates = parent_transaction.series_records.pluck(:date).map(&:to_date)
+        existing_dates |= parent_transaction.children.pluck(:date).map(&:to_date)
+        dates = dates.reject { |date| existing_dates.include?(date.to_date) }
 
         # IMPORTANT: Exclude the parent transaction's date to avoid duplicating the reference transaction
         dates = dates.reject { |date| date.to_date == parent_transaction.date.to_date }
@@ -144,6 +145,11 @@ module Transactions
           validate_uniqueness: true
         )
 
+        inherit_parent_currency_conversion(
+          parent_transaction:,
+          records:,
+        )
+
         # Prefer the imported records (IDs filled by activerecord-import).
         # Re-querying by date is unreliable across Asia/Manila vs UTC storage.
         if records.any? && template_transaction.files.attached?
@@ -168,6 +174,29 @@ module Transactions
         )
 
         Success(created_transactions)
+      end
+
+      def inherit_parent_currency_conversion(parent_transaction:, records:)
+        return unless parent_transaction.has_currency_conversion?
+
+        conversion = parent_transaction.currency_conversion
+        return if conversion.blank?
+
+        records.each do |record|
+          next if record.has_currency_conversion?
+
+          ::ExchangeRates::Operations::UpsertCurrencyConversion.new.call(
+            convertible: record,
+            space_id: parent_transaction.space_id,
+            original_amount: conversion.original_amount,
+            original_currency: conversion.original_currency,
+            converted_amount: conversion.converted_amount,
+            converted_currency: conversion.converted_currency,
+            exchange_rate: conversion.exchange_rate,
+            source: conversion.source,
+            rate_timestamp: conversion.rate_timestamp,
+          )
+        end
       end
     end
   end

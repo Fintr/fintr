@@ -1,6 +1,9 @@
 import { AxiosInstance } from 'axios';
 import { BudgetIndexInputType, BudgetsPage, Budget, BudgetCategory } from '@/types/budgetTypes';
-import { CategoryTreeOption } from '@/types/categoryTreeTypes';
+import {
+  CategoryTreeOption,
+  normalizeCategoryMatchKey,
+} from '@/types/categoryTreeTypes';
 
 export const fetchBudgetsPage = async (
   api: AxiosInstance,
@@ -169,6 +172,7 @@ export const transformBudgetsToCategories = (
       categoryMap.set(categoryName, {
         id: String(budget.id ?? ''),
         name: categoryName,
+        categoryId: String(budget.categoryId ?? budget.category_id ?? ''),
         spent: Number(budget.total_spent ?? 0),
         budget: Number(budget.amount ?? 0),
         color: getColor(categoryName),
@@ -182,6 +186,26 @@ export const transformBudgetsToCategories = (
   });
 
   return Array.from(categoryMap.values());
+};
+
+export const findBudgetCategoryForParent = (
+  categories: BudgetCategory[],
+  categoryId: string,
+  categoryName: string,
+): BudgetCategory | undefined => {
+  const byId = categories.find((row) => row.categoryId === categoryId);
+  if (byId) {
+    return byId;
+  }
+
+  const nameKey = normalizeCategoryMatchKey(categoryName);
+  if (!nameKey) {
+    return undefined;
+  }
+
+  return categories.find(
+    (row) => normalizeCategoryMatchKey(row.name) === nameKey,
+  );
 };
 
 const mapBudgetRowToCategory = (row: Record<string, unknown>): BudgetCategory => {

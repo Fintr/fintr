@@ -16,8 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import { formatCurrency, numberFormatting } from "@/lib/utils";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
-import { useAtomValue } from "jotai";
-import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import GridPicker from "@/components/dashboard/forms/GridPicker";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import {
@@ -92,7 +91,7 @@ export function EditBudgetForm({
     {},
   );
 
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  const { expenseCategoryOptions } = useTransactionCategories();
   const categoryValue = categoryPickerValueForBudget(budget);
   const isSubcategoryBudget = Boolean(budget.isSubcategoryBudget);
   const isCreateMode = !budget.id;

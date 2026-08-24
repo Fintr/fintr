@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { OFFLINE_SYNC_VERSION } from "@/lib/local-db/sync-state";
 
-import { getInitialOfflineSyncReady } from "./offlineSyncAtoms";
+import {
+  getInitialOfflineReimportRequired,
+  getInitialOfflineSyncReady,
+} from "./offlineSyncAtoms";
 
 const OFFLINE_SYNC_READY_HINT_KEY = "fintr:offlineSyncReadyVersion";
 
@@ -31,5 +34,24 @@ describe("getInitialOfflineSyncReady", () => {
     );
 
     expect(getInitialOfflineSyncReady()).toBe(true);
+  });
+});
+
+describe("getInitialOfflineReimportRequired", () => {
+  afterEach(() => {
+    window.localStorage.removeItem(OFFLINE_SYNC_READY_HINT_KEY);
+  });
+
+  it("returns true when the offline sync hint is missing", () => {
+    expect(getInitialOfflineReimportRequired()).toBe(true);
+  });
+
+  it("returns false when the offline sync hint matches the current version", () => {
+    window.localStorage.setItem(
+      OFFLINE_SYNC_READY_HINT_KEY,
+      String(OFFLINE_SYNC_VERSION),
+    );
+
+    expect(getInitialOfflineReimportRequired()).toBe(false);
   });
 });

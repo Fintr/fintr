@@ -2,22 +2,24 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { toast } from "sonner";
 
-import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
+import {
+  offlineReimportRequiredAtom,
+  offlineSyncReadyAtom,
+} from "@/atoms/offlineSyncAtoms";
 import { isSpaceSyncPullEnabled } from "@/lib/space-sync-feature-flag";
 import {
   getOfflineSyncMeta,
-  readOfflineSyncReadyHint,
-  shouldRunFullOfflineSync,
+  resolveOfflineSyncBootstrapState,
 } from "@/lib/local-db/sync-state";
-import { hasAppShellReady } from "@/lib/app-shell-state";
 import { repairOfflineSpaceCaches } from "@/services/monthly-financial-summaries/local-cache";
 import { offlineBootstrapDateRange } from "@/lib/local-sync/offline-bootstrap-dates";
 import {
   refreshOnlineLocalCaches,
   ensureSpaceTransactionIndex,
+  resyncTransactionRelationIdsIfNeeded,
   seedAllWorkspacesFromLocalCache,
   seedReactQueryFromLocalCache,
   syncAllWorkspacesLocalData,
@@ -69,6 +71,8 @@ const isBrowserOnline = (): boolean =>
 export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult => {
   const queryClient = useQueryClient();
   const setOfflineSyncReady = useSetAtom(offlineSyncReadyAtom);
+  const setOfflineReimportRequired = useSetAtom(offlineReimportRequiredAtom);
+  const requiresOfflineReimport = useAtomValue(offlineReimportRequiredAtom);
   const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
@@ -94,6 +98,7 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
       const runId = runIdRef.current + 1;
       runIdRef.current = runId;
       setError(null);
+      setStatus("checking");
 
       const bootstrapRange = offlineBootstrapDateRange();
       const { firstDay, lastDay } = getCurrentMonthDates();
@@ -102,12 +107,14 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
         endDate: lastDay,
       };
 
+      const bootstrapState = await resolveOfflineSyncBootstrapState(
+        spaceCode || undefined,
+      );
+      setOfflineReimportRequired(bootstrapState.requiresReimport);
+
       const needsFullScreen =
-        forceFullScreen || (await shouldRunFullOfflineSync());
-      const shouldBlockUi =
-        needsFullScreen &&
-        !readOfflineSyncReadyHint() &&
-        !hasAppShellReady();
+        forceFullScreen || bootstrapState.requiresReimport;
+      const shouldBlockUi = needsFullScreen;
 
       if (needsFullScreen) {
         if (shouldBlockUi) {
@@ -125,7 +132,11 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
               activeSpaceCode: spaceCode || undefined,
               onProgress: setProgress,
               onTierReady: (tier) => {
-                if (tier === 1 && runId === runIdRef.current) {
+                if (
+                  tier === 1 &&
+                  runId === runIdRef.current &&
+                  !bootstrapState.requiresReimport
+                ) {
                   setOfflineSyncReady(true);
                 }
               },
@@ -142,6 +153,19 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
           }
 
           if (spaceCode) {
+            void resyncTransactionRelationIdsIfNeeded(
+              api,
+              queryClient,
+              syncMeta?.spaceCodes ?? [spaceCode],
+            ).catch((resyncError) => {
+              console.warn(
+                "[offline-sync] Transaction relation-id resync after full sync failed",
+                resyncError,
+              );
+            });
+          }
+
+          if (spaceCode) {
             await seedReactQueryFromLocalCache(queryClient, {
               spaceCode,
               ...uiDateParams,
@@ -152,7 +176,21 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
             return;
           }
 
+          const verifiedState = await resolveOfflineSyncBootstrapState(
+            spaceCode || undefined,
+          );
+          if (verifiedState.requiresReimport) {
+            setStatus("error");
+            setError(
+              new Error(
+                "Offline data could not be loaded completely. Please try again.",
+              ),
+            );
+            return;
+          }
+
           setOfflineSyncReady(true);
+          setOfflineReimportRequired(false);
           setStatus("complete");
 
           if (isSpaceSyncPullEnabled()) {
@@ -210,9 +248,23 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
               syncMeta.spaceCodes,
             );
           }
+
+          if (spaceCode) {
+            void resyncTransactionRelationIdsIfNeeded(
+              api,
+              queryClient,
+              syncMeta?.spaceCodes ?? [spaceCode],
+            ).catch((resyncError) => {
+              console.warn(
+                "[offline-sync] Transaction relation-id resync failed",
+                resyncError,
+              );
+            });
+          }
         }
 
         setOfflineSyncReady(true);
+        setOfflineReimportRequired(false);
         setStatus("complete");
 
         if (spaceCode) {
@@ -289,6 +341,7 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
       api,
       isAuthenticated,
       queryClient,
+      setOfflineReimportRequired,
       setOfflineSyncReady,
       spaceCode,
     ],
@@ -296,11 +349,8 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
 
   useEffect(() => {
     if (!enabled || !isAuthenticated || !api) {
-      setStatus("idle");
       return;
     }
-
-    setStatus("idle");
 
     void runSync(false);
   }, [api, enabled, isAuthenticated, runSync]);
@@ -440,9 +490,8 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
   }, [runSync]);
 
   const isBlocking =
-    !hasAppShellReady() &&
-    !readOfflineSyncReadyHint() &&
-    (status === "syncing" || status === "error");
+    requiresOfflineReimport &&
+    status !== "complete";
 
   return {
     status,

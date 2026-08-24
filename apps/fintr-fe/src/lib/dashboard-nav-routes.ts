@@ -10,6 +10,7 @@ export const DASHBOARD_BOTTOM_NAV_ROUTES = [
 export const DASHBOARD_MENU_ROUTES = [
   "/dashboard/budgets",
   "/dashboard/loans",
+  "/dashboard/recurring",
   "/dashboard/space_settings/categories",
   "/dashboard/space_settings/accounts",
   "/dashboard/space_settings/entities",
@@ -23,6 +24,7 @@ export const DASHBOARD_MENU_ROUTES = [
 export const DASHBOARD_DETAIL_ROUTES = [
   "/dashboard/loans/detail",
   "/dashboard/transactions/detail",
+  "/dashboard/recurring/detail",
   "/dashboard/space_settings/accounts/detail",
   "/dashboard/space_settings/entities/detail",
   "/dashboard/space_settings/categories/detail",

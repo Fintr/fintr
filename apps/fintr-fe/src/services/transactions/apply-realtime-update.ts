@@ -59,6 +59,17 @@ export const applyRealtimeTransactionUpdated = async (params: {
     )) as IndexTransactionWithCategoryIds | null;
 
     await upsertLocalIndexTransaction(spaceId, row);
+    void import("@/services/transactions/detail-local")
+      .then(({ cacheEditDetailFromIndexRow }) =>
+        cacheEditDetailFromIndexRow(spaceId, row),
+      )
+      .catch((error) => {
+        console.warn(
+          "[sync] Failed to cache transaction detail after realtime update",
+          row.id,
+          error,
+        );
+      });
 
     if (shouldAdjustMonthlySummaries(previous, row)) {
       let nextSummaries = null;

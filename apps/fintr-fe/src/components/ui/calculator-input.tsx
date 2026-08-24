@@ -87,6 +87,52 @@ const DESKTOP_KEYBOARD_MIN_HEIGHT =
   + 4 * DESKTOP_CALC_GRID_GAP_PX;
 /** Minimum touch target for bottom-sheet calculator keys (WCAG / Material). */
 export const MOBILE_CALC_BUTTON_MIN_HEIGHT_PX = 48;
+/** Swallow leftover pointerup/click after `=` dismisses the keypad (ghost tap). */
+export const CALCULATOR_CLICK_THROUGH_GUARD_MS = 450;
+
+const CLICK_THROUGH_EVENT_TYPES = [
+  "pointerup",
+  "pointercancel",
+  "mouseup",
+  "click",
+  "touchend",
+] as const;
+
+function armCalculatorClickThroughGuard(durationMs: number): () => void {
+  if (typeof document === "undefined") {
+    return () => undefined;
+  }
+
+  const swallow = (event: Event) => {
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  };
+
+  for (const type of CLICK_THROUGH_EVENT_TYPES) {
+    document.addEventListener(type, swallow, true);
+  }
+
+  const timeoutId = window.setTimeout(
+    () => {
+      disarm();
+    },
+    durationMs,
+  );
+
+  const disarm = () => {
+    window.clearTimeout(timeoutId);
+
+    for (const type of CLICK_THROUGH_EVENT_TYPES) {
+      document.removeEventListener(type, swallow, true);
+    }
+  };
+
+  return disarm;
+}
 const MOBILE_CALC_GRID_GAP_CLASS = "gap-2.5";
 const MOBILE_CALC_BUTTON_ROW_CLASS = "h-12 min-h-12 w-full";
 
@@ -232,6 +278,9 @@ export function CalculatorInput({
   const expressionRef = useRef(expression);
   const isExpressionModeRef = useRef(isExpressionMode);
   const skipNextCalculatorButtonClickRef = useRef(false);
+  const disarmClickThroughGuardRef = useRef<(() => void) | null>(null);
+  const clickGuardTimeoutRef = useRef<number | null>(null);
+  const [showClickGuard, setShowClickGuard] = useState(false);
 
   expressionRef.current = expression;
   isExpressionModeRef.current = isExpressionMode;
@@ -560,6 +609,38 @@ export function CalculatorInput({
     );
   }, []);
 
+  const armClickThroughGuard = useCallback(() => {
+    disarmClickThroughGuardRef.current?.();
+
+    if (clickGuardTimeoutRef.current != null) {
+      window.clearTimeout(clickGuardTimeoutRef.current);
+    }
+
+    disarmClickThroughGuardRef.current = armCalculatorClickThroughGuard(
+      CALCULATOR_CLICK_THROUGH_GUARD_MS,
+    );
+    setShowClickGuard(true);
+    clickGuardTimeoutRef.current = window.setTimeout(
+      () => {
+        setShowClickGuard(false);
+        disarmClickThroughGuardRef.current?.();
+        disarmClickThroughGuardRef.current = null;
+        clickGuardTimeoutRef.current = null;
+      },
+      CALCULATOR_CLICK_THROUGH_GUARD_MS,
+    );
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      disarmClickThroughGuardRef.current?.();
+
+      if (clickGuardTimeoutRef.current != null) {
+        window.clearTimeout(clickGuardTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleEnterAsEquals = useCallback(
     (event: KeyboardEvent | React.KeyboardEvent) => {
       event.preventDefault();
@@ -591,6 +672,7 @@ export function CalculatorInput({
 
       if (btn === "=") {
         handleEvaluate();
+        armClickThroughGuard();
         return;
       }
 
@@ -635,7 +717,12 @@ export function CalculatorInput({
         applyExpressionUpdate(newExpression, false, { notifyChange: true });
       }
     },
-    [applyExpressionUpdate, handleBackspace, handleEvaluate],
+    [
+      applyExpressionUpdate,
+      armClickThroughGuard,
+      handleBackspace,
+      handleEvaluate,
+    ],
   );
 
   const handleKeyDown = useCallback(
@@ -785,10 +872,6 @@ export function CalculatorInput({
       skipNextCalculatorButtonClickRef.current = true;
       inputRef.current?.focus({ preventScroll: true });
       activateCalculatorButton(btn);
-
-      requestAnimationFrame(() => {
-        skipNextCalculatorButtonClickRef.current = false;
-      });
     },
     [activateCalculatorButton],
   );
@@ -796,6 +879,7 @@ export function CalculatorInput({
   const handleCalculatorButtonClick = useCallback(
     (btn: string) => () => {
       if (skipNextCalculatorButtonClickRef.current) {
+        skipNextCalculatorButtonClickRef.current = false;
         return;
       }
 
@@ -964,6 +1048,14 @@ export function CalculatorInput({
       {/* Calculator keyboard - rendered via portal to avoid clipping */}
       {mounted && showKeyboard && !disabled && createPortal(
         renderKeyboard(),
+        getNestedOverlayPortalRoot() ?? document.body,
+      )}
+      {mounted && showClickGuard && createPortal(
+        <div
+          data-calculator-click-guard
+          className="fixed inset-0 z-[10000] touch-none"
+          aria-hidden="true"
+        />,
         getNestedOverlayPortalRoot() ?? document.body,
       )}
     </div>

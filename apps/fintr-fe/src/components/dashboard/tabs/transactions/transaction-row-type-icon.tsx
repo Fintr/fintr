@@ -1,12 +1,8 @@
 "use client";
 
 import React from "react";
-import { useAtomValue } from "jotai";
 import { ArrowLeftRight, Landmark } from "lucide-react";
-import {
-  expenseCategoryOptionsAtom,
-  incomeCategoryOptionsAtom,
-} from "@/atoms/dashboardAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import {
   ActivitiesTypeEnum,
   CombinedTransactionTypeEnum,
@@ -61,8 +57,10 @@ export const TransactionRowTypeIcon: React.FC<TransactionRowTypeIconProps> = ({
   className,
   size = "md",
 }) => {
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
+  const {
+    expenseCategoryOptions,
+    incomeCategoryOptions,
+  } = useTransactionCategories();
   const sizeClasses = SIZE_CLASSES[size];
 
   if (activityPresentsAsTransfer(row)) {

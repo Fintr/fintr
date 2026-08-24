@@ -46,7 +46,7 @@ describe("expandLocalSeriesOccurrenceDates", () => {
     ]);
   });
 
-  it("expands installment children for the remaining periods", () => {
+  it("expands installment children for the full term", () => {
     expect(
       expandLocalSeriesOccurrenceDates({
         parentDate: "2026-08-01",
@@ -54,7 +54,7 @@ describe("expandLocalSeriesOccurrenceDates", () => {
         installmentPeriod: 3,
         today: "2026-08-08",
       }),
-    ).toEqual(["2026-09-01"]);
+    ).toEqual(["2026-09-01", "2026-10-01"]);
   });
 });
 

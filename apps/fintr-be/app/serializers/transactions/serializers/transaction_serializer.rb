@@ -9,10 +9,15 @@ module Transactions
              :description,
              :balance,
              :schedule_type,
+             :parent_id,
              :repeat_interval,
              :repeat_count,
              :installment_period,
              :installment_count
+
+      field :installment_total do |record|
+        Utils::InstallmentPlan.series_installment_total_amount(transaction: record)
+      end
 
       # Booked leg (ledger): same as +record.amount+ / +amount_currency+ for edit forms and
       # foreign-account rows where the user expects the account ISO.

@@ -48,9 +48,23 @@ export const getCurrentMonthDates = () => {
   const month = now.getMonth() + 1;
   return {
     firstDay: getFirstDayOfMonth(year, month),
-    lastDay: getLastDayOfMonth(year, month),
+    lastDay: getLocalIsoDateKey(now),
   };
 };
+
+/**
+ * Caps an end date at today so transaction queries never include future days.
+ */
+export function clampEndDateToToday(
+  startDate: string,
+  endDate: string,
+  referenceDate: Date = new Date(),
+): string {
+  const todayKey = getLocalIsoDateKey(referenceDate);
+  const clampedEndDate = endDate > todayKey ? todayKey : endDate;
+
+  return clampedEndDate < startDate ? startDate : clampedEndDate;
+}
 
 const TRANSACTION_DATE_LOCALE = "en-US";
 

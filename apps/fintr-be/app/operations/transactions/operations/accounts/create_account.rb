@@ -12,6 +12,7 @@ module Transactions
             required(:name).value(:string)
             required(:balance).value(:decimal)
             required(:account_category).value(:string)
+            optional(:id).maybe(:string)
             optional(:balance_currency).value(:string)
           end
 
@@ -63,6 +64,9 @@ module Transactions
             )
           )
           account.assign_attributes(balance_currency: params[:balance_currency])
+          if account.new_record? && params[:id].present?
+            account.id = params[:id]
+          end
           if params[:balance].zero?
             account.assign_attributes(
               balance: Money.from_amount(0, params[:balance_currency])

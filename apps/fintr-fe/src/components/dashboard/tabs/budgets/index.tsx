@@ -24,7 +24,7 @@ import { EditBudgetDialog } from "./edit-budget-dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { DeleteBudgetDialog } from "./delete-budget-dialog";
 import { useAtom, useAtomValue } from "jotai";
-import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { dateFilterStartDateAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom, dateFilterTypeAtom } from "@/atoms/dateFilterAtoms";
 import { DateFilterFields } from "@/components/ui/date-filter-fields";
 import {
@@ -201,7 +201,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
   const formattedBudgetPercentage = Number(
     isNaN(budgetUsagePercentage) ? 0 : budgetUsagePercentage
   ).toFixed(1);
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  const { expenseCategoryOptions } = useTransactionCategories();
 
   const categories = useMemo(() => {
     if (!budgetsData?.budgets) {

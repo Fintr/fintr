@@ -1075,6 +1075,28 @@ describe("transactions local-cache", () => {
     expect(merged.tags?.map((tag) => tag.id)).toEqual(["tag-a"]);
   });
 
+  it("does not restore subcategoryId when the incoming row explicitly clears it", () => {
+    const merged = mergeIndexTransactionMetadata(
+      {
+        id: "tx-1",
+        categoryId: "cat-benefits",
+        subcategoryId: "cat-sss",
+        categoryName: "Benefits",
+        subcategoryName: "SSS contributions",
+      } as never,
+      {
+        id: "tx-1",
+        categoryId: "cat-sss",
+        subcategoryId: null,
+        categoryName: "SSS contributions",
+        subcategoryName: null,
+      } as never,
+    );
+
+    expect(merged.categoryId).toBe("cat-sss");
+    expect(merged.subcategoryId).toBeNull();
+  });
+
   it("merges month-scoped fetches into the all-time cache for insights reads", async () => {
     const augustFilterKey = buildTransactionsFilterKey({
       categoriesSerialized: "[]",

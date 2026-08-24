@@ -25,14 +25,11 @@ import { useLocalStorage } from "../useLocalStorage";
 import { useSetAtom } from "jotai";
 import {
   accountOptionsAtom,
-  expenseCategoryOptionsAtom,
-  incomeCategoryOptionsAtom,
   categoryOptionsAtom,
 } from "@/atoms/dashboardAtoms";
 import { useCallback, useEffect, useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { currentSpaceAtom } from "@/atoms/spaceAtoms";
-import { mapApiCategoryTree } from "@/utils/categoryTreeOptions";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import type { DashboardData } from "@/types/spaceTypes";
@@ -71,8 +68,6 @@ export const useDashboardData = (
   const spaceCurrency = currentSpace?.currency ?? "PHP";
 
   const setAccountOptions = useSetAtom(accountOptionsAtom);
-  const setExpenseCategoryOptions = useSetAtom(expenseCategoryOptionsAtom);
-  const setIncomeCategoryOptions = useSetAtom(incomeCategoryOptionsAtom);
   const setCategoryOptions = useSetAtom(categoryOptionsAtom);
 
   const { firstDay, lastDay } = getCurrentMonthDates();
@@ -191,22 +186,10 @@ export const useDashboardData = (
     }
 
     setAccountOptions(shell.accountOptions || []);
-    setExpenseCategoryOptions(
-      mapApiCategoryTree(
-        shell.expenseCategoryOptions as Array<Record<string, unknown>>,
-      ),
-    );
-    setIncomeCategoryOptions(
-      mapApiCategoryTree(
-        shell.incomeCategoryOptions as Array<Record<string, unknown>>,
-      ),
-    );
     setCategoryOptions(shell.categoryOptions || []);
   }, [
     shell,
     setAccountOptions,
-    setExpenseCategoryOptions,
-    setIncomeCategoryOptions,
     setCategoryOptions,
   ]);
 

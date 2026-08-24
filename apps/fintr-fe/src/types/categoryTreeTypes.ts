@@ -17,8 +17,24 @@ export interface CategoryAssignment {
 const CATEGORY_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export const isCategoryPickerId = (value: string): boolean =>
-  CATEGORY_ID_PATTERN.test(value.trim());
+const LOCAL_CATEGORY_ID_PATTERN = /^local:[^:]+$/;
+const LOCAL_CATEGORY_COMPOSITE_PATTERN = /^(local:[^:]+):(.+)$/;
+
+export const isLocalCategoryPickerId = (value: string): boolean => {
+  const trimmed = value.trim();
+  return (
+    LOCAL_CATEGORY_ID_PATTERN.test(trimmed)
+    || LOCAL_CATEGORY_COMPOSITE_PATTERN.test(trimmed)
+  );
+};
+
+export const isCategoryPickerId = (value: string): boolean => {
+  const trimmed = value.trim();
+  return (
+    CATEGORY_ID_PATTERN.test(trimmed)
+    || isLocalCategoryPickerId(trimmed)
+  );
+};
 
 export const formatCategoryPickerValue = (
   assignment: CategoryAssignment,
@@ -37,19 +53,55 @@ export const parseCategoryPickerValue = (
     return null;
   }
 
-  const [categoryId, subcategoryId] = value.split(":");
+  const trimmed = value.trim();
 
-  if (!categoryId || !isCategoryPickerId(categoryId)) {
+  if (LOCAL_CATEGORY_ID_PATTERN.test(trimmed)) {
+    return {
+      categoryId: trimmed,
+      subcategoryId: null,
+    };
+  }
+
+  const localComposite = trimmed.match(LOCAL_CATEGORY_COMPOSITE_PATTERN);
+  if (localComposite) {
+    const subcategoryId = localComposite[2];
+    if (
+      LOCAL_CATEGORY_ID_PATTERN.test(subcategoryId)
+      || CATEGORY_ID_PATTERN.test(subcategoryId)
+    ) {
+      return {
+        categoryId: localComposite[1],
+        subcategoryId,
+      };
+    }
+  }
+
+  const colonIndex = trimmed.indexOf(":");
+  if (colonIndex === -1) {
+    if (CATEGORY_ID_PATTERN.test(trimmed)) {
+      return {
+        categoryId: trimmed,
+        subcategoryId: null,
+      };
+    }
+
     return null;
   }
 
-  if (subcategoryId && !isCategoryPickerId(subcategoryId)) {
+  const categoryId = trimmed.slice(0, colonIndex);
+  const subcategoryId = trimmed.slice(colonIndex + 1);
+
+  if (!CATEGORY_ID_PATTERN.test(categoryId)) {
+    return null;
+  }
+
+  if (!subcategoryId || !CATEGORY_ID_PATTERN.test(subcategoryId)) {
     return null;
   }
 
   return {
     categoryId,
-    subcategoryId: subcategoryId || null,
+    subcategoryId,
   };
 };
 
@@ -457,7 +509,7 @@ export const getCategoryDisplayLabel = (
 ): string => {
   const assignment = parseCategoryPickerValue(value);
   if (!assignment) {
-    return "";
+    return getCategoryTriggerDisplay(value, options).primary || value.trim();
   }
 
   const parent = options.find((option) => option.id === assignment.categoryId);

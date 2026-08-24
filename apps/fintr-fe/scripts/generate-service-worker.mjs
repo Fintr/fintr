@@ -118,6 +118,24 @@ const CACHE_NAME = "${cacheName}";
 const PRECACHE_URLS = ${manifestJson};
 const PRECACHE_BATCH_SIZE = ${PRECACHE_BATCH_SIZE};
 const CACHE_MATCH_OPTIONS = { ignoreVary: true, ignoreSearch: true };
+const CACHE_MATCH_STRICT = { ignoreVary: true };
+
+function hasAppDetailSearch(url) {
+  return (
+    url.searchParams.has("transactionId")
+    || url.searchParams.has("loanId")
+    || url.searchParams.has("accountId")
+    || url.searchParams.has("entityId")
+    || url.searchParams.has("categoryId")
+  );
+}
+
+async function matchCachedRequest(cache, request) {
+  const url = new URL(request.url);
+  const options = hasAppDetailSearch(url) ? CACHE_MATCH_STRICT : CACHE_MATCH_OPTIONS;
+
+  return cache.match(request, options);
+}
 
 const SHELL_CRITICAL_PREFIXES = ["/_next/static/"];
 const OPTIONAL_PRECACHE_PREFIXES = ["/profiles/", "/badges/"];
@@ -387,6 +405,14 @@ async function resolveNavigation(request) {
   const url = new URL(request.url);
   const cache = await openCurrentCache();
 
+  if (hasAppDetailSearch(url)) {
+    const exact = await matchCachedRequest(cache, request);
+
+    if (exact) {
+      return exact;
+    }
+  }
+
   for (const candidate of navigationCandidates(url.pathname)) {
     const cached = await cache.match(candidate, CACHE_MATCH_OPTIONS);
 
@@ -463,7 +489,7 @@ function offlineResponse() {
 
 async function resolveOfflineFallback(request) {
   const cache = await openCurrentCache();
-  const cached = await cache.match(request, CACHE_MATCH_OPTIONS);
+  const cached = await matchCachedRequest(cache, request);
 
   if (cached) {
     return cached;
@@ -543,7 +569,7 @@ async function handleRequest(request) {
     }
   }
 
-  const cached = await cache.match(request, CACHE_MATCH_OPTIONS);
+  const cached = await matchCachedRequest(cache, request);
 
   if (cached) {
     return cached;

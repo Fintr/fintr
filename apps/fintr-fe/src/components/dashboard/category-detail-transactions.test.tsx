@@ -158,6 +158,43 @@ describe("CategoryDetailTransactions", () => {
     );
   });
 
+  it("includes subcategory ids on All so assignments still tagged as the child stay visible", () => {
+    renderWithClient(
+      <CategoryDetailTransactions
+        categoryId="cat-1"
+        categoryName="Travel"
+        categoryKind="expense"
+        spaceCurrency="PHP"
+        subcategories={[{ id: "sub-1", name: "Japan 2026" }]}
+      />,
+    );
+
+    expect(mockUseInfiniteTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appliedCategories: ["cat-1", "sub-1"],
+      }),
+    );
+  });
+
+  it("queries transactions for the selected subcategory when provided", () => {
+    renderWithClient(
+      <CategoryDetailTransactions
+        categoryId="cat-1"
+        categoryName="Travel"
+        categoryKind="expense"
+        spaceCurrency="PHP"
+        selectedSubcategoryId="sub-1"
+        subcategories={[{ id: "sub-1", name: "Japan 2026" }]}
+      />,
+    );
+
+    expect(mockUseInfiniteTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appliedCategories: ["cat-1:sub-1", "sub-1"],
+      }),
+    );
+  });
+
   it("opens the shared transaction filters sheet with scoped categories and account", async () => {
     const user = userEvent.setup();
 

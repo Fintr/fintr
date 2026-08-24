@@ -29,8 +29,8 @@ import {
   shouldShowOfflineSyncScreen,
   shouldShowPrivateContextLoadingScreen,
 } from "@/lib/app-loading-gates";
-import { readOfflineSyncReadyHint } from "@/lib/local-db/sync-state";
 import { markAppShellReady } from "@/lib/app-shell-state";
+import { offlineReimportRequiredAtom } from "@/atoms/offlineSyncAtoms";
 import { WeeklyFeedbackPrompt } from "@/components/feedback/weekly-feedback-prompt";
 import { MaintenanceScreen } from "@/components/maintenance/maintenance-screen";
 import { isMaintenanceModeEnabled } from "@/lib/maintenance-mode";
@@ -110,13 +110,13 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   useHydrateOfflineSyncReady();
+  const requiresOfflineReimport = useAtomValue(offlineReimportRequiredAtom);
 
   const {
     status: offlineSyncStatus,
     progress: offlineSyncProgress,
     error: offlineSyncError,
     retry: retryOfflineSync,
-    isBlocking: isOfflineSyncBlocking,
   } = useOfflineSync(
     isAuthenticated &&
     !isAuthLoading &&
@@ -210,8 +210,8 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 
   if (
     shouldShowOfflineSyncScreen({
-      isOfflineSyncBlocking,
-      hasOfflineSyncReadyHint: readOfflineSyncReadyHint(),
+      requiresOfflineReimport,
+      offlineSyncStatus,
     })
   ) {
     return (

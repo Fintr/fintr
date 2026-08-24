@@ -75,8 +75,12 @@ import {
   type SyncStep,
 } from "./bootstrap-local-data";
 import {
+  backfillIndexRowsForOffline,
+} from "@/services/transactions/offline-fx-backfill";
+import {
   cacheTransactionDetailsFromIndexPages,
   prefetchRemoteAttachmentsForTransactions,
+  prefetchTransactionDetailsForOfflineFx,
 } from "./cache-bootstrap-details";
 import {
   resolveBootstrapMonthlySummaries,
@@ -104,13 +108,15 @@ export const fetchSpaceBootstrap = async (
 const normalizeBootstrapTransactions = (
   rows: SyncBootstrapResponse["transactions"],
 ): IndexTransaction[] =>
-  rows
-    .map((row) =>
-      normalizeRealtimeIndexTransaction(
-        row as unknown as Record<string, unknown>,
-      ),
-    )
-    .filter((row): row is IndexTransaction => Boolean(row));
+  backfillIndexRowsForOffline(
+    rows
+      .map((row) =>
+        normalizeRealtimeIndexTransaction(
+          row as unknown as Record<string, unknown>,
+        ),
+      )
+      .filter((row): row is IndexTransaction => Boolean(row)),
+  );
 
 const transactionsToPages = (
   transactions: IndexTransaction[],
@@ -439,6 +445,13 @@ const applyBootstrapTier2 = async (params: {
 
   await cacheTransactionDetailsFromIndexPages(spaceCode, transactionPages);
 
+  const flatTransactions = transactionPages.flatMap((page) => page.transactions);
+  await prefetchTransactionDetailsForOfflineFx({
+    api,
+    spaceId: spaceCode,
+    transactions: flatTransactions,
+  });
+
   const transferIds = collectTransferIds(transactionPages);
   for (const transferId of transferIds) {
     try {
@@ -461,7 +474,6 @@ const applyBootstrapTier2 = async (params: {
     }
   }
 
-  const flatTransactions = transactionPages.flatMap((page) => page.transactions);
   void prefetchRemoteAttachmentsForTransactions({
     api,
     spaceId: spaceCode,

@@ -89,19 +89,22 @@ module Transactions
         opening_balance = current_balance - total_effect
         running = opening_balance
         points = []
-
         first_activity = activities.first
-        opening_occurred_at = params[:start_date].to_time.beginning_of_day
-        if opening_occurred_at >= first_activity.created_at
-          opening_occurred_at = first_activity.created_at - 1.second
-        end
+        start_date = params[:start_date].to_date
 
-        points << {
-          date: params[:start_date].to_date.iso8601,
-          occurred_at: opening_occurred_at.iso8601(3),
-          balance: opening_balance.round(2).to_f,
-          change: nil,
-        }
+        if has_prior_activity?(start_date:)
+          opening_occurred_at = start_date.to_time.beginning_of_day
+          if opening_occurred_at >= first_activity.created_at
+            opening_occurred_at = first_activity.created_at - 1.second
+          end
+
+          points << {
+            date: start_date.iso8601,
+            occurred_at: opening_occurred_at.iso8601(3),
+            balance: opening_balance.round(2).to_f,
+            change: nil,
+          }
+        end
 
         activities.each_with_index do |activity, index|
           signed = signed_effects[index]
@@ -122,6 +125,13 @@ module Transactions
       def normalized_max_points(params)
         requested = params[:max_points] || DEFAULT_MAX_POINTS
         [requested, MAX_POINTS_LIMIT].min
+      end
+
+      def has_prior_activity?(start_date:)
+        Transactions::AccountActivity
+          .where(account_id: @account.id)
+          .where(date: ...start_date)
+          .exists?
       end
 
       def downsample(points, max_points:)

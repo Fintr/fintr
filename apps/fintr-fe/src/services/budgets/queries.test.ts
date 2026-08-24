@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   enrichCategoriesWithSubcategoryTree,
+  findBudgetCategoryForParent,
   transformBudgetsToCategories,
 } from "./queries";
 import { CategoryTreeOption } from "@/types/categoryTreeTypes";
@@ -87,5 +88,45 @@ describe("budget queries", () => {
       budget: 0,
       spent: 0,
     });
+  });
+
+  it("maps category_id on flat budget rows so parent lookup can match", () => {
+    const categories = transformBudgetsToCategories([
+      {
+        id: "budget-flat",
+        category_id: "cat-transport",
+        category_name: "Transportation",
+        total_spent: 4280,
+        amount: 8000,
+      },
+    ]);
+
+    expect(categories[0]).toMatchObject({
+      id: "budget-flat",
+      categoryId: "cat-transport",
+      name: "Transportation",
+      spent: 4280,
+      budget: 8000,
+    });
+  });
+
+  it("finds a parent budget by category id or by name", () => {
+    const categories = transformBudgetsToCategories([
+      {
+        id: "budget-flat",
+        category_id: "cat-transport",
+        category_name: "Transportation",
+        total_spent: 4280,
+        amount: 8000,
+      },
+    ]);
+
+    expect(
+      findBudgetCategoryForParent(categories, "cat-transport", "Other")?.id,
+    ).toBe("budget-flat");
+
+    expect(
+      findBudgetCategoryForParent(categories, "missing-id", "Transportation")?.id,
+    ).toBe("budget-flat");
   });
 });

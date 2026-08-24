@@ -15,6 +15,21 @@ export const OUTBOX_COMMAND_LOAN_PAYMENT_DELETE = "loan_payment.delete";
 export const OUTBOX_COMMAND_LOAN_PAYMENT_UPDATE = "loan_payment.update";
 export const OUTBOX_COMMAND_SPACE_SETTINGS_UPDATE = "space.settings.update";
 export const OUTBOX_COMMAND_USER_SETTINGS_UPDATE = "user.settings.update";
+export const OUTBOX_COMMAND_BUDGET_CREATE = "budget.create";
+export const OUTBOX_COMMAND_BUDGET_UPDATE = "budget.update";
+export const OUTBOX_COMMAND_BUDGET_DELETE = "budget.delete";
+export const OUTBOX_COMMAND_CATEGORY_CREATE = "category.create";
+export const OUTBOX_COMMAND_CATEGORY_UPDATE = "category.update";
+export const OUTBOX_COMMAND_CATEGORY_DELETE = "category.delete";
+export const OUTBOX_COMMAND_CATEGORY_CONVERT = "category.convert";
+export const OUTBOX_COMMAND_ACCOUNT_CREATE = "account.create";
+export const OUTBOX_COMMAND_ACCOUNT_UPDATE = "account.update";
+export const OUTBOX_COMMAND_ACCOUNT_DELETE = "account.delete";
+export const OUTBOX_COMMAND_ENTITY_CREATE = "entity.create";
+export const OUTBOX_COMMAND_ENTITY_UPDATE = "entity.update";
+export const OUTBOX_COMMAND_TAG_CREATE = "tag.create";
+export const OUTBOX_COMMAND_TAG_UPDATE = "tag.update";
+export const OUTBOX_COMMAND_TAG_DELETE = "tag.delete";
 
 /** Outbox rows that are not scoped to a real space (e.g. profile updates). */
 export const OUTBOX_SPACE_ID_USER = "__user__";

@@ -70,10 +70,45 @@ describe("updateLoanLocalFirst", () => {
 
     expect(result.pendingSync).toBe(false);
     expect(result.localLoan.entityName).toBe("Bob");
+    expect(
+      queryClient.getQueryData(["loanDetail", "local", "space-a", "loan-1"]),
+    ).toMatchObject({
+      entityName: "Bob",
+      description: "New notes",
+    });
     const stored = await loadCachedLoanDetail("space-a", "loan-1");
     expect(stored?.entityName).toBe("Bob");
     expect(stored?.description).toBe("New notes");
     expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("patches status to defaulted and sends it to the API", async () => {
+    await cacheLoanDetail("space-a", "loan-1", baseLoan());
+    vi.mocked(updateLoan).mockResolvedValue({ success: true });
+
+    const result = await updateLoanLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        data: {
+          id: "loan-1",
+          status: "defaulted",
+        },
+      },
+      { waitForSync: true },
+    );
+
+    expect(result.localLoan.status).toBe("defaulted");
+    const stored = await loadCachedLoanDetail("space-a", "loan-1");
+    expect(stored?.status).toBe("defaulted");
+    expect(stored?.outstandingBalance).toBe(1000);
+    expect(updateLoan).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        id: "loan-1",
+        status: "defaulted",
+      }),
+    );
   });
 
   it("keeps pending outbox when network fails", async () => {

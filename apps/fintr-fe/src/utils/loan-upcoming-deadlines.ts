@@ -3,12 +3,13 @@ import {
   getAmortizationSchedule,
   type PaymentScheduleItem,
 } from "@/utils/loanAmortization";
-import { parseLoanPaymentAmount } from "@/utils/loan-payment-amounts";
 
 export type LoanUpcomingDeadline = {
   loan: Loan;
   dueDate: Date;
   paymentAmount: number;
+  interestPayment: number;
+  principalPayment: number;
   isOverdue: boolean;
 };
 
@@ -63,35 +64,8 @@ export const formatLoanDueLabel = (
   return diffDays === 1 ? "Due in 1 day" : `Due in ${diffDays} days`;
 };
 
-type ActualPaymentSnapshot = {
-  date: Date;
-  totalPayment: number;
-};
-
-const collectCoveringPayments = (
-  loan: Loan,
-  schedule: PaymentScheduleItem[],
-): ActualPaymentSnapshot[] => {
-  const actualScheduleDays = new Set(
-    schedule
-      .filter((item) => item.isActual)
-      .map((item) => startOfDay(item.paymentDate).getTime()),
-  );
-
-  return (loan.loanPayments ?? [])
-    .map((payment) => ({
-      date: new Date(payment.date),
-      totalPayment: parseLoanPaymentAmount(payment.totalPayment),
-    }))
-    .filter(
-      (payment) => !actualScheduleDays.has(startOfDay(payment.date).getTime()),
-    )
-    .sort((left, right) => left.date.getTime() - right.date.getTime());
-};
-
 const findNextUnpaidInstallment = (
   schedule: PaymentScheduleItem[],
-  coveringPayments: ActualPaymentSnapshot[],
 ): PaymentScheduleItem | null => {
   const unpaid = schedule
     .filter((item) => !item.isActual)
@@ -100,39 +74,20 @@ const findNextUnpaidInstallment = (
         left.paymentDate.getTime() - right.paymentDate.getTime(),
     );
 
-  if (unpaid.length === 0) {
-    return null;
-  }
-
-  const remainingPayments = [...coveringPayments];
-
-  for (const installment of unpaid) {
-    const coveringIndex = remainingPayments.findIndex(
-      (actual) => actual.totalPayment >= installment.paymentAmount - 0.02,
-    );
-
-    if (coveringIndex >= 0) {
-      remainingPayments.splice(coveringIndex, 1);
-      continue;
-    }
-
-    return installment;
-  }
-
-  return null;
+  return unpaid[0] ?? null;
 };
 
 export const getNextLoanPaymentDeadline = (
   loan: Loan,
+  payments?: Loan["loanPayments"],
 ): LoanUpcomingDeadline | null => {
   if (!isActiveLoanWithBalance(loan)) {
     return null;
   }
 
   const today = startOfDay(new Date());
-  const schedule = getAmortizationSchedule(loan);
-  const coveringPayments = collectCoveringPayments(loan, schedule);
-  const nextInstallment = findNextUnpaidInstallment(schedule, coveringPayments);
+  const schedule = getAmortizationSchedule(loan, payments);
+  const nextInstallment = findNextUnpaidInstallment(schedule);
 
   if (nextInstallment) {
     const dueDate = startOfDay(nextInstallment.paymentDate);
@@ -141,6 +96,8 @@ export const getNextLoanPaymentDeadline = (
       loan,
       dueDate,
       paymentAmount: nextInstallment.paymentAmount,
+      interestPayment: nextInstallment.interestPayment,
+      principalPayment: nextInstallment.principalPayment,
       isOverdue: dueDate < today,
     };
   }
@@ -155,6 +112,8 @@ export const getNextLoanPaymentDeadline = (
       loan,
       dueDate: maturityDate,
       paymentAmount: parseAmount(loan.outstandingBalance),
+      interestPayment: 0,
+      principalPayment: parseAmount(loan.outstandingBalance),
       isOverdue: maturityDate < today,
     };
   }
@@ -170,6 +129,8 @@ export const getNextLoanPaymentDeadline = (
     loan,
     dueDate: maturityDate,
     paymentAmount: outstandingBalance,
+    interestPayment: 0,
+    principalPayment: outstandingBalance,
     isOverdue: maturityDate < today,
   };
 };
@@ -298,7 +259,7 @@ export const partitionAndSortLoans = (
       continue;
     }
 
-    if (loan.status === "paid_off") {
+    if (loan.status === "paid_off" || loan.status === "defaulted") {
       completed.push(loan);
       continue;
     }

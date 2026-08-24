@@ -4,6 +4,7 @@ import {
 } from "@/lib/local-db/response-cache";
 import type { QueryClient } from "@tanstack/react-query";
 import { listSpaceTransactions } from "@/lib/local-db/transactions";
+import { ENTITY_DETAIL_KEY } from "@/hooks/async/useEntityDetail";
 import {
   loadCachedLoanPayments,
   loadCachedLoansInfiniteData,
@@ -171,6 +172,38 @@ export const applyEntitiesToCaches = async (params: {
   }
 
   queryClient.setQueryData(["entities", "local", spaceCode], entities);
+};
+
+export const patchEntityDetailInCaches = (params: {
+  spaceCode: string;
+  entity: EntityRecord;
+  queryClient?: QueryClient;
+}): void => {
+  const { spaceCode, entity, queryClient } = params;
+
+  if (!queryClient || !spaceCode || !entity.id) {
+    return;
+  }
+
+  const patchDetail = (detail: EntityDetail | null | undefined) => {
+    if (!detail) {
+      return detail;
+    }
+
+    return {
+      ...detail,
+      entity,
+    };
+  };
+
+  queryClient.setQueryData(
+    [ENTITY_DETAIL_KEY, "local", spaceCode, entity.id],
+    patchDetail,
+  );
+  queryClient.setQueryData(
+    [ENTITY_DETAIL_KEY, spaceCode, entity.id],
+    patchDetail,
+  );
 };
 
 const namesMatch = (left: string | null | undefined, right: string): boolean =>

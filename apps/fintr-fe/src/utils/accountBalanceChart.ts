@@ -1,5 +1,6 @@
 import { getCurrencySymbol } from "@/lib/utils";
 import { getLocalIsoDateKey } from "@/utils/dateUtils";
+import type { AccountChartRangeId } from "@/utils/accountChartDateRanges";
 
 import type { AccountBalanceTimelinePoint } from "@/services/transactions/accountBalanceTimeline";
 
@@ -141,28 +142,16 @@ export const isFlatBalanceSeries = (
 
 export const extendBalanceChartToRange = (
   points: NormalizedBalanceTimelinePoint[],
-  startDate: string,
+  _startDate: string,
   endDate: string,
 ): NormalizedBalanceTimelinePoint[] => {
   if (points.length === 0) {
     return points;
   }
 
-  const startKey = getLocalIsoDateKey(startDate);
   const endKey = getLocalIsoDateKey(endDate);
-  const first = points[0];
   const last = points[points.length - 1];
   const next = [...points];
-
-  if (first.date > startKey) {
-    next.unshift({
-      ...first,
-      date: startKey,
-      occurredAt: startKey,
-      change: null,
-      chartX: dayMidpointChartX(startKey),
-    });
-  }
 
   if (last.date < endKey) {
     next.push({
@@ -266,4 +255,22 @@ export const chartRangeTimestamps = (
   }
 
   return [startX, endX];
+};
+
+export const resolveBalanceChartXDomain = ({
+  rangeId,
+  startDate,
+  endDate,
+  firstPointDate,
+}: {
+  rangeId: AccountChartRangeId;
+  startDate: string;
+  endDate: string;
+  firstPointDate?: string | null;
+}): [number, number] => {
+  if (rangeId === "all" && firstPointDate) {
+    return chartRangeTimestamps(firstPointDate, endDate);
+  }
+
+  return chartRangeTimestamps(startDate, endDate);
 };

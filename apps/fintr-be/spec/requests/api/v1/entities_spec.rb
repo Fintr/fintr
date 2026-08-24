@@ -11,15 +11,8 @@ RSpec.describe 'Api::V1::Entities', type: :request do
 
   describe 'GET /api/v1/entities' do
     let(:mock_show_entities_operation) { instance_double(Entities::Operations::ShowEntities) }
-    let(:entities_data) do
-      [
-        {
-          id: 1,
-          full_name: 'Test Lender',
-          entity_type: 'loan'
-        }
-      ]
-    end
+    let!(:entity_record) { create(:entity, space:, full_name: 'Test Lender', entity_type: 'loan') }
+    let(:entities_data) { [entity_record] }
 
     context 'when the request is successful' do
       let(:expected_operation_params) do

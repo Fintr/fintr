@@ -78,14 +78,20 @@ export const TransactionScheduleFields = ({
           <Label htmlFor={repeatIntervalId} className="text-sm">
             Repeat Interval
           </Label>
-          <FilterOptionPills
-            id={repeatIntervalId}
-            ariaLabel="Repeat interval"
-            value={repeatInterval}
-            onChange={(value) => onRepeatIntervalChange?.(value)}
-            options={repeatIntervalOptions}
-          />
-          {repeatIntervalErrors?.map((error) => (
+        <FilterOptionPills
+          id={repeatIntervalId}
+          ariaLabel="Repeat interval"
+          value={repeatInterval}
+          onChange={(value) => onRepeatIntervalChange?.(value)}
+          options={repeatIntervalOptions}
+        />
+        {repeatInterval === "every_day" ? (
+          <p className="text-xs text-amber-800 dark:text-amber-300/90">
+            Daily transactions appear often in your ledger. Manage them from the
+            Recurring tab for a cleaner view.
+          </p>
+        ) : null}
+        {repeatIntervalErrors?.map((error) => (
             <FormError key={error}>{error}</FormError>
           ))}
         </div>

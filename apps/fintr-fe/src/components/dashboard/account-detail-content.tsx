@@ -65,6 +65,8 @@ import { TransactionTotalsDisplay } from "@/components/dashboard/tabs/transactio
 import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
 import ScopeModal, { DeleteScope, Scope } from "@/components/dashboard/forms/ScopeModal";
 import { deleteTransactionLocalFirst } from "@/services/transactions/delete-local-first";
+import { collectDeleteScopeContextRows } from "@/services/transactions/local-cache";
+import { transactionAllowsSeriesDeleteScope } from "@/services/transactions/resolve-delete-scope";
 import { deleteTransaction } from "@/services/transactions/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import { useAuthApi } from "@/hooks/useAuthApi";
@@ -74,7 +76,8 @@ import { getCurrentRate } from "@/services/exchangeRates/queries";
 import { getPresetDateRange } from "@/utils/dateFilterPresets";
 import { usePresetDateRangeOptions } from "@/hooks/usePresetDateRangeOptions";
 import { toast } from "sonner";
-import { transactionViewHref } from "@/utils/detailHrefs";
+import { buildLoanDetailHref, transactionViewHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
 
 const AccountBalanceChart = dynamic(
   () =>
@@ -642,14 +645,18 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   const handleEditRow = (row: IndexTransaction | IndexActivity) => {
     const activity = row as IndexActivity;
     if (activity.isLoanActivity && activity.loanId) {
-      router.push(`/dashboard/loans/detail?loanId=${activity.loanId}`);
+      pushDashboardDetail(router, buildLoanDetailHref(activity.loanId));
       return;
     }
-    router.push(transactionViewHref({
-      id: activityRecordId(activity),
-      isLoanActivity: activity.isLoanActivity,
-      loanId: activity.loanId,
-    }));
+
+    pushDashboardDetail(
+      router,
+      transactionViewHref({
+        id: activityRecordId(activity),
+        isLoanActivity: activity.isLoanActivity,
+        loanId: activity.loanId,
+      }),
+    );
   };
 
   const handleEditClose = () => {
@@ -695,7 +702,10 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
     adjustmentQuery.refetch();
   };
 
-  const handleDeleteRow = (id: string) => {
+  const handleDeleteRow = async (id: string) => {
+    const allListRows = (mainQuery.data?.pages ?? []).flatMap(
+      (page) => (page.activities ?? []) as IndexTransaction[],
+    );
     let activity: IndexActivity | null = null;
     if (mainQuery.data?.pages) {
       for (const page of mainQuery.data.pages) {
@@ -719,7 +729,23 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       return;
     }
 
-    setTransactionToDelete(activity);
+    const { target: resolvedActivity } = await collectDeleteScopeContextRows({
+      spaceId: spaceCode,
+      queryClient,
+      listRows: allListRows,
+      targetId: id,
+    });
+
+    if (!resolvedActivity) {
+      return;
+    }
+
+    setTransactionToDelete(
+      {
+        ...resolvedActivity,
+        type: (activity?.type ?? resolvedActivity.type) as ActivitiesTypeEnum,
+      } as IndexActivity,
+    );
     setSelectedDeleteScope(DeleteScopeEnum.THIS_ONLY);
     setDeleteScopeModalOpen(true);
   };
@@ -1061,7 +1087,9 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         selectedScope={selectedDeleteScope}
         onScopeChange={handleDeleteScopeChange}
         operationType="delete"
-        inSeries={Boolean(transactionToDelete?.inSeries)}
+        inSeries={transactionAllowsSeriesDeleteScope(
+          transactionToDelete as IndexTransaction | null,
+        )}
         transactionType={transactionToDelete?.type}
       />
 

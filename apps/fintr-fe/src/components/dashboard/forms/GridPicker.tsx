@@ -21,7 +21,10 @@ import {
   getCategoryTriggerDisplay,
   parseCategoryPickerValue,
 } from "@/types/categoryTreeTypes";
-import { formControlInteractiveSurfaceClassName } from "@/components/ui/form-control-surface";
+import {
+  formControlInteractiveSurfaceClassName,
+  formFieldErrorInlineTextClassName,
+} from "@/components/ui/form-control-surface";
 import { gridPickerSubcategoryCountLabel } from "@/utils/categoryManagement";
 import { isCategoryTree } from "@/utils/categoryTreeOptions";
 import { CategoryIconBadge } from "@/components/dashboard/category-icon-badge";
@@ -973,7 +976,7 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
       </Button>
 
       {error && error.length > 0 && (
-        <p className="text-sm text-red-600">{error[0]}</p>
+        <p className={formFieldErrorInlineTextClassName}>{error[0]}</p>
       )}
 
       {modalShell}

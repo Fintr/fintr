@@ -12,6 +12,7 @@ type LoanOutstandingInput = {
   loanType: "borrowed" | "lent";
   outstandingBalance: number;
   currency: string;
+  status?: string;
 };
 
 const addByCurrency = (
@@ -35,6 +36,10 @@ export const loanContactOutstanding = (
   const theyOwe: CurrencyAmount[] = [];
 
   for (const loan of loans) {
+    if (loan.status === "defaulted" || loan.status === "paid_off") {
+      continue;
+    }
+
     if (loan.outstandingBalance <= 0) {
       continue;
     }

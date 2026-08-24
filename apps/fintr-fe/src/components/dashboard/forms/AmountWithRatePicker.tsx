@@ -81,6 +81,11 @@ interface AmountWithRatePickerProps {
   initialConversion?: ConversionSnapshot | null;
   /** When true, auto-fetched rates update the preview only and do not notify the parent (edit display-only). */
   previewOnly?: boolean;
+  /**
+   * When true, never auto-fetch a live market rate. Use for edit mode when the
+   * transaction already has an assigned FX rate (installment series, etc.).
+   */
+  suppressAutoFetch?: boolean;
 }
 
 export function AmountWithRatePicker({
@@ -102,6 +107,7 @@ export function AmountWithRatePicker({
   date,
   initialConversion,
   previewOnly = false,
+  suppressAutoFetch = false,
 }: AmountWithRatePickerProps) {
   const ledgerTargetCurrency =
     toCurrency != null && String(toCurrency).trim() !== ""
@@ -127,6 +133,14 @@ export function AmountWithRatePicker({
   const autoRateFetchSeqRef = useRef(0);
   const popoverRateFetchSeqRef = useRef(0);
   const lastAutoFetchedPairRef = useRef<FxRatePair | null>(null);
+  /** Once edit mode seeds a stored rate, do not replace it with auto-fetch if the parent briefly clears initialConversion. */
+  const lockedEditConversionRef = useRef<ConversionSnapshot | null>(
+    initialConversion ?? null,
+  );
+  /** True after we have applied a seeded edit rate; used to one-shot restore parent if seed clears. */
+  const restoreLockedRateToParentRef = useRef(false);
+  /** User explicitly picked a rate this session — never revert to an older seed. */
+  const userPickedRateRef = useRef(false);
   const [conversion, setConversion] = useState<{
     exchangeRate: number;
     exchangeRateSource: "auto" | "manual" | "recent";
@@ -160,6 +174,9 @@ export function AmountWithRatePicker({
   const handleSelectAmountCurrency = useCallback(
     (code: string) => {
       onFromCurrencyChange(code);
+      lockedEditConversionRef.current = null;
+      userPickedRateRef.current = false;
+      restoreLockedRateToParentRef.current = false;
       if (code === ledgerTargetCurrency) {
         setConversion(null);
         onConversionChange(null);
@@ -229,7 +246,11 @@ export function AmountWithRatePicker({
     (
       rawRate: number,
       source: "auto" | "manual" | "recent",
-      options?: { syncToParent?: boolean; manualEntryMode?: ManualExchangeEntryMode | null },
+      options?: {
+        syncToParent?: boolean;
+        manualEntryMode?: ManualExchangeEntryMode | null;
+        lockAsEditRate?: boolean;
+      },
     ): number => {
       const rate = multiplierFromApi(rawRate);
       const snapshot: ConversionSnapshot = {
@@ -259,6 +280,13 @@ export function AmountWithRatePicker({
       if (syncToParent) {
         onConversionChange(snapshot);
       }
+      // Only lock rates the user explicitly chose (or edit seeds set the ref
+      // directly). Auto-fetch must not lock or date/pair re-resolves break.
+      if (options?.lockAsEditRate) {
+        lockedEditConversionRef.current = snapshot;
+        restoreLockedRateToParentRef.current = true;
+        userPickedRateRef.current = true;
+      }
       return rate;
     },
     [fromCurrency, ledgerTargetCurrency, onConversionChange, previewOnly]
@@ -270,7 +298,10 @@ export function AmountWithRatePicker({
     getCurrentRate(api, fromCurrency, ledgerTargetCurrency, rateLookupDate)
       .then((r) => {
         const raw = Number(r.rate);
-        const n = applyConversion(raw, "auto", { syncToParent: true });
+        const n = applyConversion(raw, "auto", {
+          syncToParent: true,
+          lockAsEditRate: true,
+        });
         setCurrentRateDisplay(n);
         setDisplayedRateDate(rateLookupDate);
       })
@@ -283,7 +314,10 @@ export function AmountWithRatePicker({
 
   const handleUseRecentRate = useCallback(
     (rate: number) => {
-      applyConversion(Number(rate), "recent", { syncToParent: true });
+      applyConversion(Number(rate), "recent", {
+        syncToParent: true,
+        lockAsEditRate: true,
+      });
     },
     [applyConversion],
   );
@@ -302,6 +336,7 @@ export function AmountWithRatePicker({
     applyConversion(operativeRate, "manual", {
       syncToParent: true,
       manualEntryMode: "rate",
+      lockAsEditRate: true,
     });
   }, [
     manualRate,
@@ -322,6 +357,7 @@ export function AmountWithRatePicker({
     applyConversion(operativeRate, "manual", {
       syncToParent: true,
       manualEntryMode: "final_amount",
+      lockAsEditRate: true,
     });
   }, [amountNumeric, applyConversion, manualFinalAmount]);
 
@@ -345,6 +381,51 @@ export function AmountWithRatePicker({
   useEffect(() => {
     if (initialConversionApplies && initialConversion) {
       const normalized = multiplierFromApi(initialConversion.exchangeRate);
+      const locked = lockedEditConversionRef.current;
+
+      // After the user picks a rate, ignore older seeds (e.g. parent repair from
+      // initialData) so Apply actually sticks. Adopt parent only when it echoes
+      // the same rate we locked.
+      if (userPickedRateRef.current && locked) {
+        if (Math.abs(locked.exchangeRate - normalized) >= RATE_TOLERANCE) {
+          setConversion((prev) => {
+            if (
+              prev
+              && prev.exchangeRateSource === locked.exchangeRateSource
+              && Math.abs(prev.exchangeRate - locked.exchangeRate) < RATE_TOLERANCE
+            ) {
+              return prev;
+            }
+            return {
+              exchangeRate: locked.exchangeRate,
+              exchangeRateSource: locked.exchangeRateSource,
+            };
+          });
+          return;
+        }
+        lockedEditConversionRef.current = {
+          ...initialConversion,
+          exchangeRate: normalized,
+          exchangeRateSource: initialConversion.exchangeRateSource,
+        };
+        setConversion((prev) => {
+          if (
+            prev
+            && prev.exchangeRateSource === initialConversion.exchangeRateSource
+            && Math.abs(prev.exchangeRate - normalized) < RATE_TOLERANCE
+          ) {
+            return prev;
+          }
+          return {
+            exchangeRate: normalized,
+            exchangeRateSource: initialConversion.exchangeRateSource,
+          };
+        });
+        return;
+      }
+
+      lockedEditConversionRef.current = initialConversion;
+      restoreLockedRateToParentRef.current = true;
       setConversion((prev) => {
         if (
           prev &&
@@ -376,7 +457,62 @@ export function AmountWithRatePicker({
       return;
     }
 
+    const locked = lockedEditConversionRef.current;
+    const lockedTarget =
+      locked?.targetCurrency != null && String(locked.targetCurrency).trim() !== ""
+        ? String(locked.targetCurrency).trim()
+        : null;
+    if (
+      locked
+      && locked.originalCurrency === fromCurrency
+      && (
+        lockedTarget == null
+        || ledgerTargetCurrency == null
+        || lockedTarget === ledgerTargetCurrency
+      )
+    ) {
+      const normalized = multiplierFromApi(locked.exchangeRate);
+      setConversion((prev) => {
+        if (
+          prev
+          && prev.exchangeRateSource === locked.exchangeRateSource
+          && Math.abs(prev.exchangeRate - normalized) < RATE_TOLERANCE
+        ) {
+          return prev;
+        }
+        return {
+          exchangeRate: normalized,
+          exchangeRateSource: locked.exchangeRateSource,
+        };
+      });
+      // Parent cleared initialConversion (e.g. target mismatch flicker). Restore once
+      // so submit still uses the series rate — do not auto-fetch a live market rate.
+      if (
+        !previewOnly
+        && !initialConversion
+        && ledgerTargetCurrency != null
+        && restoreLockedRateToParentRef.current
+      ) {
+        restoreLockedRateToParentRef.current = false;
+        onConversionChange({
+          originalCurrency: locked.originalCurrency,
+          targetCurrency: ledgerTargetCurrency,
+          exchangeRate: normalized,
+          exchangeRateSource: locked.exchangeRateSource,
+        });
+      }
+      return;
+    }
+
     if (!pairReady || !ledgerTargetCurrency) {
+      if (
+        suppressAutoFetch
+        && (initialConversion || lockedEditConversionRef.current)
+      ) {
+        setLoadingRate(null);
+        return;
+      }
+
       lastAutoFetchedPairRef.current = null;
       setConversion(null);
       if (!previewOnly) {
@@ -385,6 +521,29 @@ export function AmountWithRatePicker({
       setCurrentRateDisplay(null);
       setDisplayedRateDate(undefined);
       setRecentRates([]);
+      setLoadingRate(null);
+      return;
+    }
+
+    // Edit with an assigned rate: never replace it with today's market rate.
+    if (suppressAutoFetch) {
+      if (initialConversion) {
+        const normalized = multiplierFromApi(initialConversion.exchangeRate);
+        lockedEditConversionRef.current = initialConversion;
+        restoreLockedRateToParentRef.current = true;
+        setConversion({
+          exchangeRate: normalized,
+          exchangeRateSource: initialConversion.exchangeRateSource,
+        });
+        if (!previewOnly && ledgerTargetCurrency != null) {
+          onConversionChange({
+            originalCurrency: initialConversion.originalCurrency,
+            targetCurrency: ledgerTargetCurrency,
+            exchangeRate: normalized,
+            exchangeRateSource: initialConversion.exchangeRateSource,
+          });
+        }
+      }
       setLoadingRate(null);
       return;
     }
@@ -419,12 +578,24 @@ export function AmountWithRatePicker({
         window.clearTimeout(loadingTimer);
 
         const picked = conversionRef.current;
-        if (picked && picked.exchangeRateSource !== "auto") {
+        if (
+          picked
+          && picked.exchangeRateSource !== "auto"
+          && !pairChanged
+        ) {
           setDisplayedRateDate(resolved.displayedRateDate);
           setCurrentRateDisplay(multiplierFromApi(resolved.appliedRate));
           setRecentRates(resolved.recent.rates ?? []);
           lastAutoFetchedPairRef.current = nextPair;
           setLoadingRate(null);
+          if (!previewOnly && ledgerTargetCurrency != null) {
+            onConversionChange({
+              originalCurrency: fromCurrency,
+              targetCurrency: ledgerTargetCurrency,
+              exchangeRate: picked.exchangeRate,
+              exchangeRateSource: picked.exchangeRateSource,
+            });
+          }
           return;
         }
 
@@ -470,6 +641,7 @@ export function AmountWithRatePicker({
     initialConversionApplies,
     onConversionChange,
     previewOnly,
+    suppressAutoFetch,
     rateLookupDate,
     spaceCode,
   ]);

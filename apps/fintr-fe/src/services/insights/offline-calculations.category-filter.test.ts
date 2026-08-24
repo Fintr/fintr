@@ -1,3 +1,5 @@
+import "fake-indexeddb/auto";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { IndexTransaction } from "@/types/transactionTypes";
@@ -78,6 +80,10 @@ vi.mock("@/services/budgets/local-cache", () => ({
 
 vi.mock("@/services/loans/local-cache", () => ({
   loadCachedLoansInfiniteData: vi.fn(async () => ({ pages: [] })),
+}));
+
+vi.mock("@/services/transactions/relation-ids-local", () => ({
+  ensureSpaceTransactionRelationIds: vi.fn(async () => undefined),
 }));
 
 import {
