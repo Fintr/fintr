@@ -301,7 +301,7 @@ GEM
       railties (>= 7.0)
     msgpack (1.8.0)
     multipart-post (2.4.1)
-    neighbor (1.0.0)
+    neighbor (1.2.0)
       activerecord (>= 7.2)
     net-http (0.6.0)
       uri
@@ -614,7 +614,7 @@ DEPENDENCIES
   kaminari (~> 1.2)
   mini_magick (~> 5.3)
   money-rails (~> 3.0)
-  neighbor (~> 1.0.0)
+  neighbor (~> 1.2.0)
   oj (~> 3.16)
   openssl (~> 4.0.2)
   paper_trail (~> 17.0)
