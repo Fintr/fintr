@@ -16,10 +16,11 @@ import { AuthStorage } from '@/lib/auth-storage';
 import { downloadBlobAsFile } from '@/lib/download-blob';
 import { getPublicBackendUrl } from '@/lib/public-backend-url';
 
-const ALLOWED_S3_PREFIXES = [
-  'https://s3.ap-southeast-1.amazonaws.com/fintr-production/',
-  'https://s3.ap-southeast-1.amazonaws.com/fintr-staging/',
-  'https://s3.ap-southeast-1.amazonaws.com/fintr-development/',
+const ALLOWED_STORAGE_PREFIXES = [
+  'https://storage.googleapis.com/fintr-production/',
+  'https://storage.googleapis.com/fintr-staging/',
+  'https://storage.googleapis.com/fintr-development/',
+  'https://storage.googleapis.com/fintr-dev/',
 ];
 
 interface ImageData {
@@ -334,14 +335,14 @@ export default function ImageLightbox({
 
     const backendUrl = getPublicBackendUrl() ?? process.env.NEXT_PUBLIC_BE_URL;
     const token = AuthStorage.getAccessToken();
-    const isS3Url = ALLOWED_S3_PREFIXES.some((p) => currentImage.url.startsWith(p));
-    const canUseProxy = Boolean(backendUrl && token && isS3Url);
+    const isStorageUrl = ALLOWED_STORAGE_PREFIXES.some((prefix) => currentImage.url.startsWith(prefix));
+    const canUseProxy = Boolean(backendUrl && token && isStorageUrl);
 
-    console.log('[ImageLightbox] canUseProxy:', canUseProxy, { backendUrl: !!backendUrl, token: !!token, isS3Url });
+    console.log('[ImageLightbox] canUseProxy:', canUseProxy, { backendUrl: !!backendUrl, token: !!token, isStorageUrl });
 
     const tryProxyDownload = async (): Promise<boolean> => {
-      if (!backendUrl || !token || !isS3Url) {
-        console.log('[ImageLightbox] Proxy download prerequisites not met:', { backendUrl: !!backendUrl, token: !!token, isS3Url });
+      if (!backendUrl || !token || !isStorageUrl) {
+        console.log('[ImageLightbox] Proxy download prerequisites not met:', { backendUrl: !!backendUrl, token: !!token, isStorageUrl });
         return false;
       }
       const proxyUrl = `${backendUrl}/api/v1/attachments/download?url=${encodeURIComponent(currentImage.url)}`;

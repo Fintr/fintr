@@ -6,32 +6,34 @@ local:
   service: Disk
   root: <%= Rails.root.join("storage") %>
 
-# Use bin/rails credentials:edit to set the AWS secrets (as aws:access_key_id|secret_access_key)
-amazon:
-  service: S3
-  access_key_id: <%= ENV["AWS_ACCESS_KEY_ID"] %>
-  secret_access_key: <%= ENV["AWS_SECRET_ACCESS_KEY"] %>
-  region: ap-southeast-1
-  bucket: <%= Rails.env == "development" ? "fintr-dev" : "fintr-" + Rails.env %>
+<% require "json" %>
+<% require "base64" %>
+<%
+  gcs_credentials_raw = ENV["GCS_CREDENTIALS"].to_s.strip
+  gcs_credentials =
+    if gcs_credentials_raw.empty?
+      nil
+    else
+      gcs_credentials_json =
+        if gcs_credentials_raw.start_with?("{")
+          gcs_credentials_raw
+        else
+          Base64.decode64(gcs_credentials_raw)
+        end
+
+      JSON.parse(gcs_credentials_json)
+    end
+
+  gcs_project = ENV["GCS_PROJECT"].to_s.strip
+  gcs_project = gcs_credentials["project_id"] if gcs_project.empty? && gcs_credentials
+  gcs_bucket = Rails.env == "development" ? "fintr-dev" : "fintr-#{Rails.env}"
+%>
+google:
+  service: GCS
+  project: <%= gcs_project %>
+  bucket: <%= gcs_bucket %>
   public: true
-  force_path_style: true
-  endpoint: https://s3.ap-southeast-1.amazonaws.com
-
-# Remember not to checkin your GCS keyfile to a repository
-# google:
-#   service: GCS
-#   project: your_project
-#   credentials: <%= Rails.root.join("path/to/gcs.keyfile") %>
-#   bucket: your_own_bucket-<%= Rails.env %>
-
-# Use bin/rails credentials:edit to set the Azure Storage secret (as azure_storage:storage_access_key)
-# microsoft:
-#   service: AzureStorage
-#   storage_account_name: your_account_name
-#   storage_access_key: <%= Rails.application.credentials.dig(:azure_storage, :storage_access_key) %>
-#   container: your_container_name-<%= Rails.env %>
-
-# mirror:
-#   service: Mirror
-#   primary: local
-#   mirrors: [ amazon, google, microsoft ]
+<% if gcs_credentials %>
+  credentials:
+<%= gcs_credentials.to_yaml.sub(/\A---\n/, "").gsub(/^/, "    ") %>
+<% end %>

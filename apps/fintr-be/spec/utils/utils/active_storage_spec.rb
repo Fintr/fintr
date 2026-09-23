@@ -24,7 +24,7 @@ RSpec.describe Utils::ActiveStorage do
 
       expect(active_storage_relation).to have_received(:attach).with(
         hash_including(
-          io: file,
+          io: file.tempfile,
           filename: filename,
           content_type: content_type,
           identify: false
@@ -88,7 +88,7 @@ RSpec.describe Utils::ActiveStorage do
 
         expect(active_storage_relation).to have_received(:attach).with(
           hash_including(
-            io: pdf_file,
+            io: pdf_file.tempfile,
             filename: pdf_filename,
             content_type: pdf_content_type,
             identify: false

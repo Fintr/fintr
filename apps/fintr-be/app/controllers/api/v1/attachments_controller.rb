@@ -5,17 +5,17 @@ require "uri"
 
 module Api
   module V1
-    # Proxies attachment downloads from allowed S3 URLs so the frontend can
+    # Proxies attachment downloads from allowed storage URLs so the frontend can
     # trigger a real download (avoids CORS and cross-origin <a download>).
     class AttachmentsController < ApiController
       skip_before_action :authorize, only: [:download]
       skip_before_action :ensure_space_access!, only: [:download]
 
-      # Allowed S3 URL prefixes (bucket names may vary by env)
-      ALLOWED_S3_PREFIXES = [
-        "https://s3.ap-southeast-1.amazonaws.com/fintr-production/",
-        "https://s3.ap-southeast-1.amazonaws.com/fintr-staging/",
-        "https://s3.ap-southeast-1.amazonaws.com/fintr-development/"
+      ALLOWED_STORAGE_PREFIXES = [
+        "https://storage.googleapis.com/fintr-production/",
+        "https://storage.googleapis.com/fintr-staging/",
+        "https://storage.googleapis.com/fintr-development/",
+        "https://storage.googleapis.com/fintr-dev/"
       ].freeze
 
       def download
@@ -27,7 +27,7 @@ module Api
         unless allowed_url?(url)
           return render_forbidden(
             message: "URL not allowed",
-            details: "Only Fintr S3 attachment URLs are allowed"
+            details: "Only Fintr attachment URLs are allowed"
           )
         end
 
@@ -62,7 +62,7 @@ module Api
       def allowed_url?(url)
         return false if url.include?("\n") || url.include?("\r")
 
-        ALLOWED_S3_PREFIXES.any? { |prefix| url.start_with?(prefix) }
+        ALLOWED_STORAGE_PREFIXES.any? { |prefix| url.start_with?(prefix) }
       end
 
       def object_key_from_url(url)

@@ -9,7 +9,7 @@ RSpec.describe "Api::V1::Attachments", type: :request do
   let(:headers) { auth[:headers] }
   let(:object_key) { "spaces/#{space.id}/receipt.jpg" }
   let(:download_url) do
-    "https://s3.ap-southeast-1.amazonaws.com/fintr-development/#{object_key}"
+    "https://storage.googleapis.com/fintr-dev/#{object_key}"
   end
 
   describe "GET /api/v1/attachments/download" do
@@ -48,7 +48,7 @@ RSpec.describe "Api::V1::Attachments", type: :request do
       end
     end
 
-    context "when the url is not an allowed Fintr S3 prefix" do
+    context "when the url is not an allowed Fintr storage prefix" do
       before do
         get "/api/v1/attachments/download",
             params: { url: "https://evil.example/secret.jpg" },

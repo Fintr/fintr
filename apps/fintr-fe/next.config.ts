@@ -29,22 +29,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "fintr-development.s3.ap-southeast-1.amazonaws.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "fintr-staging.s3.ap-southeast-1.amazonaws.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "fintr-production.s3.ap-southeast-1.amazonaws.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "s3.ap-southeast-1.amazonaws.com",
+        hostname: "storage.googleapis.com",
         pathname: "/**",
       },
       {
