@@ -256,7 +256,10 @@ export const createLoanLocalFirst = async (
 
   const syncPromise = (async (): Promise<CreateLoanLocalFirstResult> => {
     try {
-      const serverResponse = await createLoan(api, data);
+      const serverResponse = await createLoan(api, {
+        ...data,
+        clientMutationId,
+      });
       const serverId = extractCreatedId(serverResponse) ?? localId;
 
       if (data.adjustsAccountBalance !== false && serverId !== localId) {

@@ -22,8 +22,11 @@ import {
   OUTBOX_COMMAND_BUDGET_CREATE,
   OUTBOX_COMMAND_BUDGET_UPDATE,
   OUTBOX_COMMAND_BUDGET_DELETE,
+  OUTBOX_COMMAND_BUDGET_ENSURE_MONTH,
   OUTBOX_COMMAND_CATEGORY_CREATE,
   OUTBOX_COMMAND_CATEGORY_CONVERT,
+  OUTBOX_COMMAND_TAG_CREATE,
+  OUTBOX_COMMAND_TAG_DELETE,
   removeOutboxRecord,
   updateOutboxStatus,
   type LocalOutboxRecord,
@@ -61,6 +64,19 @@ import {
   convertCategoryHierarchy,
   createTransactionCategory,
 } from "@/services/transactions/categories/mutation";
+import type { TagCreateOutboxPayload } from "@/services/transactions/tags/create-local-first";
+import type { TagDeleteOutboxPayload } from "@/services/transactions/tags/delete-local-first";
+import {
+  createTransactionTag,
+  deleteTransactionTag,
+} from "@/services/transactions/tags/mutation";
+import {
+  applyTransactionTagsToCaches,
+  loadTransactionTags,
+  normalizeTransactionTag,
+  replaceTransactionTagIdInList,
+  upsertTransactionTagInList,
+} from "@/services/transactions/tags/local-cache";
 import type { UserSettingsUpdateOutboxPayload } from "@/services/auth/user/update-settings-local-first";
 import {
   createLoan,
@@ -384,7 +400,10 @@ const drainLoanCreate = async (params: {
   const localId = `local:${record.clientMutationId}`;
 
   try {
-    const serverResponse = await createLoan(api, payload);
+    const serverResponse = await createLoan(api, {
+      ...payload,
+      clientMutationId: record.clientMutationId,
+    });
     const serverId = extractCreatedId(serverResponse) ?? localId;
 
     if (serverId !== localId) {
@@ -831,6 +850,114 @@ const drainBudgetDelete = async (params: {
   }
 };
 
+const drainBudgetEnsureMonth = async (params: {
+  record: LocalOutboxRecord;
+}): Promise<"ok" | "network" | "failed"> => {
+  const { record } = params;
+
+  await removeOutboxRecord(record.id);
+  return "ok";
+};
+
+const drainTagDelete = async (params: {
+  api: AxiosInstance;
+  record: LocalOutboxRecord;
+}): Promise<"ok" | "network" | "failed"> => {
+  const { api, record } = params;
+  const payload = record.payload as TagDeleteOutboxPayload;
+
+  try {
+    await deleteTransactionTag(api, payload.tagId);
+    await removeOutboxRecord(record.id);
+    return "ok";
+  } catch (error) {
+    if (isNetworkLikeError(error)) {
+      await updateOutboxStatus({
+        id: record.id,
+        status: "pending",
+        lastError:
+          error instanceof Error ? error.message : "Network error draining outbox",
+      });
+      return "network";
+    }
+
+    await removeOutboxRecord(record.id);
+    return "ok";
+  }
+};
+
+const extractCreatedTagId = (response: unknown): string | undefined => {
+  if (!response || typeof response !== "object") {
+    return undefined;
+  }
+
+  const root = response as Record<string, unknown>;
+  const data =
+    root.data && typeof root.data === "object"
+      ? (root.data as Record<string, unknown>)
+      : root;
+
+  return typeof data.id === "string" && data.id ? data.id : undefined;
+};
+
+const drainTagCreate = async (params: {
+  api: AxiosInstance;
+  record: LocalOutboxRecord;
+}): Promise<"ok" | "network" | "failed"> => {
+  const { api, record } = params;
+  const payload = record.payload as TagCreateOutboxPayload;
+  const { localId, ...data } = payload;
+
+  try {
+    const serverResponse = await createTransactionTag(api, data);
+    const createdId = extractCreatedTagId(serverResponse);
+    const created =
+      createdId
+        ? normalizeTransactionTag({
+            ...((serverResponse as { data?: Record<string, unknown> })?.data
+              ?? (serverResponse as Record<string, unknown>)),
+          })
+        : undefined;
+
+    if (created && localId && created.id !== localId) {
+      const currentTags = await loadTransactionTags(record.spaceId);
+      const withReplacedId = replaceTransactionTagIdInList(
+        currentTags,
+        localId,
+        created.id,
+      );
+      const finalTags = upsertTransactionTagInList(withReplacedId, created);
+      await applyTransactionTagsToCaches({
+        spaceCode: record.spaceId,
+        tags: finalTags,
+      });
+    }
+
+    await removeOutboxRecord(record.id);
+    return "ok";
+  } catch (error) {
+    if (isNetworkLikeError(error)) {
+      await updateOutboxStatus({
+        id: record.id,
+        status: "pending",
+        lastError:
+          error instanceof Error ? error.message : "Network error draining outbox",
+      });
+      return "network";
+    }
+
+    await updateOutboxStatus({
+      id: record.id,
+      status: "failed",
+      lastError:
+        error instanceof Error
+          ? error.message
+          : "Validation error draining outbox",
+    });
+    return "failed";
+  }
+};
+
 const resolveCategoryCreatePayload = (
   payload: CategoryCreateOutboxPayload,
 ): CategoryCreateOutboxPayload => {
@@ -1247,6 +1374,19 @@ export const drainOutboxForSpace = async (params: {
         continue;
       }
 
+      if (record.commandType === OUTBOX_COMMAND_BUDGET_ENSURE_MONTH) {
+        const outcome = await drainBudgetEnsureMonth({ record });
+        if (outcome === "ok") {
+          processed += 1;
+        } else if (outcome === "failed") {
+          failed += 1;
+        } else {
+          stoppedEarly = true;
+          break;
+        }
+        continue;
+      }
+
       if (record.commandType === OUTBOX_COMMAND_CATEGORY_CREATE) {
         const outcome = await drainCategoryCreate({ api, record });
         if (outcome === "ok") {
@@ -1262,6 +1402,32 @@ export const drainOutboxForSpace = async (params: {
 
       if (record.commandType === OUTBOX_COMMAND_CATEGORY_CONVERT) {
         const outcome = await drainCategoryConvert({ api, record });
+        if (outcome === "ok") {
+          processed += 1;
+        } else if (outcome === "failed") {
+          failed += 1;
+        } else {
+          stoppedEarly = true;
+          break;
+        }
+        continue;
+      }
+
+      if (record.commandType === OUTBOX_COMMAND_TAG_CREATE) {
+        const outcome = await drainTagCreate({ api, record });
+        if (outcome === "ok") {
+          processed += 1;
+        } else if (outcome === "failed") {
+          failed += 1;
+        } else {
+          stoppedEarly = true;
+          break;
+        }
+        continue;
+      }
+
+      if (record.commandType === OUTBOX_COMMAND_TAG_DELETE) {
+        const outcome = await drainTagDelete({ api, record });
         if (outcome === "ok") {
           processed += 1;
         } else if (outcome === "failed") {

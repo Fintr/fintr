@@ -97,6 +97,7 @@ import {
   cacheSpacesList,
   loadCachedSpaceContext,
   loadCachedSpacesList,
+  publishSpacesList,
 } from "@/services/spaces/spaces-list-cache";
 import { spacesApi } from "@/services/spaces/api";
 import { cacheCurrentUserResponse, loadCachedCurrentUserResponse } from "@/services/auth/local-cache";
@@ -1251,6 +1252,7 @@ export const syncAllWorkspacesLocalData = async (
   const spacesResponse = await spacesApi.getSpaces(api);
   const spaces = spacesResponse.data.data.spaces ?? [];
   await cacheSpacesList(spaces);
+  await publishSpacesList(queryClient, spaces);
 
   const onlySet =
     onlySpaceCodes && onlySpaceCodes.length > 0
@@ -1388,8 +1390,7 @@ export const syncNewlyAccessibleWorkspaces = async (
   const spacesResponse = await spacesApi.getSpaces(api);
   const spaces = spacesResponse.data.data.spaces ?? [];
   await cacheSpacesList(spaces);
-  queryClient.setQueryData(["spaces"], spaces);
-  queryClient.setQueryData(["spaces", "local"], spaces);
+  await publishSpacesList(queryClient, spaces);
 
   const unsynced = await getUnsyncedSpaceCodes(spaces.map((space) => space.code));
   if (unsynced.length === 0) {

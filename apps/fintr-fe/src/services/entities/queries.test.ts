@@ -45,4 +45,39 @@ describe("fetchEntitiesLocalFirst", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("returns cached borrowers immediately while online instead of waiting on the API", async () => {
+    await cacheEntitiesResponse(
+      "SPACE_1",
+      normalizeEntityRecords([
+        {
+          id: "1",
+          full_name: "Miko2",
+          entity_type: "loan",
+        },
+        {
+          id: "2",
+          full_name: "Jerry Oquendo",
+          entity_type: "loan",
+        },
+      ]),
+    );
+
+    const api = {
+      get: vi.fn(() => new Promise(() => undefined)),
+    };
+
+    vi.stubGlobal("navigator", { onLine: true });
+
+    const entities = await fetchEntitiesLocalFirst(api as never, "SPACE_1", {
+      entityType: "loan",
+      search: "jer",
+    });
+
+    expect(entities).toEqual([
+      expect.objectContaining({ fullName: "Jerry Oquendo" }),
+    ]);
+
+    vi.unstubAllGlobals();
+  });
 });

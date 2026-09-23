@@ -12,12 +12,13 @@ module Transactions
             required(:id).value(:string)
             required(:space_id).value(:string)
             required(:prompt).filled(:string, max_size?: 500)
+            optional(:user_id).maybe(:string)
           end
         end
 
         def call(params)
           params = step validate(params:)
-          _     = step verify_paid_subscription(space_id: params[:space_id])
+          _     = step verify_pro_access(params:)
           tag   = step find_tag(params:)
           tag   = step generate_and_attach_image(tag:, prompt: params[:prompt])
 
@@ -33,16 +34,11 @@ module Transactions
           Success(contract.to_h)
         end
 
-        def verify_paid_subscription(space_id:)
-          has_paid = Finance::SpaceSubscription
-                     .active
-                     .for_space(space_id)
-                     .where(subscription_type: %i[paid sponsor])
-                     .exists?
-
-          return Failure(subscription: ["Active paid subscription required"]) unless has_paid
-
-          Success(true)
+        def verify_pro_access(params:)
+          Finance::ProGate.require!(
+            user_id: params[:user_id],
+            space_id: params[:space_id],
+          )
         end
 
         def find_tag(params:)
@@ -56,6 +52,7 @@ module Transactions
           b64_json = Ai::Llm::ImageClient.generate(prompt: build_prompt(tag:, user_prompt: prompt))
 
           image_bytes = Base64.decode64(b64_json)
+          tag.update!(style_preset_key: nil)
           tag.style_image.attach(
             io: StringIO.new(image_bytes),
             filename: "tag-style.png",

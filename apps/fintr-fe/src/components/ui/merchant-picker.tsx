@@ -62,7 +62,9 @@ export function MerchantPicker({
   const [searchQuery, setSearchQuery] = useState("");
   const fetchRequestIdRef = useRef(0);
   const merchantsRef = useRef(merchants);
+  const onFetchMerchantsRef = useRef(onFetchMerchants);
   merchantsRef.current = merchants;
+  onFetchMerchantsRef.current = onFetchMerchants;
 
   const selectedMerchant = useMemo(
     () => merchants.find((merchant) => merchant.fullName === value) ?? null,
@@ -81,7 +83,7 @@ export function MerchantPicker({
       }
 
       try {
-        const result = await onFetchMerchants(query);
+        const result = await onFetchMerchantsRef.current(query);
         if (requestId !== fetchRequestIdRef.current) return;
         setMerchants(result);
       } catch (error) {
@@ -95,7 +97,7 @@ export function MerchantPicker({
         }
       }
     },
-    [onFetchMerchants],
+    [],
   );
 
   useEffect(() => {

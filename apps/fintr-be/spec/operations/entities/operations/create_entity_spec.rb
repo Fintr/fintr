@@ -105,6 +105,45 @@ RSpec.describe Entities::Operations::CreateEntity do
         expect(result.failure).to have_key(:errors)
       end
     end
+
+    context 'when a photo is provided' do
+      let(:photo) { fixture_file_upload('test.jpg', 'image/jpeg') }
+      let(:params_with_photo) { valid_params.merge(photo:) }
+
+      it 'returns a successful result' do
+        result = operation.call(params_with_photo)
+        expect(result).to be_success
+      end
+
+      it 'attaches the photo to the entity' do
+        entity = operation.call(params_with_photo).value!
+        expect(entity.photo).to be_attached
+      end
+    end
+
+    context 'when photo attach raises a storage error' do
+      let(:photo) { fixture_file_upload('test.jpg', 'image/jpeg') }
+      let(:params_with_photo) { valid_params.merge(photo:) }
+
+      before do
+        allow(Utils::ActiveStorage).to receive(:attach_file)
+          .and_raise(StandardError, "The AWS Access Key Id you provided does not exist")
+      end
+
+      it 'returns a failure instead of raising' do
+        result = operation.call(params_with_photo)
+        expect(result).to be_failure
+        expect(result.failure).to eq(
+          photo: "The AWS Access Key Id you provided does not exist"
+        )
+      end
+
+      it 'does not persist the entity' do
+        expect {
+          operation.call(params_with_photo)
+        }.not_to change(Entities::Entity, :count)
+      end
+    end
   end
 
   describe '#validate' do

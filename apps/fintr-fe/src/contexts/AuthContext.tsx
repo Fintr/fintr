@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, useMemo, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   loginWithCredentials,
@@ -19,7 +19,10 @@ import {
   isJwtToken,
   resolveApiBearerToken,
 } from '@/lib/auth-storage';
-import { createInitialAuthState } from '@/lib/create-initial-auth-state';
+import {
+  createInitialAuthState,
+  getServerAuthState,
+} from '@/lib/create-initial-auth-state';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -40,12 +43,19 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const initialAuth = createInitialAuthState();
+  const initialAuth = getServerAuthState();
   const [user, setUser] = useState<AuthUser | null>(initialAuth.user);
   const [isLoading, setIsLoading] = useState(initialAuth.isLoading);
   const [error, setError] = useState<string | null>(null);
   const [tokens, setTokens] = useState<LoginResponse | null>(initialAuth.tokens);
   const router = useRouter();
+
+  useLayoutEffect(() => {
+    const storedAuth = createInitialAuthState();
+    setUser(storedAuth.user);
+    setTokens(storedAuth.tokens);
+    setIsLoading(storedAuth.isLoading);
+  }, []);
 
   const resolveUserProfile = async (
     response: LoginResponse
@@ -75,7 +85,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Check for existing authentication
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     // Set a timeout to ensure loading state doesn't hang forever
     const timeoutId = setTimeout(() => {
       setIsLoading(false);
@@ -113,7 +123,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       clearTimeout(timeoutId); // Clear the timeout if we finish normally
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Check for existing authentication on mount
   useEffect(() => {
@@ -177,7 +187,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => clearInterval(refreshInterval);
   }, [tokens]);
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = useCallback(async (credentials: LoginCredentials) => {
     try {
       setError(null);
 
@@ -210,9 +220,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(error.message || 'Login failed');
       throw error;
     }
-  };
+  }, []);
 
-  const signup = async (credentials: SignupCredentials) => {
+  const signup = useCallback(async (credentials: SignupCredentials) => {
     try {
       setError(null);
 
@@ -244,7 +254,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(error.message || 'Signup failed');
       throw error;
     }
-  };
+  }, []);
 
   const logout = useCallback(() => {
     setUser(null);
@@ -365,7 +375,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return true;
   }, [user, tokens]);
 
-  const value: AuthContextType = {
+  const value = useMemo<AuthContextType>(() => ({
     user,
     isAuthenticated,
     isLoading,
@@ -375,7 +385,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     getAccessToken,
     checkAuth,
-  };
+  }), [
+    user,
+    isAuthenticated,
+    isLoading,
+    error,
+    login,
+    signup,
+    logout,
+    getAccessToken,
+    checkAuth,
+  ]);
 
   return (
     <AuthContext.Provider value={value}>

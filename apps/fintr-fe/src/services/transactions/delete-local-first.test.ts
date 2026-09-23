@@ -12,6 +12,8 @@ import {
   OUTBOX_COMMAND_TRANSFER_DELETE,
   resetLocalDbForTests,
 } from "@/lib/local-db";
+import { listSpaceAccounts } from "@/lib/local-db";
+import { cacheAccountsResponse } from "@/services/transactions/accounts/local-cache";
 import { loadCachedTransactionsInRange } from "@/services/transactions/local-cache";
 import { upsertLocalIndexTransaction } from "@/services/transactions/local-cache";
 import { cacheMonthlyFinancialSummaries } from "@/services/monthly-financial-summaries/local-cache";
@@ -336,6 +338,75 @@ describe("deleteTransactionLocalFirst", () => {
       "2026-08-31",
     );
     expect(rows.map((row) => row.id)).toEqual(["expense-b"]);
+  });
+
+  it("returns a calculated recurring expense to the account", async () => {
+    await cacheAccountsResponse("space-a", {
+      data: {
+        accounts: [
+          {
+            id: "acc-cash",
+            name: "Cash",
+            balance: "900",
+            balanceCurrency: "PHP",
+            accountCategory: "cash",
+          },
+        ],
+        balanceTotals: {
+          total: 900,
+          cashTotal: 900,
+          payableTotal: 0,
+          currency: "PHP",
+        },
+      },
+    });
+    await upsertLocalIndexTransaction("space-a", {
+      id: "recurring-parent",
+      date: "2026-09-07",
+      description: "Netflix",
+      amount: 100,
+      amountCurrency: "PHP",
+      categoryName: "Subscriptions",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      fromAccountId: "acc-cash",
+      accountId: "acc-cash",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      hasImage: false,
+      calculated: true,
+    });
+    await upsertLocalIndexTransaction("space-a", {
+      id: "recurring-future",
+      date: "2026-10-07",
+      description: "Netflix",
+      amount: 100,
+      amountCurrency: "PHP",
+      categoryName: "Subscriptions",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      fromAccountId: "acc-cash",
+      accountId: "acc-cash",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      parentId: "recurring-parent",
+      hasImage: false,
+      calculated: false,
+    });
+    vi.mocked(deleteTransaction).mockResolvedValue({ success: true });
+
+    await deleteTransactionLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        transactionId: "recurring-parent",
+        deleteScope: DeleteScopeEnum.ALL_IN_SERIES,
+      },
+      { waitForSync: false },
+    );
+
+    const accounts = await listSpaceAccounts("space-a");
+    expect(accounts.find((row) => row.id === "acc-cash")?.balance).toBe("1000");
   });
 
   it("cancels a pending create for never-synced local ids", async () => {

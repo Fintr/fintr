@@ -20,8 +20,10 @@ vi.mock("@/services/entities/queries", () => ({
     mockFetchEntitiesLocalFirst(...args),
 }));
 
-vi.mock("@/services/entities/mutation", () => ({
-  createEntity: (...args: unknown[]) => mockCreateEntity(...args),
+vi.mock("@/hooks/async/useEntitiesMutations", () => ({
+  useEntitiesMutations: () => ({
+    createEntity: (...args: unknown[]) => mockCreateEntity(...args),
+  }),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -106,7 +108,7 @@ describe("LoanEntityField", () => {
 
     expect(screen.getByText("Borrower")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Select borrower" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add borrower" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create borrower" })).toBeInTheDocument();
   });
 
   it("opens the creation panel and saves a new entity", async () => {
@@ -123,6 +125,7 @@ describe("LoanEntityField", () => {
 
     await user.click(screen.getByRole("button", { name: "Add lender" }));
     expect(screen.getByText("creation-form")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select lender" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "save-entity" }));
     expect(onChange).toHaveBeenCalledWith("Created Lender");

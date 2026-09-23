@@ -1,6 +1,8 @@
 import "fake-indexeddb/auto";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import * as transactionLocalCache from "@/services/transactions/local-cache";
 
 import { resetLocalDbForTests } from "@/lib/local-db/db";
 import { putSpaceTransactions } from "@/lib/local-db/transactions";
@@ -38,6 +40,7 @@ const bucket = (
 
 describe("hydrate-from-local-transactions", () => {
   afterEach(async () => {
+    vi.restoreAllMocks();
     await resetLocalDbForTests();
   });
 
@@ -276,6 +279,41 @@ describe("hydrate-from-local-transactions", () => {
     });
   });
 
+  it("returns cached buckets without scanning transactions when hydration is deferred", async () => {
+    await cacheMonthlyFinancialSummaries("fintr", [
+      bucket({
+        year: 2026,
+        month: 8,
+        totalIncome: 1_641_483.57,
+        totalExpenses: 1_630_920.05,
+        netSavings: 10_563.52,
+        monthStartDate: "2026-08-01",
+        monthEndDate: "2026-08-31",
+      }),
+    ]);
+
+    vi.spyOn(
+      transactionLocalCache,
+      "loadAllTransactionsFromLocalIndex",
+    ).mockImplementation(() => new Promise(() => {}));
+
+    await expect(
+      resolveMonthlySummariesForInsights("fintr", {
+        startDate: "2026-09-01",
+        endDate: "2026-09-30",
+        skipTransactionHydration: true,
+      }),
+    ).resolves.toMatchObject({
+      summaries: [
+        expect.objectContaining({
+          year: 2026,
+          month: 8,
+          totalIncome: 1_641_483.57,
+        }),
+      ],
+    });
+  });
+
   it("skips transaction hydration when selected buckets already have signal", async () => {
     await putSpaceTransactions("fintr", [
       {
@@ -387,6 +425,26 @@ describe("hydrate-from-local-transactions", () => {
       totalIncome: 1_641_483.57,
       totalExpenses: 1_630_920.05,
       netSavings: 10_563.52,
+    });
+  });
+
+  it("does not show another space's insight totals when this space has no summaries", async () => {
+    await cacheMonthlyFinancialSummaries("miko-shared-space", [
+      bucket({
+        year: 2026,
+        month: 9,
+        totalExpenses: 692_823,
+        netSavings: -692_823,
+        monthStartDate: "2026-09-01",
+        monthEndDate: "2026-09-30",
+      }),
+    ]);
+
+    await expect(
+      resolveMonthlySummariesForInsights("miguel-personal-space"),
+    ).resolves.toEqual({
+      spaceCode: "miguel-personal-space",
+      summaries: [],
     });
   });
 });

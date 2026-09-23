@@ -80,7 +80,6 @@ module Finance
             cycleNumber: current_cycle.cycle_number,
             startedAt: current_cycle.started_at,
             endsAt: current_cycle.ends_at,
-            tokensAllocated: current_cycle.tokens_allocated
           } : nil,
           totalCycles: subscription.billing_cycles.paid.count,
           autoRenews: true

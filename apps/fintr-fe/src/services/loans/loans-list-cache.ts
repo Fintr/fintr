@@ -172,4 +172,35 @@ export const removeLoanFromQueryCaches = (
     predicate: (query) =>
       Array.isArray(query.queryKey) && query.queryKey.includes(loanId),
   });
+
+  queryClient.setQueriesData(
+    { queryKey: ["entityDetail"] },
+    (current) => {
+      if (!current || typeof current !== "object") {
+        return current;
+      }
+
+      const detail = current as {
+        loans?: Array<{ id: string }>;
+        loanPayments?: Array<{ loanId: string }>;
+      };
+
+      if (!Array.isArray(detail.loans)) {
+        return current;
+      }
+
+      const loans = detail.loans.filter((loan) => loan.id !== loanId);
+      if (loans.length === detail.loans.length) {
+        return current;
+      }
+
+      return {
+        ...detail,
+        loans,
+        loanPayments: Array.isArray(detail.loanPayments)
+          ? detail.loanPayments.filter((payment) => payment.loanId !== loanId)
+          : detail.loanPayments,
+      };
+    },
+  );
 };

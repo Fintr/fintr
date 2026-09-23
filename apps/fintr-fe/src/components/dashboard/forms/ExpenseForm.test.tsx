@@ -77,15 +77,37 @@ vi.mock("@/components/ui/calendar", () => ({
   Calendar: () => null,
 }));
 
+const {
+  mockCreateTransactionLocalFirst,
+  mockCreateExpenseWithCostShareLocalFirst,
+} = vi.hoisted(() => ({
+  mockCreateTransactionLocalFirst: vi.fn(),
+  mockCreateExpenseWithCostShareLocalFirst: vi.fn(),
+}));
+
+vi.mock("@/services/transactions/create-local-first", () => ({
+  createTransactionLocalFirst: (...args: unknown[]) =>
+    mockCreateTransactionLocalFirst(...args),
+}));
+
+vi.mock("@/services/transactions/create-expense-with-cost-share-local-first", () => ({
+  createExpenseWithCostShareLocalFirst: (...args: unknown[]) =>
+    mockCreateExpenseWithCostShareLocalFirst(...args),
+}));
+
 vi.mock("./GridPicker", () => ({
   default: ({
     label,
     value,
     categories,
+    accounts,
+    onChange,
   }: {
     label: string;
     value: string;
-    categories?: { name?: string; label?: string }[];
+    categories?: { name?: string; label?: string; value?: string }[];
+    accounts?: { label?: string; value?: string }[];
+    onChange?: (value: string) => void;
   }) => (
     <div>
       {label}: {value}
@@ -94,7 +116,40 @@ vi.mock("./GridPicker", () => ({
           {categories.map((category) => category.name ?? category.label).join(",")}
         </span>
       ) : null}
+      {onChange ? (
+        <button
+          type="button"
+          onClick={() =>
+            onChange(
+              categories?.[0]?.value
+              ?? accounts?.[0]?.value
+              ?? "Cash",
+            )
+          }
+        >
+          {`Pick ${label}`}
+        </button>
+      ) : null}
     </div>
+  ),
+}));
+
+vi.mock("./LoanEntityField", () => ({
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+  }) => (
+    <label>
+      Borrower
+      <input
+        aria-label="Borrower"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
   ),
 }));
 
@@ -1133,5 +1188,85 @@ describe("ExpenseForm category options", () => {
     expect(
       screen.getByTestId("Expense Category-options"),
     ).not.toHaveTextContent("Medicine");
+  });
+});
+
+const localFirstSuccess = () => ({
+  pendingSync: false,
+  data: { id: "local:expense" },
+  syncPromise: Promise.resolve({ pendingSync: false }),
+});
+
+const renderCreateExpenseForm = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <JotaiProvider initialValues={[[accountOptionsAtom, phpOnlyAccounts]]}>
+        <ExpenseForm
+          date={new Date("2026-08-08T00:00:00")}
+          setDate={vi.fn()}
+          spaceCurrency="PHP"
+          prefillAmount="1000"
+          onSubmitSuccess={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      </JotaiProvider>
+    </QueryClientProvider>,
+  );
+};
+
+describe("ExpenseForm cost share create", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockExpenseCategoryOptions.mockReturnValue([medicineCategory]);
+    mockCreateTransactionLocalFirst.mockResolvedValue(localFirstSuccess());
+    mockCreateExpenseWithCostShareLocalFirst.mockResolvedValue(localFirstSuccess());
+  });
+
+  it("shows split with people on one-time create", () => {
+    renderCreateExpenseForm();
+    expect(
+      screen.getByRole("button", { name: /split with people/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides split with people in edit mode", () => {
+    renderExpenseForm(gbpConvertedExpense);
+    expect(
+      screen.queryByRole("button", { name: /split with people/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("submits the full bill and people to the cost-share local-first write", async () => {
+    const user = userEvent.setup();
+    renderCreateExpenseForm();
+
+    await user.click(screen.getByRole("button", { name: "Pick Expense Category" }));
+    await user.click(screen.getByRole("button", { name: "Pick Account" }));
+    await user.click(screen.getByRole("button", { name: /split with people/i }));
+    await user.type(screen.getByLabelText("Borrower"), "Entity A");
+    await user.click(screen.getByRole("button", { name: /add expense/i }));
+
+    expect(mockCreateExpenseWithCostShareLocalFirst).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        spaceId: "space-a",
+        data: expect.objectContaining({
+          amount: 1000,
+          transactionType: "expense",
+        }),
+        costShare: {
+          mode: "equal",
+          participants: [{ entityName: "Entity A" }],
+        },
+      }),
+      expect.objectContaining({
+        waitForSync: false,
+      }),
+    );
+    expect(mockCreateTransactionLocalFirst).not.toHaveBeenCalled();
   });
 });

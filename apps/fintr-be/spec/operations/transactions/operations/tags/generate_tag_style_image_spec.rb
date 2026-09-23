@@ -48,6 +48,14 @@ RSpec.describe Transactions::Operations::Tags::GenerateTagStyleImage do
           prompt: include("Autumn in Japan with momiji and a torii gate"),
         )
       end
+
+      it "clears a previously assigned preset key" do
+        tag.update!(style_preset_key: "japan-vacation")
+
+        call_operation
+
+        expect(tag.reload.style_preset_key).to be_nil
+      end
     end
 
     context "without a paid subscription" do
@@ -56,7 +64,7 @@ RSpec.describe Transactions::Operations::Tags::GenerateTagStyleImage do
       it { is_expected.to be_failure }
 
       it "returns a subscription error" do
-        expect(call_operation.failure).to eq(subscription: ["Active paid subscription required"])
+        expect(call_operation.failure).to eq(subscription: ["Fintr Pro is required"])
       end
     end
 

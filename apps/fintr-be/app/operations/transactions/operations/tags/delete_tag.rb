@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
+
 module Transactions
   module Operations
     module Tags
@@ -11,6 +13,8 @@ module Transactions
           end
         end
 
+        include Dry::Operation::Extensions::ActiveRecord
+
         def validate(params:)
           contract = Contract.new.call(**params)
           return Failure(contract.errors.to_h) unless contract.success?
@@ -21,10 +25,12 @@ module Transactions
         def call(params)
           params = step validate(params:)
           tag    = step find_tag(params:)
-          _      = step validate_can_delete_tag(tag:)
-          tag    = step delete_tag(tag:)
 
-          tag
+          transaction do
+            _   = step remove_tag_assignments(tag:)
+            tag = step delete_tag(tag:)
+            tag
+          end
         end
 
         private
@@ -36,11 +42,8 @@ module Transactions
           Success(tag)
         end
 
-        def validate_can_delete_tag(tag:)
-          if tag.transaction_taggings.exists?
-            return Failure(tag: "Cannot delete tag. There are transactions associated with the tag.")
-          end
-
+        def remove_tag_assignments(tag:)
+          tag.transaction_taggings.delete_all
           Success(tag)
         end
 

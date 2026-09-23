@@ -5,11 +5,13 @@ module Api
     module Ai
       class RagController < ApiController
         def query
-          # Check if space has available tokens before processing
-          unless current_space.can_ai?
+          access = ::Finance::Operations::Entitlements::ResolveProAccess.new.call(
+            with_current_params,
+          )
+          unless access.success? && access.value![:pro]
             return render_error(
-              message: "Token limit reached. You have used all available AI tokens for this space.",
-              status: :forbidden
+              message: "Fintr Pro is required for AI chat.",
+              status: :forbidden,
             )
           end
 
@@ -56,7 +58,6 @@ module Api
             user_id: with_current_params[:user_id],
             space_id: with_current_params[:space_id],
             ai_type: "ai_chat",
-            tokens_used: 3
           ) do
             ::Ai::AiChatJob.perform_later(
               session_id,

@@ -67,6 +67,17 @@ export {
   type InstallmentRevisionAnchor,
 } from "./installment-plan";
 
+export {
+  COST_SHARE_MODES,
+  allocateCostShare,
+  assertAllocateCostShare,
+  type AllocateCostShareInput,
+  type CostShareAllocation,
+  type CostShareMode,
+  type CostShareParticipantAllocation,
+  type CostShareParticipantInput,
+} from "./cost-share";
+
 import type { ZodError } from "zod";
 
 import { DomainValidationError, zodErrorToFieldMap } from "./errors";

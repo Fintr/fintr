@@ -4,11 +4,13 @@ export interface TransactionTag {
   color: string;
   isDefault?: boolean;
   styleImageUrl?: string;
+  stylePresetKey?: string;
 }
 
 export interface CreateTransactionTagType {
   name: string;
   color?: string;
+  stylePresetKey?: string;
 }
 
 export interface UpdateTransactionTagType {

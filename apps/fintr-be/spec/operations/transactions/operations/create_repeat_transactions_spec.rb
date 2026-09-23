@@ -79,9 +79,12 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
           call_operation
         end.to have_broadcasted_to("transactions:#{space.id}").exactly(1).times.with(
           hash_including(
-            type: "transaction_created",
+            type: "sync_change",
+            op: "transaction.created",
             spaceId: space.id.to_s,
-            transactions: satisfy { |rows| rows.is_a?(Array) && rows.size == 4 },
+            payload: hash_including(
+              transactions: satisfy { |rows| rows.is_a?(Array) && rows.size == 4 },
+            ),
           ),
         )
       end
@@ -133,6 +136,19 @@ RSpec.describe Transactions::Operations::CreateRepeatTransactions do
           expect(child.files.blobs.map(&:id).sort).to eq(parent_blob_ids)
         end
         expect(transaction.reload.files.blobs.map(&:id).sort).to eq(parent_blob_ids)
+      end
+
+      context "when the parent has tags" do
+        let!(:tag) { create(:transaction_tag, space:, name: "Japan 2026") }
+
+        before { transaction.tags << tag }
+
+        it "copies the parent tags onto each created child" do
+          call_operation
+          children = Transactions::Transaction.where(parent_id: transaction.id)
+
+          expect(children.map(&:tag_ids)).to all(eq([tag.id]))
+        end
       end
 
       it 'handles nil last_transaction when calculating repeat_count' do

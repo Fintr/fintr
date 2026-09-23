@@ -12,6 +12,11 @@ module Entities
 
         entity.photo.url
       end
+
+      field :identifiers do |entity|
+        aliases = entity.merchant_aliases.sort_by(&:created_at).reverse
+        MerchantAliasSerializer.render_as_hash(aliases)
+      end
     end
   end
 end

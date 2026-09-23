@@ -14,15 +14,19 @@ type AnimatedCurrencyProps = {
   maximumFractionDigits?: number;
 };
 
-function formatAnimatedCurrency(
-  amount: number,
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
+function currencyFormatter(
   currency: string,
   maximumFractionDigits?: number,
-): string {
-  const roundedAmount =
-    maximumFractionDigits === 0 ? Math.round(amount) : amount;
+): Intl.NumberFormat {
+  const key = `${currency}:${maximumFractionDigits ?? "auto"}`;
+  const cached = currencyFormatters.get(key);
+  if (cached) {
+    return cached;
+  }
 
-  return new Intl.NumberFormat("en-PH", {
+  const formatter = new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency,
     ...(maximumFractionDigits !== undefined
@@ -31,7 +35,22 @@ function formatAnimatedCurrency(
           maximumFractionDigits,
         }
       : {}),
-  }).format(roundedAmount);
+  });
+  currencyFormatters.set(key, formatter);
+  return formatter;
+}
+
+function formatAnimatedCurrency(
+  amount: number,
+  currency: string,
+  maximumFractionDigits?: number,
+): string {
+  const roundedAmount =
+    maximumFractionDigits === 0 ? Math.round(amount) : amount;
+
+  return currencyFormatter(currency, maximumFractionDigits).format(
+    roundedAmount,
+  );
 }
 
 export function AnimatedCurrency({

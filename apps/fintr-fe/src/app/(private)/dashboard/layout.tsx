@@ -31,19 +31,29 @@ import {
   UpdateFinancialFreedomDescriptionType,
 } from "@/services/goals/mutations";
 import { toast } from "sonner";
+import { prefetchRecurringSeries } from "@/hooks/async/useRecurringSeries";
 import { usePrefetchDashboardNavRoutes } from "@/hooks/usePrefetchDashboardNavRoutes";
 import { useBrowserOnline } from "@/hooks/useOfflineReadMode";
 import { warmBadgeImages } from "@/lib/badges/warm-badge-images";
 import { warmInsightProfileImages } from "@/lib/insights/warm-insight-profile-images";
-import { usePathname } from "next/navigation";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import {
   calculateBottomPadding,
   calculateHeaderSpacerHeight,
 } from "@/lib/platform-detection";
-import { hasEmbeddedHeroHeader, isDashboardDataLightRoute } from "@/lib/dashboard-shell-route";
+import { resolveDashboardShellPresentation } from "@/lib/dashboard-shell-route";
 import { DetailPushNavigationProvider, DashboardPushChildren } from "@/components/dashboard/detail-push-transition";
 import { shouldShowImmediateBackButton } from "@/lib/dashboard-back-button-routes";
+import { CachedBottomNavScreens } from "@/components/dashboard/cached-bottom-nav-screens";
+import { usePendingDashboardBottomTab } from "@/hooks/usePendingDashboardBottomTab";
+import {
+  commitDashboardClientNavigation,
+  interceptDashboardTabClick,
+  resolveDashboardClientNavigation,
+  syncDashboardCommittedPathnameFromLocation,
+} from "@/lib/dashboard-nav-routes";
+import { rememberDetailHref } from "@/utils/detailSearchParam";
+import { DashboardClientRoute } from "@/components/dashboard/dashboard-client-route";
 
 const DashboardScrollToTop = ({
   scrollContainerRef,
@@ -59,7 +69,6 @@ export default function Layout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
   const mainScrollContainerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -83,10 +92,75 @@ export default function Layout({
     safeAreaInsetTop
   );
   
+  const { pendingTab, setPendingTab, pathname } = usePendingDashboardBottomTab();
   // Skip dashboard layout elements for standalone subscription create page
   const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
-  const usesEmbeddedHeroHeader = hasEmbeddedHeroHeader(pathname);
-  const isLightDashboardRoute = isDashboardDataLightRoute(pathname);
+  const onTabClick = (href: string) => (event: React.MouseEvent) => {
+    if (!interceptDashboardTabClick(event)) {
+      return;
+    }
+
+    commitDashboardClientNavigation(href);
+  };
+
+  useEffect(() => {
+    const onPopState = () => {
+      syncDashboardCommittedPathnameFromLocation();
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const anchor = target.closest("a");
+      if (!anchor) {
+        return;
+      }
+
+      const navigation = resolveDashboardClientNavigation({
+        href: anchor.getAttribute("href"),
+        origin: window.location.origin,
+        target: anchor.getAttribute("target"),
+        download: anchor.hasAttribute("download"),
+        event,
+      });
+      if (!navigation) {
+        return;
+      }
+
+      if (navigation.tab) {
+        setPendingTab(navigation.tab);
+      } else {
+        setPendingTab(null);
+      }
+
+      rememberDetailHref(navigation.href);
+      commitDashboardClientNavigation(navigation.href);
+    };
+
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [setPendingTab]);
+  const {
+    visibleTab,
+    usesEmbeddedHeroHeader,
+    isLightDashboardRoute,
+    showRouteChildren,
+  } = resolveDashboardShellPresentation({
+    pathname,
+    pendingTab,
+  });
   const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
@@ -102,6 +176,14 @@ export default function Layout({
   const offlineSyncReady = useAtomValue(offlineSyncReadyAtom);
   const isOnline = useBrowserOnline();
   usePrefetchDashboardNavRoutes();
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!spaceCode) {
+      return;
+    }
+
+    void prefetchRecurringSeries(queryClient, spaceCode);
+  }, [offlineSyncReady, queryClient, spaceCode]);
   const setDashboardShellReady = useSetAtom(dashboardShellReadyAtom);
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
@@ -110,7 +192,6 @@ export default function Layout({
 
   const [isEditingGoalDescription, setIsEditingGoalDescription] = useState(false);
   const [goalDescription, setGoalDescription] = useState(data?.goalDescription || "Set your own financial freedom goal, whatever milestone or lifestyle you’re aiming for.");
-  const queryClient = useQueryClient();
 
   // spaceCode is already in useDashboardData query keys — no manual refetch loop.
 
@@ -286,16 +367,45 @@ export default function Layout({
                 {/* Desktop Horizontal Layout */}
                 <TabsList className="hidden md:flex w-full min-w-0 flex-nowrap overflow-x-auto bg-white dark:bg-card dark:shadow-sm">
                   <TabsTrigger asChild value="transactions">
-                    <Link href="/dashboard/">Transactions</Link>
+                    <Link
+                      href="/dashboard/"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("transactions")}
+                      onClick={onTabClick("/dashboard/")}
+                    >
+                      Transactions
+                    </Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="recurring">
-                    <Link href="/dashboard/recurring">Recurring</Link>
+                    <Link
+                      href="/dashboard/recurring"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("recurring")}
+                      onClick={onTabClick("/dashboard/recurring")}
+                    >
+                      Recurring
+                    </Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="budgets">
-                    <Link href="/dashboard/budgets">Budgets</Link>
+                    <Link
+                      href="/dashboard/budgets"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("budgets")}
+                      onClick={onTabClick("/dashboard/budgets")}
+                    >
+                      Budgets
+                    </Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="loans">
-                    <Link href="/dashboard/loans" data-tutorial-target="dashboard-loan-tab">Loans</Link>
+                    <Link
+                      href="/dashboard/loans"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("loans")}
+                      onClick={onTabClick("/dashboard/loans")}
+                      data-tutorial-target="dashboard-loan-tab"
+                    >
+                      Loans
+                    </Link>
                   </TabsTrigger>
                   {showV2Features && (
                     <>
@@ -309,10 +419,25 @@ export default function Layout({
                   )}
                   <TabsTrigger asChild value="insights">
                     {/* Insights -> Dashboard */}
-                    <Link href="/dashboard/insights" data-tutorial-target="dashboard-tab">Dashboard</Link>
+                    <Link
+                      href="/dashboard/insights"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("insights")}
+                      onClick={onTabClick("/dashboard/insights")}
+                      data-tutorial-target="dashboard-tab"
+                    >
+                      Dashboard
+                    </Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="space_settings">
-                    <Link href="/dashboard/space_settings">Settings</Link>
+                    <Link
+                      href="/dashboard/space_settings"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("space_settings")}
+                      onClick={onTabClick("/dashboard/space_settings")}
+                    >
+                      Settings
+                    </Link>
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -328,13 +453,29 @@ export default function Layout({
                   paddingBottom: usesEmbeddedHeroHeader ? undefined : bottomPadding,
                 }}
               >
+                <CachedBottomNavScreens
+                  activeTab={visibleTab}
+                  scrollContainerRef={mainScrollContainerRef}
+                />
                 <Suspense fallback={null}>
                   <DashboardScrollToTop
                     scrollContainerRef={mainScrollContainerRef}
                   />
-                  <DashboardPushChildren pathname={pathname}>
-                    {children}
-                  </DashboardPushChildren>
+                  {showRouteChildren ? (
+                    <DashboardPushChildren
+                      pathname={pathname}
+                      search={
+                        typeof window === "undefined"
+                          ? undefined
+                          : window.location.search.replace(/^\?/, "")
+                      }
+                    >
+                      <DashboardClientRoute
+                        pathname={pathname}
+                        fallback={children}
+                      />
+                    </DashboardPushChildren>
+                  ) : null}
                 </Suspense>
               </div>
             </TabsWrapper>

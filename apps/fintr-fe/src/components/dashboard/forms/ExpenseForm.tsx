@@ -26,6 +26,12 @@ import { FormError } from "@/components/ui/form-error";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import * as z from "zod"; 
 import { createTransactionLocalFirst } from "@/services/transactions/create-local-first";
+import { createExpenseWithCostShareLocalFirst } from "@/services/transactions/create-expense-with-cost-share-local-first";
+import ExpenseCostShareFields, {
+  previewExpenseCostShare,
+  shouldShowExpenseCostShare,
+  type ExpenseCostShareValue,
+} from "./ExpenseCostShareFields";
 import { updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { ScheduleTypeEnum, TransactionTypeEnum, DeleteScopeEnum, EXPENSE_SCHEDULE_TYPE_OPTIONS, UpdateScopeEnum } from "@/constants/transactionConstants";
@@ -317,6 +323,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Track whether form has been submitted (for validation display)
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [entityName, setEntityName] = useState(initialData?.entityName || "");
+  const [costShare, setCostShare] = useState<ExpenseCostShareValue>({
+    enabled: false,
+    mode: "equal",
+    participants: [],
+  });
   const [receiptMerchantDetected, setReceiptMerchantDetected] = useState(
     initialData?.receiptMerchantDetected,
   );
@@ -1855,20 +1866,61 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         response = await onSubmitSuccess?.(submitData);
         return; // Let parent handle the actual update
       } else {
-        // Optimistic: patch list immediately after client validation; sync in background.
-        response = await createTransactionLocalFirst(
-          api,
-          {
-            spaceId: spaceCode,
-            data: transactionData,
-            entryCurrency: amountCurrency,
-            spaceCurrency: effectiveSpaceCurrency,
-          },
-          {
-            queryClient,
-            waitForSync: false,
-          },
+        const namedShareParticipants = costShare.participants.filter(
+          (participant) => participant.entityName.trim().length > 0,
         );
+        const shouldSplit =
+          shouldShowExpenseCostShare({
+            isEditMode,
+            scheduleType: formState.scheduleType,
+          })
+          && costShare.enabled;
+
+        if (shouldSplit) {
+          const allocation = previewExpenseCostShare({
+            totalAmount: transactionData.amount,
+            mode: costShare.mode,
+            participants: namedShareParticipants,
+          });
+          if (!allocation) {
+            toast.error("Add people and give each person a share less than the full bill.");
+            setIsSubmitting(false);
+            return;
+          }
+
+          response = await createExpenseWithCostShareLocalFirst(
+            api,
+            {
+              spaceId: spaceCode,
+              data: transactionData,
+              costShare: {
+                mode: costShare.mode,
+                participants: namedShareParticipants,
+              },
+              entryCurrency: amountCurrency,
+              spaceCurrency: effectiveSpaceCurrency,
+            },
+            {
+              queryClient,
+              waitForSync: false,
+            },
+          );
+        } else {
+          // Optimistic: patch list immediately after client validation; sync in background.
+          response = await createTransactionLocalFirst(
+            api,
+            {
+              spaceId: spaceCode,
+              data: transactionData,
+              entryCurrency: amountCurrency,
+              spaceCurrency: effectiveSpaceCurrency,
+            },
+            {
+              queryClient,
+              waitForSync: false,
+            },
+          );
+        }
         transactionCreated = true;
         toast.success("Expense created successfully");
         void response.syncPromise.then((synced) => {
@@ -1906,6 +1958,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           file: null, // Reset file in formState
         });
         setEntityName("");
+        setCostShare({
+          enabled: false,
+          mode: "equal",
+          participants: [],
+        });
         // Reset number input hook
         amountInput.reset();
         setConversionSnapshot(null);
@@ -2715,6 +2772,19 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           }}
           disabled={Boolean(editingLockedReason)}
         />
+
+        {shouldShowExpenseCostShare({
+          isEditMode,
+          scheduleType: formState.scheduleType,
+        }) ? (
+          <ExpenseCostShareFields
+            value={costShare}
+            onChange={setCostShare}
+            totalAmount={numberFormatting.cleanForBackend(formState.amount)}
+            currency={amountCurrency}
+            disabled={Boolean(editingLockedReason)}
+          />
+        ) : null}
 
         <FileUploadField
           file={formState.file}

@@ -88,7 +88,7 @@ module Api
       end
 
       def create_params
-        params.permit(:id, :full_name, :entity_type, :photo)
+        params.permit(:id, :full_name, :entity_type, :photo).to_h
       end
 
       def update_params

@@ -2,7 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthApi } from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
-import { loadCachedEntityDetail } from "@/services/entities/local-cache";
+import {
+  cacheEntityIdentifiers,
+  loadCachedEntityDetail,
+} from "@/services/entities/local-cache";
 import {
   fetchEntityDetail,
   type EntityDetail,
@@ -44,7 +47,13 @@ export const useEntityDetail = (entityId: string) => {
       }
 
       try {
-        return await fetchEntityDetail(api, entityId);
+        const detail = await fetchEntityDetail(api, entityId);
+        await cacheEntityIdentifiers({
+          spaceCode,
+          entityId,
+          identifiers: detail.identifiers,
+        });
+        return detail;
       } catch (error) {
         const cached = await loadCachedEntityDetail(spaceCode, entityId);
 

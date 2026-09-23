@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildSubscriptionRedirectUrl,
   hasFintrNativeAppUserAgent,
   isNativeCapacitor,
   shouldRedirectHomeToAuth,
@@ -111,6 +112,45 @@ describe("isNativeCapacitor", () => {
     };
 
     expect(isNativeCapacitor()).toBe(false);
+  });
+});
+
+describe("buildSubscriptionRedirectUrl", () => {
+  const originalNavigator = global.navigator;
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    Object.defineProperty(global, "navigator", {
+      value: originalNavigator,
+      configurable: true,
+    });
+    delete (window as { Capacitor?: unknown }).Capacitor;
+  });
+
+  it("uses the browser origin when Capacitor core is loaded outside the native app", () => {
+    vi.stubGlobal("navigator", {
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    });
+    (window as { Capacitor?: unknown }).Capacitor = {
+      isNativePlatform: () => false,
+      getPlatform: () => "web",
+    };
+
+    expect(
+      buildSubscriptionRedirectUrl("/dashboard/subscriptions?success=true"),
+    ).toBe(`${window.location.origin}/dashboard/subscriptions?success=true`);
+  });
+
+  it("uses the app scheme inside the native app", () => {
+    vi.stubGlobal("navigator", {
+      userAgent:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 Version/17.2 Mobile/15E148 Safari/604.1 FintrNativeApp",
+    });
+
+    expect(
+      buildSubscriptionRedirectUrl("/dashboard/subscriptions?success=true"),
+    ).toBe("fintrapp://dashboard/subscriptions?success=true");
   });
 });
 

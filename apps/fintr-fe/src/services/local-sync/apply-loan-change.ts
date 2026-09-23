@@ -14,6 +14,8 @@ import {
   upsertLoanInQueryCaches,
 } from "@/services/loans/loans-list-cache";
 import type { Loan } from "@/services/loans/queries";
+import { replaceLocalIndexTransactionId } from "@/services/transactions/local-cache";
+import { replaceIndexTransactionIdInQueryCaches } from "@/services/transactions/upsert-into-query-caches";
 import type { LoanPayment } from "@/services/loans/payments";
 import type {
   LoanChangePayload,
@@ -159,6 +161,54 @@ export type ApplyLoanChangeParams = {
   queryClient: QueryClient;
 };
 
+const reconcileOptimisticLoanCreate = async (params: {
+  spaceId: string;
+  targetSpace: string;
+  queryClient: QueryClient;
+  originClientMutationId?: string;
+  loan: Loan;
+}): Promise<void> => {
+  const {
+    spaceId,
+    targetSpace,
+    queryClient,
+    originClientMutationId,
+    loan,
+  } = params;
+  const cid = originClientMutationId?.trim();
+  if (!cid || !loan.id) {
+    return;
+  }
+
+  const localId = `local:${cid}`;
+  if (localId === loan.id) {
+    return;
+  }
+
+  await replaceLocalIndexTransactionId(spaceId, localId, loan.id);
+  replaceIndexTransactionIdInQueryCaches(queryClient, {
+    spaceId,
+    previousId: localId,
+    nextId: loan.id,
+  });
+  if (targetSpace && targetSpace !== spaceId) {
+    replaceIndexTransactionIdInQueryCaches(queryClient, {
+      spaceId: targetSpace,
+      previousId: localId,
+      nextId: loan.id,
+    });
+  }
+
+  await removeLoanFromCachedPages(spaceId, localId);
+  if (targetSpace && targetSpace !== spaceId) {
+    await removeLoanFromCachedPages(targetSpace, localId);
+  }
+  removeLoanFromQueryCaches(queryClient, localId, spaceId);
+  if (targetSpace && targetSpace !== spaceId) {
+    removeLoanFromQueryCaches(queryClient, localId, targetSpace);
+  }
+};
+
 export const applyLoanCreated = async (
   params: ApplyLoanChangeParams,
 ): Promise<void> => {
@@ -173,6 +223,14 @@ export const applyLoanCreated = async (
   }
 
   const spaceCode = params.targetSpace ?? params.spaceId;
+
+  await reconcileOptimisticLoanCreate({
+    spaceId: params.spaceId,
+    targetSpace: spaceCode,
+    queryClient: params.queryClient,
+    originClientMutationId: params.change.originClientMutationId,
+    loan,
+  });
 
   upsertLoanInQueryCaches(params.queryClient, {
     spaceCode,

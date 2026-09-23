@@ -2,13 +2,24 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import { listSpaceAccounts, replaceSpaceAccounts } from "@/lib/local-db";
 import { appendAccountPreviousName } from "@/lib/local-db/account-name-resolver";
+import { signedAccountBalanceEffect } from "@/services/transactions/account-balance-timeline-local";
+import { TRANSFER_FEE_CATEGORY_NAME } from "@/services/transactions/transfers/fee-description";
 import type { Account } from "@/types/accountTypes";
+import type { IndexTransaction } from "@/types/transactionTypes";
+import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { isTransactionCalculatedForDate } from "@/utils/transactionCalculated";
+
+import {
+  cacheDashboardShell,
+  loadCachedDashboardShell,
+} from "@/services/monthly-financial-summaries/local-cache";
 
 import {
   cacheAccountsResponse,
   extractAccountsFromResponse,
   loadCachedAccountsResponse,
 } from "./local-cache";
+import { overlayAccountOptionBalances } from "./overlay-account-option-balances";
 
 const PAYABLE_CATEGORIES = new Set(["credit_card", "loan"]);
 
@@ -23,6 +34,11 @@ export const applyAccountsResponseToCaches = async (params: {
   const { spaceId, response, queryClient } = params;
 
   await cacheAccountsResponse(spaceId, response);
+  await syncDashboardShellAccountBalances({
+    spaceId,
+    accounts: extractAccountsFromResponse(response),
+    queryClient,
+  });
 
   if (!queryClient) {
     return;
@@ -30,6 +46,44 @@ export const applyAccountsResponseToCaches = async (params: {
 
   queryClient.setQueryData(["accounts", spaceId], response);
   queryClient.setQueryData(["accounts", "local", spaceId], response);
+};
+
+export const syncDashboardShellAccountBalances = async (params: {
+  spaceId: string;
+  accounts: Account[];
+  queryClient?: QueryClient;
+}): Promise<void> => {
+  const { spaceId, accounts, queryClient } = params;
+  if (!spaceId || accounts.length === 0) {
+    return;
+  }
+
+  const shell = await loadCachedDashboardShell(spaceId);
+  if (!shell) {
+    return;
+  }
+
+  const nextOptions = overlayAccountOptionBalances(
+    shell.accountOptions ?? [],
+    accounts,
+  );
+  if (nextOptions === shell.accountOptions) {
+    return;
+  }
+
+  const nextShell = {
+    ...shell,
+    accountOptions: nextOptions,
+  };
+
+  await cacheDashboardShell(spaceId, nextShell);
+
+  if (!queryClient) {
+    return;
+  }
+
+  queryClient.setQueryData(["dashboard", "shell", "local", spaceId], nextShell);
+  queryClient.setQueryData(["dashboard", "shell", spaceId], nextShell);
 };
 
 export const patchAccountsInResponse = (
@@ -312,4 +366,114 @@ export const updateAccountInCaches = async (params: {
   });
 
   return nextAccount;
+};
+
+const isTransferFeeExpense = (transaction: IndexTransaction): boolean =>
+  transaction.type === CombinedTransactionTypeEnum.EXPENSE &&
+  transaction.categoryName.trim().toLowerCase() ===
+    TRANSFER_FEE_CATEGORY_NAME.toLowerCase();
+
+const shouldAffectAccountBalance = (transaction: IndexTransaction): boolean => {
+  if (transaction.type === CombinedTransactionTypeEnum.TRANSFER) {
+    return false;
+  }
+
+  if (isTransferFeeExpense(transaction)) {
+    return false;
+  }
+
+  if (transaction.calculated === false) {
+    return false;
+  }
+
+  if (transaction.calculated === true) {
+    return true;
+  }
+
+  return isTransactionCalculatedForDate(transaction.date);
+};
+
+const formatCachedBalance = (value: number): string =>
+  String(Number(value.toFixed(2)));
+
+/**
+ * Apply or revert calculated income/expense/transfer effects on cached
+ * account balances. Pending future occurrences are ignored so they do not
+ * move the current balance.
+ */
+export const applyLocalTransactionsToAccountBalances = async (params: {
+  spaceId: string;
+  transactions: IndexTransaction[];
+  mode: "apply" | "revert";
+  queryClient?: QueryClient;
+}): Promise<void> => {
+  const { spaceId, transactions, mode, queryClient } = params;
+  if (!spaceId || transactions.length === 0) {
+    return;
+  }
+
+  const accounts = await listSpaceAccounts(spaceId);
+  if (accounts.length === 0) {
+    return;
+  }
+
+  const sign = mode === "apply" ? 1 : -1;
+  const deltas = new Map<string, number>();
+
+  for (const transaction of transactions) {
+    if (!shouldAffectAccountBalance(transaction)) {
+      continue;
+    }
+
+    for (const account of accounts) {
+      const effect = signedAccountBalanceEffect(transaction, account);
+      if (effect === 0) {
+        continue;
+      }
+
+      deltas.set(account.id, (deltas.get(account.id) ?? 0) + effect * sign);
+    }
+  }
+
+  if (deltas.size === 0) {
+    return;
+  }
+
+  const nextAccounts = accounts.map((account) => {
+    const delta = deltas.get(account.id);
+    if (delta == null || delta === 0) {
+      return account;
+    }
+
+    return {
+      ...account,
+      balance: formatCachedBalance(Number(account.balance) + delta),
+    };
+  });
+
+  let response: unknown = (await loadCachedAccountsResponse(spaceId)) ?? {
+    data: {
+      accounts: nextAccounts,
+    },
+  };
+  response = patchAccountsInResponse(response, () => nextAccounts);
+
+  for (const account of accounts) {
+    const delta = deltas.get(account.id);
+    if (delta == null || delta === 0) {
+      continue;
+    }
+
+    response = adjustBalanceTotalsInResponse(response, {
+      balance: delta,
+      accountCategory: account.accountCategory,
+      currency: account.balanceCurrency,
+    });
+  }
+
+  await applyAccountsResponseToCaches({
+    spaceId,
+    response,
+    queryClient,
+  });
 };

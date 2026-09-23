@@ -20,7 +20,6 @@ module Ai
 
     validates :ai_type, presence: true
     validates :status, presence: true
-    validates :tokens_used, presence: true, numericality: { greater_than: 0 }
     validates :time_seconds, presence: true, numericality: { greater_than_or_equal_to: 0 }
 
     scope :pending, -> { where(status: :pending) }

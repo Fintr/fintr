@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { shouldResetScrollOnNavigate } from "@/lib/should-reset-scroll-on-navigate";
 
 export type ScrollSnapshot = {
   windowY: number;
@@ -99,6 +100,7 @@ export const useScrollToTopOnNavigate = (
   const searchParams = useSearchParams();
   const navigationKey = buildNavigationKey(pathname, searchParams);
   const isFirstRender = useRef(true);
+  const previousPathnameRef = useRef(pathname);
 
   useEffect(() => {
     ensurePopstateListener();
@@ -118,16 +120,19 @@ export const useScrollToTopOnNavigate = (
         if (!restoreScrollForKey(navigationKey, container)) {
           scrollContainersToTop(window, container);
         }
-      } else {
+      } else if (
+        shouldResetScrollOnNavigate(previousPathnameRef.current, pathname)
+      ) {
         scrollContainersToTop(window, container);
       }
     }
 
+    previousPathnameRef.current = pathname;
     isFirstRender.current = false;
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
       container?.removeEventListener("scroll", handleScroll);
     };
-  }, [navigationKey, scrollContainerRef]);
+  }, [navigationKey, scrollContainerRef, pathname]);
 };

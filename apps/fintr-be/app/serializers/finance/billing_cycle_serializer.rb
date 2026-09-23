@@ -23,7 +23,6 @@ module Finance
     field :scheduled_timestamp, name: :scheduledTimestamp do |cycle|
       cycle.scheduled_timestamp&.iso8601
     end
-    field :tokens_allocated, name: :tokensAllocated
     field :xendit_cycle_id, name: :xenditCycleId
   end
 end

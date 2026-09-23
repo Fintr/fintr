@@ -1,9 +1,10 @@
 import {
-  createTransactionTag,
   fetchTransactionTags,
   generateTransactionTagStyleImage,
+  assignTransactionTagStyleImage,
   toggleDefaultTransactionTag,
 } from "@/services/transactions/tags/mutation";
+import { createTagLocalFirst } from "@/services/transactions/tags/create-local-first";
 import { deleteTagLocalFirst } from "@/services/transactions/tags/delete-local-first";
 import { updateTagLocalFirst } from "@/services/transactions/tags/update-local-first";
 import {
@@ -31,6 +32,7 @@ export const useTransactionTags = () => {
       (await loadCachedTransactionTagsResponse(spaceCode)) ?? [],
     enabled: Boolean(spaceCode),
     staleTime: Infinity,
+    networkMode: "always",
   });
 
   const skipNetworkFetch = useSkipCachedNetworkFetch(localTagsQuery, spaceCode);
@@ -49,45 +51,22 @@ export const useTransactionTags = () => {
     mutationFn: async ({
       name,
       color,
+      stylePresetKey,
     }: {
       name: string;
       color?: string;
+      stylePresetKey?: string;
     }) => {
-      const result = await createTransactionTag(api, { name, color });
-      return result;
-    },
-    onSuccess: (result) => {
-      const created = (result as { data?: TransactionTag })?.data;
-      if (!created?.id) {
-        void queryClient.invalidateQueries({ queryKey: ["transactionTags", spaceCode] });
-        return;
-      }
-
-      queryClient.setQueryData<TransactionTag[]>(
-        ["transactionTags", spaceCode],
-        (current = []) => {
-          if (current.some((tag) => tag.id === created.id)) {
-            return current;
-          }
-
-          return [
-            ...current,
-            {
-              id: created.id,
-              name: created.name,
-              color: created.color,
-              isDefault: Boolean(
-                (created as TransactionTag).isDefault ??
-                  (created as { is_default?: boolean }).is_default,
-              ),
-              styleImageUrl:
-                (created as TransactionTag).styleImageUrl ??
-                (created as { style_image_url?: string }).style_image_url,
-            },
-          ];
+      return createTagLocalFirst(
+        api,
+        {
+          spaceCode,
+          data: { name, color, stylePresetKey },
         },
+        { queryClient, waitForSync: false },
       );
     },
+    networkMode: "always",
   });
 
   const updateTagMutation = useMutation({
@@ -180,6 +159,20 @@ export const useTransactionTags = () => {
     },
   });
 
+  const assignStyleImageMutation = useMutation({
+    mutationFn: async ({
+      tagId,
+      presetKey,
+    }: {
+      tagId: string;
+      presetKey: string;
+    }) => {
+      const result = await assignTransactionTagStyleImage(api, tagId, presetKey);
+      await queryClient.invalidateQueries({ queryKey: ["transactionTags", spaceCode] });
+      return result;
+    },
+  });
+
   const tags = (
     skipNetworkFetch
       ? (localTagsQuery.data ?? data)
@@ -200,10 +193,13 @@ export const useTransactionTags = () => {
     toggleDefaultTag: toggleDefaultTagMutation.mutateAsync,
     generateStyleImage: (tagId: string, prompt: string) =>
       generateStyleImageMutation.mutateAsync({ tagId, prompt }),
+    assignStyleImage: (tagId: string, presetKey: string) =>
+      assignStyleImageMutation.mutateAsync({ tagId, presetKey }),
     isCreating: createTagMutation.isPending,
     isUpdating: updateTagMutation.isPending,
     isDeleting: deleteTagMutation.isPending,
     isTogglingDefault: toggleDefaultTagMutation.isPending,
     isGeneratingStyleImage: generateStyleImageMutation.isPending,
+    isAssigningStyleImage: assignStyleImageMutation.isPending,
   };
 };

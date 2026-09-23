@@ -189,20 +189,6 @@ RSpec.describe Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSess
         operation.call(valid_params)
       end
 
-      it "updates upcoming cycles tokens" do
-        future_cycle = create(
-          :finance_billing_cycle,
-          :future,
-          space_subscription: space_subscription,
-          cycle_number: 2,
-          tokens_allocated: old_plan.token_limit
-        )
-
-        operation.call(valid_params)
-
-        future_cycle.reload
-        expect(future_cycle.tokens_allocated).to eq(new_plan.token_limit)
-      end
     end
 
     context "with valid parameters and pending plan change without cycle" do

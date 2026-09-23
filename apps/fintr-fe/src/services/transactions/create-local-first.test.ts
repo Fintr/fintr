@@ -4,9 +4,10 @@ import { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
-import { getLocalDb, resetLocalDbForTests } from "@/lib/local-db";
+import { getLocalDb, listSpaceAccounts, resetLocalDbForTests } from "@/lib/local-db";
 import { replaceSpaceAccounts } from "@/lib/local-db/accounts";
 import { cacheEntitiesResponse } from "@/services/entities/local-cache";
+import { cacheAccountsResponse } from "@/services/transactions/accounts/local-cache";
 import { loadCachedTransactionsInRange } from "@/services/transactions/local-cache";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
@@ -172,6 +173,53 @@ describe("createTransactionLocalFirst", () => {
     );
     expect(rows[0]?.accountId).toBe("acc-cash");
     expect(rows[0]?.entityId).toBe("ent-jollibee");
+  });
+
+  it("deducts only calculated recurring expenses from the account", async () => {
+    vi.mocked(createTransaction).mockRejectedValue(
+      new Error("Failed to create transaction"),
+    );
+    await cacheAccountsResponse("space-a", {
+      data: {
+        accounts: [
+          {
+            id: "acc-cash",
+            name: "Cash",
+            balance: "1000",
+            balanceCurrency: "PHP",
+            accountCategory: "cash",
+          },
+        ],
+        balanceTotals: {
+          total: 1000,
+          cashTotal: 1000,
+          payableTotal: 0,
+          currency: "PHP",
+        },
+      },
+    });
+
+    await createTransactionLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        data: {
+          amount: 100,
+          description: "Netflix",
+          transactionType: "expense",
+          categoryName: "Subscriptions",
+          accountName: "Cash",
+          date: "2026-09-07",
+          scheduleType: ScheduleTypeEnum.REPEAT,
+          repeatInterval: "every_month",
+        },
+        amountCurrency: "PHP",
+      },
+      { today: "2026-09-07", waitForSync: false },
+    );
+
+    const accounts = await listSpaceAccounts("space-a");
+    expect(accounts.find((row) => row.id === "acc-cash")?.balance).toBe("900");
   });
 
   it("writes local repeat children offline and keeps them pending sync", async () => {
@@ -656,6 +704,34 @@ describe("createTransactionLocalFirst", () => {
     expect(calculatedByDate["2026-08-01"]).toBe(true);
     expect(calculatedByDate["2026-08-08"]).toBe(true);
     expect(calculatedByDate["2026-08-15"]).toBe(false);
+  });
+
+  it("copies tags onto every optimistic series occurrence", () => {
+    const japanTag = {
+      id: "tag-japan",
+      name: "Japan 2026",
+      color: "#0A3D62",
+    };
+    const series = buildOptimisticSeriesTransactions({
+      clientMutationId: "tagged-series",
+      today: "2026-08-08",
+      data: {
+        amount: 40,
+        description: "Weekly",
+        transactionType: "expense",
+        categoryName: "Food",
+        accountName: "Cash",
+        date: "2026-08-01",
+        scheduleType: ScheduleTypeEnum.REPEAT,
+        repeatInterval: "every_week",
+        tagIds: ["tag-japan"],
+        tags: [japanTag],
+      },
+    });
+
+    expect(
+      series.map((row) => (row as { tagIds?: string[] }).tagIds),
+    ).toEqual(series.map(() => ["tag-japan"]));
   });
 
   it("stamps account and merchant ids from the create payload onto optimistic rows", () => {

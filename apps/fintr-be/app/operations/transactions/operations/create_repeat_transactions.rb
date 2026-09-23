@@ -149,6 +149,10 @@ module Transactions
           parent_transaction:,
           records:,
         )
+        inherit_parent_tags(
+          parent_transaction:,
+          records:,
+        )
 
         # Prefer the imported records (IDs filled by activerecord-import).
         # Re-querying by date is unreliable across Asia/Manila vs UTC storage.
@@ -174,6 +178,26 @@ module Transactions
         )
 
         Success(created_transactions)
+      end
+
+      def inherit_parent_tags(parent_transaction:, records:)
+        tag_ids = parent_transaction.tag_ids
+        return if tag_ids.blank? || records.blank?
+
+        rows = records.flat_map do |record|
+          next [] if record.id.blank?
+
+          tag_ids.map do |tag_id|
+            {
+              transaction_id: record.id,
+              tag_id:,
+            }
+          end
+        end
+        return if rows.empty?
+
+        Transactions::TransactionTagging.insert_all(rows)
+        records.each { |record| record.association(:tags).reset }
       end
 
       def inherit_parent_currency_conversion(parent_transaction:, records:)

@@ -32,6 +32,15 @@ interface CustomModalProps {
    * need drag gestures (e.g. image cropper).
    */
   bodyTouchAction?: React.CSSProperties["touchAction"];
+  /**
+   * When false, skip history push/pop. Nested companions (crop dialogs)
+   * must not steal the parent modal's back-button entry.
+   */
+  manageHistory?: boolean;
+  /**
+   * Stack above an already-open CustomModal (file crop, pickers).
+   */
+  companion?: boolean;
 }
 
 const maxWidthClasses = {
@@ -63,6 +72,8 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   minContentHeightOnKeyboard = "60vh",
   pinBodyLayout = false,
   bodyTouchAction,
+  manageHistory: manageHistoryProp,
+  companion = false,
 }) => {
   const [mounted, setMounted] = React.useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -189,7 +200,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       return;
     }
 
-    const shouldManageHistory = !isMobileBrowser;
+    const shouldManageHistory = manageHistoryProp ?? !isMobileBrowser;
 
     const checkLightboxOpen = () => {
       const lightbox = document.querySelector(".lightbox-container");
@@ -321,11 +332,18 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     };
   // onClose is intentionally excluded from deps — we access it via onCloseRef
   // to prevent the scroll-lock effect from re-running on every parent render.
-  }, [isOpen, isMobileBrowser]);
+  }, [isOpen, isMobileBrowser, manageHistoryProp]);
 
   if (!isOpen || !mounted) return null;
 
+  const shouldIgnoreDismiss = () =>
+    Date.now() - modalOpenTimeRef.current < 500;
+
   const handleOverlayClick = (e: React.MouseEvent) => {
+    if (shouldIgnoreDismiss()) {
+      return;
+    }
+
     const target = e.target as HTMLElement;
     const lightbox = document.querySelector(".lightbox-container");
 
@@ -444,7 +462,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   const modalContent = (
     <div
       className={cn(
-        "fixed z-[100]",
+        companion ? "fixed z-[120]" : "fixed z-[100]",
         anchorOverlayToVisualViewport && isMobile
           ? "flex min-h-0 flex-col"
           : "flex",
@@ -469,6 +487,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       }
       onClick={handleOverlayClick}
       onPointerDown={handleOverlayClick}
+      {...(companion ? { "data-image-crop-dialog": "" } : {})}
     >
       {/* Android native only: Paint the 3-button nav background so the backdrop doesn't make it look white. */}
       {isAndroidNative && (
@@ -491,6 +510,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         )}
         style={backdropStyle}
         onClick={(e) => {
+          if (shouldIgnoreDismiss()) {
+            return;
+          }
+
           const target = e.target as HTMLElement;
           const lightbox = document.querySelector(".lightbox-container");
 
@@ -518,7 +541,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       <div
         data-modal-content
         className={cn(
-          "relative z-[101] bg-background ",
+          companion ? "relative z-[121] bg-background " : "relative z-[101] bg-background ",
           "w-full",
           isMobile 
             ? cn(

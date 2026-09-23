@@ -210,7 +210,7 @@ const CreateSubscriptionWizard: React.FC<CreateSubscriptionWizardProps> = ({
                           {plan.interval}
                         </div>
                         <div className="text-sm text-gray-600">
-                          {plan.tokenLimit} tokens included
+                          Fintr Pro
                         </div>
                         {selectedPlan?.id === plan.id && (
                           <div className="flex items-center text-blue-600 mt-2">
@@ -245,7 +245,7 @@ const CreateSubscriptionWizard: React.FC<CreateSubscriptionWizardProps> = ({
                       {selectedPlan.interval}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {selectedPlan.tokenLimit} tokens included
+                      Fintr Pro
                     </p>
                   </div>
                 </div>

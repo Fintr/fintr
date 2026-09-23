@@ -9,6 +9,7 @@ module Api
       before_action :authorize
       before_action :ensure_space_access!
       before_action :assign_client_tab_id
+      before_action :assign_active_storage_url_options
 
       def with_current_params(params = {})
         params ||= {}
@@ -27,6 +28,14 @@ module Api
       def assign_client_tab_id
         tab_id = request.headers["X-Client-Tab-Id"].to_s.strip
         Current.client_tab_id = tab_id.presence
+      end
+
+      def assign_active_storage_url_options
+        ActiveStorage::Current.url_options = {
+          host: request.host,
+          protocol: request.scheme,
+          port: request.optional_port,
+        }.compact
       end
     end
   end

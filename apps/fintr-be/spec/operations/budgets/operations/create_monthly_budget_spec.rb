@@ -93,25 +93,53 @@ RSpec.describe Budgets::Operations::CreateMonthlyBudget do
         )
       end
 
-      it { is_expected.to be_failure }
+      it { is_expected.to be_success }
 
-      it "returns an already-created failure message" do
-        expect(call_operation.failure).to eq(
-          budgets: "Already created for the month of June 2026"
-        )
+      it "returns the existing budgets for the month" do
+        result = call_operation.value!
+        expect(result.length).to eq(1)
+        expect(result.first.amount_cents).to eq(10_000)
       end
 
-      it "does not create additional budgets" do
-        create(
-          :budget,
-          space:,
-          category: parent_category,
-          subcategory_id: subcategory.id,
-          date: previous_month_date,
-          amount_cents: 20_000
-        )
+      context "and the previous month has additional budgets" do
+        before do
+          create(
+            :budget,
+            space:,
+            category: parent_category,
+            subcategory_id: nil,
+            date: previous_month_date,
+            amount_cents: 50_000
+          )
+          create(
+            :budget,
+            space:,
+            category: parent_category,
+            subcategory_id: subcategory.id,
+            date: previous_month_date,
+            amount_cents: 20_000
+          )
+        end
 
-        expect { call_operation }.not_to change(Budget, :count)
+        it { is_expected.to be_success }
+
+        it "creates the missing previous-month budgets" do
+          expect { call_operation }.to change(Budget, :count).by(1)
+        end
+
+        it "copies the missing subcategory budget into the target month" do
+          call_operation
+
+          copied = space.budgets.for_month(next_month_date).find_by(subcategory_id: subcategory.id)
+          expect(copied.amount_cents).to eq(20_000)
+        end
+
+        it "keeps the existing target-month parent amount" do
+          call_operation
+
+          parent = space.budgets.for_month(next_month_date).find_by(subcategory_id: nil)
+          expect(parent.amount_cents).to eq(10_000)
+        end
       end
     end
 

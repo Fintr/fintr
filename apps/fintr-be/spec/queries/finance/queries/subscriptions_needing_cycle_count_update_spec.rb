@@ -33,7 +33,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 1,
           status: "paid",
           span: (Time.zone.parse("2025-01-01 00:00:00")..Time.zone.parse("2025-01-31 23:59:59")),
-          tokens_allocated: 100,
           paid_at: Time.zone.parse("2025-01-01 00:00:00"),
           xendit_cycle_id: "cycle-1"
         )
@@ -77,7 +76,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 1,
           status: "paid",
           span: (Time.zone.parse("2025-01-01 00:00:00")..Time.zone.parse("2025-01-31 23:59:59")),
-          tokens_allocated: 100,
           paid_at: Time.zone.parse("2025-01-01 00:00:00"),
           xendit_cycle_id: "cycle-1"
         )
@@ -108,7 +106,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 1,
           status: "paid",
           span: (Time.zone.parse("2025-01-01 00:00:00")..Time.zone.parse("2025-01-31 23:59:59")),
-          tokens_allocated: 100,
           paid_at: Time.zone.parse("2025-01-01 00:00:00"),
           xendit_cycle_id: "cycle-1"
         )
@@ -139,7 +136,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 1,
           status: "paid",
           span: (Time.zone.parse("2025-01-01 00:00:00")..Time.zone.parse("2025-01-31 23:59:59")),
-          tokens_allocated: 100,
           paid_at: Time.zone.parse("2025-01-01 00:00:00"),
           xendit_cycle_id: "cycle-1"
         )
@@ -170,7 +166,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 1,
           status: "pending",
           span: (Time.zone.parse("2025-01-01 00:00:00")..Time.zone.parse("2025-01-31 23:59:59")),
-          tokens_allocated: 100,
           xendit_cycle_id: "cycle-1"
         )
       end
@@ -200,7 +195,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 1,
           status: "failed",
           span: (Time.zone.parse("2025-01-01 00:00:00")..Time.zone.parse("2025-01-31 23:59:59")),
-          tokens_allocated: 100,
           xendit_cycle_id: "cycle-1"
         )
       end
@@ -230,7 +224,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 1,
           status: "paid",
           span: (Time.zone.parse("2024-12-01 00:00:00")..Time.zone.parse("2024-12-31 23:59:59")),
-          tokens_allocated: 100,
           paid_at: Time.zone.parse("2024-12-01 00:00:00"),
           xendit_cycle_id: "cycle-1"
         )
@@ -261,7 +254,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 2,
           status: "paid",
           span: (Time.zone.parse("2025-02-01 00:00:00")..Time.zone.parse("2025-02-28 23:59:59")),
-          tokens_allocated: 100,
           paid_at: Time.zone.parse("2025-02-01 00:00:00"),
           xendit_cycle_id: "cycle-2"
         )
@@ -292,7 +284,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 1,
           status: "paid",
           span: (Time.zone.parse("2025-01-01 00:00:00")..Time.zone.parse("2025-01-31 23:59:59")),
-          tokens_allocated: 100,
           paid_at: Time.zone.parse("2025-01-01 00:00:00"),
           xendit_cycle_id: "cycle-1"
         )
@@ -305,7 +296,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 2,
           status: "paid",
           span: (Time.zone.parse("2025-01-10 00:00:00")..Time.zone.parse("2025-01-20 23:59:59")),
-          tokens_allocated: 100,
           paid_at: Time.zone.parse("2025-01-10 00:00:00"),
           xendit_cycle_id: "cycle-2"
         )
@@ -380,7 +370,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 1,
           status: "paid",
           span: (Time.zone.parse("2025-02-01 00:00:00")..Time.zone.parse("2025-02-28 23:59:59")),
-          tokens_allocated: 100,
           paid_at: Time.zone.parse("2025-02-01 00:00:00"),
           xendit_cycle_id: "cycle-1"
         )
@@ -423,7 +412,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 1,
           status: "paid",
           span: (Time.zone.parse("2025-01-01 00:00:00")..Time.zone.parse("2025-01-31 23:59:59")),
-          tokens_allocated: 100,
           paid_at: Time.zone.parse("2025-01-01 00:00:00"),
           xendit_cycle_id: "cycle-1"
         )
@@ -436,7 +424,6 @@ RSpec.describe Finance::Queries::SubscriptionsNeedingCycleCountUpdate, type: :qu
           cycle_number: 2,
           status: "paid",
           span: (Time.zone.parse("2025-01-01 00:00:00")..Time.zone.parse("2025-01-31 23:59:59")),
-          tokens_allocated: 100,
           paid_at: Time.zone.parse("2025-01-01 00:00:00"),
           xendit_cycle_id: "cycle-2"
         )

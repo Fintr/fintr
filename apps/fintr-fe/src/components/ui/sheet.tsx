@@ -5,6 +5,64 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 import { getNestedOverlayPortalRoot } from "@/lib/nested-overlay-portal"
 
+const SHEET_MOTION_STYLE_ID = "fintr-sheet-motion"
+
+const SHEET_MOTION_CSS = `
+@keyframes fintr-sheet-in-bottom {
+  from { transform: translate3d(0, 100%, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+@keyframes fintr-sheet-out-bottom {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, 100%, 0); }
+}
+@keyframes fintr-sheet-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fintr-sheet-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.fintr-sheet-bottom {
+  transition-property: none;
+  will-change: transform;
+}
+.fintr-sheet-bottom[data-state="open"] {
+  animation: fintr-sheet-in-bottom 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.fintr-sheet-bottom[data-state="closed"] {
+  animation: fintr-sheet-out-bottom 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.fintr-sheet-overlay {
+  transition-property: none;
+}
+.fintr-sheet-overlay[data-state="open"] {
+  animation: fintr-sheet-fade-in 160ms ease-out both;
+}
+.fintr-sheet-overlay[data-state="closed"] {
+  animation: fintr-sheet-fade-out 160ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fintr-sheet-bottom[data-state="open"],
+  .fintr-sheet-bottom[data-state="closed"],
+  .fintr-sheet-overlay[data-state="open"],
+  .fintr-sheet-overlay[data-state="closed"] {
+    animation-duration: 1ms;
+  }
+}
+`
+
+function ensureSheetMotionStyles() {
+  if (typeof document === "undefined") return
+  if (document.getElementById(SHEET_MOTION_STYLE_ID)) return
+
+  const style = document.createElement("style")
+  style.id = SHEET_MOTION_STYLE_ID
+  style.textContent = SHEET_MOTION_CSS
+  document.head.appendChild(style)
+}
+
 const Sheet = SheetPrimitive.Root
 
 const SheetTrigger = SheetPrimitive.Trigger
@@ -60,6 +118,10 @@ const SheetOverlay = React.forwardRef<
     onClick?.(e)
   }
 
+  React.useLayoutEffect(() => {
+    ensureSheetMotionStyles()
+  }, [])
+
   return (
     <SheetPrimitive.Overlay
       ref={(node) => {
@@ -71,9 +133,7 @@ const SheetOverlay = React.forwardRef<
         }
       }}
       className={cn(
-        "fixed inset-0 z-[90] bg-black/40",
-        "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-200",
-        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-200",
+        "fintr-sheet-overlay fixed inset-0 z-[90] bg-black/40",
         hasLightbox && "pointer-events-none",
         className,
       )}
@@ -84,22 +144,31 @@ const SheetOverlay = React.forwardRef<
 })
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
+const sheetSideMotionClassName =
+  "data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=closed]:animate-out data-[state=closed]:duration-200"
+
 const sheetVariants = cva(
-  [
-    "fixed z-[100] gap-4 bg-background p-6 shadow-lg ease-out",
-    "data-[state=closed]:animate-out data-[state=closed]:duration-200",
-  ].join(" "),
+  "fixed z-[100] gap-4 bg-background p-6 shadow-lg ease-out",
   {
     variants: {
       side: {
-        top:
-          "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:animate-in data-[state=open]:slide-in-from-top data-[state=open]:duration-200",
+        top: [
+          sheetSideMotionClassName,
+          "inset-x-0 top-0 border-b",
+          "data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+        ].join(" "),
         bottom:
-          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=open]:duration-200",
-        left:
-          "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:animate-in data-[state=open]:slide-in-from-left data-[state=open]:duration-200 sm:max-w-sm",
-        right:
-          "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:animate-in data-[state=open]:slide-in-from-right data-[state=open]:duration-200 sm:max-w-sm",
+          "fintr-sheet-bottom inset-x-0 bottom-0 border-t transition-none",
+        left: [
+          sheetSideMotionClassName,
+          "inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm",
+          "data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+        ].join(" "),
+        right: [
+          sheetSideMotionClassName,
+          "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
+          "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+        ].join(" "),
       },
     },
     defaultVariants: {
@@ -264,6 +333,10 @@ const SheetContent = React.forwardRef<
       () => (nestedOverlay ? getNestedOverlayPortalRoot() ?? undefined : undefined),
       [nestedOverlay],
     )
+
+    React.useLayoutEffect(() => {
+      ensureSheetMotionStyles()
+    }, [])
 
     React.useLayoutEffect(() => {
       if (!swipeEnabled) return

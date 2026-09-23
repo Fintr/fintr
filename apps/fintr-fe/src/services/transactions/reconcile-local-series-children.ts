@@ -19,10 +19,10 @@ export const removeMatchingLocalSeriesChildPlaceholders = async (params: {
   spaceId: string;
   serverRow: IndexTransactionWithCategoryIds;
   queryClient?: QueryClient;
-}): Promise<boolean> => {
+}): Promise<IndexTransactionWithCategoryIds[]> => {
   const { spaceId, serverRow, queryClient } = params;
   if (!spaceId || !serverRow.parentId?.trim()) {
-    return false;
+    return [];
   }
 
   const serverAmount = Math.abs(Number(serverRow.amount) || 0);
@@ -34,7 +34,7 @@ export const removeMatchingLocalSeriesChildPlaceholders = async (params: {
       "2100-12-31",
     )) as IndexTransactionWithCategoryIds[];
   } catch {
-    return false;
+    return [];
   }
 
   const serverDate = serverRow.date.slice(0, 10);
@@ -58,7 +58,7 @@ export const removeMatchingLocalSeriesChildPlaceholders = async (params: {
   });
 
   if (matches.length === 0) {
-    return false;
+    return [];
   }
 
   await removeLocalIndexTransactionsByIds(
@@ -72,5 +72,5 @@ export const removeMatchingLocalSeriesChildPlaceholders = async (params: {
     });
   }
 
-  return true;
+  return matches;
 };

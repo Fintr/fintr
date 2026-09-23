@@ -1,8 +1,6 @@
 import { fetchBudgetsPage } from "@/services/budgets/queries";
-import {
-  cacheBudgetsResponse,
-  loadCachedBudgetsResponse,
-} from "@/services/budgets/local-cache";
+import { cacheBudgetsResponse } from "@/services/budgets/local-cache";
+import { ensureMonthlyBudgetsLocalFirst } from "@/services/budgets/ensure-monthly-budgets-local-first";
 import {
   useMutation,
   useQuery,
@@ -26,8 +24,19 @@ export const useBudgetsData = (startDate: string, endDate: string) => {
 
   const localBudgetsQuery = useQuery({
     queryKey: ["budgets", "local", spaceCode, startDate, endDate],
-    queryFn: async () =>
-      (await loadCachedBudgetsResponse(spaceCode, startDate, endDate)) ?? null,
+    queryFn: async () => {
+      const ensured = await ensureMonthlyBudgetsLocalFirst(
+        api,
+        {
+          spaceCode,
+          startDate,
+          endDate,
+        },
+        { queryClient, waitForSync: false },
+      );
+
+      return ensured.page;
+    },
     enabled: Boolean(spaceCode && startDate && endDate),
     staleTime: Infinity,
     networkMode: "always",
@@ -38,23 +47,31 @@ export const useBudgetsData = (startDate: string, endDate: string) => {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["budgets", spaceCode, startDate, endDate],
     queryFn: async () => {
-      if (skipNetworkFetch) {
-        return (
-          (await loadCachedBudgetsResponse(spaceCode, startDate, endDate))
-          ?? localBudgetsQuery.data
-          ?? {
-            budgets: [],
-            summary: null,
-            nextPage: null,
-            totalPages: null,
-            totalCount: null,
-          }
-        );
-      }
-
       const page = await fetchBudgetsPage(api, {
         queryKey: ["budgets", spaceCode, startDate, endDate],
       });
+      const localPage = queryClient.getQueryData<typeof page>([
+        "budgets",
+        "local",
+        spaceCode,
+        startDate,
+        endDate,
+      ]);
+      const hasLocalCreates = (localPage?.budgets ?? []).some((row) => {
+        const parent = row as { id?: string; subcategories?: Array<{ id?: string }> };
+        if (String(parent.id ?? "").startsWith("local:")) {
+          return true;
+        }
+
+        return (parent.subcategories ?? []).some((sub) =>
+          String(sub.id ?? "").startsWith("local:"),
+        );
+      });
+
+      if (hasLocalCreates) {
+        return localPage ?? page;
+      }
+
       void cacheBudgetsResponse(spaceCode, startDate, endDate, page).then(() => {
         queryClient.setQueryData(
           ["budgets", "local", spaceCode, startDate, endDate],
@@ -63,14 +80,14 @@ export const useBudgetsData = (startDate: string, endDate: string) => {
       });
       return page;
     },
-    enabled: !!spaceCode && !!startDate && !!endDate,
+    enabled: Boolean(spaceCode && startDate && endDate && !skipNetworkFetch),
     placeholderData: localBudgetsQuery.data ?? undefined,
     refetchOnMount: !skipNetworkFetch,
     staleTime: skipNetworkFetch ? Infinity : 30000,
     networkMode: "always",
   });
 
-  const budgetsPage = data ?? localBudgetsQuery.data ?? undefined;
+  const budgetsPage = localBudgetsQuery.data ?? data ?? undefined;
 
   const updateBudgetMutation = useMutation({
     mutationFn: async ({
@@ -129,7 +146,7 @@ export const useBudgetsData = (startDate: string, endDate: string) => {
 
   return {
     data: budgetsPage,
-    isLoading: isLoading && !budgetsPage,
+    isLoading: (isLoading || localBudgetsQuery.isLoading) && !budgetsPage,
     isError,
     refetch,
     updateBudgetMutation,

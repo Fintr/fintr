@@ -328,7 +328,7 @@ const FreeSubscriptionsPage = () => {
                 <SelectContent>
                   {activePlans.map((plan) => (
                     <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name} - {plan.tokenLimit} tokens/{plan.interval}
+                      {plan.name} / {plan.interval}
                     </SelectItem>
                   ))}
                 </SelectContent>

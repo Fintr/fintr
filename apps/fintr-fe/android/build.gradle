@@ -29,21 +29,20 @@ subprojects {
         if (project.hasProperty('android')) {
             project.android {
                 compileOptions {
-                    // Override Capacitor's Java 21 requirement - use Java 17 which is installed
-                    sourceCompatibility JavaVersion.VERSION_17
-                    targetCompatibility JavaVersion.VERSION_17
+                    sourceCompatibility JavaVersion.VERSION_21
+                    targetCompatibility JavaVersion.VERSION_21
                 }
             }
         }
         // Plugins such as @capacitor/filesystem use kotlin { jvmToolchain(21) }; that must match
-        // Java 17 above or Gradle fails with "Inconsistent JVM-target compatibility".
+        // Java 21 above or Gradle fails with "Inconsistent JVM-target compatibility".
         def kotlinExt = project.extensions.findByName('kotlin')
         if (kotlinExt != null) {
             try {
-                kotlinExt.jvmToolchain(17)
+                kotlinExt.jvmToolchain(21)
             } catch (Exception e) {
                 project.logger.warn(
-                    "Could not set Kotlin JVM toolchain to 17 for ${project.path}: ${e.message}"
+                    "Could not set Kotlin JVM toolchain to 21 for ${project.path}: ${e.message}"
                 )
             }
         }

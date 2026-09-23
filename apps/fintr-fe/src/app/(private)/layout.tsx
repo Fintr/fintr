@@ -6,6 +6,7 @@ import BottomNavigation from "@/components/dashboard/bottom-navigation";
 import MobileStickyHeader from "@/components/dashboard/mobile-sticky-header";
 import { useAtomValue } from 'jotai';
 import { isAdminAtom } from '@/atoms/dashboardAtoms';
+import { isTutorialActiveAtom } from '@/atoms/tutorialAtoms';
 import { workspaceTransitionAtom } from '@/atoms/spaceAtoms';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -29,7 +30,8 @@ import {
   shouldShowOfflineSyncScreen,
   shouldShowPrivateContextLoadingScreen,
 } from "@/lib/app-loading-gates";
-import { markAppShellReady } from "@/lib/app-shell-state";
+import { hasAppShellReady, markAppShellReady } from "@/lib/app-shell-state";
+import { useHydrationSafeValue } from "@/hooks/useHydrationSafeValue";
 import { offlineReimportRequiredAtom } from "@/atoms/offlineSyncAtoms";
 import { WeeklyFeedbackPrompt } from "@/components/feedback/weekly-feedback-prompt";
 import { MaintenanceScreen } from "@/components/maintenance/maintenance-screen";
@@ -56,6 +58,12 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     scope: "openid profile email read:current_user read:transactions read:users",
   });
   const isAdmin = useAtomValue(isAdminAtom);
+  const isTutorialActive = useAtomValue(isTutorialActiveAtom);
+  const appShellReady = useHydrationSafeValue(hasAppShellReady, false);
+  const persistedSpaceCode = useHydrationSafeValue(
+    () => window.localStorage.getItem("spaceCode")?.trim() ?? "",
+    "",
+  );
   const pathname = usePathname();
   const router = useRouter();
   const {
@@ -172,10 +180,11 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 
   if (
     shouldShowPrivateContextLoadingScreen({
+      appShellReady,
       isOnOnboardingPage,
       isOnAdminPage,
       isResolvingWorkspaceContext: shouldBlockOnContextLoading,
-      hasPersistedSpaceCode: Boolean(spaceCode),
+      hasPersistedSpaceCode: Boolean(persistedSpaceCode || spaceCode),
     })
   ) {
     return (
@@ -276,7 +285,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
         workspaceName={transitionState.destinationSpace?.name}
         isOrganization={transitionState.destinationSpace?.isOrganization}
       />
-      {weeklyFeedbackEnabled ? (
+      {weeklyFeedbackEnabled && !isTutorialActive ? (
         <WeeklyFeedbackPrompt api={api} enabled={weeklyFeedbackEnabled} />
       ) : null}
     </div>

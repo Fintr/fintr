@@ -4,6 +4,10 @@ import {
   TransactionTag,
   UpdateTransactionTagType,
 } from "@/types/transactionTagTypes";
+import { normalizeTransactionTag } from "@/services/transactions/tags/local-cache";
+
+const mapTag = (tag: Record<string, unknown>): TransactionTag =>
+  normalizeTransactionTag(tag);
 
 export const fetchTransactionTags = async (
   api: AxiosInstance,
@@ -15,13 +19,7 @@ export const fetchTransactionTags = async (
     return [];
   }
 
-  return data.map((tag) => ({
-    id: tag.id,
-    name: tag.name,
-    color: tag.color,
-    isDefault: Boolean(tag.isDefault ?? tag.is_default),
-    styleImageUrl: tag.styleImageUrl ?? tag.style_image_url ?? undefined,
-  }));
+  return data.map((tag: Record<string, unknown>) => mapTag(tag));
 };
 
 export const createTransactionTag = async (
@@ -70,7 +68,12 @@ export const deleteTransactionTag = async (
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError;
-    return axiosError.response?.data;
+    if (axiosError.response?.data) {
+      throw axiosError.response.data;
+    }
+
+    console.error("Error deleting transaction tag:", error);
+    throw new Error("Failed to delete tag");
   }
 };
 
@@ -82,13 +85,7 @@ export const toggleDefaultTransactionTag = async (
     const response = await api.put(`/transactions/tags/${tagId}/toggle_default`);
     const tag = response.data?.data;
 
-    return {
-      id: tag.id,
-      name: tag.name,
-      color: tag.color,
-      isDefault: Boolean(tag.isDefault ?? tag.is_default),
-      styleImageUrl: tag.styleImageUrl ?? tag.style_image_url ?? undefined,
-    };
+    return mapTag(tag);
   } catch (error) {
     const axiosError = error as AxiosError;
     if (axiosError.response?.data) {
@@ -112,13 +109,7 @@ export const generateTransactionTagStyleImage = async (
     );
     const tag = response.data?.data;
 
-    return {
-      id: tag.id,
-      name: tag.name,
-      color: tag.color,
-      isDefault: Boolean(tag.isDefault ?? tag.is_default),
-      styleImageUrl: tag.styleImageUrl ?? tag.style_image_url ?? undefined,
-    };
+    return mapTag(tag);
   } catch (error) {
     const axiosError = error as AxiosError;
     if (axiosError.response?.data) {
@@ -127,5 +118,29 @@ export const generateTransactionTagStyleImage = async (
 
     console.error("Error generating tag style image:", error);
     throw new Error("Failed to generate tag style");
+  }
+};
+
+export const assignTransactionTagStyleImage = async (
+  api: AxiosInstance,
+  tagId: string,
+  presetKey: string,
+): Promise<TransactionTag> => {
+  try {
+    const response = await api.post(
+      `/transactions/tags/${tagId}/assign_style_image`,
+      { presetKey },
+    );
+    const tag = response.data?.data;
+
+    return mapTag(tag);
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    if (axiosError.response?.data) {
+      throw axiosError.response.data;
+    }
+
+    console.error("Error assigning tag style image:", error);
+    throw new Error("Failed to assign tag style");
   }
 };

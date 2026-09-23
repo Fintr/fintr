@@ -50,7 +50,7 @@ Rails.application.configure do
   # config.active_job.verbose_execution_logs = true
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = :amazon
+  config.active_storage.service = :local
 
   # Don't care if the mailer can't send.
   config.action_mailer.raise_delivery_errors = false
@@ -106,5 +106,5 @@ Rails.application.configure do
   # Note: Rails handles streaming automatically, no manual buffer configuration needed
 
   config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
-  config.hosts << "ab6e0a82a011.ngrok-free.app"
+  config.hosts << "8134-2001-fd8-d293-ee00-115-fbb9-d903-20b2.ngrok-free.app"
 end

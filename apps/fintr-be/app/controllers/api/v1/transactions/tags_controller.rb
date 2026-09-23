@@ -19,7 +19,10 @@ module Api
 
           return render_unprocessable_content(details: operation.failure) unless operation.success?
 
-          render_created(record: operation.value!)
+          render_created(
+            data: ::Transactions::Serializers::TagSerializer.render_as_hash(operation.value!),
+            message: "Tag created successfully",
+          )
         end
 
         def update
@@ -64,7 +67,6 @@ module Api
           operation = ::Ai::Operations::Usages::CreateUsage.new.call(
             processing_params.merge(
               ai_type: "tag_style_image",
-              tokens_used: 5,
             ),
           ) do
             ::Transactions::Operations::Tags::GenerateTagStyleImage.new.call(processing_params)
@@ -81,10 +83,26 @@ module Api
           )
         end
 
+        def assign_style_image
+          operation = ::Transactions::Operations::Tags::AssignPresetStyleImage.new.call(
+            with_current_params(assign_style_image_params),
+          )
+
+          unless operation.success?
+            message = operation.failure.is_a?(String) ? operation.failure : "Could not assign tag style"
+            return render_unprocessable_content(message: message, details: operation.failure)
+          end
+
+          render_success(
+            data: ::Transactions::Serializers::TagSerializer.render_as_hash(operation.value!),
+            message: "Tag style assigned",
+          )
+        end
+
         private
 
         def create_params
-          params.permit(:id, :name, :color)
+          params.permit(:id, :name, :color, :style_preset_key)
         end
 
         def update_params
@@ -101,6 +119,10 @@ module Api
 
         def generate_style_image_params
           params.permit(:id, :prompt)
+        end
+
+        def assign_style_image_params
+          params.permit(:id, :preset_key)
         end
       end
     end

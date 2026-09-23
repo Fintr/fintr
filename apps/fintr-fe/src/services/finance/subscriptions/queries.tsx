@@ -5,7 +5,6 @@ export interface SubscriptionPlan {
   name: string;
   slug: string;
   description?: string;
-  tokenLimit: number;
   priceCents: number;
   priceCurrency: string;
   interval: "month" | "year";
@@ -31,7 +30,6 @@ export interface BillingCycle {
   endsAt?: string;
   paidAt?: string;
   scheduledTimestamp?: string;
-  tokensAllocated: number;
   xenditCycleId?: string;
 }
 
@@ -52,7 +50,6 @@ export interface CurrentCycleInfo {
   cycleNumber: number;
   startedAt: string;
   endsAt: string;
-  tokensAllocated: number;
 }
 
 export interface FreeSubscriptionInfo {

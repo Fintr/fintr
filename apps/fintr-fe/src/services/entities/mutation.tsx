@@ -5,11 +5,18 @@ import {
   type IndexTransaction,
 } from '@/types/transactionTypes';
 
+export interface EntityIdentifier {
+  id: string;
+  label: string;
+  scannedName: string;
+}
+
 export interface EntityRecord {
   id: string;
   fullName: string;
   entityType: 'loan' | 'transaction';
   photoUrl?: string | null;
+  identifiers?: EntityIdentifier[];
 }
 
 export interface CreateEntityType {
@@ -38,7 +45,7 @@ export const createEntity = async (
 
       const response = await api.post('/entities', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': undefined,
         },
       });
       return response.data;
@@ -82,7 +89,7 @@ export const updateEntity = async (
 
       const response = await api.patch(`/entities/${entityData.id}`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': undefined,
         },
       });
       return response.data;
@@ -108,6 +115,43 @@ export interface FetchEntitiesParams {
   search?: string;
 }
 
+export const normalizeEntityIdentifiers = (
+  value: unknown,
+): EntityIdentifier[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+
+    const identifier = item as {
+      id?: string;
+      label?: string;
+      scannedName?: string;
+      scanned_name?: string;
+    };
+    const id = String(identifier.id ?? "");
+    if (!id) {
+      return [];
+    }
+
+    const scannedName = String(
+      identifier.scannedName ?? identifier.scanned_name ?? "",
+    );
+
+    return [
+      {
+        id,
+        label: String(identifier.label ?? scannedName),
+        scannedName,
+      },
+    ];
+  });
+};
+
 const mapEntity = (entity: {
   id: string;
   fullName?: string;
@@ -116,12 +160,22 @@ const mapEntity = (entity: {
   entity_type?: string;
   photoUrl?: string | null;
   photo_url?: string | null;
-}): EntityRecord => ({
-  id: entity.id,
-  fullName: entity.fullName || entity.full_name || '',
-  entityType: (entity.entityType || entity.entity_type || 'loan') as 'loan' | 'transaction',
-  photoUrl: entity.photoUrl ?? entity.photo_url ?? null,
-});
+  identifiers?: unknown;
+}): EntityRecord => {
+  const identifiers = normalizeEntityIdentifiers(entity.identifiers);
+  const record: EntityRecord = {
+    id: entity.id,
+    fullName: entity.fullName || entity.full_name || '',
+    entityType: (entity.entityType || entity.entity_type || 'loan') as 'loan' | 'transaction',
+    photoUrl: entity.photoUrl ?? entity.photo_url ?? null,
+  };
+
+  if (identifiers) {
+    record.identifiers = identifiers;
+  }
+
+  return record;
+};
 
 export const fetchEntities = async (
   api: AxiosInstance,
@@ -181,12 +235,6 @@ export interface EntityDetailLoanPayment {
   principalPayment: number;
   interestPayment: number;
   totalPayment: number;
-}
-
-export interface EntityIdentifier {
-  id: string;
-  label: string;
-  scannedName: string;
 }
 
 export interface EntityDetail {
@@ -322,11 +370,15 @@ const mapEntityIdentifier = (identifier: {
   label?: string;
   scannedName?: string;
   scanned_name?: string;
-}): EntityIdentifier => ({
-  id: identifier.id,
-  label: identifier.label ?? identifier.scannedName ?? identifier.scanned_name ?? '',
-  scannedName: identifier.scannedName ?? identifier.scanned_name ?? '',
-});
+}): EntityIdentifier => {
+  const [mapped] = normalizeEntityIdentifiers([identifier]) ?? [];
+
+  return mapped ?? {
+    id: identifier.id,
+    label: identifier.label ?? identifier.scannedName ?? identifier.scanned_name ?? '',
+    scannedName: identifier.scannedName ?? identifier.scanned_name ?? '',
+  };
+};
 
 export const fetchEntityDetail = async (
   api: AxiosInstance,
@@ -359,12 +411,19 @@ export const createMerchantIdentifier = async (
   api: AxiosInstance,
   entityId: string,
   label: string,
-) => {
+): Promise<EntityIdentifier> => {
   try {
     const response = await api.post(`/entities/${entityId}/identifiers`, {
       label,
     });
-    return response.data;
+    const payload = response.data?.data ?? response.data;
+    const [identifier] = normalizeEntityIdentifiers([payload]) ?? [];
+
+    if (!identifier) {
+      throw new Error("Failed to create identifier");
+    }
+
+    return identifier;
   } catch (error) {
     const axiosError = error as AxiosError;
     if (axiosError.response?.data) {

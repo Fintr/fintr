@@ -21,6 +21,7 @@ export function TagStylePreview({ tag, className }: TagStylePreviewProps) {
         className,
       )}
       style={{ height: "calc(5.5rem / 3)" }}
+      aria-label={`${tag.name} style preview`}
     >
       <div
         className="relative w-1/2 shrink-0 overflow-hidden bg-muted"

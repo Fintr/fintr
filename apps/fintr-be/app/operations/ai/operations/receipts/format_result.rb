@@ -128,6 +128,8 @@ module Ai
             schedule_type: "one_time",
             receipt_merchant_detected: extract_merchant_value(extracted_data),
           }
+          entity_name = extract_entity_value(extracted_data)
+          payload[:entity_name] = entity_name if entity_name.present?
 
           Success(payload)
         end
@@ -191,6 +193,12 @@ module Ai
           return nil if extracted_data.nil?
 
           extracted_data.dig(:merchant, :value).presence
+        end
+
+        def extract_entity_value(extracted_data)
+          return nil if extracted_data.nil?
+
+          extracted_data.dig(:entity, :value).presence
         end
 
         def prepare_formatted_result(extracted_data:, confidence_summary:, validation_flags:, raw_data:, suggested_payload:)

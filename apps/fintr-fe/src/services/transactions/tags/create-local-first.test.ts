@@ -2,7 +2,9 @@ import "fake-indexeddb/auto";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getLocalDb, resetLocalDbForTests } from "@/lib/local-db";
+import { getLocalDb, listSpaceTransactions, resetLocalDbForTests } from "@/lib/local-db";
+import { upsertLocalIndexTransaction } from "@/services/transactions/local-cache";
+import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
 import {
   loadTransactionTags,
@@ -141,6 +143,84 @@ describe("tags local-first mutations", () => {
 
     expect(result.pendingSync).toBe(false);
     expect(await loadTransactionTags("SPACE_1")).toEqual([]);
+  });
+
+  it("removes the deleted tag from local transaction assignments", async () => {
+    const { cacheTransactionTagsResponse } = await import("./local-cache");
+    await cacheTransactionTagsResponse("SPACE_1", [
+      {
+        id: "tag-1",
+        name: "Europe",
+        color: "#0A3D62",
+        isDefault: false,
+      },
+    ]);
+    await upsertLocalIndexTransaction("SPACE_1", {
+      id: "tx-1",
+      date: "2026-09-04",
+      description: "Flight",
+      amount: 12000,
+      categoryName: "Travel",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+      tags: [
+        {
+          id: "tag-1",
+          name: "Europe",
+          color: "#0A3D62",
+          isDefault: false,
+        },
+      ],
+      tagIds: ["tag-1"],
+    });
+
+    const { deleteTransactionTag } = await import("./mutation");
+    vi.mocked(deleteTransactionTag).mockResolvedValue({ success: true });
+
+    await deleteTagLocalFirst({} as never, {
+      spaceCode: "SPACE_1",
+      tagId: "tag-1",
+    });
+
+    const transactions = await listSpaceTransactions("SPACE_1");
+    expect(transactions[0]?.tags).toEqual([]);
+    expect(
+      (transactions[0] as { tagIds?: string[] } | undefined)?.tagIds,
+    ).toEqual([]);
+  });
+
+  it("keeps the local tag when the server rejects the delete", async () => {
+    const { cacheTransactionTagsResponse } = await import("./local-cache");
+    await cacheTransactionTagsResponse("SPACE_1", [
+      {
+        id: "tag-1",
+        name: "Europe",
+        color: "#0A3D62",
+        isDefault: false,
+      },
+    ]);
+
+    const { deleteTransactionTag } = await import("./mutation");
+    vi.mocked(deleteTransactionTag).mockRejectedValue({
+      success: false,
+      details: {
+        tag: "Cannot delete tag. There are transactions associated with the tag.",
+      },
+    });
+
+    await expect(
+      deleteTagLocalFirst({} as never, {
+        spaceCode: "SPACE_1",
+        tagId: "tag-1",
+      }),
+    ).rejects.toMatchObject({ success: false });
+
+    expect(await loadTransactionTags("SPACE_1")).toEqual([
+      expect.objectContaining({ id: "tag-1", name: "Europe" }),
+    ]);
   });
 });
 

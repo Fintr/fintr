@@ -1,7 +1,13 @@
+import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 
+import type { EntityDetail } from "@/services/entities/mutation";
+
 import type { Loan, LoansPage } from "./queries";
-import { upsertLoanInInfiniteData } from "./loans-list-cache";
+import {
+  removeLoanFromQueryCaches,
+  upsertLoanInInfiniteData,
+} from "./loans-list-cache";
 
 const loan = (id: string, entityName: string): Loan => ({
   id,
@@ -86,5 +92,80 @@ describe("upsertLoanInInfiniteData", () => {
 
     expect(result?.pages[0].loans).toHaveLength(1);
     expect(result?.pages[0].loans[0].id).toBe("loan-1");
+  });
+});
+
+describe("removeLoanFromQueryCaches", () => {
+  it("drops the deleted loan from the contact detail list immediately", () => {
+    const queryClient = new QueryClient();
+    const remainingLoan = {
+      id: "loan-keep",
+      date: "2026-09-20",
+      description: "Share of Split Bill 2",
+      loanType: "lent" as const,
+      status: "active",
+      entityName: "Miko2",
+      accountName: "Cash",
+      principalAmount: 3000,
+      outstandingBalance: 3000,
+      currency: "PHP",
+    };
+    const deletedLoan = {
+      ...remainingLoan,
+      id: "loan-delete",
+      description: "Share of Split Bill",
+      principalAmount: 150,
+      outstandingBalance: 150,
+    };
+    const detail: EntityDetail = {
+      entity: {
+        id: "entity-miko2",
+        fullName: "Miko2",
+        entityType: "loan",
+      },
+      transactions: [],
+      loans: [deletedLoan, remainingLoan],
+      loanPayments: [
+        {
+          id: "pay-1",
+          date: "2026-09-20",
+          currency: "PHP",
+          loanId: "loan-delete",
+          accountName: "Cash",
+          principalPayment: 0,
+          interestPayment: 0,
+          totalPayment: 0,
+        },
+      ],
+      identifiers: [],
+    };
+
+    queryClient.setQueryData(
+      ["entityDetail", "SPACE_1", "entity-miko2"],
+      detail,
+    );
+    queryClient.setQueryData(
+      ["entityDetail", "local", "SPACE_1", "entity-miko2"],
+      detail,
+    );
+
+    removeLoanFromQueryCaches(queryClient, "loan-delete", "SPACE_1");
+
+    const nextDetail = queryClient.getQueryData<EntityDetail>([
+      "entityDetail",
+      "SPACE_1",
+      "entity-miko2",
+    ]);
+    const nextLocal = queryClient.getQueryData<EntityDetail>([
+      "entityDetail",
+      "local",
+      "SPACE_1",
+      "entity-miko2",
+    ]);
+
+    expect(nextDetail?.loans.map((row) => row.id)).toEqual(["loan-keep"]);
+    expect(nextDetail?.loanPayments).toEqual([]);
+    expect(nextLocal?.loans.map((row) => row.id)).toEqual(["loan-keep"]);
+    expect(nextLocal?.loanPayments).toEqual([]);
   });
 });

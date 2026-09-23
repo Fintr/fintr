@@ -22,6 +22,25 @@ export const usePrefetchDashboardNavRoutes = (): void => {
       router.prefetch(route);
     }
 
-    void warmDashboardNavTabChunks();
+    let cancelled = false;
+    const warm = () => {
+      if (!cancelled) {
+        void warmDashboardNavTabChunks();
+      }
+    };
+    const canUseIdleCallback = typeof window.requestIdleCallback === "function";
+    const idleHandle = canUseIdleCallback
+      ? window.requestIdleCallback(warm)
+      : window.setTimeout(warm, 1);
+
+    return () => {
+      cancelled = true;
+      if (canUseIdleCallback) {
+        window.cancelIdleCallback(idleHandle);
+        return;
+      }
+
+      window.clearTimeout(idleHandle);
+    };
   }, [router]);
 };

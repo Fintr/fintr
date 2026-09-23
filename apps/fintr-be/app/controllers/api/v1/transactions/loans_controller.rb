@@ -72,7 +72,8 @@ module Api
             :description,
             :adjusts_account_balance,
             :file,
-            :file_id
+            :file_id,
+            :client_mutation_id
           )
         end
 

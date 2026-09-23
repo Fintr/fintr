@@ -304,6 +304,7 @@ export const useInsightsQueries = (params: UseInsightsQueriesParams = {}) => {
         startDate: apiParams.startDate,
         endDate: apiParams.endDate,
         skipHydrationWhenBucketsHaveSignal: true,
+        skipTransactionHydration: true,
       });
       const summary = insightsSummaryFromMonthlyBuckets(
         resolved.summaries,

@@ -236,6 +236,45 @@ RSpec.describe 'Api::V1::Entities', type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context 'when creating a real entity' do
+      it 'persists the entity' do
+        expect {
+          post api_v1_entities_path,
+               params: {
+                 full_name: 'Alex Rivera',
+                 entity_type: 'loan',
+                 space_code: space.code,
+               },
+               headers: headers
+        }.to change(Entities::Entity, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+        json_response = JSON.parse(response.body)
+        expect(json_response['success']).to be(true)
+        expect(json_response['data']['fullName']).to eq('Alex Rivera')
+        expect(json_response['data']['entityType']).to eq('loan')
+      end
+
+      it 'attaches an uploaded photo' do
+        photo = fixture_file_upload('test.jpg', 'image/jpeg')
+
+        post api_v1_entities_path,
+             params: {
+               full_name: 'Alex Rivera',
+               entity_type: 'loan',
+               space_code: space.code,
+               photo:,
+             },
+             headers: headers
+
+        expect(response).to have_http_status(:created)
+        entity = Entities::Entity.order(:created_at).last
+        expect(entity.full_name).to eq('Alex Rivera')
+        expect(entity.photo).to be_attached
+        expect(JSON.parse(response.body)['data']['photoUrl']).to be_present
+      end
+    end
   end
 
   describe 'GET /api/v1/entities/:id' do

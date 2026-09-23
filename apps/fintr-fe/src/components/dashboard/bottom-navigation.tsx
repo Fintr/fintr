@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Home, FileText, Plus, BarChart3, Menu, MessageSquare, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
 import AddReceiptDialog from "@/components/dashboard/add-receipt-dialog";
@@ -11,6 +12,15 @@ import EnhancedAiChatModal from "@/components/ai-chat/enhanced-ai-chat-modal";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import { usePrefetchDashboardNavRoutes } from "@/hooks/usePrefetchDashboardNavRoutes";
 import { calculateNavBottomOffset } from "@/lib/platform-detection";
+import { pendingDashboardBottomTabAtom } from "@/atoms/dashboardBottomTabAtoms";
+import {
+  commitDashboardClientNavigation,
+  getDashboardBottomTab,
+  getDashboardCommittedPathname,
+  interceptDashboardTabClick,
+  subscribeDashboardCommittedPathname,
+  toMobileBottomNavTab,
+} from "@/lib/dashboard-nav-routes";
 import {
   Popover,
   PopoverContent,
@@ -18,7 +28,20 @@ import {
 } from "@/components/ui/popover";
 
 export default function BottomNavigation() {
-  const pathname = usePathname();
+  const routerPathname = usePathname();
+  const committedPathname = useSyncExternalStore(
+    subscribeDashboardCommittedPathname,
+    getDashboardCommittedPathname,
+    () => null,
+  );
+  const pathname = committedPathname ?? routerPathname;
+  const onTabClick = (href: string) => (event: React.MouseEvent) => {
+    if (!interceptDashboardTabClick(event)) {
+      return;
+    }
+
+    commitDashboardClientNavigation(href);
+  };
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
   const [isAddReceiptOpen, setIsAddReceiptOpen] = useState(false);
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
@@ -28,6 +51,8 @@ export default function BottomNavigation() {
   const { isAndroidNative, isIOSNative, safeAreaInsetBottom, hasAndroid3ButtonNav } = usePlatformDetection();
 
   usePrefetchDashboardNavRoutes();
+  const pendingTab = useAtomValue(pendingDashboardBottomTabAtom);
+  const setPendingTab = useSetAtom(pendingDashboardBottomTabAtom);
 
   const navBottomOffset = calculateNavBottomOffset(
     isAndroidNative,
@@ -38,6 +63,15 @@ export default function BottomNavigation() {
 
   // Determine active tab based on pathname
   const getActiveValue = () => {
+    if (pendingTab) {
+      return toMobileBottomNavTab(pendingTab);
+    }
+
+    const routeTab = getDashboardBottomTab(pathname);
+    if (routeTab) {
+      return toMobileBottomNavTab(routeTab);
+    }
+
     if (pathname.startsWith("/dashboard/home")) {
       return "home";
     }
@@ -56,7 +90,7 @@ export default function BottomNavigation() {
       pathname.startsWith("/crm/requests") ||
       pathname.startsWith("/admin")
     ) {
-      return "space_settings";
+      return "menu";
     }
     return "transactions";
   };
@@ -136,6 +170,9 @@ export default function BottomNavigation() {
           {/* Home */}
           <Link
             href="/dashboard/home"
+            scroll={false}
+            onPointerDown={() => setPendingTab("home")}
+            onClick={onTabClick("/dashboard/home")}
             onPointerEnter={() => {
               if (navigator.onLine) {
                 void import("@/components/dashboard/tabs/home");
@@ -152,6 +189,9 @@ export default function BottomNavigation() {
           {/* Transactions */}
           <Link
             href="/dashboard/"
+            scroll={false}
+            onPointerDown={() => setPendingTab("transactions")}
+            onClick={onTabClick("/dashboard/")}
             data-testid="mobile-nav-transactions"
             className={navItemClassName(activeValue === "transactions")}
           >
@@ -252,6 +292,9 @@ export default function BottomNavigation() {
           {/* Dashboard */}
           <Link
             href="/dashboard/insights"
+            scroll={false}
+            onPointerDown={() => setPendingTab("insights")}
+            onClick={onTabClick("/dashboard/insights")}
             data-tutorial-target="mobile-dashboard-button"
             data-testid="mobile-nav-dashboard"
             className={navItemClassName(activeValue === "insights")}
@@ -265,35 +308,44 @@ export default function BottomNavigation() {
           {/* Settings */}
           <Link
             href="/dashboard/app_settings"
+            scroll={false}
+            onPointerDown={() => setPendingTab("menu")}
+            onClick={onTabClick("/dashboard/app_settings")}
             data-tutorial-target="mobile-menu-button"
             data-testid="mobile-nav-menu"
-            className={navItemClassName(activeValue === "space_settings")}
+            className={navItemClassName(activeValue === "menu")}
           >
-            <Menu className={navIconClassName(activeValue === "space_settings")} />
-            <span className={navLabelClassName(activeValue === "space_settings")}>
+            <Menu className={navIconClassName(activeValue === "menu")} />
+            <span className={navLabelClassName(activeValue === "menu")}>
               Menu
             </span>
           </Link>
         </div>
       </nav>
 
-      <AddTransactionDialog
-        isOpen={isAddTransactionOpen}
-        onClose={() => {
-          setIsAddTransactionOpen(false);
-          setPrefilledTransactionData(null);
-        }}
-        prefilledData={prefilledTransactionData}
-      />
-      <AddReceiptDialog
-        isOpen={isAddReceiptOpen}
-        onClose={() => setIsAddReceiptOpen(false)}
-        onReceiptSuccess={handleReceiptSuccess}
-      />
-      <EnhancedAiChatModal
-        isOpen={isAiChatOpen}
-        onClose={() => setIsAiChatOpen(false)}
-      />
+      {isAddTransactionOpen ? (
+        <AddTransactionDialog
+          isOpen={isAddTransactionOpen}
+          onClose={() => {
+            setIsAddTransactionOpen(false);
+            setPrefilledTransactionData(null);
+          }}
+          prefilledData={prefilledTransactionData}
+        />
+      ) : null}
+      {isAddReceiptOpen ? (
+        <AddReceiptDialog
+          isOpen={isAddReceiptOpen}
+          onClose={() => setIsAddReceiptOpen(false)}
+          onReceiptSuccess={handleReceiptSuccess}
+        />
+      ) : null}
+      {isAiChatOpen ? (
+        <EnhancedAiChatModal
+          isOpen={isAiChatOpen}
+          onClose={() => setIsAiChatOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

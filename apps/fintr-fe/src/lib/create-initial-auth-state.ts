@@ -10,6 +10,12 @@ export type StoredAuthSession = {
   isLoading: boolean;
 };
 
+export const getServerAuthState = (): StoredAuthSession => ({
+  user: null,
+  tokens: null,
+  isLoading: true,
+});
+
 export const createInitialAuthState = (): StoredAuthSession => {
   if (typeof window === "undefined") {
     return { user: null, tokens: null, isLoading: true };

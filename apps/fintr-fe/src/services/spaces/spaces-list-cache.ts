@@ -1,3 +1,5 @@
+import type { QueryClient } from "@tanstack/react-query";
+
 import {
   getLocalResponseSnapshot,
   putLocalResponseSnapshot,
@@ -21,6 +23,22 @@ export const loadCachedSpacesList = async (): Promise<Space[] | undefined> => {
     console.warn("[local-db] Failed to load cached spaces list", error);
     return undefined;
   }
+};
+
+export const publishSpacesList = async (
+  queryClient: QueryClient,
+  spaces: Space[],
+): Promise<void> => {
+  await queryClient.cancelQueries({
+    queryKey: ["spaces", "local"],
+    exact: true,
+  });
+  await queryClient.cancelQueries({
+    queryKey: ["spaces"],
+    exact: true,
+  });
+  queryClient.setQueryData(["spaces", "local"], spaces);
+  queryClient.setQueryData(["spaces"], spaces);
 };
 
 export const spaceContextCacheKey = (spaceCode: string): string =>

@@ -43,6 +43,11 @@ describe("service worker offline policy", () => {
     expect(devWorkerSource).toContain("/badges/rookie_tracker.png");
   });
 
+  it("precaches tag sample styles for offline tag editing", () => {
+    expect(generatorSource).toContain('"/tags/"');
+    expect(devWorkerSource).toContain("/tags/japan-vacation.png");
+  });
+
   it("handles HEAD probes so Next.js route checks do not hit the network", () => {
     expect(generatorSource).toContain('request.method !== "HEAD"');
     expect(devWorkerSource).toContain('request.method !== "HEAD"');
@@ -92,4 +97,36 @@ describe("service worker offline policy", () => {
     );
     expect(devWorkerSource).toContain("function isStaticAssetRequest");
   });
+
+  it("fetches online navigations before returning a cached page in sw-dev", () => {
+    const handleRequest = handleRequestSource(devWorkerSource);
+    const navigateIdx = handleRequest.indexOf('request.mode === "navigate"');
+    const cacheIdx = handleRequest.indexOf("matchCachedRequest");
+
+    expect(navigateIdx).toBeGreaterThan(-1);
+    expect(navigateIdx).toBeLessThan(cacheIdx);
+    expect(handleRequest).toContain("await fetch(request)");
+    expect(handleRequest).toContain("!isBrowserOffline()");
+  });
+
+  it("fetches /_next/static/ from the network before cache in sw-dev", () => {
+    const handleRequest = handleRequestSource(devWorkerSource);
+    const staticIdx = handleRequest.indexOf("isStaticAssetRequest(request)");
+    const cacheIdx = handleRequest.indexOf("matchCachedRequest");
+
+    expect(staticIdx).toBeGreaterThan(-1);
+    expect(staticIdx).toBeLessThan(cacheIdx);
+  });
+
+  it("does not intercept the service worker script itself in sw-dev", () => {
+    expect(devWorkerSource).toContain('url.pathname === "/sw-dev.js"');
+    expect(devWorkerSource).toContain('url.pathname === "/sw.js"');
+  });
 });
+
+function handleRequestSource(source: string): string {
+  return source.slice(
+    source.indexOf("async function handleRequest"),
+    source.indexOf('self.addEventListener("fetch"'),
+  );
+}

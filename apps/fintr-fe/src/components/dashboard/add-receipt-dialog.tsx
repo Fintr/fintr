@@ -6,7 +6,8 @@ import { uploadReceipt } from '@/services/receipts/mutation';
 import { toast } from 'sonner';
 import useAuthApi from '@/hooks/useAuthApi';
 import LoadingSpinner from '@/components/ui/loading-spinner';
-import { useAIUsage } from '@/hooks/async/useAIUsage';
+import { useProAccess } from '@/hooks/async/useProAccess';
+import { ProRequiredNotice } from '@/components/settings/pro-feature-gate';
 import { useDashboardData } from '@/hooks/async/useDashboardData';
 import {
   isReceiptImageFile,
@@ -43,11 +44,9 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     scope: "openid profile email read:users read:current_user read:ai_usage",
   });
 
-  const { data: aiUsage, isLoading: isLoadingUsage, refetch: refetchAIUsage } = useAIUsage();
+  const { data: proAccess, isPending: isCheckingPro } = useProAccess();
+  const hasPro = proAccess?.pro === true;
   const { data: dashboardData, isLoading: isLoadingDashboard } = useDashboardData();
-
-  // Check if tokens are available
-  const hasTokensAvailable = aiUsage ? aiUsage.remaining > 0 : false;
 
   // Check if space has accounts and expense categories
   const hasAccounts = dashboardData?.accountOptions && dashboardData.accountOptions.length > 0;
@@ -395,9 +394,6 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         });
       }
 
-      // Refetch AI usage so "X tokens left" updates immediately
-      refetchAIUsage();
-
       // Always navigate to Add Transaction dialog if onReceiptSuccess callback is provided
       if (onReceiptSuccess) {
         // Check if the response contains suggestedTransactionPayload
@@ -513,7 +509,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
       </Button>
       <Button
         onClick={handleSubmit}
-        disabled={isUploading || !hasTokensAvailable || !canUploadReceipt}
+        disabled={isUploading || !hasPro || !canUploadReceipt}
         className="bg-primary hover:bg-primary/80"
       >
         {isUploading ? (
@@ -531,20 +527,21 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     </div>
   ) : undefined;
 
-  const tokenUsageBadge = isLoadingUsage ? (
+  const proAccessNotice = isCheckingPro && !proAccess ? (
     <div className="flex items-center justify-center text-sm text-muted-foreground">
-      <span className="font-medium">Loading token usage...</span>
+      <span className="font-medium">Checking Fintr Pro…</span>
     </div>
-  ) : aiUsage ? (
+  ) : hasPro && proAccess?.source === "trial" ? (
     <div className="flex items-center justify-center">
       <div className="flex w-fit flex-col items-center justify-between rounded-md border border-primary/50 bg-primary/5 p-2 text-sm text-primary">
-        <span className={`font-medium ${!hasTokensAvailable ? 'text-destructive' : ''}`}>
-          <strong>{aiUsage.remaining}</strong> tokens left
+        <span className="font-medium">
+          {proAccess.trialDaysRemaining} days left in your trial
         </span>
-        <span className="text-xs">{aiUsage.usagePeriod}</span>
       </div>
     </div>
-  ) : null;
+  ) : hasPro ? null : (
+    <ProRequiredNotice featureName="AI receipt scanning" />
+  );
 
   return (
     <CustomDialog 
@@ -587,7 +584,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         ) : selectedImage ? (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 px-4 pb-3 pt-2">
-              {tokenUsageBadge}
+              {proAccessNotice}
             </div>
 
             {!isLoadingDashboard && !canUploadReceipt && (
@@ -624,7 +621,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
         ) : (
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6">
             <div className="space-y-4 py-4">
-              {tokenUsageBadge}
+              {proAccessNotice}
 
               <div data-tutorial-target="add-receipt-modal">
                 {!isLoadingDashboard && !canUploadReceipt && (
@@ -636,20 +633,12 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                     </div>
                   </div>
                 )}
-                {!hasTokensAvailable && (
-                  <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-center">
-                    <p className="mb-1 text-sm font-medium text-destructive">No tokens available</p>
-                    <p className="text-xs text-muted-foreground">
-                      You've used all your AI tokens for this period. Please wait until the next billing cycle or contact support.
-                    </p>
-                  </div>
-                )}
                 <div className="grid grid-cols-2 gap-4">
                   <Button
                     variant="outline"
                     className="flex h-24 flex-col items-center gap-2"
                     onClick={handleTakePhoto}
-                    disabled={!hasTokensAvailable || !canUploadReceipt}
+                    disabled={!hasPro || !canUploadReceipt}
                     data-tutorial-target="take-photo"
                   >
                     <Camera className="h-8 w-8" />
@@ -660,7 +649,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                     variant="outline"
                     className="flex h-24 flex-col items-center gap-2"
                     onClick={handleFileUpload}
-                    disabled={!hasTokensAvailable || !canUploadReceipt}
+                    disabled={!hasPro || !canUploadReceipt}
                     data-tutorial-target="upload-file"
                   >
                     <FileImage className="h-8 w-8" />

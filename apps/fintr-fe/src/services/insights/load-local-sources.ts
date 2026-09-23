@@ -213,7 +213,12 @@ export const loadInsightsBucketSources = async (params: {
     budgets,
     loansData,
   ] = await Promise.all([
-    resolveMonthlySummariesForInsights(spaceCode),
+    resolveMonthlySummariesForInsights(spaceCode, {
+      startDate,
+      endDate,
+      skipHydrationWhenBucketsHaveSignal: true,
+      skipTransactionHydration: true,
+    }),
     loadBudgetsForInsightsRange(spaceCode, startDate, endDate),
     loadCachedLoansInfiniteData(spaceCode),
   ]);
@@ -256,7 +261,12 @@ export const loadInsightsLocalSources = async (params: {
     budgets,
     loansData,
   ] = await Promise.all([
-    resolveMonthlySummariesForInsights(spaceCode),
+    resolveMonthlySummariesForInsights(spaceCode, {
+      startDate,
+      endDate,
+      skipHydrationWhenBucketsHaveSignal: true,
+      skipTransactionHydration: true,
+    }),
     loadBudgetsForInsightsRange(spaceCode, startDate, endDate),
     loadCachedLoansInfiniteData(spaceCode),
   ]);

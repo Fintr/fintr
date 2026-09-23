@@ -5,7 +5,7 @@ module Transactions
     class TagSerializer < Blueprinter::Base
       identifier :id
 
-      fields :name, :color, :is_default
+      fields :name, :color, :is_default, :style_preset_key
 
       field :style_image_url do |tag|
         next unless tag.style_image.attached?

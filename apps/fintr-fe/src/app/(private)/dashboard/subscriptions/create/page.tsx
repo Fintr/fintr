@@ -287,7 +287,7 @@ const CreateSubscriptionPage = () => {
                           <div className="flex items-center space-x-2">
                             <Check className="h-5 w-5 text-green-600" />
                             <span className="text-primary">
-                              {plan.tokenLimit.toLocaleString()} tokens included
+                              Fintr Pro
                             </span>
                           </div>
                         </div>
@@ -324,7 +324,7 @@ const CreateSubscriptionPage = () => {
                       {selectedPlan.interval}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {selectedPlan.tokenLimit} tokens included
+                      Fintr Pro
                     </p>
                   </div>
                 </div>

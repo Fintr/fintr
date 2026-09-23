@@ -50,8 +50,16 @@ export const RecurringUpcomingCalendar = ({
         <span className="text-xs text-muted-foreground">{monthLabel}</span>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground">
-        {["S", "M", "T", "W", "T", "F", "S"].map((label) => (
-          <span key={label}>{label}</span>
+        {[
+          { key: "sun", label: "S" },
+          { key: "mon", label: "M" },
+          { key: "tue", label: "T" },
+          { key: "wed", label: "W" },
+          { key: "thu", label: "T" },
+          { key: "fri", label: "F" },
+          { key: "sat", label: "S" },
+        ].map((day) => (
+          <span key={day.key}>{day.label}</span>
         ))}
       </div>
       <div className="mt-1 grid grid-cols-7 gap-1">

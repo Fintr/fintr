@@ -18,6 +18,7 @@ export const OUTBOX_COMMAND_USER_SETTINGS_UPDATE = "user.settings.update";
 export const OUTBOX_COMMAND_BUDGET_CREATE = "budget.create";
 export const OUTBOX_COMMAND_BUDGET_UPDATE = "budget.update";
 export const OUTBOX_COMMAND_BUDGET_DELETE = "budget.delete";
+export const OUTBOX_COMMAND_BUDGET_ENSURE_MONTH = "budget.ensure_month";
 export const OUTBOX_COMMAND_CATEGORY_CREATE = "category.create";
 export const OUTBOX_COMMAND_CATEGORY_UPDATE = "category.update";
 export const OUTBOX_COMMAND_CATEGORY_DELETE = "category.delete";

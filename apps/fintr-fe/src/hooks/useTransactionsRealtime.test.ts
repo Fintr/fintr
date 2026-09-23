@@ -25,6 +25,7 @@ describe("parseRealtimeTransactionTags", () => {
         color: "#ff0000",
         isDefault: true,
         styleImageUrl: undefined,
+        stylePresetKey: undefined,
       },
     ]);
   });
@@ -59,6 +60,7 @@ describe("normalizeRealtimeIndexTransaction", () => {
         color: "#ff0000",
         isDefault: false,
         styleImageUrl: undefined,
+        stylePresetKey: undefined,
       },
     ]);
     expect(row?.tagIds).toEqual(["tag-1"]);

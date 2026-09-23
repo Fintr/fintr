@@ -28,6 +28,7 @@ import {
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import type { TransactionTag } from "@/types/transactionTagTypes";
 import { coerceCombinedTransactionType } from "@/utils/transactionEntryTypeFilter";
+import { normalizeTransactionTag } from "@/services/transactions/tags/local-cache";
 
 type TransactionRealtimeMessage = CableInboundMessage & Record<string, unknown>;
 
@@ -61,15 +62,14 @@ export const parseRealtimeTransactionTags = (
         return null;
       }
 
-      return {
+      return normalizeTransactionTag({
         id,
         name,
         color: color || "#000000",
         isDefault: Boolean(record.isDefault ?? record.is_default),
-        styleImageUrl: asString(
-          record.styleImageUrl ?? record.style_image_url,
-        ) || undefined,
-      } satisfies TransactionTag;
+        styleImageUrl: record.styleImageUrl ?? record.style_image_url,
+        stylePresetKey: record.stylePresetKey ?? record.style_preset_key,
+      });
     })
     .filter((tag): tag is TransactionTag => tag !== null);
 

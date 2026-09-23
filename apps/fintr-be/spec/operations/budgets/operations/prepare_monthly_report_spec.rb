@@ -98,21 +98,34 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
         )
       end
 
-      it 'calls FilteredTransactions query with correct parameters' do
-        allow(Transactions::Queries::FilteredTransactions).to receive(:call).and_call_original
+      it 'does not create monthly budgets on the backend' do
+        allow(Budgets::Operations::CreateMonthlyBudget).to receive(:new).and_call_original
+
         call_operation
-        expect(Transactions::Queries::FilteredTransactions).to have_received(:call).with(
-          params: hash_including(
-            space_code: space.code,
-            start_date: test_date.beginning_of_month,
-            end_date: test_date.end_of_month,
-            category_name: nil,
-            without_initial_balance: true,
-            balance_state: "calculated",
-            transaction_type: "Transactions::Expense",
-            paginate: false
-          )
+
+        expect(Budgets::Operations::CreateMonthlyBudget).not_to have_received(:new)
+      end
+
+      it 'keeps summary remaining aligned to listed budgets when unbudgeted expenses exist' do
+        shopping_category = create(:category, space:, category_type: "expense", name: "Shopping")
+        create(
+          :expense_transaction,
+          user:,
+          space:,
+          account:,
+          category: shopping_category,
+          date: test_date,
+          amount_cents: 1_000_000,
+          amount_currency: "PHP",
+          balance_state: :calculated,
         )
+
+        result = call_operation
+        expect(result).to be_success
+        summary = result.value![:summary]
+        expect(summary[:total_budget]).to eq(300)
+        expect(summary[:total_spent]).to eq(150)
+        expect(summary[:remaining]).to eq(150)
       end
     end
 
@@ -384,6 +397,43 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
 
       it 'returns the query failure' do
         expect(call_operation.failure).to eq({ error: "Transaction query failed" })
+      end
+    end
+
+    context 'when the requested month has no budgets but the previous month does' do
+      let(:params) do
+        {
+          space_code: space.code,
+          date: test_date
+        }
+      end
+
+      let!(:food_category) { create(:category, space:, category_type: "expense", name: "Food") }
+
+      before do
+        create(
+          :budget,
+          space:,
+          category: food_category,
+          date: test_date.beginning_of_month - 1.month,
+          amount_cents: 40_000,
+          amount_currency: "PHP",
+        )
+        allow(Budgets::Queries::MonthlyBudgets).to receive(:call).and_return(
+          Dry::Monads::Success(Budget.none)
+        )
+      end
+
+      it { is_expected.to be_success }
+
+      it 'does not copy last month budgets on the backend' do
+        expect { call_operation }.not_to change(Budget, :count)
+      end
+
+      it 'returns an empty report for the requested month' do
+        output = call_operation.value!
+        expect(output[:budgets]).to eq([])
+        expect(output[:summary][:total_budget]).to eq(0)
       end
     end
 

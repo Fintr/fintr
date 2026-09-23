@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { navigateDashboardClient } from "@/utils/detailSearchParam";
 import { Pencil } from "lucide-react";
 
 import { RecurringScheduleBadge } from "@/components/dashboard/recurring/recurring-schedule-badge";
@@ -43,7 +43,6 @@ type RecurringSeriesDetailContentProps = {
 export const RecurringSeriesDetailContent = ({
   seriesId,
 }: RecurringSeriesDetailContentProps) => {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { api } = useAuthApi();
   const { currentSpace } = useSpaceContext(api);
@@ -167,7 +166,7 @@ export const RecurringSeriesDetailContent = ({
     }
 
     if (options.deleteScope === DeleteScopeEnum.ALL_IN_SERIES) {
-      router.push("/dashboard/recurring");
+      navigateDashboardClient("/dashboard/recurring");
       return;
     }
 
@@ -177,7 +176,7 @@ export const RecurringSeriesDetailContent = ({
     );
 
     if (!stillExists) {
-      router.push("/dashboard/recurring");
+      navigateDashboardClient("/dashboard/recurring");
     }
   };
 

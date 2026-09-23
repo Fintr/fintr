@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 
+import { applyLocalTransactionsToAccountBalances } from "@/services/transactions/accounts/account-cache-ops";
 import {
   applyLocalTransactionToMonthlySummaries,
   setMonthlyFinancialSummariesQueryData,
@@ -19,6 +20,7 @@ import { notifyRealtimeTransactionActor } from "@/services/transactions/realtime
 import { removeIndexTransactionsFromQueryCaches } from "@/services/transactions/remove-from-query-caches";
 import { TRANSFER_FEE_CATEGORY_NAME } from "@/services/transactions/transfers/fee-description";
 import { removeMatchingLocalTransferFeePlaceholders } from "@/services/transactions/transfers/reconcile-local-fees";
+import { inheritSeriesTagsFromLocalContext } from "@/services/transactions/inherit-series-tags";
 import { removeMatchingLocalSeriesChildPlaceholders } from "@/services/transactions/reconcile-local-series-children";
 import {
   replaceIndexTransactionIdInQueryCaches,
@@ -155,27 +157,41 @@ export const applyTransactionCreated = async (params: {
     notifyActor = false,
   } = params;
 
-  const rows = payloadRows(change.payload);
-  if (rows.length === 0) {
+  const incomingRows = payloadRows(change.payload);
+  if (incomingRows.length === 0) {
     return;
   }
 
   let replacedLocalFeePlaceholder = false;
-  for (const row of rows) {
+  const rows: IndexTransactionWithCategoryIds[] = [];
+  for (const incoming of incomingRows) {
     const replacedFee = await removeMatchingLocalTransferFeePlaceholders({
       spaceId,
-      serverFee: row,
+      serverFee: incoming,
       queryClient,
     });
     if (replacedFee) {
       replacedLocalFeePlaceholder = true;
     }
 
-    await removeMatchingLocalSeriesChildPlaceholders({
+    const placeholders = await removeMatchingLocalSeriesChildPlaceholders({
       spaceId,
-      serverRow: row,
+      serverRow: incoming,
       queryClient,
     });
+    const parentId = incoming.parentId || incoming.rootParentId;
+    const parent = parentId
+      ? ((await loadLocalIndexTransactionById(spaceId, parentId)) as
+          | IndexTransactionWithCategoryIds
+          | undefined)
+      : undefined;
+    rows.push(
+      inheritSeriesTagsFromLocalContext({
+        incoming,
+        placeholders,
+        parent,
+      }),
+    );
   }
 
   const reconciledOwnOptimistic = await reconcileOptimisticCreateIds({
@@ -199,6 +215,7 @@ export const applyTransactionCreated = async (params: {
 
   try {
     let nextSummaries = null;
+    const newlyAppliedRows: IndexTransactionWithCategoryIds[] = [];
     for (const row of rows) {
       const alreadyLocal = await loadLocalIndexTransactionById(spaceId, row.id);
       const feeAlreadyCountedOptimistically =
@@ -226,6 +243,7 @@ export const applyTransactionCreated = async (params: {
       ) {
         continue;
       }
+      newlyAppliedRows.push(row);
       nextSummaries = await applyLocalTransactionToMonthlySummaries({
         spaceCode: spaceId,
         date: row.date,
@@ -234,6 +252,14 @@ export const applyTransactionCreated = async (params: {
           row.type === CombinedTransactionTypeEnum.INCOME ? "income" : "expense",
         mode: "add",
         currency: row.amountCurrency,
+      });
+    }
+    if (newlyAppliedRows.length > 0) {
+      await applyLocalTransactionsToAccountBalances({
+        spaceId,
+        transactions: newlyAppliedRows,
+        mode: "apply",
+        queryClient,
       });
     }
     if (nextSummaries) {
@@ -338,10 +364,27 @@ export const applyTransactionDeleted = async (params: {
   }
 
   try {
+    const locallyPresentRows: IndexTransactionWithCategoryIds[] = [];
+    for (const row of rows) {
+      const existing = await loadLocalIndexTransactionById(spaceId, row.id);
+      if (existing) {
+        locallyPresentRows.push(row);
+      }
+    }
+
     await removeLocalIndexTransactionsByIds(
       spaceId,
       rows.map((row) => row.id),
     );
+
+    if (locallyPresentRows.length > 0) {
+      await applyLocalTransactionsToAccountBalances({
+        spaceId,
+        transactions: locallyPresentRows,
+        mode: "revert",
+        queryClient,
+      });
+    }
 
     let nextSummaries = null;
     for (const row of rows) {

@@ -5,8 +5,9 @@ import { formatCurrency, cn, summaryAmountFractionDigits } from "@/lib/utils";
 import { AnimatedCurrency } from "@/components/ui/animated-currency";
 import { ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from "lucide-react";
 
-const totalChipClassName =
-  "flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-3 py-2 rounded-lg flex-1 md:flex-none";
+const totalChipBaseClassName =
+  "items-center justify-center gap-1.5 md:gap-2 px-2 md:px-3 py-2 rounded-lg flex-1 md:flex-none";
+const totalChipClassName = cn("flex", totalChipBaseClassName);
 
 type SummaryBoxConfig = {
   key: keyof TransactionTotals;
@@ -144,13 +145,31 @@ export function TransactionTotalsDisplay({
   if (isLoading) {
     return (
       <div className="mb-4 w-full md:w-fit">
-        <div
-          className={cn(
-            totalChipClassName,
-            "bg-gray-100 dark:bg-muted animate-pulse w-full md:w-auto",
-          )}
-        >
-          <div className="h-4 w-24 bg-gray-200 dark:bg-muted-foreground/20 rounded" />
+        <div className="flex flex-wrap gap-2 md:gap-3">
+          <div
+            className={cn(
+              totalChipBaseClassName,
+              "hidden md:flex bg-gray-100 dark:bg-muted animate-pulse",
+            )}
+          >
+            <div className="h-4 w-24 bg-gray-200 dark:bg-muted-foreground/20 rounded" />
+          </div>
+          <div
+            className={cn(
+              totalChipBaseClassName,
+              "hidden md:flex bg-gray-100 dark:bg-muted animate-pulse",
+            )}
+          >
+            <div className="h-4 w-24 bg-gray-200 dark:bg-muted-foreground/20 rounded" />
+          </div>
+          <div
+            className={cn(
+              totalChipClassName,
+              "bg-gray-100 dark:bg-muted animate-pulse w-full md:w-auto",
+            )}
+          >
+            <div className="h-4 w-24 bg-gray-200 dark:bg-muted-foreground/20 rounded" />
+          </div>
         </div>
       </div>
     );
@@ -160,19 +179,61 @@ export function TransactionTotalsDisplay({
     return null;
   }
 
+  const hasIncome = totals.income > 0;
+  const hasExpense = Math.abs(totals.expense) > 0;
   const hasTransfer = Math.abs(totals.transfer) > 0;
 
-  if (!hasTransfer) {
+  if (!hasIncome && !hasExpense && !hasTransfer) {
     return null;
   }
 
   return (
-    <div className="mb-4 w-full md:w-fit">
-      <div className={cn(totalChipClassName, "bg-blue-100/50 dark:bg-blue-950/40 w-full md:w-auto")}>
-        <ArrowLeftRight className="h-4 w-4 text-blue-900 dark:text-blue-400" />
-        <span className="text-sm font-medium text-blue-900 dark:text-blue-400">
-          Transfers: {formatCurrency(Math.abs(totals.transfer), spaceCurrency)}
-        </span>
+    <div
+      className={cn(
+        "mb-4 w-full md:w-fit",
+        !hasTransfer && "hidden md:block",
+      )}
+    >
+      <div className="flex flex-wrap gap-2 md:gap-3">
+        {hasIncome && (
+          <div
+            className={cn(
+              totalChipBaseClassName,
+              "hidden md:flex bg-teal-50 dark:bg-teal-950/40",
+            )}
+          >
+            <ArrowUpRight className="h-4 w-4 text-teal-600 dark:text-teal-500" />
+            <span className="text-sm font-medium text-teal-600 dark:text-teal-500">
+              Income: {formatCurrency(totals.income, spaceCurrency)}
+            </span>
+          </div>
+        )}
+        {hasExpense && (
+          <div
+            className={cn(
+              totalChipBaseClassName,
+              "hidden md:flex bg-red-50 dark:bg-red-950/40",
+            )}
+          >
+            <ArrowDownLeft className="h-4 w-4 text-red-900 dark:text-red-700" />
+            <span className="text-sm font-medium text-red-900 dark:text-red-700">
+              Expenses: {formatCurrency(Math.abs(totals.expense), spaceCurrency)}
+            </span>
+          </div>
+        )}
+        {hasTransfer && (
+          <div
+            className={cn(
+              totalChipClassName,
+              "bg-blue-100/50 dark:bg-blue-950/40 w-full md:w-auto",
+            )}
+          >
+            <ArrowLeftRight className="h-4 w-4 text-blue-900 dark:text-blue-400" />
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-400">
+              Transfers: {formatCurrency(Math.abs(totals.transfer), spaceCurrency)}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

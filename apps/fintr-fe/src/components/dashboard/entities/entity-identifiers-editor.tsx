@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Fingerprint, Plus, ScanLine, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useQueryClient } from "@tanstack/react-query";
 import { ENTITY_DETAIL_KEY } from "@/hooks/async/useEntityDetail";
+import { cacheEntityIdentifiers } from "@/services/entities/local-cache";
 import {
   createMerchantIdentifier,
   deleteMerchantIdentifier,
@@ -32,13 +34,29 @@ export function EntityIdentifiersEditor({
 }: EntityIdentifiersEditorProps) {
   const { api } = useAuthApi();
   const queryClient = useQueryClient();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
   const [identifierInput, setIdentifierInput] = useState("");
+  const [localIdentifiers, setLocalIdentifiers] = useState(identifiers);
   const [isAddingIdentifier, setIsAddingIdentifier] = useState(false);
   const [deletingIdentifierId, setDeletingIdentifierId] = useState<string | null>(
     null,
   );
+  const identifiersKey = identifiers
+    .map((identifier) => `${identifier.id}:${identifier.label}`)
+    .join("|");
 
-  const refreshIdentifiers = () => {
+  useEffect(() => {
+    setLocalIdentifiers(identifiers);
+  }, [identifiersKey, identifiers]);
+
+  const persistIdentifiers = async (nextIdentifiers: EntityIdentifier[]) => {
+    setLocalIdentifiers(nextIdentifiers);
+    await cacheEntityIdentifiers({
+      spaceCode,
+      entityId,
+      identifiers: nextIdentifiers,
+      queryClient,
+    });
     queryClient.invalidateQueries({ queryKey: [ENTITY_DETAIL_KEY] });
   };
 
@@ -57,9 +75,13 @@ export function EntityIdentifiersEditor({
     setIsAddingIdentifier(true);
 
     try {
-      await createMerchantIdentifier(api, entityId, label);
+      const created = await createMerchantIdentifier(api, entityId, label);
+      const nextIdentifiers = [
+        created,
+        ...localIdentifiers.filter((identifier) => identifier.id !== created.id),
+      ];
       setIdentifierInput("");
-      refreshIdentifiers();
+      await persistIdentifiers(nextIdentifiers);
       toast.success("Identifier added");
     } catch (error) {
       toast.error(
@@ -75,7 +97,10 @@ export function EntityIdentifiersEditor({
 
     try {
       await deleteMerchantIdentifier(api, entityId, identifierId);
-      refreshIdentifiers();
+      const nextIdentifiers = localIdentifiers.filter(
+        (identifier) => identifier.id !== identifierId,
+      );
+      await persistIdentifiers(nextIdentifiers);
       toast.success("Identifier removed");
     } catch (error) {
       toast.error(
@@ -123,14 +148,14 @@ export function EntityIdentifiersEditor({
         </Button>
       </div>
 
-      {identifiers.length === 0 ? (
+      {localIdentifiers.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No identifiers yet. Add receipt text above, or save a receipt expense
           and pick this merchant.
         </p>
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-          {identifiers.map((identifier) => (
+          {localIdentifiers.map((identifier) => (
             <li key={identifier.id}>
               <div className="flex items-center gap-3 px-3 py-2.5">
                 <Fingerprint className="h-4 w-4 shrink-0 text-primary" aria-hidden />

@@ -11,8 +11,8 @@ module Finance
         let(:user) { create(:user) }
         let(:admin) { create(:user) }
         let(:space) { create(:personal_space, owner: user) }
-        let!(:subscription_plan) { create(:subscription_plan, slug: "monthly-#{SecureRandom.hex(4)}", interval: "month", token_limit: 1000) }
-        let!(:yearly_plan) { create(:subscription_plan, slug: "yearly-#{SecureRandom.hex(4)}", interval: "year", token_limit: 12000) }
+        let!(:subscription_plan) { create(:subscription_plan, slug: "monthly-#{SecureRandom.hex(4)}", interval: "month") }
+        let!(:yearly_plan) { create(:subscription_plan, slug: "yearly-#{SecureRandom.hex(4)}", interval: "year") }
 
         describe "#call" do
           context "with basic parameters" do

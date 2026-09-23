@@ -11,9 +11,13 @@ import {
   getLocalDb,
   OUTBOX_COMMAND_BUDGET_CREATE,
   OUTBOX_COMMAND_BUDGET_DELETE,
+  OUTBOX_COMMAND_BUDGET_ENSURE_MONTH,
   OUTBOX_COMMAND_BUDGET_UPDATE,
   OUTBOX_COMMAND_CATEGORY_CONVERT,
   OUTBOX_COMMAND_CATEGORY_CREATE,
+  OUTBOX_COMMAND_TAG_CREATE,
+  OUTBOX_COMMAND_TAG_DELETE,
+  OUTBOX_COMMAND_LOAN_CREATE,
   OUTBOX_COMMAND_TRANSACTION_CREATE,
   OUTBOX_COMMAND_TRANSACTION_DELETE,
   OUTBOX_COMMAND_TRANSACTION_UPDATE,
@@ -28,10 +32,18 @@ vi.mock("@/services/transactions/mutation", () => ({
   updateTransaction: vi.fn(),
 }));
 
+vi.mock("@/services/loans/mutation", () => ({
+  createLoan: vi.fn(),
+}));
+
 vi.mock("@/services/budgets/mutations", () => ({
   createBudget: vi.fn(),
   updateBudget: vi.fn(),
   deleteBudget: vi.fn(),
+}));
+
+vi.mock("@/services/budgets/queries", () => ({
+  fetchBudgetsPage: vi.fn(),
 }));
 
 vi.mock("@/services/transactions/categories/mutation", () => ({
@@ -39,17 +51,25 @@ vi.mock("@/services/transactions/categories/mutation", () => ({
   createTransactionCategory: vi.fn(),
 }));
 
+vi.mock("@/services/transactions/tags/mutation", () => ({
+  createTransactionTag: vi.fn(),
+  deleteTransactionTag: vi.fn(),
+}));
+
 import {
   createTransaction,
   deleteTransaction,
   updateTransaction,
 } from "@/services/transactions/mutation";
+import { createLoan } from "@/services/loans/mutation";
 import {
   createBudget,
   deleteBudget,
   updateBudget,
 } from "@/services/budgets/mutations";
+import { fetchBudgetsPage } from "@/services/budgets/queries";
 import { convertCategoryHierarchy, createTransactionCategory } from "@/services/transactions/categories/mutation";
+import { deleteTransactionTag, createTransactionTag } from "@/services/transactions/tags/mutation";
 import { cacheTransactionCategoriesResponse } from "@/services/transactions/categories/local-cache";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import { drainOutboxForSpace } from "./drain-outbox";
@@ -470,6 +490,28 @@ describe("drainOutboxForSpace", () => {
     expect(await getLocalDb().outbox.count()).toBe(0);
   });
 
+  it("drops legacy budget ensure-month commands; monthly copies drain as budget.create", async () => {
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_BUDGET_ENSURE_MONTH,
+      clientMutationId: "cid-budget-ensure",
+      payload: {
+        startDate: "2026-08-01",
+        endDate: "2026-08-31",
+      },
+    });
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.processed).toBe(1);
+    expect(result.failed).toBe(0);
+    expect(fetchBudgetsPage).not.toHaveBeenCalled();
+    expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
   it("drains pending category create commands", async () => {
     await cacheTransactionCategoriesResponse("space-a", {
       data: { expenseCategories: [], incomeCategories: [] },
@@ -575,6 +617,105 @@ describe("drainOutboxForSpace", () => {
         conversionType: "to_parent",
         newParentId: null,
       },
+    );
+    expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("drains pending tag delete commands", async () => {
+    vi.mocked(deleteTransactionTag).mockResolvedValue({ success: true });
+
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_TAG_DELETE,
+      clientMutationId: "cid-tag-delete",
+      payload: {
+        tagId: "tag-1",
+      },
+    });
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.processed).toBe(1);
+    expect(result.failed).toBe(0);
+    expect(deleteTransactionTag).toHaveBeenCalledWith(
+      expect.anything(),
+      "tag-1",
+    );
+    expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("drains pending tag create commands", async () => {
+    vi.mocked(createTransactionTag).mockResolvedValue({
+      data: {
+        id: "server-tag-1",
+        name: "Thailand 2026",
+        color: "#00897B",
+      },
+    });
+
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_TAG_CREATE,
+      clientMutationId: "cid-tag-create",
+      payload: {
+        name: "Thailand 2026",
+        color: "#00897B",
+        localId: "local:cid-tag-create",
+      },
+    });
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.processed).toBe(1);
+    expect(result.failed).toBe(0);
+    expect(createTransactionTag).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        name: "Thailand 2026",
+        color: "#00897B",
+      }),
+    );
+    expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("sends clientMutationId when draining a loan create", async () => {
+    vi.mocked(createLoan).mockResolvedValue({ data: { id: "loan-server-1" } });
+
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_LOAN_CREATE,
+      clientMutationId: "cid-loan-create",
+      payload: {
+        principalAmount: 500,
+        interestRate: 0,
+        date: "2026-08-08",
+        loanType: "lent",
+        entityName: "Entity A",
+        accountName: "Cash",
+        loanTermMonths: 1,
+        description: "Share of Dinner",
+        adjustsAccountBalance: true,
+      },
+    });
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.processed).toBe(1);
+    expect(createLoan).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        principalAmount: 500,
+        clientMutationId: "cid-loan-create",
+      }),
     );
     expect(await getLocalDb().outbox.count()).toBe(0);
   });

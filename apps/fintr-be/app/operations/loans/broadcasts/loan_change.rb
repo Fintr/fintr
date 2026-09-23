@@ -7,8 +7,12 @@ module Loans
         Transactions::Broadcasts::TransactionChange.stream_key(space_id:)
       end
 
-      def self.loan_created(loan:, actor: nil)
-        new.loan_created(loan:, actor:)
+      def self.loan_created(loan:, actor: nil, origin_client_mutation_id: nil)
+        new.loan_created(
+          loan:,
+          actor:,
+          origin_client_mutation_id:,
+        )
       end
 
       def self.loan_updated(loan:, actor: nil)
@@ -36,13 +40,14 @@ module Loans
         )
       end
 
-      def loan_created(loan:, actor: nil)
+      def loan_created(loan:, actor: nil, origin_client_mutation_id: nil)
         publish_entity(
           op: "loan.created",
           space_id: loan.space_id,
           payload: { loan: serialize_loan(loan:) },
           entity_id: loan.id,
           actor:,
+          origin_client_mutation_id:,
         )
       end
 
@@ -101,7 +106,14 @@ module Loans
 
       private
 
-      def publish_entity(op:, space_id:, payload:, entity_id:, actor:)
+      def publish_entity(
+        op:,
+        space_id:,
+        payload:,
+        entity_id:,
+        actor:,
+        origin_client_mutation_id: nil
+      )
         Sync::Broadcasts::PublishChange.call(
           op:,
           space_id:,
@@ -109,6 +121,7 @@ module Loans
           stream_key: self.class.stream_key(space_id:),
           actor:,
           entity_id:,
+          origin_client_mutation_id:,
           logger_tag: "Loans::Broadcasts::LoanChange",
         )
       end

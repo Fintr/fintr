@@ -19,6 +19,11 @@ import {
   loadCachedSpacesList,
 } from "@/services/spaces/spaces-list-cache";
 import {
+  resolveCachedSpacesList,
+  resolveCurrentSpace,
+  shouldSkipSpacesNetworkFetch,
+} from "@/services/spaces/current-space-selection";
+import {
   invalidateSpaceSwitchQueries,
   waitForSpaceSwitchReady,
 } from "@/utils/invalidateSpaceQueries";
@@ -42,29 +47,48 @@ export function useSpaceContext(api: AxiosInstance) {
 
   const localSpacesQuery = useQuery({
     queryKey: ["spaces", "local"],
-    queryFn: async () => (await loadCachedSpacesList()) ?? null,
+    queryFn: async () => {
+      const loaded = (await loadCachedSpacesList()) ?? null;
+      const published = queryClient.getQueryData<Space[] | null>([
+        "spaces",
+        "local",
+      ]);
+      return resolveCachedSpacesList({
+        loaded,
+        published,
+      });
+    },
+    networkMode: "always",
     staleTime: Infinity,
   });
 
-  // Membership + domain reads refresh while online; IndexedDB-only when offline.
-  const skipSpacesNetwork = useSkipCachedNetworkFetch(localSpacesQuery);
+  const cachedSpaces = Array.isArray(localSpacesQuery.data)
+    ? localSpacesQuery.data
+    : undefined;
+  const skipCachedNetwork = useSkipCachedNetworkFetch(localSpacesQuery);
+  const skipSpacesNetwork = shouldSkipSpacesNetworkFetch({
+    skipCachedNetwork,
+    cachedSpaceCount: cachedSpaces?.length ?? 0,
+  });
 
-  // Fetch available spaces
-  const { data: spaces, isLoading: spacesLoading } = useQuery({
+  const { data: networkSpaces, isLoading: spacesLoading } = useQuery({
     queryKey: ["spaces"],
     queryFn: async () => {
       const response = await spacesApi.getSpaces(api);
-      const spacesData = response.data.data.spaces;
+      const spacesData = response.data.data.spaces ?? [];
       await cacheSpacesList(spacesData);
+      queryClient.setQueryData(["spaces", "local"], spacesData);
       setAvailableSpaces(spacesData);
       return spacesData;
     },
     enabled: !skipSpacesNetwork,
-    placeholderData: localSpacesQuery.data ?? undefined,
+    placeholderData: cachedSpaces,
     staleTime: skipSpacesNetwork ? Infinity : 5 * 60 * 1000,
     refetchOnMount: !skipSpacesNetwork,
     refetchOnWindowFocus: !skipSpacesNetwork,
   });
+
+  const spaces = networkSpaces ?? cachedSpaces;
 
   const localSpaceContextQuery = useQuery({
     queryKey: ["space-context", "local", currentSpace?.code],
@@ -169,40 +193,43 @@ export function useSpaceContext(api: AxiosInstance) {
     switchSpaceMutation.mutate(spaceCode);
   };
 
-  // Initialize current space from localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined' && spaces && !currentSpace) {
-      const savedSpaceCode = localStorage.getItem("spaceCode");
-      if (savedSpaceCode) {
-        const space = spaces.find(s => s.code === savedSpaceCode);
-        if (space) {
-          setCurrentSpace(space);
-        } else if (spaces.length > 0) {
-          setCurrentSpace(spaces[0]);
-          localStorage.setItem("spaceCode", spaces[0].code);
-        }
-      } else if (spaces.length > 0) {
-        setCurrentSpace(spaces[0]);
-        localStorage.setItem("spaceCode", spaces[0].code);
-      }
+    if (typeof window === "undefined" || !spaces?.length) {
+      return;
     }
-  }, [spaces, currentSpace, setCurrentSpace]);
 
-  useEffect(() => {
-    if (!spaces?.length || !currentSpace?.code) return;
-    const fresh = spaces.find((s) => s.code === currentSpace.code);
-    if (!fresh) return;
+    const savedSpaceCode = localStorage.getItem("spaceCode");
+    const next = resolveCurrentSpace({
+      spaces,
+      currentSpace,
+      savedSpaceCode,
+    });
+
+    if (!next) {
+      return;
+    }
 
     const defaultTxEqual =
-      (fresh.defaultTransactionCurrency ?? null) ===
-      (currentSpace.defaultTransactionCurrency ?? null);
+      (next.defaultTransactionCurrency ?? null) ===
+      (currentSpace?.defaultTransactionCurrency ?? null);
+    const unchanged =
+      next.code === currentSpace?.code
+      && next.name === currentSpace?.name
+      && next.currency === currentSpace?.currency
+      && next.userRole === currentSpace?.userRole
+      && defaultTxEqual;
 
-    if (
-      fresh.currency !== currentSpace.currency ||
-      fresh.name !== currentSpace.name ||
-      !defaultTxEqual
-    ) {
-      setCurrentSpace(fresh);
+    if (!unchanged) {
+      setCurrentSpace(next);
+    }
+
+    if (savedSpaceCode !== next.code) {
+      localStorage.setItem("spaceCode", next.code);
+      window.dispatchEvent(
+        new CustomEvent("spaceCodeChanged", {
+          detail: { spaceCode: next.code },
+        }),
+      );
     }
   }, [spaces, currentSpace, setCurrentSpace]);
 

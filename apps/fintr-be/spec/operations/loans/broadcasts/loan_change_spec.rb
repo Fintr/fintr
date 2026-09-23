@@ -46,6 +46,22 @@ RSpec.describe Loans::Broadcasts::LoanChange do
           ),
         )
     end
+
+    it "includes originClientMutationId in the ActionCable payload for local-first creates" do
+      expect do
+        described_class.loan_created(
+          loan:,
+          actor:,
+          origin_client_mutation_id: "cid-loan-local-first-1",
+        )
+      end.to have_broadcasted_to("transactions:#{space.id}").with(
+        hash_including(
+          type: "sync_change",
+          op: "loan.created",
+          originClientMutationId: "cid-loan-local-first-1",
+        ),
+      )
+    end
   end
 
   describe ".loan_deleted" do

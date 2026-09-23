@@ -2,7 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { navigateDashboardClient } from "@/utils/detailSearchParam";
+import { commitDashboardClientNavigation } from "@/lib/dashboard-nav-routes";
 import {
   Calendar as CalendarLucide,
   CheckCircle2,
@@ -63,7 +65,6 @@ function MetadataItem({ icon, label, value }: MetadataItemProps) {
 }
 
 export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [spaceCode] = useLocalStorage("spaceCode", "");
@@ -92,7 +93,7 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
       { queryClient, waitForSync: false },
     );
 
-    router.push("/dashboard/loans");
+    navigateDashboardClient("/dashboard/loans");
 
     void Promise.resolve(result.syncPromise)
       .then(async (synced) => {
@@ -129,7 +130,10 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
 
     if (loan.status !== "active") {
       handledRecordPaymentParam.current = true;
-      router.replace(`/dashboard/loans/detail?loanId=${loanId}`, { scroll: false });
+      commitDashboardClientNavigation(
+        `/dashboard/loans/detail?loanId=${loanId}`,
+        { replace: true },
+      );
       return;
     }
 
@@ -142,8 +146,11 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
       date: new Date(),
     });
 
-    router.replace(`/dashboard/loans/detail?loanId=${loanId}`, { scroll: false });
-  }, [loan, loanId, requestOpenPayment, router, searchParams]);
+    commitDashboardClientNavigation(
+      `/dashboard/loans/detail?loanId=${loanId}`,
+      { replace: true },
+    );
+  }, [loan, loanId, requestOpenPayment, searchParams]);
 
   if (isLoading) {
     return (
@@ -239,7 +246,6 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
                   loan={loan}
                   onDelete={handleDeleteLoan}
                   triggerVariant="toolbar"
-                  triggerAccentClassName={accentClass}
                 />
               </div>
             </div>
@@ -450,7 +456,7 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
         openPaymentRequestId={openPaymentRequestId}
         paymentPrefill={paymentPrefill}
         onPaymentRecorded={() => {
-          router.push("/dashboard/loans");
+          navigateDashboardClient("/dashboard/loans");
         }}
       />
     </div>

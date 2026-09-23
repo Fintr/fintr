@@ -6,6 +6,7 @@ import {
   type AccountNameResolver,
 } from "@/lib/local-db/account-name-resolver";
 import {
+  countSpaceTransactions,
   listSpaceTransactions,
   putSpaceTransactions,
 } from "@/lib/local-db/transactions";
@@ -742,9 +743,15 @@ export const patchLinkedDataForAccountUpdate = async (params: {
   return changedCount;
 };
 
-const relationBackfillPromises = new Map<string, Promise<number>>();
+const relationBackfillState = new Map<
+  string,
+  {
+    promise: Promise<number>;
+    rowCount: number;
+  }
+>();
 
-/** Idempotent per-space backfill (deduped while in flight). */
+/** Idempotent per-space backfill (deduped while in flight and after success). */
 export const ensureSpaceTransactionRelationIds = async (
   spaceId: string,
 ): Promise<void> => {
@@ -752,19 +759,31 @@ export const ensureSpaceTransactionRelationIds = async (
     return;
   }
 
-  const inFlight = relationBackfillPromises.get(spaceId);
-  if (inFlight) {
-    await inFlight;
+  const currentCount = await countSpaceTransactions(spaceId);
+  const existing = relationBackfillState.get(spaceId);
+  if (existing && existing.rowCount === currentCount) {
+    await existing.promise;
     return;
   }
 
   const promise = backfillSpaceTransactionRelationIds(spaceId);
-  relationBackfillPromises.set(spaceId, promise);
+  relationBackfillState.set(
+    spaceId,
+    {
+      promise,
+      rowCount: currentCount,
+    },
+  );
 
   try {
     await promise;
-  } finally {
-    relationBackfillPromises.delete(spaceId);
+  } catch (error) {
+    relationBackfillState.delete(spaceId);
+    throw error;
   }
+};
+
+export const resetRelationIdBackfillForTests = (): void => {
+  relationBackfillState.clear();
 };
 

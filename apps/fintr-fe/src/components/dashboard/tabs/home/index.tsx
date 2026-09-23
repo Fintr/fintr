@@ -33,6 +33,8 @@ import { HomeExchangeRatesSection } from "@/components/dashboard/tabs/home/home-
 import { TagsTravelHintPill } from "@/components/dashboard/tags-travel-hint-pill";
 import { useTransactionTags } from "@/hooks/async/useTransactionTags";
 import { usePrefetchAccountDetailRoutes } from "@/hooks/usePrefetchAccountDetailRoutes";
+import { HOME_CONTENT_SHEET_Z_CLASS } from "@/lib/dashboard-chrome-stacking";
+import { syncDocumentScreenClass } from "@/lib/document-screen-class";
 
 const parseBalance = (value: string): number => {
   const parsed = Number.parseFloat(value);
@@ -44,7 +46,7 @@ const getCategoryLabel = (categoryValue: string): string => {
   return accountCategoryLabels[normalized] ?? categoryValue;
 };
 
-const HomeTab = () => {
+const HomeTab = ({ isActive = true }: { isActive?: boolean }) => {
   const { user } = useAuth();
   const { api } = useAuthApi();
   const { currentSpace } = useSpaceContext(api);
@@ -78,12 +80,8 @@ const HomeTab = () => {
     useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
-    document.documentElement.classList.add("fintr-home-screen");
-
-    return () => {
-      document.documentElement.classList.remove("fintr-home-screen");
-    };
-  }, []);
+    return syncDocumentScreenClass("fintr-home-screen", isActive);
+  }, [isActive]);
 
   const dashboardMonthLabel = useMemo(() => {
     const now = new Date();
@@ -196,7 +194,10 @@ const HomeTab = () => {
         </section>
 
         <section
-          className="relative z-20 -mt-12 flex-1 rounded-t-[28px] bg-background px-4 pt-6 pb-8"
+          className={cn(
+            "relative -mt-12 flex-1 rounded-t-[28px] bg-background px-4 pt-6 pb-8",
+            HOME_CONTENT_SHEET_Z_CLASS,
+          )}
           style={
             isMobile ? { paddingBottom: mobileBottomPadding } : undefined
           }
@@ -293,20 +294,24 @@ const HomeTab = () => {
         </section>
       </div>
 
-      <AddTransactionDialog
-        isOpen={isAddTransactionOpen}
-        onClose={() => {
-          setIsAddTransactionOpen(false);
-          setPrefilledTransactionData(null);
-        }}
-        initialTransactionType={addTransactionType}
-        prefilledData={prefilledTransactionData ?? undefined}
-      />
-      <AddReceiptDialog
-        isOpen={isAddReceiptOpen}
-        onClose={() => setIsAddReceiptOpen(false)}
-        onReceiptSuccess={handleReceiptSuccess}
-      />
+      {isAddTransactionOpen ? (
+        <AddTransactionDialog
+          isOpen={isAddTransactionOpen}
+          onClose={() => {
+            setIsAddTransactionOpen(false);
+            setPrefilledTransactionData(null);
+          }}
+          initialTransactionType={addTransactionType}
+          prefilledData={prefilledTransactionData ?? undefined}
+        />
+      ) : null}
+      {isAddReceiptOpen ? (
+        <AddReceiptDialog
+          isOpen={isAddReceiptOpen}
+          onClose={() => setIsAddReceiptOpen(false)}
+          onReceiptSuccess={handleReceiptSuccess}
+        />
+      ) : null}
     </>
   );
 };

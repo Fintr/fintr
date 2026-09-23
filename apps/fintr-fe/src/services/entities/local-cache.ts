@@ -14,26 +14,62 @@ import {
   CombinedTransactionTypeEnum,
   type IndexTransaction,
 } from "@/types/transactionTypes";
-import type {
-  EntityDetail,
-  EntityDetailLoan,
-  EntityDetailLoanPayment,
-  EntityRecord,
+import {
+  normalizeEntityIdentifiers,
+  type EntityDetail,
+  type EntityDetailLoan,
+  type EntityDetailLoanPayment,
+  type EntityIdentifier,
+  type EntityRecord,
 } from "@/services/entities/mutation";
 
 const entitiesKey = (spaceCode: string): string => `entities:${spaceCode}`;
 
 export const normalizeEntityRecord = (
   entity: Record<string, unknown>,
-): EntityRecord => ({
-  id: String(entity.id ?? ""),
-  fullName: String(entity.fullName ?? entity.full_name ?? ""),
-  entityType: (entity.entityType ?? entity.entity_type ?? "loan") as
-    | "loan"
-    | "transaction",
-  photoUrl:
-    (entity.photoUrl ?? entity.photo_url ?? null) as string | null | undefined,
-});
+): EntityRecord => {
+  const identifiers = normalizeEntityIdentifiers(entity.identifiers);
+  const record: EntityRecord = {
+    id: String(entity.id ?? ""),
+    fullName: String(entity.fullName ?? entity.full_name ?? ""),
+    entityType: (entity.entityType ?? entity.entity_type ?? "loan") as
+      | "loan"
+      | "transaction",
+    photoUrl:
+      (entity.photoUrl ?? entity.photo_url ?? null) as string | null | undefined,
+  };
+
+  if (identifiers) {
+    record.identifiers = identifiers;
+  }
+
+  return record;
+};
+
+const mergePreservedIdentifiers = (
+  incoming: EntityRecord[],
+  previous: EntityRecord[] | undefined,
+): EntityRecord[] => {
+  const previousById = new Map(
+    (previous ?? []).map((entity) => [entity.id, entity]),
+  );
+
+  return incoming.map((entity) => {
+    if (entity.identifiers !== undefined) {
+      return entity;
+    }
+
+    const priorIdentifiers = previousById.get(entity.id)?.identifiers;
+    if (!priorIdentifiers) {
+      return entity;
+    }
+
+    return {
+      ...entity,
+      identifiers: priorIdentifiers,
+    };
+  });
+};
 
 export const normalizeEntityRecords = (
   rows: unknown,
@@ -75,7 +111,11 @@ export const cacheEntitiesResponse = async (
   }
 
   try {
-    const entities = normalizeEntityRecords(payload);
+    const previous = await loadCachedEntitiesResponse(spaceCode);
+    const entities = mergePreservedIdentifiers(
+      normalizeEntityRecords(payload),
+      previous,
+    );
     await putLocalResponseSnapshot(entitiesKey(spaceCode), entities);
   } catch (error) {
     console.warn("[local-db] Failed to cache entities", error);
@@ -293,9 +333,64 @@ const loadLocalLoanPaymentsForLoans = async (
   return payments.sort((left, right) => right.date.localeCompare(left.date));
 };
 
+export const cacheEntityIdentifiers = async (params: {
+  spaceCode: string;
+  entityId: string;
+  identifiers: EntityIdentifier[];
+  queryClient?: QueryClient;
+}): Promise<void> => {
+  const { spaceCode, entityId, identifiers, queryClient } = params;
+
+  if (!spaceCode || !entityId) {
+    return;
+  }
+
+  const entities = (await loadCachedEntitiesResponse(spaceCode)) ?? [];
+  const nextEntities = entities.map((entity) =>
+    entity.id === entityId
+      ? {
+          ...entity,
+          identifiers,
+        }
+      : entity,
+  );
+
+  if (nextEntities.some((entity) => entity.id === entityId)) {
+    await cacheEntitiesResponse(spaceCode, nextEntities);
+  }
+
+  if (!queryClient) {
+    return;
+  }
+
+  const patchDetail = (detail: EntityDetail | null | undefined) => {
+    if (!detail || detail.entity.id !== entityId) {
+      return detail;
+    }
+
+    return {
+      ...detail,
+      identifiers,
+      entity: {
+        ...detail.entity,
+        identifiers,
+      },
+    };
+  };
+
+  queryClient.setQueryData(
+    [ENTITY_DETAIL_KEY, "local", spaceCode, entityId],
+    patchDetail,
+  );
+  queryClient.setQueryData(
+    [ENTITY_DETAIL_KEY, spaceCode, entityId],
+    patchDetail,
+  );
+};
+
 /**
  * Assemble entity detail from IndexedDB (entity list + related local rows).
- * Identifiers are not bootstrapped yet, so they stay empty until a network fetch.
+ * Merchant identifiers live on the cached entity so receipt aliases survive refresh.
  */
 export const loadCachedEntityDetail = async (
   spaceCode: string,
@@ -318,6 +413,6 @@ export const loadCachedEntityDetail = async (
     transactions,
     loans,
     loanPayments,
-    identifiers: [],
+    identifiers: entity.identifiers ?? [],
   };
 };

@@ -6,6 +6,16 @@ import Autoplay from "embla-carousel-autoplay";
 import Image from "next/image";
 import { AppStoreBadge } from "@/components/landing-page/app-store-badge";
 
+const CAROUSEL_OPTIONS = {
+  loop: true,
+  align: "center" as const,
+  skipSnaps: false,
+};
+
+const CAROUSEL_PLUGINS = [
+  Autoplay({ delay: 4000, stopOnInteraction: false }),
+];
+
 const appScreenshots = [
   {
     src: "/images/app-screenshots/1.png",
@@ -53,12 +63,8 @@ const appScreenshots = [
 
 export default function AppCarouselSection() {
   const [emblaRef, emblaApi] = useEmblaCarousel(
-    { 
-      loop: true,
-      align: "center",
-      skipSnaps: false,
-    },
-    [Autoplay({ delay: 4000, stopOnInteraction: false })]
+    CAROUSEL_OPTIONS,
+    CAROUSEL_PLUGINS,
   );
   
   const [selectedIndex, setSelectedIndex] = useState(0);

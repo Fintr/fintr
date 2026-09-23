@@ -9,6 +9,7 @@ import {
   removeOutboxRecord,
   updateOutboxStatus,
 } from "@/lib/local-db";
+import { applyLocalTransactionsToAccountBalances } from "@/services/transactions/accounts/account-cache-ops";
 import {
   applyLocalTransactionToMonthlySummaries,
   setMonthlyFinancialSummariesQueryData,
@@ -462,6 +463,12 @@ export const createTransactionLocalFirst = async (
     summaryCurrency: spaceCurrency ?? entryCurrency,
     queryClient,
   });
+  await applyLocalTransactionsToAccountBalances({
+    spaceId,
+    transactions: seriesRows,
+    mode: "apply",
+    queryClient,
+  });
 
   if (queryClient) {
     invalidateLocalInsightsQueries(queryClient);
@@ -599,6 +606,12 @@ export const createTransactionLocalFirst = async (
         transactionType: data.transactionType,
         mode: "remove",
         summaryCurrency: spaceCurrency ?? entryCurrency,
+        queryClient,
+      });
+      await applyLocalTransactionsToAccountBalances({
+        spaceId,
+        transactions: seriesRows,
+        mode: "revert",
         queryClient,
       });
       await removeOutboxRecord(clientMutationId);

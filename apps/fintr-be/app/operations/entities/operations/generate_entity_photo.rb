@@ -14,6 +14,7 @@ module Entities
           optional(:prompt).maybe(:string, max_size?: 500)
           optional(:image_url).maybe(:string)
           optional(:force_generate).maybe(:bool)
+          optional(:user_id).maybe(:string)
         end
       end
 
@@ -27,6 +28,7 @@ module Entities
           prompt: params[:prompt],
           image_url: params[:image_url],
           force_generate: params[:force_generate],
+          user_id: params[:user_id],
         )
         updated_entity = step attach_photo(entity:, image:)
 
@@ -55,17 +57,17 @@ module Entities
         Success(entity)
       end
 
-      def resolve_image(entity:, merchant_name:, prompt:, image_url:, force_generate:)
+      def resolve_image(entity:, merchant_name:, prompt:, image_url:, force_generate:, user_id:)
         if image_url.present?
           return download_image(image_url:)
         end
 
         if force_generate
-          _ = step verify_paid_subscription(space_id: entity.space_id.to_s)
+          _ = step verify_pro_access(user_id:, space_id: entity.space_id.to_s)
           return generate_image(entity:, merchant_name:, prompt:)
         end
 
-        find_or_generate_image(entity:, merchant_name:, prompt:)
+        find_or_generate_image(entity:, merchant_name:, prompt:, user_id:)
       end
 
       def download_image(image_url:)
@@ -75,7 +77,7 @@ module Entities
         Success(image.merge(source: "search"))
       end
 
-      def find_or_generate_image(entity:, merchant_name:, prompt:)
+      def find_or_generate_image(entity:, merchant_name:, prompt:, user_id:)
         searched = Entities::MerchantImageFinder.find(
           merchant_name:,
           search_hints: [prompt].compact,
@@ -86,20 +88,12 @@ module Entities
           )
         end
 
-        _ = step verify_paid_subscription(space_id: entity.space_id.to_s)
+        _ = step verify_pro_access(user_id:, space_id: entity.space_id.to_s)
         generate_image(entity:, merchant_name:, prompt:)
       end
 
-      def verify_paid_subscription(space_id:)
-        has_paid = Finance::SpaceSubscription
-                   .active
-                   .for_space(space_id)
-                   .where(subscription_type: %i[paid sponsor])
-                   .exists?
-
-        return Failure(subscription: ["Active paid subscription required to generate a photo"]) unless has_paid
-
-        Success(true)
+      def verify_pro_access(user_id:, space_id:)
+        Finance::ProGate.require!(user_id:, space_id:)
       end
 
       def generate_image(entity:, merchant_name:, prompt:)

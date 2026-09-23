@@ -76,6 +76,7 @@ function precachePriorityTier(url) {
   if (
     url.startsWith("/profiles/")
     || url.startsWith("/badges/")
+    || url.startsWith("/tags/")
     || url.startsWith("/fintr-logo")
     || url === "/favicon.ico"
   ) {
@@ -138,7 +139,7 @@ async function matchCachedRequest(cache, request) {
 }
 
 const SHELL_CRITICAL_PREFIXES = ["/_next/static/"];
-const OPTIONAL_PRECACHE_PREFIXES = ["/profiles/", "/badges/"];
+const OPTIONAL_PRECACHE_PREFIXES = ["/profiles/", "/badges/", "/tags/"];
 const SHELL_PRECACHE_RETRIES = 2;
 
 function isShellPrecacheUrl(url) {

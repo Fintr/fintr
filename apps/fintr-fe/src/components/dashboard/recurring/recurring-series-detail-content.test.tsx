@@ -165,6 +165,6 @@ describe("RecurringSeriesDetailContent", () => {
 
     await user.click(screen.getByRole("button", { name: /trigger delete success/i }));
 
-    expect(mockPush).toHaveBeenCalledWith("/dashboard/recurring");
+    expect(window.location.pathname).toBe("/dashboard/recurring");
   });
 });

@@ -3,6 +3,82 @@
 require "rails_helper"
 
 RSpec.describe Finance::SubscriptionPlan, type: :model do
+  describe ".sync_pro_catalog!" do
+    it "prices monthly Pro at 100 PHP" do
+      described_class.sync_pro_catalog!
+
+      plan = described_class.find_by!(slug: "pro_monthly")
+      expect(plan.price_cents).to eq(10_000)
+    end
+
+    it "bills monthly Pro every month" do
+      described_class.sync_pro_catalog!
+
+      plan = described_class.find_by!(slug: "pro_monthly")
+      expect(plan.interval).to eq("month")
+    end
+
+    it "prices yearly Pro at 1000 PHP" do
+      described_class.sync_pro_catalog!
+
+      plan = described_class.find_by!(slug: "pro_yearly")
+      expect(plan.price_cents).to eq(100_000)
+    end
+
+    it "bills yearly Pro every year" do
+      described_class.sync_pro_catalog!
+
+      plan = described_class.find_by!(slug: "pro_yearly")
+      expect(plan.interval).to eq("year")
+    end
+
+    it "keeps both Pro plans active" do
+      described_class.sync_pro_catalog!
+
+      slugs = described_class.active.order(:slug).pluck(:slug)
+      expect(slugs).to eq(%w[pro_monthly pro_yearly])
+    end
+
+    it "renames the existing monthly plan to the RevenueCat package slug" do
+      plan = create(:subscription_plan, slug: "pro", price_cents: 29_900, interval: "month")
+      subscription = create(:space_subscription, subscription_plan: plan)
+
+      described_class.sync_pro_catalog!
+
+      expect(plan.reload.slug).to eq("pro_monthly")
+      expect(plan.price_cents).to eq(10_000)
+      expect(subscription.reload.subscription_plan_id).to eq(plan.id)
+    end
+
+    it "renames the existing yearly plan to the RevenueCat package slug" do
+      plan = create(:subscription_plan, slug: "pro-yearly", price_cents: 50_000, interval: "year")
+
+      described_class.sync_pro_catalog!
+
+      expect(plan.reload.slug).to eq("pro_yearly")
+      expect(plan.price_cents).to eq(100_000)
+    end
+
+    it "moves subscriptions onto the RevenueCat slug when both plan rows exist" do
+      legacy_plan = create(:subscription_plan, slug: "pro", interval: "month")
+      catalog_plan = create(:subscription_plan, slug: "pro_monthly", interval: "month")
+      subscription = create(:space_subscription, subscription_plan: legacy_plan)
+
+      described_class.sync_pro_catalog!
+
+      expect(subscription.reload.subscription_plan_id).to eq(catalog_plan.id)
+      expect(legacy_plan.reload.active).to be(false)
+    end
+
+    it "deactivates plans outside the Pro catalog" do
+      other = create(:subscription_plan, active: true)
+
+      described_class.sync_pro_catalog!
+
+      expect(other.reload.active).to be(false)
+    end
+  end
+
   describe "table name" do
     it "is set to finance_subscription_plans" do
       expect(described_class.table_name).to eq("finance_subscription_plans")
@@ -19,8 +95,6 @@ RSpec.describe Finance::SubscriptionPlan, type: :model do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:slug) }
     it { is_expected.to validate_uniqueness_of(:slug) }
-    it { is_expected.to validate_presence_of(:token_limit) }
-    it { is_expected.to validate_numericality_of(:token_limit).is_greater_than(0) }
     it { is_expected.to validate_presence_of(:price_cents) }
     it { is_expected.to validate_numericality_of(:price_cents).is_greater_than_or_equal_to(0) }
     it { is_expected.to validate_presence_of(:price_currency) }

@@ -48,22 +48,6 @@ const RecurringTab = () => {
     return active.filter((series) => !upcomingIds.has(series.rootParentId));
   }, [active, upcoming]);
 
-  if (isPending) {
-    return (
-      <div className="flex justify-center py-16">
-        <LoadingSpinner size="medium" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
-        {error?.message ?? "Failed to load recurring transactions."}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 px-2 md:px-0">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -89,7 +73,22 @@ const RecurringTab = () => {
         ]}
       />
 
-      {summaries.length === 0 ? (
+      {isError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          {error?.message ?? "Failed to load recurring transactions."}
+        </div>
+      ) : null}
+
+      {isPending ? (
+        <div className="space-y-6">
+          <RecurringUpcomingCalendar days={calendarDays} />
+          <div className="flex justify-center py-16">
+            <LoadingSpinner size="medium" />
+          </div>
+        </div>
+      ) : null}
+
+      {!isPending && !isError && summaries.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
           <p className="text-sm text-muted-foreground">
             No recurring transactions yet. Create one from Add Transaction and
@@ -98,7 +97,7 @@ const RecurringTab = () => {
         </div>
       ) : null}
 
-      {viewMode === "upcoming" ? (
+      {!isPending && !isError && summaries.length > 0 && viewMode === "upcoming" ? (
         <div className="space-y-6">
           <RecurringUpcomingCalendar days={calendarDays} />
 
@@ -148,7 +147,9 @@ const RecurringTab = () => {
             </section>
           ) : null}
         </div>
-      ) : (
+      ) : null}
+
+      {!isPending && !isError && summaries.length > 0 && viewMode === "all" ? (
         <div className="space-y-6">
           {frequencySections.map((section) => (
             <section key={section.key} className="space-y-3">
@@ -186,7 +187,7 @@ const RecurringTab = () => {
             </section>
           ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

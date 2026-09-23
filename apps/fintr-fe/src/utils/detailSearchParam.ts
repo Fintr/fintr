@@ -1,3 +1,5 @@
+import { commitDashboardClientNavigation } from "@/lib/dashboard-nav-routes";
+
 const DETAIL_SEARCH_KEYS = [
   "transactionId",
   "loanId",
@@ -57,10 +59,14 @@ export const resolveDetailSearchParam = (
   return readStored(pathname, param) ?? "";
 };
 
+export const navigateDashboardClient = (href: string): void => {
+  rememberDetailHref(href);
+  commitDashboardClientNavigation(href);
+};
+
 export const pushDashboardDetail = (
-  router: { push: (href: string) => void },
+  _router: { push: (href: string) => void },
   href: string,
 ): void => {
-  rememberDetailHref(href);
-  router.push(href);
+  navigateDashboardClient(href);
 };

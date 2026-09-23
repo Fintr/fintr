@@ -100,6 +100,7 @@ Rails.application.routes.draw do
           member do
             put :toggle_default
             post :generate_style_image
+            post :assign_style_image
           end
         end
         resources :accounts, only: %i[index create update destroy] do
@@ -243,6 +244,8 @@ Rails.application.routes.draw do
 
       # Finance routes
       namespace :finance do
+        resource :pro_access, only: [:show], controller: "pro_access"
+        resource :revenuecat_sync, only: [:create], controller: "revenuecat_sync"
         resources :subscriptions, only: %i[index create update] do
           collection do
             get :current_subscriptions
@@ -265,5 +268,6 @@ Rails.application.routes.draw do
   # Webhook endpoints (external API callbacks - no authentication required)
   namespace :webhooks do
     post "/xendit", to: "xendit#create"
+    post "/revenuecat", to: "revenuecat#create"
   end
 end

@@ -23,6 +23,11 @@ export function buildServiceWorkerBootstrapScript(serviceWorkerUrl: string): str
   ];
 
   if (skipServiceWorkerRoutes.indexOf(path) !== -1) {
+    navigator.serviceWorker.getRegistrations().then(function (registrations) {
+      registrations.forEach(function (registration) {
+        registration.unregister();
+      });
+    });
     return;
   }
 
@@ -30,5 +35,6 @@ export function buildServiceWorkerBootstrapScript(serviceWorkerUrl: string): str
     console.warn("[fintr-sw] Service worker registration failed", error);
   });
 })();
+//# sourceURL=fintr-service-worker-bootstrap.js
 `;
 }

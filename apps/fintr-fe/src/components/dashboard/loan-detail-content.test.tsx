@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
 import type { Loan } from "@/services/loans/queries";
@@ -50,10 +50,12 @@ vi.mock("@tanstack/react-query", async () => {
   };
 });
 
+let loanForTest: Loan = mockLoan;
+
 vi.mock("@/hooks/async/useLoan", () => ({
   LOAN_DETAIL_KEY: "loanDetail",
   useLoan: () => ({
-    data: mockLoan,
+    data: loanForTest,
     isLoading: false,
     error: null,
     refetch: vi.fn(),
@@ -90,17 +92,13 @@ vi.mock("@/components/dashboard/forms/RetireLoanModal", () => ({
   default: () => <button type="button">Retire</button>,
 }));
 
-vi.mock("@/components/dashboard/forms/DeleteLoanModal", () => ({
-  default: () => (
-    <button type="button" aria-label="Delete loan with Jerry Oquendo">
-      Delete
-    </button>
-  ),
-}));
-
 import LoanDetailContent from "./loan-detail-content";
 
 describe("LoanDetailContent", () => {
+  beforeEach(() => {
+    loanForTest = mockLoan;
+  });
+
   it("places edit, retire, and delete actions on the same row as status pills, below the title", () => {
     render(<LoanDetailContent loanId="loan-1" />);
 
@@ -130,5 +128,21 @@ describe("LoanDetailContent", () => {
         name: "Delete loan with Jerry Oquendo",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps the toolbar delete button red for lent loans", () => {
+    loanForTest = {
+      ...mockLoan,
+      loanType: "lent",
+    };
+
+    render(<LoanDetailContent loanId="loan-1" />);
+
+    const deleteButton = screen.getByRole("button", {
+      name: "Delete loan with Jerry Oquendo",
+    });
+
+    expect(deleteButton.className).toContain("text-red-900");
+    expect(deleteButton.className).not.toContain("text-teal-600");
   });
 });

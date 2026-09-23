@@ -16,6 +16,12 @@ module Transactions
     has_one_attached :style_image
 
     validates :name, presence: true
+    validates :style_preset_key,
+              inclusion: {
+                in: TagStylePresets::KEYS,
+                message: "is not a valid sample style",
+              },
+              allow_nil: true
     validates :name,
               uniqueness: {
                 scope: :space_id,

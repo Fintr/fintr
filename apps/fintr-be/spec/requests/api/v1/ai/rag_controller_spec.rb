@@ -14,7 +14,19 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
     end
     allow_any_instance_of(described_class).to receive(:current_user).and_return(user)
     allow_any_instance_of(described_class).to receive(:current_space).and_return(space)
-    allow(space).to receive(:can_ai?).and_return(true)
+    allow_pro_access(true)
+  end
+
+  def allow_pro_access(pro)
+    operation = instance_double(Finance::Operations::Entitlements::ResolveProAccess)
+    allow(Finance::Operations::Entitlements::ResolveProAccess).to receive(:new).and_return(operation)
+    allow(operation).to receive(:call).and_return(
+      Dry::Monads::Success(
+        pro:,
+        source: pro ? "trial" : "none",
+        features: [],
+      ),
+    )
   end
 
   describe "POST /api/v1/ai/rag/query" do
@@ -147,12 +159,10 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
       end
     end
 
-    context "when space has no available tokens" do
-      before do
-        allow(space).to receive(:can_ai?).and_return(false)
-      end
+    context "when the user does not have Fintr Pro" do
+      before { allow_pro_access(false) }
 
-      it "returns forbidden error with token limit message" do
+      it "returns forbidden error" do
         post "/api/v1/ai/rag/query",
              params: valid_params,
              headers: auth_setup[:headers]
@@ -161,10 +171,10 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
 
         response_data = JSON.parse(response.body)
         expect(response_data["success"]).to be false
-        expect(response_data["error"]["message"]).to eq("Token limit reached. You have used all available AI tokens for this space.")
+        expect(response_data["error"]["message"]).to eq("Fintr Pro is required for AI chat.")
       end
 
-      it "does not create a conversation when token limit is reached" do
+      it "does not create a conversation when Pro is required" do
         expect(::Ai::Operations::Conversations::CreateConversation).not_to receive(:new)
 
         post "/api/v1/ai/rag/query",

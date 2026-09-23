@@ -109,6 +109,7 @@ describe("useInsightsQueries", () => {
 
   afterEach(async () => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     await resetLocalDbForTests();
   });
 
@@ -156,6 +157,34 @@ describe("useInsightsQueries", () => {
       expect(result.current.summary?.totalIncome).toBeCloseTo(1_641_483.57);
     });
 
+    expect(result.current.queries.bucketSummary.fetchStatus).not.toBe("paused");
+  });
+
+  it("shows cached totals for the current month without waiting on transaction hydration", async () => {
+    const transactionLocalCache = await import(
+      "@/services/transactions/local-cache"
+    );
+    vi.spyOn(
+      transactionLocalCache,
+      "loadAllTransactionsFromLocalIndex",
+    ).mockImplementation(() => new Promise(() => {}));
+
+    const { result } = renderHook(
+      () =>
+        useInsightsQueries({
+          startDate: "2026-09-01",
+          endDate: "2026-09-30",
+          selectedCategory: "all",
+          selectedTagIds: [],
+        }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.summary).toBeDefined();
     expect(result.current.queries.bucketSummary.fetchStatus).not.toBe("paused");
   });
 

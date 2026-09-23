@@ -47,10 +47,6 @@ module Finance
       status == "active"
     end
 
-    def token_limit
-      subscription_plan.token_limit
-    end
-
     def expired?
       ended_at.present? && ended_at < Time.current
     end
@@ -86,21 +82,6 @@ module Finance
       return false if active? # Active subscriptions don't need grace period
 
       current_paid_cycle.present?
-    end
-
-    def effective_token_limit
-      if active?
-        # Active subscription: FREE_TOKENS + subscription plan tokens
-        Spaces::Space::FREE_TOKENS + subscription_plan.token_limit
-      elsif in_grace_period?
-        # Grace period: FREE_TOKENS + tokens from current paid and active billing cycle
-        current_cycle = current_paid_cycle
-        return nil unless current_cycle
-
-        Spaces::Space::FREE_TOKENS + current_cycle.tokens_allocated
-      else
-        nil
-      end
     end
 
     # Returns the end date of the grace period (when the current billing cycle ends)

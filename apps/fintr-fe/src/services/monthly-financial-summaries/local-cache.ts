@@ -195,11 +195,17 @@ export type ResolveMonthlySummariesForInsightsOptions = {
    * IndexedDB transactions to validate or rebuild every month bucket.
    */
   skipHydrationWhenBucketsHaveSignal?: boolean;
+  /**
+   * First-paint path: return the cached snapshot without scanning the ledger.
+   * Hydration still runs from the transaction-phase query.
+   */
+  skipTransactionHydration?: boolean;
 };
 
 /**
- * Prefer `preferredSpaceCode`, but fall back to any IndexedDB bucket cache that
- * has rows (localStorage spaceCode can lag behind bootstrap keys).
+ * Prefer `preferredSpaceCode`. Only scan other IndexedDB keys when no space is
+ * known yet (localStorage can lag behind bootstrap). Never show another
+ * space's totals once a space code is selected.
  */
 export const resolveMonthlySummariesForInsights = async (
   preferredSpaceCode: string,
@@ -214,6 +220,7 @@ export const resolveMonthlySummariesForInsights = async (
 
     const rangeStart = options?.startDate;
     const rangeEnd = options?.endDate;
+    const skipTransactionHydration = Boolean(options?.skipTransactionHydration);
     const bucketsCoverSelectedRange =
       Boolean(options?.skipHydrationWhenBucketsHaveSignal)
       && Boolean(rangeStart)
@@ -221,7 +228,8 @@ export const resolveMonthlySummariesForInsights = async (
       && insightsRangeBucketsHaveSignal(summaries, rangeStart, rangeEnd);
 
     if (
-      !bucketsCoverSelectedRange
+      !skipTransactionHydration
+      && !bucketsCoverSelectedRange
       && await summariesNeedLocalHydration(preferredSpaceCode, summaries)
     ) {
       const hydrated = await hydrateMonthlyFinancialSummariesFromLocalTransactions(
@@ -235,9 +243,7 @@ export const resolveMonthlySummariesForInsights = async (
       };
     }
 
-    if (summaries.length > 0) {
-      return { spaceCode: preferredSpaceCode, summaries };
-    }
+    return { spaceCode: preferredSpaceCode, summaries };
   }
 
   try {

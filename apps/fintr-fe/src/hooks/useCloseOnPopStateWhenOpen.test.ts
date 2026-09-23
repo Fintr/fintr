@@ -48,6 +48,64 @@ describe("useCloseOnPopStateWhenOpen + calculator history", () => {
     expect(window.history.state?.__fintrExchangeRateSelector).toBe(true)
   })
 
+  it("does not close when cleanup history.back pops after the overlay is open again", () => {
+    const onOpenChange = vi.fn()
+    let dispatchOpeningPopState: (() => void) | null = null
+    vi.spyOn(window.history, "back").mockImplementation(() => {
+      dispatchOpeningPopState = () => {
+        window.dispatchEvent(
+          new PopStateEvent("popstate", { state: { __NA: true } }),
+        )
+      }
+    })
+
+    const { rerender } = renderHook(
+      ({ open }: { open: boolean }) =>
+        useCloseOnPopStateWhenOpen(
+          open,
+          onOpenChange,
+          "__fintrAddTransactionSheet",
+        ),
+      { initialProps: { open: true } },
+    )
+
+    rerender({ open: false })
+    rerender({ open: true })
+
+    act(() => {
+      dispatchOpeningPopState?.()
+      vi.runAllTimers()
+    })
+
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(window.history.state?.__fintrAddTransactionSheet).toBe(true)
+  })
+
+  it("still pops the history entry when the overlay closes", () => {
+    const onOpenChange = vi.fn()
+    const backSpy = vi.spyOn(window.history, "back")
+
+    const { rerender } = renderHook(
+      ({ open }: { open: boolean }) =>
+        useCloseOnPopStateWhenOpen(
+          open,
+          onOpenChange,
+          "__fintrAddTransactionSheet",
+        ),
+      { initialProps: { open: true } },
+    )
+
+    expect(window.history.state?.__fintrAddTransactionSheet).toBe(true)
+
+    rerender({ open: false })
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    expect(backSpy).toHaveBeenCalled()
+  })
+
   it("does not history.back after release when another entry is already on top", () => {
     acquireCalculatorHistoryEntry()
     releaseCalculatorHistoryEntry()

@@ -1,5 +1,5 @@
 /* Fintr dev service worker — runtime cache for offline dev on localhost */
-const CACHE_NAME = "fintr-dev-runtime-v8";
+const CACHE_NAME = "fintr-dev-runtime-v10";
 const CACHE_MATCH_OPTIONS = { ignoreVary: true, ignoreSearch: true };
 const CACHE_MATCH_STRICT = { ignoreVary: true };
 
@@ -71,6 +71,26 @@ const PRECACHE_PATHS = [
   "/badges/account_hopper.png",
   "/badges/transfer_titan.png",
   "/badges/wire_wizard.png",
+  "/tags/japan-vacation.png",
+  "/tags/europe-vacation.png",
+  "/tags/beach-vacation.png",
+  "/tags/road-trip.png",
+  "/tags/wedding.png",
+  "/tags/new-baby.png",
+  "/tags/home-renovation.png",
+  "/tags/moving.png",
+  "/tags/pet.png",
+  "/tags/car.png",
+  "/tags/medical.png",
+  "/tags/education.png",
+  "/tags/business-trip.png",
+  "/tags/holidays.png",
+  "/tags/birthday.png",
+  "/tags/side-hustle.png",
+  "/tags/fitness.png",
+  "/tags/concert.png",
+  "/tags/family.png",
+  "/tags/new-home.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -126,6 +146,10 @@ function shouldHandleRequest(request) {
   }
 
   if (url.pathname.startsWith("/api/")) {
+    return false;
+  }
+
+  if (url.pathname === "/sw-dev.js" || url.pathname === "/sw.js") {
     return false;
   }
 
@@ -314,13 +338,40 @@ async function cacheResponse(request, response) {
 
 async function handleRequest(request) {
   const cache = await caches.open(CACHE_NAME);
+  const url = new URL(request.url);
+
+  // While online, prefer the network for navigations and Turbopack/static
+  // assets so a stale precache cannot brick the tab after `pnpm dev` restarts.
+  if (
+    !isBrowserOffline()
+    && (request.mode === "navigate" || isStaticAssetRequest(request))
+  ) {
+    try {
+      const networkResponse = await fetch(request);
+
+      if (networkResponse.ok) {
+        await cacheResponse(request, networkResponse);
+        return networkResponse;
+      }
+    } catch {
+      // Fall through to cached shell below.
+    }
+  }
+
+  if (request.mode === "navigate") {
+    const navigationResponse = await resolveNavigation(request);
+
+    if (navigationResponse) {
+      return navigationResponse;
+    }
+  }
+
   const cached = await matchCachedRequest(cache, request);
 
   if (cached) {
     return cached;
   }
 
-  const url = new URL(request.url);
   const byPath = await resolveCachedByPathname(url.pathname);
 
   if (byPath) {
@@ -333,6 +384,21 @@ async function handleRequest(request) {
 
   try {
     const response = await fetch(request);
+
+    if (request.mode === "navigate" && !response.ok) {
+      const navigationResponse = await resolveNavigation(request);
+
+      if (navigationResponse) {
+        return navigationResponse;
+      }
+
+      const shell = await resolveAppShell();
+
+      if (shell) {
+        return shell;
+      }
+    }
+
     await cacheResponse(request, response);
     return response;
   } catch {

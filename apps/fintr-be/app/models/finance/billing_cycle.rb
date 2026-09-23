@@ -22,9 +22,6 @@ module Finance
               uniqueness: { scope: :space_subscription_id },
               numericality: { greater_than: 0 }
     validates :span, presence: true
-    validates :tokens_allocated,
-              presence: true,
-              numericality: { greater_than: 0 }
 
     scope :paid, -> { where(status: :paid) }
     # Find cycles where the span contains the current time

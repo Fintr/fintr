@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { BADGE_IMAGE_PATHS } from "@/lib/badges/catalog";
+import { TAG_STYLE_PRESETS } from "@/lib/tags/preset-style-images";
 import { warmBadgeImages } from "./warm-badge-images";
 
 describe("warmBadgeImages", () => {
@@ -27,7 +28,9 @@ describe("warmBadgeImages", () => {
     await warmBadgeImages();
 
     expect(open).toHaveBeenCalledWith("fintr-shell-test");
-    expect(fetchMock).toHaveBeenCalledTimes(Object.keys(BADGE_IMAGE_PATHS).length);
+    expect(fetchMock).toHaveBeenCalledTimes(
+      Object.keys(BADGE_IMAGE_PATHS).length + TAG_STYLE_PRESETS.length,
+    );
     expect(put).toHaveBeenCalled();
   });
 

@@ -12,6 +12,7 @@ import { NotificationProps } from "@/components/dashboard/notification-item";
 import NavDrawer from "@/components/dashboard/nav-drawer";
 import Link from "next/link";
 import { FintrLogo } from "@/components/brand/fintr-logo";
+import { DASHBOARD_DESKTOP_NAV_Z_CLASS } from "@/lib/dashboard-chrome-stacking";
 import { shouldShowV2Features } from "@/lib/utils";
 import { resetGlobalAuthLock } from "@/components/deep-link-handler";
 import { useQueryClient } from "@tanstack/react-query";
@@ -156,7 +157,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
 
   return (
     <>
-      <header className={`hidden md:block fixed w-full bg-background z-20 transition-all duration-300 ease-in-out ${
+      <header className={`hidden md:block fixed w-full bg-background ${DASHBOARD_DESKTOP_NAV_Z_CLASS} transition-all duration-300 ease-in-out ${
         isScrolled
           ? "border-b border-gray-200 shadow-sm dark:border-border"
           : "border-b border-transparent"

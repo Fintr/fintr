@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useAuthApi from '../useAuthApi';
 import { fetchAccounts } from '@/services/transactions/accounts/queries';
@@ -9,7 +10,7 @@ import {
 import { createAccount, adjustAccountBalance, CreateAccountType, UpdateAccountType, AdjustAccountBalanceType } from '@/services/transactions/accounts/mutation';
 import { updateAccountLocalFirst } from '@/services/transactions/accounts/update-local-first';
 import { deleteAccountLocalFirst } from '@/services/transactions/accounts/delete-local-first';
-import { Account, AccountBalanceTotals } from '@/types/accountTypes';
+import { AccountBalanceTotals } from '@/types/accountTypes';
 import { toast } from 'sonner';
 import {
   ACCOUNT_ADJUSTMENT_HISTORY_KEY,
@@ -159,10 +160,10 @@ export const useAccounts = () => {
     },
   });
 
-  const getAccountsData = (): Account[] => {
-    if (!accountsResponse) return [];
-    return extractAccountsFromResponse(accountsResponse);
-  };
+  const accountsList = useMemo(
+    () => (accountsResponse ? extractAccountsFromResponse(accountsResponse) : []),
+    [accountsResponse],
+  );
 
   const getBalanceTotals = (): AccountBalanceTotals | null => {
     if (!accountsResponse) return null;
@@ -201,7 +202,7 @@ export const useAccounts = () => {
     (isLoading || accountsResponse === undefined);
 
   return {
-    accounts: getAccountsData(),
+    accounts: accountsList,
     balanceTotals: getBalanceTotals(),
     accountCategoryOptions: getAccountCategoryOptions(),
     isLoading: skipNetworkFetch

@@ -18,11 +18,9 @@ module Budgets
       end
 
       def call(params)
-        params   = step validate(params:)
-        space    = step find_space(params:)
-        _        = step skip_if_already_created(space:, date: params[:date])
-        budgets  = step create_monthly_budgets(space:, date: params[:date])
-        budgets
+        params = step validate(params:)
+        space  = step find_space(params:)
+        step upsert_monthly_budgets(space:, date: params[:date])
       end
 
       def find_space(params:)
@@ -32,25 +30,35 @@ module Budgets
         Failure(space_id: "not found")
       end
 
-      def skip_if_already_created(space:, date:)
-        return Failure(budgets: "Already created for the month of #{date.strftime("%B %Y")}") if space.budgets.for_month(date).exists?
+      def upsert_monthly_budgets(space:, date:)
+        existing = space.budgets.for_month(date).to_a
+        previous = space.budgets.for_month(date - 1.month).to_a
+        return Success(existing) if previous.empty?
 
-        Success(space:, date:)
+        existing_keys = existing.map do |budget|
+          [budget.category_id, budget.subcategory_id]
+        end
+        missing = previous.reject do |budget|
+          existing_keys.include?([budget.category_id, budget.subcategory_id])
+        end
+        return Success(existing) if missing.empty?
+
+        create_monthly_budgets(space:, date:, source_budgets: missing, existing:)
       end
 
-      def create_monthly_budgets(space:, date:)
-        records = space.budgets.for_month(date - 1.month).map do |budget|
+      def create_monthly_budgets(space:, date:, source_budgets:, existing:)
+        records = source_budgets.map do |budget|
           Budget.new(
             space:,
             category: budget.category,
             subcategory_id: budget.subcategory_id,
             amount_cents: budget.amount_cents,
             amount_currency: budget.amount_currency,
-            date:
+            date: date.beginning_of_month
           )
         end
         result = Budget.bulk_import(records, validate: true, all_or_none: true)
-        Success(result.results)
+        Success(existing + result.results)
       rescue ActiveRecord::RecordInvalid => e
         Failure(budgets: result.failed_instances, error: e, expected: true)
       end

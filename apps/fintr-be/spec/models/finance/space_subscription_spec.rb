@@ -4,7 +4,7 @@ require "rails_helper"
 
 RSpec.describe Finance::SpaceSubscription, type: :model do
   let(:space) { create(:space) }
-  let(:subscription_plan) { create(:subscription_plan, token_limit: 100) }
+  let(:subscription_plan) { create(:subscription_plan}
   let(:subscription) do
     create(
       :space_subscription,
@@ -133,167 +133,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
     end
   end
 
-  describe "#effective_token_limit" do
-    context "when subscription is active" do
-      it "returns FREE_TOKENS + subscription plan token limit" do
-        expect(subscription.effective_token_limit).to eq(
-          Spaces::Space::FREE_TOKENS + subscription_plan.token_limit
-        )
-      end
-
-      it "returns correct tokens for different plan limits" do
-        premium_plan = create(:subscription_plan, :premium, token_limit: 250)
-        premium_subscription = create(
-          :space_subscription,
-          space:,
-          subscription_plan: premium_plan,
-          status: "active"
-        )
-
-        expect(premium_subscription.effective_token_limit).to eq(
-          Spaces::Space::FREE_TOKENS + 250
-        )
-      end
-    end
-
-    context "when subscription is inactive but in grace period" do
-      let(:now) { Time.zone.parse("2025-01-15 12:00:00") }
-      let(:cycle_start) { Time.zone.parse("2025-01-01 00:00:00") }
-      let(:cycle_end) { Time.zone.parse("2025-01-31 23:59:59") }
-
-      before do
-        Timecop.freeze(now)
-        subscription.update!(status: "inactive", cancelled_at: now)
-      end
-
-      after do
-        Timecop.return
-      end
-
-      context "with a single paid and active billing cycle" do
-        before do
-          create(
-            :finance_billing_cycle,
-            space_subscription: subscription,
-            cycle_number: 1,
-            span: (cycle_start..cycle_end),
-            status: "paid",
-            tokens_allocated: 100,
-            paid_at: cycle_start,
-            xendit_cycle_id: "cycle-1"
-          )
-        end
-
-        it "returns FREE_TOKENS + tokens from paid active cycles" do
-          expect(subscription.effective_token_limit).to eq(
-            Spaces::Space::FREE_TOKENS + 100
-          )
-        end
-
-        it "returns correct tokens when cycle has different token allocation" do
-          subscription.billing_cycles.first.update!(tokens_allocated: 150)
-          expect(subscription.effective_token_limit).to eq(
-            Spaces::Space::FREE_TOKENS + 150
-          )
-        end
-      end
-
-      context "with multiple paid billing cycles" do
-        let(:cycle2_start) { Time.zone.parse("2025-02-01 00:00:00") }
-        let(:cycle2_end) { Time.zone.parse("2025-02-28 23:59:59") }
-
-        before do
-          # First cycle: Jan 1-31 (active, current)
-          create(
-            :finance_billing_cycle,
-            space_subscription: subscription,
-            cycle_number: 1,
-            span: (cycle_start..cycle_end),
-            status: "paid",
-            tokens_allocated: 100,
-            paid_at: cycle_start,
-            xendit_cycle_id: "cycle-1"
-          )
-
-          # Second cycle: Feb 1-28 (future, not active yet)
-          create(
-            :finance_billing_cycle,
-            space_subscription: subscription,
-            cycle_number: 2,
-            span: (cycle2_start..cycle2_end),
-            status: "paid",
-            tokens_allocated: 130,
-            paid_at: cycle2_start,
-            xendit_cycle_id: "cycle-2"
-          )
-        end
-
-        it "returns tokens only from the current paid and active cycle" do
-          # Should only count cycle 1 (current), not cycle 2 (future)
-          expect(subscription.effective_token_limit).to eq(
-            Spaces::Space::FREE_TOKENS + 100
-          )
-        end
-      end
-
-      context "when billing cycle has expired" do
-        let(:expired_cycle_start) { Time.zone.parse("2024-12-01 00:00:00") }
-        let(:expired_cycle_end) { Time.zone.parse("2024-12-31 23:59:59") }
-
-        before do
-          # Create an expired paid cycle
-          create(
-            :finance_billing_cycle,
-            space_subscription: subscription,
-            cycle_number: 1,
-            span: (expired_cycle_start..expired_cycle_end),
-            status: "paid",
-            tokens_allocated: 100,
-            paid_at: expired_cycle_start,
-            xendit_cycle_id: "cycle-1"
-          )
-        end
-
-        it "does not include expired cycles in token calculation" do
-          expect(subscription.effective_token_limit).to be_nil
-        end
-      end
-
-      context "when billing cycle is not paid" do
-        before do
-          create(
-            :finance_billing_cycle,
-            space_subscription: subscription,
-            cycle_number: 1,
-            span: (cycle_start..cycle_end),
-            status: "pending",
-            tokens_allocated: 100,
-            xendit_cycle_id: "cycle-1"
-          )
-        end
-
-        it "does not include unpaid cycles in token calculation" do
-          expect(subscription.effective_token_limit).to be_nil
-        end
-      end
-
-      context "when no paid active cycles exist" do
-        it "returns nil" do
-          expect(subscription.effective_token_limit).to be_nil
-        end
-      end
-    end
-
-    context "when subscription is inactive and not in grace period" do
-      before do
-        subscription.update!(status: "inactive", cancelled_at: 1.month.ago)
-      end
-
-      it "returns nil" do
-        expect(subscription.effective_token_limit).to be_nil
-      end
-    end
-  end
 
   describe "#in_grace_period?" do
     let(:now) { Time.zone.parse("2025-01-15 12:00:00") }
@@ -327,7 +166,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
             cycle_number: 1,
             span: (cycle_start..cycle_end),
             status: "paid",
-            tokens_allocated: 100,
             paid_at: cycle_start,
             xendit_cycle_id: "cycle-1"
           )
@@ -349,7 +187,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
             cycle_number: 1,
             span: (expired_cycle_start..expired_cycle_end),
             status: "paid",
-            tokens_allocated: 100,
             paid_at: expired_cycle_start,
             xendit_cycle_id: "cycle-1"
           )
@@ -368,7 +205,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
             cycle_number: 1,
             span: (cycle_start..cycle_end),
             status: "pending",
-            tokens_allocated: 100,
             xendit_cycle_id: "cycle-1"
           )
         end
@@ -414,7 +250,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 1,
           span: (cycle_start..cycle_end),
           status: "paid",
-          tokens_allocated: 100,
           paid_at: cycle_start,
           xendit_cycle_id: "cycle-1"
         )
@@ -436,7 +271,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
             cycle_number: 2,
             span: (cycle2_start..cycle2_end),
             status: "paid",
-            tokens_allocated: 100,
             paid_at: cycle2_start,
             xendit_cycle_id: "cycle-2"
           )
@@ -461,7 +295,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 1,
           span: (current_cycle_start..current_cycle_end),
           status: "pending",
-          tokens_allocated: 100,
           xendit_cycle_id: "cycle-1"
         )
       end
@@ -506,7 +339,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 1,
           span: (cycle1_start..cycle1_end),
           status: "paid",
-          tokens_allocated: 100,
           paid_at: cycle1_start,
           xendit_cycle_id: "cycle-1"
         )
@@ -518,7 +350,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 2,
           span: (cycle2_start..cycle2_end),
           status: "paid",
-          tokens_allocated: 100,
           paid_at: cycle2_start,
           xendit_cycle_id: "cycle-2"
         )
@@ -530,7 +361,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 3,
           span: (cycle2_start..cycle2_end),
           status: "pending",
-          tokens_allocated: 100,
           xendit_cycle_id: "cycle-3"
         )
       end
@@ -551,7 +381,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 1,
           span: (cycle2_start..cycle2_end),
           status: "pending",
-          tokens_allocated: 100,
           xendit_cycle_id: "cycle-1"
         )
       end
@@ -585,7 +414,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 1,
           span: (cycle_start..cycle_end),
           status: "paid",
-          tokens_allocated: 100,
           paid_at: cycle_start,
           xendit_cycle_id: "cycle-1"
         )
@@ -595,23 +423,16 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
         # Move to middle of cycle
         Timecop.freeze(Time.zone.parse("2025-01-15 12:00:00"))
         expect(subscription.in_grace_period?).to be true
-        expect(subscription.effective_token_limit).to eq(
-          Spaces::Space::FREE_TOKENS + 100
-        )
 
         # Move to end of cycle
         Timecop.freeze(Time.zone.parse("2025-01-31 23:59:59"))
         expect(subscription.in_grace_period?).to be true
-        expect(subscription.effective_token_limit).to eq(
-          Spaces::Space::FREE_TOKENS + 100
-        )
       end
 
       it "ends grace period after cycle expires" do
         # Move past cycle end
         Timecop.freeze(Time.zone.parse("2025-02-01 00:00:01"))
         expect(subscription.in_grace_period?).to be false
-        expect(subscription.effective_token_limit).to be_nil
       end
     end
 
@@ -619,9 +440,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
       it "maintains tokens during grace period" do
         # Start with active subscription
         expect(subscription.active?).to be true
-        expect(subscription.effective_token_limit).to eq(
-          Spaces::Space::FREE_TOKENS + 100
-        )
 
         # Create a paid cycle
         create(
@@ -630,7 +448,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 1,
           span: (cycle_start..cycle_end),
           status: "paid",
-          tokens_allocated: 100,
           paid_at: cycle_start,
           xendit_cycle_id: "cycle-1"
         )
@@ -640,9 +457,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
 
         # Should still have tokens during grace period
         expect(subscription.in_grace_period?).to be true
-        expect(subscription.effective_token_limit).to eq(
-          Spaces::Space::FREE_TOKENS + 100
-        )
       end
     end
   end
@@ -659,11 +473,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
     end
   end
 
-  describe "#token_limit" do
-    it "returns subscription plan token limit" do
-      expect(subscription.token_limit).to eq(subscription_plan.token_limit)
-    end
-  end
 
   describe "#expired?" do
     context "when ended_at is in the past" do
@@ -741,7 +550,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 1,
           span: (cycle1_start..cycle1_end),
           status: "paid",
-          tokens_allocated: 100,
           paid_at: cycle1_start,
           xendit_cycle_id: "cycle-1"
         )
@@ -751,7 +559,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 2,
           span: (cycle2_start..cycle2_end),
           status: "paid",
-          tokens_allocated: 100,
           paid_at: cycle2_start,
           xendit_cycle_id: "cycle-2"
         )
@@ -781,7 +588,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 1,
           span: (expired_cycle_start..expired_cycle_end),
           status: "paid",
-          tokens_allocated: 100,
           paid_at: expired_cycle_start,
           xendit_cycle_id: "cycle-1"
         )
@@ -800,7 +606,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
           cycle_number: 1,
           span: (cycle2_start..cycle2_end),
           status: "pending",
-          tokens_allocated: 100,
           xendit_cycle_id: "cycle-1"
         )
       end
@@ -956,7 +761,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
             cycle_number: 1,
             span: (cycle_start..cycle_end),
             status: "paid",
-            tokens_allocated: 100,
             paid_at: cycle_start,
             xendit_cycle_id: "cycle-1"
           )
@@ -982,7 +786,6 @@ RSpec.describe Finance::SpaceSubscription, type: :model do
             cycle_number: 1,
             span: (cycle_start..cycle_end),
             status: "paid",
-            tokens_allocated: 100,
             paid_at: cycle_start,
             xendit_cycle_id: "cycle-1"
           )

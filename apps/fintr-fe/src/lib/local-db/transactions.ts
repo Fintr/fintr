@@ -1,4 +1,5 @@
 import type { IndexTransaction } from "@/types/transactionTypes";
+import { isRecurringRow } from "@/utils/recurringSchedule";
 
 import { getLocalDb } from "./db";
 import type { LocalTransactionRecord } from "./types";
@@ -56,6 +57,19 @@ export const listSpaceTransactions = async (
   return records.map((record) => payloadFromRecord(record));
 };
 
+export const listRecurringSpaceTransactions = async (
+  spaceId: string,
+): Promise<IndexTransaction[]> => {
+  const records = await getLocalDb()
+    .transactions
+    .where("spaceId")
+    .equals(spaceId)
+    .filter((record) => isRecurringRow(payloadFromRecord(record)))
+    .toArray();
+
+  return records.map((record) => payloadFromRecord(record));
+};
+
 export const listSpaceTransactionsInDateRange = async (
   spaceId: string,
   startDate: string,
@@ -70,6 +84,35 @@ export const listSpaceTransactionsInDateRange = async (
       true,
       true,
     )
+    .toArray();
+
+  return records.map((record) => payloadFromRecord(record));
+};
+
+/**
+ * Newest transactions with date <= onOrBeforeDate.
+ * Uses the [spaceId+date] index and stops after `limit` rows.
+ */
+export const listNewestSpaceTransactionsOnOrBefore = async (
+  spaceId: string,
+  onOrBeforeDate: string,
+  limit: number,
+): Promise<IndexTransaction[]> => {
+  if (!spaceId || !onOrBeforeDate || limit <= 0) {
+    return [];
+  }
+
+  const records = await getLocalDb()
+    .transactions
+    .where("[spaceId+date]")
+    .between(
+      [spaceId, ""],
+      [spaceId, onOrBeforeDate],
+      true,
+      true,
+    )
+    .reverse()
+    .limit(limit)
     .toArray();
 
   return records.map((record) => payloadFromRecord(record));

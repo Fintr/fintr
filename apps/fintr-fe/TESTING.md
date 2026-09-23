@@ -53,6 +53,8 @@ pnpm test:coverage
 
 ### E2E Tests (Playwright)
 
+Personal workspace login (no Google OAuth): `miguel.dagatan@gmail.com` / `FintrPlaywright!Personal2026`. See `e2e/README.md`.
+
 ```bash
 # Run all E2E tests
 pnpm test:e2e

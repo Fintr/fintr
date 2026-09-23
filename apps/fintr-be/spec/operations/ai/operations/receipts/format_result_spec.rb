@@ -208,7 +208,8 @@ RSpec.describe Ai::Operations::Receipts::FormatResult, type: :operation do
           category_name: "Groceries",
           account_name: "Credit Card",
           description: "Whole Foods", # Matches current app logic
-          schedule_type: "one_time"
+          schedule_type: "one_time",
+          receipt_merchant_detected: "Whole Foods",
         }
 
         expected_final_result = {
@@ -487,8 +488,26 @@ RSpec.describe Ai::Operations::Receipts::FormatResult, type: :operation do
             category_name: "Groceries",
             account_name: "Credit Card",
             description: "Whole Foods", # Matches current app logic
-            schedule_type: "one_time"
+            schedule_type: "one_time",
+            receipt_merchant_detected: "Whole Foods",
           )
+        end
+      end
+
+      context "when a known merchant was matched" do
+        let(:extracted_data) do
+          formatted_extracted_data_mock.merge(
+            entity: { value: "Whole Foods", confidence_score: 0.9 }
+          )
+        end
+
+        it "includes entity_name on the suggested payload" do
+          result = operation.__send__(
+            :build_suggested_transaction_payload,
+            extracted_data:,
+          )
+          expect(result).to be_success
+          expect(result.value![:entity_name]).to eq("Whole Foods")
         end
       end
 

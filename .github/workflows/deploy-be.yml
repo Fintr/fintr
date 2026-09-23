@@ -120,6 +120,10 @@ jobs:
           XENDIT_API_KEY: ${{ vars.XENDIT_API_KEY }}
           XENDIT_WEBHOOK_TOKEN: ${{ vars.XENDIT_WEBHOOK_TOKEN }}
           BREVO_API_KEY: ${{ vars.BREVO_API_KEY }}
+          REVENUECAT_API_SECRET: ${{ vars.REVENUECAT_API_SECRET }}
+          REVENUECAT_PROJECT_ID: ${{ vars.REVENUECAT_PROJECT_ID }}
+          REVENUECAT_PRO_ENTITLEMENT_ID: ${{ vars.REVENUECAT_PRO_ENTITLEMENT_ID }}
+          REVENUECAT_WEBHOOK_AUTHORIZATION: ${{ vars.REVENUECAT_WEBHOOK_AUTHORIZATION }}
         run: |
           printf '%s\n' "$RAILS_MASTER_KEY" > config/master.key
           chmod 600 config/master.key
@@ -162,6 +166,10 @@ jobs:
           write_env XENDIT_API_KEY "$XENDIT_API_KEY"
           write_env XENDIT_WEBHOOK_TOKEN "$XENDIT_WEBHOOK_TOKEN"
           write_env BREVO_API_KEY "$BREVO_API_KEY"
+          write_env REVENUECAT_API_SECRET "$REVENUECAT_API_SECRET"
+          write_env REVENUECAT_PROJECT_ID "$REVENUECAT_PROJECT_ID"
+          write_env REVENUECAT_PRO_ENTITLEMENT_ID "$REVENUECAT_PRO_ENTITLEMENT_ID"
+          write_env REVENUECAT_WEBHOOK_AUTHORIZATION "$REVENUECAT_WEBHOOK_AUTHORIZATION"
 
       - name: Deploy backend
         env:

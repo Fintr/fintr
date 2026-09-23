@@ -65,7 +65,7 @@ export const WeeklySpendingCard = ({
         ) : (
           <ChartContainer
             config={chartConfig}
-            className="aspect-[5/3] w-full max-h-[260px]"
+            className="aspect-auto h-48 w-full min-h-0 overflow-hidden"
           >
             <BarChart
               data={data}

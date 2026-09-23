@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/copy-circle-flags.mjs && npx --no-install dotenv-cli -e .env -- sh -c 'if [ -z \"$$PORT\" ]; then export PORT=5173; fi; exec next dev --turbopack'",
-    "dev:e2e": "node scripts/copy-circle-flags.mjs && npx --no-install dotenv-cli -e .env -- next dev --turbopack --hostname 127.0.0.1 --port 5173",
+    "dev": "node scripts/copy-circle-flags.mjs && node scripts/prune-next-dev-cache.mjs && npx --no-install dotenv-cli -e .env -- sh -c 'if [ -z \"$$PORT\" ]; then export PORT=5173; fi; export NODE_OPTIONS=\"${NODE_OPTIONS:+$$NODE_OPTIONS }--max-old-space-size=3072\"; exec next dev --turbopack'",
+    "dev:e2e": "node scripts/copy-circle-flags.mjs && node scripts/prune-next-dev-cache.mjs && npx --no-install dotenv-cli -e .env -- sh -c 'export NODE_OPTIONS=\"${NODE_OPTIONS:+$$NODE_OPTIONS }--max-old-space-size=3072\"; exec next dev --turbopack --hostname 127.0.0.1 --port 5173'",
     "build": "node scripts/copy-circle-flags.mjs && next build && node scripts/generate-service-worker.mjs",
     "build:local": "node scripts/build-local-preview.mjs",
     "preview": "node scripts/preview-static.mjs",
@@ -30,7 +30,6 @@
     "test:mobile": "playwright test --project='Mobile Chrome - Small' --project='Mobile Safari - iPhone 14'"
   },
   "dependencies": {
-    "@fintr/domain": "file:../../packages/fintr-domain",
     "@ariakit/react": "^0.4.29",
     "@auth0/auth0-react": "^2.3.0",
     "@capacitor/android": "7.4.4",
@@ -44,6 +43,7 @@
     "@capacitor/share": "^7.0.4",
     "@capgo/capacitor-llm": "7.2.15",
     "@daypicker/react": "^10.0.1",
+    "@fintr/domain": "file:../../packages/fintr-domain",
     "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-accordion": "^1.2.10",
@@ -60,6 +60,8 @@
     "@radix-ui/react-switch": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.11",
     "@rails/actioncable": "^8.1.300",
+    "@revenuecat/purchases-capacitor": "10.4.0",
+    "@revenuecat/purchases-capacitor-ui": "^10.4.0",
     "@sentry/nextjs": "^10",
     "@sentry/react": "^10.53.1",
     "@supabase/supabase-js": "^2.108.2",

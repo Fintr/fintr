@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { navigateDashboardClient } from "@/utils/detailSearchParam";
 import { MerchantAvatar } from "@/components/ui/merchant-avatar";
 import { useEntities } from "@/hooks/async/useEntities";
 import { Loan } from "@/services/loans/queries";
@@ -41,7 +41,6 @@ const amountClassName = (profile: LoanEntityProfile): string => {
 };
 
 export const LoanProfilesSection = ({ loans }: LoanProfilesSectionProps) => {
-  const router = useRouter();
   const { entities } = useEntities("loan");
 
   const profiles = React.useMemo(
@@ -72,7 +71,7 @@ export const LoanProfilesSection = ({ loans }: LoanProfilesSectionProps) => {
       return;
     }
 
-    router.push(buildEntityDetailHref(matched.id));
+    navigateDashboardClient(buildEntityDetailHref(matched.id));
   };
 
   return (

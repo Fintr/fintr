@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
+require "dry/operation/extensions/active_record"
+
 module Entities
   module Operations
     class CreateEntity < Dry::Operation
+      include Dry::Operation::Extensions::ActiveRecord
+
       class Contract < Dry::Validation::Contract
         params do
           required(:space_id).filled(:string)
@@ -29,10 +33,10 @@ module Entities
 
       def call(params)
         params = step validate(params:)
-        entity = step create_entity(params:)
-        step attach_photo(entity:, params:) if params[:photo].present?
-
-        entity
+        transaction do
+          entity = step create_entity(params:)
+          step attach_photo(entity:, params:)
+        end
       end
 
       def create_entity(params:)
@@ -45,12 +49,16 @@ module Entities
       end
 
       def attach_photo(entity:, params:)
+        return Success(entity) if params[:photo].blank?
+
         Utils::ActiveStorage.attach_file(
           entity.photo,
           params[:photo],
           entity.space_id,
         )
         Success(entity)
+      rescue StandardError => e
+        Failure(photo: e.message)
       end
     end
   end

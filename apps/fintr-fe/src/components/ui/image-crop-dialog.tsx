@@ -58,6 +58,8 @@ export function ImageCropDialog({
       title={title}
       maxWidth="md"
       bodyTouchAction="none"
+      manageHistory={false}
+      companion
     >
       <div className="space-y-4 px-6 pb-6">
         <div

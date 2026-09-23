@@ -30,7 +30,7 @@ export const fetchEntitiesLocalFirst = async (
     params?.search,
   );
 
-  if (!spaceCode || !readBrowserOnline()) {
+  if (!spaceCode || !readBrowserOnline() || cached !== undefined) {
     return cachedFiltered;
   }
 

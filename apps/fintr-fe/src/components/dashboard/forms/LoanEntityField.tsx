@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -7,9 +7,9 @@ import { MerchantPicker } from "@/components/ui/merchant-picker";
 import { Button } from "@/components/ui/button";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { createEntity } from "@/services/entities/mutation";
+import { useEntitiesMutations } from "@/hooks/async/useEntitiesMutations";
 import { fetchEntitiesLocalFirst } from "@/services/entities/queries";
-import { extractFieldErrors } from "@/utils/errorUtils";
+import { extractFieldErrors, formatApiErrorMessage } from "@/utils/errorUtils";
 
 import EntityCreationForm from "./EntityCreationForm";
 
@@ -21,6 +21,7 @@ type LoanEntityFieldProps = {
   value: string;
   onChange: (value: string) => void;
   hasError?: boolean;
+  excludeNames?: string[];
 };
 
 const FIELD_COPY: Record<
@@ -61,7 +62,7 @@ const FIELD_COPY: Record<
     emptyTitle: "No borrowers yet",
     emptyDescription:
       "Save people or businesses you lend to so you can pick them quickly next time.",
-    addLabel: "Add borrower",
+    addLabel: "Create borrower",
     createLabel: (name) => `Add "${name}"`,
     notFoundPrefix: "No borrower matches",
     creationNoun: "borrower",
@@ -75,14 +76,26 @@ const LoanEntityField: React.FC<LoanEntityFieldProps> = ({
   value,
   onChange,
   hasError = false,
+  excludeNames = [],
 }) => {
   const copy = FIELD_COPY[loanType];
   const { api } = useAuthApi();
   const [spaceCode] = useLocalStorage("spaceCode", "");
   const queryClient = useQueryClient();
+  const { createEntity } = useEntitiesMutations();
   const [showCreationPanel, setShowCreationPanel] = useState(false);
   const [isCreatingEntity, setIsCreatingEntity] = useState(false);
   const [creationSeed, setCreationSeed] = useState("");
+
+  const excludedNameKey = useMemo(
+    () =>
+      excludeNames
+        .map((name) => name.trim().toLowerCase())
+        .filter(Boolean)
+        .sort()
+        .join("\0"),
+    [excludeNames],
+  );
 
   const fetchEntityOptions = useCallback(
     async (query: string) => {
@@ -92,11 +105,17 @@ const LoanEntityField: React.FC<LoanEntityFieldProps> = ({
           search: query,
         });
 
-        return entities.map((entity) => ({
-          id: entity.id,
-          fullName: entity.fullName || "",
-          photoUrl: entity.photoUrl,
-        }));
+        const excluded = new Set(
+          excludedNameKey ? excludedNameKey.split("\0") : [],
+        );
+
+        return entities
+          .filter((entity) => !excluded.has((entity.fullName || "").trim().toLowerCase()))
+          .map((entity) => ({
+            id: entity.id,
+            fullName: entity.fullName || "",
+            photoUrl: entity.photoUrl,
+          }));
       } catch (error: unknown) {
         const err = error as { error?: { message?: string }; status?: number };
         if (err?.error?.message !== "Unprocessable Entity" && err?.status !== 422) {
@@ -105,7 +124,7 @@ const LoanEntityField: React.FC<LoanEntityFieldProps> = ({
         return [];
       }
     },
-    [api, spaceCode],
+    [api, excludedNameKey, spaceCode],
   );
 
   const openCreationPanel = (seed = "") => {
@@ -130,7 +149,7 @@ const LoanEntityField: React.FC<LoanEntityFieldProps> = ({
 
     setIsCreatingEntity(true);
     try {
-      const response = await createEntity(api, {
+      const response = await createEntity({
         fullName: trimmed,
         entityType: "loan",
       });
@@ -143,15 +162,22 @@ const LoanEntityField: React.FC<LoanEntityFieldProps> = ({
     } catch (error: unknown) {
       console.error("Failed to create loan entity:", error);
       const fieldErrors = extractFieldErrors(error);
-      const message =
+      const fieldMessage =
         typeof fieldErrors.fullName === "string"
           ? fieldErrors.fullName
           : Array.isArray(fieldErrors.fullName)
             ? fieldErrors.fullName[0]
             : typeof fieldErrors.full_name === "string"
               ? fieldErrors.full_name
-              : `Could not save ${copy.creationNoun}`;
-      toast.error(String(message));
+              : Array.isArray(fieldErrors.full_name)
+                ? fieldErrors.full_name[0]
+                : null;
+      toast.error(
+        String(
+          fieldMessage
+          || formatApiErrorMessage(error, `Could not save ${copy.creationNoun}`),
+        ),
+      );
     } finally {
       setIsCreatingEntity(false);
     }
@@ -159,30 +185,30 @@ const LoanEntityField: React.FC<LoanEntityFieldProps> = ({
 
   return (
     <div className="min-w-0 space-y-2" id={id}>
-      {!showCreationPanel ? (
-        <div className="space-y-2">
-          <MerchantPicker
-            value={value}
-            onChange={onChange}
-            onFetchMerchants={fetchEntityOptions}
-            label={copy.label}
-            optionalLabel=""
-            placeholder={copy.placeholder}
-            title={copy.title}
-            searchPlaceholder={copy.searchPlaceholder}
-            emptyTitle={copy.emptyTitle}
-            emptyDescription={copy.emptyDescription}
-            addLabel={copy.addLabel}
-            notFoundPrefix={copy.notFoundPrefix}
-            createLabel={copy.createLabel}
-            onAddMerchant={() => openCreationPanel()}
-            onQuickCreate={handleQuickCreate}
-            onOpenCreationPanel={openCreationPanel}
-            isCreating={isCreatingEntity}
-            className={
-              hasError ? "border-red-800 focus-visible:ring-red-800" : undefined
-            }
-          />
+      <div className="space-y-2">
+        <MerchantPicker
+          value={value}
+          onChange={onChange}
+          onFetchMerchants={fetchEntityOptions}
+          label={copy.label}
+          optionalLabel=""
+          placeholder={copy.placeholder}
+          title={copy.title}
+          searchPlaceholder={copy.searchPlaceholder}
+          emptyTitle={copy.emptyTitle}
+          emptyDescription={copy.emptyDescription}
+          addLabel={copy.addLabel}
+          notFoundPrefix={copy.notFoundPrefix}
+          createLabel={copy.createLabel}
+          onAddMerchant={() => openCreationPanel()}
+          onQuickCreate={handleQuickCreate}
+          onOpenCreationPanel={openCreationPanel}
+          isCreating={isCreatingEntity}
+          className={
+            hasError ? "border-red-800 focus-visible:ring-red-800" : undefined
+          }
+        />
+        {!showCreationPanel ? (
           <Button
             type="button"
             variant="ghost"
@@ -193,8 +219,9 @@ const LoanEntityField: React.FC<LoanEntityFieldProps> = ({
             <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden />
             {copy.addLabel}
           </Button>
-        </div>
-      ) : (
+        ) : null}
+      </div>
+      {showCreationPanel ? (
         <EntityCreationForm
           onSuccess={handleEntityCreated}
           onCancel={() => {
@@ -207,7 +234,7 @@ const LoanEntityField: React.FC<LoanEntityFieldProps> = ({
           namePlaceholder={copy.namePlaceholder}
           photoLabel={`${copy.label} photo`}
         />
-      )}
+      ) : null}
     </div>
   );
 };

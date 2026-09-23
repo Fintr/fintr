@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { navigateDashboardClient } from "@/utils/detailSearchParam";
 import { BarChart3, List, Tags } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,11 +28,9 @@ export function TagDestinationDialog({
   tag,
   onClose,
 }: TagDestinationDialogProps) {
-  const router = useRouter();
-
   const go = (href: string) => {
     onClose();
-    router.push(href);
+    navigateDashboardClient(href);
   };
 
   return (

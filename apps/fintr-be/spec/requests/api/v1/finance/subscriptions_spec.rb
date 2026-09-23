@@ -10,7 +10,7 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
 
   describe "GET /api/v1/finance/subscriptions" do
     let(:list_plans_query) { instance_double(Finance::Queries::ListSubscriptionPlans) }
-    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 14_900, interval: "month") }
+    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", price_cents: 14_900, interval: "month") }
 
     before do
       allow(Finance::Queries::ListSubscriptionPlans).to receive(:call).and_return(
@@ -133,7 +133,7 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
     let(:create_subscription_operation) do
       instance_double(Finance::Operations::Subscriptions::CreateSubscription)
     end
-    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 14_900, interval: "month") }
+    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", price_cents: 14_900, interval: "month") }
     let(:space_subscription) do
       create(
         :space_subscription,
@@ -201,8 +201,8 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
     let(:update_subscription_operation) do
       instance_double(Finance::Operations::Subscriptions::UpdateSubscription)
     end
-    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 14_900, interval: "month") }
-    let(:new_plan) { create(:subscription_plan, slug: "premium-#{SecureRandom.hex(4)}", token_limit: 100, price_cents: 20_000, interval: "month") }
+    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", price_cents: 14_900, interval: "month") }
+    let(:new_plan) { create(:subscription_plan, slug: "premium-#{SecureRandom.hex(4)}", price_cents: 20_000, interval: "month") }
     let(:space_subscription) do
       create(
         :space_subscription,
@@ -290,7 +290,7 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
     let(:cancel_subscription_operation) do
       instance_double(Finance::Operations::Subscriptions::CancelSubscription)
     end
-    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 14_900, interval: "month") }
+    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", price_cents: 14_900, interval: "month") }
     let(:space_subscription) do
       create(
         :space_subscription,

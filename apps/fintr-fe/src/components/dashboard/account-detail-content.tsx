@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { navigateDashboardClient } from "@/utils/detailSearchParam";
 import {
   SquarePen,
   Trash2,
@@ -336,7 +336,6 @@ const TransactionSection = ({
 const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   accountId,
 }) => {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { api } = useAuthApi();
   const { currentSpace } = useSpaceContext(api);
@@ -1097,7 +1096,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         account={account}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        onDeleted={() => router.push("/dashboard/space_settings/accounts")}
+        onDeleted={() => navigateDashboardClient("/dashboard/space_settings/accounts")}
       />
     </div>
   );

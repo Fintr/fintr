@@ -332,6 +332,10 @@ describe("bootstrap-local-data", () => {
 
     expect(result.syncedSpaceCodes).toEqual(["SPACE1", "SPACE2"]);
     expect(result.failedSpaceCodes).toEqual([]);
+    expect(queryClient.getQueryData(["spaces"])).toEqual([
+      { code: "SPACE1", name: "Personal" },
+      { code: "SPACE2", name: "Business" },
+    ]);
     expect(progressSnapshots.at(-1)).toBe(100);
     expect(api.get).toHaveBeenCalled();
     expect(fetchTransactionsPage).toHaveBeenCalledTimes(2);

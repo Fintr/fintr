@@ -18,7 +18,8 @@ import {
   Trash2
 } from "lucide-react";
 import { useAiChat } from "@/hooks/async/useAiChat";
-import { useAIUsage } from "@/hooks/async/useAIUsage";
+import { useProAccess } from "@/hooks/async/useProAccess";
+import { ProRequiredNotice } from "@/components/settings/pro-feature-gate";
 import { useConversations } from "@/hooks/async/useConversations";
 import { useInfiniteMessages } from "@/hooks/async/useInfiniteMessages";
 import { ChatMessage } from "@/types/aiChatTypes";
@@ -74,7 +75,8 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
     setChatState,
   } = useAiChat();
   
-  const { data: aiUsage, isLoading: isLoadingUsage, refetch: refetchAIUsage } = useAIUsage();
+  const { data: proAccess, isPending: isCheckingPro } = useProAccess();
+  const hasPro = proAccess?.pro === true;
   const {
     canChoose: canChooseLlmPriority,
     priority: llmPriority,
@@ -277,13 +279,6 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   }, [currentStreamingMessage, isStreaming, hasUserManuallyScrolled, isNearBottom, scrollToBottom]);
 
 
-  // Refetch AI usage when streaming completes
-  useEffect(() => {
-    if (!isStreaming && !isLoading && messages.length > 0) {
-      refetchAIUsage();
-    }
-  }, [isStreaming, isLoading, messages.length, refetchAIUsage]);
-
   // Handle browser history for mobile back button support
   useEffect(() => {
     if (!isOpen) {
@@ -336,7 +331,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
 
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || isLoading || !hasPro) return;
 
     const message = inputMessage.trim();
     setInputMessage("");
@@ -655,17 +650,21 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                 />
               ) : null}
               
-              {/* Token usage display */}
-              <div className="flex justify-center py-2 border-b bg-muted/20">
-                {isLoadingUsage ? (
-                  <LoadingSpinner size="small" />
-                ) : aiUsage ? (
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>Used: {aiUsage.used} / {aiUsage.limit}</span>
-                    <span>Remaining: {aiUsage.remaining}</span>
-                  </div>
-                ) : null}
-              </div>
+              {isCheckingPro && !proAccess ? (
+                <div className="flex justify-center py-2 border-b bg-muted/20">
+                  <span className="text-sm text-muted-foreground">Checking Fintr Pro…</span>
+                </div>
+              ) : hasPro && proAccess?.source === "trial" ? (
+                <div className="flex justify-center py-2 border-b bg-muted/20">
+                  <span className="text-sm text-muted-foreground">
+                    {proAccess.trialDaysRemaining} days left in your trial
+                  </span>
+                </div>
+              ) : hasPro ? null : (
+                <div className="border-b bg-muted/20 px-4 py-2">
+                  <ProRequiredNotice featureName="AI chat" />
+                </div>
+              )}
               
               {/* Chat Messages */}
               <ScrollArea ref={scrollAreaRef} className="flex-1">
@@ -805,12 +804,12 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Ask Fintr AI anything..."
-                    disabled={isLoading}
+                    disabled={isLoading || !hasPro}
                     className="flex-1"
                   />
                   <Button
                     onClick={handleSendMessage}
-                    disabled={!inputMessage.trim() || isLoading}
+                    disabled={!inputMessage.trim() || isLoading || !hasPro}
                     className="px-4"
                   >
                     {isLoading ? (

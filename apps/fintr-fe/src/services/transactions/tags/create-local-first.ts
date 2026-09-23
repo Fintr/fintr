@@ -10,11 +10,13 @@ import {
 import {
   applyTransactionTagsToCaches,
   loadTransactionTags,
+  normalizeTransactionTag,
   removeTransactionTagFromList,
   replaceTransactionTagIdInList,
   upsertTransactionTagInList,
 } from "@/services/transactions/tags/local-cache";
 import { createTransactionTag } from "@/services/transactions/tags/mutation";
+import { resolveTagStyleImageUrl } from "@/lib/tags/preset-style-images";
 import type {
   CreateTransactionTagType,
   TransactionTag,
@@ -31,6 +33,10 @@ export type CreateTagLocalFirstResult = {
 export type CreateTagLocalFirstOptions = {
   queryClient?: QueryClient;
   waitForSync?: boolean;
+};
+
+export type TagCreateOutboxPayload = CreateTransactionTagType & {
+  localId: string;
 };
 
 const DEFAULT_TAG_COLOR = "#0A3D62";
@@ -80,18 +86,7 @@ const extractCreatedTag = (response: unknown): TransactionTag | undefined => {
     return undefined;
   }
 
-  return {
-    id: data.id,
-    name: String(data.name ?? ""),
-    color: String(data.color ?? DEFAULT_TAG_COLOR),
-    isDefault: Boolean(data.isDefault ?? data.is_default),
-    styleImageUrl:
-      typeof data.styleImageUrl === "string"
-        ? data.styleImageUrl
-        : typeof data.style_image_url === "string"
-          ? data.style_image_url
-          : undefined,
-  };
+  return normalizeTransactionTag(data);
 };
 
 export const buildOptimisticTag = (params: {
@@ -105,6 +100,10 @@ export const buildOptimisticTag = (params: {
     name: data.name.trim(),
     color: data.color?.trim() || DEFAULT_TAG_COLOR,
     isDefault: false,
+    stylePresetKey: data.stylePresetKey,
+    styleImageUrl: resolveTagStyleImageUrl({
+      stylePresetKey: data.stylePresetKey,
+    }),
   };
 };
 

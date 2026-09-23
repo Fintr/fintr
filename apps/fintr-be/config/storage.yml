@@ -12,7 +12,7 @@ amazon:
   access_key_id: <%= ENV["AWS_ACCESS_KEY_ID"] %>
   secret_access_key: <%= ENV["AWS_SECRET_ACCESS_KEY"] %>
   region: ap-southeast-1
-  bucket: fintr-<%= Rails.env %>
+  bucket: <%= Rails.env == "development" ? "fintr-dev" : "fintr-" + Rails.env %>
   public: true
   force_path_style: true
   endpoint: https://s3.ap-southeast-1.amazonaws.com

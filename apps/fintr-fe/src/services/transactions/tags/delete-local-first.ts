@@ -11,10 +11,16 @@ import {
   applyTransactionTagsToCaches,
   loadTransactionTags,
   removeTransactionTagFromList,
+  restoreTagAssignmentsToLocalTransactions,
+  stripTagAssignmentsFromLocalTransactions,
   upsertTransactionTagInList,
 } from "@/services/transactions/tags/local-cache";
 import { deleteTransactionTag } from "@/services/transactions/tags/mutation";
 import type { TransactionTag } from "@/types/transactionTagTypes";
+
+export type TagDeleteOutboxPayload = {
+  tagId: string;
+};
 
 export type DeleteTagLocalFirstResult = {
   data: { id: string };
@@ -91,6 +97,10 @@ export const deleteTagLocalFirst = async (
     tags: nextTags,
     queryClient,
   });
+  const previousAssignments = await stripTagAssignmentsFromLocalTransactions(
+    spaceCode,
+    tagId,
+  );
 
   const clientMutationId = newClientMutationId();
   await enqueueOutboxRecord({
@@ -113,6 +123,15 @@ export const deleteTagLocalFirst = async (
   const runSync = async (): Promise<void> => {
     try {
       const serverResponse = await deleteTransactionTag(api, tagId);
+      if (
+        serverResponse
+        && typeof serverResponse === "object"
+        && "success" in serverResponse
+        && (serverResponse as { success?: unknown }).success === false
+      ) {
+        throw serverResponse;
+      }
+
       await removeOutboxRecord(clientMutationId);
 
       resolveSync({
@@ -149,6 +168,10 @@ export const deleteTagLocalFirst = async (
         tags: rollbackTags,
         queryClient,
       });
+      await restoreTagAssignmentsToLocalTransactions(
+        spaceCode,
+        previousAssignments,
+      );
       await removeOutboxRecord(clientMutationId);
       rejectSync(error);
     }

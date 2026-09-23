@@ -10,6 +10,40 @@ RSpec.describe Integrations::Payments::Xendit::Client, :vcr do
     allow(ENV).to receive(:fetch).with("XENDIT_API_KEY").and_return(api_key)
   end
 
+  describe "#get_customer" do
+    it "returns the customer" do
+      http_mock = instance_double(Net::HTTP)
+      response = Net::HTTPSuccess.new("1.1", "200", "OK")
+      allow(response).to receive(:body).and_return('{"id": "cust-123", "reference_id": "ref-123"}')
+      allow(Net::HTTP).to receive(:new).and_return(http_mock)
+      allow(http_mock).to receive(:use_ssl=)
+      allow(http_mock).to receive(:read_timeout=)
+      allow(http_mock).to receive(:open_timeout=)
+      allow(http_mock).to receive(:request).and_return(response)
+
+      result = client.get_customer(customer_id: "cust-123")
+
+      expect(result[:id]).to eq("cust-123")
+    end
+
+    it "raises when the customer does not exist" do
+      http_mock = instance_double(Net::HTTP)
+      response = Net::HTTPNotFound.new("1.1", "404", "Not Found")
+      allow(response).to receive(:body).and_return(
+        '{"error_code": "DATA_NOT_FOUND", "message": "Provided id does not exist"}'
+      )
+      allow(Net::HTTP).to receive(:new).and_return(http_mock)
+      allow(http_mock).to receive(:use_ssl=)
+      allow(http_mock).to receive(:read_timeout=)
+      allow(http_mock).to receive(:open_timeout=)
+      allow(http_mock).to receive(:request).and_return(response)
+
+      expect do
+        client.get_customer(customer_id: "cust-missing")
+      end.to raise_error(Integrations::Payments::Xendit::Error, "Provided id does not exist")
+    end
+  end
+
   describe "#create_customer" do
     let(:email) { "test@example.com" }
     let(:given_names) { "John" }

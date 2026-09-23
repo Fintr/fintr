@@ -155,6 +155,7 @@ export const useInfiniteTransactions = ({
     },
     enabled: Boolean(spaceCode),
     staleTime: 0,
+    networkMode: "always",
   });
 
   const cachedInfiniteData = useMemo((): InfiniteData<TransactionsPage, number> | undefined => {
@@ -202,6 +203,7 @@ export const useInfiniteTransactions = ({
     isSuccess,
     refetch,
     isLoading,
+    isPending,
   } = useInfiniteQuery({
     queryKey: infiniteQueryKey,
     queryFn: async ({ pageParam = 1, queryKey }) => {
@@ -305,6 +307,7 @@ export const useInfiniteTransactions = ({
     staleTime: preferLocalIndexReads ? 0 : 30000,
     gcTime: 300000,
     placeholderData: cachedInfiniteData,
+    networkMode: "always",
   });
 
   useEffect(() => {
@@ -361,7 +364,13 @@ export const useInfiniteTransactions = ({
     isSuccess: isSuccess || hasLoadedPages,
     refetch,
     isLoading:
-      (isLoading || isFetching || localCacheQuery.isFetching)
+      (
+        isLoading
+        || isPending
+        || isFetching
+        || localCacheQuery.isFetching
+        || localCacheQuery.isPending
+      )
       && !hasLoadedPages,
     isShowingLocalCache: Boolean(localCacheQuery.data) && !isSuccess,
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useId, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, Search, Star, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
 
 const CURRENCY_SELECTOR_HISTORY_KEY = "__fintrCurrencySelector";
 const BELOW_MD_SHEET_QUERY = "(max-width: 767px)";
+const SHEET_CLOSE_MS = 200;
 
 const bottomSheetClassName = cn(
   "flex h-[80dvh] min-h-[80dvh] max-h-[80dvh] flex-col overflow-hidden rounded-none rounded-t-3xl",
@@ -71,7 +72,6 @@ function sortCurrenciesPopularFirst(
 }
 
 interface CurrencySelectorContentProps {
-  open: boolean;
   value: string;
   onSelect: (code: string) => void;
   onClose: () => void;
@@ -80,8 +80,7 @@ interface CurrencySelectorContentProps {
   showDragHandle?: boolean;
 }
 
-function CurrencySelectorContent({
-  open,
+const CurrencySelectorContent = React.memo(function CurrencySelectorContent({
   value,
   onSelect,
   onClose,
@@ -92,13 +91,6 @@ function CurrencySelectorContent({
   const titleId = useId();
   const [searchQuery, setSearchQuery] = useState("");
   const [showPopularOnly, setShowPopularOnly] = useState(false);
-
-  React.useEffect(() => {
-    if (!open) {
-      setSearchQuery("");
-      setShowPopularOnly(false);
-    }
-  }, [open]);
 
   const availableCurrencies = useMemo(() => {
     if (!currencyCodes?.length) {
@@ -129,8 +121,10 @@ function CurrencySelectorContent({
 
   const handleSelect = useCallback(
     (code: string) => {
-      onSelect(code);
       onClose();
+      window.setTimeout(() => {
+        onSelect(code);
+      }, SHEET_CLOSE_MS);
     },
     [onClose, onSelect],
   );
@@ -274,7 +268,7 @@ function CurrencySelectorContent({
       </div>
     </div>
   );
-}
+});
 
 /**
  * Currency picker shell: bottom sheet on small screens, popover on larger viewports.
@@ -293,21 +287,90 @@ export function CurrencySelectorSheet({
   useCloseOnPopStateWhenOpen(open, onOpenChange, CURRENCY_SELECTOR_HISTORY_KEY);
 
   const useBottomSheet = useMediaQuery(BELOW_MD_SHEET_QUERY);
+  const [sheetOpen, setSheetOpen] = useState(open);
+  const closeTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setSheetOpen(true);
+      return;
+    }
+
+    setSheetOpen(false);
+  }, [open]);
 
   const handleClose = useCallback(() => {
-    onOpenChange(false);
+    if (closeTimerRef.current != null) {
+      return;
+    }
+
+    // Slide the panel on the compositor before React re-renders the form.
+    // Updating the selected currency in the same turn freezes that slide,
+    // then the sheet jumps the rest of the way down.
+    const panel = document.querySelector(
+      "[data-currency-sheet][data-state='open']",
+    );
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const canAnimate =
+      !reduceMotion
+      && panel instanceof HTMLElement
+      && typeof panel.animate === "function";
+
+    if (canAnimate) {
+      panel.getAnimations().forEach((animation) => animation.cancel());
+      panel.style.animation = "none";
+      panel.style.pointerEvents = "none";
+      panel.animate(
+        [
+          { transform: "translate3d(0, 0, 0)" },
+          { transform: "translate3d(0, 100%, 0)" },
+        ],
+        {
+          duration: SHEET_CLOSE_MS,
+          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+          fill: "forwards",
+        },
+      );
+
+      const overlay = panel.previousElementSibling;
+      if (overlay instanceof HTMLElement && typeof overlay.animate === "function") {
+        overlay.animate(
+          [{ opacity: 1 }, { opacity: 0 }],
+          {
+            duration: SHEET_CLOSE_MS,
+            easing: "ease-out",
+            fill: "forwards",
+          },
+        );
+      }
+    } else {
+      setSheetOpen(false);
+    }
+
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null;
+      setSheetOpen(false);
+      onOpenChange(false);
+    }, SHEET_CLOSE_MS);
   }, [onOpenChange]);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
-      onOpenChange(nextOpen);
+      if (nextOpen) {
+        setSheetOpen(true);
+        onOpenChange(true);
+        return;
+      }
+
+      handleClose();
     },
-    [onOpenChange],
+    [handleClose, onOpenChange],
   );
 
   const content = (
     <CurrencySelectorContent
-      open={open}
       value={value}
       onSelect={onSelect}
       onClose={handleClose}
@@ -319,10 +382,11 @@ export function CurrencySelectorSheet({
 
   if (useBottomSheet) {
     return (
-      <Sheet open={open} onOpenChange={handleOpenChange}>
+      <Sheet open={sheetOpen} onOpenChange={handleOpenChange}>
         <SheetTrigger asChild>{trigger}</SheetTrigger>
         <SheetContent
           side="bottom"
+          data-currency-sheet=""
           nestedOverlay
           overlayClassName="z-[125]"
           onOverlayClick={handleClose}
@@ -336,7 +400,7 @@ export function CurrencySelectorSheet({
   }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={sheetOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent
         nestedOverlay

@@ -188,7 +188,7 @@ const SubscriptionsPage = () => {
 
   if (isLoadingSubscription) {
     return (
-      <div className="container mx-auto py-8 px-0 sm:px-6 lg:px-8">
+      <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
         </div>
@@ -197,7 +197,7 @@ const SubscriptionsPage = () => {
   }
 
   return (
-    <div className="container mx-auto py-4 sm:py-8 -mx-4 sm:mx-auto sm:px-6 lg:px-8">
+    <div className="container mx-auto px-4 py-4 sm:py-8 sm:px-6 lg:px-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold">Subscriptions</h1>
@@ -300,9 +300,6 @@ const SubscriptionsPage = () => {
                               <div>
                                 <span className="text-purple-600">Cycle #{activeSubscription.freeSubscriptionInfo.currentCycle.cycleNumber}</span>
                               </div>
-                              <div>
-                                <span className="text-purple-600">{activeSubscription.freeSubscriptionInfo.currentCycle.tokensAllocated.toLocaleString()} tokens</span>
-                              </div>
                               <div className="col-span-2">
                                 <span className="text-purple-600">
                                   {new Date(activeSubscription.freeSubscriptionInfo.currentCycle.startedAt).toLocaleDateString()} - {new Date(activeSubscription.freeSubscriptionInfo.currentCycle.endsAt).toLocaleDateString()}
@@ -329,8 +326,8 @@ const SubscriptionsPage = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm text-gray-500">Token Limit</p>
-                      <p className="text-base sm:text-lg font-semibold">{activeSubscription.subscriptionPlan.tokenLimit}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">Access</p>
+                      <p className="text-base sm:text-lg font-semibold">Fintr Pro</p>
                     </div>
                     <div>
                       <p className="text-xs sm:text-sm text-gray-500">Status</p>
@@ -344,20 +341,19 @@ const SubscriptionsPage = () => {
                   {activeSubscription.billingCycles && activeSubscription.billingCycles.length > 0 && (
                     <div className="pt-4 border-t">
                       <h4 className="text-sm font-semibold mb-3">Billing Cycles</h4>
-                      <div className="border rounded-lg overflow-hidden">
+                      <div className="overflow-hidden rounded-lg border border-border bg-background">
                         <div className="max-h-[180px] overflow-y-auto">
-                          <Table>
-                          <TableHeader className="bg-gray-50">
-                            <TableRow className="hover:bg-gray-50">
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Cycle</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Status</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Start Date</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">End Date</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Tokens Allocated</TableHead>
+                          <Table className="bg-background text-foreground">
+                          <TableHeader className="bg-muted">
+                            <TableRow className="hover:bg-muted/70">
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Cycle</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Status</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Start Date</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">End Date</TableHead>
                               {(activeSubscription.billingCycles?.some((c) => c.status === "failed" && c.actionUrl) || 
                                 (isDevOrStaging && activeSubscription.billingCycles?.some((c) => c.xenditCycleId))) && (
-                                <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Actions</TableHead>
+                                <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Actions</TableHead>
                               )}
                             </TableRow>
                           </TableHeader>
@@ -365,13 +361,13 @@ const SubscriptionsPage = () => {
                             {activeSubscription.billingCycles
                               ?.sort((a, b) => (b.cycleNumber || 0) - (a.cycleNumber || 0))
                               .map((cycle) => (
-                              <TableRow key={cycle.id} className="hover:bg-gray-50">
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                              <TableRow key={cycle.id} className="hover:bg-muted/70">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   <div className="flex items-center gap-2">
                                     <span>{cycle.cycleNumber}</span>
                                     <button
                                       onClick={() => handleCopyCycleId(cycle.id)}
-                                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                                      className="text-muted-foreground transition-colors hover:text-foreground"
                                       title={copiedCycleId === cycle.id ? "Copied!" : "Copy billing cycle ID"}
                                     >
                                       {copiedCycleId === cycle.id ? (
@@ -384,24 +380,21 @@ const SubscriptionsPage = () => {
                                 </TableCell>
                                 <TableCell className="text-xs whitespace-nowrap px-3 py-2">
                                   <span className={`px-2 py-1 rounded capitalize ${
-                                    cycle.status === "paid" ? "bg-green-100 text-green-800" :
-                                    cycle.status === "failed" ? "bg-red-100 text-red-800" :
-                                    "bg-yellow-100 text-yellow-800"
+                                    cycle.status === "paid" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400" :
+                                    cycle.status === "failed" ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400" :
+                                    "bg-yellow-100 text-yellow-800 dark:bg-amber-950/40 dark:text-amber-300"
                                   }`}>
                                     {cycle.status}
                                   </span>
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.scheduledTimestamp ? new Date(cycle.scheduledTimestamp).toLocaleDateString() : "-"}
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.startedAt ? new Date(cycle.startedAt).toLocaleDateString() : "-"}
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.endsAt ? new Date(cycle.endsAt).toLocaleDateString() : "-"}
-                                </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
-                                  {cycle.tokensAllocated ? cycle.tokensAllocated.toLocaleString() : "-"}
                                 </TableCell>
                                 {(activeSubscription.billingCycles?.some((c) => c.status === "failed" && c.actionUrl) || 
                                   (isDevOrStaging && activeSubscription.billingCycles?.some((c) => c.xenditCycleId))) && (
@@ -421,7 +414,7 @@ const SubscriptionsPage = () => {
                                           Pay
                                         </Button>
                                       ) : (
-                                        <span className="text-gray-400">-</span>
+                                        <span className="text-muted-foreground">-</span>
                                       )}
                                       {isDevOrStaging && cycle.xenditCycleId && (
                                         <Button
@@ -541,8 +534,8 @@ const SubscriptionsPage = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm text-gray-500">Token Limit</p>
-                      <p className="text-base sm:text-lg font-semibold">{subscription.subscriptionPlan.tokenLimit}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">Access</p>
+                      <p className="text-base sm:text-lg font-semibold">Fintr Pro</p>
                     </div>
                     <div>
                       <p className="text-xs sm:text-sm text-gray-500">Status</p>
@@ -556,31 +549,30 @@ const SubscriptionsPage = () => {
                   {subscription.billingCycles && subscription.billingCycles.length > 0 && (
                     <div className="pt-4 border-t">
                       <h4 className="text-sm font-semibold mb-3">Billing Cycles</h4>
-                      <div className="border rounded-lg overflow-hidden">
+                      <div className="overflow-hidden rounded-lg border border-border bg-background">
                         <div className="max-h-[180px] overflow-y-auto">
-                          <Table>
-                          <TableHeader className="bg-gray-50">
-                            <TableRow className="hover:bg-gray-50">
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Cycle</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Status</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Start Date</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">End Date</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Tokens Allocated</TableHead>
+                          <Table className="bg-background text-foreground">
+                          <TableHeader className="bg-muted">
+                            <TableRow className="hover:bg-muted/70">
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Cycle</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Status</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Start Date</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">End Date</TableHead>
                               {subscription.billingCycles.some((c) => c.status === "failed" && c.actionUrl) && (
-                                <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Action</TableHead>
+                                <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Action</TableHead>
                               )}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {subscription.billingCycles.map((cycle) => (
-                              <TableRow key={cycle.id} className="hover:bg-gray-50">
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                              <TableRow key={cycle.id} className="hover:bg-muted/70">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   <div className="flex items-center gap-2">
                                     <span>{cycle.cycleNumber}</span>
                                     <button
                                       onClick={() => handleCopyCycleId(cycle.id)}
-                                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                                      className="text-muted-foreground transition-colors hover:text-foreground"
                                       title={copiedCycleId === cycle.id ? "Copied!" : "Copy billing cycle ID"}
                                     >
                                       {copiedCycleId === cycle.id ? (
@@ -593,24 +585,21 @@ const SubscriptionsPage = () => {
                                 </TableCell>
                                 <TableCell className="text-xs whitespace-nowrap px-3 py-2">
                                   <span className={`px-2 py-1 rounded capitalize ${
-                                    cycle.status === "paid" ? "bg-green-100 text-green-800" :
-                                    cycle.status === "failed" ? "bg-red-100 text-red-800" :
-                                    "bg-yellow-100 text-yellow-800"
+                                    cycle.status === "paid" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400" :
+                                    cycle.status === "failed" ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400" :
+                                    "bg-yellow-100 text-yellow-800 dark:bg-amber-950/40 dark:text-amber-300"
                                   }`}>
                                     {cycle.status}
                                   </span>
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.scheduledTimestamp ? new Date(cycle.scheduledTimestamp).toLocaleDateString() : "-"}
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.startedAt ? new Date(cycle.startedAt).toLocaleDateString() : "-"}
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.endsAt ? new Date(cycle.endsAt).toLocaleDateString() : "-"}
-                                </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
-                                  {cycle.tokensAllocated ? cycle.tokensAllocated.toLocaleString() : "-"}
                                 </TableCell>
                                 {subscription.billingCycles.some((c) => c.status === "failed" && c.actionUrl) && (
                                   <TableCell className="text-xs whitespace-nowrap px-3 py-2">
@@ -763,8 +752,8 @@ const SubscriptionsPage = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm text-gray-500">Token Limit</p>
-                      <p className="text-base sm:text-lg font-semibold">{subscription.subscriptionPlan.tokenLimit}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">Access</p>
+                      <p className="text-base sm:text-lg font-semibold">Fintr Pro</p>
                     </div>
                     <div>
                       <p className="text-xs sm:text-sm text-gray-500">Status</p>
@@ -778,31 +767,30 @@ const SubscriptionsPage = () => {
                   {subscription.billingCycles && subscription.billingCycles.length > 0 && (
                     <div className="pt-4 border-t">
                       <h4 className="text-sm font-semibold mb-3">Billing Cycles</h4>
-                      <div className="border rounded-lg overflow-hidden">
+                      <div className="overflow-hidden rounded-lg border border-border bg-background">
                         <div className="max-h-[180px] overflow-y-auto">
-                          <Table>
-                          <TableHeader className="bg-gray-50">
-                            <TableRow className="hover:bg-gray-50">
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Cycle</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Status</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Start Date</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">End Date</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Tokens Allocated</TableHead>
+                          <Table className="bg-background text-foreground">
+                          <TableHeader className="bg-muted">
+                            <TableRow className="hover:bg-muted/70">
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Cycle</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Status</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Start Date</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">End Date</TableHead>
                               {subscription.billingCycles.some((c) => c.status === "failed" && c.actionUrl) && (
-                                <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Action</TableHead>
+                                <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Action</TableHead>
                               )}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {subscription.billingCycles.map((cycle) => (
-                              <TableRow key={cycle.id} className="hover:bg-gray-50">
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                              <TableRow key={cycle.id} className="hover:bg-muted/70">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   <div className="flex items-center gap-2">
                                     <span>{cycle.cycleNumber}</span>
                                     <button
                                       onClick={() => handleCopyCycleId(cycle.id)}
-                                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                                      className="text-muted-foreground transition-colors hover:text-foreground"
                                       title={copiedCycleId === cycle.id ? "Copied!" : "Copy billing cycle ID"}
                                     >
                                       {copiedCycleId === cycle.id ? (
@@ -815,24 +803,21 @@ const SubscriptionsPage = () => {
                                 </TableCell>
                                 <TableCell className="text-xs whitespace-nowrap px-3 py-2">
                                   <span className={`px-2 py-1 rounded capitalize ${
-                                    cycle.status === "paid" ? "bg-green-100 text-green-800" :
-                                    cycle.status === "failed" ? "bg-red-100 text-red-800" :
-                                    "bg-yellow-100 text-yellow-800"
+                                    cycle.status === "paid" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400" :
+                                    cycle.status === "failed" ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400" :
+                                    "bg-yellow-100 text-yellow-800 dark:bg-amber-950/40 dark:text-amber-300"
                                   }`}>
                                     {cycle.status}
                                   </span>
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.scheduledTimestamp ? new Date(cycle.scheduledTimestamp).toLocaleDateString() : "-"}
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.startedAt ? new Date(cycle.startedAt).toLocaleDateString() : "-"}
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.endsAt ? new Date(cycle.endsAt).toLocaleDateString() : "-"}
-                                </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
-                                  {cycle.tokensAllocated ? cycle.tokensAllocated.toLocaleString() : "-"}
                                 </TableCell>
                                 {subscription.billingCycles.some((c) => c.status === "failed" && c.actionUrl) && (
                                   <TableCell className="text-xs whitespace-nowrap px-3 py-2">
@@ -850,7 +835,7 @@ const SubscriptionsPage = () => {
                                         Pay
                                       </Button>
                                     ) : (
-                                      <span className="text-gray-400">-</span>
+                                      <span className="text-muted-foreground">-</span>
                                     )}
                                   </TableCell>
                                 )}
@@ -905,8 +890,8 @@ const SubscriptionsPage = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm text-gray-500">Token Limit</p>
-                      <p className="text-base sm:text-lg font-semibold">{subscription.subscriptionPlan.tokenLimit}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">Access</p>
+                      <p className="text-base sm:text-lg font-semibold">Fintr Pro</p>
                     </div>
                     <div>
                       <p className="text-xs sm:text-sm text-gray-500">Status</p>
@@ -932,31 +917,30 @@ const SubscriptionsPage = () => {
                   {subscription.billingCycles && subscription.billingCycles.length > 0 && (
                     <div className="pt-4 border-t">
                       <h4 className="text-sm font-semibold mb-3">Billing Cycles</h4>
-                      <div className="border rounded-lg overflow-hidden">
+                      <div className="overflow-hidden rounded-lg border border-border bg-background">
                         <div className="max-h-[180px] overflow-y-auto">
-                          <Table>
-                          <TableHeader className="bg-gray-50">
-                            <TableRow className="hover:bg-gray-50">
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Cycle</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Status</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Start Date</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">End Date</TableHead>
-                              <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Tokens Allocated</TableHead>
+                          <Table className="bg-background text-foreground">
+                          <TableHeader className="bg-muted">
+                            <TableRow className="hover:bg-muted/70">
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Cycle</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Status</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Start Date</TableHead>
+                              <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">End Date</TableHead>
                               {subscription.billingCycles.some((c) => c.status === "failed" && c.actionUrl) && (
-                                <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Action</TableHead>
+                                <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Action</TableHead>
                               )}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {subscription.billingCycles.map((cycle) => (
-                              <TableRow key={cycle.id} className="hover:bg-gray-50">
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                              <TableRow key={cycle.id} className="hover:bg-muted/70">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   <div className="flex items-center gap-2">
                                     <span>{cycle.cycleNumber}</span>
                                     <button
                                       onClick={() => handleCopyCycleId(cycle.id)}
-                                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                                      className="text-muted-foreground transition-colors hover:text-foreground"
                                       title={copiedCycleId === cycle.id ? "Copied!" : "Copy billing cycle ID"}
                                     >
                                       {copiedCycleId === cycle.id ? (
@@ -969,24 +953,21 @@ const SubscriptionsPage = () => {
                                 </TableCell>
                                 <TableCell className="text-xs whitespace-nowrap px-3 py-2">
                                   <span className={`px-2 py-1 rounded capitalize ${
-                                    cycle.status === "paid" ? "bg-green-100 text-green-800" :
-                                    cycle.status === "failed" ? "bg-red-100 text-red-800" :
-                                    "bg-yellow-100 text-yellow-800"
+                                    cycle.status === "paid" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400" :
+                                    cycle.status === "failed" ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400" :
+                                    "bg-yellow-100 text-yellow-800 dark:bg-amber-950/40 dark:text-amber-300"
                                   }`}>
                                     {cycle.status}
                                   </span>
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.scheduledTimestamp ? new Date(cycle.scheduledTimestamp).toLocaleDateString() : "-"}
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.startedAt ? new Date(cycle.startedAt).toLocaleDateString() : "-"}
                                 </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                   {cycle.endsAt ? new Date(cycle.endsAt).toLocaleDateString() : "-"}
-                                </TableCell>
-                                <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
-                                  {cycle.tokensAllocated ? cycle.tokensAllocated.toLocaleString() : "-"}
                                 </TableCell>
                                 {subscription.billingCycles.some((c) => c.status === "failed" && c.actionUrl) && (
                                   <TableCell className="text-xs whitespace-nowrap px-3 py-2">
@@ -1004,7 +985,7 @@ const SubscriptionsPage = () => {
                                         Pay
                                       </Button>
                                     ) : (
-                                      <span className="text-gray-400">-</span>
+                                      <span className="text-muted-foreground">-</span>
                                     )}
                                   </TableCell>
                                 )}
@@ -1194,7 +1175,7 @@ const SubscriptionsPage = () => {
                               <p className="text-sm font-medium">
                                 {formatCurrency(plan.priceCents / 100, plan.priceCurrency)} / {plan.interval}
                               </p>
-                              <p className="text-xs text-gray-500">{plan.tokenLimit} tokens included</p>
+                              <p className="text-xs text-gray-500">Fintr Pro</p>
                             </div>
                           </div>
                           {selectedPlanId === plan.id && (

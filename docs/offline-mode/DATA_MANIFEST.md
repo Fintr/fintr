@@ -82,7 +82,7 @@ Legend: **Bootstrap** = in `BootstrapSpace` today · **IDB** = persisted locally
 | Transfers (detail) | `GET /transactions/transfers/:id` | transfer caches | tier 2 fetch | ✅ | partial | `transaction.*` | create/update/delete | ✅ |
 | Monthly financial summaries | bootstrap | `monthlyFinancialSummaries` | ✅ | ✅ | ✅ | via summaries | — | ✅ |
 | Dashboard | shell + summaries | `dashboard` | ✅ | ✅ | ✅ | — | — | ✅ |
-| Budgets | bootstrap `budgetsByMonth` | `budgets` | ✅ | ✅ | ✅ | — | create/update² | ✅ |
+| Budgets | bootstrap `budgetsByMonth` | `budgets` | ✅ | ✅ | ✅ | launch hydrate | create/update | ✅ |
 | Loans | bootstrap `loans` | `loans` | ✅ | ✅ | ✅ | `loan.*` | create/update/delete | ✅ |
 | Loan payments | embedded in loans + fetch | `loanPayments` | ✅ | ✅ | ✅ | `loan_payment.*` | create/update/delete | ✅ |
 | Exchange rates | `GET /exchange_rates/*` | rate keys | tier 2 prefetch | ✅ | ✅ | — | — | ✅ daily refresh on online/focus |
@@ -94,6 +94,8 @@ Legend: **Bootstrap** = in `BootstrapSpace` today · **IDB** = persisted locally
 ³ Index row is offline; full detail fields may need explicit detail cache.
 
 ⁵ Receipt blobs are **not** in the bootstrap JSON (too large). After tier 1, `prefetchRemoteAttachmentsForTransactions` downloads `hasImage` files in the background. Create/update keep the local blob via outbox keys. Lightbox/edit resolve local blobs first. Uncached receipts toast “Image not available offline.” List UI still uses the `hasImage` icon, not a thumbnail bitmap.
+
+⁶ Rails copies last month’s budget rows on the 1st (`CreateSpaceMonthlyBudgetsJob`). On the next app launch or pull while online, `hydrateBudgetsFromServer` fetches those months from `GET /budgets` and writes them into IndexedDB. Pending `local:` creates are left alone. If the device is offline, catch-up still copies from the last local month. Summary totals are derived from the displayed parent rows, not from all expenses in the date range.
 
 ### Tags & entities — required offline (currently missing)
 
@@ -179,7 +181,7 @@ Today (`apps/fintr-fe/src/types/syncTypes.ts`):
 - `loan_payment.created|updated|deleted`
 - `space.settings.updated`
 
-**Not covered:** tags, entities, categories, accounts, budgets, achievements — peer changes to these will not appear until bootstrap re-run or new ops are added.
+**Not covered:** tags, entities, categories, accounts, achievements — peer changes to these will not appear until bootstrap re-run or new ops are added. Budgets are refreshed from `GET /budgets` on launch/pull (`hydrateBudgetsFromServer`), not via `SpaceChangeOp`.
 
 ---
 

@@ -5,9 +5,7 @@ import {
   cacheEntitiesResponse,
 } from "@/services/entities/local-cache";
 import { fetchEntities } from "@/services/entities/mutation";
-import {
-  cacheAccountsResponse,
-} from "@/services/transactions/accounts/local-cache";
+import { applyAccountsResponseToCaches } from "@/services/transactions/accounts/account-cache-ops";
 import {
   cacheTransactionCategoriesResponse,
   loadCachedTransactionCategoriesResponse,
@@ -16,6 +14,7 @@ import {
   cacheTransactionTagsResponse,
   normalizeTransactionTags,
 } from "@/services/transactions/tags/local-cache";
+import { hydrateBudgetsFromServer } from "@/services/budgets/hydrate-from-server";
 import { fetchTransactionTags } from "@/services/transactions/tags/mutation";
 
 const spaceRequestConfig = (spaceCode: string) => ({
@@ -39,8 +38,11 @@ export const refreshReferenceDataCaches = async (params: {
 
   try {
     const accountsResponse = await api.get("/transactions/accounts", config);
-    await cacheAccountsResponse(spaceCode, accountsResponse.data);
-    queryClient.setQueryData(["accounts", "local", spaceCode], accountsResponse.data);
+    await applyAccountsResponseToCaches({
+      spaceId: spaceCode,
+      response: accountsResponse.data,
+      queryClient,
+    });
     queryClient.setQueryData(
       ["accounts", spaceCode || "default"],
       accountsResponse.data,
@@ -85,6 +87,16 @@ export const refreshReferenceDataCaches = async (params: {
     queryClient.setQueryData(["entities", "local", spaceCode], entities);
   } catch (error) {
     console.warn("[sync] Reference refresh entities failed", spaceCode, error);
+  }
+
+  try {
+    await hydrateBudgetsFromServer(
+      api,
+      { spaceCode },
+      { queryClient },
+    );
+  } catch (error) {
+    console.warn("[sync] Reference refresh budgets failed", spaceCode, error);
   }
 
   void queryClient.invalidateQueries({ queryKey: ["accounts", spaceCode] });

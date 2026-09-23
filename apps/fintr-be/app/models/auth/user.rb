@@ -74,10 +74,25 @@ module Auth
     end
 
     before_validation :downcase_email
+    before_create :assign_trial_window
 
     after_create :create_onboarding
 
+    def trial_active?
+      trial_ends_at.present? && trial_ends_at.future?
+    end
+
+    def trial_days_remaining
+      return 0 unless trial_active?
+
+      ((trial_ends_at - Time.current) / 1.day).ceil
+    end
+
     private
+
+    def assign_trial_window
+      self.trial_ends_at ||= Finance::ProFeatures::TRIAL_DAYS.days.from_now
+    end
 
     def downcase_email
       self.email = email.downcase if email.present?

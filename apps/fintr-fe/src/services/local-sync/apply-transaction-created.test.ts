@@ -174,3 +174,75 @@ describe("applyTransactionCreated — optimistic reconcile", () => {
     ]);
   });
 });
+
+describe("applyTransactionCreated — series tags", () => {
+  const spaceId = "SPACE_SERIES_TAGS";
+  const japanTag = {
+    id: "tag-japan",
+    name: "Japan 2026",
+    color: "#0A3D62",
+  };
+
+  afterEach(async () => {
+    await resetLocalDbForTests();
+  });
+
+  it("keeps tags when a server series child replaces a tagged placeholder", async () => {
+    const queryClient = new QueryClient();
+    const parent = {
+      ...baseRow,
+      id: "server-parent",
+      date: "2026-08-01",
+      createdAt: "2026-08-01T10:00:00.000Z",
+      description: "Weekly gym",
+      amount: 50,
+      inSeries: true,
+      parentId: null,
+      tags: [japanTag],
+      tagIds: ["tag-japan"],
+    };
+    const placeholder = {
+      ...parent,
+      id: "local:cid:0",
+      date: "2026-08-08",
+      createdAt: "2026-08-08T10:00:00.000Z",
+      parentId: "server-parent",
+    };
+
+    await upsertLocalIndexTransaction(spaceId, parent);
+    await upsertLocalIndexTransaction(spaceId, placeholder);
+
+    await applyTransactionCreated({
+      spaceId,
+      queryClient,
+      change: {
+        seq: 20,
+        op: "transaction.created",
+        occurredAt: "2026-08-08T10:00:00.100Z",
+        payload: {
+          transaction: {
+            ...baseRow,
+            id: "server-child-1",
+            date: "2026-08-08",
+            createdAt: "2026-08-08T10:00:00.050Z",
+            description: "Weekly gym",
+            amount: 50,
+            inSeries: true,
+            parentId: "server-parent",
+            tags: [],
+          },
+        },
+      },
+      notifyActor: false,
+    });
+
+    const stored = await loadLocalIndexTransactionById(
+      spaceId,
+      "server-child-1",
+    );
+
+    expect((stored as { tagIds?: string[] } | undefined)?.tagIds).toEqual([
+      "tag-japan",
+    ]);
+  });
+});

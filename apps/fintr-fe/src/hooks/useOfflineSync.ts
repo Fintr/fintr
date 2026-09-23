@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
+import type { AxiosInstance } from "axios";
 import { toast } from "sonner";
 
 import {
@@ -27,6 +28,8 @@ import {
   type OfflineSyncProgress,
 } from "@/services/local-sync/bootstrap-local-data";
 import { drainAllOutboxes } from "@/services/local-sync/drain-outbox";
+import { catchUpMonthlyBudgetsLocalFirst } from "@/services/budgets/ensure-monthly-budgets-local-first";
+import { hydrateBudgetsFromServer } from "@/services/budgets/hydrate-from-server";
 import { refreshSpaceExchangeRatesFromCache } from "@/services/exchangeRates/prefetch-space-rates";
 import {
   resolveAccessibleSpaceCodes,
@@ -68,13 +71,43 @@ const initialProgress = (): OfflineSyncProgress => ({
 const isBrowserOnline = (): boolean =>
   typeof navigator === "undefined" ? true : navigator.onLine !== false;
 
+const catchUpMonthlyBudgetsForSpace = (
+  api: AxiosInstance | null | undefined,
+  queryClient: QueryClient,
+  spaceCode: string,
+): Promise<unknown> => {
+  if (!api || !spaceCode) {
+    return Promise.resolve();
+  }
+
+  const hydrateThenCatchUp = async () => {
+    if (typeof navigator === "undefined" || navigator.onLine !== false) {
+      await hydrateBudgetsFromServer(
+        api,
+        { spaceCode },
+        { queryClient },
+      );
+    }
+
+    await catchUpMonthlyBudgetsLocalFirst(
+      api,
+      { spaceCode },
+      { queryClient, waitForSync: false },
+    );
+  };
+
+  return hydrateThenCatchUp().catch((error) => {
+    console.warn("[budgets] Monthly budget catch-up failed", error);
+  });
+};
+
 export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult => {
   const queryClient = useQueryClient();
   const setOfflineSyncReady = useSetAtom(offlineSyncReadyAtom);
   const setOfflineReimportRequired = useSetAtom(offlineReimportRequiredAtom);
   const requiresOfflineReimport = useAtomValue(offlineReimportRequiredAtom);
   const { api, isAuthenticated } = useAuthApi({
-    scope: "openid profile email read:current_user read:transactions read:users",
+    scope: "openid profile email read:current_user read:transactions read:users read:budgets",
   });
   const [spaceCode] = useLocalStorage("spaceCode", "");
   const [status, setStatus] = useState<OfflineSyncStatus>("idle");
@@ -194,6 +227,7 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
           setStatus("complete");
 
           if (isSpaceSyncPullEnabled()) {
+            catchUpMonthlyBudgetsForSpace(api, queryClient, spaceCode);
             const spaceCodes = await resolveAccessibleSpaceCodes(spaceCode || undefined);
             await schedulePullAllSpaces(
               { api, queryClient, spaceCodes },
@@ -208,9 +242,11 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
                 );
               });
             }
-            void drainAllOutboxes({ api }).catch((drainError) => {
-              console.warn("[outbox] Drain after offline sync failed", drainError);
-            });
+            void catchUpMonthlyBudgetsForSpace(api, queryClient, spaceCode)
+              .then(() => drainAllOutboxes({ api }))
+              .catch((drainError) => {
+                console.warn("[outbox] Drain after offline sync failed", drainError);
+              });
           }
         } catch (syncError) {
           if (runId !== runIdRef.current) {
@@ -266,6 +302,11 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
         setOfflineSyncReady(true);
         setOfflineReimportRequired(false);
         setStatus("complete");
+        const catchUpPromise = catchUpMonthlyBudgetsForSpace(
+          api,
+          queryClient,
+          spaceCode,
+        );
 
         if (spaceCode) {
           void ensureSpaceTransactionIndex(api, spaceCode).catch((hydrateError) => {
@@ -316,9 +357,11 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
               "online",
             );
           } else {
-            void drainAllOutboxes({ api }).catch((drainError) => {
-              console.warn("[outbox] Drain after local seed failed", drainError);
-            });
+            void catchUpPromise
+              .then(() => drainAllOutboxes({ api }))
+              .catch((drainError) => {
+                console.warn("[outbox] Drain after local seed failed", drainError);
+              });
           }
         } else {
           setOfflineSyncReady(true);
@@ -361,12 +404,14 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
     }
 
     const handleSpaceChange = () => {
+      const nextSpaceCode = localStorage.getItem("spaceCode") ?? "";
       const { firstDay, lastDay } = getCurrentMonthDates();
       void seedReactQueryFromLocalCache(queryClient, {
-        spaceCode: localStorage.getItem("spaceCode") ?? "",
+        spaceCode: nextSpaceCode,
         startDate: firstDay,
         endDate: lastDay,
       });
+      catchUpMonthlyBudgetsForSpace(api, queryClient, nextSpaceCode);
     };
 
     const handleOnline = () => {
@@ -395,9 +440,12 @@ export const useOfflineSync = (enabled: boolean = true): UseOfflineSyncResult =>
     };
 
     const handleForegroundRefresh = () => {
-      if (!isBrowserOnline()) return;
       const code = localStorage.getItem("spaceCode") ?? "";
       if (!code || !api || !isAuthenticated) return;
+
+      catchUpMonthlyBudgetsForSpace(api, queryClient, code);
+
+      if (!isBrowserOnline()) return;
       if (Date.now() - lastOnlineRefreshAtRef.current < 30_000) return;
       lastOnlineRefreshAtRef.current = Date.now();
 

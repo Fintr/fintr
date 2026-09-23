@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { nextDevRewrites } from "./src/lib/next-dev-rewrites";
+
 const nextConfig: NextConfig = {
   transpilePackages: ["@fintr/domain"],
   allowedDevOrigins: ["10.0.2.2"],
@@ -8,16 +10,9 @@ const nextConfig: NextConfig = {
       return [];
     }
 
-    const backendUrl =
-      process.env.NEXT_PUBLIC_BE_URL?.replace(/\/$/, "") ??
-      "http://localhost:3001";
-
-    return [
-      {
-        source: "/api/v1/:path*",
-        destination: `${backendUrl}/api/v1/:path*`,
-      },
-    ];
+    return nextDevRewrites(
+      process.env.NEXT_PUBLIC_BE_URL ?? "http://localhost:3001",
+    );
   },
   output: "export",
   typescript: { ignoreBuildErrors: true },
@@ -25,6 +20,9 @@ const nextConfig: NextConfig = {
     cpus: 1,
     staticGenerationMaxConcurrency: 1,
     staticGenerationRetryCount: 3,
+    // The default Turbopack FS cache grew to 14GB here and took the Mac down.
+    turbopackFileSystemCacheForDev: false,
+    turbopackMemoryLimit: 2 * 1024 * 1024 * 1024,
   },
   images: {
     unoptimized: true,

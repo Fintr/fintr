@@ -327,12 +327,13 @@ export function ListView({
               const showMerchantCategoryRow = isLoanPayment
                 ? Boolean(loanContactLine)
                 : Boolean(merchantLine);
+              const showSubcategoryOnOwnRow =
+                hasSubcategory && hasDescription && !isLoanPayment;
               const showCategoryOnDateRow =
                 !isLoanPayment &&
                 Boolean(categoryLine) &&
+                !hasSubcategory &&
                 !(showMerchantCategoryRow && hasDescription);
-              const showMobileCategoryOnDateRow =
-                showCategoryOnDateRow && !(hasSubcategory && !hasDescription);
               const repeatInterval = resolveRowRepeatInterval(row);
               const recurringLabel =
                 repeatIntervalLabel(repeatInterval) || "Recurring";
@@ -368,7 +369,7 @@ export function ListView({
                   <div
                     className={cn(
                       "transaction-item relative flex items-center gap-3 p-3 bg-white rounded hover:bg-gray-100 transition-colors cursor-pointer dark:bg-card dark:hover:bg-accent/50",
-                      hasSubcategory
+                      showSubcategoryOnOwnRow
                         ? "min-h-[78px] md:min-h-[60px]"
                         : "min-h-[60px]",
                     )}
@@ -484,15 +485,6 @@ export function ListView({
                         </div>
                       </div>
 
-                      {hasSubcategory && !hasDescription && (
-                        <p
-                          className="md:hidden mt-1 text-xs text-gray-600 truncate dark:text-muted-foreground"
-                          title={categoryLine}
-                        >
-                          {categoryLine}
-                        </p>
-                      )}
-
                       {showMerchantCategoryRow && (
                         <div className="mt-0.5 flex min-w-0 items-center text-xs text-gray-600 dark:text-muted-foreground">
                           {isLoanPayment ? (
@@ -507,7 +499,7 @@ export function ListView({
                               >
                                 {merchantLine}
                               </span>
-                              {categoryLine && (
+                              {categoryLine && !hasSubcategory && (
                                 <span
                                   className="ml-2 min-w-0 truncate md:ml-4"
                                   title={categoryLine}
@@ -527,6 +519,15 @@ export function ListView({
                         </div>
                       )}
 
+                      {showSubcategoryOnOwnRow && (
+                        <p
+                          className="mt-0.5 truncate text-xs text-gray-600 dark:text-muted-foreground"
+                          title={categoryLine}
+                        >
+                          {categoryLine}
+                        </p>
+                      )}
+
                       <div className="flex items-center justify-between mt-1">
                         <div className="flex items-center text-xs text-gray-600 flex-1 min-w-0 overflow-hidden dark:text-muted-foreground">
                           <span className="flex-shrink-0 whitespace-nowrap">
@@ -540,7 +541,7 @@ export function ListView({
                               {categoryLine}
                             </span>
                           )}
-                          {showMobileCategoryOnDateRow && (
+                          {showCategoryOnDateRow && (
                             <span
                               className="md:hidden truncate ml-2 min-w-0"
                               title={categoryLine}

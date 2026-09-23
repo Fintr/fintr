@@ -31,6 +31,8 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { currentSpaceAtom } from "@/atoms/spaceAtoms";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { useAccounts } from "@/hooks/async/useAccounts";
+import { overlayAccountOptionBalances } from "@/services/transactions/accounts/overlay-account-option-balances";
 import { getCurrentMonthDates } from "@/utils/dateUtils";
 import type { DashboardData } from "@/types/spaceTypes";
 import { filterInsightsTransactions } from "@/services/insights/filter-insights-transactions";
@@ -69,6 +71,7 @@ export const useDashboardData = (
 
   const setAccountOptions = useSetAtom(accountOptionsAtom);
   const setCategoryOptions = useSetAtom(categoryOptionsAtom);
+  const { accounts } = useAccounts();
 
   const { firstDay, lastDay } = getCurrentMonthDates();
   const rangeStart = startDate || firstDay;
@@ -185,10 +188,13 @@ export const useDashboardData = (
       return;
     }
 
-    setAccountOptions(shell.accountOptions || []);
+    setAccountOptions(
+      overlayAccountOptionBalances(shell.accountOptions || [], accounts),
+    );
     setCategoryOptions(shell.categoryOptions || []);
   }, [
     shell,
+    accounts,
     setAccountOptions,
     setCategoryOptions,
   ]);

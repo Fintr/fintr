@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { navigateDashboardClient } from "@/utils/detailSearchParam";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,7 +38,6 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
   categoryId,
   kind,
 }) => {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { api } = useAuthApi();
   const { currentSpace } = useSpaceContext(api);
@@ -121,7 +120,7 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
     const deletedParentCategory = id === parent?.id;
 
     if (deletedParentCategory) {
-      router.push("/dashboard/space_settings/categories");
+      navigateDashboardClient("/dashboard/space_settings/categories");
       return response;
     }
 
@@ -141,7 +140,7 @@ const CategoryDetailContent: React.FC<CategoryDetailContentProps> = ({
   };
 
   const handleConverted = (redirectParentId: string) => {
-    router.push(buildCategoryDetailHref(redirectParentId, kind));
+    navigateDashboardClient(buildCategoryDetailHref(redirectParentId, kind));
   };
 
   const handleConfirmConvert = async (input: {

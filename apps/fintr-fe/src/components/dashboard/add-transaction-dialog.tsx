@@ -19,7 +19,7 @@ import {
 } from "@/types/transactionTypes";
 import { ScheduleTypeEnum } from "@/constants/transactionConstants";
 import { shouldShowV2Features } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { navigateDashboardClient } from "@/utils/detailSearchParam";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -60,7 +60,6 @@ const AddTransactionDialog = ({
   const [sharedAmount, setSharedAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const tabsListRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const { api } = useAuthApi();
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
@@ -342,7 +341,7 @@ const AddTransactionDialog = ({
     if (activeTab === "loan") {
       setDialogOpen(false);
       setTimeout(() => {
-        router.push("/dashboard/loans");
+        navigateDashboardClient("/dashboard/loans");
       }, 100);
     } else {
       setDialogOpen(false);

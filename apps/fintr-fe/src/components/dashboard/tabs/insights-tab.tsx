@@ -24,6 +24,7 @@ import { DashboardSummarySection } from "@/components/dashboard/insights/dashboa
 import { ExpenseBreakdownCard } from "@/components/dashboard/insights/expense-breakdown-card";
 import { FinancialHealthGauge } from "@/components/dashboard/insights/financial-health-gauge";
 import { WeeklySpendingCard } from "@/components/dashboard/insights/weekly-spending-card";
+import { ProFeatureGate } from "@/components/settings/pro-feature-gate";
 import { ChartTooltipContent } from "@/components/dashboard/insights/chart-tooltip-content";
 import {
   LineChart as RechartsLineChart,
@@ -38,7 +39,9 @@ import {
 } from "recharts";
 import { formatCurrency, getColor, getColorByIndex, shouldShowV2Features } from "@/lib/utils";
 import { useMemo, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { syncDocumentScreenClass } from "@/lib/document-screen-class";
+import { useSearchParams } from "next/navigation";
+import { navigateDashboardClient } from "@/utils/detailSearchParam";
 import {
   buildTransactionCategoryFields,
   isCategoryPickerId,
@@ -118,19 +121,14 @@ const weeklySpendingData = [
   { day: "Sun", amount: 1100 },
 ];
 
-const InsightsTab = () => {
-  const router = useRouter();
+const InsightsTab = ({ isActive = true }: { isActive?: boolean }) => {
   const searchParams = useSearchParams();
   const tagFromUrl = searchParams.get("tag");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
-    document.documentElement.classList.add("fintr-insights-screen");
-
-    return () => {
-      document.documentElement.classList.remove("fintr-insights-screen");
-    };
-  }, []);
+    return syncDocumentScreenClass("fintr-insights-screen", isActive);
+  }, [isActive]);
 
   const currentMonth = new Date()
     .toLocaleString("default", { month: "long" })
@@ -724,6 +722,7 @@ const InsightsTab = () => {
   };
 
   return (
+    <ProFeatureGate featureName="Dashboard Insights">
     <div className="space-y-6 pb-6 md:space-y-8">
         <FilterSheet
           open={filtersOpen}
@@ -1032,7 +1031,7 @@ const InsightsTab = () => {
                   }
                   const entityId = merchantIdByName.get(name.trim().toLowerCase());
                   if (entityId) {
-                    router.push(buildEntityDetailHref(entityId));
+                    navigateDashboardClient(buildEntityDetailHref(entityId));
                   }
                 }}
               />
@@ -1193,6 +1192,7 @@ const InsightsTab = () => {
           </Card>
         )}
     </div>
+    </ProFeatureGate>
   );
 };
 

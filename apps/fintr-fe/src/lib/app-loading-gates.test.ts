@@ -7,7 +7,10 @@ import {
   shouldShowOfflineSyncScreen,
   shouldShowPrivateContextLoadingScreen,
 } from "./app-loading-gates";
-import { clearAppShellReadyForTests } from "./app-shell-state";
+import {
+  clearAppShellReadyForTests,
+  markAppShellReady,
+} from "./app-shell-state";
 
 describe("shouldShowAuthLoadingScreen", () => {
   afterEach(() => {
@@ -17,12 +20,27 @@ describe("shouldShowAuthLoadingScreen", () => {
   it("does not block public routes", () => {
     expect(
       shouldShowAuthLoadingScreen({
+        appShellReady: false,
         isPublicRoute: true,
         isAuthContextLoading: true,
         isAuthenticated: false,
         hasStoredSession: false,
       }),
     ).toBe(false);
+  });
+
+  it("keeps the splash on the server/hydration snapshot even if the shell is already latched", () => {
+    markAppShellReady();
+
+    expect(
+      shouldShowAuthLoadingScreen({
+        appShellReady: false,
+        isPublicRoute: false,
+        isAuthContextLoading: true,
+        isAuthenticated: false,
+        hasStoredSession: false,
+      }),
+    ).toBe(true);
   });
 });
 
@@ -34,12 +52,27 @@ describe("shouldShowPrivateContextLoadingScreen", () => {
   it("does not block when a workspace is already persisted", () => {
     expect(
       shouldShowPrivateContextLoadingScreen({
+        appShellReady: false,
         isOnOnboardingPage: false,
         isOnAdminPage: false,
         isResolvingWorkspaceContext: true,
         hasPersistedSpaceCode: true,
       }),
     ).toBe(false);
+  });
+
+  it("uses the provided appShellReady flag instead of sessionStorage", () => {
+    markAppShellReady();
+
+    expect(
+      shouldShowPrivateContextLoadingScreen({
+        appShellReady: false,
+        isOnOnboardingPage: false,
+        isOnAdminPage: false,
+        isResolvingWorkspaceContext: true,
+        hasPersistedSpaceCode: false,
+      }),
+    ).toBe(true);
   });
 });
 

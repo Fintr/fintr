@@ -1,3 +1,8 @@
+import {
+  resolveVisibleDashboardBottomTab,
+  type DashboardBottomTab,
+} from "@/lib/dashboard-nav-routes";
+
 /**
  * Routes that use `app/(private)/dashboard/layout.tsx` as their shell.
  * For these, that layout already applies mobile bottom padding and BottomNavigation;
@@ -34,4 +39,30 @@ export function isDashboardDataLightRoute(pathname: string): boolean {
 /** @deprecated Use isDashboardDataLightRoute */
 export function isDashboardSettingsRoute(pathname: string): boolean {
   return isDashboardDataLightRoute(pathname);
+}
+
+export function resolveDashboardShellPresentation(params: {
+  pathname: string;
+  pendingTab: DashboardBottomTab | null;
+}): {
+  visibleTab: DashboardBottomTab | null;
+  usesEmbeddedHeroHeader: boolean;
+  isLightDashboardRoute: boolean;
+  showRouteChildren: boolean;
+} {
+  const visibleTab = resolveVisibleDashboardBottomTab(params);
+
+  return {
+    visibleTab,
+    usesEmbeddedHeroHeader:
+      visibleTab === "home" ||
+      visibleTab === "insights" ||
+      (visibleTab === null && hasEmbeddedHeroHeader(params.pathname)),
+    isLightDashboardRoute:
+      visibleTab === "insights" ||
+      visibleTab === "menu" ||
+      visibleTab === "space_settings" ||
+      (visibleTab === null && isDashboardDataLightRoute(params.pathname)),
+    showRouteChildren: visibleTab === null,
+  };
 }

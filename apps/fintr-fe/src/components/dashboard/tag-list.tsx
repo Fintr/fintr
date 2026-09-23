@@ -7,6 +7,7 @@ import { SearchField } from "@/components/ui/search-field";
 import { TagChip } from "@/components/ui/tag-chip";
 import { TagStylePreview } from "@/components/dashboard/tag-style-preview";
 import TagFormDialog from "@/components/dashboard/tag-form-dialog";
+import DeleteTagDialog from "@/components/dashboard/delete-tag-dialog";
 import {
   SEARCH_DEBOUNCE_MS,
   useDebouncedValue,
@@ -17,7 +18,7 @@ import type { TransactionTag } from "@/types/transactionTagTypes";
 type TagListProps = {
   tags: TransactionTag[];
   highlightTagId?: string;
-  onAdd: (name: string, color: string) => Promise<void>;
+  onAdd: (name: string, color: string, stylePresetKey?: string) => Promise<void>;
   onUpdate: (
     tagId: string,
     updateData: { name: string; color: string },
@@ -28,8 +29,13 @@ type TagListProps = {
     tagId: string,
     prompt: string,
   ) => Promise<TransactionTag>;
+  onAssignStyleImage?: (
+    tagId: string,
+    presetKey: string,
+  ) => Promise<TransactionTag>;
   isLoading?: boolean;
   isGeneratingStyleImage?: boolean;
+  isAssigningStyleImage?: boolean;
 };
 
 const TagList: React.FC<TagListProps> = ({
@@ -40,11 +46,14 @@ const TagList: React.FC<TagListProps> = ({
   onDelete,
   onToggleDefault,
   onGenerateStyleImage,
+  onAssignStyleImage,
   isLoading = false,
   isGeneratingStyleImage = false,
+  isAssigningStyleImage = false,
 }) => {
   const [addOpen, setAddOpen] = React.useState(false);
   const [editingTag, setEditingTag] = React.useState<TransactionTag | null>(null);
+  const [deletingTag, setDeletingTag] = React.useState<TransactionTag | null>(null);
   const [searchInput, setSearchInput] = React.useState("");
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
   const highlightRef = React.useRef<HTMLDivElement | null>(null);
@@ -153,6 +162,8 @@ const TagList: React.FC<TagListProps> = ({
             isLoading={isLoading}
             onGenerateStyleImage={onGenerateStyleImage}
             isGeneratingStyleImage={isGeneratingStyleImage}
+            onAssignStyleImage={onAssignStyleImage}
+            isAssigningStyleImage={isAssigningStyleImage}
           />
         )}
       </div>
@@ -262,7 +273,7 @@ const TagList: React.FC<TagListProps> = ({
                   size="icon"
                   className="h-8 w-8 text-destructive"
                   aria-label={`Delete ${tag.name}`}
-                  onClick={() => onDelete(tag.id)}
+                  onClick={() => setDeletingTag(tag)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -291,8 +302,24 @@ const TagList: React.FC<TagListProps> = ({
           isLoading={isLoading}
           onGenerateStyleImage={onGenerateStyleImage}
           isGeneratingStyleImage={isGeneratingStyleImage}
+          onAssignStyleImage={onAssignStyleImage}
+          isAssigningStyleImage={isAssigningStyleImage}
         />
       )}
+
+      {deletingTag ? (
+        <DeleteTagDialog
+          tag={deletingTag}
+          open={Boolean(deletingTag)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeletingTag(null);
+            }
+          }}
+          onDelete={onDelete}
+          isLoading={isLoading}
+        />
+      ) : null}
     </div>
   );
 };

@@ -1,14 +1,18 @@
-import { describe, expect, it, afterEach } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import "fake-indexeddb/auto";
 
 import { resetLocalDbForTests } from "@/lib/local-db";
 import { replaceSpaceAccounts } from "@/lib/local-db/accounts";
+import * as localTransactions from "@/lib/local-db/transactions";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { upsertLocalIndexTransaction } from "./local-cache";
 
 import {
   attachUpdateTransactionRelationIds,
   coalesceIndexRelationIds,
+  ensureSpaceTransactionRelationIds,
+  resetRelationIdBackfillForTests,
   stampIndexTransactionRelationIds,
   syncIndexTransactionRelationNames,
   type RelationStampContext,
@@ -141,5 +145,38 @@ describe("attachUpdateTransactionRelationIds", () => {
     );
 
     expect(updated.accountId).toBe("acc-bdo");
+  });
+});
+
+describe("ensureSpaceTransactionRelationIds", () => {
+  afterEach(async () => {
+    resetRelationIdBackfillForTests();
+    await resetLocalDbForTests();
+  });
+
+  it("does not rescan the space when the row count is unchanged", async () => {
+    await upsertLocalIndexTransaction("space-a", {
+      id: "txn-1",
+      date: "2026-08-10",
+      description: "Coffee",
+      amount: 100,
+      categoryName: "Food",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: false,
+      hasImage: false,
+    });
+
+    const listSpy = vi.spyOn(localTransactions, "listSpaceTransactions");
+
+    await ensureSpaceTransactionRelationIds("space-a");
+    const firstCalls = listSpy.mock.calls.length;
+    expect(firstCalls).toBeGreaterThan(0);
+
+    await ensureSpaceTransactionRelationIds("space-a");
+    expect(listSpy.mock.calls.length).toBe(firstCalls);
+
+    listSpy.mockRestore();
   });
 });

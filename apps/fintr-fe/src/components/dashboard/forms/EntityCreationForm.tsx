@@ -6,10 +6,9 @@ import { Button } from "../../ui/button";
 import { FormError } from "@/components/ui/form-error";
 import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
 import { MerchantAvatar } from "@/components/ui/merchant-avatar";
-import { useAuthApi } from "@/hooks/useAuthApi";
-import { createEntity } from "@/services/entities/mutation";
+import { useEntitiesMutations } from "@/hooks/async/useEntitiesMutations";
 import { toast } from "sonner";
-import { extractFieldErrors } from "@/utils/errorUtils";
+import { extractFieldErrors, formatApiErrorMessage } from "@/utils/errorUtils";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -32,8 +31,8 @@ const EntityCreationForm: React.FC<EntityCreationFormProps> = ({
   namePlaceholder = "Enter name",
   photoLabel = "Photo",
 }) => {
-  const { api } = useAuthApi();
   const queryClient = useQueryClient();
+  const { createEntity } = useEntitiesMutations();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [entityName, setEntityName] = useState(initialName);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -43,6 +42,14 @@ const EntityCreationForm: React.FC<EntityCreationFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [localErrors, setLocalErrors] = useState<{ fullName?: string }>({});
   const [validationErrors, setValidationErrors] = useState<Record<string, string | string[]>>({});
+
+  useEffect(() => {
+    return () => {
+      if (cropImageSrc?.startsWith("blob:")) {
+        URL.revokeObjectURL(cropImageSrc);
+      }
+    };
+  }, [cropImageSrc]);
 
   useEffect(() => {
     if (!photoFile) {
@@ -74,12 +81,12 @@ const EntityCreationForm: React.FC<EntityCreationFormProps> = ({
     const file = event.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
 
-    const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      setCropImageSrc(String(reader.result));
-      setCropDialogOpen(true);
-    });
-    reader.readAsDataURL(file);
+    if (cropImageSrc?.startsWith("blob:")) {
+      URL.revokeObjectURL(cropImageSrc);
+    }
+
+    setCropImageSrc(URL.createObjectURL(file));
+    setCropDialogOpen(true);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -96,7 +103,7 @@ const EntityCreationForm: React.FC<EntityCreationFormProps> = ({
     setValidationErrors({});
 
     try {
-      const response = await createEntity(api, {
+      const response = await createEntity({
         fullName: entityName.trim(),
         entityType,
         photo: photoFile,
@@ -130,7 +137,7 @@ const EntityCreationForm: React.FC<EntityCreationFormProps> = ({
       setValidationErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length === 0) {
-        toast.error("Failed to create entity.");
+        toast.error(formatApiErrorMessage(error, "Failed to create entity."));
       }
     } finally {
       setIsLoading(false);
@@ -192,10 +199,12 @@ const EntityCreationForm: React.FC<EntityCreationFormProps> = ({
                   variant="outline"
                   size="sm"
                   disabled={isLoading}
-                  onClick={() => fileInputRef.current?.click()}
+                  asChild
                 >
-                  <Camera className="mr-2 h-4 w-4" aria-hidden />
-                  {photoFile ? "Change photo" : "Add photo"}
+                  <label htmlFor="entity-creation-photo">
+                    <Camera className="mr-2 h-4 w-4" aria-hidden />
+                    {photoFile ? "Change photo" : "Add photo"}
+                  </label>
                 </Button>
                 {photoFile ? (
                   <Button
@@ -211,11 +220,13 @@ const EntityCreationForm: React.FC<EntityCreationFormProps> = ({
                 ) : null}
               </div>
               <input
+                id="entity-creation-photo"
                 ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                className="hidden"
+                className="sr-only"
                 onChange={handlePhotoSelected}
+                disabled={isLoading}
               />
             </div>
           </div>

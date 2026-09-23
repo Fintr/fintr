@@ -34,9 +34,11 @@ import {
   transactionsAllPagesCacheKey,
 } from "./local-cache";
 import { putLocalResponseSnapshot } from "@/lib/local-db/response-cache";
+import { resetRelationIdBackfillForTests } from "./relation-ids-local";
 
 describe("transactions local-cache", () => {
   afterEach(async () => {
+    resetRelationIdBackfillForTests();
     await resetLocalDbForTests();
   });
 
@@ -417,6 +419,74 @@ describe("transactions local-cache", () => {
     );
 
     expect(allRows.map((row) => row.id)).toEqual(["fallback-expense"]);
+  });
+
+  it("returns every all-type row for typed-pill fallback, not only page 1", async () => {
+    const baseFilter = {
+      categoriesSerialized: "[]",
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    };
+
+    const newestExpenses = Array.from(
+      { length: LOCAL_TRANSACTIONS_PAGE_SIZE },
+      (_, index) => ({
+        id: `expense-${String(index).padStart(2, "0")}`,
+        date: "2026-08-20",
+        createdAt: `2026-08-20T12:${String(index).padStart(2, "0")}:00.000Z`,
+        description: `Expense ${index}`,
+        amount: 10 + index,
+        amountCurrency: "PHP",
+        categoryName: "Food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+      }),
+    );
+
+    for (const row of newestExpenses) {
+      await upsertLocalIndexTransaction("space-a", row);
+    }
+
+    await upsertLocalIndexTransaction("space-a", {
+      id: "older-income",
+      date: "2026-08-02",
+      createdAt: "2026-08-02T09:00:00.000Z",
+      description: "Salary",
+      amount: 500,
+      amountCurrency: "PHP",
+      categoryName: "Salary",
+      fromAccountName: "",
+      toAccountName: "Cash",
+      type: CombinedTransactionTypeEnum.INCOME,
+      inSeries: false,
+      hasImage: false,
+    });
+
+    const allRows = await loadAllTypeCachedRowsForFilterKey(
+      "space-a",
+      buildTransactionsFilterKey({ ...baseFilter, entryType: "income" }),
+    );
+
+    expect(allRows).toHaveLength(LOCAL_TRANSACTIONS_PAGE_SIZE + 1);
+    expect(allRows.some((row) => row.id === "older-income")).toBe(true);
+
+    const incomePage = await loadCachedTransactionsPageAt(
+      "space-a",
+      buildTransactionsFilterKey({ ...baseFilter, entryType: "income" }),
+      1,
+    );
+
+    expect(incomePage?.transactions.map((row) => row.id)).toEqual([
+      "older-income",
+    ]);
   });
 
   it("uses fallback rows from the all pill when typed filtering needs them", async () => {

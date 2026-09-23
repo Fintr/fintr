@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { requestOpenTransaction } from "@/lib/open-transaction-request";
 import { useAuthApi } from "@/hooks/useAuthApi";
@@ -10,7 +11,8 @@ import { offlineBootstrapDateRange } from "@/lib/local-sync/offline-bootstrap-da
 import { defaultTransactionsQueryKey } from "@/services/local-sync/bootstrap-local-data";
 import {
   compareTransactionsNewestFirst,
-  loadCachedTransactionsInRange,
+  loadRecentCachedTransactions,
+  RECENT_TRANSACTIONS_SOURCE_LIMIT,
 } from "@/services/transactions/local-cache";
 import { buildRecentTransactionsList } from "@/services/transactions/recent-transactions-list";
 import { fetchTransactionsPage } from "@/services/transactions/queries";
@@ -54,17 +56,16 @@ export const HomeRecentTransactions = ({
       "recent-transactions",
       "local",
       spaceCode,
-      bootstrapRange.startDate,
-      bootstrapRange.endDate,
     ],
     queryFn: async () =>
-      loadCachedTransactionsInRange(
+      loadRecentCachedTransactions(
         spaceCode,
-        bootstrapRange.startDate,
-        bootstrapRange.endDate,
+        format(new Date(), "yyyy-MM-dd"),
+        RECENT_TRANSACTIONS_SOURCE_LIMIT,
       ),
     enabled: !!spaceCode,
     staleTime: Infinity,
+    networkMode: "always",
   });
 
   const preferLocalReads = usePreferLocalTransactionReads(spaceCode);

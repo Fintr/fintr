@@ -49,7 +49,7 @@ module Entities
       end
 
       def order(relation)
-        relation = relation.order(:full_name)
+        relation = relation.includes(:merchant_aliases).order(:full_name)
         Success(relation)
       end
     end

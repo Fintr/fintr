@@ -24,6 +24,7 @@ import { deleteLoan } from "@/services/loans/mutation";
 import { removeLoanFromCachedPages } from "@/services/loans/local-cache";
 import { removeLoanFromQueryCaches } from "@/services/loans/loans-list-cache";
 import { deleteLoanPayment } from "@/services/loans/payments";
+import { applyLocalTransactionsToAccountBalances } from "@/services/transactions/accounts/account-cache-ops";
 import {
   applyLocalTransactionToMonthlySummaries,
   setMonthlyFinancialSummariesQueryData,
@@ -363,6 +364,13 @@ const deleteIndexRowsOptimistic = async (params: {
     );
     await adjustSummariesForRemoved(spaceId, feeRows, "remove", queryClient);
   }
+
+  await applyLocalTransactionsToAccountBalances({
+    spaceId,
+    transactions: removedTransactions,
+    mode: "revert",
+    queryClient,
+  });
 
   await Promise.all(
     removedIds.map((id) => clearCachedTransactionDetail(spaceId, id)),

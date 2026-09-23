@@ -160,4 +160,24 @@ describe("useScrollToTopOnNavigate", () => {
     expect(window.scrollTo).toHaveBeenLastCalledWith(0, 320);
     expect(container.scrollTop).toBe(120);
   });
+
+  it("does not reset scroll when moving between bottom-nav tabs", () => {
+    mockUsePathname.mockReturnValue("/dashboard/home");
+    mockUseSearchParams.mockReturnValue(new URLSearchParams());
+
+    const scrollContainerRef = createRef<HTMLDivElement>();
+    const container = document.createElement("div");
+    container.scrollTop = 180;
+    scrollContainerRef.current = container;
+
+    const { rerender } = renderHook(() =>
+      useScrollToTopOnNavigate(scrollContainerRef),
+    );
+
+    mockUsePathname.mockReturnValue("/dashboard/insights");
+    rerender();
+
+    expect(window.scrollTo).not.toHaveBeenCalled();
+    expect(container.scrollTop).toBe(180);
+  });
 });

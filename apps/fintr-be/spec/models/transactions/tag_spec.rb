@@ -22,5 +22,17 @@ RSpec.describe Transactions::Tag do
 
       expect(tag.color).to match(/\A#[0-9A-Fa-f]{6}\z/)
     end
+
+    it "rejects an unknown style preset key" do
+      tag = build(:transaction_tag, style_preset_key: "not-a-preset")
+
+      expect(tag).not_to be_valid
+    end
+
+    it "accepts a catalog style preset key" do
+      tag = build(:transaction_tag, style_preset_key: "japan-vacation")
+
+      expect(tag).to be_valid
+    end
   end
 end

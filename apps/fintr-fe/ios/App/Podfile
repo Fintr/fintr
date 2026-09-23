@@ -1,6 +1,6 @@
 require_relative '../../node_modules/.pnpm/@capacitor+ios@7.4.4_@capacitor+core@7.6.5/node_modules/@capacitor/ios/scripts/pods_helpers'
 
-platform :ios, '14.0'
+platform :ios, '15.0'
 # MediaPipe (Capgo LLM) ships static xcframeworks — dynamic use_frameworks! breaks pod install.
 use_frameworks! :linkage => :static
 
@@ -18,6 +18,8 @@ def capacitor_pods
   pod 'CapacitorKeyboard', :path => '../../node_modules/.pnpm/@capacitor+keyboard@7.0.6_@capacitor+core@7.6.5/node_modules/@capacitor/keyboard'
   pod 'CapacitorShare', :path => '../../node_modules/.pnpm/@capacitor+share@7.0.4_@capacitor+core@7.6.5/node_modules/@capacitor/share'
   pod 'CapgoCapacitorLlm', :path => '../../node_modules/.pnpm/@capgo+capacitor-llm@7.2.15_@capacitor+core@7.6.5_@mediapipe+tasks-genai@0.10.29/node_modules/@capgo/capacitor-llm'
+  pod 'RevenuecatPurchasesCapacitor', :path => '../../node_modules/.pnpm/@revenuecat+purchases-capacitor@10.4.0_@capacitor+core@7.6.5/node_modules/@revenuecat/purchases-capacitor'
+  pod 'RevenuecatPurchasesCapacitorUi', :path => '../../node_modules/.pnpm/@revenuecat+purchases-capacitor-ui@10.4.0_@capacitor+core@7.6.5/node_modules/@revenuecat/purchases-capacitor-ui'
 end
 
 target 'App' do

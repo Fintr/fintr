@@ -386,6 +386,51 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
       end
     end
 
+    describe "#fetch_space_merchants" do
+      before do
+        create(:entity, space:, full_name: "Whole Foods", entity_type: "transaction")
+        create(:entity, space:, full_name: "SM Cinema", entity_type: "transaction")
+        create(:entity, space:, full_name: "Loan Contact", entity_type: "loan")
+      end
+
+      it "returns transaction merchant names for the space" do
+        result = operation.__send__(:fetch_space_merchants, space:)
+        expect(result).to be_success
+        expect(result.value!).to eq([
+          { name: "SM Cinema", identifiers: [] },
+          { name: "Whole Foods", identifiers: [] },
+        ])
+      end
+
+      it "includes saved merchant identifiers" do
+        merchant = Entities::Entity.find_by!(space:, full_name: "Whole Foods")
+        create(
+          :merchant_alias,
+          space:,
+          entity: merchant,
+          scanned_name: "corporation a",
+          label: "CORPORATION A",
+        )
+
+        result = operation.__send__(:fetch_space_merchants, space:)
+        whole_foods = result.value!.find { |entry| entry[:name] == "Whole Foods" }
+
+        expect(whole_foods[:identifiers]).to eq(["CORPORATION A"])
+      end
+
+      context "when an error occurs" do
+        before do
+          allow(Entities::Entity).to receive(:transactions).and_raise(StandardError, "Database error")
+        end
+
+        it "returns failure with an error message" do
+          result = operation.__send__(:fetch_space_merchants, space:)
+          expect(result).to be_failure
+          expect(result.failure).to include(merchants_error: "Failed to fetch merchants")
+        end
+      end
+    end
+
     describe "#encode_image_to_base64" do
       let(:test_image_path) { Rails.root.join("spec/fixtures/files/test_image.png").to_s }
 
@@ -558,6 +603,41 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
         it "builds the system prompt with default account 'Cash'" do
           result = operation.__send__(:build_vision_system_prompt, space_categories, space_accounts)
           expect(result).to include("default \"Cash\"")
+        end
+      end
+
+      context "when space_merchants are provided" do
+        let(:space_categories) { ["Groceries"] }
+        let(:space_merchants) { ["SM Cinema", "Whole Foods"] }
+
+        it "asks the model to match a known merchant" do
+          result = operation.__send__(
+            :build_vision_system_prompt,
+            space_categories,
+            [],
+            space_merchants,
+          )
+          expect(result).to include("SM Cinema, Whole Foods")
+          expect(result).to include("null if none match")
+        end
+      end
+
+      context "when merchants include identifiers" do
+        let(:space_categories) { ["Groceries"] }
+        let(:space_merchants) do
+          [
+            { name: "1855", identifiers: ["CORPORATION A"] },
+          ]
+        end
+
+        it "lists identifiers beside the merchant name" do
+          result = operation.__send__(
+            :build_vision_system_prompt,
+            space_categories,
+            [],
+            space_merchants,
+          )
+          expect(result).to include("1855 [CORPORATION A]")
         end
       end
     end
@@ -794,6 +874,114 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
           result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:, space_accounts:)
           expect(result).to be_success
           expect(result.value![:account][:value]).to eq("Cash")
+        end
+      end
+
+      context "when merchant matches a known merchant" do
+        let(:space_merchants) { ["SM Cinema", "Whole Foods"] }
+        let(:parsed_data) do
+          {
+            "total_amount" => "25.00",
+            "category" => "Groceries",
+            "account" => "Cash",
+            "confidence" => "high",
+            "merchant_detected" => "1855 photo/cinema",
+            "merchant" => "sm cinema"
+          }
+        end
+
+        it "keeps the printed name and the matched merchant" do
+          result = operation.__send__(
+            :validate_extracted_data,
+            parsed_data:,
+            space_categories:,
+            space_accounts:,
+            space_merchants:,
+          )
+          expect(result).to be_success
+          expect(result.value![:merchant][:value]).to eq("1855 photo/cinema")
+          expect(result.value![:entity][:value]).to eq("SM Cinema")
+        end
+      end
+
+      context "when the printed name matches a known merchant" do
+        let(:space_merchants) { ["Whole Foods"] }
+        let(:parsed_data) do
+          {
+            "total_amount" => "25.00",
+            "category" => "Groceries",
+            "account" => "Cash",
+            "confidence" => "high",
+            "merchant_detected" => "whole foods"
+          }
+        end
+
+        it "matches the known merchant from the printed name" do
+          result = operation.__send__(
+            :validate_extracted_data,
+            parsed_data:,
+            space_categories:,
+            space_accounts:,
+            space_merchants:,
+          )
+          expect(result).to be_success
+          expect(result.value![:entity][:value]).to eq("Whole Foods")
+        end
+      end
+
+      context "when the printed name matches a merchant identifier" do
+        let(:space_merchants) do
+          [
+            { name: "1855", identifiers: ["CORPORATION A"] },
+          ]
+        end
+        let(:parsed_data) do
+          {
+            "total_amount" => "25.00",
+            "category" => "Groceries",
+            "account" => "Cash",
+            "confidence" => "high",
+            "merchant_detected" => "corporation a"
+          }
+        end
+
+        it "matches the merchant from the identifier" do
+          result = operation.__send__(
+            :validate_extracted_data,
+            parsed_data:,
+            space_categories:,
+            space_accounts:,
+            space_merchants:,
+          )
+          expect(result).to be_success
+          expect(result.value![:entity][:value]).to eq("1855")
+        end
+      end
+
+      context "when merchant is not in the known list" do
+        let(:space_merchants) { ["SM Cinema"] }
+        let(:parsed_data) do
+          {
+            "total_amount" => "25.00",
+            "category" => "Groceries",
+            "account" => "Cash",
+            "confidence" => "high",
+            "merchant_detected" => "1855 photo/cinema",
+            "merchant" => "Unknown Shop"
+          }
+        end
+
+        it "does not assign an entity" do
+          result = operation.__send__(
+            :validate_extracted_data,
+            parsed_data:,
+            space_categories:,
+            space_accounts:,
+            space_merchants:,
+          )
+          expect(result).to be_success
+          expect(result.value!).not_to have_key(:entity)
+          expect(result.value![:merchant][:value]).to eq("1855 photo/cinema")
         end
       end
     end

@@ -9,7 +9,6 @@ module Ai
           params do
             required(:user_id).value(:string)
             required(:space_id).value(:string)
-            optional(:tokens_used).maybe(:integer, gt?: 0)
             optional(:ai_type).maybe(:string)
           end
         end
@@ -26,8 +25,8 @@ module Ai
           params = validate(params:)
           user = find_user(params:)
           space = find_space(params:)
-          can_use_ai = validate_can_use_ai(user:, space:, params:)
-          return Dry::Monads::Failure("Space token limit reached") unless can_use_ai
+          can_use_ai = validate_can_use_ai(user:, space:)
+          return Dry::Monads::Failure("Fintr Pro is required for this feature.") unless can_use_ai
 
           usage = create_usage(params:)
           result = block.call
@@ -48,20 +47,20 @@ module Ai
           Spaces::Space.find(params[:space_id])
         end
 
-        def validate_can_use_ai(user:, space:, params:)
-          return true if user.has_role?(:admin)
-
-          space.can_ai?
+        def validate_can_use_ai(user:, space:)
+          access = Finance::Operations::Entitlements::ResolveProAccess.new.call(
+            user_id: user.id,
+            space_id: space.id,
+          )
+          access.success? && access.value![:pro]
         end
 
         def create_usage(params:)
-          usage = Ai::Usage.create(
+          Ai::Usage.create(
             user_id: params[:user_id],
             space_id: params[:space_id],
             ai_type: params[:ai_type] || "pure_ai_ocr",
-            tokens_used: params[:tokens_used] || 1,
           )
-          usage
         end
 
         def transform_result(result, usage:, time_start:)

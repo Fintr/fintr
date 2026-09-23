@@ -5,9 +5,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
+import { ScheduleTypeEnum } from "@/constants/transactionConstants";
+
 import {
   countSpaceTransactions,
   getEarliestSpaceTransactionDate,
+  listNewestSpaceTransactionsOnOrBefore,
+  listRecurringSpaceTransactions,
   listSpaceTransactions,
   listSpaceTransactionsInDateRange,
   putSpaceTransactions,
@@ -83,6 +87,53 @@ describe("local-db transactions index", () => {
 
     const rows = await listSpaceTransactions("space-a");
     expect(rows[0]?.type).toBe(CombinedTransactionTypeEnum.INCOME);
+  });
+
+  it("lists only recurring and installment rows for a workspace", async () => {
+    await putSpaceTransactions("space-a", [
+      sampleTransaction({ id: "tx-coffee", date: "2026-08-12" }),
+      sampleTransaction({
+        id: "tx-rent",
+        date: "2026-08-01",
+        description: "Rent",
+        inSeries: true,
+        scheduleType: ScheduleTypeEnum.REPEAT,
+        repeatInterval: "every_month",
+        rootParentId: "tx-rent",
+      }),
+    ]);
+
+    const recurring = await listRecurringSpaceTransactions("space-a");
+
+    expect(recurring).toHaveLength(1);
+    expect(recurring[0]?.id).toBe("tx-rent");
+    expect(await listSpaceTransactions("space-a")).toHaveLength(2);
+  });
+
+  it("returns only the newest rows on or before a date, capped by limit", async () => {
+    await putSpaceTransactions("space-a", [
+      sampleTransaction({ id: "old", date: "2024-01-01" }),
+      sampleTransaction({ id: "mid", date: "2026-08-01" }),
+      sampleTransaction({ id: "newest", date: "2026-09-22" }),
+      sampleTransaction({ id: "future", date: "2027-01-01" }),
+    ]);
+    await putSpaceTransactions("space-b", [
+      sampleTransaction({ id: "other-space", date: "2026-09-22" }),
+    ]);
+
+    const rows = await listNewestSpaceTransactionsOnOrBefore(
+      "space-a",
+      "2026-09-22",
+      2,
+    );
+
+    expect(rows.map((row) => row.id)).toEqual(["newest", "mid"]);
+  });
+
+  it("returns no rows when the newest-on-or-before limit is empty", async () => {
+    expect(
+      await listNewestSpaceTransactionsOnOrBefore("space-a", "2026-09-22", 0),
+    ).toEqual([]);
   });
 
   it("returns the earliest stored transaction date", async () => {

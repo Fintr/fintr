@@ -122,6 +122,7 @@ module Sync
       def load_entities(space:)
         records = Entities::Entity
           .for_space(space.id)
+          .includes(:merchant_aliases)
           .order(:full_name)
 
         Success(

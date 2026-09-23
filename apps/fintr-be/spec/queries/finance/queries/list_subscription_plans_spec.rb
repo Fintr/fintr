@@ -11,7 +11,6 @@ RSpec.describe Finance::Queries::ListSubscriptionPlans, type: :query do
           name: "Cheapest",
           slug: "cheapest",
           price_cents: 1_000,
-          token_limit: 10,
           active: true
         )
       end
@@ -21,7 +20,6 @@ RSpec.describe Finance::Queries::ListSubscriptionPlans, type: :query do
           name: "Expensive",
           slug: "expensive",
           price_cents: 10_000,
-          token_limit: 100,
           active: true
         )
       end
@@ -31,7 +29,6 @@ RSpec.describe Finance::Queries::ListSubscriptionPlans, type: :query do
           name: "Middle",
           slug: "middle",
           price_cents: 5_000,
-          token_limit: 50,
           active: true
         )
       end
@@ -41,7 +38,6 @@ RSpec.describe Finance::Queries::ListSubscriptionPlans, type: :query do
           name: "Inactive",
           slug: "inactive",
           price_cents: 2_000,
-          token_limit: 20,
           active: false
         )
       end
@@ -79,7 +75,6 @@ RSpec.describe Finance::Queries::ListSubscriptionPlans, type: :query do
           name: "Same Price 1",
           slug: "same-price-1",
           price_cents: 3_000,
-          token_limit: 30,
           active: true
         )
         plan_same_price_2 = create(
@@ -87,7 +82,6 @@ RSpec.describe Finance::Queries::ListSubscriptionPlans, type: :query do
           name: "Same Price 2",
           slug: "same-price-2",
           price_cents: 3_000,
-          token_limit: 30,
           active: true
         )
 

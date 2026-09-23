@@ -202,10 +202,10 @@ module Transactions
                                       transaction: tx,
                                       params:,
                                       ) if params[:schedule_type] != "one_time"
+            _                  = step sync_transaction_tags(transaction: tx, params:, apply_default: true)
             _                  = step create_past_transactions(transaction: tx) if params[:schedule_type] != "one_time"
             _                  = step create_future_transactions(transaction: tx) if params[:schedule_type] != "one_time"
             _                  = step persist_client_mutation(params:, transaction: tx)
-            _                  = step sync_transaction_tags(transaction: tx, params:, apply_default: true)
             tx
           end
         rescue ActiveRecord::RecordNotUnique
@@ -398,6 +398,7 @@ module Transactions
           :account,
           :client_mutation_id,
           :tag_ids,
+          :receipt_merchant_detected,
         )
         transaction = type_klass.new(**transaction_params)
 

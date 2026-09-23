@@ -28,7 +28,21 @@ vi.mock("@/services/transactions/mutation", () => ({
 }));
 
 import { updateTransactionLocalFirst } from "@/services/transactions/update-local-first";
-import { useRecurringSeries } from "./useRecurringSeries";
+import {
+  prefetchRecurringSeries,
+  useRecurringSeries,
+} from "./useRecurringSeries";
+
+vi.mock("@/services/transactions/queries", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/services/transactions/queries")
+  >("@/services/transactions/queries");
+
+  return {
+    ...actual,
+    fetchTransactionById: vi.fn(() => new Promise(() => {})),
+  };
+});
 
 const SPACE = "space-install-offline";
 const ROOT_ID = "install9-root";
@@ -157,5 +171,52 @@ describe("useRecurringSeries", () => {
     expect(
       result.current.summaries[0]?.occurrences.every((row) => row.amount === 12_500),
     ).toBe(true);
+  });
+
+  it("resolves from IndexedDB without waiting on transaction detail GETs", async () => {
+    await upsertLocalIndexTransaction(SPACE, {
+      id: "repeat-root",
+      date: "2026-09-01",
+      description: "Gym",
+      amount: 1_500,
+      amountCurrency: "PHP",
+      categoryName: "Fitness",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      hasImage: false,
+      scheduleType: ScheduleTypeEnum.REPEAT,
+      rootParentId: "repeat-root",
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { result } = renderHook(() => useRecurringSeries(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+      expect(result.current.summaries[0]?.title).toBe("Gym");
+    });
+  });
+
+  it("is not pending after prefetchRecurringSeries", async () => {
+    await seedInstallmentSeries();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    await prefetchRecurringSeries(queryClient, SPACE);
+
+    const { result } = renderHook(() => useRecurringSeries(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    expect(result.current.isPending).toBe(false);
+    expect(result.current.summaries[0]?.title).toBe("INSTALL9");
   });
 });

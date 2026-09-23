@@ -46,15 +46,20 @@ describe("pushDashboardDetail", () => {
   });
 
   it("remembers the detail id before navigating", () => {
-    const push = vi.fn();
+    window.history.replaceState({}, "", "/dashboard/loans");
+    const pushState = vi.spyOn(window.history, "pushState");
 
     pushDashboardDetail(
-      { push },
+      { push: vi.fn() },
       "/dashboard/loans/detail?loanId=loan-1",
     );
 
-    expect(push).toHaveBeenCalledWith("/dashboard/loans/detail?loanId=loan-1");
-    window.history.replaceState({}, "", "/dashboard/loans/detail");
+    expect(pushState).toHaveBeenCalledWith(
+      {},
+      "",
+      "/dashboard/loans/detail?loanId=loan-1",
+    );
     expect(resolveDetailSearchParam("loanId", emptyParams)).toBe("loan-1");
+    pushState.mockRestore();
   });
 });

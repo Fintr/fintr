@@ -24,7 +24,11 @@ const createTestQueryClient = () =>
 
 const renderWithQuery = (ui: ReactElement) => {
   const client = createTestQueryClient();
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
 };
 
 describe("WeeklyFeedbackDialog", () => {
@@ -40,6 +44,29 @@ describe("WeeklyFeedbackDialog", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("Close dismisses immediately without calling the API", async () => {
+    const user = userEvent.setup();
+    renderWithQuery(
+      <WeeklyFeedbackDialog api={mockApi} open onOpenChange={onOpenChange} />,
+    );
+
+    expect(await screen.findByText(/How's Fintr going this week/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(mockApi.post).not.toHaveBeenCalled();
+  });
+
+  it("exposes dialog content to overlay stacking helpers", async () => {
+    renderWithQuery(
+      <WeeklyFeedbackDialog api={mockApi} open onOpenChange={onOpenChange} />,
+    );
+
+    expect(await screen.findByText(/How's Fintr going this week/i)).toBeInTheDocument();
+    expect(document.querySelector("[data-modal-content]")).not.toBeNull();
   });
 
   it("Not now closes without calling the API", async () => {
@@ -124,5 +151,21 @@ describe("WeeklyFeedbackPrompt", () => {
 
     expect(localStorage.getItem("fintr_weekly_feedback_v1_lastPromptWeekKey")).not.toBe("2025-W01");
     expect(mockApi.post).not.toHaveBeenCalled();
+  });
+
+  it("closes when it becomes disabled", async () => {
+    const { rerender } = renderWithQuery(
+      <WeeklyFeedbackPrompt api={mockApi} enabled />,
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(screen.getByText(/How's Fintr going this week/i)).toBeInTheDocument();
+
+    rerender(<WeeklyFeedbackPrompt api={mockApi} enabled={false} />);
+
+    expect(screen.queryByText(/How's Fintr going this week/i)).not.toBeInTheDocument();
   });
 });

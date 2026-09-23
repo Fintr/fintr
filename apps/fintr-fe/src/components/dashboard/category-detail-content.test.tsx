@@ -257,8 +257,6 @@ describe("CategoryDetailContent", () => {
     await user.click(screen.getByRole("button", { name: /^delete category$/i }));
 
     expect(mutateAsync).toHaveBeenCalledWith("p1");
-    expect(mockRouterPush).toHaveBeenCalledWith(
-      "/dashboard/space_settings/categories",
-    );
+    expect(window.location.pathname).toBe("/dashboard/space_settings/categories");
   });
 });

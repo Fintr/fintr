@@ -843,7 +843,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   return (
     <>
       {/* Mobile Financial Summary Cards */}
-      <div className="mb-4 space-y-4 px-2 md:hidden md:px-0">
+      <div className="mb-4 space-y-4 px-2 pt-4 md:hidden md:px-0">
         {/* Period net card */}
         <div className="relative overflow-hidden rounded-2xl bg-primary p-6 shadow-lg dark:border-0 dark:bg-card dark:shadow-sm">
           {/* Decorative shapes */}

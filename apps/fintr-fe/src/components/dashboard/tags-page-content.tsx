@@ -27,11 +27,13 @@ export function TagsPageContent() {
     refetch,
     toggleDefaultTag,
     generateStyleImage,
+    assignStyleImage,
     isCreating,
     isUpdating,
     isDeleting,
     isTogglingDefault,
     isGeneratingStyleImage,
+    isAssigningStyleImage,
   } = useTransactionTags();
 
   return (
@@ -64,8 +66,8 @@ export function TagsPageContent() {
           <TagList
             tags={tags}
             highlightTagId={highlightTagId}
-            onAdd={async (name, color) => {
-              await createTag({ name, color });
+            onAdd={async (name, color, stylePresetKey) => {
+              await createTag({ name, color, stylePresetKey });
               toast.success("Tag created");
             }}
             onUpdate={async (tagId, updateData) => {
@@ -73,11 +75,7 @@ export function TagsPageContent() {
               toast.success("Tag updated");
             }}
             onDelete={async (tagId) => {
-              const result = await deleteTag(tagId);
-              if (result?.success === false) {
-                toast.error("Could not delete tag. Remove it from transactions first.");
-                return;
-              }
+              await deleteTag(tagId);
               toast.success("Tag deleted");
             }}
             onToggleDefault={async (tagId) => {
@@ -89,8 +87,10 @@ export function TagsPageContent() {
               );
             }}
             onGenerateStyleImage={generateStyleImage}
+            onAssignStyleImage={assignStyleImage}
             isLoading={isCreating || isUpdating || isDeleting || isTogglingDefault}
             isGeneratingStyleImage={isGeneratingStyleImage}
+            isAssigningStyleImage={isAssigningStyleImage}
           />
         )}
       </CardContent>

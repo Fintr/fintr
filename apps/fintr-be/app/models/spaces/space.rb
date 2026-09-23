@@ -2,8 +2,6 @@
 
 module Spaces
   class Space < ApplicationRecord
-    FREE_TOKENS = 30
-
     belongs_to :owner, class_name: "Auth::User", optional: true
 
     has_many :transactions, class_name: "Transactions::Transaction", dependent: :destroy
@@ -35,35 +33,6 @@ module Spaces
 
     def create_default_transaction_categories
       Transactions::Category.create_default_categories(self)
-    end
-
-    def can_ai?
-      # If any user in the space has admin role, allow unlimited AI usage
-      return true if users.any? { |user| user.has_role?(:admin) }
-
-      usages = Ai::Queries::Usages::UsageInPeriod.new.call(params: { space_id: id })
-      return false unless usages.success?
-
-      tokens_used = usages.value!.sum(:tokens_used)
-      token_limit = current_token_limit
-      return false if tokens_used >= token_limit
-
-      true
-    end
-
-    def current_token_limit
-      # Get all billing cycles that are active at the current time and paid
-      # This includes cycles from active subscriptions, grace periods, and prorated cycles
-      active_cycles = Finance::BillingCycle
-                      .joins(:space_subscription)
-                      .where(space_subscription: { space_id: id })
-                      .active
-                      .paid
-
-      # Sum tokens from all active paid cycles
-      total_tokens = active_cycles.sum(:tokens_allocated)
-
-      FREE_TOKENS + total_tokens
     end
 
     def owned_by?(user)

@@ -63,10 +63,17 @@ export function useCountUp(
       return;
     }
 
-    const startTime = performance.now();
+    // Start when the first frame paints. A blocked main thread would otherwise
+    // burn the whole duration before any tick, and the number would jump.
+    let startTime: number | null = null;
 
     const tick = (now: number) => {
-      const progress = Math.min((now - startTime) / duration, 1);
+      if (startTime === null) {
+        startTime = now;
+      }
+
+      const progress =
+        duration <= 0 ? 1 : Math.min((now - startTime) / duration, 1);
       const next = from + (to - from) * easeOutCubic(progress);
 
       setValue(next);

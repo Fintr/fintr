@@ -6,10 +6,14 @@ import {
   cacheBudgetsResponse,
   loadCachedBudgetsResponse,
 } from "./local-cache";
+import {
+  type BudgetRow,
+  normalizeBudgetsPage,
+  recalculateBudgetSummary,
+} from "./normalize-budgets-page";
 
-export type BudgetRow = Record<string, unknown> & {
-  id: string;
-};
+export type { BudgetRow };
+export { normalizeBudgetsPage, recalculateBudgetSummary };
 
 export type BudgetLocation =
   | {
@@ -90,41 +94,6 @@ export const findBudgetLocation = (
   }
 
   return undefined;
-};
-
-export const recalculateBudgetSummary = (page: BudgetsPage): BudgetsPage => {
-  const rows = getBudgetRows(page);
-  let total_budget = 0;
-  let total_spent = 0;
-
-  for (const row of rows) {
-    total_budget += Number(row.amount ?? 0);
-    total_spent += Number(row.total_spent ?? 0);
-
-    const subcategories = Array.isArray(row.subcategories)
-      ? row.subcategories
-      : [];
-
-    for (const sub of subcategories) {
-      const subRow = sub as BudgetRow;
-      total_budget += Number(subRow.budget ?? subRow.amount ?? 0);
-      total_spent += Number(subRow.spent ?? subRow.total_spent ?? 0);
-    }
-  }
-
-  const remaining = total_budget - total_spent;
-  const total_spent_percentage =
-    total_budget > 0 ? (total_spent / total_budget) * 100 : null;
-
-  return {
-    ...page,
-    summary: {
-      total_budget,
-      total_spent,
-      total_spent_percentage,
-      remaining,
-    },
-  };
 };
 
 export const addParentBudgetRowToPage = (

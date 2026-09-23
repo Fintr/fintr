@@ -3,6 +3,7 @@ import {
   hasEmbeddedHeroHeader,
   isDashboardDataLightRoute,
   isDashboardShellRoute,
+  resolveDashboardShellPresentation,
 } from "./dashboard-shell-route";
 
 describe("isDashboardShellRoute", () => {
@@ -50,5 +51,63 @@ describe("isDashboardDataLightRoute", () => {
     expect(isDashboardDataLightRoute("/dashboard")).toBe(false);
     expect(isDashboardDataLightRoute("/dashboard/budgets")).toBe(false);
     expect(isDashboardDataLightRoute("/dashboard/loans")).toBe(false);
+  });
+});
+
+describe("resolveDashboardShellPresentation", () => {
+  it("keeps the tapped bottom tab visible before the pathname updates", () => {
+    const presentation = resolveDashboardShellPresentation({
+      pathname: "/dashboard/home",
+      pendingTab: "insights",
+    });
+
+    expect(presentation.visibleTab).toBe("insights");
+    expect(presentation.showRouteChildren).toBe(false);
+    expect(presentation.usesEmbeddedHeroHeader).toBe(true);
+    expect(presentation.isLightDashboardRoute).toBe(true);
+  });
+
+  it("renders route children for nested dashboard pages", () => {
+    const presentation = resolveDashboardShellPresentation({
+      pathname: "/dashboard/space_settings/accounts",
+      pendingTab: null,
+    });
+
+    expect(presentation.visibleTab).toBeNull();
+    expect(presentation.showRouteChildren).toBe(true);
+    expect(presentation.usesEmbeddedHeroHeader).toBe(false);
+  });
+
+  it("does not keep a pending bottom tab over nested detail pages", () => {
+    const presentation = resolveDashboardShellPresentation({
+      pathname: "/dashboard/recurring/detail",
+      pendingTab: "transactions",
+    });
+
+    expect(presentation.visibleTab).toBeNull();
+    expect(presentation.showRouteChildren).toBe(true);
+  });
+
+  it("shows the cached Settings screen from Home before the route updates", () => {
+    const presentation = resolveDashboardShellPresentation({
+      pathname: "/dashboard/home",
+      pendingTab: "space_settings",
+    });
+
+    expect(presentation.visibleTab).toBe("space_settings");
+    expect(presentation.showRouteChildren).toBe(false);
+    expect(presentation.usesEmbeddedHeroHeader).toBe(false);
+    expect(presentation.isLightDashboardRoute).toBe(true);
+  });
+
+  it("shows cached Recurring from Home before the route updates", () => {
+    const presentation = resolveDashboardShellPresentation({
+      pathname: "/dashboard/home",
+      pendingTab: "recurring",
+    });
+
+    expect(presentation.visibleTab).toBe("recurring");
+    expect(presentation.showRouteChildren).toBe(false);
+    expect(presentation.usesEmbeddedHeroHeader).toBe(false);
   });
 });

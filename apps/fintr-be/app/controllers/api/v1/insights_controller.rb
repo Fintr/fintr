@@ -5,6 +5,8 @@ module Api
     class InsightsController < ApiController
       include InsightsEndpoint
 
+      before_action :require_pro_access
+
       def index
         insights_data = Insights::Operations::CreateInsightsData.new.call(
           with_current_params(insights_index_params)
@@ -96,6 +98,18 @@ module Api
       end
 
       private
+
+      def require_pro_access
+        access = ::Finance::Operations::Entitlements::ResolveProAccess.new.call(
+          with_current_params,
+        )
+        return if access.success? && access.value![:pro]
+
+        render_error(
+          message: "Fintr Pro is required for Dashboard Insights.",
+          status: :forbidden,
+        )
+      end
 
       def summary_structure_params(context)
         {

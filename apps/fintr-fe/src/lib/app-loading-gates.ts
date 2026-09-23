@@ -3,15 +3,14 @@
  * In-app navigation — including offline remounts — must keep the current shell.
  */
 
-import { hasAppShellReady } from "@/lib/app-shell-state";
-
 export function shouldShowAuthLoadingScreen(params: {
+  appShellReady: boolean;
   isPublicRoute: boolean;
   isAuthContextLoading: boolean;
   isAuthenticated: boolean;
   hasStoredSession: boolean;
 }): boolean {
-  if (hasAppShellReady()) {
+  if (params.appShellReady) {
     return false;
   }
 
@@ -27,12 +26,13 @@ export function shouldShowAuthLoadingScreen(params: {
 }
 
 export function shouldShowPrivateContextLoadingScreen(params: {
+  appShellReady: boolean;
   isOnOnboardingPage: boolean;
   isOnAdminPage: boolean;
   isResolvingWorkspaceContext: boolean;
   hasPersistedSpaceCode: boolean;
 }): boolean {
-  if (hasAppShellReady()) {
+  if (params.appShellReady) {
     return false;
   }
 

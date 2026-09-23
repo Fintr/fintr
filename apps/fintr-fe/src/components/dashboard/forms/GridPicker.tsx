@@ -30,6 +30,8 @@ import { isCategoryTree } from "@/utils/categoryTreeOptions";
 import { CategoryIconBadge } from "@/components/dashboard/category-icon-badge";
 import { AccountIconBadge } from "@/components/dashboard/account-icon-badge";
 import { currentSpaceAtom } from "@/atoms/spaceAtoms";
+import { useAccounts } from "@/hooks/async/useAccounts";
+import { overlayAccountOptionBalances } from "@/services/transactions/accounts/overlay-account-option-balances";
 import {
   SEARCH_DEBOUNCE_MS,
   useDebouncedValue,
@@ -243,6 +245,7 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
   );
   const currentSpace = useAtomValue(currentSpaceAtom);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
+  const { accounts: cachedAccounts } = useAccounts();
 
   const allowInlineCreate = props.allowInlineCreate ?? true;
   const hideTrigger = props.hideTrigger ?? false;
@@ -274,10 +277,18 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
   const hierarchicalCategoryPicker =
     props.pickerKind === "category" && isCategoryTree(props.categories);
 
+  const accountOptions = useMemo(() => {
+    if (props.pickerKind !== "account") {
+      return [];
+    }
+
+    return overlayAccountOptionBalances(props.accounts, cachedAccounts);
+  }, [props, cachedAccounts]);
+
   const options =
     props.pickerKind === "category"
       ? categoryTree
-      : props.accounts;
+      : accountOptions;
 
   const disabledOptionTitle =
     props.pickerKind === "account"
@@ -416,8 +427,8 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
       return null;
     }
 
-    return props.accounts.find((account) => account.value === value) ?? null;
-  }, [props, value]);
+    return accountOptions.find((account) => account.value === value) ?? null;
+  }, [props.pickerKind, accountOptions, value]);
 
   const optionLocked = (option: { label: string; value: string }): boolean => {
     if (props.pickerKind !== "account" || !props.isOptionDisabled) {
@@ -446,13 +457,13 @@ const GridPicker: React.FC<GridPickerProps> = (props) => {
 
     const query = debouncedAccountSearchQuery.trim().toLowerCase();
     if (!query) {
-      return props.accounts;
+      return accountOptions;
     }
 
-    return props.accounts.filter((account) =>
+    return accountOptions.filter((account) =>
       account.label.toLowerCase().includes(query),
     );
-  }, [props, debouncedAccountSearchQuery]);
+  }, [props.pickerKind, accountOptions, debouncedAccountSearchQuery]);
 
   const filteredCategoryParents = useMemo(() => {
     if (props.pickerKind !== "category") {

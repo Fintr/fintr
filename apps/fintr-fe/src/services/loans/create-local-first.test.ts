@@ -78,6 +78,37 @@ describe("createLoanLocalFirst", () => {
     await result.syncPromise;
   });
 
+  it("sends clientMutationId so server loan creates are idempotent for retries", async () => {
+    vi.mocked(createLoan).mockResolvedValue({ data: { id: "loan-server-1" } });
+
+    const result = await createLoanLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        data: {
+          principalAmount: 1500,
+          interestRate: 4,
+          date: "2026-03-01",
+          loanType: "borrowed",
+          entityName: "Mina",
+          accountName: "Cash",
+          loanTermMonths: 12,
+          description: "New bike",
+        },
+      },
+      { waitForSync: true, amountCurrency: "PHP" },
+    );
+
+    expect(createLoan).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        principalAmount: 1500,
+        clientMutationId: expect.stringMatching(/\S+/),
+      }),
+    );
+    expect(result.data.id).toBe("loan-server-1");
+  });
+
   it("replaces the optimistic local loan with the server id without duplicating list rows", async () => {
     vi.mocked(createLoan).mockResolvedValue({ data: { id: "loan-server-1" } });
 

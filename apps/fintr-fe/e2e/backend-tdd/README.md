@@ -2,12 +2,32 @@
 
 These Playwright tests exercise the **full stack** — frontend + real backend — to verify backend behavior through the UI.
 
+## Personal workspace login
+
+Playwright can sign in to the personal workspace with email and password (no Google OAuth):
+
+| Field | Value |
+| --- | --- |
+| Email | `miguel.dagatan@gmail.com` |
+| Password | `FintrPlaywright!Personal2026` |
+| Space | `miguel-dagatan-gmail-com-personal-space` |
+
+Use these on `/auth`, or call `loginToPersonalWorkspace(page)` from `e2e/helpers/login-personal-workspace.ts`.
+
+Override with `E2E_PERSONAL_EMAIL` / `E2E_PERSONAL_PASSWORD` if needed. To reset the Auth0 password:
+
+```bash
+cd apps/fintr-be
+mise exec -- bundle exec rake playwright:reset_personal_password
+```
+
 ## How It Works
 
-1. **Backend bypass**: A development-only auth bypass (`secured.rb`) lets Playwright authenticate without Auth0.
-2. **Test user**: The backend provides `POST /api/v1/e2e/setup` to create a persistent test user with a personal space.
-3. **Request interception**: Playwright intercepts frontend API calls and injects `X-E2E-Test-*` headers.
-4. **Auth0 mock**: Auth0 token refresh requests are mocked so the frontend's axios interceptor doesn't fail.
+1. **Password login**: The personal workspace account has a Username-Password identity so Playwright can submit the login form.
+2. **Backend bypass**: A development-only auth bypass (`secured.rb`) lets Playwright authenticate without Auth0 when tests inject `X-E2E-Test-*` headers.
+3. **Test user**: `POST /api/v1/e2e/setup` returns the personal workspace user (`miguel.dagatan@gmail.com`).
+4. **Request interception**: Playwright intercepts frontend API calls and injects `X-E2E-Test-*` headers.
+5. **Auth0 mock**: Auth0 token refresh requests are mocked so the frontend's axios interceptor doesn't fail.
 
 ## Running the Tests
 

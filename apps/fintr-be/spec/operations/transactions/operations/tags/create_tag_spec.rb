@@ -41,6 +41,45 @@ RSpec.describe Transactions::Operations::Tags::CreateTag do
       end
     end
 
+    context "with a style preset key and a paid subscription" do
+      let!(:subscription_plan) { create(:subscription_plan, slug: "premium-#{SecureRandom.hex(4)}") }
+      let!(:space_subscription) do
+        create(
+          :space_subscription,
+          space:,
+          subscription_plan:,
+          status: :active,
+          subscription_type: :paid,
+        )
+      end
+
+      subject(:call_operation) do
+        operation.call(
+          space_id: space.id,
+          name: "Japan 2026",
+          style_preset_key: "japan-vacation",
+        )
+      end
+
+      it { is_expected.to be_success }
+
+      it "stores the preset key on the tag" do
+        expect(call_operation.value!.style_preset_key).to eq("japan-vacation")
+      end
+    end
+
+    context "with a style preset key and no paid subscription" do
+      subject(:call_operation) do
+        operation.call(
+          space_id: space.id,
+          name: "Japan 2026",
+          style_preset_key: "japan-vacation",
+        )
+      end
+
+      it { is_expected.to be_failure }
+    end
+
     context "with invalid color" do
       subject(:call_operation) do
         operation.call(space_id: space.id, name: "Invalid", color: "red")

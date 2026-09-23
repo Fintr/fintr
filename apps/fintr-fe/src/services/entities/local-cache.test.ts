@@ -151,4 +151,74 @@ describe("entities local cache", () => {
     const detail = await loadCachedEntityDetail("SPACE_1", "missing");
     expect(detail).toBeUndefined();
   });
+
+  it("keeps merchant identifiers on the cached entity detail", async () => {
+    await cacheEntitiesResponse(
+      "SPACE_1",
+      normalizeEntityRecords([
+        {
+          id: "merchant-1",
+          full_name: "1855",
+          entity_type: "transaction",
+          identifiers: [
+            {
+              id: "alias-1",
+              label: "CORPORATION A",
+              scanned_name: "corporation a",
+            },
+          ],
+        },
+      ]),
+    );
+
+    const detail = await loadCachedEntityDetail("SPACE_1", "merchant-1");
+
+    expect(detail?.identifiers).toEqual([
+      {
+        id: "alias-1",
+        label: "CORPORATION A",
+        scannedName: "corporation a",
+      },
+    ]);
+  });
+
+  it("keeps identifiers when a later entity cache write omits them", async () => {
+    await cacheEntitiesResponse(
+      "SPACE_1",
+      normalizeEntityRecords([
+        {
+          id: "merchant-1",
+          full_name: "1855",
+          entity_type: "transaction",
+          identifiers: [
+            {
+              id: "alias-1",
+              label: "CORPORATION A",
+              scannedName: "corporation a",
+            },
+          ],
+        },
+      ]),
+    );
+
+    await cacheEntitiesResponse(
+      "SPACE_1",
+      normalizeEntityRecords([
+        {
+          id: "merchant-1",
+          full_name: "1855 Photo",
+          entity_type: "transaction",
+        },
+      ]),
+    );
+
+    const cached = await loadCachedEntitiesResponse("SPACE_1");
+    expect(cached?.[0]?.identifiers).toEqual([
+      {
+        id: "alias-1",
+        label: "CORPORATION A",
+        scannedName: "corporation a",
+      },
+    ]);
+  });
 });

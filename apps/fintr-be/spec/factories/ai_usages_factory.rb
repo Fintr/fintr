@@ -6,7 +6,6 @@ FactoryBot.define do
     association :space, factory: :personal_space
     ai_type { "pure_ai_ocr" }
     status { "pending" }
-    tokens_used { 1 }
     time_seconds { 0.0 }
     result { {} }
 

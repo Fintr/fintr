@@ -133,7 +133,7 @@ describe("ListView merchant layout", () => {
     );
   });
 
-  it("shows merchant and subcategory category on the same row", () => {
+  it("puts a subcategory path on its own row, apart from the merchant and the date", () => {
     const transaction = buildTransaction({
       description: "Lunch",
       subcategoryName: "Pharmacy",
@@ -156,11 +156,46 @@ describe("ListView merchant layout", () => {
 
     const merchant = screen.getByText("Jollibee");
     const category = screen.getByText("Medicine › Pharmacy");
+    const date = screen.getByText("8/11/2026");
 
-    expect(merchant.parentElement).toBe(category.parentElement);
-    expect(merchant.parentElement).not.toBe(
-      screen.getByText("8/11/2026").parentElement,
+    expect(category.parentElement).not.toBe(merchant.parentElement);
+    expect(category.parentElement).not.toBe(date.parentElement);
+    expect(date.parentElement).not.toHaveTextContent("Pharmacy");
+    expect(date.parentElement).toHaveTextContent("Cash - Ella");
+  });
+
+  it("gives the account the date row when a described transaction uses a subcategory", () => {
+    const transaction = buildTransaction({
+      description: "JOLLIBEE",
+      categoryName: "Dine Out & Entertainment",
+      subcategoryName: "Dine out",
+      entityName: "",
+      fromAccountName: "BDO2 CC - Ella",
+    });
+
+    render(
+      <ListView
+        isPending={false}
+        isError={false}
+        error={null}
+        isSuccess={true}
+        data={buildData([transaction])}
+        isFetchingNextPage={false}
+        hasNextPage={false}
+        onRowEdit={vi.fn()}
+        onRowDelete={vi.fn()}
+        loadMoreRef={{ current: null }}
+      />,
     );
+
+    const category = screen.getByText(
+      "Dine Out & Entertainment › Dine out",
+    );
+    const date = screen.getByText("8/11/2026");
+
+    expect(category.parentElement).not.toBe(date.parentElement);
+    expect(date.parentElement).toHaveTextContent("BDO2 CC - Ella");
+    expect(date.parentElement).not.toHaveTextContent("Dine out");
   });
 
   it("shows loan contact under the title and keeps metadata uncluttered", () => {

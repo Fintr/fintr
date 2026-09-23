@@ -12,8 +12,8 @@ export class DomainValidationError extends Error {
   readonly success = false as const;
   readonly details: FieldErrorMap;
 
-  constructor(details: FieldErrorMap) {
-    super("Validation failed");
+  constructor(details: FieldErrorMap, message = "Validation failed") {
+    super(message);
     this.name = "DomainValidationError";
     this.details = details;
   }

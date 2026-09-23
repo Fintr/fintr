@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe Finance::Operations::Subscriptions::FindOrCreatePayment, type: :operation do
   let(:operation) { described_class.new }
   let(:space) { create(:space) }
-  let(:subscription_plan) { create(:subscription_plan, slug: "basic", token_limit: 50, price_cents: 14_900, interval: "month") }
+  let(:subscription_plan) { create(:subscription_plan, slug: "basic", price_cents: 14_900, interval: "month") }
   let(:space_subscription) do
     create(
       :space_subscription,

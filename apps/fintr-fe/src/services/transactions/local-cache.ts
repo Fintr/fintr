@@ -5,6 +5,7 @@ import {
   countSpaceTransactions,
   deleteSpaceTransactions,
   getSpaceTransaction,
+  listNewestSpaceTransactionsOnOrBefore,
   listSpaceTransactions,
   listSpaceTransactionsInDateRange,
   putSpaceTransactions,
@@ -339,7 +340,7 @@ const resolveSourcePagesForFilter = async (
 };
 
 const filterTransactionsForRange = (
-  sourcePages: TransactionsPage[],
+  sourcePages: Array<{ transactions?: IndexTransaction[] }>,
   filterKey: string,
 ): IndexTransaction[] => {
   const filter = parseTransactionListFilterFromFilterKey(filterKey);
@@ -770,6 +771,38 @@ const loadFlatTransactionRowsForFilterKey = async (
   return listSpaceTransactions(spaceId);
 };
 
+/** Enough recent rows to collapse a few series without scanning full history. */
+export const RECENT_TRANSACTIONS_SOURCE_LIMIT = 120;
+
+/**
+ * Newest cached transactions on or before a date, capped for preview lists.
+ * Does not load or backfill the full workspace history.
+ */
+export const loadRecentCachedTransactions = async (
+  spaceId: string,
+  onOrBeforeDate: string,
+  limit: number = RECENT_TRANSACTIONS_SOURCE_LIMIT,
+): Promise<IndexTransaction[]> => {
+  if (!spaceId || !onOrBeforeDate || limit <= 0) {
+    return [];
+  }
+
+  try {
+    await migrateLegacyTransactionSnapshotsIfNeeded(spaceId);
+    return await listNewestSpaceTransactionsOnOrBefore(
+      spaceId,
+      onOrBeforeDate,
+      limit,
+    );
+  } catch (error) {
+    console.warn(
+      "[local-db] Failed to load recent cached transactions",
+      error,
+    );
+    return [];
+  }
+};
+
 /**
  * All cached transactions in a date range (from the local transaction index).
  */
@@ -870,6 +903,36 @@ const mergeTransactionRowsById = (
   return Array.from(byId.values());
 };
 
+const loadFilteredTransactionsForFilterKey = async (
+  spaceId: string,
+  filterKey: string,
+  options?: {
+    fallbackRows?: IndexTransaction[];
+  },
+): Promise<IndexTransaction[]> => {
+  await migrateLegacyTransactionSnapshotsIfNeeded(spaceId);
+
+  const flatRows = await loadFlatTransactionRowsForFilterKey(spaceId, filterKey);
+  const resolved = await resolveSourcePagesForFilter(spaceId, filterKey);
+  const snapshotRows = (resolved?.sourcePages ?? []).flatMap(
+    (page) => page.transactions ?? [],
+  );
+  const mergedRows = mergeTransactionRowsById([
+    ...snapshotRows,
+    ...flatRows,
+    ...(options?.fallbackRows ?? []),
+  ]);
+
+  if (mergedRows.length === 0) {
+    return [];
+  }
+
+  return filterTransactionsForRange(
+    [{ transactions: mergedRows }],
+    filterKey,
+  ).sort(compareTransactionsNewestFirst);
+};
+
 export const loadCachedTransactionsPageAt = async (
   spaceId: string,
   filterKey: string,
@@ -883,27 +946,11 @@ export const loadCachedTransactionsPageAt = async (
   }
 
   try {
-    await migrateLegacyTransactionSnapshotsIfNeeded(spaceId);
-
-    const flatRows = await loadFlatTransactionRowsForFilterKey(spaceId, filterKey);
-    const resolved = await resolveSourcePagesForFilter(spaceId, filterKey);
-    const snapshotRows = (resolved?.sourcePages ?? []).flatMap(
-      (page) => page.transactions ?? [],
-    );
-    const mergedRows = mergeTransactionRowsById([
-      ...snapshotRows,
-      ...flatRows,
-      ...(options?.fallbackRows ?? []),
-    ]);
-
-    if (mergedRows.length === 0) {
-      return pageParam <= 1 ? emptyTransactionsPage() : undefined;
-    }
-
-    const transactions = filterTransactionsForRange(
-      [{ transactions: mergedRows }],
+    const transactions = await loadFilteredTransactionsForFilterKey(
+      spaceId,
       filterKey,
-    ).sort(compareTransactionsNewestFirst);
+      options,
+    );
 
     if (transactions.length === 0) {
       return pageParam <= 1 ? emptyTransactionsPage() : undefined;
@@ -930,9 +977,10 @@ export const loadAllTypeCachedRowsForFilterKey = async (
     return [];
   }
 
-  const allFilterKey = buildUnfilteredEntryTypeFilterKey(filterKey);
-  const page = await loadCachedTransactionsPageAt(spaceId, allFilterKey, 1);
-  return page?.transactions ?? [];
+  return loadFilteredTransactionsForFilterKey(
+    spaceId,
+    buildUnfilteredEntryTypeFilterKey(filterKey),
+  );
 };
 
 /**
