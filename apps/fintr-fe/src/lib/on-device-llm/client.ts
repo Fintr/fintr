@@ -41,6 +41,27 @@ const systemModelPath = (): string => {
   return platform === "ios" ? "Apple Intelligence" : "Gemini Nano";
 };
 
+const nativeCapgoLlmInstalled = (): boolean => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const capacitor = (
+    window as Window & {
+      Capacitor?: {
+        PluginHeaders?: Array<{ name?: string }>;
+      };
+    }
+  ).Capacitor;
+  const headers = capacitor?.PluginHeaders;
+
+  if (!Array.isArray(headers)) {
+    return false;
+  }
+
+  return headers.some((header) => header?.name === "CapgoLLM");
+};
+
 const loadCapgoLlm = async () => {
   initCapacitorBridgeIfNeeded();
   await waitForCapacitor();
@@ -57,7 +78,7 @@ export const getOnDeviceLlmReadiness = (): OnDeviceLlmReadiness => {
 };
 
 export const initializeOnDeviceLlm = async (): Promise<OnDeviceLlmReadiness> => {
-  if (!isNativeCapacitor()) {
+  if (!isNativeCapacitor() || !nativeCapgoLlmInstalled()) {
     readiness = "unsupported";
     return readiness;
   }
@@ -200,7 +221,7 @@ export const promptOnDeviceLlm = async (
 export const resetOnDeviceLlmSession = async (): Promise<void> => {
   activeChatId = null;
 
-  if (!isNativeCapacitor()) {
+  if (!isNativeCapacitor() || !nativeCapgoLlmInstalled()) {
     return;
   }
 
