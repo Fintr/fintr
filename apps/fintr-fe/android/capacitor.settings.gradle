@@ -21,7 +21,7 @@ include ':capgo-capacitor-llm'
 project(':capgo-capacitor-llm').projectDir = new File('../node_modules/.pnpm/@capgo+capacitor-llm@7.2.15_@capacitor+core@7.6.5_@mediapipe+tasks-genai@0.10.29/node_modules/@capgo/capacitor-llm/android')
 
 include ':revenuecat-purchases-capacitor'
-project(':revenuecat-purchases-capacitor').projectDir = new File('../node_modules/.pnpm/@revenuecat+purchases-capacitor@10.4.0_@capacitor+core@7.6.5/node_modules/@revenuecat/purchases-capacitor/android')
+project(':revenuecat-purchases-capacitor').projectDir = new File('../node_modules/.pnpm/@revenuecat+purchases-capacitor@11.3.2_@capacitor+core@7.6.5/node_modules/@revenuecat/purchases-capacitor/android')
 
 include ':revenuecat-purchases-capacitor-ui'
-project(':revenuecat-purchases-capacitor-ui').projectDir = new File('../node_modules/.pnpm/@revenuecat+purchases-capacitor-ui@10.4.0_@capacitor+core@7.6.5/node_modules/@revenuecat/purchases-capacitor-ui/android')
+project(':revenuecat-purchases-capacitor-ui').projectDir = new File('../node_modules/.pnpm/@revenuecat+purchases-capacitor-ui@11.3.2_@capacitor+core@7.6.5/node_modules/@revenuecat/purchases-capacitor-ui/android')

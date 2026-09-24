@@ -64,6 +64,7 @@ cat > next.config.capacitor.ts << 'NEXTCONFIG'
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["@fintr/domain"],
   output: "export",
   typescript: { ignoreBuildErrors: true },
   experimental: {
@@ -85,6 +86,14 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 NEXTCONFIG
 
+restore_next_config() {
+  if [ -f next.config.ts.backup ]; then
+    mv next.config.ts.backup next.config.ts
+  fi
+  rm -f next.config.capacitor.ts
+}
+trap restore_next_config EXIT
+
 cp next.config.ts next.config.ts.backup
 cp next.config.capacitor.ts next.config.ts
 
@@ -92,8 +101,8 @@ cp next.config.capacitor.ts next.config.ts
 # during `next build`, static export fails (PageNotFoundError: Cannot find module /_document).
 export NODE_ENV=production
 pnpm build
-mv next.config.ts.backup next.config.ts
-rm next.config.capacitor.ts
+restore_next_config
+trap - EXIT
 
 if [ ! -d "out" ]; then
   echo "ERROR: Build did not create 'out' directory"
